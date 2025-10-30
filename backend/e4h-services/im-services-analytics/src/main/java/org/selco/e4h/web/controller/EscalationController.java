@@ -976,116 +976,134 @@ public class EscalationController {
      */
     private String generateConsolidatedWeeklyCsv(Set<String> stateTenantIds, RequestInfo requestInfo) {
         StringBuilder csv = new StringBuilder();
-        // Header: quote every label to avoid Excel splitting on spaces
-        csv.append("\"Health Facility\",\"NIN OR HFR\",\"Solar Working\",\"State\",\"District\",\"Block\",\"Health Facility Type\",\"Mapped Vendor\",\"No of Ticket\",\"Open Ticket\",\"Closed Ticket\"\r\n");
+        appendCsvHeader(csv);
 
         try {
-            // Fetch all tickets once
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             log.info("Consolidated CSV: fetched {} tickets from ES", tickets.size());
 
-            // Aggregate per facility
             Map<String, Map<String, Object>> facilityAgg = new LinkedHashMap<>();
-
             for (Map<String, Object> ticket : tickets) {
                 Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
                 if (data == null) continue;
 
-                // Correct ES field names are camelCase
-                String ticketTenantId = getStringValue(data, "tenantId");
-                if (ticketTenantId == null || ticketTenantId.isEmpty()) continue;
+                String tenantId = getStringValue(data, "tenantId");
+                if (!isInScope(tenantId, stateTenantIds)) continue;
 
-                boolean inScope = false;
-                for (String state : stateTenantIds) {
-                    if (ticketTenantId.equalsIgnoreCase(state) || ticketTenantId.startsWith(state + ".")) { inScope = true; break; }
-                }
-                if (!inScope) continue;
-
-                // Facility identity (best-effort fields)
-                String facilityNameLocal = getStringValue(data, "tenantId_localized");
-                if (facilityNameLocal.isEmpty()) facilityNameLocal = getStringValue(data, "tenantId");
+                String facilityName = resolveFacilityName(data);
                 String ninOrHfr = getStringValue(data, "ninOrHfr");
-                String stateRoot = ticketTenantId.contains(".") ? ticketTenantId.substring(0, ticketTenantId.indexOf('.')) : ticketTenantId;
+                String stateRoot = rootTenant(tenantId);
                 String district = getStringValue(data, "district");
                 String block = getStringValue(data, "block");
-                // Type may exist under incident.phcSubType or data.phcType
-                String hfTypeLocal = getStringValue(data, "phcType");
-                if (hfTypeLocal.isEmpty()) {
-                    Map<String, Object> incForType = (Map<String, Object>) data.get("incident");
-                    if (incForType != null) hfTypeLocal = getStringValue(incForType, "phcSubType");
-                }
-                String vendorLocal = getStringValue(data, "mappedVendorName");
-                if (vendorLocal.isEmpty()) vendorLocal = getStringValue(data, "mappedVendorUserName");
+                String hfType = resolveHfType(data);
+                String vendor = resolveVendor(data);
+                String status = extractApplicationStatus(data);
+                boolean isClosed = isClosed(status);
+                boolean isFunctional = "FUNCTIONAL".equalsIgnoreCase(getStringValue(data, "systemFunctional"));
 
-                // Status/close flags
-                Map<String, Object> cpi = (Map<String, Object>) data.get("currentProcessInstance");
-                String applicationStatus = "N/A";
-                if (cpi != null) {
-                    Map<String, Object> st = (Map<String, Object>) cpi.get("state");
-                    if (st != null) applicationStatus = getStringValue(st, "applicationStatus");
-                }
-                boolean isClosed = applicationStatus.equalsIgnoreCase("RESOLVED") ||
-                        applicationStatus.equalsIgnoreCase("CLOSED_AFTER_RESOLUTION") ||
-                        applicationStatus.equalsIgnoreCase("CLOSED_AFTER_REJECTION") ||
-                        applicationStatus.equalsIgnoreCase("REJECTED");
-
-                final String facilityName = facilityNameLocal;
-                final String vendor = vendorLocal;
-                final String hfType = hfTypeLocal;
-                String key = facilityName + "|" + district + "|" + block + "|" + stateRoot;
-                Map<String, Object> row = facilityAgg.computeIfAbsent(key, k -> {
-                    Map<String, Object> m = new HashMap<>();
-                    m.put("facility", facilityName);
-                    m.put("nin", ninOrHfr);
-                    m.put("state", commonUtility.getStateDisplayName(stateRoot));
-                    m.put("district", district);
-                    m.put("block", block);
-                    m.put("type", hfType);
-                    m.put("vendor", vendor);
-                    m.put("total", 0L);
-                    m.put("open", 0L);
-                    m.put("closed", 0L);
-                    // Track system working (functional) if any ticket says functional
-                    m.put("solarWorking", "No");
-                    return m;
-                });
-
-                long total = (long) row.get("total");
-                row.put("total", total + 1);
-                if (isClosed) {
-                    long closed = (long) row.get("closed");
-                    row.put("closed", closed + 1);
-                } else {
-                    long open = (long) row.get("open");
-                    row.put("open", open + 1);
-                }
-
-                String sysFunc = getStringValue(data, "systemFunctional");
-                if ("FUNCTIONAL".equalsIgnoreCase(sysFunc)) {
-                    row.put("solarWorking", "Yes");
-                }
+                Map<String, Object> row = getOrCreateFacilityRow(facilityAgg, facilityName, ninOrHfr, stateRoot, district, block, hfType, vendor);
+                incrementCounts(row, isClosed, isFunctional);
             }
 
-            // Emit rows
-            for (Map<String, Object> row : facilityAgg.values()) {
-                csv.append(escapeCsvField((String) row.get("facility"))).append(",")
-                   .append(escapeCsvField((String) row.get("nin"))).append(",")
-                   .append(escapeCsvField((String) row.get("solarWorking"))).append(",")
-                   .append(escapeCsvField((String) row.get("state"))).append(",")
-                   .append(escapeCsvField((String) row.get("district"))).append(",")
-                   .append(escapeCsvField((String) row.get("block"))).append(",")
-                   .append(escapeCsvField((String) row.get("type"))).append(",")
-                   .append(escapeCsvField((String) row.get("vendor"))).append(",")
-                   .append(row.get("total")).append(",")
-                   .append(row.get("open")).append(",")
-                   .append(row.get("closed")).append("\r\n");
-            }
+            facilityAgg.values().forEach(r -> appendCsvRow(csv, r));
 
         } catch (Exception e) {
             log.error("Error generating consolidated weekly CSV", e);
         }
 
         return csv.toString();
+    }
+
+    private void appendCsvHeader(StringBuilder csv) {
+        csv.append("\"Health Facility\",\"NIN OR HFR\",\"Solar Working\",\"State\",\"District\",\"Block\",\"Health Facility Type\",\"Mapped Vendor\",\"No of Ticket\",\"Open Ticket\",\"Closed Ticket\"\r\n");
+    }
+
+    private boolean isInScope(String tenantId, Set<String> stateTenantIds) {
+        if (tenantId == null || tenantId.isEmpty()) return false;
+        for (String state : stateTenantIds) {
+            if (tenantId.equalsIgnoreCase(state) || tenantId.startsWith(state + ".")) return true;
+        }
+        return false;
+    }
+
+    private String rootTenant(String tenantId) {
+        return tenantId.contains(".") ? tenantId.substring(0, tenantId.indexOf('.')) : tenantId;
+    }
+
+    private String resolveFacilityName(Map<String, Object> data) {
+        String name = getStringValue(data, "tenantId_localized");
+        return name.isEmpty() ? getStringValue(data, "tenantId") : name;
+    }
+
+    private String resolveHfType(Map<String, Object> data) {
+        String type = getStringValue(data, "phcType");
+        if (!type.isEmpty()) return type;
+        Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+        return incident != null ? getStringValue(incident, "phcSubType") : "";
+    }
+
+    private String resolveVendor(Map<String, Object> data) {
+        String vendor = getStringValue(data, "mappedVendorName");
+        return vendor.isEmpty() ? getStringValue(data, "mappedVendorUserName") : vendor;
+    }
+
+    private String extractApplicationStatus(Map<String, Object> data) {
+        Map<String, Object> cpi = (Map<String, Object>) data.get("currentProcessInstance");
+        if (cpi == null) return "N/A";
+        Map<String, Object> st = (Map<String, Object>) cpi.get("state");
+        return st != null ? getStringValue(st, "applicationStatus") : "N/A";
+    }
+
+    private boolean isClosed(String status) {
+        return status.equalsIgnoreCase("RESOLVED") ||
+               status.equalsIgnoreCase("CLOSED_AFTER_RESOLUTION") ||
+               status.equalsIgnoreCase("CLOSED_AFTER_REJECTION") ||
+               status.equalsIgnoreCase("REJECTED");
+    }
+
+    private Map<String, Object> getOrCreateFacilityRow(Map<String, Map<String, Object>> agg,
+                                                       String facility, String nin, String stateRoot,
+                                                       String district, String block, String type, String vendor) {
+        String key = facility + "|" + district + "|" + block + "|" + stateRoot;
+        return agg.computeIfAbsent(key, k -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("facility", facility);
+            m.put("nin", nin);
+            m.put("state", commonUtility.getStateDisplayName(stateRoot));
+            m.put("district", district);
+            m.put("block", block);
+            m.put("type", type);
+            m.put("vendor", vendor);
+            m.put("total", 0L);
+            m.put("open", 0L);
+            m.put("closed", 0L);
+            m.put("solarWorking", "No");
+            return m;
+        });
+    }
+
+    private void incrementCounts(Map<String, Object> row, boolean isClosed, boolean isFunctional) {
+        row.put("total", (long) row.get("total") + 1);
+        if (isClosed) {
+            row.put("closed", (long) row.get("closed") + 1);
+        } else {
+            row.put("open", (long) row.get("open") + 1);
+        }
+        if (isFunctional) row.put("solarWorking", "Yes");
+    }
+
+    private void appendCsvRow(StringBuilder csv, Map<String, Object> row) {
+        csv.append(escapeCsvField((String) row.get("facility"))).append(",")
+           .append(escapeCsvField((String) row.get("nin"))).append(",")
+           .append(escapeCsvField((String) row.get("solarWorking"))).append(",")
+           .append(escapeCsvField((String) row.get("state"))).append(",")
+           .append(escapeCsvField((String) row.get("district"))).append(",")
+           .append(escapeCsvField((String) row.get("block"))).append(",")
+           .append(escapeCsvField((String) row.get("type"))).append(",")
+           .append(escapeCsvField((String) row.get("vendor"))).append(",")
+           .append(row.get("total")).append(",")
+           .append(row.get("open")).append(",")
+           .append(row.get("closed")).append("\r\n");
     }
 
     
