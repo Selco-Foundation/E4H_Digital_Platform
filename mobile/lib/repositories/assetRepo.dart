@@ -422,13 +422,13 @@ class AssetRepository {
   }
 
   Future<void> submitRejection({
-    required String projectId,
+    required String activityFacilityId,
     String action = "REJECT",
     List<Document>? documents,
     required List<Transaction> transactions,
   }) async {
     final payload = {
-      'projectId': projectId,
+      'activityFacilityId': activityFacilityId,
       'workflow': {
         'action': action,
         if (documents != null) ...{
@@ -441,7 +441,7 @@ class AssetRepository {
     print("payload ${jsonEncode(payload)}");
 
     try {
-      final resp = await _dio.post('/project/v1/project/workflow/update',
+      final resp = await _dio.post('/activity/v1/activities/workflow/update',
           data: payload,
           options: Options(contentType: Headers.jsonContentType));
       if (resp.statusCode != 200 &&

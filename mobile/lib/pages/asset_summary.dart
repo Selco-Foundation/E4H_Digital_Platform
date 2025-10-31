@@ -409,7 +409,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                             context.read<RejectionBloc>().add(
                                   RejectionEvent.submitRejection(
                                       activityFacilityId:
-                                          selected.activityFacility.id.trim(),
+                                          selected.activityFacility.id,
                                       transactions: transactions,
                                       userType: userType),
                                 );

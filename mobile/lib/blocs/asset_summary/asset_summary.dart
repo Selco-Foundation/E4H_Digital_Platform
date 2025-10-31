@@ -45,13 +45,13 @@ class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
     emit(const AssetSummaryState.loading());
 
     try {
-      final String projectId = event.activityFacilityId;
+      final String activityFacilityId = event.activityFacilityId;
       final String assetType = event.assetType;
 
       /// 1) Fetch count entry (if any)
       final CacheAssetCount? countEntry = await isar.cacheAssetCounts
           .where()
-          .activityFacilityIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(assetType)
           .findFirst();
@@ -59,7 +59,7 @@ class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
       /// 2) Fetch specification entry (if any)
       final CacheSpecification? specEntry = await isar.cacheSpecifications
           .where()
-          .activityFacilityIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(assetType)
           .findFirst();
@@ -67,21 +67,21 @@ class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
       /// 3) Fetch asset detail (warranty/brand/model)
       final CacheAssetDetail? detailEntry = await isar.cacheAssetDetails
           .where()
-          .activityFacilityIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(assetType)
           .findFirst();
 
       final List<CacheAddNewAsset> addedAssets = await isar.cacheAddNewAssets
           .where()
-          .activityFacilityIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(assetType)
           .findAll();
 
       final List<CacheMediaUpload> mediaEntries = await isar.cacheMediaUploads
           .where()
-          .activityFacilityIdEqualTo(projectId)
+          .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(assetType)
           .findAll();
