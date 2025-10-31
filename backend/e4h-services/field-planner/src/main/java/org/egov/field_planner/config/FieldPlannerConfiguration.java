@@ -50,6 +50,9 @@ public class FieldPlannerConfiguration {
     @Value("${egov.fieldplan.activity.search.url}")
     private String fieldPlanActivitySearchUrl;
 
+    @Value("${egov.facility.activity.create.url}")
+    private String facilityActivityCreateUrl;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
@@ -114,4 +117,16 @@ public class FieldPlannerConfiguration {
 
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
+
+    @Value("${email.activity.assignment.subject}")
+    private String activityEmailSubject;
+
+    @Value("${email.activity.assignment.body}")
+    private String activityEmailBody;
+
+    @Value("${egov.kafka.notification.email.topic}")
+    private String notificationEmailTopic;
+
+    @Value("${email.activity.assignment.default.password}")
+    private String defaultUserPassword;
 }
