@@ -700,7 +700,7 @@ Future<void> _performRejectionForActivityFacility({
     workflowDocuments.addAll(fromCache);
 
     await AssetRepository().submitRejection(
-      projectId: activityFacilityId,
+      activityFacilityId: activityFacilityId,
       transactions: transactions.map((m) => Transaction.fromJson(m)).toList(),
       documents: workflowDocuments,
     );

@@ -16,6 +16,7 @@ import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/document/document.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
+import 'bom_repo.dart';
 
 class ActivityFacilityRemoteRepository {
   ActivityFacilityRemoteRepository();
@@ -113,7 +114,6 @@ class ActivityFacilityRemoteRepository {
   Future<void> updateActivityFacilityWorkflow({
     required String activityFacilityId,
     required String action,
-    // required Map<String, dynamic> additionalDetails,
     List<Document>? documents,
   }) async {
     final url = 'activity/v1/activities/workflow/update';
@@ -143,6 +143,37 @@ class ActivityFacilityRemoteRepository {
     } on DioError catch (dioErr) {
       // final msg = dioErr.response?.data?.toString() ?? dioErr.message;
       // throw Exception('Workflow update network error: $msg');
+      throw DioErrorParser.parse(dioErr);
+    }
+  }
+
+  Future<void> sendBackActivityFacilityWorkflow({
+    required ActivityFacilityWorkflow activityFacilityWorkflow,
+    required String userType,
+    required Isar isar,
+  }) async {
+    try {
+      final activityFacilityId = activityFacilityWorkflow.activityFacility.id;
+      final workflowDocuments = activityFacilityWorkflow.workflow?.documents;
+
+      final repo = ActivityFacilityRemoteRepository();
+      await repo.updateActivityFacilityWorkflow(
+        activityFacilityId: activityFacilityId,
+        action: userType == USER_TYPES.SUPERVISOR.name
+            ? WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name
+            : WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name,
+        documents: workflowDocuments,
+      );
+
+      await UnsubmittedActivityFacilityRepository(isar)
+          .delete(activityFacilityId, userType);
+      await PrefilledActivityFacilityRepository(isar)
+          .delete(activityFacilityId: activityFacilityId, userType: userType);
+      await CompletionReportRepository(isar)
+          .delete(projectId: activityFacilityId);
+      await BomRepository()
+          .delete(isar: isar, activityFacilityId: activityFacilityId);
+    } on DioError catch (dioErr) {
       throw DioErrorParser.parse(dioErr);
     }
   }

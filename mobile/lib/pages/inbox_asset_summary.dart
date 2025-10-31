@@ -104,12 +104,12 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     );
 
     try {
+      final isar = context.read<CacheAssetBloc>().isar;
       final repo = ActivityFacilityRemoteRepository();
-      await repo.updateActivityFacilityWorkflow(
-        activityFacilityId: activityFacilityId,
-        action: userType == USER_TYPES.SUPERVISOR.name
-            ? WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name
-            : WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name,
+      await repo.sendBackActivityFacilityWorkflow(
+        activityFacilityWorkflow: workflow!,
+        userType: userType,
+        isar: isar,
       );
 
       if (dialogCtx != null && mounted) {
