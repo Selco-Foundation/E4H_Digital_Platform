@@ -27,6 +27,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.egov.activity.util.ActivityConstants.SUBMITTED_BY_SUPERVISOR;
+import static org.egov.common.utils.CommonUtils.populateErrorDetails;
 
 @Service
 @Slf4j
@@ -43,6 +44,7 @@ public class ActivityService {
     private final FacilityWorkflowService workflowService;
     private ServiceRequestRepository serviceRequest;
     private final JdbcTemplate jdbcTemplate;
+    private final ActivityFacilityUsersService facilityUsersService;
 
     private BoundaryUtil boundaryUtil;
 
@@ -52,7 +54,7 @@ public class ActivityService {
     @Autowired
     public ActivityService(
             ActivityFacilityRepository activityFacilityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil) {
+            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityFacilityRepository = activityFacilityRepository;
@@ -61,6 +63,7 @@ public class ActivityService {
             this.jdbcTemplate = jdbcTemplate;
             this.activityServiceUtil = activityServiceUtil;
             this.serviceRequest = serviceRequest;
+            this.facilityUsersService = facilityUsersService;
             this.mapper = mapper;
             this.activityValidator = activityValidator;
             this.activityAssignmentRepository = activityAssignmentRepository;
@@ -89,11 +92,44 @@ public class ActivityService {
 
         activityValidator.validateCreateActivityFacilityRequest(request);
         List<ActivityFacility> activityFacilities = request.getActivityFacilities();
+        List<ActivityFacilityUser> activityFacilityUsers = new ArrayList<>();
+
         try {
             for (ActivityFacility activityFacility : activityFacilities) {
                 log.info("processing {} valid entities", activityFacility);
                 activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
+                if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
+                    for (String userId : activityFacility.getReviewerUser()){
+                        ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
+                                .activityFacilityId(activityFacility.getId())
+                                .userId(userId)
+                                .tenantId(activityFacility.getTenantId())
+                                .isDeleted(false)
+                                .build();
+                        activityFacilityUsers.add(facilityUser);
+                    }
+                }
+
+                if(activityFacility.getSpocUser() != null && !activityFacility.getSpocUser().isEmpty()){
+                    for (String userId : activityFacility.getSpocUser()){
+                        ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
+                                .activityFacilityId(activityFacility.getId())
+                                .userId(userId)
+                                .tenantId(activityFacility.getTenantId())
+                                .isDeleted(false)
+                                .build();
+                        activityFacilityUsers.add(facilityUser);
+                    }
+                }
             }
+
+            ActivityFacilityUserBulkRequest activityFacilityUserBulkRequest = ActivityFacilityUserBulkRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .activityFacilityUsers(activityFacilityUsers)
+                    .build();
+
+            facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
+
             producer.push(activityConfiguration.getCreateActivityFacilityTopic(), request);
             log.info("successfully created activity facility");
         } catch (Exception exception) {
@@ -112,16 +148,6 @@ public class ActivityService {
             for (ActivityAssignment activityAssignment : activityAssignments) {
                 log.info("processing {} valid entities", activityAssignment);
                 activityEnrichment.enrichActivityAssignmentOnCreate(activityAssignment, request.getRequestInfo());
-                if(activityAssignment.getAssignedTo() !=null && !activityAssignment.getAssignedTo().isEmpty()){
-                    Employee employee =  activityValidator.getUserById(request, activityAssignment.getAssignedTo());
-                    FieldPlan existingFieldPlan = activityValidator.getFieldPlanById(request.getRequestInfo(), activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
-                    if(employee != null && existingFieldPlan != null ){
-                        String emailId = employee.getUser().getEmailId();
-                        String subject = activityConfiguration.getActivityEmailSubject();
-                        String body = activityServiceUtil.replaceActivityAssignmentEmailBody((String)activityAssignment.getRole().get("name"), existingFieldPlan.getName(), activityConfiguration.getActivityEmailBody());
-                        activityServiceUtil.sendEmailViaKafka(emailId, subject, body, "in");
-                    }
-                }
             }
             log.info("successfully created Activity Assignment");
             producer.push(activityConfiguration.getCreateActivityAssignmentTopic(), request);
@@ -506,7 +532,7 @@ public class ActivityService {
         return activityAssignmentRepository.getActivitiesCount(request, tenantId, lastChangedSince, includeDeleted);
     }
 
-    public ActivityFacilityBulkRequest updateActivityFacitlity(ActivityFacilityBulkRequest request) {
+    public ActivityFacilityBulkRequest updateActivityFacility(ActivityFacilityBulkRequest request) {
         /*
          * Validate the update activity request
          */

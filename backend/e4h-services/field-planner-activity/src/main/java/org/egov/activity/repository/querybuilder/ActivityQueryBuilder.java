@@ -84,12 +84,13 @@ public class ActivityQueryBuilder {
             isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
         }
 
+        if (!isProjectManager) {
+            queryBuilder.append(" JOIN activity_facility_users fu ON fu.activityfacilityid = fa.id ");
+        }
+
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
 
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, userUuid, isProjectManager);
-
-        //Add clause if includeDeleted is true in request parameter
-//        addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
 
         if (criteria.isCountQuery()) {
             return queryBuilder.toString();
@@ -153,7 +154,7 @@ public class ActivityQueryBuilder {
         // Check if not project manager role
         if (!isProjectManager && StringUtils.isNotBlank(userUuid)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" fa.assigned_user = ? ");
+            queryBuilder.append(" fu.userid = ? ");
             preparedStmtList.add(userUuid);
         }
 
