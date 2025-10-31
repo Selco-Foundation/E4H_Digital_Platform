@@ -41,6 +41,7 @@ public class BoundaryValidator {
      */
     public void validateBoundaries(Set<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
         Objects.requireNonNull(boundaryCodes, "boundaryCodes cannot be null");
+        boundaryCodes.forEach(boundaryCode -> Objects.requireNonNull(boundaryCode, "boundary codes cannot be null"));
         Objects.requireNonNull(tenantId, "tenantId cannot be null");
         Objects.requireNonNull(requestInfo, "RequestInfo cannot be null");
 
@@ -51,11 +52,12 @@ public class BoundaryValidator {
         String codes = String.join(",", boundaryCodes);
 
         // Construct the complete URI for boundary search
-        String uri = UriComponentsBuilder.fromUriString(boundaryHost)
+        String baseUri = UriComponentsBuilder.fromUriString(boundaryHost)
                 .path(boundaryPath)
-                .queryParam("tenantId", tenantId)
-                .queryParam("codes", codes)
                 .toUriString();
+
+        //Manually adding query params since the codes can contain spaces, adding query params in UriComponentsBuilder and calling toUriString() encodes spaces to %20
+        String uri = baseUri + "?tenantId=" + tenantId + "&codes=" + codes + "&offset=0" + "&limit=" + boundaryCodes.size();
 
         Map<String, Object> requestBody = Map.of("RequestInfo", requestInfo);
 
