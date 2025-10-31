@@ -364,7 +364,15 @@ public class WeeklyReportService {
         }
 
         boolean increase = change > 0;
-        String arrow = increase ? "&uarr;" : "&darr;"; // ▲ / ▼ (HTML entities)
+        // Use inline SVG data URIs for better email client compatibility
+        // Up arrow SVG (simple triangle pointing up)
+        String upArrowSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23111' d='M6 2L2 8h8z'/%3E%3C/svg%3E";
+        // Down arrow SVG (simple triangle pointing down)
+        String downArrowSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23111' d='M6 10L2 4h8z'/%3E%3C/svg%3E";
+        
+        String arrow = increase ? 
+            "<img src=\"" + upArrowSvg + "\" alt=\"↑\" style=\"vertical-align:middle;height:12px;width:12px;display:inline-block;\" />" :
+            "<img src=\"" + downArrowSvg + "\" alt=\"↓\" style=\"vertical-align:middle;height:12px;width:12px;display:inline-block;\" />";
 
         String arrowClass;
         if (isFunctional) {
