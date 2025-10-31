@@ -244,8 +244,15 @@ public class DynamicEmailTemplateService {
                 rows.append("        <tr>\n");
                 rows.append("          <td class=\"row label\" style=\"width:70%;\">").append(displayName).append("</td>\n");
                 
-                // Use orange color for STATE_POC LEVEL_ZERO only, default color for others
-                String badgeClass = ("STATE_POC".equals(recipientRole) && "LEVEL_ZERO".equals(level)) ? "badge-orange" : "badge";
+                // Badge colors per escalation level: L0=yellow, L1=orange, L2=red
+                String badgeClass;
+                if ("LEVEL_ZERO".equals(level)) {
+                    badgeClass = "badge-yellow";
+                } else if ("LEVEL_ONE".equals(level)) {
+                    badgeClass = "badge-orange";
+                } else {
+                    badgeClass = "badge-red";
+                }
                 rows.append("          <td class=\"row right\" style=\"width:30%;\"><span class=\"").append(badgeClass).append("\">").append(count).append("</span></td>\n");
                 
                 rows.append("        </tr>\n");
