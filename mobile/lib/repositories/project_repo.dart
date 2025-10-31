@@ -116,13 +116,12 @@ class ActivityFacilityRemoteRepository {
     required String action,
     List<Document>? documents,
   }) async {
-    final url = 'activity/v1/activities/workflow/update';
+    const url = 'activity/v1/activities/workflow/update';
 
     final body = <String, dynamic>{
       'activityFacilityId': activityFacilityId,
       'workflow': {
         'action': action,
-        // 'additionalDetails': additionalDetails,
         if (documents != null) ...{
           'documents': documents.map((d) => d.toJsonForWorkflow()).toList()
         }
@@ -251,9 +250,7 @@ class ActivityFacilityRepository {
         sortDirection: sortDirection,
       );
 
-      print("remoteList $remoteList");
-
-      if (remoteList != null && remoteList.isNotEmpty) {
+      if (remoteList != null) {
         await _replaceCache(workflowStatuses, remoteList);
         // Even if remote succeeds, exclude projects in cacheUnsubmittedProjects for this user + type(s)
         final excludedIds = await _excludedIdsFor(userTypes);
@@ -316,21 +313,16 @@ class ActivityFacilityRepository {
 
   Future<String?> getSolutionDesignTypeFromCache(
       Isar isar, String activityFacilityId) async {
-    print("activityFacilityId $activityFacilityId");
-
     final row = await isar.cacheActivityFacilityWorkflows
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
         .findFirst();
-    print("got here -----");
     if (row == null) return null;
 
     try {
-      print("row.activityFacilityId. ${row.activityFacility}");
       final sys = row.activityFacility.facility?.facilityDetails
           ?.solar_solution_design_type
           ?.toString();
-      print("sys $sys");
       if (sys != null && sys.isNotEmpty) return sys;
     } catch (_) {}
     return null;
