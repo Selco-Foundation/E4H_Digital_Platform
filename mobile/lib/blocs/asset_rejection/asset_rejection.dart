@@ -6,11 +6,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
 import '../../data/nosql/cache_submission_job.dart';
-import '../../utils/background_service.dart' // exposes BackgroundServiceController and kEvtReject* constants
-    show
-        BackgroundServiceController,
-        kEvtRejectDone,
-        kEvtRejectError;
+import '../../utils/background_service.dart'
+    show BackgroundServiceController, kEvtRejectDone, kEvtRejectError;
 
 part 'asset_rejection.freezed.dart';
 
