@@ -364,7 +364,7 @@ public class WeeklyReportService {
         }
 
         boolean increase = change > 0;
-        String arrow = increase ? "&#9650;" : "&#9660;"; // ▲ / ▼ (HTML entities)
+        String arrow = increase ? "&uarr;" : "&darr;"; // ▲ / ▼ (HTML entities)
 
         String arrowClass;
         if (isFunctional) {

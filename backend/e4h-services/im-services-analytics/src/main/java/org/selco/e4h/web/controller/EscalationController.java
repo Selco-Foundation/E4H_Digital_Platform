@@ -991,7 +991,7 @@ public class EscalationController {
                 if (!isInScope(tenantId, stateTenantIds)) continue;
 
                 String facilityName = resolveFacilityName(data);
-                String ninOrHfr = getStringValue(data, "ninOrHfr");
+                String ninOrHfr = getStringValue(data, "nin_hfr_id");
                 String stateRoot = rootTenant(tenantId);
                 String district = getStringValue(data, "district");
                 String block = getStringValue(data, "block");
