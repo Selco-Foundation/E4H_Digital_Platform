@@ -294,8 +294,7 @@ async def get_facility_ingestion_template_with_data(
             facility_boundary_code = pf_facility.get('boundary_code') or pf_facility.get('boundaryCode')
 
             # Only add if not already present and belongs to current boundary codes
-            if (facility_id not in existing_facility_ids and
-                    facility_boundary_code in valid_boundary_codes):
+            if (facility_id not in existing_facility_ids and facility_id in project_linked_facility_ids and facility_boundary_code in valid_boundary_codes):
                 all_facilities.append(pf_facility)
                 logger.info(
                     f"Added fieldplan facility {facility_id} to template (boundary: {facility_boundary_code})")
