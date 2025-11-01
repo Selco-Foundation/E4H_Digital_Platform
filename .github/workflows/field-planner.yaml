@@ -4,7 +4,6 @@ on:
     branches:
       - develop
       - staging
-      - field-planner-module-apk
     paths:
       - 'backend/e4h-services/field-planner/**'
   workflow_dispatch:
