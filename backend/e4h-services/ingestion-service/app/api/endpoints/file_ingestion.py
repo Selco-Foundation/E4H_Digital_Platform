@@ -39,6 +39,7 @@ from app.utils.convertor import request_info_from_json, create_vendor_request, c
     get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
     get_staff_search_payload, create_update_payload, get_incident_request_info
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
@@ -57,6 +58,7 @@ mdms_url = os.getenv("MDMS_URL")
 org_service_url = os.getenv("VENDOR_SERVICE_URL")
 project_service_url = os.getenv("PROJECT_SERVICE_URL")
 fieldPlan_service_url = os.getenv("FIELDPLAN_SERVICE_URL")
+fieldPlan_activity_service_url = os.getenv("FIELDPLAN_ACTIVITY_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 hrms_service_url = os.getenv("HRMS_SERVICE_URL")
 im_services_url = os.getenv("IM_SERVICES_URL")
@@ -2150,6 +2152,7 @@ async def create_fielplan_facilities(
             df['Field Plan Linking Status'] = ''
 
         fieldplan_client = FieldPlanServiceClient(fieldPlan_service_url)
+        fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
 
         # Fetch fieldplan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
@@ -2199,6 +2202,13 @@ async def create_fielplan_facilities(
                                             facility_id=facility_id,
                                             fieldplan_facility_data=fieldPlan_facility_data
                                         )
+
+                                        facilities_activity_response = fieldplan_activity_client.search_facility_activity(
+                                            request_info, fieldplan_id, facility_id)
+                                        facilities_activity = facilities_activity_response.get("FacilityActivities",[])
+                                        facility_activity_ids = list({fa.get("activityFacility").get("id") for fa in facilities_activity if fa.get("activityFacility").get("id")})
+                                        fieldplan_activity_client.delete_facility_activity(request_info=request_info, facility_activity_id=facility_activity_ids)
+
                                         df.at[index, 'Field Plan Linking Status'] = "Unlinked"
                                         fieldplan_linked_facility_ids.remove(facility_id)
                                     except Exception as e:
