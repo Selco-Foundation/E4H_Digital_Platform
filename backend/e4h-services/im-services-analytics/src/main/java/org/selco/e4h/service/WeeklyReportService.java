@@ -150,9 +150,9 @@ public class WeeklyReportService {
             double funcEndPct = totalEnd > 0 ? (endMetrics.getFunctionalCount() * 100.0 / totalEnd) : 0;
             double nonFuncEndPct = totalEnd > 0 ? (endMetrics.getNonFunctionalCount() * 100.0 / totalEnd) : 0;
             
-            // Calculate arrows for changes
-            ArrowData funcArrow = calculateArrow(funcStartPct, funcEndPct, true);
-            ArrowData nonFuncArrow = calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
+            // Calculate arrows for changes using shared utility
+            ArrowData funcArrow = commonUtility.calculateArrow(funcStartPct, funcEndPct, true);
+            ArrowData nonFuncArrow = commonUtility.calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
             
             // Get age bucket data
             AgeBucketData ageBucketData = getAgeBucketData(tenantId);
@@ -351,39 +351,7 @@ public class WeeklyReportService {
             return new HashMap<>();
         }
     }
-    
-    /**
-     * Calculate arrow direction and class for percentage changes
-     */
-    private ArrowData calculateArrow(double startPct, double endPct, boolean isFunctional) {
-        double change = endPct - startPct;
-        
-        if (Math.abs(change) < 0.1) {
-            // No significant change
-            return ArrowData.builder().arrow("").arrowClass("").build();
-        }
 
-        boolean increase = change > 0;
-        // Use inline SVG data URIs for better email client compatibility
-        // Up arrow SVG (simple triangle pointing up)
-        String upArrowSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23111' d='M6 2L2 8h8z'/%3E%3C/svg%3E";
-        // Down arrow SVG (simple triangle pointing down)
-        String downArrowSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23111' d='M6 10L2 4h8z'/%3E%3C/svg%3E";
-        
-        String arrow = increase ? 
-            "<img src=\"" + upArrowSvg + "\" alt=\"↑\" style=\"vertical-align:middle;height:12px;width:12px;display:inline-block;\" />" :
-            "<img src=\"" + downArrowSvg + "\" alt=\"↓\" style=\"vertical-align:middle;height:12px;width:12px;display:inline-block;\" />";
-
-        String arrowClass;
-        if (isFunctional) {
-            arrowClass = increase ? "up" : "down";
-        } else {
-            arrowClass = increase ? "down" : "up";
-        }
-
-        return ArrowData.builder().arrow(arrow).arrowClass(arrowClass).build();
-    }
-    
     /**
      * Get previous week's Monday and Sunday dates
      */
