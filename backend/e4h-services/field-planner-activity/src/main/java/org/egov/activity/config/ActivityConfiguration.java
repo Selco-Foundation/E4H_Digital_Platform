@@ -94,6 +94,9 @@ public class ActivityConfiguration {
     @Value("${activity.facility.kafka.update.topic}")
     private String updateActivityFacilityTopic;
 
+    @Value("${activity.facility.kafka.delete.topic}")
+    private String deleteActivityFacilityTopic;
+
     @Value("${activity.assignment.kafka.update.topic}")
     private String updateActivityAssignmentTopic;
 

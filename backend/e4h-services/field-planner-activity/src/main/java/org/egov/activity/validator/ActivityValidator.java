@@ -459,6 +459,30 @@ public class ActivityValidator {
             throw new CustomException(errorMap);
     }
 
+    public void validateActivityFacilityDeleteRequest(ActivityFacilityBulkRequest request) {
+        Map<String, String> errorMap = new HashMap<>();
+
+        if (request.getActivityFacilities() == null || request.getActivityFacilities().size() == 0) {
+            log.error("Activity list is empty. Activity is mandatory");
+            throw new CustomException("ACTIVITY", "Activity are mandatory");
+        }
+
+        for (ActivityFacility activityFacility : request.getActivityFacilities()) {
+            if (activityFacility == null) {
+                log.error("Activity Facility is mandatory in Activities");
+                throw new CustomException("Activity", "Activity is mandatory");
+            }
+
+            if (activityFacility.getId() == null) {
+                log.error("Id is mandatory in Activity Facility");
+                throw new CustomException("Activity_FACILITY", "ID is mandatory in Activity Facility");
+            }
+        }
+
+        if (!errorMap.isEmpty())
+            throw new CustomException(errorMap);
+    }
+
     /* Validates if search Project request parameters are valid */
     private void validateSearchFieldPlanRequestParams(Integer limit, Integer offset, String tenantId) {
         if (limit == null) {
