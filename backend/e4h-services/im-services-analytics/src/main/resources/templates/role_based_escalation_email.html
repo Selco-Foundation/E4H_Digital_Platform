@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
+  <title>Daily Escalation Email – ${STATE_NAME} – ${AS_OF_DATE}</title>
+  <!--[if mso]>
+  <xml><o:OfficeDocumentSettings><o:AllowPNG/><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml>
+  <![endif]-->
+  <style>
+    /* Reset / base */
+    html, body { margin:0!important; padding:0!important; height:100%!important; width:100%!important; }
+    body { background:#FFFFFF; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+    table, td { border-collapse:collapse!important; }
+    img { border:0; outline:none; text-decoration:none; display:block; height:auto; }
+    a { text-decoration:none; color:hsl(27, 92%, 50%); }
+
+    /* Layout */
+    .container { width:100%; max-width:720px; margin:0 auto; }
+    .card { background:#FFFFFF; border-radius:20px; box-shadow:0 1px 2px rgba(16,24,40,.04); }
+    .p-24 { padding:24px; } .p-20 { padding:20px; }
+    .center { text-align:center; } .right { text-align:right; }
+    .rule { border-top:1px solid #E5E7EB; }
+    .sp-8{height:8px} .sp-12{height:12px} .sp-16{height:16px} .sp-20{height:20px} .sp-24{height:24px}
+
+    /* Typography */
+    .h1 { font:700 24px/30px Arial,Helvetica,sans-serif; color:#111827; margin:0; text-align:center; }
+    .h2 { font:700 20px/26px Arial,Helvetica,sans-serif; color:#111827; margin:0; text-align:center; }
+    .text { font:400 14px/20px Arial,Helvetica,sans-serif; color:#111827; margin:0; }
+    .muted { color:#6B7280; }
+    .small { font-size:13px; line-height:18px; color:#6B7280; }
+
+    /* Logos */
+    .logo-col { width:33%; }
+    .logo-frame { border:1px solid #E5E7EB; border-radius:10px; background:#FFFFFF; padding:6px; display:inline-block; }
+    .logo-img { width:100%; max-width:110px; height:auto; }
+
+    /* Rounded bubble sections */
+    .bubble { border:2px solid #D1D5DB; border-radius:26px; }
+
+    /* Ticket rows + red count pill */
+    .row { padding:10px 6px; }
+    .label { font:400 16px/22px Arial,Helvetica,sans-serif; color:#111827; }
+    .badge-yellow { /* L0 */
+      display:inline-block; min-width:40px; padding:8px 12px; border-radius:12px;
+      background:#FEE4E2; border:1px solid #eab308; color:#444;
+      font:700 14px/18px Arial,Helvetica,sans-serif; text-align:center;
+    }
+    .badge-orange { /* L1 */
+      display:inline-block; min-width:40px; padding:8px 12px; border-radius:12px;
+      background:#FEE4E2; border:1px solid #f97316; color:#444;
+      font:700 14px/18px Arial,Helvetica,sans-serif; text-align:center;
+    }
+    .badge-red { /* L2 */
+      display:inline-block; min-width:40px; padding:8px 12px; border-radius:12px;
+      background:#FEE4E2; border:1px solid #dc2626; color:#444;
+      font:700 14px/18px Arial,Helvetica,sans-serif; text-align:center;
+    }
+
+    /* Button */
+    .btn { display:inline-block; background:#FFFFFF; color:hsl(25, 94%, 49%); border:1.5px solid hsl(23, 94%, 49%);
+           border-radius:12px; padding:12px 18px; font:600 14px/20px Arial,Helvetica,sans-serif; }
+    .btn-block { display:inline-block; }
+
+    /* Mobile responsiveness */
+    @media only screen and (max-width:600px){
+      .p-24 { padding:16px !important; } .p-20 { padding:16px !important; }
+      .h1 { font-size:20px !important; line-height:26px !important; }
+      .h2 { font-size:18px !important; line-height:24px !important; }
+      .stack { display:block !important; width:100% !important; text-align:center !important; }
+      .logo-img { max-width:78px !important; }
+      .btn-block { width:100% !important; box-sizing:border-box !important; text-align:center !important; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Preheader -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">Daily SLA summary for ${STATE_NAME} on ${AS_OF_DATE}</div>
+
+  <table role="presentation" width="100%" style="background:#FFFFFF;">
+    <tr><td class="sp-24"></td></tr>
+    <tr>
+      <td align="center">
+        <table role="presentation" class="container card" width="100%">
+          <tr>
+            <td class="p-24">
+              <!-- Header: logos + title -->
+              <table role="presentation" width="100%">
+                <tr>
+                  <td class="logo-col stack" align="left">
+                    <span class="logo-frame"><img class="logo-img" src="${SELCO_LOGO}" alt="Selco Foundation Logo" width="110"></span>
+                  </td>
+                  <td class="stack" align="center"><p class="h1">Daily Escalation Email</p></td>
+                  <td class="logo-col stack" align="right">
+                    <span class="logo-frame"><img class="logo-img" src="${SAURA_LOGO}" alt="Saura eMitra Logo" width="110"></span>
+                  </td>
+                </tr>
+              </table>
+
+              <div class="sp-16 rule"></div>
+
+              <!-- Greeting -->
+              <p class="text">Dear ${NAME},</p>
+              <div class="sp-8"></div>
+              <p class="text">${INTRO_LINE}</p>
+
+              <div class="sp-20"></div>
+
+              <!-- DYNAMIC SECTIONS - Conditionally rendered based on escalation levels present -->
+              ${ESCALATION_SECTIONS}
+
+              <!-- Footer -->
+              <p class="text small center muted">For more insights, visit <a href="${DASHBOARD_URL}" target="_blank" rel="noopener" style="color: #f08400; text-decoration: underline;">E4H Dashboard</a></p>
+              <div class="sp-16 rule"></div>
+              <p class="text small center muted">This is a system-generated daily summary from Saura eMitra. For detailed ticket views, please use the links above.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <tr><td class="sp-24"></td></tr>
+  </table>
+</body>
+</html>
+

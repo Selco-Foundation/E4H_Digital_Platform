@@ -134,13 +134,15 @@ public class UpdateService {
 		}
 	}
 
-	public void updateSlaFields(String incidentId, long slaRemaining, long totalSlaRemaining, long stateSla, String businessService, long totalSla) {
+	public void updateSlaFields(String incidentId, long slaRemaining, long totalSlaRemaining, long stateSla, String businessService, Boolean isAClosedTicket, long definedTotalSla) {
 		Map<String, Object> dataMap = new HashMap<>();
-		dataMap.put("slaRemaining", slaRemaining);
-		dataMap.put("totalSlaRemaining", totalSlaRemaining);
-		dataMap.put("stateSla", stateSla);
-		dataMap.put("definedTotalSla", totalSla);
 
+        if(!isAClosedTicket) {
+            dataMap.put("slaRemaining", slaRemaining);
+            dataMap.put("stateSla", stateSla);
+        }
+        dataMap.put("totalSlaRemaining", totalSlaRemaining);
+        dataMap.put("definedTotalSla", definedTotalSla);
 		if (businessService != null) {
 			Map<String, Object> currentProcessInstance = new HashMap<>();
 			currentProcessInstance.put("businessService", businessService);
@@ -175,7 +177,7 @@ public class UpdateService {
 			Map<String, Object> finalPayload = new HashMap<>();
 			finalPayload.put("Data", dataMap);
 
-			String indexUrl = config.getEsHostUrl() + "/computed-sla-im-services/_doc/" + documentId;
+			String indexUrl = config.getEsHostUrl() + "/computed-sla-im-services-write/_doc/" + documentId;
 			HttpEntity<Map<String, Object>> entity = new HttpEntity<>(finalPayload, buildHeaders());
 
 			restTemplate.put(indexUrl, entity);

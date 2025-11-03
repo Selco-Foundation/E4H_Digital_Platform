@@ -1,7 +1,12 @@
 package org.egov.im.util;
 
+import org.egov.im.web.models.workflow.ProcessInstance;
+
 import java.time.*;
 import java.util.*;
+
+import static org.egov.im.util.IMConstants.*;
+import static org.egov.im.util.IMConstants.PENDING_RESOLUTION_PREFIX;
 
 public class BusinessHoursUtil {
 
@@ -29,8 +34,8 @@ public class BusinessHoursUtil {
 
         long duration = 0;
 
-        ZonedDateTime current = start.withZoneSameInstant(ZoneId.of("Asia/Kolkata"));
-        ZonedDateTime endZdt = end.withZoneSameInstant(ZoneId.of("Asia/Kolkata"));
+        ZonedDateTime current = start.withZoneSameInstant(ZoneId.of(ASIA_KOLKATA));
+        ZonedDateTime endZdt = end.withZoneSameInstant(ZoneId.of(ASIA_KOLKATA));
 
         while (!current.toLocalDate().isAfter(endZdt.toLocalDate())) {
             DayOfWeek dayOfWeek = current.getDayOfWeek();
@@ -55,7 +60,6 @@ public class BusinessHoursUtil {
 
         return duration;
     }
-
     // Utility class to represent a pair
     public static class Pair<F, S> {
         private final F first;

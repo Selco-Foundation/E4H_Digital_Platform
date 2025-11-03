@@ -44,12 +44,10 @@ const DetailsCard = ({
           `}
         </style>
         {data.map((object, itemIndex) => {
-          let key = Object.keys(object);
-          const incidentId = object[key[0]].props.children;
           return (
             <Link
               key={itemIndex}
-              to={window.location.href.includes("im/inbox") ? `/${window.contextPath}/employee/im/complaint/details/` + incidentId + "/" + object["TenantID"]
+              to={window.location.href.includes("im/inbox") ? `/${window.contextPath}/employee/im/complaint/details/` + object["incidentId"] + "/" + object["TenantID"]
                 : isTwoDynamicPrefix
                   ?
                   `${linkPrefix}${typeof serviceRequestIdKey === "function"
@@ -68,7 +66,7 @@ const DetailsCard = ({
             >
               <div className="details-container">
                 {Object.keys(object).map((name, index) => {
-                  if (name === "applicationNo" || name === "Vehicle Log" || name == "TenantID") return null;
+                  if (["applicationNo", "Vehicle Log", "TenantID", "incidentId"].includes(name)) return null;
                   return <Details label={name} name={object[name]} key={index} />;
                 })}
               </div>

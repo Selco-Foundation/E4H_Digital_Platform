@@ -97,7 +97,7 @@ const filterData = (data) => {
 };
 
 const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, currentUser, t) => {
-  const closedStates = ["RESOLVED", "CLOSEDAFTERRESOLUTION", "REJECTED"];
+  const closedStates = ["RESOLVED", "CLOSEDAFTERRESOLUTION", "REJECTED", "CLOSEDAFTERREJECTION"];
   const roleStatusMapping = {
     PENDINGFORASSIGNMENT: "COMPLAINT_ASSESSOR",
     PENDING_ASSIGNMENT_OUT_OF_WARRANTY: "COMPLAINT_FACILITATOR_1",
@@ -108,7 +108,6 @@ const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, 
 
   return items.map(({ businessObject, ProcessInstance }) => {
     const incident = businessObject?.incident || {};
-    const reporterUuid = incident?.reporter?.uuid;
     const assignee = ProcessInstance?.assignes?.[0];
     const assigneeUuid = assignee?.uuid;
 
@@ -116,7 +115,7 @@ const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, 
 
     if (closedStates.includes(incident.applicationStatus)) {
       slaValue = "-";
-    } else if (currentUserUuid === reporterUuid && currentTenant !== stateTenantId) {
+    } else if (ProcessInstance?.tenantId === currentTenant && currentTenant !== stateTenantId) {
       const totalSla = businessObject?.totalSlaRemaining;
       slaValue = totalSla < 0 ? t("SLA_OVERDUE") : Math.ceil(totalSla / (8 * 60 * 60 * 1000));
     } else if (assigneeUuid && currentUserUuid === assigneeUuid) {
@@ -139,6 +138,7 @@ const combineResponses = (items, currentUserUuid, currentTenant, stateTenantId, 
       taskOwner: assignee?.name || "-",
       sla: `${slaValue}`,
       tenantId: incident.tenantId,
+      potentialDuplicate: currentUserRoles.includes("COMPLAINT_ASSESSOR") && !!incident.isPotentialDuplicate,
     };
   });
 };
