@@ -3,6 +3,7 @@ package org.selco.e4h.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
+import org.selco.e4h.web.models.ArrowData;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -215,5 +216,49 @@ public class CommonUtility {
                 // Don't show workflow states that are not configured in MDMS
                 return null;
         }
+    }
+
+    /**
+     * Calculate arrow direction and class for percentage changes in weekly reports
+     * Uses SVG data URIs for better email client compatibility with proper colors
+     * 
+     * @param startPct Starting percentage
+     * @param endPct Ending percentage
+     * @param isFunctional True for functional metrics, false for non-functional metrics
+     * @return ArrowData containing arrow HTML and CSS class
+     */
+    public ArrowData calculateArrow(double startPct, double endPct, boolean isFunctional) {
+        double change = endPct - startPct;
+        
+        // No arrow if change is less than 0.1%
+        if (Math.abs(change) < 0.1) {
+            return ArrowData.builder().arrow("").arrowClass("").build();
+        }
+
+        boolean increase = change > 0;
+        
+        // Determine arrow class based on whether change is good or bad
+        // For functional: increase (up), decrease (down)
+        // For non-functional: increase (down), decrease (up)
+        String arrowClass;
+        if (isFunctional) {
+            arrowClass = increase ? "up" : "down";
+        } else {
+            arrowClass = increase ? "down" : "up";
+        }
+        
+        // Use green for "up" (good), red for "down" (bad)
+        String color = arrowClass.equals("up") ? "%2316a34a" : "%23dc2626"; // #16a34a (green) or #dc2626 (red)
+        
+        // Create SVG data URIs with appropriate colors
+        String upArrowSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='" + color + "' d='M6 2L2 8h8z'/%3E%3C/svg%3E";
+        String downArrowSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='" + color + "' d='M6 10L2 4h8z'/%3E%3C/svg%3E";
+        
+        // Generate arrow HTML based on direction
+        String arrow = increase ? 
+            "<img src=\"" + upArrowSvg + "\" alt=\"↑\" style=\"vertical-align:middle;height:12px;width:12px;display:inline-block;\" />" :
+            "<img src=\"" + downArrowSvg + "\" alt=\"↓\" style=\"vertical-align:middle;height:12px;width:12px;display:inline-block;\" />";
+
+        return ArrowData.builder().arrow(arrow).arrowClass(arrowClass).build();
     }
 }
