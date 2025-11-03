@@ -123,12 +123,13 @@ public class ActivityService {
                 }
             }
 
-            ActivityFacilityUserBulkRequest activityFacilityUserBulkRequest = ActivityFacilityUserBulkRequest.builder()
-                    .requestInfo(request.getRequestInfo())
-                    .activityFacilityUsers(activityFacilityUsers)
-                    .build();
-
-            facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
+            if(activityFacilityUsers != null && !activityFacilityUsers.isEmpty()){
+                ActivityFacilityUserBulkRequest activityFacilityUserBulkRequest = ActivityFacilityUserBulkRequest.builder()
+                        .requestInfo(request.getRequestInfo())
+                        .activityFacilityUsers(activityFacilityUsers)
+                        .build();
+                facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
+            }
 
             producer.push(activityConfiguration.getCreateActivityFacilityTopic(), request);
             log.info("successfully created activity facility");
@@ -259,6 +260,43 @@ public class ActivityService {
             comment.setAuditDetails(auditDetails);
             return comment;
         });
+    }
+
+    public List<ActivityFacility> delete(ActivityFacilityBulkRequest request) {
+        log.info("received request to delete bulk activity facility staff");
+        activityValidator.validateActivityFacilityDeleteRequest(request);
+        List<ActivityFacility> validEntities = request.getActivityFacilities();
+        try {
+            if (!validEntities.isEmpty()) {
+                for (ActivityFacility activityFacility : validEntities) {
+                    // 1. Fetch the existing facility
+                    ActivityFacilitySearchCriteria searchCriteria = ActivityFacilitySearchCriteria.builder()
+                            .ids(List.of(activityFacility.getId()))
+                            .tenantId(activityConfiguration.getTenantId())
+                            .build();
+
+                    ActivityFacilitySearchRequest searchRequest = ActivityFacilitySearchRequest.builder()
+                            .criteria(searchCriteria)
+                            .requestInfo(request.getRequestInfo())
+                            .build();
+
+                    List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
+                            activityConfiguration.getTenantId(), false, null);
+                    if(activityFacilities == null || activityFacilities.isEmpty()){
+                        log.error("Activity Facility ID do not exist");
+                        throw new CustomException("Activity Facility Delete", "Activity Facility ID do not exist");
+                    }
+                    activityFacility.setIsDeleted(true);
+                    activityEnrichment.enrichActivityFacilityRequestOnUpdate(activityFacility, activityFacilities.get(0), request.getRequestInfo());
+                    producer.push(activityConfiguration.getDeleteActivityFacilityTopic(), request);
+                    log.info("successfully updated bulk project staff");
+                }
+            }
+        } catch (Exception exception) {
+            log.error("error occurred while updating project staff", ExceptionUtils.getStackTrace(exception));
+        }
+
+        return validEntities;
     }
 
     public List<ActivityAssignment> searchAssignedActivity(ActivityAssignmentSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
@@ -704,6 +742,7 @@ public class ActivityService {
          */
         producer.push(activityConfiguration.getUpdateActivityAssignmentTopic(), request);
     }
+
 
     private boolean isValidCascadingUpdateActivityFacility(ActivityFacility activityFacilityFromDB, ActivityFacility activityFacility) {
         // Check if only allowed fields are being updated

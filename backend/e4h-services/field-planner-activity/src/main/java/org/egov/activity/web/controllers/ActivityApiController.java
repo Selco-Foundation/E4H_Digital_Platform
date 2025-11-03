@@ -57,12 +57,25 @@ public class ActivityApiController {
     }
 
     @RequestMapping(value = "/_update", method = RequestMethod.POST)
-    public ResponseEntity<ActivityFacilityResponse> updateActivityAssignment(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+    public ResponseEntity<ActivityFacilityResponse> updateActivityFacility(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
         ActivityFacilityBulkRequest enrichedFieldPlanRequest = activityService.updateActivityFacility(request);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         ActivityFacilityResponse activityFacilityResponse = ActivityFacilityResponse.builder().responseInfo(responseInfo).activityFacilities(enrichedFieldPlanRequest.getActivityFacilities()).build();
         return new ResponseEntity<ActivityFacilityResponse>(activityFacilityResponse, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/_delete", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityResponse> deleteActivityFacility(@ApiParam(value = "Delete activity Facility.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+
+        List<ActivityFacility> activityFacilities = activityService.delete(request);
+        ActivityFacilityResponse response = ActivityFacilityResponse.builder()
+                .activityFacilities(activityFacilities)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
     @RequestMapping(value = "/_search", method = RequestMethod.POST)

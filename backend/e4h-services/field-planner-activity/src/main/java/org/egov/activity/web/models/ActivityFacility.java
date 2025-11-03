@@ -64,6 +64,9 @@ public class ActivityFacility {
     @JsonProperty("status")
     private String status = null;
 
+    @JsonProperty("isDeleted")
+    private Boolean isDeleted;
+
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails = null;
 
