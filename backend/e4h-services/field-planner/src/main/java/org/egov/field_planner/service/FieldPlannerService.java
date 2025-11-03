@@ -552,6 +552,21 @@ public class FieldPlannerService {
         return null;
     }
 
+    public List<ActivityAssignment> updateFieldPlanActivityAssignment(FieldPlanRequest request, List<ActivityAssignment> activityAssignmentList) {
+        ActivityAssignmentBulkRequest activityAssignmentBulkRequest = ActivityAssignmentBulkRequest.builder()
+                .requestInfo(request.getRequestInfo())
+                .activityAssignments(activityAssignmentList)
+                .build();
+        String tenantId = activityAssignmentList.get(0).getTenantId();
+        String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFieldPlanActivityUpdateUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), activityAssignmentBulkRequest);
+        ActivityAssignmentResponse assignmentResponse = mapper.convertValue(response, ActivityAssignmentResponse.class);
+        if(assignmentResponse != null && assignmentResponse.getActivityAssignment() !=null){
+            return assignmentResponse.getActivityAssignment();
+        }
+        return null;
+    }
+
     public void createFacilityActivity(RequestInfo requestInfo, List<ActivityFacility> activityFacilities) {
         ActivityFacilityBulkRequest request = ActivityFacilityBulkRequest.builder().activityFacilities(activityFacilities).requestInfo(requestInfo).build();
         String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFacilityActivityCreateUrl();
@@ -799,7 +814,7 @@ public class FieldPlannerService {
     private void sendActivityAssignmentEmail(FieldPlanRequest request, List<ActivityAssignment> activityAssignmentList){
         for (ActivityAssignment activityAssignment : activityAssignmentList) {
             log.info("processing {} valid entities", activityAssignment);
-            if(activityAssignment.getAssignedTo() !=null && !activityAssignment.getAssignedTo().isEmpty()){
+            if(activityAssignment.getAssignedTo() !=null && !activityAssignment.getAssignedTo().isEmpty() && !activityAssignment.getIsEmailSent()){
                 Employee employee =  getUserById(request, activityAssignment.getAssignedTo());
                 List<FieldPlan> fieldPlans = searchFieldPlan(
                         getSearchFieldPlanRequest(request.getFieldPlans(), request.getRequestInfo()),
@@ -813,9 +828,12 @@ public class FieldPlannerService {
                     String body = fieldPlanServiceUtil.replaceActivityAssignmentEmailBody((String)activityAssignment.getRole().get("name"), existingFieldPlan.getName(),
                             username,fieldPlannerConfiguration.getDefaultUserPassword(),fieldPlannerConfiguration.getActivityEmailBody());
                     fieldPlanServiceUtil.sendEmailViaKafka(emailId, subject, body, "in");
+                    activityAssignment.setIsEmailSent(true);
                 }
             }
         }
+
+        updateFieldPlanActivityAssignment(request, activityAssignmentList);
     }
 
     public Employee getUserById(Object request, String userId) {
