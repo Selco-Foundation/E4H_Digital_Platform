@@ -771,7 +771,7 @@ public class EscalationController {
     
     /**
      * Send role-based escalation email
-     * Handles all 4 roles: STATE_POC, CENTRAL_POC, CENTRAL_ONM_PROJECT_MANAGER, CENTRAL_OPERATIONS_LEAD
+     * Handles all 4 roles: STATE_POC, CENTRAL_POC, CENTRAL_ONM_PROJECT_MANAGER, SENIOR_PROGRAM_MANAGER
      * Always sends email even with zero ticket counts
      */
     private void sendRoleBasedEscalationEmail(RequestInfo requestInfo, List<User> users, 

@@ -274,8 +274,8 @@ public class DynamicEmailTemplateService {
         
         // Role-specific workflow states based on escalation matrix
         switch (recipientRole) {
-            case "CENTRAL_OPERATIONS_LEAD":
-                // Central Operations Lead should only see "Out of Warranty - Pending with State Manager"
+            case "SENIOR_PROGRAM_MANAGER":
+                // Senior Program Manager should only see "Out of Warranty - Pending with State Manager"
                 if ("LEVEL_TWO".equals(level)) {
                     commonStates.add("PENDING_ASSIGNMENT_OUT_OF_WARRANTY");
                 }
@@ -344,7 +344,7 @@ public class DynamicEmailTemplateService {
                 expectedLevels.add("LEVEL_ZERO"); // My Tickets
                 expectedLevels.add("LEVEL_ONE");  // L1 Escalation
                 break;
-            case "CENTRAL_OPERATIONS_LEAD":
+            case "SENIOR_PROGRAM_MANAGER":
             case "CENTRAL_ONM_PROJECT_MANAGER":
                 expectedLevels.add("LEVEL_TWO");  // L2 Escalation only
                 break;
@@ -377,8 +377,8 @@ public class DynamicEmailTemplateService {
     private String getCallToAction(String level, String recipientRole, String tenantId) {
         String sauraEmitraUrl = commonUtility.generateSauraEmitraUrl(tenantId);
 
-        // Central Operations Lead (SPM)
-        if ("CENTRAL_OPERATIONS_LEAD".equals(recipientRole)) {
+        // Senior Program Manager (SPM)
+        if ("SENIOR_PROGRAM_MANAGER".equals(recipientRole)) {
             if ("LEVEL_TWO".equals(level)) {
                 return "Please resolve these tickets promptly, as they have been unresolved for too long. Thank you!";
             }
@@ -482,7 +482,7 @@ public class DynamicEmailTemplateService {
             case "CENTRAL_ONM_PROJECT_MANAGER":
                 return String.format("Saura-eMitra Daily Escalation - Central O&M Project Manager — %s — %s", stateName, asOfDate);
             
-            case "CENTRAL_OPERATIONS_LEAD":
+            case "SENIOR_PROGRAM_MANAGER":
                 return String.format("Saura-eMitra Daily Escalation - SPM — %s — %s", stateName, asOfDate);
             
             default:
