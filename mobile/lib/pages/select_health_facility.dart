@@ -496,7 +496,7 @@ class InstallationReportCard extends StatelessWidget {
                                     }
                                   },
                                   child: Text(
-                                    solutionDocsUrl,
+                                    "Solution Doc",
                                     style: textTheme.bodyL.copyWith(
                                       color: theme.colorTheme.text.disabled,
                                       fontSize: spacer3,

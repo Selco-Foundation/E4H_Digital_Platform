@@ -10,7 +10,7 @@ import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
 import '../utils/envConfig.dart' as env;
 import '../utils/utils.dart';
-import 'project_repo.dart';
+import 'activity_facility_repo.dart';
 
 final envConfigs = env.EnvironmentConfiguration.instance;
 
