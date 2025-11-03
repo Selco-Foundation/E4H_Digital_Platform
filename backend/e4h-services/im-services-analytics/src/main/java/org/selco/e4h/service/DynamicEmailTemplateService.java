@@ -28,6 +28,12 @@ public class DynamicEmailTemplateService {
     
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
     private static final String TEMPLATE_PATH = "templates/role_based_escalation_email.html";
+    
+    // Role code constants
+    private static final String ROLE_STATE_POC = "STATE_POC";
+    private static final String ROLE_CENTRAL_POC = "CENTRAL_POC";
+    private static final String ROLE_CENTRAL_ONM_PROJECT_MANAGER = "CENTRAL_ONM_PROJECT_MANAGER";
+    private static final String ROLE_SENIOR_PROGRAM_MANAGER = "SENIOR_PROGRAM_MANAGER";
 
     private final ConsumerConfiguration consumerConfiguration;
     private final CommonUtility commonUtility;
@@ -206,7 +212,7 @@ public class DynamicEmailTemplateService {
     }
 
     private String generateIntroLine(String recipientRole, String stateName, String asOfDate) {
-        if ("STATE_POC".equals(recipientRole)) {
+        if (ROLE_STATE_POC.equals(recipientRole)) {
             return "Please find below the daily summary of the issues reported in <strong>" + stateName + "</strong> on Saura-eMitra as of <strong>" + asOfDate + "</strong>.";
         }
         // Default/other roles
@@ -274,14 +280,14 @@ public class DynamicEmailTemplateService {
         
         // Role-specific workflow states based on escalation matrix
         switch (recipientRole) {
-            case "SENIOR_PROGRAM_MANAGER":
+            case ROLE_SENIOR_PROGRAM_MANAGER:
                 // Senior Program Manager should only see "Out of Warranty - Pending with State Manager"
                 if ("LEVEL_TWO".equals(level)) {
                     commonStates.add("PENDING_ASSIGNMENT_OUT_OF_WARRANTY");
                 }
                 break;
                 
-            case "CENTRAL_ONM_PROJECT_MANAGER":
+            case ROLE_CENTRAL_ONM_PROJECT_MANAGER:
                 // Central OnM Project Manager should only see spare part change states
                 if ("LEVEL_TWO".equals(level)) {
                     commonStates.add("PENDINGFORASSIGNMENT");
@@ -289,7 +295,7 @@ public class DynamicEmailTemplateService {
                 }
                 break;
                 
-            case "STATE_POC":
+            case ROLE_STATE_POC:
                 // State POC sees all workflow states
                 if ("LEVEL_ZERO".equals(level)) {
                     commonStates.add("PENDINGFORASSIGNMENT");
@@ -304,7 +310,7 @@ public class DynamicEmailTemplateService {
                 }
                 break;
                 
-            case "CENTRAL_POC":
+            case ROLE_CENTRAL_POC:
                 // Central POC sees resolution and out of warranty states
                 if ("LEVEL_ONE".equals(level)) {
                     commonStates.add("PENDING_ASSIGNMENT_OUT_OF_WARRANTY");
@@ -340,15 +346,15 @@ public class DynamicEmailTemplateService {
         List<String> expectedLevels = new ArrayList<>();
         
         switch (recipientRole) {
-            case "STATE_POC":
+            case ROLE_STATE_POC:
                 expectedLevels.add("LEVEL_ZERO"); // My Tickets
                 expectedLevels.add("LEVEL_ONE");  // L1 Escalation
                 break;
-            case "SENIOR_PROGRAM_MANAGER":
-            case "CENTRAL_ONM_PROJECT_MANAGER":
+            case ROLE_SENIOR_PROGRAM_MANAGER:
+            case ROLE_CENTRAL_ONM_PROJECT_MANAGER:
                 expectedLevels.add("LEVEL_TWO");  // L2 Escalation only
                 break;
-            case "CENTRAL_POC":
+            case ROLE_CENTRAL_POC:
                 expectedLevels.add("LEVEL_ONE");  // L1 Escalation
                 expectedLevels.add("LEVEL_TWO");  // L2 Escalation
                 break;
@@ -378,7 +384,7 @@ public class DynamicEmailTemplateService {
         String sauraEmitraUrl = commonUtility.generateSauraEmitraUrl(tenantId);
 
         // Senior Program Manager (SPM)
-        if ("SENIOR_PROGRAM_MANAGER".equals(recipientRole)) {
+        if (ROLE_SENIOR_PROGRAM_MANAGER.equals(recipientRole)) {
             if ("LEVEL_TWO".equals(level)) {
                 return "Please resolve these tickets promptly, as they have been unresolved for too long. Thank you!";
             }
@@ -386,7 +392,7 @@ public class DynamicEmailTemplateService {
         }
 
         // Central OnM Project Manager
-        if ("CENTRAL_ONM_PROJECT_MANAGER".equals(recipientRole)) {
+        if (ROLE_CENTRAL_ONM_PROJECT_MANAGER.equals(recipientRole)) {
             if ("LEVEL_TWO".equals(level)) {
                 return "Please coordinate with the State CRM team to ensure these tickets are assigned ASAP. Thank you!";
             }
@@ -394,7 +400,7 @@ public class DynamicEmailTemplateService {
         }
 
         // Central POC
-        if ("CENTRAL_POC".equals(recipientRole)) {
+        if (ROLE_CENTRAL_POC.equals(recipientRole)) {
             if ("LEVEL_ONE".equals(level)) {
                 return "Kindly take immediate action on these tickets to resolve the issues in the health centers. Thank you!";
             }
@@ -405,7 +411,7 @@ public class DynamicEmailTemplateService {
         }
 
         // State POC
-        if ("STATE_POC".equals(recipientRole)) {
+        if (ROLE_STATE_POC.equals(recipientRole)) {
             if ("LEVEL_ZERO".equals(level)) {
                 return "Kindly go to <a href=\"" + sauraEmitraUrl + "\" target=\"_blank\" rel=\"noopener\" style=\"color: #f08400; text-decoration: underline;\">Saura eMitra</a> take immediate action on these tickets to help the health centers. Thank you.";
             }
@@ -473,16 +479,16 @@ public class DynamicEmailTemplateService {
         String stateName = commonUtility.getStateDisplayName(tenantId);
         
         switch (recipientRole) {
-            case "STATE_POC":
+            case ROLE_STATE_POC:
                 return String.format("Saura-eMitra Daily Escalation - State POC — %s — %s", stateName, asOfDate);
             
-            case "CENTRAL_POC":
+            case ROLE_CENTRAL_POC:
                 return String.format("Saura-eMitra Daily Escalation - Central POC — %s — %s", stateName, asOfDate);
             
-            case "CENTRAL_ONM_PROJECT_MANAGER":
+            case ROLE_CENTRAL_ONM_PROJECT_MANAGER:
                 return String.format("Saura-eMitra Daily Escalation - Central O&M Project Manager — %s — %s", stateName, asOfDate);
             
-            case "SENIOR_PROGRAM_MANAGER":
+            case ROLE_SENIOR_PROGRAM_MANAGER:
                 return String.format("Saura-eMitra Daily Escalation - SPM — %s — %s", stateName, asOfDate);
             
             default:
