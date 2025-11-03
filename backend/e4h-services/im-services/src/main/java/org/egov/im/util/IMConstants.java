@@ -182,6 +182,4 @@ public class IMConstants {
     public static final String ROLE_COMPLAINANT = "COMPLAINANT";
     public static final String ROLE_COMPLAINT_ASSESSOR = "COMPLAINT_ASSESSOR";
     public static final String ROLE_COMPLAINT_RESOLVER = "COMPLAINT_RESOLVER";
-
-    public static final String ASIA_KOLKATA = "Asia/Kolkata";
 }
