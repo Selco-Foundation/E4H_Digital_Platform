@@ -68,6 +68,7 @@ public class ActivityEnrichment {
     public void enrichActivityFacilityRequestOnCreate(ActivityFacility activityFacility, RequestInfo requestInfo) {
         activityFacility.setId(UUID.randomUUID().toString());
         activityFacility.setStatus(SCHEDULED_STATUS);
+        activityFacility.setIsDeleted(false);
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityFacility.getActivityId())).build();
         Activity existingActivity = activityFacilityRepository.getActivityObject(criteria);
         activityFacility.setActivityId(existingActivity.getId());
