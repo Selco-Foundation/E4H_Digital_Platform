@@ -10,7 +10,7 @@ import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
-import '../repositories/project_repo.dart';
+import '../repositories/activity_facility_repo.dart';
 import '../router/app_router.dart';
 
 @RoutePage()

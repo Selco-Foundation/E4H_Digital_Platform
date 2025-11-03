@@ -17,11 +17,11 @@ import '../model/asset/asset.dart';
 import '../model/audit_details/audit_details.dart';
 import '../model/document/document.dart';
 import '../model/transaction/transaction.dart';
+import '../repositories/activity_facility_repo.dart';
 import '../repositories/activity_facility_workflow.dart';
 import '../repositories/app_init_Repo.dart'; // envConfig
 import '../repositories/assetRepo.dart';
 import '../repositories/bom_repo.dart';
-import '../repositories/project_repo.dart';
 import '../utils/utils.dart';
 import 'constants.dart';
 
@@ -567,8 +567,7 @@ Future<void> _performSubmissionForActivityFacility({
           auditDetails: (saved.assetId?.isNotEmpty ?? false) ? audit : null,
         );
 
-        await repo.createOrUpdateAsset(
-            asset: assetModel, isar: isar, facilityId: facilityId);
+        await repo.createOrUpdateAsset(asset: assetModel, isar: isar);
       }
     }
 
