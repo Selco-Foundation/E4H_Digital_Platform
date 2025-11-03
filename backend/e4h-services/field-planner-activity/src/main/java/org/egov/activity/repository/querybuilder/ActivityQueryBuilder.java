@@ -92,6 +92,9 @@ public class ActivityQueryBuilder {
 
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, userUuid, isProjectManager);
 
+        // Add clause if includeDeleted is true in request parameter
+        addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
+
         if (criteria.isCountQuery()) {
             return queryBuilder.toString();
         }
