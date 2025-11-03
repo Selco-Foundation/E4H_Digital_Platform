@@ -8,7 +8,7 @@ import 'package:isar/isar.dart';
 import '../../data/nosql/cache_submission_job.dart';
 import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_activity_facility.dart';
-import '../../repositories/project_repo.dart';
+import '../../repositories/activity_facility_repo.dart';
 import '../../utils/background_service.dart';
 
 part 'asset_submission.freezed.dart';

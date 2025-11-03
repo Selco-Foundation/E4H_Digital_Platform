@@ -5,8 +5,8 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
 import '../../model/document/document.dart';
+import '../../repositories/activity_facility_repo.dart';
 import '../../repositories/bom_repo.dart';
-import '../../repositories/project_repo.dart';
 import '../../utils/utils.dart';
 
 part 'activity_facility_bom.freezed.dart';

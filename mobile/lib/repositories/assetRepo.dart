@@ -18,7 +18,7 @@ import '../model/document/document.dart';
 import '../model/transaction/transaction.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
-import 'project_repo.dart';
+import 'activity_facility_repo.dart';
 
 class FileStoreResponse {
   final String fileStoreId;
@@ -93,11 +93,8 @@ class AssetRepository {
     }
   }
 
-  Future<Asset> createOrUpdateAsset({
-    required Asset asset,
-    required Isar isar,
-    required facilityId,
-  }) async {
+  Future<Asset> createOrUpdateAsset(
+      {required Asset asset, required Isar isar}) async {
     // Determine create vs update
     final isCreate = asset.assetId == null || asset.assetId!.isEmpty;
     final endpoint = isCreate ? '_create' : '_update?assetID=${asset.assetId}';
@@ -149,6 +146,8 @@ class AssetRepository {
 
       print("Starting Duplicate Fetch and resending");
       if (isCreate && isDuplicate) {
+        print(
+            "Fetching Duplicate isCreate: $isCreate isDuplicate: $isDuplicate");
         final remote = await _fetchAssetBySerial(
           activityFacilityId: asset.activityFacilityID! ?? '',
           serialNumber: asset.serialNumber ?? '',
