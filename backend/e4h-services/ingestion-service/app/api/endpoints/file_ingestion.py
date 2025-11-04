@@ -52,6 +52,7 @@ router = APIRouter()
 logger = AppLogger().get_logger()
 
 from dotenv import load_dotenv
+from collections import defaultdict
 
 load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
@@ -2165,6 +2166,21 @@ async def create_fielplan_facilities(
                 logger.info(
                     f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
 
+                # Get FieldPlan status
+                fieldplan_response = fieldplan_client.search_fieldPlan(request_info, fieldplan_id)
+                fieldplan_data = fieldplan_response.get("FieldPlans", [])
+
+                fieldplan_assignment_response = fieldplan_activity_client.search_fieldplan_activity_assignment(request_info, fieldplan_id)
+                fieldplan_assignment_data = fieldplan_assignment_response.get("ActivitiesAssignments", [])
+                role_to_ids = defaultdict(list)
+
+                for item in fieldplan_assignment_data:
+                    role = item.get("role")
+                    if role:
+                        code = role.get("code")
+                        if code:
+                            role_to_ids[code].append(item.get("assignedTo"))
+
                 # iterate all rows — handle existing facility ids (linking) and new rows (create -> link)
                 for index, row in df.iterrows():
                     try:
@@ -2221,12 +2237,20 @@ async def create_fielplan_facilities(
                                             fieldPlan_id=fieldplan_id,
                                             facility_id=facility_id
                                         )
+
+                                        if fieldplan_data:
+                                            fieldplan = fieldplan_data[0]
+                                            if(fieldplan.get("status")=='SCHEDULED'):
+                                                facility_activity_resp = fieldplan_activity_client.create_facility_activity(request_info=request_info,
+                                                                                                                fieldPlan=fieldplan, roleToIds= role_to_ids, facility_id=facility_id)
+                                                print(f"Facility Activity Created successfully: {facility_activity_resp}")
                                         if fieldplan_resp.status_code in (200, 201, 202):
                                             df.at[index, 'Field Plan Linking Status'] = "Linked"
                                         else:
                                             df.at[
                                                 index, 'Field Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
                                     except Exception as e:
+                                        print(e)
                                         df.at[index, 'Field Plan Linking Status'] = f"Exception: {str(e)}"
                                 else:
                                     df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
