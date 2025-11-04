@@ -104,6 +104,7 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
     await _writeJobStatusUI(
         activityFacilityId: event.activityFacilityId, status: 'success');
     emit(const RejectionState.success());
+    await BackgroundServiceController.I.stopNow();
   }
 
   // ------------------------------------------------------------
@@ -119,6 +120,7 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
       error: event.message,
     );
     emit(RejectionState.failure(event.message ?? 'Failed to reject.'));
+    await BackgroundServiceController.I.stopNow();
   }
 
   // ---- Small helper to touch the same CacheSubmissionJob Isar used elsewhere ----

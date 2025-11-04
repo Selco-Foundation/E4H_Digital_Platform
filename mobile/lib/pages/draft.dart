@@ -38,12 +38,14 @@ class _DraftPageState extends State<DraftPage> {
           );
       context.read<ActivityFacilityBloc>().add(
             ActivityFacilityEvent.loadUnSubmitted(
-              [
-                userType == USER_TYPES.FIELD_STAFF.name
-                    ? WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name
-                    : WORKFLOW_STATUS_FIELD_SUPERVISOR
-                        .SUBMITTED_BY_SUPERVISOR.name
-              ],
+              userType == USER_TYPES.FIELD_STAFF.name
+                  ? [WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name]
+                  : [
+                      WORKFLOW_STATUS_FIELD_SUPERVISOR
+                          .SUBMITTED_BY_SUPERVISOR.name,
+                      WORKFLOW_STATUS_FIELD_SUPERVISOR
+                          .PENDING_APPROVAL_FLAGGED_FOR_QC.name
+                    ],
               userType,
             ),
           );

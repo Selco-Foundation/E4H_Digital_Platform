@@ -51,6 +51,11 @@ const CacheAssetDetailSchema = CollectionSchema(
       id: 6,
       name: r'warranty',
       type: IsarType.string,
+    ),
+    r'warrantyStartDate': PropertySchema(
+      id: 7,
+      name: r'warrantyStartDate',
+      type: IsarType.string,
     )
   },
   estimateSize: _cacheAssetDetailEstimateSize,
@@ -115,6 +120,12 @@ int _cacheAssetDetailEstimateSize(
       bytesCount += 3 + value.length * 3;
     }
   }
+  {
+    final value = object.warrantyStartDate;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
   return bytesCount;
 }
 
@@ -131,6 +142,7 @@ void _cacheAssetDetailSerialize(
   writer.writeString(offsets[4], object.model);
   writer.writeDateTime(offsets[5], object.updatedAt);
   writer.writeString(offsets[6], object.warranty);
+  writer.writeString(offsets[7], object.warrantyStartDate);
 }
 
 CacheAssetDetail _cacheAssetDetailDeserialize(
@@ -145,6 +157,7 @@ CacheAssetDetail _cacheAssetDetailDeserialize(
     brand: reader.readString(offsets[2]),
     model: reader.readStringOrNull(offsets[4]),
     warranty: reader.readStringOrNull(offsets[6]),
+    warrantyStartDate: reader.readStringOrNull(offsets[7]),
   );
   object.createdAt = reader.readDateTime(offsets[3]);
   object.id = id;
@@ -172,6 +185,8 @@ P _cacheAssetDetailDeserializeProp<P>(
     case 5:
       return (reader.readDateTimeOrNull(offset)) as P;
     case 6:
+      return (reader.readStringOrNull(offset)) as P;
+    case 7:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1263,6 +1278,160 @@ extension CacheAssetDetailQueryFilter
       ));
     });
   }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'warrantyStartDate',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'warrantyStartDate',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'warrantyStartDate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'warrantyStartDate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'warrantyStartDate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'warrantyStartDate',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'warrantyStartDate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'warrantyStartDate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'warrantyStartDate',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'warrantyStartDate',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'warrantyStartDate',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterFilterCondition>
+      warrantyStartDateIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'warrantyStartDate',
+        value: '',
+      ));
+    });
+  }
 }
 
 extension CacheAssetDetailQueryObject
@@ -1366,6 +1535,20 @@ extension CacheAssetDetailQuerySortBy
       sortByWarrantyDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'warranty', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterSortBy>
+      sortByWarrantyStartDate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'warrantyStartDate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterSortBy>
+      sortByWarrantyStartDateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'warrantyStartDate', Sort.desc);
     });
   }
 }
@@ -1480,6 +1663,20 @@ extension CacheAssetDetailQuerySortThenBy
       return query.addSortBy(r'warranty', Sort.desc);
     });
   }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterSortBy>
+      thenByWarrantyStartDate() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'warrantyStartDate', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QAfterSortBy>
+      thenByWarrantyStartDateDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'warrantyStartDate', Sort.desc);
+    });
+  }
 }
 
 extension CacheAssetDetailQueryWhereDistinct
@@ -1531,6 +1728,14 @@ extension CacheAssetDetailQueryWhereDistinct
       distinctByWarranty({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'warranty', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, CacheAssetDetail, QDistinct>
+      distinctByWarrantyStartDate({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'warrantyStartDate',
+          caseSensitive: caseSensitive);
     });
   }
 }
@@ -1585,6 +1790,13 @@ extension CacheAssetDetailQueryProperty
   QueryBuilder<CacheAssetDetail, String?, QQueryOperations> warrantyProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'warranty');
+    });
+  }
+
+  QueryBuilder<CacheAssetDetail, String?, QQueryOperations>
+      warrantyStartDateProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'warrantyStartDate');
     });
   }
 }

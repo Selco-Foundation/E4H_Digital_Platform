@@ -10,7 +10,6 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 import 'package:recase/recase.dart';
 
 import '../blocs/activity_facility/activity_facility.dart';
@@ -448,7 +447,9 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
     );
 
     final countValue = summary.countEntry?.count.toString() ?? '—';
-    final warrantyStart = DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now());
+    final warrantyStart =
+        buildWarrantyStart(summary.detailEntry?.warrantyStartDate);
+
     final warrantyDuration = summary.detailEntry?.warranty ?? '—';
     final brandCode = summary.detailEntry?.brand ?? '—';
     final model = summary.detailEntry?.model ?? '—';
