@@ -36,14 +36,14 @@ class SelectAssetTypePage extends StatefulWidget {
 }
 
 class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
-  String? _currentProjectId;
+  String? _currentActivityFacilityId;
   ActivityFacilityWorkflow? project;
   String selectedAssetType = "";
 
   @override
   void initState() {
     super.initState();
-    _currentProjectId = context
+    _currentActivityFacilityId = context
         .read<SelectedActivityFacilityBloc>()
         .state
         .whenOrNull(selected: (wf) {
@@ -109,7 +109,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     final parsedCapacity = double.tryParse(rawCapacity) ?? 0.0;
 
     final newSpec = CacheSpecification(
-      activityFacilityId: _currentProjectId!,
+      activityFacilityId: _currentActivityFacilityId!,
       assetType: selectedAssetType.toLowerCase(),
       system: systemCode!,
       totalCapacity: parsedCapacity,
@@ -129,14 +129,14 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
 
   CacheAssetCount? currentCacheEntryFor(
     BuildContext context, {
-    required String projectId,
+    required String activityFacilityId,
     required String assetType,
   }) {
     final state = context.read<CacheAssetCountBloc>().state;
     return state.maybeWhen(
       loaded: (entries) => entries.firstWhereOrNull(
         (e) =>
-            e.activityFacilityId == projectId &&
+            e.activityFacilityId == activityFacilityId &&
             e.assetType.toLowerCase() == assetType.toLowerCase(),
       ),
       orElse: () => null,
@@ -150,7 +150,8 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
           orElse: () => false,
         );
     CacheAssetCount? cacheEntry = currentCacheEntryFor(context,
-        projectId: _currentProjectId!, assetType: selectedAssetType);
+        activityFacilityId: _currentActivityFacilityId!,
+        assetType: selectedAssetType);
     switch (cacheEntry?.progress) {
       case 3:
         context.router.push(const SpecificationRoute());

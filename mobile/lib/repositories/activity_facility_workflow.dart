@@ -28,7 +28,7 @@ class ActivityFacilityWorkflowRepository {
       print("[$type] found ${media.length} cached media uploads");
       for (var m in media) {
         print(
-            "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} projectId='${m.activityFacilityId}'");
+            "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} activityFacilityId='${m.activityFacilityId}'");
       }
 
       for (final m in media) {

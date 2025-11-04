@@ -7,6 +7,7 @@ import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -113,15 +114,36 @@ int parseWarrantyMonths(String s) {
 
 int parseWarrantyYears(String? s) {
   if (s == null || s.isEmpty || s.length < 1) return 0;
+  final numeric = int.tryParse(s);
+  if (numeric != null) {
+    return numeric;
+  }
   final regex = RegExp(r'^P(?:(\d+)Y)?(?:(\d+)M)?');
   final match = regex.firstMatch(s);
   if (match != null) {
     final years = int.tryParse(match.group(1) ?? '') ?? 0;
     final months = int.tryParse(match.group(2) ?? '') ?? 0;
     final totalMonths = years * 12 + months;
-    return (totalMonths + 11) ~/ 12; // ceiling division
+    return (totalMonths + 11) ~/ 12;
   }
   return 0;
+}
+
+final _displayFmt = DateFormat('yyyy-MM-dd HH:mm');
+
+String buildWarrantyStart(String? raw) {
+  try {
+    if (raw == null || raw.isEmpty) {
+      return _displayFmt.format(DateTime.now());
+    }
+
+    // try to parse ISO 8601 like "2025-11-04T06:20:05.574+00:00"
+    final dt = DateTime.parse(raw); // supports offsets like +00:00
+    return _displayFmt.format(dt);
+  } catch (_) {
+    // on any error, fall back to now
+    return _displayFmt.format(DateTime.now());
+  }
 }
 
 enum WORKFLOW_STATUS_FIELD_STAFF {
@@ -131,6 +153,7 @@ enum WORKFLOW_STATUS_FIELD_STAFF {
   APPROVED_BY_QC_SPOC,
   APPROVED_BY_SUPERVISOR,
   SUBMITTED_BY_FIELD_STAFF,
+  PENDING_APPROVAL_FLAGGED_FOR_QC
 }
 
 enum WORKFLOW_STATUS_FIELD_SUPERVISOR {
@@ -138,7 +161,8 @@ enum WORKFLOW_STATUS_FIELD_SUPERVISOR {
   SUBMITTED_BY_FIELD_STAFF,
   SUBMITTED_BY_SUPERVISOR,
   REJECTED_BY_QC_SPOC,
-  APPROVED_BY_QC_SPOC
+  APPROVED_BY_QC_SPOC,
+  PENDING_APPROVAL_FLAGGED_FOR_QC
 }
 
 enum WORKFLOW_ACTIONS {

@@ -13,6 +13,7 @@ class CacheAssetDetail {
   late String assetType;
 
   late String? warranty;
+  late String? warrantyStartDate;
   late String brand;
   late String? model;
 
@@ -23,6 +24,7 @@ class CacheAssetDetail {
     required this.activityFacilityId,
     required this.assetType,
     this.warranty,
+    this.warrantyStartDate,
     required this.brand,
     this.model,
   });
