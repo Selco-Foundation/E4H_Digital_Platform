@@ -87,10 +87,14 @@ public class IMService {
                 .phcSubType(new HashSet<>(Collections.singletonList(request.getIncident().getPhcSubType())))
                 .build();
         List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
-        if (incidentWrappers!=null && !incidentWrappers.isEmpty())
+        if (incidentWrappers!=null && !incidentWrappers.isEmpty()){
             request.getIncident().setPotentialDuplicate(true);
-        else
+            request.getIncident().setIsPotentialDuplicateLocalized("Yes");
+        }
+        else{
             request.getIncident().setPotentialDuplicate(false);
+            request.getIncident().setIsPotentialDuplicateLocalized("No");
+        }
 
         String startingStatus = request.getIncident().getApplicationStatus();
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
