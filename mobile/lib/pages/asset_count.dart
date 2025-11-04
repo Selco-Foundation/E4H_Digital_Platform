@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:selco/utils/utils.dart';
 
 import '../blocs/app_init/app_init.dart';
+import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_activity_facility_asset/cache_activity_facility_asset.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
@@ -144,6 +145,9 @@ class _AssetCountPageState extends State<AssetCountPage> {
               isDisabled: _disableFooter,
               onPress: () async {
                 if (!_disableFooter) {
+                  context
+                      .read<AssetTypeBloc>()
+                      .add(const AssetTypeEvent.typeSelected(""));
                   await context.router
                       .push(const SelectAssetTypeRoute())
                       .then((_) {

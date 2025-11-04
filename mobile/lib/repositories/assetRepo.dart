@@ -300,12 +300,12 @@ class AssetRepository {
           }
 
           final detail = CacheAssetDetail(
-            activityFacilityId: activityFacilityId,
-            assetType: type,
-            brand: first.brandID ?? '',
-            model: first.modelNumber ?? '',
-            warranty: first.warrantyDuration?.toString(),
-          );
+              activityFacilityId: activityFacilityId,
+              assetType: type,
+              brand: first.brandID ?? '',
+              model: first.modelNumber ?? '',
+              warranty: first.warrantyDuration?.toString(),
+              warrantyStartDate: first.warrantyStartDate?.toString());
           var detailEntry = await isar.cacheAssetDetails
               .where()
               .activityFacilityIdEqualTo(activityFacilityId)
@@ -313,11 +313,13 @@ class AssetRepository {
               .assetTypeEqualTo(type)
               .findFirst();
           print("detailEntry $detailEntry");
+          print("detailEntry ${detailEntry?.warrantyStartDate}");
           if (detailEntry != null) {
             detailEntry
               ..brand = detail.brand
               ..model = detail.model
               ..warranty = detail.warranty
+              ..warrantyStartDate = detail.warrantyStartDate
               ..updatedAt = DateTime.now();
             await isar.cacheAssetDetails.put(detailEntry);
           } else {
