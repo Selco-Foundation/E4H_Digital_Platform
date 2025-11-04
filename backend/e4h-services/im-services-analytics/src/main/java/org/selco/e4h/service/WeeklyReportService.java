@@ -50,7 +50,9 @@ public class WeeklyReportService {
                 if (data == null) return false;
                 
                 String ticketTenantId = (String) data.get("tenantId");
-                return tenantId.equals(ticketTenantId);
+                if (ticketTenantId == null) return false;
+
+                return ticketTenantId.equals(tenantId) || ticketTenantId.startsWith(tenantId + ".");
             })
             .collect(Collectors.toList());
     }
@@ -62,13 +64,48 @@ public class WeeklyReportService {
         Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
         if (data == null) return null;
         
+        // Normalize filedDate from any of the possible locations and formats
+        Long filedDate = parseFiledDate(ticket.get("filedDate"));
         return TicketData.builder()
             .tenantId((String) data.get("tenantId"))
-            .filedDate((Long) data.get("filedDate"))
+            .filedDate(filedDate)
             .systemFunctional((String) data.get("systemFunctional"))
             .state((String) data.get("state"))
             .data(data)
             .build();
+    }
+
+    // Parse filedDate from number or formatted strings into epoch millis (IST)
+    private Long parseFiledDate(Object filedDateObj) {
+        if (filedDateObj == null) return null;
+        if (filedDateObj instanceof Number) {
+            long v = ((Number) filedDateObj).longValue();
+            return v == 0L ? null : v;
+        }
+        if (filedDateObj instanceof String s) {
+            String str = s.trim();
+            try {
+                long v = Long.parseLong(str);
+                return v == 0L ? null : v;
+            } catch (NumberFormatException ignored) { /* try date formats below */ }
+
+            String[] patterns = new String[] {
+                "yyyy-MM-dd HH:mm:ss z",            // 2025-07-02 17:09:24 IST
+                "yyyy-MM-dd'T'HH:mm:ss.SSSX",       // ISO with millis
+                "yyyy-MM-dd'T'HH:mm:ssX",           // ISO without millis
+                "MMM dd, yyyy @ HH:mm:ss.SSS",      // Jul 16, 2025 @ 13:52:56.626
+                "MMM dd, yyyy @ HH:mm:ss"           // Jul 16, 2025 @ 13:52:56
+            };
+            for (String p : patterns) {
+                try {
+                    java.text.SimpleDateFormat f = new java.text.SimpleDateFormat(p, java.util.Locale.ENGLISH);
+                    f.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
+                    java.util.Date d = f.parse(str);
+                    if (d != null) return d.getTime();
+                } catch (Exception ignored) {}
+            }
+        }
+        return null;
     }
     
     
@@ -113,9 +150,9 @@ public class WeeklyReportService {
             double funcEndPct = totalEnd > 0 ? (endMetrics.getFunctionalCount() * 100.0 / totalEnd) : 0;
             double nonFuncEndPct = totalEnd > 0 ? (endMetrics.getNonFunctionalCount() * 100.0 / totalEnd) : 0;
             
-            // Calculate arrows for changes
-            ArrowData funcArrow = calculateArrow(funcStartPct, funcEndPct, true);
-            ArrowData nonFuncArrow = calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
+            // Calculate arrows for changes using shared utility
+            ArrowData funcArrow = commonUtility.calculateArrow(funcStartPct, funcEndPct, true);
+            ArrowData nonFuncArrow = commonUtility.calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
             
             // Get age bucket data
             AgeBucketData ageBucketData = getAgeBucketData(tenantId);
@@ -222,8 +259,7 @@ public class WeeklyReportService {
                 if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
                     // Calculate age in days
                     if (ticketData.getFiledDate() != null) {
-                        long ageInMillis = System.currentTimeMillis() - ticketData.getFiledDate();
-                        int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
+                        int ageInDays = computeBusinessDays(ticketData.getFiledDate(), System.currentTimeMillis());
                         
                         // Age bucket logic as per Slack clarification:
                         // 1 Week: 8 ≤ age in days ≤ 30
@@ -280,10 +316,14 @@ public class WeeklyReportService {
                 if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
                     // Calculate age in days
                     if (ticketData.getFiledDate() != null) {
-                        long ageInMillis = System.currentTimeMillis() - ticketData.getFiledDate();
-                        int ageInDays = (int) (ageInMillis / (1000 * 60 * 60 * 24));
-                        
-                        WeeklyReportData.StateAgeBucketData stateBucket = stateData.computeIfAbsent(ticketData.getTenantId(), 
+                        int ageInDays = computeBusinessDays(ticketData.getFiledDate(), System.currentTimeMillis());
+
+                        String ticketTenantId = ticketData.getTenantId();
+                        String rootTenantId = ticketTenantId != null && ticketTenantId.contains(".")
+                            ? ticketTenantId.substring(0, ticketTenantId.indexOf('.'))
+                            : ticketTenantId;
+
+                        WeeklyReportData.StateAgeBucketData stateBucket = stateData.computeIfAbsent(rootTenantId, 
                             k -> WeeklyReportData.StateAgeBucketData.builder()
                                 .stateName(commonUtility.getStateDisplayName(k))
                                 .lt1Wk(0)
@@ -311,50 +351,7 @@ public class WeeklyReportService {
             return new HashMap<>();
         }
     }
-    
-    /**
-     * Calculate arrow direction and class for percentage changes
-     */
-    private ArrowData calculateArrow(double startPct, double endPct, boolean isFunctional) {
-        double change = endPct - startPct;
-        
-        if (Math.abs(change) < 0.1) {
-            // No significant change
-            return ArrowData.builder()
-                .arrow("")
-                .arrowClass("")
-                .build();
-        }
-        
-        if (isFunctional) {
-            // For functional systems: increase is good (green up), decrease is bad (red down)
-            if (change > 0) {
-                return ArrowData.builder()
-                    .arrow("↑")
-                    .arrowClass("up")
-                    .build();
-            } else {
-                return ArrowData.builder()
-                    .arrow("↓")
-                    .arrowClass("down")
-                    .build();
-            }
-        } else {
-            // For non-functional systems: increase is bad (red up), decrease is good (green down)
-            if (change > 0) {
-                return ArrowData.builder()
-                    .arrow("↑")
-                    .arrowClass("down") // Red color
-                    .build();
-            } else {
-                return ArrowData.builder()
-                    .arrow("↓")
-                    .arrowClass("up") // Green color
-                    .build();
-            }
-        }
-    }
-    
+
     /**
      * Get previous week's Monday and Sunday dates
      */
@@ -408,4 +405,34 @@ public class WeeklyReportService {
         return result;
     }
     
+    /**
+     * Compute business days between two instants using an 8-hour-per-day concept with Sunday off.
+     * We treat each non-Sunday calendar day as one business day. This aligns buckets to
+     * business-day counts rather than raw wall-clock days.
+     */
+    private int computeBusinessDays(long startMs, long endMs) {
+        if (endMs <= startMs) return 0;
+        TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
+        Calendar startCal = Calendar.getInstance(tz);
+        Calendar endCal = Calendar.getInstance(tz);
+        startCal.setTimeInMillis(startMs);
+        endCal.setTimeInMillis(endMs);
+
+        // Normalize to start of day for iteration
+        startCal.set(Calendar.HOUR_OF_DAY, 0);
+        startCal.set(Calendar.MINUTE, 0);
+        startCal.set(Calendar.SECOND, 0);
+        startCal.set(Calendar.MILLISECOND, 0);
+
+        int days = 0;
+        while (startCal.getTimeInMillis() < endCal.getTimeInMillis()) {
+            int dow = startCal.get(Calendar.DAY_OF_WEEK);
+            if (dow != Calendar.SUNDAY) {
+                days++;
+            }
+            startCal.add(Calendar.DAY_OF_MONTH, 1);
+        }
+        return days;
+    }
+
 }
