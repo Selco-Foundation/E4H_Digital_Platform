@@ -35,7 +35,7 @@ public class ActivityQueryBuilder {
             "from facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id";
 
     private static final String STATUS_COUNT_QUERY = "SELECT status, COUNT(*) AS occurrences " +
-            "FROM facility_activities fa where fa.status is not null ";
+            "FROM facility_activities fa where fa.status is not null AND fa.isdeleted = false ";
     private static final String ACTIVITY_COUNT_QUERY = "SELECT COUNT(*) FROM facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id";
 
     private final String paginationWrapper = "SELECT * FROM " +
