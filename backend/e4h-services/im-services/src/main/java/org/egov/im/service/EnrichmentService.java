@@ -3,15 +3,24 @@ package org.egov.im.service;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IdGenRepository;
+import org.egov.im.repository.ServiceRequestRepository;
 import org.egov.im.util.IMUtils;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.Idgen.IdResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 import lombok.extern.slf4j.Slf4j;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -39,8 +48,10 @@ public class EnrichmentService {
 
     private SLAService slaService;
 
+    private RestTemplate restTemplate;
+
     @Autowired
-    public EnrichmentService(IMUtils utils, IdGenRepository idGenRepository, IMConfiguration config, UserService userService, LocalizationService localizationService, NotificationService notificationService, @Lazy WorkflowService workflowService, SLAService slaService) {
+    public EnrichmentService(IMUtils utils, IdGenRepository idGenRepository, IMConfiguration config, UserService userService, LocalizationService localizationService, NotificationService notificationService, @Lazy WorkflowService workflowService, SLAService slaService, RestTemplate restTemplate) {
         this.utils = utils;
         this.idGenRepository = idGenRepository;
         this.config = config;
@@ -49,6 +60,7 @@ public class EnrichmentService {
         this.notificationService = notificationService;
         this.workflowService = workflowService;
         this.slaService = slaService;
+        this.restTemplate = restTemplate;
     }
 
 
@@ -93,6 +105,8 @@ public class EnrichmentService {
 
         incident.setIncidentId(customIds.get(0));
 
+        // Enrich facilityId from facility registry using boundaryCode from request
+        enrichFacilityDetailsFromBoundaryCode(incidentRequest);
 
     }
 
@@ -113,6 +127,11 @@ public class EnrichmentService {
         incident.setAuditDetails(auditDetails);
 
         userService.callUserService(incidentRequest);
+
+        // Enrich facilityId from facility registry using boundaryCode from request (only if not already set)
+        if (incident.getFacilityId() == null && incident.getBoundaryCode() != null) {
+            enrichFacilityDetailsFromBoundaryCode(incidentRequest);
+        }
     }
 
     /**
@@ -251,6 +270,60 @@ public class EnrichmentService {
         return converted.toString();
     }
 
+    /**
+     * Enriches facilityId from facility registry search API using boundaryCode from incident request
+     * @param incidentRequest The incident request containing boundaryCode
+     */
+    private void enrichFacilityDetailsFromBoundaryCode(IncidentRequest incidentRequest) {
+        Incident incident = incidentRequest.getIncident();
+        String boundaryCode = incident.getBoundaryCode();
+        String tenantId = incident.getTenantId();
+
+        if (boundaryCode == null || boundaryCode.isEmpty()) {
+            log.debug("No boundaryCode provided in incident request, skipping facility enrichment");
+            return;
+        }
+
+        try {
+            String url = UriComponentsBuilder.fromHttpUrl(config.getFacilityHost() + config.getFacilitySearchPath())
+                    .queryParam("tenantId", tenantId != null ? tenantId : "")
+                    .queryParam("boundaryCode", boundaryCode)
+                    .toUriString();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+            HttpEntity<Object> requestEntity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    requestEntity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> responseMap = responseEntity.getBody();
+
+            if (responseMap != null) {
+                List<Map<String, Object>> facilities = (List<Map<String, Object>>) responseMap.get("facilities");
+
+                if (facilities != null && !facilities.isEmpty()) {
+                    Map<String, Object> facility = facilities.get(0);
+                    String facilityId = (String) facility.get("facility_id");
+
+                    if (facilityId != null) {
+                        incident.setFacilityId(facilityId);
+                        log.debug("Enriched facilityId: {} for boundaryCode: {}", facilityId, boundaryCode);
+                    } else {
+                        log.warn("Facility found but facility_id is null for boundaryCode: {}", boundaryCode);
+                    }
+                } else {
+                    log.warn("No facility found for boundaryCode: {}", boundaryCode);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error enriching facility details for boundaryCode: {}", boundaryCode, e);
+        }
+    }
 
     public void enrichFieldsForAuditIndexing(IncidentRequestWrapper wrapper, String startingStatus) {
         log.info("EnrichmentService::Enriching incident fields for audit indexing");

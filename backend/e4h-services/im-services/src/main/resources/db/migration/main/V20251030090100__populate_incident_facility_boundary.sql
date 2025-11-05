@@ -1,21 +1,20 @@
--- Populate facilityId and boundaryCode in eg_incident_v2 from facility table
+-- Populate facilityId and boundaryCode in eg_incident_v2 from facility_tenant_id_map table
 -- This migration links existing incidents to their facilities based on tenantId
 
--- Update facilityId by matching incident tenantId with facility tenant_id
+-- Update facilityId by matching incident tenantId with facility_tenant_id_map tenant_id
 UPDATE public.eg_incident_v2 inc
-SET facilityid = f.id
-FROM public.facility f
-WHERE inc.tenantid = f.tenant_id
+SET facilityid = map.facility_id
+FROM public.facility_tenant_id_map map
+WHERE inc.tenantid = map.tenant_id
   AND inc.facilityid IS NULL;
 
--- Update boundaryCode from facility additional_details JSONB field
--- The boundaryCode is stored in facility_details->boundaryCode in the facility table
+-- Update boundaryCode from facility_tenant_id_map table
 UPDATE public.eg_incident_v2 inc
-SET boundarycode = f.additional_details->'facility_details'->>'boundaryCode'
-FROM public.facility f
-WHERE inc.tenantid = f.tenant_id
+SET boundarycode = map.boundary_code
+FROM public.facility_tenant_id_map map
+WHERE inc.tenantid = map.tenant_id
   AND inc.boundarycode IS NULL
-  AND f.additional_details->'facility_details'->>'boundaryCode' IS NOT NULL;
+  AND map.boundary_code IS NOT NULL;
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_eg_incident_v2_facilityid ON public.eg_incident_v2(facilityid);

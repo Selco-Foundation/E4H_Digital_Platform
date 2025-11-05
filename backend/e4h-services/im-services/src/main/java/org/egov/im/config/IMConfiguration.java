@@ -293,4 +293,11 @@ public class IMConfiguration {
 
     @Value("${ffmpeg.cpulimitpercentage}")
     private String ffmpegCpuLimitPercentage;
+
+    //Facility Service Config
+    @Value("${egov.facility.host}")
+    private String facilityHost;
+
+    @Value("${egov.facility.search.path}")
+    private String facilitySearchPath;
 }
