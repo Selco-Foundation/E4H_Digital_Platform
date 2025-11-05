@@ -169,13 +169,15 @@ public class BoundaryRelationshipService {
             if (boundaryRelationshipSearchCriteria.getMaxAncestorLevel() != null && boundaryRelationshipSearchCriteria.getMaxAncestorLevel() > 0) {
                 Set<String> limitedAncestorCodes = new HashSet<>();
                 for (BoundaryRelationshipDTO boundary : boundaries) {
-                    String[] ancestorPath = boundary.getAncestralMaterializedPath().split("\\|");
-                    // Get ancestors up to maxAncestorLevel
-                    int startIndex = Math.max(0, ancestorPath.length - boundaryRelationshipSearchCriteria.getMaxAncestorLevel());
-                    for (int i = startIndex; i < ancestorPath.length; i++) {
-                        if (!ancestorPath[i].isEmpty()) {
-                            limitedAncestorCodes.add(ancestorPath[i]);
-                        }
+                    // Split and filter out empty segments (from leading/trailing pipes)
+                    List<String> ancestorList = Arrays.stream(boundary.getAncestralMaterializedPath().split("\\|"))
+                            .filter(code -> !code.isEmpty())
+                            .collect(Collectors.toList());
+                    
+                    // Get ancestors up to maxAncestorLevel from the filtered list
+                    int startIndex = Math.max(0, ancestorList.size() - boundaryRelationshipSearchCriteria.getMaxAncestorLevel());
+                    for (int i = startIndex; i < ancestorList.size(); i++) {
+                        limitedAncestorCodes.add(ancestorList.get(i));
                     }
                 }
 
@@ -191,6 +193,7 @@ public class BoundaryRelationshipService {
                 Set<String> allAncestorCodes = boundaries.stream()
                         .map(dto -> dto.getAncestralMaterializedPath().split("\\|"))
                         .flatMap(Arrays::stream)
+                        .filter(code -> !code.isEmpty())  // Filter out empty segments
                         .collect(Collectors.toSet());
 
                 parentBoundaries = boundaryRelationshipRepository.search(BoundaryRelationshipSearchCriteria.builder()

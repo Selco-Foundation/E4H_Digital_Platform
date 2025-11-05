@@ -105,8 +105,10 @@ public class EnrichmentService {
 
         incident.setIncidentId(customIds.get(0));
 
-        // Enrich facilityId from facility registry using boundaryCode from request
-        enrichFacilityDetailsFromBoundaryCode(incidentRequest);
+        // Enrich facilityId from facility registry using boundaryCode from request (only if not already set)
+        if (incident.getFacilityId() == null && incident.getBoundaryCode() != null) {
+            enrichFacilityDetailsFromBoundaryCode(incidentRequest);
+        }
 
     }
 
