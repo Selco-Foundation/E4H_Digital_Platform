@@ -1,4 +1,4 @@
-FROM openjdk:17-slim as builder
+FROM eclipse-temurin:17-jre-alpine as builder
 
 ARG JAR_FILE
 
@@ -13,7 +13,7 @@ RUN mkdir -p /migrations && \
     rm -rf BOOT-INF /tmp/im-services.jar
 
 #flyway
-FROM openjdk:17-slim as flywaydl
+FROM eclipse-temurin:17-jre-alpine as flywaydl
 
 RUN apt-get update && apt-get install -y wget && \
     mkdir -p /flyway/flyway-cli && \

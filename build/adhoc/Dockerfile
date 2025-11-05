@@ -13,7 +13,7 @@ COPY ${WORK_DIR}/src ./src
 RUN mvn -B -f /app/pom.xml package
 
 # Create runtime image
-FROM openjdk:17-slim AS runtime
+FROM eclipse-temurin:17-jre-alpine AS runtime
 
 WORKDIR /opt/egov
 
