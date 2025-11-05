@@ -45,24 +45,32 @@ public class RMSController {
 
     /**
      * Manual trigger endpoint for Center ID to HFR ID mapping sync
+     * Uses the dedicated RMS mapping API
      */
     @PostMapping("/mapping/sync")
     public ResponseEntity<String> syncMappings() {
         try {
-            log.info("Manual trigger received for mapping sync");
+            log.info("Manual trigger received for mapping sync from RMS API");
             
-            // Collect data from both working endpoints
-            List<RMSFacilityData> facilities = new ArrayList<>();
-            facilities.addAll(dataCollectorService.collectInverterNoSignalData());
-            facilities.addAll(dataCollectorService.collectPanelData());
-            
-            mappingService.syncMappings(facilities);
+            // Use the dedicated mapping API endpoint
+            mappingService.syncMappingsFromApi();
             
             return ResponseEntity.ok("Mapping sync completed successfully");
         } catch (Exception e) {
-            log.error("Error syncing mappings", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error syncing mappings: " + e.getMessage());
+            log.error("Error syncing mappings from API", e);
+            // Fallback to facility data if API fails
+            try {
+                log.info("Falling back to facility data sync");
+                List<RMSFacilityData> facilities = new ArrayList<>();
+                facilities.addAll(dataCollectorService.collectInverterNoSignalData());
+                facilities.addAll(dataCollectorService.collectPanelData());
+                mappingService.syncMappings(facilities);
+                return ResponseEntity.ok("Mapping sync completed using fallback method");
+            } catch (Exception fallbackError) {
+                log.error("Error in fallback mapping sync", fallbackError);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body("Error syncing mappings: " + fallbackError.getMessage());
+            }
         }
     }
 

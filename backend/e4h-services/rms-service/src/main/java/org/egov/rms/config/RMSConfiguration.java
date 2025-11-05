@@ -28,6 +28,9 @@ public class RMSConfiguration {
     @Value("${rms.api.center.datas.endpoint}")
     private String centerDatasEndpoint;
 
+    @Value("${rms.api.center.mappings.endpoint}")
+    private String centerMappingsEndpoint;
+
     @Value("${rms.api.timeout:30000}")
     private Integer rmsApiTimeout;
 

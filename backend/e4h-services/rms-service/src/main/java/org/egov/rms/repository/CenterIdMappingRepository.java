@@ -29,13 +29,14 @@ public class CenterIdMappingRepository {
      */
     public void saveOrUpdateMapping(CenterIdToHfrIdMapping mapping) {
         String sql = "INSERT INTO center_id_to_hfr_id_mapping " +
-                "(id, center_id, device_id, device_instance_id, hfr_id, facility_name, " +
+                "(id, center_id, device_id, device_instance_id, hfr_id, nin_id, facility_name, " +
                 "is_active, last_sync_time, last_validated_at, created_at, updated_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
                 "ON CONFLICT (center_id) DO UPDATE SET " +
                 "device_id = EXCLUDED.device_id, " +
                 "device_instance_id = EXCLUDED.device_instance_id, " +
                 "hfr_id = EXCLUDED.hfr_id, " +
+                "nin_id = EXCLUDED.nin_id, " +
                 "facility_name = EXCLUDED.facility_name, " +
                 "is_active = EXCLUDED.is_active, " +
                 "last_sync_time = EXCLUDED.last_sync_time, " +
@@ -51,6 +52,7 @@ public class CenterIdMappingRepository {
                 mapping.getDeviceId(),
                 mapping.getDeviceInstanceId(),
                 mapping.getHfrId(),
+                mapping.getNinId(),
                 mapping.getFacilityName(),
                 mapping.getIsActive() != null ? mapping.getIsActive() : true,
                 mapping.getLastSyncTime() != null ? Timestamp.from(mapping.getLastSyncTime()) : Timestamp.from(now),
@@ -139,6 +141,7 @@ public class CenterIdMappingRepository {
                     .deviceId(rs.getString("device_id"))
                     .deviceInstanceId(rs.getString("device_instance_id"))
                     .hfrId(rs.getString("hfr_id"))
+                    .ninId(rs.getString("nin_id"))
                     .facilityName(rs.getString("facility_name"))
                     .isActive(rs.getBoolean("is_active"))
                     .lastSyncTime(rs.getTimestamp("last_sync_time") != null ?

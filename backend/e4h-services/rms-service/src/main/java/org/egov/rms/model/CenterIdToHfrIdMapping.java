@@ -29,6 +29,9 @@ public class CenterIdToHfrIdMapping {
     @JsonProperty("hfrId")
     private String hfrId;
 
+    @JsonProperty("ninId")
+    private String ninId;
+
     @JsonProperty("facilityName")
     private String facilityName;
 

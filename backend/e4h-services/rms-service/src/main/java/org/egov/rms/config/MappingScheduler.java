@@ -23,20 +23,27 @@ public class MappingScheduler {
 
     /**
      * Scheduled job to sync Center ID to HFR ID mappings (runs weekly on Sunday at 2 AM)
+     * Uses the dedicated RMS mapping API which is updated weekly
      */
     @Scheduled(cron = "${rms.mapping.sync.cron:0 0 2 * * 0}", zone = "Asia/Kolkata")
     @ConditionalOnProperty(value = "rms.mapping.sync.enabled", havingValue = "true", matchIfMissing = true)
     public void syncMappings() {
-        log.info("Starting scheduled Center ID to HFR ID mapping sync");
+        log.info("Starting scheduled Center ID to HFR ID mapping sync from RMS API");
         try {
-            // Collect data from both working endpoints
-            List<RMSFacilityData> facilities = new ArrayList<>();
-            facilities.addAll(dataCollectorService.collectInverterNoSignalData());
-            facilities.addAll(dataCollectorService.collectPanelData());
-            
-            mappingService.syncMappings(facilities);
+            // Use the dedicated mapping API endpoint
+            mappingService.syncMappingsFromApi();
         } catch (Exception e) {
-            log.error("Error in scheduled mapping sync", e);
+            log.error("Error in scheduled mapping sync from API", e);
+            // Fallback to facility data if API fails
+            log.info("Falling back to facility data sync");
+            try {
+                List<RMSFacilityData> facilities = new ArrayList<>();
+                facilities.addAll(dataCollectorService.collectInverterNoSignalData());
+                facilities.addAll(dataCollectorService.collectPanelData());
+                mappingService.syncMappings(facilities);
+            } catch (Exception fallbackError) {
+                log.error("Error in fallback mapping sync", fallbackError);
+            }
         }
         log.info("Completed scheduled mapping sync");
     }

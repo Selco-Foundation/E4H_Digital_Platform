@@ -4,14 +4,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.CenterIdToHfrIdMapping;
+import org.egov.rms.model.CenterMappingResponse;
 import org.egov.rms.model.RMSFacilityData;
-
-import java.util.Optional;
 import org.egov.rms.repository.CenterIdMappingRepository;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -22,14 +28,99 @@ public class CenterIdMappingService {
     private final CenterIdMappingRepository mappingRepository;
     private final FacilityServiceClient facilityServiceClient;
     private final RMSConfiguration config;
+    private final RestTemplate restTemplate;
 
     /**
-     * Syncs mappings from provided facility data
+     * Syncs mappings from RMS mapping API
+     * This API is updated weekly by RMS team with latest Center ID to HFR ID and NIN ID mappings
+     */
+    public void syncMappingsFromApi() {
+        log.info("Starting Center ID to HFR ID mapping sync from RMS API");
+        
+        try {
+            CenterMappingResponse response = fetchMappingsFromApi();
+            
+            if (response == null || response.getList() == null || response.getList().isEmpty()) {
+                log.warn("No mapping data received from RMS API");
+                return;
+            }
+            
+            int synced = 0;
+            int updated = 0;
+            int missingHfrId = 0;
+            
+            for (CenterMappingResponse.CenterMapping mappingData : response.getList()) {
+                String centerId = mappingData.getCenterId();
+                
+                if (centerId == null || centerId.isEmpty()) {
+                    continue;
+                }
+                
+                // Extract HFR ID - handle "Not Available" and "Not available" as null
+                String hfrid = mappingData.getHfrid();
+                String hfrId = null;
+                if (hfrid != null && !hfrid.isEmpty() && 
+                    !hfrid.equalsIgnoreCase("Not Available") && 
+                    !hfrid.equalsIgnoreCase("Not available")) {
+                    hfrId = hfrid.trim();
+                } else {
+                    missingHfrId++;
+                    log.debug("HFR ID missing or not available for center: {}, facility: {}", 
+                            centerId, mappingData.getHealthCenterName());
+                }
+                
+                // Extract NIN ID - handle empty strings as null
+                String nin = mappingData.getNin();
+                String ninId = (nin != null && !nin.trim().isEmpty()) ? nin.trim() : null;
+                
+                String facilityName = mappingData.getHealthCenterName();
+                
+                // Extract device instance ID from centerId (format: device_instance_XXXXX_...)
+                String deviceInstanceId = centerId;
+                String deviceId = centerId; // Same as centerId in this API
+                
+                // Create or update mapping
+                CenterIdToHfrIdMapping mapping = CenterIdToHfrIdMapping.builder()
+                        .id(UUID.randomUUID().toString())
+                        .centerId(centerId)
+                        .deviceId(deviceId)
+                        .deviceInstanceId(deviceInstanceId)
+                        .hfrId(hfrId)
+                        .ninId(ninId)
+                        .facilityName(facilityName)
+                        .isActive(true)
+                        .lastSyncTime(Instant.now())
+                        .lastValidatedAt(Instant.now())
+                        .build();
+                
+                // Check if mapping exists
+                boolean exists = mappingRepository.findByCenterId(centerId).isPresent();
+                
+                mappingRepository.saveOrUpdateMapping(mapping);
+                
+                if (exists) {
+                    updated++;
+                } else {
+                    synced++;
+                }
+            }
+            
+            log.info("Mapping sync completed: {} new, {} updated, {} missing HFR ID", 
+                    synced, updated, missingHfrId);
+            
+        } catch (Exception e) {
+            log.error("Error during mapping sync from API", e);
+        }
+    }
+
+    /**
+     * Syncs mappings from provided facility data (fallback method)
      * This should be called periodically (every 7 days) to refresh mappings
      */
     public void syncMappings(List<RMSFacilityData> facilities) {
         log.info("Starting Center ID to HFR ID mapping sync for {} facilities", facilities.size());
-            
+        
+        try {
             int synced = 0;
             int updated = 0;
             int missingHfrId = 0;
@@ -67,6 +158,7 @@ public class CenterIdMappingService {
                         .deviceId(facility.getFacilityId())
                         .deviceInstanceId(facility.getFacilityId())
                         .hfrId(hfrId)
+                        .ninId(null) // Not available from facility data
                         .facilityName(facility.getFacilityName())
                         .isActive(true)
                         .lastSyncTime(Instant.now())
@@ -91,6 +183,56 @@ public class CenterIdMappingService {
         } catch (Exception e) {
             log.error("Error during mapping sync", e);
         }
+    }
+
+    /**
+     * Fetches mappings from RMS mapping API
+     */
+    private CenterMappingResponse fetchMappingsFromApi() {
+        String url = config.getRmsApiBaseUrl() + config.getCenterMappingsEndpoint();
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("Accept", "application/json");
+        headers.set("Access-Token", config.getRmsApiAccessToken());
+        
+        HttpEntity<String> entity = new HttpEntity<>("", headers);
+        
+        int maxAttempts = config.getRetryMaxAttempts();
+        long backoffDelay = config.getRetryBackoffDelay();
+        int attempts = 0;
+        
+        while (attempts < maxAttempts) {
+            try {
+                log.debug("Calling RMS mapping API: {} (attempt {})", url, attempts + 1);
+                
+                ResponseEntity<CenterMappingResponse> response = restTemplate.exchange(
+                        url, HttpMethod.POST, entity, CenterMappingResponse.class);
+                
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    return response.getBody();
+                }
+            } catch (RestClientException e) {
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    log.error("Failed to call RMS mapping API after {} attempts: {}", maxAttempts, e.getMessage());
+                    throw e;
+                }
+                
+                log.warn("RMS mapping API call failed (attempt {}), retrying after {}ms: {}", 
+                        attempts, backoffDelay, e.getMessage());
+                
+                try {
+                    Thread.sleep(backoffDelay);
+                    backoffDelay *= 2; // Exponential backoff
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during retry", ie);
+                }
+            }
+        }
+        
+        return null;
     }
 
     /**
