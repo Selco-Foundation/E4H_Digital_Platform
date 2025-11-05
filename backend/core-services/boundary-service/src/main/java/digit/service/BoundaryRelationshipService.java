@@ -96,18 +96,62 @@ public class BoundaryRelationshipService {
 
         // Fetch children boundary DTOs if includeChildren flag is set to true.
         if (!CollectionUtils.isEmpty(boundaries) && boundaryRelationshipSearchCriteria.getIncludeChildren()) {
-            List<String> currentBoundaryCodes = boundaries.stream()
-                    .map(BoundaryRelationshipDTO::getCode)
-                    .collect(Collectors.toList());
+            // If maxChildLevel is specified, fetch children recursively up to that level
+            if (boundaryRelationshipSearchCriteria.getMaxChildLevel() != null && boundaryRelationshipSearchCriteria.getMaxChildLevel() > 0) {
+                childrenBoundaries = getChildrenBoundariesRecursively(boundaries, boundaryRelationshipSearchCriteria, 1);
+            } else {
+                // Fetch all children (existing behavior)
+                List<String> currentBoundaryCodes = boundaries.stream()
+                        .map(BoundaryRelationshipDTO::getCode)
+                        .collect(Collectors.toList());
 
-            childrenBoundaries = boundaryRelationshipRepository.search(BoundaryRelationshipSearchCriteria.builder()
-                    .tenantId(boundaryRelationshipSearchCriteria.getTenantId())
-                    .hierarchyType(boundaryRelationshipSearchCriteria.getHierarchyType())
-                    .currentBoundaryCodes(currentBoundaryCodes)
-                    .build());
+                childrenBoundaries = boundaryRelationshipRepository.search(BoundaryRelationshipSearchCriteria.builder()
+                        .tenantId(boundaryRelationshipSearchCriteria.getTenantId())
+                        .hierarchyType(boundaryRelationshipSearchCriteria.getHierarchyType())
+                        .currentBoundaryCodes(currentBoundaryCodes)
+                        .build());
+            }
         }
 
         return childrenBoundaries;
+    }
+
+    /**
+     * Service method to fetch children boundary DTOs recursively up to a specified level.
+     * @param boundaries
+     * @param boundaryRelationshipSearchCriteria
+     * @param currentLevel
+     * @return
+     */
+    private List<BoundaryRelationshipDTO> getChildrenBoundariesRecursively(List<BoundaryRelationshipDTO> boundaries, 
+                                                                            BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria, 
+                                                                            int currentLevel) {
+        List<BoundaryRelationshipDTO> allChildren = new ArrayList<>();
+
+        if (CollectionUtils.isEmpty(boundaries) || currentLevel > boundaryRelationshipSearchCriteria.getMaxChildLevel()) {
+            return allChildren;
+        }
+
+        // Get immediate children for current boundaries using parentCodes
+        List<String> parentCodes = boundaries.stream()
+                .map(BoundaryRelationshipDTO::getCode)
+                .collect(Collectors.toList());
+
+        List<BoundaryRelationshipDTO> immediateChildren = boundaryRelationshipRepository.search(BoundaryRelationshipSearchCriteria.builder()
+                .tenantId(boundaryRelationshipSearchCriteria.getTenantId())
+                .hierarchyType(boundaryRelationshipSearchCriteria.getHierarchyType())
+                .parentCodes(parentCodes)  // Fetch only immediate children where parent IN (parentCodes)
+                .build());
+
+        allChildren.addAll(immediateChildren);
+
+        // Recursively fetch children at next level if within maxChildLevel
+        if (currentLevel < boundaryRelationshipSearchCriteria.getMaxChildLevel() && !CollectionUtils.isEmpty(immediateChildren)) {
+            List<BoundaryRelationshipDTO> nextLevelChildren = getChildrenBoundariesRecursively(immediateChildren, boundaryRelationshipSearchCriteria, currentLevel + 1);
+            allChildren.addAll(nextLevelChildren);
+        }
+
+        return allChildren;
     }
 
     /**
@@ -121,16 +165,40 @@ public class BoundaryRelationshipService {
 
         // Fetch parent boundaries if includeParents flag is true.
         if (!CollectionUtils.isEmpty(boundaries) && boundaryRelationshipSearchCriteria.getIncludeParents()) {
-            Set<String> allAncestorCodes = boundaries.stream()
-                    .map(dto -> dto.getAncestralMaterializedPath().split("\\|"))
-                    .flatMap(Arrays::stream)
-                    .collect(Collectors.toSet());
+            // If maxAncestorLevel is specified, fetch ancestors up to that level
+            if (boundaryRelationshipSearchCriteria.getMaxAncestorLevel() != null && boundaryRelationshipSearchCriteria.getMaxAncestorLevel() > 0) {
+                Set<String> limitedAncestorCodes = new HashSet<>();
+                for (BoundaryRelationshipDTO boundary : boundaries) {
+                    String[] ancestorPath = boundary.getAncestralMaterializedPath().split("\\|");
+                    // Get ancestors up to maxAncestorLevel
+                    int startIndex = Math.max(0, ancestorPath.length - boundaryRelationshipSearchCriteria.getMaxAncestorLevel());
+                    for (int i = startIndex; i < ancestorPath.length; i++) {
+                        if (!ancestorPath[i].isEmpty()) {
+                            limitedAncestorCodes.add(ancestorPath[i]);
+                        }
+                    }
+                }
 
-            parentBoundaries = boundaryRelationshipRepository.search(BoundaryRelationshipSearchCriteria.builder()
-                    .tenantId(boundaryRelationshipSearchCriteria.getTenantId())
-                    .hierarchyType(boundaryRelationshipSearchCriteria.getHierarchyType())
-                    .codes(new ArrayList<>(allAncestorCodes))
-                    .build());
+                if (!limitedAncestorCodes.isEmpty()) {
+                    parentBoundaries = boundaryRelationshipRepository.search(BoundaryRelationshipSearchCriteria.builder()
+                            .tenantId(boundaryRelationshipSearchCriteria.getTenantId())
+                            .hierarchyType(boundaryRelationshipSearchCriteria.getHierarchyType())
+                            .codes(new ArrayList<>(limitedAncestorCodes))
+                            .build());
+                }
+            } else {
+                // Fetch all ancestors (existing behavior)
+                Set<String> allAncestorCodes = boundaries.stream()
+                        .map(dto -> dto.getAncestralMaterializedPath().split("\\|"))
+                        .flatMap(Arrays::stream)
+                        .collect(Collectors.toSet());
+
+                parentBoundaries = boundaryRelationshipRepository.search(BoundaryRelationshipSearchCriteria.builder()
+                        .tenantId(boundaryRelationshipSearchCriteria.getTenantId())
+                        .hierarchyType(boundaryRelationshipSearchCriteria.getHierarchyType())
+                        .codes(new ArrayList<>(allAncestorCodes))
+                        .build());
+            }
         }
 
         return parentBoundaries;
