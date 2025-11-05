@@ -15,7 +15,7 @@ RUN mkdir -p /migrations && \
 #flyway
 FROM eclipse-temurin:17-jre-alpine as flywaydl
 
-RUN apt-get update && apt-get install -y wget && \
+RUN apk update && apk add --no-cache wget && \
     mkdir -p /flyway/flyway-cli && \
     wget -O /flyway/flyway-cli/flyway-commandline-9.22.3.tar.gz https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.22.3/flyway-commandline-9.22.3-linux-x64.tar.gz && \
     tar -xzf /flyway/flyway-cli/flyway-commandline-9.22.3.tar.gz -C /flyway/flyway-cli && \
