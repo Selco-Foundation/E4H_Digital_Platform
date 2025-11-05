@@ -106,5 +106,18 @@ public class RMSConfiguration {
 
     @Value("${rms.scheduler.solar.daily.cron:0 0 1 * * *}")
     private String solarDailyCron;
+
+    // Mapping Configuration
+    @Value("${rms.mapping.sync.enabled:true}")
+    private Boolean mappingSyncEnabled;
+
+    @Value("${rms.mapping.sync.cron:0 0 2 * * 0}")
+    private String mappingSyncCron;
+
+    @Value("${rms.mapping.validation.days:7}")
+    private Integer mappingValidationDays;
+
+    @Value("${rms.mapping.validation.cron:0 0 3 * * 0}")
+    private String mappingValidationCron;
 }
 

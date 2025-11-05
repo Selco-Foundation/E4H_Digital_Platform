@@ -7,6 +7,7 @@ import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.RMSApiRequest;
 import org.egov.rms.model.RMSApiResponse;
 import org.egov.rms.model.RMSFacilityData;
+import org.egov.rms.service.CenterIdMappingService;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -30,6 +31,7 @@ public class DataCollectorService {
     private final RMSConfiguration config;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final CenterIdMappingService mappingService;
 
     /**
      * Collects panel-level data for solar consumption analysis
@@ -86,6 +88,10 @@ public class DataCollectorService {
             }
 
             log.info("Collected panel data for {} facilities", allFacilities.size());
+            
+            // Enrich with HFR IDs from mapping table
+            mappingService.enrichFacilitiesWithHfrId(allFacilities);
+            
             return allFacilities;
         } catch (Exception e) {
             log.error("Error collecting panel data", e);
@@ -142,6 +148,10 @@ public class DataCollectorService {
             }
 
             log.info("Collected inverter no-signal data for {} facilities", allFacilities.size());
+            
+            // Enrich with HFR IDs from mapping table
+            mappingService.enrichFacilitiesWithHfrId(allFacilities);
+            
             return allFacilities;
         } catch (Exception e) {
             log.error("Error collecting inverter no-signal data", e);

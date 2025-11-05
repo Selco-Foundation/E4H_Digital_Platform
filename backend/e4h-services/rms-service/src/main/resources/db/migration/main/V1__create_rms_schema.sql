@@ -61,3 +61,25 @@ CREATE INDEX idx_alert_history_alert_id ON alert_history(alert_id);
 CREATE INDEX idx_alert_history_facility_id ON alert_history(facility_id);
 CREATE INDEX idx_alert_history_detected_at ON alert_history(detected_at);
 
+-- Create center_id_to_hfr_id_mapping table for RMS Center ID (Device ID) to HFR ID mapping
+CREATE TABLE IF NOT EXISTS center_id_to_hfr_id_mapping (
+    id VARCHAR(255) PRIMARY KEY,
+    center_id VARCHAR(255) NOT NULL UNIQUE,
+    device_id VARCHAR(255),
+    device_instance_id VARCHAR(255),
+    hfr_id VARCHAR(255),
+    facility_name VARCHAR(500),
+    is_active BOOLEAN DEFAULT true,
+    last_sync_time TIMESTAMP,
+    last_validated_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uk_center_id UNIQUE (center_id)
+);
+
+CREATE INDEX idx_mapping_center_id ON center_id_to_hfr_id_mapping(center_id);
+CREATE INDEX idx_mapping_hfr_id ON center_id_to_hfr_id_mapping(hfr_id);
+CREATE INDEX idx_mapping_device_instance_id ON center_id_to_hfr_id_mapping(device_instance_id);
+CREATE INDEX idx_mapping_is_active ON center_id_to_hfr_id_mapping(is_active);
+CREATE INDEX idx_mapping_last_sync_time ON center_id_to_hfr_id_mapping(last_sync_time);
+
