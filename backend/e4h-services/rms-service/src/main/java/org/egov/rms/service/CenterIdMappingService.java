@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.egov.rms.service.RestTemplateSslUtils.restTemplateAcceptingAllCerts;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -188,7 +190,8 @@ public class CenterIdMappingService {
     /**
      * Fetches mappings from RMS mapping API
      */
-    private CenterMappingResponse fetchMappingsFromApi() {
+    private CenterMappingResponse fetchMappingsFromApi() throws Exception {
+        RestTemplate rt = restTemplateAcceptingAllCerts();
         String url = config.getRmsApiBaseUrl() + config.getCenterMappingsEndpoint();
         
         HttpHeaders headers = new HttpHeaders();
@@ -206,7 +209,7 @@ public class CenterIdMappingService {
             try {
                 log.debug("Calling RMS mapping API: {} (attempt {})", url, attempts + 1);
                 
-                ResponseEntity<CenterMappingResponse> response = restTemplate.exchange(
+                ResponseEntity<CenterMappingResponse> response = rt.exchange(
                         url, HttpMethod.POST, entity, CenterMappingResponse.class);
                 
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {

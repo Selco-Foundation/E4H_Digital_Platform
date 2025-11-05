@@ -23,6 +23,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.egov.rms.service.RestTemplateSslUtils.restTemplateAcceptingAllCerts;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -346,9 +348,9 @@ public class DataCollectorService {
     /**
      * Calls RMS API with retry logic
      */
-    private RMSApiResponse callRMSApi(String endpoint, RMSApiRequest request) {
+    private RMSApiResponse callRMSApi(String endpoint, RMSApiRequest request) throws Exception {
         String url = config.getRmsApiBaseUrl() + endpoint;
-        
+        RestTemplate rt = restTemplateAcceptingAllCerts();
         HttpHeaders headers = new HttpHeaders();
         headers.set("Content-Type", "application/json");
         headers.set("Accept", "application/json");
@@ -362,7 +364,7 @@ public class DataCollectorService {
         while (attempts < config.getRetryMaxAttempts()) {
             try {
                 log.debug("Calling RMS API: {} (attempt {})", url, attempts + 1);
-                ResponseEntity<RMSApiResponse> response = restTemplate.exchange(
+                ResponseEntity<RMSApiResponse> response = rt.exchange(
                         url, HttpMethod.POST, entity, RMSApiResponse.class);
                 
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {

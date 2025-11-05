@@ -67,18 +67,19 @@ public class FacilityServiceClient {
      */
     private FacilityDetails mapToFacilityDetails(Map<String, Object> facility) {
         try {
-            Map<String, Object> details = (Map<String, Object>) facility.get("facilityDetails");
+            Map<String, Object> details = (Map<String, Object>) facility.get("facility_details");
+            Map<String, Object> address = (Map<String, Object>) facility.get("address");
             
             return FacilityDetails.builder()
-                    .facilityId((String) facility.get("facilityId"))
-                    .facilityName((String) facility.get("facilityName"))
-                    .hfrId(details != null ? (String) details.get("hfrId") : null)
-                    .ninId(details != null ? (String) details.get("ninId") : null)
-                    .district((String) facility.get("district"))
-                    .block((String) facility.get("block"))
-                    .phcType((String) facility.get("phcType"))
-                    .phcSubType((String) facility.get("phcSubType"))
-                    .tenantId((String) facility.get("tenantId"))
+                    .facilityId((String) facility.get("facility_id"))
+                    .facilityName((String) facility.get("facility_name"))
+                    .hfrId(details != null ? (String) details.get("hfr_id") : null)
+                    .ninId(details != null ? (String) details.get("nin_id") : null)
+                    .district((String) address.get("district"))
+                    .block((String) address.get("block"))
+//                    .phcType((String) facility.get("phcType"))
+//                    .phcSubType((String) facility.get("phcSubType"))
+                    .tenantId((String) facility.get("tenant_id"))
                     .build();
         } catch (Exception e) {
             log.error("Error mapping facility details", e);

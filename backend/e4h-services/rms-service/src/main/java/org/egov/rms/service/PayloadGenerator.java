@@ -40,8 +40,10 @@ public class PayloadGenerator {
             }
 
             // Map alert type/subtype to IM service incident type/subtype
-            String incidentType = mapAlertTypeToIncidentType(alert.getAlertType());
-            String incidentSubType = mapAlertSubTypeToIncidentSubType(alert.getAlertSubType(), alert.getAlertType());
+//            String incidentType = mapAlertTypeToIncidentType(alert.getAlertType());
+            String incidentType = "RMS Device";
+//            String incidentSubType = mapAlertSubTypeToIncidentSubType(alert.getAlertSubType(), alert.getAlertType());
+            String incidentSubType = "Burnt";
 
             // Build incident payload
             IMServiceRequest.Incident incident = IMServiceRequest.Incident.builder()
@@ -50,8 +52,8 @@ public class PayloadGenerator {
                     .tenantId(config.getDefaultTenantId())
                     .district(facilityDetails.getDistrict())
                     .block(facilityDetails.getBlock())
-                    .phcType(facilityDetails.getPhcType())
-                    .phcSubType(facilityDetails.getPhcSubType())
+                    .phcType("pg.bagalkot")
+                    .phcSubType("Urban Primary Health Center")
                     .comments(buildComments(alert, facilityDetails))
                     .systemFunctional("NON_FUNCTIONAL")
                     .applicationStatus("PENDINGFORASSIGNMENT")
@@ -90,9 +92,9 @@ public class PayloadGenerator {
             case BATTERY:
                 return "Battery";
             case GRID:
-                return "Grid";
+                return "Cables";
             default:
-                return "Solar System";
+                return "GIPB";
         }
     }
 
