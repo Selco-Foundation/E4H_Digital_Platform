@@ -2,10 +2,11 @@
 
 ## Currently Working Endpoints
 
-Only 2 RMS API endpoints are available:
+Only 1 RMS API endpoint is working:
 
-1. ✅ **Inverter No Signal**: `POST /selco/cachedData/centerDatas/get`
-2. ✅ **Panel Low Generation**: `POST /selco/center_details/graph`
+1. ✅ **Inverter No Signal**: `POST /selco/cachedData/centerDatas/get` (WORKING)
+
+**Note**: Panel data endpoint (`/selco/center_details/graph`) is currently not working and has been disabled.
 
 ## Quick Start Testing
 
@@ -64,31 +65,21 @@ curl -k -X 'POST' \
 }'
 ```
 
-### Test Panel Data Endpoint
+### Test Panel Data Endpoint (DISABLED - Not Working)
 
 ```bash
-curl -k -X 'POST' \
-  'https://selco.theiox.com/selco/center_details/graph' \
-  -H 'accept: application/json' \
-  -H 'Access-Token: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6MTAwMiwidXNlcl9pZCI6InVzZXJfMTAwMDIiLCJzaXRlX2lkIjoiaW5kdXN0cnlfMzQzIiwiY2xpZW50X2lkIjoiY2xpZW50XzIwNyIsImV4cCI6MjU5NzY5NjMzOH0.0VyQMHQl5sbPs2bSXPqijeJXFrUvM57Y0J_CkbdrOeI' \
-  -H 'Content-Type: application/json' \
-  -d '{
-"graphType":"solarVsGrid_Eb_Diff",
-"time_range":{"time_period":{"label":"Last 7 days","value":"last_seven_days"},
-"custom_range":{}},
-"frequency":"daily",
-"aggregation":"deltaSum",
-"filters": {"solarConsumptionPercent":{"compareFunction":"lte", "compareValue": 60}},
-"pagination": {"page":1, "size":100}
-}'
+# This endpoint is currently not working and has been disabled
+# curl -k -X 'POST' \
+#   'https://selco.theiox.com/selco/center_details/graph' \
+#   ...
 ```
 
 ## Expected Behavior
 
-1. **Data Collection**: Service fetches data from both endpoints
+1. **Data Collection**: Service fetches data from the working endpoint (`centerDatas/get`)
 2. **Rule Application**: 
-   - Panel: Finds facilities with solar < 10% for 7 days
-   - Inverter: Finds facilities with no signal for 2+ days
+   - Inverter: Finds facilities with no signal for 2+ days ✅
+   - Panel: Disabled (endpoint not working) ❌
 3. **Deduplication**: Removes duplicate alerts
 4. **Ticket Creation**: Creates tickets in IM service for new alerts
 

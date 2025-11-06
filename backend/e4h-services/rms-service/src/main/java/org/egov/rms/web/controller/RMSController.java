@@ -58,12 +58,12 @@ public class RMSController {
             return ResponseEntity.ok("Mapping sync completed successfully");
         } catch (Exception e) {
             log.error("Error syncing mappings from API", e);
-            // Fallback to facility data if API fails
+            // Fallback to facility data if API fails (only using working endpoint)
             try {
-                log.info("Falling back to facility data sync");
+                log.info("Falling back to facility data sync from working endpoint");
                 List<RMSFacilityData> facilities = new ArrayList<>();
                 facilities.addAll(dataCollectorService.collectInverterNoSignalData());
-                facilities.addAll(dataCollectorService.collectPanelData());
+                // Note: collectPanelData() is disabled as center_details/graph endpoint is not working
                 mappingService.syncMappings(facilities);
                 return ResponseEntity.ok("Mapping sync completed using fallback method");
             } catch (Exception fallbackError) {

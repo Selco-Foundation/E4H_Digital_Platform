@@ -37,68 +37,13 @@ public class DataCollectorService {
 
     /**
      * Collects panel-level data for solar consumption analysis
+     * DISABLED: center_details/graph endpoint is not working
      */
     public List<RMSFacilityData> collectPanelData() {
-        log.info("Collecting panel data for solar vs grid consumption analysis");
-        List<RMSFacilityData> allFacilities = new ArrayList<>();
-        
-        try {
-            int page = 1;
-            int pageSize = 100;
-            boolean hasMore = true;
-
-            while (hasMore) {
-                RMSApiRequest request = RMSApiRequest.builder()
-                        .graphType("solarVsGrid_Eb_Diff")
-                        .timeRange(RMSApiRequest.TimeRange.builder()
-                                .timePeriod(RMSApiRequest.TimePeriod.builder()
-                                        .label("Last 7 days")
-                                        .value("last_seven_days")
-                                        .build())
-                                .customRange(new HashMap<>())
-                                .build())
-                        .frequency("daily")
-                        .aggregation("deltaSum")
-                        .pagination(RMSApiRequest.Pagination.builder()
-                                .page(page)
-                                .size(pageSize)
-                                .build())
-                        .filters(new HashMap<String, Object>() {{
-                            put("solarConsumptionPercent", new HashMap<String, Object>() {{
-                                put("compareFunction", "lte");
-                                put("compareValue", 60);
-                            }});
-                        }})
-                        .build();
-
-                RMSApiResponse response = callRMSApi(config.getCenterDetailsEndpoint(), request);
-                
-                if (response != null && response.getData() != null && 
-                    response.getData().getFacilities() != null) {
-                    allFacilities.addAll(response.getData().getFacilities());
-                    
-                    RMSApiResponse.Pagination pagination = response.getData().getPagination();
-                    if (pagination != null && pagination.getTotalPages() != null) {
-                        hasMore = page < pagination.getTotalPages();
-                        page++;
-                    } else {
-                        hasMore = false;
-                    }
-                } else {
-                    hasMore = false;
-                }
-            }
-
-            log.info("Collected panel data for {} facilities", allFacilities.size());
-            
-            // Enrich with HFR IDs from mapping table
-            mappingService.enrichFacilitiesWithHfrId(allFacilities);
-            
-            return allFacilities;
-        } catch (Exception e) {
-            log.error("Error collecting panel data", e);
-            return new ArrayList<>();
-        }
+        log.warn("Panel data collection is disabled - center_details/graph endpoint is not working");
+        return new ArrayList<>();
+        // Disabled until RMS team fixes the endpoint
+        // The center_details/graph endpoint is currently not working
     }
 
     /**

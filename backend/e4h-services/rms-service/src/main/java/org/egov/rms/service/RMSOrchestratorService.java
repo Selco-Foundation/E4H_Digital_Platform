@@ -27,9 +27,10 @@ public class RMSOrchestratorService {
 
     /**
      * Executes the complete RMS workflow: collect data, apply rules, deduplicate, generate tickets
-     * Currently supports only 2 endpoints:
-     * 1. Panel data (solar vs grid) - center_details/graph
-     * 2. Inverter no signal - centerDatas/get
+     * Currently supports only 1 working endpoint:
+     * - Inverter no signal - centerDatas/get (WORKING)
+     * 
+     * Note: Panel data endpoint (center_details/graph) is currently not working
      */
     public void executeWorkflow() {
         log.info("Starting RMS workflow execution");
@@ -38,13 +39,11 @@ public class RMSOrchestratorService {
             // Create system RequestInfo
             RequestInfo requestInfo = createSystemRequestInfo();
             
-            // 1. Collect panel data and apply rules (WORKING ENDPOINT)
-            processPanelAlerts(requestInfo);
-            
-            // 2. Collect inverter data (no signal) and apply rules (WORKING ENDPOINT)
+            // Collect inverter data (no signal) and apply rules - ONLY WORKING ENDPOINT
             processInverterNoSignalAlerts(requestInfo);
             
-            // TODO: Add these once RMS team provides working endpoints
+            // TODO: Re-enable once RMS team fixes the endpoints
+            // processPanelAlerts(requestInfo);
             // processInverterHighVoltageAlerts(requestInfo);
             // processBatteryAlerts(requestInfo);
             // processGridAlerts(requestInfo);
@@ -57,17 +56,19 @@ public class RMSOrchestratorService {
 
     /**
      * Processes panel-level alerts
+     * DISABLED: center_details/graph endpoint is not working
      */
     private void processPanelAlerts(RequestInfo requestInfo) {
-        log.info("Processing panel-level alerts");
-        try {
-            List<RMSFacilityData> facilities = dataCollectorService.collectPanelData();
-            List<Alert> alerts = ruleEngineService.applyPanelRules(facilities);
-            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(uniqueAlerts, requestInfo);
-        } catch (Exception e) {
-            log.error("Error processing panel alerts", e);
-        }
+        log.warn("Panel alerts processing is disabled - center_details/graph endpoint is not working");
+        // Disabled until RMS team fixes the endpoint
+        // try {
+        //     List<RMSFacilityData> facilities = dataCollectorService.collectPanelData();
+        //     List<Alert> alerts = ruleEngineService.applyPanelRules(facilities);
+        //     List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+        //     createTickets(uniqueAlerts, requestInfo);
+        // } catch (Exception e) {
+        //     log.error("Error processing panel alerts", e);
+        // }
     }
 
     /**

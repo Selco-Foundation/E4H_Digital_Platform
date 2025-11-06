@@ -34,12 +34,12 @@ public class MappingScheduler {
             mappingService.syncMappingsFromApi();
         } catch (Exception e) {
             log.error("Error in scheduled mapping sync from API", e);
-            // Fallback to facility data if API fails
-            log.info("Falling back to facility data sync");
+            // Fallback to facility data if API fails (only using working endpoint)
+            log.info("Falling back to facility data sync from working endpoint");
             try {
                 List<RMSFacilityData> facilities = new ArrayList<>();
                 facilities.addAll(dataCollectorService.collectInverterNoSignalData());
-                facilities.addAll(dataCollectorService.collectPanelData());
+                // Note: collectPanelData() is disabled as center_details/graph endpoint is not working
                 mappingService.syncMappings(facilities);
             } catch (Exception fallbackError) {
                 log.error("Error in fallback mapping sync", fallbackError);

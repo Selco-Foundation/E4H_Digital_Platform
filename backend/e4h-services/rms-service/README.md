@@ -11,16 +11,17 @@ Device Telemetry → Data Collector → Rule Engine → Deduplication Manager �
 ### Key Components
 
 1. **Data Collector Layer**: Fetches telemetry data from RMS APIs
-   - Panel data (solar vs grid consumption)
-   - Inverter data (signal status, voltage)
-   - Battery data (voltage readings)
-   - Grid data (voltage readings)
+   - **Currently Working**: Inverter data (no signal detection) - `centerDatas/get`
+   - **Disabled**: Panel data (solar vs grid consumption) - `center_details/graph` endpoint not working
+   - **Disabled**: Battery data (voltage readings) - endpoint not available
+   - **Disabled**: Grid data (voltage readings) - endpoint not available
 
 2. **Rule Engine Layer**: Applies anomaly detection rules
-   - Panel: Solar consumption < 10% for 7 consecutive days
-   - Inverter: No signal for 2+ days, High voltage > 250V
-   - Battery: Voltage = 0 (burnt/disconnected)
-   - Grid: Voltage < 200V (low) or > 250V (high)
+   - **Active**: Inverter: No signal for 2+ days
+   - **Disabled**: Panel: Solar consumption < 10% for 7 consecutive days (endpoint not working)
+   - **Disabled**: Inverter: High voltage > 250V (endpoint not available)
+   - **Disabled**: Battery: Voltage = 0 (burnt/disconnected) (endpoint not available)
+   - **Disabled**: Grid: Voltage < 200V (low) or > 250V (high) (endpoint not available)
 
 3. **Deduplication Manager**: Prevents duplicate tickets
    - Maintains active_alerts table
@@ -107,19 +108,25 @@ Manually triggers mapping validation. This will:
 
 ## Alert Types and Subtypes
 
-### Panel
-- **Low Generation**: Solar consumption < 10% for 7 consecutive days
+### Currently Active
 
 ### Inverter
-- **Shutdown**: No signal for 2+ consecutive days
-- **High Voltage**: PCU voltage > 250V
+- **Shutdown**: No signal for 2+ consecutive days ✅ (WORKING)
+
+### Disabled (Endpoints Not Available)
+
+### Panel
+- **Low Generation**: Solar consumption < 10% for 7 consecutive days ❌ (endpoint not working)
+
+### Inverter
+- **High Voltage**: PCU voltage > 250V ❌ (endpoint not available)
 
 ### Battery
-- **Burnt/Disconnected**: Battery voltage = 0
+- **Burnt/Disconnected**: Battery voltage = 0 ❌ (endpoint not available)
 
 ### Grid
-- **Voltage Variation - Low**: Grid voltage < 200V
-- **Voltage Variation - High**: Grid voltage > 250V
+- **Voltage Variation - Low**: Grid voltage < 200V ❌ (endpoint not available)
+- **Voltage Variation - High**: Grid voltage > 250V ❌ (endpoint not available)
 
 ## Development
 
