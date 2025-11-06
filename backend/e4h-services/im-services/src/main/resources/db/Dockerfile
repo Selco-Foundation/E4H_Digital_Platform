@@ -1,4 +1,4 @@
-FROM eclipse-temurin:17-jre-alpine as builder
+FROM eclipse-temurin:17-jdk-alpine as builder
 
 ARG JAR_FILE
 
