@@ -4,7 +4,6 @@ import '../../data/nosql/cache_asset_detail.dart';
 import '../../data/nosql/cache_media_upload.dart';
 import '../../data/nosql/cache_specification.dart';
 
-/// Holds all cached values for a given projectId + assetType.
 class AssetSummaryModel {
   final CacheAssetCount? countEntry;
   final CacheSpecification? specEntry;

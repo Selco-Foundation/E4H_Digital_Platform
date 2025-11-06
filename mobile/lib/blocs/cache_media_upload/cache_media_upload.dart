@@ -49,7 +49,6 @@ class CacheMediaUploadBloc
   ) async {
     try {
       await isar.writeTxn(() async {
-        // Check if an entry already exists for this projectId + assetType + itemNumber + itemType
         final existing = await isar.cacheMediaUploads
             .where()
             .activityFacilityIdEqualTo(event.entry.activityFacilityId)
@@ -59,10 +58,13 @@ class CacheMediaUploadBloc
             .itemNumberEqualTo(event.entry.itemNumber)
             .and()
             .itemTypeEqualTo(event.entry.itemType)
+            .and()
+            .filePathEqualTo(event.entry.filePath)
             .findFirst();
 
+        print("Existing is not null ${existing != null}");
+
         if (existing != null) {
-          existing.filePath = event.entry.filePath;
           existing.updatedAt = DateTime.now();
           await isar.cacheMediaUploads.put(existing);
         } else {

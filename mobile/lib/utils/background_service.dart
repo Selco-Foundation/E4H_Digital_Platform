@@ -195,7 +195,7 @@ class BackgroundServiceController {
     debugPrint('[UI] service.startService() -> running=$running');
 
     try {
-      await readyStream.first.timeout(const Duration(seconds: 5));
+      await readyStream.first.timeout(const Duration(seconds: 8));
       debugPrint('[UI] kEvtReady received. Submitting job...');
     } catch (_) {
       debugPrint('[UI] kEvtReady timeout; invoking after short delay');
@@ -240,7 +240,7 @@ class BackgroundServiceController {
     debugPrint('[UI] service.startService() -> running=$running');
 
     try {
-      await readyStream.first.timeout(const Duration(seconds: 5));
+      await readyStream.first.timeout(const Duration(seconds: 8));
       debugPrint('[UI] kEvtReady received. Submitting REJECTION job...');
     } catch (_) {
       debugPrint('[UI] kEvtReady timeout; proceeding after 300ms fallback');
@@ -282,10 +282,11 @@ void onStart(ServiceInstance service) async {
 
   DartPluginRegistrant.ensureInitialized();
 
-  await envConfig.initialize();
+  // await envConfig.initialize();
 
-  final isar = await Constants().isar;
-  debugPrint('[BG] onStart ready. isar#${identityHashCode(isar)}');
+  //final isar = await Constants().isar;
+  final envFuture = envConfig.initialize();
+  final isarFuture = Constants().isar;
 
   if (service is AndroidServiceInstance) {
     service.setAsForegroundService();
@@ -297,6 +298,9 @@ void onStart(ServiceInstance service) async {
 
   service.on(kMethodSubmit).listen((payload) async {
     debugPrint('[BG] submit received: $payload');
+    final isar = await isarFuture;
+    await envFuture;
+    debugPrint('[BG] onStart ready. isar#${identityHashCode(isar)}');
 
     final activityFacilityId = payload?['activityFacilityId'] as String?;
     final facilityId = payload?['facilityId'] as String?;
@@ -352,6 +356,9 @@ void onStart(ServiceInstance service) async {
   });
 
   service.on(kMethodReject).listen((payload) async {
+    final isar = await isarFuture;
+    await envFuture;
+    debugPrint('[BG] onStart ready. isar#${identityHashCode(isar)}');
     final activityFacilityId = payload?['activityFacilityId'] as String?;
     final userType = payload?['userType'] as String?;
     final txList = (payload?['transactions'] as List?)?.cast<Map>() ?? const [];
@@ -486,6 +493,7 @@ Future<void> _performSubmissionForActivityFacility({
           final photoId = await getFilestoreUrl(saved.photoPath);
           documents.add(
             Document(
+              id: saved.documentId,
               documentType: saved.documentType,
               fileStore: photoId,
               documentUid: "DOC-ASSET-${saved.serialNumber}",

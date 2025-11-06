@@ -4,19 +4,17 @@ import 'dart:io';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:digit_ui_components/widgets/atoms/upload_popUp.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' show basename;
-import 'package:path_provider/path_provider.dart';
 import 'package:recase/recase.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_media_upload/cache_media_upload.dart';
+import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
@@ -27,6 +25,7 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
+import '../widgets/customized_digit_widget/file_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -43,13 +42,12 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
   int _videoKeyCounter = 0;
   List<PlatformFile> _selectedImages = [];
   List<PlatformFile> _selectedVideos = [];
+  bool _isImagesInitLoading = true;
+  bool _isVideosInitLoading = true;
   double? _latitude;
   double? _longitude;
   StreamSubscription<LocationState>? _locSub;
   String userType = "";
-
-  // ─── cache for downloaded files ───
-  final Map<String, File> _fileCache = {};
   late String assetType = "";
 
   @override
@@ -74,7 +72,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
           orElse: () => USER_TYPES.FIELD_STAFF.name,
         );
 
-    // 2) grab projectId & dispatch initial load:
     assetType = context.read<AssetTypeBloc>().state.when(
           initial: () => '',
           inverter: () => 'inverter',
@@ -84,7 +81,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
     context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
         selected: (proj) {
       _currentActivityFacilityId = proj.activityFacility.id;
-      // update progress
       context
           .read<CacheAssetCountBloc>()
           .add(CacheAssetCountEvent.update(CacheAssetCount(
@@ -93,7 +89,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
             progress: 6,
           )));
 
-      // fetch any previously cached media for this project/type
       context.read<CacheMediaUploadBloc>().add(
             CacheMediaUploadEvent.get(proj.activityFacility.id, assetType),
           );
@@ -103,7 +98,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
   @override
   void dispose() {
     _locSub?.cancel();
-    _fileCache.clear();
     super.dispose();
   }
 
@@ -128,43 +122,22 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
     }
   }
 
-  /// Downloads a remote file once or returns a cached local File.
-  Future<File?> _getCachedFile(String path) async {
-    if (_fileCache.containsKey(path)) {
-      return _fileCache[path];
-    }
-
-    if (isValidUuid(path)) {
-      try {
-        final uri = Uri.parse("$fileStoreFileUrl$path");
-        final response = await http.get(uri);
-        if (response.statusCode == 200) {
-          final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/${uri.pathSegments.last}');
-          await file.writeAsBytes(response.bodyBytes);
-          _fileCache[path] = file;
-          return file;
-        }
-      } catch (e) {
-        print('Error downloading image: $e');
-      }
-    } else {
-      final file = File(path);
-      if (await file.exists()) {
-        _fileCache[path] = file;
-        return file;
-      }
-    }
-    return null;
-  }
-
-  /// Populate `_selectedImages` & `_selectedVideos` from cached entries.
   Future<void> _populateFromCache(List<CacheMediaUpload> entries) async {
     final images = <PlatformFile>[];
     final videos = <PlatformFile>[];
 
+    final hasImageEntries = entries.any((e) => e.itemType == 'image');
+    final hasVideoEntries = entries.any((e) => e.itemType == 'video');
+
+    if (hasImageEntries || hasVideoEntries) {
+      setState(() {
+        _isImagesInitLoading = hasImageEntries;
+        _isVideosInitLoading = hasVideoEntries;
+      });
+    }
+
     for (final e in entries) {
-      final file = await _getCachedFile(e.filePath);
+      final file = await getCachedFile(e.filePath);
       if (file == null) continue;
       final pf = PlatformFile(
         name: basename(file.path),
@@ -183,6 +156,8 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
       _selectedVideos = videos;
       _imageKeyCounter++;
       _videoKeyCounter++;
+      if (hasImageEntries) _isImagesInitLoading = false;
+      if (hasVideoEntries) _isVideosInitLoading = false;
     });
   }
 
@@ -225,7 +200,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         ),
                       );
 
-                  // wait for deletion to finish before re-adding:
                   await context.read<CacheMediaUploadBloc>().stream.firstWhere(
                         (state) => state.maybeWhen(
                           deleted: () => true,
@@ -233,7 +207,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                           orElse: () => false,
                         ),
                       );
-                  // Save new entries
+
                   for (final file in _selectedImages) {
                     final copied = await copyFileToLocalDir(File(file.path!));
                     final entry = CacheMediaUpload(
@@ -267,6 +241,9 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         .add(CacheMediaUploadEvent.add(entry));
                   }
 
+                  context
+                      .read<InboxTypeBloc>()
+                      .add(const InboxTypeEvent.typeSelected(0));
                   context.router.push(const AssetSummaryRoute());
                 },
               ),
@@ -302,7 +279,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                             'JPEG',
                             'PNG'
                           ],
-                          key: ValueKey('images-$_imageKeyCounter'),
+                          // key: ValueKey('images-$_imageKeyCounter'),
                           label: 'Upload Images',
                           allowMultiples: true,
                           showPreview: true,
@@ -310,27 +287,23 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                           onFilesSelected: (files) {
                             setState(() {
                               _selectedImages = files;
-                              _imageKeyCounter++;
+                              // _imageKeyCounter++;
                             });
-                            // DEBUG: Print current state
-                            print("Images: ${_selectedImages.length}");
-                            print("Videos: ${_selectedVideos.length}");
-                            print("Files: ${files.length}");
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
                                 context.showSnackBar(const SnackBar(
                                     content: Text('Could not fetch location')));
                               }
                             });
-                            // return <PlatformFile, String?>{};
                             return {for (final f in files) f: null};
                           },
                         ),
+                        if (_isImagesInitLoading)
+                          const Center(child: CircularProgressIndicator())
                       ]),
 
                       const SizedBox(height: spacer4),
 
-                      // ── Videos Card ──
                       DigitCard(children: [
                         Text(
                           '$assetType Videos',
@@ -339,7 +312,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         ),
                         const SizedBox(height: spacer2),
                         FileUploadWidget(
-                          key: ValueKey('videos-$_videoKeyCounter'),
+                          // key: ValueKey('videos-$_videoKeyCounter'),
                           label: 'Upload Videos',
                           allowMultiples: true,
                           showPreview: false,
@@ -359,22 +332,19 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                             print("Files: ${files.length}");
                             setState(() {
                               _selectedVideos = files;
-                              _videoKeyCounter++;
+                              // _videoKeyCounter++;
                             });
-                            // DEBUG: Print current state
-                            debugPrint("Images: ${_selectedImages.length}");
-                            debugPrint("Videos: ${_selectedVideos.length}");
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
                                 context.showSnackBar(const SnackBar(
                                     content: Text('Could not fetch location')));
                               }
                             });
-                            //return <PlatformFile, String?>{};
-                            // **Return a map of the newly selected files** (no errors):
                             return {for (final f in files) f: null};
                           },
                         ),
+                        if (_isVideosInitLoading)
+                          const Center(child: CircularProgressIndicator())
                       ]),
                     ],
                   ),

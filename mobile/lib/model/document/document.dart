@@ -44,7 +44,7 @@ class GeoLocation {
 class Document {
   String? id;
   String? documentType;
-  String? fileStore; // canonical fileStore or fileStoreId
+  String? fileStore;
   String? documentUid;
 
   String? additionalDetailsJson;

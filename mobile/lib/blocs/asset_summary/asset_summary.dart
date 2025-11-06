@@ -11,17 +11,14 @@ import '../../model/asset_summary/asset_summary.dart';
 
 part 'asset_summary.freezed.dart';
 
-/// EVENTS
 @freezed
 class AssetSummaryEvent with _$AssetSummaryEvent {
-  /// Load (or refresh) summary for a given projectId + assetType
   const factory AssetSummaryEvent.load({
     required String activityFacilityId,
     required String assetType,
   }) = AssetSummaryEventLoad;
 }
 
-/// STATES
 @freezed
 class AssetSummaryState with _$AssetSummaryState {
   const factory AssetSummaryState.initial() = _Initial;
@@ -30,7 +27,6 @@ class AssetSummaryState with _$AssetSummaryState {
   const factory AssetSummaryState.error(String message) = _Error;
 }
 
-/// BLOC
 class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
   final Isar isar;
 
@@ -85,6 +81,8 @@ class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
           .filter()
           .assetTypeEqualTo(assetType)
           .findAll();
+
+      print("mediaEntries length ${mediaEntries.length}");
 
       final summary = AssetSummaryModel(
         countEntry: countEntry,
