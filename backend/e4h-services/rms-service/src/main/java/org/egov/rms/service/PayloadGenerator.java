@@ -31,13 +31,13 @@ public class PayloadGenerator {
 
         try {
             // Fetch facility details
-            FacilityDetails facilityDetails = facilityServiceClient.getFacilityByHfrId(
-                    alert.getHfrId(), config.getDefaultTenantId());
-
-            if (facilityDetails == null) {
-                log.warn("Facility not found for hfrId: {}", alert.getHfrId());
-                return null;
-            }
+//            FacilityDetails facilityDetails = facilityServiceClient.getFacilityByHfrId(
+//                    alert.getHfrId(), config.getDefaultTenantId());
+//
+//            if (facilityDetails == null) {
+//                log.warn("Facility not found for hfrId: {}", alert.getHfrId());
+//                return null;
+//            }
 
             // Map alert type/subtype to IM service incident type/subtype
 //            String incidentType = mapAlertTypeToIncidentType(alert.getAlertType());
@@ -47,18 +47,17 @@ public class PayloadGenerator {
 
             // Build incident payload
             IMServiceRequest.Incident incident = IMServiceRequest.Incident.builder()
-                    .incidentType(incidentType)
-                    .incidentSubType(incidentSubType)
-                    .tenantId(config.getDefaultTenantId())
-                    .district(facilityDetails.getDistrict())
-                    .block(facilityDetails.getBlock())
+                    .incidentType("ARRAY JUNCTION BOX")
+                    .incidentSubType("burned")
+                    .tenantId("pg.bagalkot")
+                    .district("BAGALKOTE")
+                    .block("Bagalkot")
                     .phcType("pg.bagalkot")
                     .phcSubType("Urban Primary Health Center")
-                    .comments(buildComments(alert, facilityDetails))
-                    .systemFunctional("NON_FUNCTIONAL")
-                    .applicationStatus("PENDINGFORASSIGNMENT")
+                    .comments("")
+                    .systemFunctional("FUNCTIONAL")
                     .source("RMS")
-                    .additionalDetail(buildAdditionalDetail(alert, facilityDetails))
+                    .additionalDetail(buildAdditionalDetail(alert, null))
                     .reporter(buildReporter(requestInfo))
                     .build();
 
@@ -75,6 +74,7 @@ public class PayloadGenerator {
                     .build();
 
         } catch (Exception e) {
+            e.printStackTrace();
             log.error("Error generating ticket payload for alert: {}", alert.getId(), e);
             return null;
         }
@@ -131,7 +131,7 @@ public class PayloadGenerator {
         StringBuilder comments = new StringBuilder();
         comments.append("RMS Alert: ").append(alert.getAlertType()).append(" - ")
                 .append(alert.getAlertSubType()).append("\n");
-        comments.append("Facility: ").append(facilityDetails.getFacilityName()).append("\n");
+//        comments.append("Facility: ").append(facilityDetails.getFacilityName()).append("\n");
         comments.append("HFR ID: ").append(alert.getHfrId()).append("\n");
         comments.append("Detected at: ").append(alert.getDetectedAt()).append("\n");
         
@@ -163,8 +163,8 @@ public class PayloadGenerator {
      */
     private IMServiceRequest.User buildReporter(RequestInfo requestInfo) {
         return IMServiceRequest.User.builder()
-                .uuid(config.getSystemUserUuid())
-                .tenantId(config.getDefaultTenantId())
+                .uuid("d2a12218-c71b-4aa3-b7e4-a811c522ef0c")
+                .tenantId("pg")
                 .build();
     }
 }

@@ -3,6 +3,7 @@ package org.egov.rms.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.request.Role;
 import org.egov.common.contract.request.User;
 import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.Alert;
@@ -79,8 +80,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectInverterNoSignalData();
             List<Alert> alerts = ruleEngineService.applyInverterRules(facilities, true);
-            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(uniqueAlerts, requestInfo);
+//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(alerts, requestInfo);
         } catch (Exception e) {
             log.error("Error processing inverter no-signal alerts", e);
         }
@@ -168,14 +169,50 @@ public class RMSOrchestratorService {
      * Creates system RequestInfo for automated operations
      */
     private RequestInfo createSystemRequestInfo() {
+        List<Role> roles = new ArrayList<>();
+        Role role1 = Role.builder()
+                .code("Complainant")
+                .name("COMPLAINANT")
+                .tenantId("pg")
+                .build();
+        roles.add(role1);
+        Role role2 = Role.builder()
+                .code("Employee")
+                .name("EMPLOYEE")
+                .tenantId("pg")
+                .build();
+        roles.add(role2);
+        Role role3 = Role.builder()
+                .code("Complaint Assessor")
+                .name("COMPLAINT_ASSESSOR")
+                .tenantId("pg")
+                .build();
+        roles.add(role3);
+        Role role4 = Role.builder()
+                .code("Complaint facilitator 2")
+                .name("COMPLAINT_FACILITATOR_2")
+                .tenantId("pg")
+                .build();
+        roles.add(role4);
+        Role role5 = Role.builder()
+                .code("Super User")
+                .name("SUPERUSER")
+                .tenantId("pg")
+                .build();
+        roles.add(role5);
         User user = User.builder()
+                .id(95L)
                 .uuid(config.getSystemUserUuid())
-                .userName("RMS_SYSTEM")
-                .name("RMS System")
-                .tenantId(config.getDefaultTenantId())
+                .userName("7346864311")
+                .name("nikhil")
+                .type("EMPLOYEE")
+                .tenantId("pg")
+                .emailId("crm@gmail.com")
+                .roles(roles)
                 .build();
 
         return RequestInfo.builder()
+                .authToken("52e344c6-4649-48c5-a188-98b3dc0c7e93")
                 .userInfo(user)
                 .build();
     }

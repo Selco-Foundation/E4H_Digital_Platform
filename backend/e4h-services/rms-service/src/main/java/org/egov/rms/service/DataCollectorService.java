@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.config.RMSConfiguration;
-import org.egov.rms.model.CenterDatasResponse;
-import org.egov.rms.model.RMSApiRequest;
-import org.egov.rms.model.RMSApiResponse;
-import org.egov.rms.model.RMSFacilityData;
+import org.egov.rms.model.*;
 import org.egov.rms.service.CenterIdMappingService;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -67,7 +64,7 @@ public class DataCollectorService {
                     .build();
 
             // Call centerDatas/get API - this has a different response structure
-            CenterDatasResponse response = callCenterDatasApi(config.getCenterDatasEndpoint(), request);
+            RMSApiResponseV2 response = callCenterDatasApi(config.getCenterDatasEndpoint(), request);
             
             if (response != null && response.getData() != null) {
                 List<RMSFacilityData> facilities = response.getData();
@@ -87,9 +84,9 @@ public class DataCollectorService {
                         facility.setFacilityName(facility.getCenterName());
                     }
                     // Map HFRID to hfrId for consistency
-                    if (facility.getHfrid() != null && !facility.getHfrid().isEmpty()) {
-                        facility.setHfrId(facility.getHfrid());
-                    }
+//                    if (facility.getHfrid() != null && !facility.getHfrid().isEmpty()) {
+//                        facility.setHfrId(facility.getHfrid());
+//                    }
                     
                     // Check if last_sync_time is before cutoff (2 days ago)
                     if (facility.getLastSyncTime() != null && 
@@ -306,7 +303,7 @@ public class DataCollectorService {
      * Calls centerDatas/get API with retry logic
      * This API has a different response structure: { "data": [...], "pagination": { "noOfRecords": ... } }
      */
-    private CenterDatasResponse callCenterDatasApi(String endpoint, RMSApiRequest request) throws Exception {
+    private RMSApiResponseV2 callCenterDatasApi(String endpoint, RMSApiRequest request) throws Exception {
         String url = config.getRmsApiBaseUrl() + endpoint;
         RestTemplate rt = restTemplateAcceptingAllCerts();
         HttpHeaders headers = new HttpHeaders();
@@ -322,11 +319,23 @@ public class DataCollectorService {
         while (attempts < config.getRetryMaxAttempts()) {
             try {
                 log.debug("Calling RMS centerDatas API: {} (attempt {})", url, attempts + 1);
-                ResponseEntity<CenterDatasResponse> response = rt.exchange(
-                        url, HttpMethod.POST, entity, CenterDatasResponse.class);
+                ResponseEntity<RMSApiResponseV2> response = rt.exchange(
+                        url, HttpMethod.POST, entity, RMSApiResponseV2.class);
                 
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                    return response.getBody();
+                    RMSApiResponseV2 tmp = response.getBody();
+                    List<RMSFacilityData> listFacility = new ArrayList<>();
+                    for (CenterData centerData : tmp.getCenterData()){
+                        RMSFacilityData data = RMSFacilityData.builder()
+                                .centerId(centerData.getCenterId())
+                                .centerName(centerData.getCenterName())
+                                .hfrId(centerData.getHfrid())
+                                .lastSyncTime(Instant.parse(centerData.getLastSyncTime()))
+                                .build();
+                        listFacility.add(data);
+                    }
+                    tmp.setData(listFacility);
+                    return tmp;
                 }
             } catch (RestClientException e) {
                 attempts++;

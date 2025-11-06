@@ -76,6 +76,7 @@ public class SauraEmitraConnector {
                 }
                 
             } catch (RestClientException e) {
+                e.printStackTrace();
                 attempts++;
                 if (attempts >= maxAttempts) {
                     log.error("Failed to create ticket after {} attempts for alert: {}", maxAttempts, alert.getId(), e);

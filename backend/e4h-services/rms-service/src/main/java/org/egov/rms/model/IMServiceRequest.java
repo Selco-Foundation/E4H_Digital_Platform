@@ -33,7 +33,7 @@ public class IMServiceRequest {
         @JsonProperty("incidentType")
         private String incidentType;
 
-        @JsonProperty("incidentSubType")
+        @JsonProperty("incidentSubtype")
         private String incidentSubType;
 
         @JsonProperty("tenantId")
