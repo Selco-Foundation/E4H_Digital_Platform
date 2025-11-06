@@ -18,29 +18,30 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$CacheAddNewAssetEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String activityFacilityId, String assetType) get,
     required TResult Function(CacheAddNewAsset entry) add,
     required TResult Function(CacheAddNewAsset entry) update,
     required TResult Function(int id) delete,
-    required TResult Function(String projectId, String assetType) deleteAll,
+    required TResult Function(String activityFacilityId, String assetType)
+        deleteAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String activityFacilityId, String assetType)? get,
     TResult? Function(CacheAddNewAsset entry)? add,
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
-    TResult? Function(String projectId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType)? deleteAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String assetType)? get,
+    TResult Function(String activityFacilityId, String assetType)? get,
     TResult Function(CacheAddNewAsset entry)? add,
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
-    TResult Function(String projectId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType)? deleteAll,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -100,7 +101,7 @@ abstract class _$$CacheAddNewAssetEventGetImplCopyWith<$Res> {
           $Res Function(_$CacheAddNewAssetEventGetImpl) then) =
       __$$CacheAddNewAssetEventGetImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String projectId, String assetType});
+  $Res call({String activityFacilityId, String assetType});
 }
 
 /// @nodoc
@@ -116,13 +117,13 @@ class __$$CacheAddNewAssetEventGetImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
     Object? assetType = null,
   }) {
     return _then(_$CacheAddNewAssetEventGetImpl(
-      null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
       null == assetType
           ? _value.assetType
@@ -135,16 +136,16 @@ class __$$CacheAddNewAssetEventGetImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$CacheAddNewAssetEventGetImpl implements CacheAddNewAssetEventGet {
-  const _$CacheAddNewAssetEventGetImpl(this.projectId, this.assetType);
+  const _$CacheAddNewAssetEventGetImpl(this.activityFacilityId, this.assetType);
 
   @override
-  final String projectId;
+  final String activityFacilityId;
   @override
   final String assetType;
 
   @override
   String toString() {
-    return 'CacheAddNewAssetEvent.get(projectId: $projectId, assetType: $assetType)';
+    return 'CacheAddNewAssetEvent.get(activityFacilityId: $activityFacilityId, assetType: $assetType)';
   }
 
   @override
@@ -152,14 +153,14 @@ class _$CacheAddNewAssetEventGetImpl implements CacheAddNewAssetEventGet {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$CacheAddNewAssetEventGetImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
             (identical(other.assetType, assetType) ||
                 other.assetType == assetType));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, assetType);
+  int get hashCode => Object.hash(runtimeType, activityFacilityId, assetType);
 
   @JsonKey(ignore: true)
   @override
@@ -171,39 +172,40 @@ class _$CacheAddNewAssetEventGetImpl implements CacheAddNewAssetEventGet {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String activityFacilityId, String assetType) get,
     required TResult Function(CacheAddNewAsset entry) add,
     required TResult Function(CacheAddNewAsset entry) update,
     required TResult Function(int id) delete,
-    required TResult Function(String projectId, String assetType) deleteAll,
+    required TResult Function(String activityFacilityId, String assetType)
+        deleteAll,
   }) {
-    return get(projectId, assetType);
+    return get(activityFacilityId, assetType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String activityFacilityId, String assetType)? get,
     TResult? Function(CacheAddNewAsset entry)? add,
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
-    TResult? Function(String projectId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType)? deleteAll,
   }) {
-    return get?.call(projectId, assetType);
+    return get?.call(activityFacilityId, assetType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String assetType)? get,
+    TResult Function(String activityFacilityId, String assetType)? get,
     TResult Function(CacheAddNewAsset entry)? add,
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
-    TResult Function(String projectId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType)? deleteAll,
     required TResult orElse(),
   }) {
     if (get != null) {
-      return get(projectId, assetType);
+      return get(activityFacilityId, assetType);
     }
     return orElse();
   }
@@ -251,10 +253,10 @@ class _$CacheAddNewAssetEventGetImpl implements CacheAddNewAssetEventGet {
 
 abstract class CacheAddNewAssetEventGet implements CacheAddNewAssetEvent {
   const factory CacheAddNewAssetEventGet(
-          final String projectId, final String assetType) =
+          final String activityFacilityId, final String assetType) =
       _$CacheAddNewAssetEventGetImpl;
 
-  String get projectId;
+  String get activityFacilityId;
   String get assetType;
   @JsonKey(ignore: true)
   _$$CacheAddNewAssetEventGetImplCopyWith<_$CacheAddNewAssetEventGetImpl>
@@ -329,11 +331,12 @@ class _$CacheAddNewAssetEventAddImpl implements CacheAddNewAssetEventAdd {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String activityFacilityId, String assetType) get,
     required TResult Function(CacheAddNewAsset entry) add,
     required TResult Function(CacheAddNewAsset entry) update,
     required TResult Function(int id) delete,
-    required TResult Function(String projectId, String assetType) deleteAll,
+    required TResult Function(String activityFacilityId, String assetType)
+        deleteAll,
   }) {
     return add(entry);
   }
@@ -341,11 +344,11 @@ class _$CacheAddNewAssetEventAddImpl implements CacheAddNewAssetEventAdd {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String activityFacilityId, String assetType)? get,
     TResult? Function(CacheAddNewAsset entry)? add,
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
-    TResult? Function(String projectId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType)? deleteAll,
   }) {
     return add?.call(entry);
   }
@@ -353,11 +356,11 @@ class _$CacheAddNewAssetEventAddImpl implements CacheAddNewAssetEventAdd {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String assetType)? get,
+    TResult Function(String activityFacilityId, String assetType)? get,
     TResult Function(CacheAddNewAsset entry)? add,
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
-    TResult Function(String projectId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType)? deleteAll,
     required TResult orElse(),
   }) {
     if (add != null) {
@@ -485,11 +488,12 @@ class _$CacheAddNewAssetEventUpdateImpl implements CacheAddNewAssetEventUpdate {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String activityFacilityId, String assetType) get,
     required TResult Function(CacheAddNewAsset entry) add,
     required TResult Function(CacheAddNewAsset entry) update,
     required TResult Function(int id) delete,
-    required TResult Function(String projectId, String assetType) deleteAll,
+    required TResult Function(String activityFacilityId, String assetType)
+        deleteAll,
   }) {
     return update(entry);
   }
@@ -497,11 +501,11 @@ class _$CacheAddNewAssetEventUpdateImpl implements CacheAddNewAssetEventUpdate {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String activityFacilityId, String assetType)? get,
     TResult? Function(CacheAddNewAsset entry)? add,
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
-    TResult? Function(String projectId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType)? deleteAll,
   }) {
     return update?.call(entry);
   }
@@ -509,11 +513,11 @@ class _$CacheAddNewAssetEventUpdateImpl implements CacheAddNewAssetEventUpdate {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String assetType)? get,
+    TResult Function(String activityFacilityId, String assetType)? get,
     TResult Function(CacheAddNewAsset entry)? add,
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
-    TResult Function(String projectId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType)? deleteAll,
     required TResult orElse(),
   }) {
     if (update != null) {
@@ -641,11 +645,12 @@ class _$CacheAddNewAssetEventDeleteImpl implements CacheAddNewAssetEventDelete {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String activityFacilityId, String assetType) get,
     required TResult Function(CacheAddNewAsset entry) add,
     required TResult Function(CacheAddNewAsset entry) update,
     required TResult Function(int id) delete,
-    required TResult Function(String projectId, String assetType) deleteAll,
+    required TResult Function(String activityFacilityId, String assetType)
+        deleteAll,
   }) {
     return delete(id);
   }
@@ -653,11 +658,11 @@ class _$CacheAddNewAssetEventDeleteImpl implements CacheAddNewAssetEventDelete {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String activityFacilityId, String assetType)? get,
     TResult? Function(CacheAddNewAsset entry)? add,
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
-    TResult? Function(String projectId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType)? deleteAll,
   }) {
     return delete?.call(id);
   }
@@ -665,11 +670,11 @@ class _$CacheAddNewAssetEventDeleteImpl implements CacheAddNewAssetEventDelete {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String assetType)? get,
+    TResult Function(String activityFacilityId, String assetType)? get,
     TResult Function(CacheAddNewAsset entry)? add,
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
-    TResult Function(String projectId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType)? deleteAll,
     required TResult orElse(),
   }) {
     if (delete != null) {
@@ -736,7 +741,7 @@ abstract class _$$CacheAddNewAssetEventDeleteAllImplCopyWith<$Res> {
           $Res Function(_$CacheAddNewAssetEventDeleteAllImpl) then) =
       __$$CacheAddNewAssetEventDeleteAllImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String projectId, String assetType});
+  $Res call({String activityFacilityId, String assetType});
 }
 
 /// @nodoc
@@ -752,13 +757,13 @@ class __$$CacheAddNewAssetEventDeleteAllImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
     Object? assetType = null,
   }) {
     return _then(_$CacheAddNewAssetEventDeleteAllImpl(
-      null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
       null == assetType
           ? _value.assetType
@@ -772,16 +777,17 @@ class __$$CacheAddNewAssetEventDeleteAllImplCopyWithImpl<$Res>
 
 class _$CacheAddNewAssetEventDeleteAllImpl
     implements CacheAddNewAssetEventDeleteAll {
-  const _$CacheAddNewAssetEventDeleteAllImpl(this.projectId, this.assetType);
+  const _$CacheAddNewAssetEventDeleteAllImpl(
+      this.activityFacilityId, this.assetType);
 
   @override
-  final String projectId;
+  final String activityFacilityId;
   @override
   final String assetType;
 
   @override
   String toString() {
-    return 'CacheAddNewAssetEvent.deleteAll(projectId: $projectId, assetType: $assetType)';
+    return 'CacheAddNewAssetEvent.deleteAll(activityFacilityId: $activityFacilityId, assetType: $assetType)';
   }
 
   @override
@@ -789,14 +795,14 @@ class _$CacheAddNewAssetEventDeleteAllImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$CacheAddNewAssetEventDeleteAllImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId) &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
             (identical(other.assetType, assetType) ||
                 other.assetType == assetType));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId, assetType);
+  int get hashCode => Object.hash(runtimeType, activityFacilityId, assetType);
 
   @JsonKey(ignore: true)
   @override
@@ -809,39 +815,40 @@ class _$CacheAddNewAssetEventDeleteAllImpl
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId, String assetType) get,
+    required TResult Function(String activityFacilityId, String assetType) get,
     required TResult Function(CacheAddNewAsset entry) add,
     required TResult Function(CacheAddNewAsset entry) update,
     required TResult Function(int id) delete,
-    required TResult Function(String projectId, String assetType) deleteAll,
+    required TResult Function(String activityFacilityId, String assetType)
+        deleteAll,
   }) {
-    return deleteAll(projectId, assetType);
+    return deleteAll(activityFacilityId, assetType);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId, String assetType)? get,
+    TResult? Function(String activityFacilityId, String assetType)? get,
     TResult? Function(CacheAddNewAsset entry)? add,
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
-    TResult? Function(String projectId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType)? deleteAll,
   }) {
-    return deleteAll?.call(projectId, assetType);
+    return deleteAll?.call(activityFacilityId, assetType);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId, String assetType)? get,
+    TResult Function(String activityFacilityId, String assetType)? get,
     TResult Function(CacheAddNewAsset entry)? add,
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
-    TResult Function(String projectId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType)? deleteAll,
     required TResult orElse(),
   }) {
     if (deleteAll != null) {
-      return deleteAll(projectId, assetType);
+      return deleteAll(activityFacilityId, assetType);
     }
     return orElse();
   }
@@ -889,10 +896,10 @@ class _$CacheAddNewAssetEventDeleteAllImpl
 
 abstract class CacheAddNewAssetEventDeleteAll implements CacheAddNewAssetEvent {
   const factory CacheAddNewAssetEventDeleteAll(
-          final String projectId, final String assetType) =
+          final String activityFacilityId, final String assetType) =
       _$CacheAddNewAssetEventDeleteAllImpl;
 
-  String get projectId;
+  String get activityFacilityId;
   String get assetType;
   @JsonKey(ignore: true)
   _$$CacheAddNewAssetEventDeleteAllImplCopyWith<

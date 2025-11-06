@@ -27,7 +27,7 @@ class CacheAddNewAssetBloc
     try {
       final entries = await isar.cacheAddNewAssets
           .where()
-          .activityFacilityIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.activityFacilityId)
           .filter()
           .assetTypeEqualTo(event.assetType)
           .findAll();
@@ -48,7 +48,6 @@ class CacheAddNewAssetBloc
   ) async {
     try {
       await isar.writeTxn(() async {
-        // If you want to ensure only one record per projectId+assetType:
         final existing = await isar.cacheAddNewAssets
             .where()
             .activityFacilityIdEqualTo(event.entry.activityFacilityId)
@@ -58,7 +57,8 @@ class CacheAddNewAssetBloc
             .findFirst();
 
         if (existing != null) {
-          // Overwrite fields if desired
+          existing.documentId = event.entry.documentId;
+          existing.assetId = event.entry.assetId;
           existing.itemNumber = event.entry.itemNumber;
           existing.photoPath = event.entry.photoPath;
           existing.longitude = event.entry.longitude;
@@ -92,7 +92,7 @@ class CacheAddNewAssetBloc
 
         if (existing != null) {
           existing.itemNumber = event.entry.itemNumber;
-          // existing.serialNumber = event.entry.serialNumber;
+          existing.documentId = event.entry.documentId;
           existing.documentType = "ASSET";
           existing.photoPath = event.entry.photoPath;
           existing.longitude = event.entry.longitude;
@@ -100,15 +100,6 @@ class CacheAddNewAssetBloc
           existing.updatedAt = DateTime.now();
           await isar.cacheAddNewAssets.put(existing);
         } else {
-          // final newEntry = CacheAddNewAsset(
-          //   projectId: event.entry.projectId,
-          //   assetType: event.entry.assetType,
-          //   itemNumber: event.entry.itemNumber,
-          //   serialNumber: event.entry.serialNumber,
-          //   photoPath: event.entry.photoPath,
-          //   latitude: event.entry.latitude,
-          //   longitude: event.entry.longitude,
-          // );
           await isar.cacheAddNewAssets.put(event.entry);
         }
       });
@@ -152,7 +143,7 @@ class CacheAddNewAssetBloc
       await isar.writeTxn(() async {
         final q = isar.cacheAddNewAssets
             .where()
-            .activityFacilityIdEqualTo(event.projectId)
+            .activityFacilityIdEqualTo(event.activityFacilityId)
             .filter()
             .assetTypeEqualTo(event.assetType);
         final all = await q.findAll();
@@ -167,11 +158,10 @@ class CacheAddNewAssetBloc
   }
 }
 
-/// Events for CacheAddNewAssetBloc
 @freezed
 class CacheAddNewAssetEvent with _$CacheAddNewAssetEvent {
   const factory CacheAddNewAssetEvent.get(
-    String projectId,
+    String activityFacilityId,
     String assetType,
   ) = CacheAddNewAssetEventGet;
 
@@ -182,12 +172,11 @@ class CacheAddNewAssetEvent with _$CacheAddNewAssetEvent {
   const factory CacheAddNewAssetEvent.delete(int id) =
       CacheAddNewAssetEventDelete;
   const factory CacheAddNewAssetEvent.deleteAll(
-    String projectId,
+    String activityFacilityId,
     String assetType,
   ) = CacheAddNewAssetEventDeleteAll;
 }
 
-/// States for CacheAddNewAssetBloc
 @freezed
 class CacheAddNewAssetState with _$CacheAddNewAssetState {
   const factory CacheAddNewAssetState.initial() = _Initial;

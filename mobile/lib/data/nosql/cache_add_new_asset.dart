@@ -11,18 +11,20 @@ class CacheAddNewAsset {
 
   @Index()
   late String assetType;
+
+  @Index(caseSensitive: false)
+  String? documentId;
+
   late String? documentType = "ASSET";
-
   late String? assetId;
-
-  late String itemNumber; // capacity;
+  late String itemNumber;
   late String serialNumber;
   late String photoPath;
   late String latitude;
   late String longitude;
 
-  late String capacity; // e.g. "10"
-  late String? capacityUnit; // e.g. "kVA"
+  late String capacity;
+  late String? capacityUnit;
   late String? panelCapacity;
   late String? batteryCapacity;
   late String? batteryVoltage;
@@ -38,9 +40,10 @@ class CacheAddNewAsset {
   CacheAddNewAsset({
     required this.activityFacilityId,
     this.assetId,
+    this.documentId,
     this.documentType,
     required this.assetType,
-    required this.itemNumber, // this.capacity,
+    required this.itemNumber,
     required this.serialNumber,
     required this.photoPath,
     required this.latitude,
