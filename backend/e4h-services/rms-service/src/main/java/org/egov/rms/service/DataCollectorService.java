@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.config.RMSConfiguration;
+import org.egov.rms.model.CenterDatasResponse;
 import org.egov.rms.model.RMSApiRequest;
 import org.egov.rms.model.RMSApiResponse;
 import org.egov.rms.model.RMSFacilityData;
@@ -48,57 +49,68 @@ public class DataCollectorService {
 
     /**
      * Collects inverter data for devices with no signal
+     * API response structure: { "data": [...], "pagination": { "noOfRecords": ... } }
      */
     public List<RMSFacilityData> collectInverterNoSignalData() {
         log.info("Collecting inverter data for devices with no signal");
         List<RMSFacilityData> allFacilities = new ArrayList<>();
         
         try {
-            int page = 1;
-            int pageSize = 10000;
-            boolean hasMore = true;
+            RMSApiRequest request = RMSApiRequest.builder()
+                    .status(List.of(new HashMap<String, String>() {{
+                        put("label", "Inactive");
+                    }}))
+                    .pagination(RMSApiRequest.Pagination.builder()
+                            .page(1)
+                            .size(10000)
+                            .build())
+                    .build();
 
-            while (hasMore) {
-                RMSApiRequest request = RMSApiRequest.builder()
-                        .status(List.of(new HashMap<String, String>() {{
-                            put("label", "Inactive");
-                        }}))
-                        .pagination(RMSApiRequest.Pagination.builder()
-                                .page(page)
-                                .size(pageSize)
-                                .build())
-                        .build();
-
-                RMSApiResponse response = callRMSApi(config.getCenterDatasEndpoint(), request);
+            // Call centerDatas/get API - this has a different response structure
+            CenterDatasResponse response = callCenterDatasApi(config.getCenterDatasEndpoint(), request);
+            
+            if (response != null && response.getData() != null) {
+                List<RMSFacilityData> facilities = response.getData();
                 
-                if (response != null && response.getData() != null && 
-                    response.getData().getFacilities() != null) {
-                    List<RMSFacilityData> facilities = response.getData().getFacilities();
-                    
-                    // Filter facilities with no signal for more than configured days
-                    Instant cutoffTime = Instant.now().minus(config.getInverterNoSignalDays(), ChronoUnit.DAYS);
-                    facilities.stream()
-                            .filter(f -> f.getLastSyncTime() != null && 
-                                    f.getLastSyncTime().isBefore(cutoffTime))
-                            .forEach(allFacilities::add);
-                    
-                    RMSApiResponse.Pagination pagination = response.getData().getPagination();
-                    if (pagination != null && pagination.getTotalPages() != null) {
-                        hasMore = page < pagination.getTotalPages();
-                        page++;
-                    } else {
-                        hasMore = false;
+                // Calculate cutoff time: 2 days ago from now
+                Instant cutoffTime = Instant.now().minus(config.getInverterNoSignalDays(), ChronoUnit.DAYS);
+                
+                log.debug("Filtering facilities with last_sync_time before: {}", cutoffTime);
+                
+                // Filter facilities with no signal for more than configured days
+                for (RMSFacilityData facility : facilities) {
+                    // Map centerDatas/get API fields to standard fields for consistency
+                    if (facility.getCenterId() != null && facility.getFacilityId() == null) {
+                        facility.setFacilityId(facility.getCenterId());
                     }
-                } else {
-                    hasMore = false;
+                    if (facility.getCenterName() != null && facility.getFacilityName() == null) {
+                        facility.setFacilityName(facility.getCenterName());
+                    }
+                    // Map HFRID to hfrId for consistency
+                    if (facility.getHfrid() != null && !facility.getHfrid().isEmpty()) {
+                        facility.setHfrId(facility.getHfrid());
+                    }
+                    
+                    // Check if last_sync_time is before cutoff (2 days ago)
+                    if (facility.getLastSyncTime() != null && 
+                        facility.getLastSyncTime().isBefore(cutoffTime)) {
+                        allFacilities.add(facility);
+                        log.debug("Found facility with no signal: centerId={}, facilityName={}, lastSyncTime={}, hfrId={}", 
+                                facility.getCenterId(), facility.getFacilityName(), 
+                                facility.getLastSyncTime(), facility.getHfrId());
+                    }
                 }
+                
+                log.info("Found {} facilities with no signal for more than {} days (out of {} total)", 
+                        allFacilities.size(), config.getInverterNoSignalDays(), facilities.size());
+            } else {
+                log.warn("No data received from centerDatas/get API");
             }
 
-            log.info("Collected inverter no-signal data for {} facilities", allFacilities.size());
-            
-            // Enrich with HFR IDs from mapping table
+            // Enrich with HFR IDs from mapping table (for facilities that don't have HFRID in response)
             mappingService.enrichFacilitiesWithHfrId(allFacilities);
             
+            log.info("Collected inverter no-signal data for {} facilities", allFacilities.size());
             return allFacilities;
         } catch (Exception e) {
             log.error("Error collecting inverter no-signal data", e);
@@ -288,6 +300,52 @@ public class DataCollectorService {
             log.error("Error collecting grid voltage data", e);
             return new ArrayList<>();
         }
+    }
+
+    /**
+     * Calls centerDatas/get API with retry logic
+     * This API has a different response structure: { "data": [...], "pagination": { "noOfRecords": ... } }
+     */
+    private CenterDatasResponse callCenterDatasApi(String endpoint, RMSApiRequest request) throws Exception {
+        String url = config.getRmsApiBaseUrl() + endpoint;
+        RestTemplate rt = restTemplateAcceptingAllCerts();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("Accept", "application/json");
+        headers.set("Access-Token", config.getRmsApiAccessToken());
+        
+        HttpEntity<RMSApiRequest> entity = new HttpEntity<>(request, headers);
+        
+        int attempts = 0;
+        long delay = config.getRetryBackoffDelay();
+        
+        while (attempts < config.getRetryMaxAttempts()) {
+            try {
+                log.debug("Calling RMS centerDatas API: {} (attempt {})", url, attempts + 1);
+                ResponseEntity<CenterDatasResponse> response = rt.exchange(
+                        url, HttpMethod.POST, entity, CenterDatasResponse.class);
+                
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    return response.getBody();
+                }
+            } catch (RestClientException e) {
+                attempts++;
+                if (attempts >= config.getRetryMaxAttempts()) {
+                    log.error("Failed to call RMS centerDatas API after {} attempts: {}", config.getRetryMaxAttempts(), e.getMessage());
+                    throw e;
+                }
+                log.warn("RMS centerDatas API call failed (attempt {}), retrying after {}ms: {}", attempts, delay, e.getMessage());
+                try {
+                    Thread.sleep(delay);
+                    delay *= 2; // Exponential backoff
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during retry", ie);
+                }
+            }
+        }
+        
+        return null;
     }
 
     /**

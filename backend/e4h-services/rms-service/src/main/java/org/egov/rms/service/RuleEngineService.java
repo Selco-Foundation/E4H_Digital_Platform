@@ -70,28 +70,28 @@ public class RuleEngineService {
         for (RMSFacilityData facility : facilities) {
             if (checkNoSignal) {
                 // Rule: No signal for configured days
-                if (facility.getLastSyncTime() != null && 
-                    facility.getStatusOfDevice() != null &&
-                    "Inactive".equalsIgnoreCase(facility.getStatusOfDevice())) {
-                    
-                    Instant cutoffTime = Instant.now().minus(config.getInverterNoSignalDays(), 
-                            java.time.temporal.ChronoUnit.DAYS);
-                    
-                    if (facility.getLastSyncTime().isBefore(cutoffTime)) {
-                        Alert alert = Alert.builder()
-                                .id(UUID.randomUUID().toString())
-                                .facilityId(facility.getFacilityId())
-                                .hfrId(facility.getHfrId())
-                                .alertType(Alert.AlertType.INVERTER)
-                                .alertSubType(Alert.AlertSubType.SHUTDOWN)
-                                .status(Alert.AlertStatus.ACTIVE)
-                                .detectedAt(Instant.now())
-                                .metadata(buildMetadata(facility, "lastSyncTime", facility.getLastSyncTime()))
-                                .build();
+                // Note: DataCollectorService already filters by lastSyncTime, so all facilities here meet the criteria
+                // We just need to create alerts for them
+                String facilityId = facility.getFacilityId() != null ? 
+                        facility.getFacilityId() : facility.getCenterId();
+                String facilityName = facility.getFacilityName() != null ? 
+                        facility.getFacilityName() : facility.getCenterName();
+                
+                if (facilityId != null && facility.getLastSyncTime() != null) {
+                    Alert alert = Alert.builder()
+                            .id(UUID.randomUUID().toString())
+                            .facilityId(facilityId)
+                            .hfrId(facility.getHfrId())
+                            .alertType(Alert.AlertType.INVERTER)
+                            .alertSubType(Alert.AlertSubType.SHUTDOWN)
+                            .status(Alert.AlertStatus.ACTIVE)
+                            .detectedAt(Instant.now())
+                            .metadata(buildMetadata(facility, facilityName, "lastSyncTime", facility.getLastSyncTime()))
+                            .build();
 
-                        alerts.add(alert);
-                        log.debug("Inverter shutdown alert created for facility: {}", facility.getFacilityId());
-                    }
+                    alerts.add(alert);
+                    log.debug("Inverter shutdown alert created for facility: {} (lastSyncTime: {})", 
+                            facilityId, facility.getLastSyncTime());
                 }
             } else {
                 // Rule: High voltage
@@ -226,16 +226,28 @@ public class RuleEngineService {
     /**
      * Builds metadata JSON string for alert
      */
-    private String buildMetadata(RMSFacilityData facility, String key, Object value) {
+    private String buildMetadata(RMSFacilityData facility, String facilityName, String key, Object value) {
         try {
+            String name = facilityName != null ? facilityName : 
+                    (facility.getFacilityName() != null ? facility.getFacilityName() : 
+                     (facility.getCenterName() != null ? facility.getCenterName() : ""));
             return String.format("{\"facilityName\":\"%s\",\"%s\":%s}", 
-                    facility.getFacilityName() != null ? facility.getFacilityName() : "",
+                    name,
                     key, 
                     value instanceof String ? "\"" + value + "\"" : value);
         } catch (Exception e) {
             log.warn("Error building metadata for alert", e);
             return "{}";
         }
+    }
+
+    /**
+     * Builds metadata JSON string for alert (backward compatibility)
+     */
+    private String buildMetadata(RMSFacilityData facility, String key, Object value) {
+        String facilityName = facility.getFacilityName() != null ? 
+                facility.getFacilityName() : facility.getCenterName();
+        return buildMetadata(facility, facilityName, key, value);
     }
 }
 
