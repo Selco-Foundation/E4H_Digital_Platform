@@ -1,5 +1,6 @@
 package org.egov.rms.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -60,6 +61,7 @@ public class IMServiceResponse {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Incident {
         @JsonProperty("incidentId")
         private String incidentId;

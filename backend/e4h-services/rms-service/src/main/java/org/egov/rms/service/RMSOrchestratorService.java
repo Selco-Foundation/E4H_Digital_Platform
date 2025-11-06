@@ -171,32 +171,32 @@ public class RMSOrchestratorService {
     private RequestInfo createSystemRequestInfo() {
         List<Role> roles = new ArrayList<>();
         Role role1 = Role.builder()
-                .code("Complainant")
-                .name("COMPLAINANT")
+                .name("Complainant")
+                .code("COMPLAINANT")
                 .tenantId("pg")
                 .build();
         roles.add(role1);
         Role role2 = Role.builder()
-                .code("Employee")
-                .name("EMPLOYEE")
+                .name("Employee")
+                .code("EMPLOYEE")
                 .tenantId("pg")
                 .build();
         roles.add(role2);
         Role role3 = Role.builder()
-                .code("Complaint Assessor")
-                .name("COMPLAINT_ASSESSOR")
+                .name("Complaint Assessor")
+                .code("COMPLAINT_ASSESSOR")
                 .tenantId("pg")
                 .build();
         roles.add(role3);
         Role role4 = Role.builder()
-                .code("Complaint facilitator 2")
-                .name("COMPLAINT_FACILITATOR_2")
+                .name("Complaint facilitator 2")
+                .code("COMPLAINT_FACILITATOR_2")
                 .tenantId("pg")
                 .build();
         roles.add(role4);
         Role role5 = Role.builder()
-                .code("Super User")
-                .name("SUPERUSER")
+                .name("Super User")
+                .code("SUPERUSER")
                 .tenantId("pg")
                 .build();
         roles.add(role5);

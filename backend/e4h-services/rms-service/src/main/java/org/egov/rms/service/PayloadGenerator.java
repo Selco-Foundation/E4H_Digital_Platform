@@ -47,8 +47,8 @@ public class PayloadGenerator {
 
             // Build incident payload
             IMServiceRequest.Incident incident = IMServiceRequest.Incident.builder()
-                    .incidentType("ARRAY JUNCTION BOX")
-                    .incidentSubType("burned")
+                    .incidentType("RMS Device")
+                    .incidentSubType("Mishandling")
                     .tenantId("pg.bagalkot")
                     .district("BAGALKOTE")
                     .block("Bagalkot")
