@@ -15,13 +15,10 @@ import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_dropdown_input.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_text_form_input.dart';
 import 'package:digit_ui_components/widgets/atoms/labelled_fields.dart';
-import 'package:digit_ui_components/widgets/atoms/upload_image.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:recase/recase.dart';
 
@@ -40,9 +37,12 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
+import '../widgets/customized_digit_widget/image_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 class AssetModel {
+  String? assetId;
+  String? documentId;
   String serialNumber;
   String capacity;
   String? capacityUnit;
@@ -59,6 +59,8 @@ class AssetModel {
   String? latitude;
   String? longitude;
   AssetModel({
+    this.assetId,
+    this.documentId,
     required this.serialNumber,
     this.capacity = '1',
     this.capacityUnit,
@@ -101,11 +103,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   double? _latitude;
   double? _longitude;
   StreamSubscription<LocationState>? _locSub;
-
-  // Cache for downloaded files
-  final Map<String, File> _fileCache = {};
-
-  // map from asset‐index to Future<File?> so we only fetch once
   final Map<int, Future<File?>> _cachedImageFutures = {};
 
   @override
@@ -145,19 +142,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
               final selectedSolutionDesignCode = activityFacilityWorkflow
                   ?.activityFacility
-                  ?.facility
+                  .facility
                   ?.facilityDetails
                   ?.solar_solution_design_type;
-
-              print("selectedSolutionDesignCode $selectedSolutionDesignCode");
 
               final matchedSystemCode = solutionDesign
                   .map((m) => m.data)
                   .firstWhereOrNull(
                       (sd) => sd.code == selectedSolutionDesignCode)
                   ?.systemCode;
-
-              print("matchedSystemCode $matchedSystemCode");
 
               final systemCode =
                   matchedSystemCode ?? system.firstOrNull?.data.code;
@@ -230,7 +223,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   }
 
   Future<void> _requestPermissions() async {
-    // Request camera and location permissions together
     Map<Permission, PermissionStatus> statuses = await [
       Permission.camera,
       Permission.locationWhenInUse,
@@ -286,37 +278,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     setState(() => _assets[index].serialNumber = serial);
   }
 
-  Future<File?> _getCachedFile(String path) async {
-    if (_fileCache.containsKey(path)) {
-      return _fileCache[path];
-    }
-
-    if (isValidUuid(path)) {
-      try {
-        final uri = Uri.parse("$fileStoreFileUrl$path");
-        final response = await http.get(uri);
-        if (response.statusCode == 200) {
-          final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/${uri.pathSegments.last}');
-          await file.writeAsBytes(response.bodyBytes);
-          _fileCache[path] = file;
-          return file;
-        }
-      } catch (e) {
-        debugPrint('Error downloading image: $e');
-      }
-    } else {
-      final file = File(path);
-      if (await file.exists()) {
-        _fileCache[path] = file;
-        return file;
-      }
-    }
-    return null;
-  }
-
   bool _isAssetComplete(AssetModel a, String assetType) {
-    // must always have serial + photo
     if (a.serialNumber.isEmpty || a.photoPath == null) return false;
 
     switch (assetType.toLowerCase()) {
@@ -359,6 +321,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   _assets.clear();
                   for (final entry in entries) {
                     _assets.add(AssetModel(
+                      assetId: entry.assetId,
+                      documentId: entry.documentId,
                       serialNumber: entry.serialNumber,
                       capacity: entry.itemNumber,
                       unit: assetCapacityUom,
@@ -384,7 +348,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 for (var i = 0; i < _assets.length; i++) {
                   final path = _assets[i].photoPath;
                   if (path != null) {
-                    _cachedImageFutures[i] = _getCachedFile(path);
+                    _cachedImageFutures[i] = getCachedFile(path);
                   }
                 }
               },
@@ -444,6 +408,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
                       for (final asset in _assets) {
                         final newAsset = CacheAddNewAsset(
+                          assetId: asset.assetId,
+                          documentId: asset.documentId,
                           activityFacilityId: _currentActivityFacilityId!,
                           assetType: currentAssetType,
                           itemNumber: asset.capacity,
@@ -650,7 +616,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 future: _cachedImageFutures.putIfAbsent(
                   index,
                   () => asset.photoPath != null
-                      ? _getCachedFile(asset.photoPath!)
+                      ? getCachedFile(asset.photoPath!)
                       : Future.value(null),
                 ),
                 builder: (context, snapshot) {

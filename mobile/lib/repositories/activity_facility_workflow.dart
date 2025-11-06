@@ -28,13 +28,14 @@ class ActivityFacilityWorkflowRepository {
       print("[$type] found ${media.length} cached media uploads");
       for (var m in media) {
         print(
-            "    media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} activityFacilityId='${m.activityFacilityId}'");
+            "media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} activityFacilityId='${m.activityFacilityId}'");
       }
 
       for (final m in media) {
         if (m.filePath.isEmpty) continue;
         final mediaId = await getFilestoreUrl(m.filePath);
         print("mediaId $mediaId");
+        print("filePath-asset-type ${m.filePath} ${m.assetType}");
         out.add(Document(
           documentType: "${m.assetType}-${m.itemType}",
           fileStore: mediaId,
@@ -55,7 +56,6 @@ class ActivityFacilityWorkflowRepository {
     required List<Mdms<SolutionDesignType>> solutionDesignList,
     required String? facilitySolutionDesignCode,
   }) async {
-    print("facilitySolutionDesignCode $facilitySolutionDesignCode");
     String fallback = SYSTEM_TYPE.DC.name;
     final spec = await isar.cacheSpecifications
         .where()

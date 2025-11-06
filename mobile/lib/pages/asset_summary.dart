@@ -57,7 +57,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
   String userType = "";
   ActivityFacilityWorkflow? selectedActivityFacility;
 
-  /// Holds all the dynamic reason rows in the popup.
   final List<_ReasonEntry> _reasons = [];
 
   @override
@@ -431,7 +430,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 
     final initState = context.read<AppInitialization>().state;
 
-// Systems & Brands as lists of Mdms<T>
     final List<Mdms<System>> systemMdmsList = initState.maybeWhen(
       initialized: (appConfig, assetCount, assetType, system, warranty, brand,
               solutionDesign, _) =>
@@ -469,7 +467,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             ?.name ??
         (systemCode ?? '—');
 
-    // Cards for each asset
     final assetCards = summary.addedAssets.asMap().entries.map((e) {
       final index = e.key;
       final asset = e.value;
@@ -534,7 +531,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
       );
     }).toList();
 
-    // Media thumbnails
     final imageWidgets = summary.mediaEntries
         .where((m) => m.itemType == 'image')
         .map((m) => GestureDetector(
@@ -626,7 +622,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             ]),
             ValueColumn(values: [
               warrantyStart,
-              parseWarrantyYears(warrantyDuration!)?.toString() ?? '',
+              parseWarrantyYears(warrantyDuration).toString() ?? '',
               brand,
               model
             ]),

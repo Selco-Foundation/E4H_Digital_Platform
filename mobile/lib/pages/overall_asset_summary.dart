@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:digit_ui_components/widgets/atoms/upload_popUp.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +31,7 @@ import '../utils/utils.dart';
 import '../widgets/button/bom_buttons.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/element_asset_summary.dart';
+import '../widgets/customized_digit_widget/file_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
@@ -208,24 +208,36 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return BlocListener<ActivityFacilityBomBloc, ActivityFacilityBomState>(
-      listener: (context, state) {
-        state.maybeWhen(
-          loading: () {},
-          success: (savedBomValues) async {
-            context.read<OverallAssetSummaryBloc>().add(
-                OverallAssetSummaryEvent.loadCounts(
-                    activityFacilityId: _currentProjectId!));
-            await _loadInitialCompletion();
-          },
-          failure: (msg) {
-            context.showSnackBar(
-              const SnackBar(content: Text('BOM sync failed')),
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<ActivityFacilityBomBloc, ActivityFacilityBomState>(
+          listener: (context, state) {
+            state.maybeWhen(
+              loading: () {},
+              success: (savedBomValues) async {
+                // context.read<OverallAssetSummaryBloc>().add(
+                //     OverallAssetSummaryEvent.loadCounts(
+                //         activityFacilityId: _currentProjectId!));
+                await _loadInitialCompletion();
+              },
+              failure: (msg) {
+                context.showSnackBar(
+                  const SnackBar(content: Text('BOM sync failed')),
+                );
+              },
+              orElse: () {},
             );
           },
-          orElse: () {},
-        );
-      },
+        ),
+        BlocListener<OverallAssetSummaryBloc, OverallAssetSummaryState>(
+          listener: (context, state) {
+            state.maybeWhen(
+              loaded: (batteryCount, inverterCount, panelCount) {},
+              orElse: () {},
+            );
+          },
+        ),
+      ],
       child: BlocBuilder<UserTypeBloc, UserTypeState>(
         builder: (context, userState) {
           return BlocListener<SelectedActivityFacilityBloc,

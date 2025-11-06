@@ -242,6 +242,7 @@ String? normalizedInstallPdfNameFromPath(
 final Map<String, File> _fileCache = {};
 
 Future<File?> getCachedFile(String idOrPath) async {
+  print("_fileCache.containsKey(idOrPath) ${_fileCache.containsKey(idOrPath)}");
   if (_fileCache.containsKey(idOrPath)) return _fileCache[idOrPath];
 
   // 1) If it's a UUID, try downloading from your file store
@@ -252,6 +253,7 @@ Future<File?> getCachedFile(String idOrPath) async {
       if (resp.statusCode == 200) {
         final dir = await getTemporaryDirectory();
         final safeName = idOrPath.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+        print("safeName $safeName");
         final file = File(
             '${dir.path}/${DateTime.now().millisecondsSinceEpoch}_$safeName');
         await file.writeAsBytes(resp.bodyBytes);
@@ -276,6 +278,7 @@ Future<File?> getCachedFile(String idOrPath) async {
 
 Future<String> getFilestoreUrl(String idOrPath) async {
   String photoId = idOrPath;
+  print("photoId given is $idOrPath");
   if (!isValidUuid(photoId)) {
     final file = await getCachedFile(idOrPath);
     if (file != null) {

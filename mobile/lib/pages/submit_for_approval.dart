@@ -4,7 +4,6 @@ import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
-import 'package:digit_ui_components/widgets/atoms/upload_popUp.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
@@ -32,6 +31,7 @@ import '../utils/extensions.dart';
 import '../utils/utils.dart';
 import '../widgets/button/bom_buttons.dart';
 import '../widgets/button/footer_button.dart';
+import '../widgets/customized_digit_widget/file_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
@@ -660,7 +660,8 @@ class RejectedEditAssetSummary extends StatelessWidget {
         Align(
             alignment: Alignment.centerLeft,
             child: Text(
-                assetType != ASSET_TYPES.BATTERY.name
+                assetType.toLowerCase() !=
+                        ASSET_TYPES.BATTERY.name.toLowerCase()
                     ? '${assetType}s'
                     : 'Batteries',
                 style: textTheme.headingS)),

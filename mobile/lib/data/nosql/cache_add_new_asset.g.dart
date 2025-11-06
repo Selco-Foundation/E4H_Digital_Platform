@@ -67,58 +67,63 @@ const CacheAddNewAssetSchema = CollectionSchema(
       name: r'currentUnit',
       type: IsarType.string,
     ),
-    r'documentType': PropertySchema(
+    r'documentId': PropertySchema(
       id: 10,
+      name: r'documentId',
+      type: IsarType.string,
+    ),
+    r'documentType': PropertySchema(
+      id: 11,
       name: r'documentType',
       type: IsarType.string,
     ),
     r'inverterCapacity': PropertySchema(
-      id: 11,
+      id: 12,
       name: r'inverterCapacity',
       type: IsarType.string,
     ),
     r'inverterCapacityUnit': PropertySchema(
-      id: 12,
+      id: 13,
       name: r'inverterCapacityUnit',
       type: IsarType.string,
     ),
     r'itemNumber': PropertySchema(
-      id: 13,
+      id: 14,
       name: r'itemNumber',
       type: IsarType.string,
     ),
     r'latitude': PropertySchema(
-      id: 14,
+      id: 15,
       name: r'latitude',
       type: IsarType.string,
     ),
     r'longitude': PropertySchema(
-      id: 15,
+      id: 16,
       name: r'longitude',
       type: IsarType.string,
     ),
     r'panelCapacity': PropertySchema(
-      id: 16,
+      id: 17,
       name: r'panelCapacity',
       type: IsarType.string,
     ),
     r'photoPath': PropertySchema(
-      id: 17,
+      id: 18,
       name: r'photoPath',
       type: IsarType.string,
     ),
     r'serialNumber': PropertySchema(
-      id: 18,
+      id: 19,
       name: r'serialNumber',
       type: IsarType.string,
     ),
     r'updatedAt': PropertySchema(
-      id: 19,
+      id: 20,
       name: r'updatedAt',
       type: IsarType.dateTime,
     ),
     r'voltageUnit': PropertySchema(
-      id: 20,
+      id: 21,
       name: r'voltageUnit',
       type: IsarType.string,
     )
@@ -152,6 +157,19 @@ const CacheAddNewAssetSchema = CollectionSchema(
           name: r'assetType',
           type: IndexType.hash,
           caseSensitive: true,
+        )
+      ],
+    ),
+    r'documentId': IndexSchema(
+      id: 4187168439921340405,
+      name: r'documentId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'documentId',
+          type: IndexType.hash,
+          caseSensitive: false,
         )
       ],
     )
@@ -210,6 +228,12 @@ int _cacheAddNewAssetEstimateSize(
     }
   }
   {
+    final value = object.documentId;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.documentType;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -263,17 +287,18 @@ void _cacheAddNewAssetSerialize(
   writer.writeString(offsets[7], object.capacityUnit);
   writer.writeDateTime(offsets[8], object.createdAt);
   writer.writeString(offsets[9], object.currentUnit);
-  writer.writeString(offsets[10], object.documentType);
-  writer.writeString(offsets[11], object.inverterCapacity);
-  writer.writeString(offsets[12], object.inverterCapacityUnit);
-  writer.writeString(offsets[13], object.itemNumber);
-  writer.writeString(offsets[14], object.latitude);
-  writer.writeString(offsets[15], object.longitude);
-  writer.writeString(offsets[16], object.panelCapacity);
-  writer.writeString(offsets[17], object.photoPath);
-  writer.writeString(offsets[18], object.serialNumber);
-  writer.writeDateTime(offsets[19], object.updatedAt);
-  writer.writeString(offsets[20], object.voltageUnit);
+  writer.writeString(offsets[10], object.documentId);
+  writer.writeString(offsets[11], object.documentType);
+  writer.writeString(offsets[12], object.inverterCapacity);
+  writer.writeString(offsets[13], object.inverterCapacityUnit);
+  writer.writeString(offsets[14], object.itemNumber);
+  writer.writeString(offsets[15], object.latitude);
+  writer.writeString(offsets[16], object.longitude);
+  writer.writeString(offsets[17], object.panelCapacity);
+  writer.writeString(offsets[18], object.photoPath);
+  writer.writeString(offsets[19], object.serialNumber);
+  writer.writeDateTime(offsets[20], object.updatedAt);
+  writer.writeString(offsets[21], object.voltageUnit);
 }
 
 CacheAddNewAsset _cacheAddNewAssetDeserialize(
@@ -292,20 +317,21 @@ CacheAddNewAsset _cacheAddNewAssetDeserialize(
     capacity: reader.readStringOrNull(offsets[6]) ?? '1',
     capacityUnit: reader.readStringOrNull(offsets[7]),
     currentUnit: reader.readStringOrNull(offsets[9]),
-    documentType: reader.readStringOrNull(offsets[10]),
-    inverterCapacity: reader.readStringOrNull(offsets[11]),
-    inverterCapacityUnit: reader.readStringOrNull(offsets[12]),
-    itemNumber: reader.readString(offsets[13]),
-    latitude: reader.readString(offsets[14]),
-    longitude: reader.readString(offsets[15]),
-    panelCapacity: reader.readStringOrNull(offsets[16]),
-    photoPath: reader.readString(offsets[17]),
-    serialNumber: reader.readString(offsets[18]),
-    voltageUnit: reader.readStringOrNull(offsets[20]),
+    documentId: reader.readStringOrNull(offsets[10]),
+    documentType: reader.readStringOrNull(offsets[11]),
+    inverterCapacity: reader.readStringOrNull(offsets[12]),
+    inverterCapacityUnit: reader.readStringOrNull(offsets[13]),
+    itemNumber: reader.readString(offsets[14]),
+    latitude: reader.readString(offsets[15]),
+    longitude: reader.readString(offsets[16]),
+    panelCapacity: reader.readStringOrNull(offsets[17]),
+    photoPath: reader.readString(offsets[18]),
+    serialNumber: reader.readString(offsets[19]),
+    voltageUnit: reader.readStringOrNull(offsets[21]),
   );
   object.createdAt = reader.readDateTime(offsets[8]);
   object.id = id;
-  object.updatedAt = reader.readDateTimeOrNull(offsets[19]);
+  object.updatedAt = reader.readDateTimeOrNull(offsets[20]);
   return object;
 }
 
@@ -343,20 +369,22 @@ P _cacheAddNewAssetDeserializeProp<P>(
     case 12:
       return (reader.readStringOrNull(offset)) as P;
     case 13:
-      return (reader.readString(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 14:
       return (reader.readString(offset)) as P;
     case 15:
       return (reader.readString(offset)) as P;
     case 16:
-      return (reader.readStringOrNull(offset)) as P;
-    case 17:
       return (reader.readString(offset)) as P;
+    case 17:
+      return (reader.readStringOrNull(offset)) as P;
     case 18:
       return (reader.readString(offset)) as P;
     case 19:
-      return (reader.readDateTimeOrNull(offset)) as P;
+      return (reader.readString(offset)) as P;
     case 20:
+      return (reader.readDateTimeOrNull(offset)) as P;
+    case 21:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -538,6 +566,73 @@ extension CacheAddNewAssetQueryWhere
               indexName: r'assetType',
               lower: [],
               upper: [assetType],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterWhereClause>
+      documentIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'documentId',
+        value: [null],
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterWhereClause>
+      documentIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'documentId',
+        lower: [null],
+        includeLower: false,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterWhereClause>
+      documentIdEqualTo(String? documentId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'documentId',
+        value: [documentId],
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterWhereClause>
+      documentIdNotEqualTo(String? documentId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'documentId',
+              lower: [],
+              upper: [documentId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'documentId',
+              lower: [documentId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'documentId',
+              lower: [documentId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'documentId',
+              lower: [],
+              upper: [documentId],
               includeUpper: false,
             ));
       }
@@ -1930,6 +2025,160 @@ extension CacheAddNewAssetQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'currentUnit',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'documentId',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'documentId',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'documentId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'documentId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'documentId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'documentId',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'documentId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'documentId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'documentId',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'documentId',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'documentId',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterFilterCondition>
+      documentIdIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'documentId',
         value: '',
       ));
     });
@@ -3665,6 +3914,20 @@ extension CacheAddNewAssetQuerySortBy
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByDocumentId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'documentId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      sortByDocumentIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'documentId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
       sortByDocumentType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'documentType', Sort.asc);
@@ -3962,6 +4225,20 @@ extension CacheAddNewAssetQuerySortThenBy
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByDocumentId() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'documentId', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
+      thenByDocumentIdDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'documentId', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QAfterSortBy>
       thenByDocumentType() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'documentType', Sort.asc);
@@ -4205,6 +4482,13 @@ extension CacheAddNewAssetQueryWhereDistinct
   }
 
   QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
+      distinctByDocumentId({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'documentId', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, CacheAddNewAsset, QDistinct>
       distinctByDocumentType({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'documentType', caseSensitive: caseSensitive);
@@ -4357,6 +4641,13 @@ extension CacheAddNewAssetQueryProperty
       currentUnitProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'currentUnit');
+    });
+  }
+
+  QueryBuilder<CacheAddNewAsset, String?, QQueryOperations>
+      documentIdProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'documentId');
     });
   }
 

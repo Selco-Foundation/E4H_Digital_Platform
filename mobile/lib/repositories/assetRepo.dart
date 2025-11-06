@@ -270,7 +270,6 @@ class AssetRepository {
             );
           }
 
-          // — upsert spec & detail
           final first = list.first;
           final det = first.assetDetails!;
           final spec = CacheSpecification(
@@ -345,9 +344,11 @@ class AssetRepository {
             // find all PHOTO documents
             for (var doc in asset.documents ?? []) {
               if (doc.documentType == 'PHOTO' || doc.documentType == 'ASSET') {
+                print("documentId: doc?.id ?? '', ${doc.id} type: $type");
                 await isar.cacheAddNewAssets.put(
                   CacheAddNewAsset(
                     assetId: asset.assetId,
+                    documentId: doc?.id.toString() ?? '',
                     activityFacilityId: activityFacilityId,
                     assetType: type,
                     itemNumber:
