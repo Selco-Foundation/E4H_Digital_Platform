@@ -7,7 +7,7 @@ const ActivitySelector = ({
   props,
 }) => {
 
-  const { t, name, activityData, selectedOptions = [] } = props;
+  const { t, name, activityData, selectedOptions = [], description } = props;
   const [activityMenu, setActivityMenu] = useState([]);
   const [selectedActivities, setSelectedActivities] = useState(data[name] || []);
 
@@ -36,6 +36,7 @@ const ActivitySelector = ({
     <div className={"employee-select-wrap"}>
       <MultiSelectDropdown
         options={activityMenu}
+        isSearchable={true}
         optionsKey={"name"}
         onSelect={() => {
           // Triggering state update here causes render issues since dropdown within is remains open
@@ -49,6 +50,11 @@ const ActivitySelector = ({
         frozenData={[...selectedOptions]}
         selectAllLabel={t("PM_ACTION_SELECT_ALL_ACTIVITIES")}
       />
+      {description && (
+        <p style={{ margin: "0", fontSize: "14px", color: "#505A5F", position: "absolute" }}>
+          {t(description)}
+        </p>
+      )}
     </div>
   );
 };

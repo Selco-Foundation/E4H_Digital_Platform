@@ -3,7 +3,6 @@ import useBoundary from "../../hooks/useBoundary";
 import useMDMS from "../../hooks/useMDMS";
 import useProject from "../../hooks/useProject";
 import { useTranslation } from "react-i18next";
-import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { Button, FormComposerV2, Loader, PopUp, Toast } from "@egovernments/digit-ui-react-components";
 import { Stepper } from "@egovernments/digit-ui-components";
 import { useDispatch } from "react-redux";
@@ -125,7 +124,7 @@ const CreateFieldPlan = () => {
   }, [createdFieldPlan?.id, currentKey])
 
   useEffect(()=>{
-    if(toast){
+    if (toast) {
       setTimeout(()=>{
         setToast(null);
       },2500)
@@ -339,6 +338,7 @@ const CreateFieldPlan = () => {
 
   const validateActivityData = (activityData) => {
     let faultyData = false;
+    let emptyData = true;
 
     const validatedData = activityData.map((dataEntry) => ({
       ...dataEntry,
@@ -346,21 +346,34 @@ const CreateFieldPlan = () => {
         const newUserEntry = {}
 
         if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key) || !userEntry[key].value))) {
-          return userEntry;
+          Object.keys(userEntry).forEach((key) => {
+            if (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key)) {
+              newUserEntry[key] =  userEntry[key];
+            } else {
+              newUserEntry[key] =  {
+                ...userEntry[key],
+                error: ""
+              };
+            }
+          })
+          return newUserEntry;
         }
 
+        emptyData = false;
         Object.keys(userEntry).forEach((key) => {
           if (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key)) {
             newUserEntry[key] =  userEntry[key];
-          }
-          else if (!userEntry[key].value) {
+          } else if (!userEntry[key].value) {
             faultyData = true;
             newUserEntry[key] = {
               ...userEntry[key],
               error: t("CORE_COMMON_REQUIRED")
             };
           } else {
-            newUserEntry[key] =  userEntry[key];
+            newUserEntry[key] =  {
+              ...userEntry[key],
+              error: ""
+            };
           }
         })
 
@@ -370,6 +383,7 @@ const CreateFieldPlan = () => {
 
     return {
       faultyData,
+      emptyData,
       validatedData,
     }
   }
@@ -438,9 +452,21 @@ const CreateFieldPlan = () => {
 
   const handleActivityDataSave = async (activityData) => {
 
-    const { faultyData, validatedData } = validateActivityData(activityData);
+    const { faultyData, emptyData, validatedData } = validateActivityData(activityData);
 
     if (faultyData) {
+      setPersistedFormData((prevState) => ({
+        ...prevState,
+        activityDetails: {
+          activityUserAssignment: validatedData,
+        },
+      }));
+
+    } else if (emptyData) {
+      setToast({
+        key: "error",
+        label: t("PM_TOAST_ACTIVITY_DETAILS_EMPTY_SAVE_WARNING"),
+      })
       setPersistedFormData((prevState) => ({
         ...prevState,
         activityDetails: {
@@ -590,6 +616,7 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "activities",
               selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? activityData?.filter((activity) => createdFieldPlan.activities.map((activity) => activity.code).includes(activity?.code)) : [],
+              description: "PM_CREATE_FIELD_PLAN_LABEL_ACTIVITIES_DESC",
               t,
               activityData,
             },

@@ -55,6 +55,7 @@ const BlockSelector = ({
       <MultiSelectDropdown
         options={blockMenu}
         optionsKey={"name"}
+        isSearchable={true}
         onSelect={() => {
           // Triggering state update here causes render issues since dropdown within remains open
         }}

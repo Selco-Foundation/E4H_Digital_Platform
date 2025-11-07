@@ -23,7 +23,7 @@ const PMApp = () => {
       show: true,
     },
     projectCreation: {
-      content: pmStore?.workingProject?.status ? t("PM_ACTION_EDIT_PROJECT") : t("PM_ACTION_CREATE_PROJECT"),
+      content: t("PM_ACTION_CREATE_PROJECT"),
       internalLink: match.url + `/project/create`,
       show: true,
     },
