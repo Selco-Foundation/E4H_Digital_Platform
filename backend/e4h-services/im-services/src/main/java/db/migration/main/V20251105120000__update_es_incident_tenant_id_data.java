@@ -4,31 +4,31 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.io.HttpClientConnectionManager;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.client5.http.ssl.TrustAllStrategy;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
@@ -48,11 +48,10 @@ public class V20251105120000__update_es_incident_tenant_id_data extends BaseJava
         return false;
     }
 
-    @Override
     public void migrate(Context context) throws Exception {
         log.info("Starting migration: updating Elasticsearch documents tenantId to '{}'", TARGET_TENANT);
 
-        RestTemplate restTemplate = new RestTemplate();
+        RestTemplate restTemplate = createRestTemplateWithDisabledSSL();
         ObjectMapper objectMapper = new ObjectMapper();
 
         String logFileName = "es_incident_update_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".log";
@@ -84,8 +83,12 @@ public class V20251105120000__update_es_incident_tenant_id_data extends BaseJava
                 migrationLogger.flush();
 
                 try {
-                    int updated = updateDocumentsInEs(restTemplate, objectMapper, esHost, indexName, esUsername, esPassword, migrationLogger);
-                    totalUpdated += updated;
+                    boolean success = updateDocumentsInEs(restTemplate, objectMapper, esHost, indexName, esUsername, esPassword, migrationLogger);
+                    if (success) {
+                        totalUpdated++;
+                    } else {
+                        totalFailed++;
+                    }
                 } catch (Exception e) {
                     totalFailed++;
                     log.error("Error updating index {}: {}", indexName, e.getMessage(), e);
@@ -95,8 +98,8 @@ public class V20251105120000__update_es_incident_tenant_id_data extends BaseJava
             migrationLogger.println("========================================");
             migrationLogger.println("MIGRATION SUMMARY");
             migrationLogger.println("========================================");
-            migrationLogger.println("Total Indexes Updated: " + totalUpdated);
-            migrationLogger.println("Total Indexes Failed: " + totalFailed);
+            migrationLogger.println("Indexes Updated Successfully: " + totalUpdated);
+            migrationLogger.println("Indexes Failed: " + totalFailed);
             migrationLogger.println("Completed at: " + LocalDateTime.now());
             migrationLogger.println("========================================\n");
             migrationLogger.flush();
@@ -105,13 +108,13 @@ public class V20251105120000__update_es_incident_tenant_id_data extends BaseJava
         log.info("Migration completed. Log file: {}", logFilePath);
     }
 
-    private int updateDocumentsInEs(RestTemplate restTemplate,
-                                    ObjectMapper objectMapper,
-                                    String esHost,
-                                    String indexName,
-                                    String esUsername,
-                                    String esPassword,
-                                    PrintWriter migrationLogger) throws Exception {
+    private boolean updateDocumentsInEs(RestTemplate restTemplate,
+                                        ObjectMapper objectMapper,
+                                        String esHost,
+                                        String indexName,
+                                        String esUsername,
+                                        String esPassword,
+                                        PrintWriter migrationLogger) throws Exception {
 
         String updateByQueryUrl = esHost + "/" + indexName + "/_update_by_query?conflicts=proceed";
 
@@ -120,13 +123,18 @@ public class V20251105120000__update_es_incident_tenant_id_data extends BaseJava
         script.put("source",
                 "if (ctx._source.Data == null) { ctx._source.Data = [:]; } " +
                         "if (ctx._source.Data.incident == null) { ctx._source.Data.incident = [:]; } " +
-                        "ctx._source.Data.incident.tenantId = params.targetTenant; " +
-                        "ctx._source.Data.tenantId = params.targetTenant");
+                        "ctx._source.Data.tenantId = params.targetTenant; " +
+                        "ctx._source.Data.incident.tenantId = params.targetTenant");
 
         ObjectNode params = objectMapper.createObjectNode();
         params.put("targetTenant", TARGET_TENANT);
         script.set("params", params);
         updateRequest.set("script", script);
+
+        ObjectNode matchAll = objectMapper.createObjectNode();
+        ObjectNode query = objectMapper.createObjectNode();
+        query.set("match_all", matchAll);
+        updateRequest.set("query", query);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -145,13 +153,12 @@ public class V20251105120000__update_es_incident_tenant_id_data extends BaseJava
             int total = response != null ? response.path("total").asInt(0) : 0;
             int failures = response != null && response.path("failures").isArray() ? response.path("failures").size() : 0;
 
-            log.info("Updated {} of {} documents in index {}", updated, total, indexName);
+            log.info("Index {}: updated {} of {} documents (failures: {})", indexName, updated, total, failures);
 
             migrationLogger.println(String.format("Index: %s | Updated: %d/%d | Failures: %d",
                     indexName, updated, total, failures));
             migrationLogger.flush();
-
-            return 1;
+            return true;
         } catch (HttpClientErrorException e) {
             log.error("Client error updating ES index {}: {}", indexName, e.getResponseBodyAsString(), e);
             migrationLogger.println(String.format("[FAILED] Index: %s | Reason: %s - %s",
@@ -188,6 +195,38 @@ public class V20251105120000__update_es_incident_tenant_id_data extends BaseJava
     private String getEnvOrDefault(String key, String defaultValue) {
         String value = System.getenv(key);
         return (value == null || value.isEmpty()) ? defaultValue : value;
+    }
+
+    private RestTemplate createRestTemplateWithDisabledSSL() throws Exception {
+        // Create SSL context that trusts all certificates
+        SSLContext sslContext = SSLContextBuilder.create()
+                .loadTrustMaterial(null, new TrustAllStrategy())  // Trust all certificates
+                .build();
+
+        // Create SSL socket factory with no hostname verification
+        SSLConnectionSocketFactory sslSocketFactory = new SSLConnectionSocketFactory(
+                sslContext,
+                (hostname, session) -> true  // Accept all hostnames
+        );
+
+        // Create connection manager with SSL config
+        HttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
+                .setSSLSocketFactory(sslSocketFactory)
+                .build();
+
+        // Build Apache HttpClient with SSL config
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setConnectionManager(connectionManager)
+                .build();
+
+        // Create request factory with Apache HttpClient and timeouts
+        HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
+        requestFactory.setConnectTimeout(30000);  // 30 seconds connection timeout
+        requestFactory.setConnectionRequestTimeout(30000);  // 30 seconds request timeout
+        // Note: HttpClient5 doesn't have setReadTimeout, it uses socket timeout in the client configuration
+
+        log.info("RestTemplate created with Apache HttpClient5, SSL verification disabled and extended timeouts");
+        return new RestTemplate(requestFactory);
     }
 }
 
