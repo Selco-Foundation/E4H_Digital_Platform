@@ -189,46 +189,5 @@ public class V20251105120000__update_es_incident_tenant_id_data extends BaseJava
         String value = System.getenv(key);
         return (value == null || value.isEmpty()) ? defaultValue : value;
     }
-
-    @SuppressWarnings("unused")
-    private RestTemplate createRestTemplateWithDisabledSsl() throws Exception {
-        TrustManager[] trustAllCerts = new TrustManager[]{
-                new X509TrustManager() {
-                    @Override
-                    public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                    }
-
-                    @Override
-                    public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                    }
-
-                    @Override
-                    public X509Certificate[] getAcceptedIssuers() {
-                        return new X509Certificate[0];
-                    }
-                }
-        };
-
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(null, trustAllCerts, new SecureRandom());
-        HostnameVerifier allHostsValid = (hostname, session) -> true;
-
-        HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
-        HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
-
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory() {
-            @Override
-            protected void prepareConnection(HttpURLConnection connection, String httpMethod) throws IOException {
-                if (connection instanceof HttpsURLConnection httpsURLConnection) {
-                    httpsURLConnection.setSSLSocketFactory(sslContext.getSocketFactory());
-                    httpsURLConnection.setHostnameVerifier(allHostsValid);
-                }
-            }
-        };
-        requestFactory.setConnectTimeout(30000);
-        requestFactory.setReadTimeout(300000);
-
-        return new RestTemplate(requestFactory);
-    }
 }
 
