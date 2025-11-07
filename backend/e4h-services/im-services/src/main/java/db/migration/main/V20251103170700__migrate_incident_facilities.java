@@ -63,217 +63,217 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
         String logFileName = "facility_migration_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".log";
         String logFilePath = "./logs/" + logFileName;
         String absoluteLogPath = Paths.get(logFilePath).toAbsolutePath().normalize().toString();
-        PrintWriter migrationLogger = initializeMigrationLogger(logFilePath, absoluteLogPath);
+        try (PrintWriter migrationLogger = initializeMigrationLogger(logFilePath, absoluteLogPath)) {
+            migrationLogger.println("========================================");
+            migrationLogger.println("FACILITY MIGRATION LOG");
+            migrationLogger.println("Started at: " + LocalDateTime.now());
+            migrationLogger.println("========================================\n");
+            migrationLogger.flush();
 
-        migrationLogger.println("========================================");
-        migrationLogger.println("FACILITY MIGRATION LOG");
-        migrationLogger.println("Started at: " + LocalDateTime.now());
-        migrationLogger.println("========================================\n");
-        migrationLogger.flush();
+            // Get environment configurations
+            String mdmsHost = getEnvOrDefault("EGOV_MDMS_HOST", "http://localhost:8094");
+            String mdmsSearchEndpoint = "/egov-mdms-service/v1/_search";
 
-        // Get environment configurations
-        String mdmsHost = getEnvOrDefault("EGOV_MDMS_HOST", "http://localhost:8094");
-        String mdmsSearchEndpoint = "/egov-mdms-service/v1/_search";
+            String facilityHost = getEnvOrDefault("EGOV_FACILITY_HOST", "http://localhost:8080");
+            String facilityCreateEndpoint = "/facility-service/v2/facility/create";
 
-        String facilityHost = getEnvOrDefault("EGOV_FACILITY_HOST", "http://localhost:8080");
-        String facilityCreateEndpoint = "/facility-service/v2/facility/create";
+            String hrmsHost = getEnvOrDefault("EGOV_HRMS_HOST", "http://localhost:8090");
+            String hrmsSearchEndpoint = "/egov-hrms/employees/_search";
 
-        String hrmsHost = getEnvOrDefault("EGOV_HRMS_HOST", "http://localhost:8090");
-        String hrmsSearchEndpoint = "/egov-hrms/employees/_search";
+            String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
 
-        String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
+            // Iterate through each state
+            for (Map.Entry<String, String> entry : TENANT_TO_STATE.entrySet()) {
+                String tenantId = entry.getKey();
+                String stateName = entry.getValue();
 
-        // Iterate through each state
-        for (Map.Entry<String, String> entry : TENANT_TO_STATE.entrySet()) {
-            String tenantId = entry.getKey();
-            String stateName = entry.getValue();
+                log.info("Processing tenant: {} [{}]", tenantId, stateName);
 
-            log.info("Processing tenant: {} [{}]", tenantId, stateName);
+                try {
+                    // Fetch tenants from MDMS
+                    JsonNode tenantsData = fetchMdmsData(
+                            restTemplate, objectMapper, mdmsHost + mdmsSearchEndpoint,
+                            tenantId, "tenant", List.of("tenants"), authToken
+                    );
 
-            try {
-                // Fetch tenants from MDMS
-                JsonNode tenantsData = fetchMdmsData(
-                        restTemplate, objectMapper, mdmsHost + mdmsSearchEndpoint,
-                        tenantId, "tenant", List.of("tenants"), authToken
-                );
+                    // Fetch districts and blocks from MDMS in a single call
+                    JsonNode incidentData = fetchMdmsData(
+                            restTemplate, objectMapper, mdmsHost + mdmsSearchEndpoint,
+                            tenantId, "Incident", List.of("District", "Block"), authToken
+                    );
 
-                // Fetch districts and blocks from MDMS in a single call
-                JsonNode incidentData = fetchMdmsData(
-                        restTemplate, objectMapper, mdmsHost + mdmsSearchEndpoint,
-                        tenantId, "Incident", List.of("District", "Block"), authToken
-                );
+                    // Parse the MDMS responses
+                    List<JsonNode> tenants = getMasterArray(tenantsData, "tenant", "tenants");
+                    List<JsonNode> districts = getMasterArray(incidentData, "Incident", "District");
+                    List<JsonNode> blocks = getMasterArray(incidentData, "Incident", "Block");
 
-                // Parse the MDMS responses
-                List<JsonNode> tenants = getMasterArray(tenantsData, "tenant", "tenants");
-                List<JsonNode> districts = getMasterArray(incidentData, "Incident", "District");
-                List<JsonNode> blocks = getMasterArray(incidentData, "Incident", "Block");
+                    // Build lookup maps for districts and blocks (code -> name)
+                    Map<String, String> districtMap = buildDistrictMap(districts);
+                    Map<String, String> blockMap = buildBlockMap(blocks);
 
-                // Build lookup maps for districts and blocks (code -> name)
-                Map<String, String> districtMap = buildDistrictMap(districts);
-                Map<String, String> blockMap = buildBlockMap(blocks);
+                    log.info("Found {} tenants, {} districts, {} blocks for tenant {}", tenants.size(), districts.size(), blocks.size(), tenantId);
 
-                log.info("Found {} tenants, {} districts, {} blocks for tenant {}", tenants.size(), districts.size(), blocks.size(), tenantId);
+                    migrationLogger.println("\n========================================");
+                    migrationLogger.println("Processing Tenant: " + tenantId + " [" + stateName + "]");
+                    migrationLogger.println("========================================");
+                    migrationLogger.println("Total Facilities to Process: " + tenants.size());
+                    migrationLogger.println("----------------------------------------\n");
+                    migrationLogger.flush();
 
-                migrationLogger.println("\n========================================");
-                migrationLogger.println("Processing Tenant: " + tenantId + " [" + stateName + "]");
-                migrationLogger.println("========================================");
-                migrationLogger.println("Total Facilities to Process: " + tenants.size());
-                migrationLogger.println("----------------------------------------\n");
-                migrationLogger.flush();
+                    int createdCount = 0;
+                    int skippedCount = 0;
 
-                int createdCount = 0;
-                int skippedCount = 0;
+                    for (JsonNode tenant : tenants) {
+                        String facilityName = getField(tenant, "name");
+                        String facilityTenantId = getField(tenant, "code");
 
-                for (JsonNode tenant : tenants) {
-                    String facilityName = getField(tenant, "name");
-                    String facilityTenantId = getField(tenant, "code");
+                        // Skip if facility name is "State"
+                        if (facilityName == null || facilityName.equalsIgnoreCase("State")) {
+                            logSkippedFacility(
+                                    migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                    "Facility name is 'State'", null
+                            );
+                            skippedCount++;
+                            continue;
+                        }
 
-                    // Skip if facility name is "State"
-                    if (facilityName == null || facilityName.equalsIgnoreCase("State")) {
-                        logSkippedFacility(
-                                migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                "Facility name is 'State'", null
-                        );
-                        skippedCount++;
-                        continue;
+                        try {
+                            // Get city information
+                            JsonNode cityNode = tenant.get("city");
+                            if (cityNode == null || cityNode.isNull()) {
+                                logSkippedFacility(
+                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                        "No city information found in MDMS data", null
+                                );
+                                skippedCount++;
+                                continue;
+                            }
+
+                            String hfrOrNinIdCode = getField(cityNode, "code");
+                            if (hfrOrNinIdCode == null || hfrOrNinIdCode.isEmpty()) {
+                                logSkippedFacility(
+                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                        "HFR/NIN ID code not found in city data (city.code is null or empty)", null
+                                );
+                                skippedCount++;
+                                continue;
+                            }
+
+                            // Extract and validate HFR/NIN ID
+                            String[] hfrOrNinIdCodeSeparated = hfrOrNinIdCode.split("-");
+                            String extractedHfrOrNinId = hfrOrNinIdCodeSeparated.length > 0
+                                    ? hfrOrNinIdCodeSeparated[hfrOrNinIdCodeSeparated.length - 1]
+                                    : null;
+
+                            if (extractedHfrOrNinId == null || extractedHfrOrNinId.isEmpty()) {
+                                logSkippedFacility(
+                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                        "Unable to extract HFR/NIN ID from code: " + hfrOrNinIdCode, null
+                                );
+                                skippedCount++;
+                                continue;
+                            }
+
+                            String districtCode = getField(cityNode, "districtCode");
+                            String blockCode = getField(cityNode, "blockCode");
+
+                            // Lookup district and block names
+                            String districtName = districtMap.get(districtCode);
+                            String blockName = blockMap.get(blockCode);
+
+                            if (districtName == null) {
+                                logSkippedFacility(
+                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                        "District not found for code: " + districtCode, null
+                                );
+                                skippedCount++;
+                                continue;
+                            }
+
+                            if (blockName == null) {
+                                logSkippedFacility(
+                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                        "Block not found for code: " + blockCode, null
+                                );
+                                skippedCount++;
+                                continue;
+                            }
+
+                            // Fetch POC name from HRMS
+                            String pocName = fetchPocNameFromHrms(
+                                    restTemplate, objectMapper, hrmsHost + hrmsSearchEndpoint,
+                                    facilityTenantId, authToken
+                            );
+
+                            // Build facility object
+                            Map<String, Object> facility = buildFacilityObject(
+                                    tenant, stateName, districtName, blockName, pocName, facilityTenantId,
+                                    extractedHfrOrNinId, facilityMappings
+                            );
+
+                            // Create facility individually
+                            boolean created = createSingleFacility(
+                                    restTemplate, objectMapper, facilityHost + facilityCreateEndpoint,
+                                    authToken, facility, facilityMappings, migrationLogger,
+                                    skippedFacilities, facilityTenantId, facilityName
+                            );
+
+                            if (created) {
+                                createdCount++;
+                                log.info("✓ Created facility: {} ({})", facilityName, facilityTenantId);
+                            } else {
+                                skippedCount++;
+                            }
+
+                        } catch (Exception e) {
+                            logSkippedFacility(
+                                    migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                    "Exception during processing: " + e.getMessage(), e.toString()
+                            );
+                            skippedCount++;
+                        }
                     }
 
-                    try {
-                        // Get city information
-                        JsonNode cityNode = tenant.get("city");
-                        if (cityNode == null || cityNode.isNull()) {
-                            logSkippedFacility(
-                                    migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                    "No city information found in MDMS data", null
-                            );
-                            skippedCount++;
-                            continue;
-                        }
+                    log.info("Completed processing tenant {}: {} facilities created, {} skipped", tenantId, createdCount, skippedCount);
 
-                        String hfrOrNinIdCode = getField(cityNode, "code");
-                        if (hfrOrNinIdCode == null || hfrOrNinIdCode.isEmpty()) {
-                            logSkippedFacility(
-                                    migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                    "HFR/NIN ID code not found in city data (city.code is null or empty)", null
-                            );
-                            skippedCount++;
-                            continue;
-                        }
+                    migrationLogger.println("\n----------------------------------------");
+                    migrationLogger.println("Tenant " + tenantId + " Summary:");
+                    migrationLogger.println("  ✓ Facilities Created: " + createdCount);
+                    migrationLogger.println("  ✗ Facilities Skipped: " + skippedCount);
+                    migrationLogger.println("----------------------------------------");
+                    migrationLogger.flush();
 
-                        // Extract and validate HFR/NIN ID
-                        String[] hfrOrNinIdCodeSeparated = hfrOrNinIdCode.split("-");
-                        String extractedHfrOrNinId = hfrOrNinIdCodeSeparated.length > 0
-                                ? hfrOrNinIdCodeSeparated[hfrOrNinIdCodeSeparated.length - 1]
-                                : null;
-
-                        if (extractedHfrOrNinId == null || extractedHfrOrNinId.isEmpty()) {
-                            logSkippedFacility(
-                                    migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                    "Unable to extract HFR/NIN ID from code: " + hfrOrNinIdCode, null
-                            );
-                            skippedCount++;
-                            continue;
-                        }
-
-                        String districtCode = getField(cityNode, "districtCode");
-                        String blockCode = getField(cityNode, "blockCode");
-
-                        // Lookup district and block names
-                        String districtName = districtMap.get(districtCode);
-                        String blockName = blockMap.get(blockCode);
-
-                        if (districtName == null) {
-                            logSkippedFacility(
-                                    migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                    "District not found for code: " + districtCode, null
-                            );
-                            skippedCount++;
-                            continue;
-                        }
-
-                        if (blockName == null) {
-                            logSkippedFacility(
-                                    migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                    "Block not found for code: " + blockCode, null
-                            );
-                            skippedCount++;
-                            continue;
-                        }
-
-                        // Fetch POC name from HRMS
-                        String pocName = fetchPocNameFromHrms(
-                                restTemplate, objectMapper, hrmsHost + hrmsSearchEndpoint,
-                                facilityTenantId, authToken
-                        );
-
-                        // Build facility object
-                        Map<String, Object> facility = buildFacilityObject(
-                                tenant, stateName, districtName, blockName, pocName, facilityTenantId,
-                                extractedHfrOrNinId, facilityMappings
-                        );
-
-                        // Create facility individually
-                        boolean created = createSingleFacility(
-                                restTemplate, objectMapper, facilityHost + facilityCreateEndpoint,
-                                authToken, facility, facilityMappings, migrationLogger,
-                                skippedFacilities, facilityTenantId, facilityName
-                        );
-
-                        if (created) {
-                            createdCount++;
-                            log.info("✓ Created facility: {} ({})", facilityName, facilityTenantId);
-                        } else {
-                            skippedCount++;
-                        }
-
-                    } catch (Exception e) {
-                        logSkippedFacility(
-                                migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                "Exception during processing: " + e.getMessage(), e.toString()
-                        );
-                        skippedCount++;
-                    }
+                } catch (Exception e) {
+                    log.error("Error processing tenant: {}", tenantId, e);
                 }
-
-                log.info("Completed processing tenant {}: {} facilities created, {} skipped", tenantId, createdCount, skippedCount);
-
-                migrationLogger.println("\n----------------------------------------");
-                migrationLogger.println("Tenant " + tenantId + " Summary:");
-                migrationLogger.println("  ✓ Facilities Created: " + createdCount);
-                migrationLogger.println("  ✗ Facilities Skipped: " + skippedCount);
-                migrationLogger.println("----------------------------------------");
-                migrationLogger.flush();
-
-            } catch (Exception e) {
-                log.error("Error processing tenant: {}", tenantId, e);
             }
+
+            // Persist facility mappings to database
+            persistFacilityMappings(context, facilityMappings);
+
+            // Count successfully migrated facilities (those with facilityId set)
+            long successfullyMigrated = facilityMappings.values().stream()
+                    .filter(mapping -> mapping.facilityId != null)
+                    .count();
+
+            // Print final summary to migration log
+            migrationLogger.println("\n========================================");
+            migrationLogger.println("MIGRATION SUMMARY");
+            migrationLogger.println("========================================");
+            migrationLogger.println("Total Facilities Migrated: " + successfullyMigrated);
+            migrationLogger.println("Total Facilities Skipped: " + skippedFacilities.size());
+            migrationLogger.println("\nCompleted at: " + LocalDateTime.now());
+            migrationLogger.println("========================================\n");
+
+            // Log facility mappings summary to console as well
+            log.info("✅ Migration completed: Facilities migrated from MDMS to facility table");
+            log.info("Total facilities successfully migrated: {}", successfullyMigrated);
+            log.info("Total facilities skipped: {}", skippedFacilities.size());
+            log.info("📝 Migration log file: {}", absoluteLogPath);
+
+            migrationLogger.flush();
         }
 
-        // Persist facility mappings to database
-        persistFacilityMappings(context, facilityMappings);
-
-        // Count successfully migrated facilities (those with facilityId set)
-        long successfullyMigrated = facilityMappings.values().stream()
-                .filter(mapping -> mapping.facilityId != null)
-                .count();
-
-        // Print final summary to migration log
-        migrationLogger.println("\n========================================");
-        migrationLogger.println("MIGRATION SUMMARY");
-        migrationLogger.println("========================================");
-        migrationLogger.println("Total Facilities Migrated: " + successfullyMigrated);
-        migrationLogger.println("Total Facilities Skipped: " + skippedFacilities.size());
-        migrationLogger.println("\nCompleted at: " + LocalDateTime.now());
-        migrationLogger.println("========================================\n");
-
-        migrationLogger.flush();
-        migrationLogger.close();
-
-        // Log facility mappings summary
-        log.info("✅ Migration completed: Facilities migrated from MDMS to facility table");
-        log.info("Total facilities successfully migrated: {}", successfullyMigrated);
-        log.info("Total facilities skipped: {}", skippedFacilities.size());
-        log.info("📝 Migration log file: {}", absoluteLogPath);
     }
 
     private void persistFacilityMappings(Context context, Map<String, FacilityMapping> facilityMappings) throws Exception {
