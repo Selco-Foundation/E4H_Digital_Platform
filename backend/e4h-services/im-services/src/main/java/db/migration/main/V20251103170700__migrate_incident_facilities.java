@@ -27,16 +27,16 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
 
     static {
         Map<String, String> m = new LinkedHashMap<>();
-//        m.put("as", "Assam");
-//        m.put("ml", "Meghalaya");
-//        m.put("mn", "Manipur");
-//        m.put("nl", "Nagaland");
-//        m.put("sk", "Sikkim");
-//        m.put("gj", "Gujarat");
-//        m.put("mz", "Mizoram");
-//        m.put("or", "Odisha");
+        m.put("as", "Assam");
+        m.put("ml", "Meghalaya");
+        m.put("mn", "Manipur");
+        m.put("nl", "Nagaland");
+        m.put("sk", "Sikkim");
+        m.put("gj", "Gujarat");
+        m.put("mz", "Mizoram");
+        m.put("or", "Odisha");
         m.put("pg", "Karnataka");
-//        m.put("mh", "Maharashtra");
+        m.put("mh", "Maharashtra");
         TENANT_TO_STATE = Collections.unmodifiableMap(m);
     }
 
