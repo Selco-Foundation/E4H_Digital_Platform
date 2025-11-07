@@ -10,6 +10,7 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -52,9 +53,17 @@ public class FacilityService {
      * Validates against MDMS, ensures boundary codes are valid,
      * generates facility IDs and address IDs if missing, and checks for uniqueness.
      *
+     * <p><b>Boundary Creation Behavior:</b></p>
+     * <ul>
+     *   <li>Facility boundaries are created via external boundary service API calls</li>
+     *   <li>Boundary codes are validated before creation to ensure parent boundaries exist</li>
+     * </ul>
+     *
      * @param request FacilityCreateRequest containing a list of facilities
      * @return list of successfully validated and pushed facilities
+     * @throws CustomException if validation fails (MDMS, uniqueness, boundary validation)
      */
+    @Transactional(rollbackFor = Exception.class)
     public List<Facility> createFacility(FacilityCreateRequest request) {
         List<FacilityCreate> facilities = request.getFacilities();
 

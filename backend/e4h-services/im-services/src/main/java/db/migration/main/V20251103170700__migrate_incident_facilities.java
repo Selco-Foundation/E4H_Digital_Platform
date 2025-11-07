@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 import org.springframework.http.*;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -49,7 +50,7 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
     public void migrate(Context context) throws Exception {
         log.info("🚀 Starting migration: migrating facilities from MDMS to facility table");
 
-        RestTemplate restTemplate = new RestTemplate();
+        RestTemplate restTemplate = createRestTemplateWithTimeouts();
         ObjectMapper objectMapper = new ObjectMapper();
 
         // Map to track facility mappings: nin_id -> FacilityMapping
@@ -717,6 +718,20 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
     private static String getEnvOrDefault(String key, String def) {
         String v = System.getenv(key);
         return (v == null || v.isEmpty()) ? def : v;
+    }
+
+    /**
+     * Creates a RestTemplate with configured timeouts for internal service communication.
+     * Uses HttpComponentsClientHttpRequestFactory for better timeout control.
+     */
+    private RestTemplate createRestTemplateWithTimeouts() {
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
+        factory.setConnectTimeout(30000);  // 30 seconds connection timeout
+        factory.setConnectionRequestTimeout(30000);  // 30 seconds request timeout
+        // Read timeout is handled by the underlying HttpClient configuration
+        
+        log.info("RestTemplate created with timeouts: 30s connect, 30s connection request");
+        return new RestTemplate(factory);
     }
 
     // Helper class to track facility mappings

@@ -71,7 +71,7 @@ public class FacilityUpdateRequestFacilityUpdate {
     @JsonProperty("facility_details")
     private HealthFacilityDetails facilityDetails = null;
 
-    @Schema(name = "isOnmReady", accessMode = Schema.AccessMode.READ_ONLY, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @Schema(name = "isOnmReady", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("isOnmReady")
     private Boolean isOnmReady;
 }
