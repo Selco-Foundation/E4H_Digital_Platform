@@ -14,7 +14,6 @@ import 'package:recase/recase.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/cache_media_upload/cache_media_upload.dart';
-import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
@@ -42,8 +41,8 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
   int _videoKeyCounter = 0;
   List<PlatformFile> _selectedImages = [];
   List<PlatformFile> _selectedVideos = [];
-  bool _isImagesInitLoading = true;
-  bool _isVideosInitLoading = true;
+  bool _isImagesInitLoading = false;
+  bool _isVideosInitLoading = false;
   double? _latitude;
   double? _longitude;
   StreamSubscription<LocationState>? _locSub;
@@ -241,9 +240,9 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         .add(CacheMediaUploadEvent.add(entry));
                   }
 
-                  context
-                      .read<InboxTypeBloc>()
-                      .add(const InboxTypeEvent.typeSelected(0));
+                  // context
+                  //     .read<InboxTypeBloc>()
+                  //     .add(const InboxTypeEvent.typeSelected(0));
                   context.router.push(const AssetSummaryRoute());
                 },
               ),

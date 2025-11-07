@@ -25,7 +25,6 @@ import '../pages/select_health_facility.dart';
 import '../pages/setup_new_password.dart';
 import '../pages/specification.dart';
 import '../pages/submit_for_approval.dart';
-import '../pages/submitted_save_success.dart';
 import '../pages/sync_loading.dart';
 import '../pages/unauthenticated.dart';
 import '../pages/video_player.dart';
@@ -91,9 +90,6 @@ class AppRouter extends _$AppRouter {
           AutoRoute(
               page: SubmitForApprovalRoute.page,
               path: Routes.submitForApproval),
-          AutoRoute(
-              page: SubmittedSaveSuccessRoute.page,
-              path: Routes.submittedSaveSuccess),
           AutoRoute(page: DraftRoute.page, path: Routes.draft),
           AutoRoute(page: ImageViewerRoute.page, path: Routes.imageViewer),
           AutoRoute(page: VideoPlayerRoute.page, path: Routes.videoViewer),
