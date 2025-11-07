@@ -204,7 +204,7 @@ public class BoundaryRelationshipValidator {
                 .build());
 
         if(CollectionUtils.isEmpty(boundaryList)) {
-            throw new CustomException("BOUNDARY_ENTITY_DOES_NOT_EXIST", "Boundary entity does not exist.");
+            throw new CustomException("BOUNDARY_ENTITY_DOES_NOT_EXIST", "Boundary entity does not exist for code: " + body.getBoundaryRelationship().getCode());
         }
     }
 
