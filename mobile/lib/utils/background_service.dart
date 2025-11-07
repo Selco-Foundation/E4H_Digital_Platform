@@ -494,7 +494,7 @@ Future<void> _performSubmissionForActivityFacility({
           documents.add(
             Document(
               id: saved.documentId,
-              documentType: saved.documentType,
+              documentType: "ASSET", // saved.documentType,
               fileStore: photoId,
               documentUid: "DOC-ASSET-${saved.serialNumber}",
               additionalDetailsJson: null,
