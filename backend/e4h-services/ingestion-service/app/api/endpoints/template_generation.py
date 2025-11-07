@@ -17,6 +17,7 @@ from app.schemas.boundary import Boundary, flatten_boundaries
 from app.utils.convertor import request_info_from_json
 from app.utils.excel_utils import add_dropdowns_to_excel
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import create_temp_file, cleanup_temp_file
 from app.utils.mdms_client import MDMSClient
@@ -33,6 +34,7 @@ mdms_url = os.getenv("MDMS_URL")
 project_service_url = os.getenv("PROJECT_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 fieldPlan_service_url = os.getenv("FIELDPLAN_SERVICE_URL")
+fieldPlan_activity_service_url = os.getenv("FIELDPLAN_ACTIVITY_SERVICE_URL")
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
     "port": int(os.getenv("DB_PORT", 5432)),
@@ -219,11 +221,13 @@ async def get_facility_ingestion_template_with_data(
         facility_service: FacilityTemplateService = Depends(),
     payload: dict = Body(..., description="Payload object")
 ):
-    request_info = request_info_from_json(payload.get("request_info", {}))
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
+    # RequestInfo = request_info_from_json(payload.get("RequestInfo", {}))
     boundary_data = payload.get("boundary_data", {})
     fieldplan_id = payload.get("fieldplan_id")
     project_id = payload.get("project_id")
     mdms_client = MDMSClient(mdms_url)
+    fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"facility_ingestion_template_{timestamp}.xlsx"
@@ -244,6 +248,7 @@ async def get_facility_ingestion_template_with_data(
         logger.info(f"Found {len(project_linked_facility_ids)} facilities currently linked to project {project_id}")
 
         all_facilities = []
+        # fieldplan_client = None
         if facility_service_url and project_linked_facility_ids:
             facility_client = FacilityServiceClient(facility_service_url)
             for boundary in boundary_list:
@@ -294,11 +299,28 @@ async def get_facility_ingestion_template_with_data(
             facility_boundary_code = pf_facility.get('boundary_code') or pf_facility.get('boundaryCode')
 
             # Only add if not already present and belongs to current boundary codes
-            if (facility_id not in existing_facility_ids and
-                    facility_boundary_code in valid_boundary_codes):
+            if (facility_id not in existing_facility_ids and facility_id in project_linked_facility_ids and facility_boundary_code in valid_boundary_codes):
                 all_facilities.append(pf_facility)
                 logger.info(
                     f"Added fieldplan facility {facility_id} to template (boundary: {facility_boundary_code})")
+            elif (facility_id not in project_linked_facility_ids): # In case the facility is no longer mapped to project, so unlink the facility
+                fieldPlan_facility_data = next(
+                    (pf for pf in fieldplan_facilities if pf.get("facilityId") == facility_id),
+                    None)
+                fieldplan_client.unlink_fieldplan_facility(
+                    request_info=request_info,
+                    fieldplan_id=fieldplan_id,
+                    facility_id=facility_id,
+                    fieldplan_facility_data=fieldPlan_facility_data
+                )
+
+                facilities_activity_response = fieldplan_activity_client.search_facility_activity(
+                    request_info, fieldplan_id, facility_id)
+                facilities_activity = facilities_activity_response.get("FacilityActivities", [])
+                facility_activity_ids = list({fa.get("activityFacility").get("id") for fa in facilities_activity if
+                                              fa.get("activityFacility").get("id")})
+                fieldplan_activity_client.delete_facility_activity(request_info=request_info,
+                                                                   facility_activity_id=facility_activity_ids)
             elif facility_boundary_code not in valid_boundary_codes:
                 logger.info(
                     f"Skipped fieldplan facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")

@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 import requests
 
@@ -7,28 +7,33 @@ from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import ResponseInfo
 
 
-class FieldPlanServiceClient:
-    def __init__(self, fieldPlan_service_url: str):
-        self.fieldPlan_service_url = fieldPlan_service_url
+class FieldPlanActivityServiceClient:
+    def __init__(self, fieldPlan_activity_service_url: str):
+        self.fieldPlan_activity_service_url = fieldPlan_activity_service_url
 
-    def create_fieldPlan_facility(self, request_info: RequestInfo, fieldPlan_id: str, facility_id: str):
-        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/_create"
+    def create_facility_activity(self, request_info: RequestInfo, fieldPlan, roleToIds, facility_id: str):
+        url = f"{self.fieldPlan_activity_service_url}/activity/v1/activities/_assign-staff"
         headers = {
             "Content-Type": "application/json"
         }
 
+        activityId = fieldPlan.get("activities", None)[0].get("code")
         payload = {
             'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-            'FieldPlanFacility': {
+            'ActivitiesFacilities': [{
                 'facilityId': facility_id,
-                'fieldPlanId': fieldPlan_id,
-                'isdeleted': False,
+                'fieldPlanId': fieldPlan.get("id", None),
+                'activityId': activityId,
+                'scheduledAt': fieldPlan.get("startDate", None),
+                'activatedAt': fieldPlan.get("startDate", None),
+                'reviewerUser': roleToIds.get("INSTALLATION_REVIEWER"),
+                'spocUser': roleToIds.get("INSTALLATION_SPOC"),
                 'tenantId': 'in'
-            }
+            }]
         }
         try:
             response = requests.post(url, headers=headers, json=payload)
-            print(f"FieldPlan Facility called successfully: {json.loads(response.text)}")
+            print(f"Facility activity called successfully: {json.loads(response.text)}")
             return response
 
         except requests.exceptions.HTTPError as http_err:
@@ -44,13 +49,13 @@ class FieldPlanServiceClient:
             print(f"An error occurred: {req_err}")
             raise req_err
 
-    def search_fieldPlan(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
+    def search_facility_activity(self, request_info: RequestInfo, fieldplan_id: str, facility_id:str) -> Dict[str, Any]:
         tenant_id = "in"
         limit = 1000
         offset = 0
         all_facilities = []
 
-        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/_search"
+        url = f"{self.fieldPlan_activity_service_url}/activity/v1/activities/_search"
         headers = {
             "Content-Type": "application/json"
         }
@@ -59,9 +64,10 @@ class FieldPlanServiceClient:
             # First request to get total count
             payload = {
                 "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-                "FieldPlans": {
-                    "ids": [fieldplan_id],
-                    "tenantId": tenant_id
+                "ActivityFacility": {
+                    "tenantId": tenant_id,
+                    "fieldPlanIds": [fieldplan_id],
+                    "facilityIds": [facility_id]
                 }
             }
             params = {
@@ -74,8 +80,8 @@ class FieldPlanServiceClient:
             response.raise_for_status()
 
             data = response.json()
-            total_count = data.get("TotalCount", 0)
-            all_facilities.extend(data.get("FieldPlans", []))
+            total_count = data.get("totalCount", 0)
+            all_facilities.extend(data.get("facility", []))
 
             # If more pages are present, fetch them
             while len(all_facilities) < total_count:
@@ -84,70 +90,11 @@ class FieldPlanServiceClient:
                 response = requests.post(url, headers=headers, json=payload, params=params)
                 response.raise_for_status()
                 data = response.json()
-                all_facilities.extend(data.get("FieldPlans", []))
+                all_facilities.extend(data.get("facility", []))
 
             return {
                 "TotalCount": total_count,
-                "FieldPlans": all_facilities
-            }
-
-        except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
-            raise http_err
-        except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
-            raise conn_err
-        except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
-            raise timeout_err
-        except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
-            raise req_err
-
-    def search_fieldplan_facility(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
-        tenant_id = "in"
-        limit = 1000
-        offset = 0
-        all_facilities = []
-
-        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/_search"
-        headers = {
-            "Content-Type": "application/json"
-        }
-
-        try:
-            # First request to get total count
-            payload = {
-                "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
-                "FieldPlanFacility": {
-                    "fieldPlanId": [fieldplan_id]
-                }
-            }
-            params = {
-                "tenantId": tenant_id,
-                "limit": limit,
-                "offset": offset,
-                "includeDeleted": "false"
-            }
-            response = requests.post(url, headers=headers, json=payload, params=params)
-            response.raise_for_status()
-
-            data = response.json()
-            total_count = data.get("TotalCount", 0)
-            all_facilities.extend(data.get("FieldPlanFacilities", []))
-
-            # If more pages are present, fetch them
-            while len(all_facilities) < total_count:
-                offset += limit
-                params["offset"] = offset
-                response = requests.post(url, headers=headers, json=payload, params=params)
-                response.raise_for_status()
-                data = response.json()
-                all_facilities.extend(data.get("FieldPlanFacilities", []))
-
-            return {
-                "TotalCount": total_count,
-                "FieldPlanFacilities": all_facilities
+                "FacilityActivities": all_facilities
             }
 
         except requests.exceptions.HTTPError as http_err:
@@ -164,59 +111,92 @@ class FieldPlanServiceClient:
             raise req_err
 
 
-    def unlink_fieldplan_facility(self, request_info: RequestInfo, fieldplan_id: str, facility_id: str,
-                                  fieldplan_facility_data: Dict[str, Any] = None):
+    def search_fieldplan_activity_assignment(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
+        tenant_id = "in"
+        limit = 1000
+        offset = 0
+        all_facilities = []
+
+        url = f"{self.fieldPlan_activity_service_url}/activity/v1/activities/assignment/_search"
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        try:
+            # First request to get total count
+            payload = {
+                "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+                "ActivityAssignment": {
+                    "tenantId": tenant_id,
+                    "fieldPlanIds": [fieldplan_id]
+                }
+            }
+            params = {
+                "tenantId": tenant_id,
+                "limit": limit,
+                "offset": offset,
+                "includeDeleted": "false"
+            }
+            response = requests.post(url, headers=headers, json=payload, params=params)
+            response.raise_for_status()
+
+            data = response.json()
+            total_count = data.get("totalCount", 0)
+            all_facilities.extend(data.get("ActivityAssignment", []))
+
+            # If more pages are present, fetch them
+            while len(all_facilities) < total_count:
+                offset += limit
+                params["offset"] = offset
+                response = requests.post(url, headers=headers, json=payload, params=params)
+                response.raise_for_status()
+                data = response.json()
+                all_facilities.extend(data.get("ActivityAssignment", []))
+
+            return {
+                "TotalCount": total_count,
+                "ActivitiesAssignments": all_facilities
+            }
+
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+            raise req_err
+
+    def delete_facility_activity(self, request_info: RequestInfo, facility_activity_id: List[str]):
         """
-        Unlink a facility from a field plan by setting isDeleted to True
+        Delete a facility activity by setting isDeleted to True
         """
         try:
-            # Use provided project_facility_data if available, otherwise search for it
-            if fieldplan_facility_data:
-                target_facility = fieldplan_facility_data
-                print(f"Using provided FieldPlanFacility data for facility {facility_id}")
-            else:
-                # Fallback: Use existing search method to find the FieldPlanFacility record
-                print(f"Searching for FieldPlanFacility record for facility {facility_id}")
-                search_response = self.search_fieldplan_facility(request_info, fieldplan_id)
-                fieldplan_facilities = search_response.get("FieldPlanFacilities", [])
-
-                # Find the specific facility in the results
-                target_facility = None
-                for pf in fieldplan_facilities:
-                    if pf.get("facilityId") == facility_id:
-                        target_facility = pf
-                        break
-
-                if not target_facility:
-                    print(f"No FieldPlanFacility record found for facility {facility_id} and field plan {fieldplan_id}")
-                    return None
-
-            fieldplan_facility_id = target_facility.get("id")
-
-            if not fieldplan_facility_id:
-                print("No ID found for FieldPlanFacility record")
+            if not facility_activity_id:
+                print("No ID found for Facility Activity record")
                 return None
 
-            print(f"Found FieldPlanFacility record with ID: {fieldplan_facility_id}")
+            print(f"Found Facility Activity record with ID: {facility_activity_id}")
 
             # Now update the record to set isDeleted = True
-            update_url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/_unassign"
+            update_url = f"{self.fieldPlan_activity_service_url}/activity/v1/activities/_delete"
             update_headers = {
                 "Content-Type": "application/json"
             }
 
             # Build FieldPlanFacility payload - only include rowVersion if present
-            fieldplan_facility_payload = {
-                'id': fieldplan_facility_id,
-                'facilityId': facility_id,
-                'fieldPlanId': fieldplan_id,
-                'isdeleted': True,
-                'tenantId': 'in'
-            }
+            facility_activity_payload_list = [
+                {'id': fa_id, 'isDeleted': True, 'tenantId': 'in'}
+                for fa_id in facility_activity_id
+            ]
 
             update_payload = {
                 'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-                'FieldPlanFacility': fieldplan_facility_payload
+                'ActivitiesFacilities': facility_activity_payload_list
             }
 
             update_response = requests.post(update_url, headers=update_headers, json=update_payload)

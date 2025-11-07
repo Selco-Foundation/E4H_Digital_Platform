@@ -51,7 +51,7 @@ public class ActivityFacilityRepository extends GenericRepository<ActivityFacili
         criteria.setCountQuery(false);
         URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
 
-        String query = queryBuilder.getActivityFacilitySearchQuery(criteria, urlParams, preparedStmtList);
+        String query = queryBuilder.getActivityFacilitySearchQuery(request, urlParams, preparedStmtList);
         List<ActivityFacility> activityFacilities = jdbcTemplate.query(query, activityRowMapper, preparedStmtList.toArray());
 
         log.info("Fetched project list based on given search criteria");

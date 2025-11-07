@@ -26,7 +26,7 @@ public class ActivityRowMapper implements RowMapper<ActivityFacility> {
                     .facilityId(resultSet.getString("fa_facilityId"))
                     .activityId(resultSet.getString("fa_activityId"))
                     .scheduledAt(resultSet.getLong("fa_scheduledAt"))
-                    .assignedUser(resultSet.getString("fa_assignedUser"))
+//                    .assignedUser(resultSet.getString("fu.userid"))
                     .activatedAt(resultSet.getLong("fa_activatedAt"))
                     .completedAt(resultSet.getLong("fa_completedAt"))
                     .status(resultSet.getString("fa_status"))
