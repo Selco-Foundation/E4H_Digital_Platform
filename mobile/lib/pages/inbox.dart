@@ -41,12 +41,9 @@ class _InboxPageState extends State<InboxPage> {
     // Trigger initial fetch after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userState = context.read<UserTypeBloc>().state;
-      // Initialize InboxTypeBloc for the first tab
       if (userState.maybeWhen(supervisor: () => true, orElse: () => false)) {
-        // Supervisor first tab index 0
         context.read<InboxTypeBloc>().add(const InboxTypeEvent.typeSelected(0));
       } else {
-        // User first tab maps to typeSelected(1)
         context.read<InboxTypeBloc>().add(const InboxTypeEvent.typeSelected(1));
       }
       _fetchProjects(userState, _selectedTabIndex);
