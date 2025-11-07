@@ -3,6 +3,10 @@ package db.migration.main;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.util.Timeout;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 import org.springframework.http.*;
@@ -507,7 +511,6 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                     migrationLogger, skippedFacilities, facilityTenantId, facilityName,
                     "API call exception: " + e.getMessage(), e.toString()
             );
-            return false;
         }
 
         return false;
@@ -724,13 +727,21 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
      * Creates a RestTemplate with configured timeouts for internal service communication.
      * Uses HttpComponentsClientHttpRequestFactory for better timeout control.
      */
+    @SuppressWarnings("deprecation")
     private RestTemplate createRestTemplateWithTimeouts() {
-        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
-        factory.setConnectTimeout(30000);  // 30 seconds connection timeout
-        factory.setConnectionRequestTimeout(30000);  // 30 seconds request timeout
-        // Read timeout is handled by the underlying HttpClient configuration
-        
-        log.info("RestTemplate created with timeouts: 30s connect, 30s connection request");
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setConnectTimeout(Timeout.ofSeconds(30))
+                .setConnectionRequestTimeout(Timeout.ofSeconds(30))
+                .setResponseTimeout(Timeout.ofSeconds(60))
+                .build();
+
+        CloseableHttpClient httpClient = HttpClients.custom()
+                .setDefaultRequestConfig(requestConfig)
+                .build();
+
+        HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory(httpClient);
+
+        log.info("RestTemplate created with timeouts: 30s connect, 30s connection request, 60s read");
         return new RestTemplate(factory);
     }
 
