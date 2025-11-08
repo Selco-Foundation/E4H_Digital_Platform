@@ -547,7 +547,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         .map(
           (m) => GestureDetector(
               onTap: () => _openVideo(m.filePath),
-              child: videoCard(context: context, filePath: m.itemNumber)),
+              child: videoCard(context: context, filePath: m.filePath)),
         )
         .toList();
 

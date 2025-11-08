@@ -37,8 +37,6 @@ class MediaUploadPage extends StatefulWidget {
 
 class _MediaUploadPageState extends State<MediaUploadPage> {
   String? _currentActivityFacilityId;
-  int _imageKeyCounter = 0;
-  int _videoKeyCounter = 0;
   List<PlatformFile> _selectedImages = [];
   List<PlatformFile> _selectedVideos = [];
   bool _isImagesInitLoading = false;
@@ -121,7 +119,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
     }
   }
 
-  Future<void> _populateFromCache(List<CacheMediaUpload> entries) async {
+  Future<void> _populateFromCache2(List<CacheMediaUpload> entries) async {
     final images = <PlatformFile>[];
     final videos = <PlatformFile>[];
 
@@ -153,11 +151,61 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
     setState(() {
       _selectedImages = images;
       _selectedVideos = videos;
-      _imageKeyCounter++;
-      _videoKeyCounter++;
       if (hasImageEntries) _isImagesInitLoading = false;
       if (hasVideoEntries) _isVideosInitLoading = false;
     });
+  }
+
+  Future<void> _populateFromCache(List<CacheMediaUpload> entries) async {
+    final hasImageEntries = entries.any((e) => e.itemType == 'image');
+    final hasVideoEntries = entries.any((e) => e.itemType == 'video');
+
+    if (hasImageEntries || hasVideoEntries) {
+      setState(() {
+        _isImagesInitLoading = hasImageEntries;
+        _isVideosInitLoading = hasVideoEntries;
+      });
+    }
+
+    final futures = entries.map((e) async {
+      final file = await getCachedFile(e.filePath);
+      if (file == null) return null;
+
+      final size = await file.length();
+
+      return (
+        entry: e,
+        platformFile: PlatformFile(
+          name: basename(file.path),
+          path: file.path,
+          size: size,
+        ),
+      );
+    }).toList();
+
+    final results = await Future.wait(futures);
+    final images = <PlatformFile>[];
+    final videos = <PlatformFile>[];
+
+    for (final res in results) {
+      if (res == null) continue;
+      final e = res.entry;
+      final pf = res.platformFile;
+
+      if (e.itemType == 'image') {
+        images.add(pf);
+      } else if (e.itemType == 'video') {
+        videos.add(pf);
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _selectedImages = images;
+        _selectedVideos = videos;
+        if (hasImageEntries) _isImagesInitLoading = false;
+        if (hasVideoEntries) _isVideosInitLoading = false;
+      });
+    }
   }
 
   @override
@@ -278,7 +326,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                             'JPEG',
                             'PNG'
                           ],
-                          // key: ValueKey('images-$_imageKeyCounter'),
                           label: 'Upload Images',
                           allowMultiples: true,
                           showPreview: true,
@@ -286,7 +333,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                           onFilesSelected: (files) {
                             setState(() {
                               _selectedImages = files;
-                              // _imageKeyCounter++;
                             });
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
@@ -294,7 +340,8 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                                     content: Text('Could not fetch location')));
                               }
                             });
-                            return {for (final f in files) f: null};
+                            //return {for (final f in files) f: null};
+                            return <PlatformFile, String?>{};
                           },
                         ),
                         if (_isImagesInitLoading)
@@ -311,7 +358,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         ),
                         const SizedBox(height: spacer2),
                         FileUploadWidget(
-                          // key: ValueKey('videos-$_videoKeyCounter'),
                           label: 'Upload Videos',
                           allowMultiples: true,
                           showPreview: false,
@@ -328,10 +374,8 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                           ],
                           initialFiles: _selectedVideos,
                           onFilesSelected: (files) {
-                            print("Files: ${files.length}");
                             setState(() {
                               _selectedVideos = files;
-                              // _videoKeyCounter++;
                             });
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
@@ -340,6 +384,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                               }
                             });
                             return {for (final f in files) f: null};
+                            //return <PlatformFile, String?>{};
                           },
                         ),
                         if (_isVideosInitLoading)
