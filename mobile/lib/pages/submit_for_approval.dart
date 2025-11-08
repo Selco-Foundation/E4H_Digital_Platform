@@ -233,343 +233,330 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     final allChecked = rejection1 && rejection2 && rejection3;
     final isSupervisor = userType == USER_TYPES.SUPERVISOR.name;
 
-    return BlocListener<ActivityFacilityBomBloc, ActivityFacilityBomState>(
-      listener: (context, state) {
-        state.maybeWhen(
-          loading: () {},
-          success: (_) async {
-            await _loadInitialCompletion();
-          },
-          failure: (msg) {
-            context
-                .showSnackBar(SnackBar(content: Text('BOM sync failed: $msg')));
-          },
-          orElse: () {},
-        );
-      },
-      child: Scaffold(
-        body: MultiBlocListener(
-          listeners: [
-            BlocListener<CacheAssetBloc, CacheAssetState>(
-              listener: (context, cacheState) {
-                cacheState.whenOrNull(
-                  success: () {
-                    context.read<OverallAssetSummaryBloc>().add(
-                          OverallAssetSummaryEvent.loadCounts(
-                              activityFacilityId: activityFacilityId),
-                        );
-                  },
-                  failure: (error) {
-                    context.read<OverallAssetSummaryBloc>().add(
-                          OverallAssetSummaryEvent.loadCounts(
-                              activityFacilityId: activityFacilityId),
-                        );
-                    context.showSnackBar(
-                      SnackBar(content: Text("Sync failed: $error")),
-                    );
-                  },
-                  // loading: (_) // we show loading in the summary widget itself
-                );
+    return Scaffold(
+      body: MultiBlocListener(
+        listeners: [
+          BlocListener<ActivityFacilityBomBloc, ActivityFacilityBomState>(
+              listener: (context, state) {
+            state.maybeWhen(
+              loading: () {},
+              success: (_) async {
+                await _loadInitialCompletion();
               },
-            ),
-            BlocListener<AssetSubmissionBloc, AssetSubmissionState>(
-              listener: (context, submissionState) {
-                submissionState.maybeWhen(
-                  loading: () {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    );
-                  },
-                  success: () {
-                    Navigator.of(context, rootNavigator: true).pop();
-                    context.router.replace(const InboxRoute());
-                  },
-                  failure: (message) {
-                    Navigator.of(context, rootNavigator: true).pop();
-                    context.showSnackBar(SnackBar(content: Text(message)));
-                  },
-                  orElse: () {},
-                );
+              failure: (msg) {
+                context.showSnackBar(
+                    SnackBar(content: Text('BOM sync failed: $msg')));
               },
-            ),
-            BlocListener<SelectedActivityFacilityBloc,
-                    SelectedActivityFacilityState>(
-                listenWhen: (prev, curr) =>
-                    curr.maybeWhen(selected: (_) => true, orElse: () => false),
-                listener: (context, state) {
-                  state.whenOrNull(
-                    selected: (_) {
-                      if (mounted) _reload(); // re-run your data bootstrapping
-                    },
+              orElse: () {},
+            );
+          }),
+          BlocListener<CacheAssetBloc, CacheAssetState>(
+            listener: (context, cacheState) {
+              cacheState.whenOrNull(
+                success: () {
+                  context.read<OverallAssetSummaryBloc>().add(
+                        OverallAssetSummaryEvent.loadCounts(
+                            activityFacilityId: activityFacilityId),
+                      );
+                },
+                failure: (error) {
+                  context.read<OverallAssetSummaryBloc>().add(
+                        OverallAssetSummaryEvent.loadCounts(
+                            activityFacilityId: activityFacilityId),
+                      );
+                  context.showSnackBar(
+                    SnackBar(content: Text("Sync failed: $error")),
                   );
-                }),
-          ],
-          child: ScrollableContent(
-            enableFixedDigitButton: true,
-            backgroundColor: theme.colorTheme.generic.background,
-            header: const BackNavigationHelpHeaderWidget(
-              showBackNavigation: true,
-              showHelp: false,
-            ),
-            footer: BlocBuilder<SelectedActivityFacilityBloc,
-                SelectedActivityFacilityState>(
-              builder: (context, selProjectState) {
-                return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
-                  builder: (context, submissionState) {
-                    final submitting = submissionState.maybeWhen(
-                        loading: () => true, orElse: () => false);
-
-                    final selProject =
-                        selProjectState.whenOrNull(selected: (wf) => wf);
-                    if (selProject == null) {
-                      return const SizedBox.shrink();
-                    }
-
-                    final isRejectedByQc = selProject.status ==
-                        WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
-                    bool isFieldStaff = userType == USER_TYPES.FIELD_STAFF.name;
-
-                    if (isFieldStaff && isRejectedByQc) {
-                      return const SizedBox.shrink();
-                    }
-
-                    // Determine if completion requirement is needed
-                    final requireCompletion = isSupervisor;
-                    final hasCompletion =
-                        _existingReports.isNotEmpty || _pickedFiles.isNotEmpty;
-
-                    final isDisabled = !allChecked ||
-                        submitting ||
-                        (requireCompletion && !hasCompletion);
-
-                    return FooterButton(
-                        showSuffixIcon: false,
-                        isDisabled: isDisabled,
-                        text: submitting
-                            ? "loading..."
-                            : "Re-Submit for Approval",
-                        onPress: () async {
-                          print("allChecked $allChecked");
-                          print("submitting $submitting");
-                          print("submitting ${!allChecked || submitting}");
-                          if (isDisabled) return;
-                          await _ensureLocationLoaded();
-
-                          // Build file inputs (existing + picked)
-                          final lat = _latitude?.toString() ?? '';
-                          final lng = _longitude?.toString() ?? '';
-
-                          final inputs = <CompletionFileInput>[];
-                          for (final e in _existingReports) {
-                            inputs.add(CompletionFileInput(
-                              projectId: activityFacilityId,
-                              filePath: e.filePath,
-                              fileType: e.fileType,
-                              fileName: e.fileName,
-                              latitude: lat,
-                              longitude: lng,
-                              index: null,
-                            ));
-                          }
-                          for (final pf in _pickedFiles) {
-                            if (pf.path == null) continue;
-                            inputs.add(CompletionFileInput(
-                              projectId: activityFacilityId,
-                              filePath: pf.path!,
-                              fileType: inferFileType(pf.path!),
-                              fileName: pf.name,
-                              latitude: lat,
-                              longitude: lng,
-                              index: null,
-                            ));
-                          }
-
-                          final selState = context
-                              .read<SelectedActivityFacilityBloc>()
-                              .state;
-
-                          selState.whenOrNull(selected: (project) {
-                            context.read<ActivityFacilityBloc>().add(
-                                  ActivityFacilityEvent.addUnSubmitted(
-                                      project, userType),
-                                );
-
-                            context.read<CacheCompletionReportBloc>().add(
-                                  CacheCompletionReportEvent
-                                      .replaceAllForProject(
-                                    projectId: activityFacilityId!,
-                                    files: inputs,
-                                  ),
-                                );
-                            context.read<AssetSubmissionBloc>().add(
-                                  AssetSubmissionEvent.submitAll(
-                                      activityFacilityId: activityFacilityId,
-                                      facilityId: project.activityFacility
-                                              .facility?.facilityId ??
-                                          "",
-                                      userType: userType),
-                                );
-                          });
-                        });
+                },
+              );
+            },
+          ),
+          BlocListener<AssetSubmissionBloc, AssetSubmissionState>(
+            listener: (context, submissionState) {
+              submissionState.maybeWhen(
+                loading: () {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                },
+                success: () {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  context.router.replace(const InboxRoute());
+                },
+                failure: (message) {
+                  Navigator.of(context, rootNavigator: true).pop();
+                  context.showSnackBar(SnackBar(content: Text(message)));
+                },
+                orElse: () {},
+              );
+            },
+          ),
+          BlocListener<SelectedActivityFacilityBloc,
+                  SelectedActivityFacilityState>(
+              listenWhen: (prev, curr) =>
+                  curr.maybeWhen(selected: (_) => true, orElse: () => false),
+              listener: (context, state) {
+                state.whenOrNull(
+                  selected: (_) {
+                    if (mounted) _reload();
                   },
                 );
-              },
-            ),
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: spacer2, horizontal: spacer4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Summary',
-                      style: textTheme.headingXl
-                          .copyWith(color: theme.colorTheme.primary.primary2),
-                    ),
-                    const SizedBox(height: spacer4),
-                    const RejectedEditAssetSummary(),
-                    if (userType == USER_TYPES.SUPERVISOR.name) ...[
-                      const SizedBox(height: spacer4),
-                      DigitCard(
-                        children: [
-                          Text(
-                            'Installation Completion Report',
-                            style: textTheme.headingM.copyWith(
-                                color: theme.colorTheme.primary.primary2),
-                          ),
-                          ...[
-                            BlocBuilder<AppInitialization, InitState>(
-                              builder: (context, state) {
-                                return state.maybeWhen(
-                                  orElse: () => const SizedBox.shrink(),
-                                  initialized: (
-                                    appConfig,
-                                    assetCount,
-                                    assetType,
-                                    system,
-                                    warranty,
-                                    brand,
-                                    solutionDesign,
-                                    solutionDesignBom,
-                                  ) {
-                                    return Column(
-                                      children: [
-                                        // BomSystemSelector(
-                                        //   onChanged: (code) {
-                                        //     setState(() => _system = code);
-                                        //   },
-                                        // ),
-                                        if (_system != null)
-                                          BomButtonsSection(
-                                            key: PageStorageKey(
-                                                'bom-buttons-$activityFacilityId'),
-                                            solutionDesignBom:
-                                                solutionDesignBom,
-                                            systemCode: _system!,
-                                            projectId: activityFacilityId,
-                                            origin:
-                                                FormOrigin.submitForApproval,
-                                          ),
-                                      ],
-                                    );
-                                  },
-                                );
-                              },
-                            )
-                          ],
-                          Text(
-                            'Please scan and upload the installation completion report',
-                            style: textTheme.bodyS.copyWith(
-                                color: theme.colorTheme.text.secondary),
-                          ),
-                          FileUploadWidget(
-                            allowedExtensions: const [
-                              "pdf",
-                              "jpg",
-                              "jpeg",
-                              "png"
-                            ],
-                            showPreview: true,
-                            allowMultiples: true,
-                            label: 'Upload',
-                            onFilesSelected: (files) {
-                              if (files.isEmpty) {
-                                return <PlatformFile, String?>{};
-                              }
-                              _ensureLocationLoaded();
-                              _handleUploads(files);
-                              return <PlatformFile, String?>{};
-                            },
-                          ),
-                          ExistingFilesOrLoader(
-                            existingReports: _existingReports,
-                            workflowDocuments:
-                                project?.workflow?.documents ?? [],
-                            readOnly: false,
-                            onRemove: (r) {
-                              setState(() {
-                                _existingReports?.remove(r);
-                              });
-                            },
-                          ),
-                          RejectionReasonsList(
-                            comments: context
-                                    .read<SelectedActivityFacilityBloc>()
-                                    .state
-                                    .whenOrNull(
-                                      selected: (wf) => wf.transactions
-                                          ?.expand((tx) =>
-                                              tx.comments ?? <Comment>[])
-                                          .toList(),
-                                    ) ??
-                                <Comment>[],
-                            excludeStandardTypes: true,
-                          ),
-                        ],
-                      ),
-                    ],
-                    const SizedBox(height: spacer4),
-                    Text(
-                      "Rejection List",
-                      style: textTheme.headingXl
-                          .copyWith(color: theme.colorTheme.primary.primary2),
-                    ),
-                    const SizedBox(height: spacer1),
-                    DigitCard(children: [
-                      DigitCheckbox(
-                          label: 'Inverter Rejection reason 1',
-                          onChanged: (value) {
-                            setState(() {
-                              rejection1 = value;
-                            });
-                          }),
-                      const SizedBox(height: spacer1),
-                      DigitCheckbox(
-                          label: 'Inverter Rejection reason 2',
-                          onChanged: (value) {
-                            setState(() {
-                              rejection2 = value;
-                            });
-                          }),
-                      const SizedBox(height: spacer1),
-                      DigitCheckbox(
-                          label: 'Panel  Rejection reason 1',
-                          onChanged: (value) {
-                            setState(() {
-                              rejection3 = value;
-                            });
-                          }),
-                    ])
-                  ],
-                ),
-              ),
-            ],
+              }),
+        ],
+        child: ScrollableContent(
+          enableFixedDigitButton: true,
+          backgroundColor: theme.colorTheme.generic.background,
+          header: const BackNavigationHelpHeaderWidget(
+            showBackNavigation: true,
+            showHelp: false,
           ),
+          footer: BlocBuilder<SelectedActivityFacilityBloc,
+              SelectedActivityFacilityState>(
+            builder: (context, selProjectState) {
+              return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
+                builder: (context, submissionState) {
+                  final submitting = submissionState.maybeWhen(
+                      loading: () => true, orElse: () => false);
+
+                  final selProject =
+                      selProjectState.whenOrNull(selected: (wf) => wf);
+                  if (selProject == null) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final isRejectedByQc = selProject.status ==
+                      WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
+                  bool isFieldStaff = userType == USER_TYPES.FIELD_STAFF.name;
+
+                  if (isFieldStaff && isRejectedByQc) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final requireCompletion = isSupervisor;
+                  final hasCompletion =
+                      _existingReports.isNotEmpty || _pickedFiles.isNotEmpty;
+
+                  final isDisabled = !allChecked ||
+                      submitting ||
+                      (requireCompletion && !hasCompletion);
+
+                  return FooterButton(
+                      showSuffixIcon: false,
+                      isDisabled: isDisabled,
+                      text:
+                          submitting ? "loading..." : "Re-Submit for Approval",
+                      onPress: () async {
+                        if (isDisabled) return;
+                        await _ensureLocationLoaded();
+
+                        final lat = _latitude?.toString() ?? '';
+                        final lng = _longitude?.toString() ?? '';
+
+                        final inputs = <CompletionFileInput>[];
+                        for (final e in _existingReports) {
+                          inputs.add(CompletionFileInput(
+                            projectId: activityFacilityId,
+                            filePath: e.filePath,
+                            fileType: e.fileType,
+                            fileName: e.fileName,
+                            latitude: lat,
+                            longitude: lng,
+                            index: null,
+                          ));
+                        }
+                        for (final pf in _pickedFiles) {
+                          if (pf.path == null) continue;
+                          inputs.add(CompletionFileInput(
+                            projectId: activityFacilityId,
+                            filePath: pf.path!,
+                            fileType: inferFileType(pf.path!),
+                            fileName: pf.name,
+                            latitude: lat,
+                            longitude: lng,
+                            index: null,
+                          ));
+                        }
+
+                        final selState =
+                            context.read<SelectedActivityFacilityBloc>().state;
+
+                        selState.whenOrNull(selected: (project) {
+                          context.read<ActivityFacilityBloc>().add(
+                                ActivityFacilityEvent.addUnSubmitted(
+                                    project, userType),
+                              );
+
+                          context.read<CacheCompletionReportBloc>().add(
+                                CacheCompletionReportEvent.replaceAllForProject(
+                                  projectId: activityFacilityId!,
+                                  files: inputs,
+                                ),
+                              );
+                          context.read<AssetSubmissionBloc>().add(
+                                AssetSubmissionEvent.submitAll(
+                                    activityFacilityId: activityFacilityId,
+                                    facilityId: project.activityFacility
+                                            .facility?.facilityId ??
+                                        "",
+                                    userType: userType),
+                              );
+                        });
+                      });
+                },
+              );
+            },
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  vertical: spacer2, horizontal: spacer4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Summary',
+                    style: textTheme.headingXl
+                        .copyWith(color: theme.colorTheme.primary.primary2),
+                  ),
+                  const SizedBox(height: spacer4),
+                  const RejectedEditAssetSummary(),
+                  if (userType == USER_TYPES.SUPERVISOR.name) ...[
+                    const SizedBox(height: spacer4),
+                    DigitCard(
+                      children: [
+                        Text(
+                          'Installation Completion Report',
+                          style: textTheme.headingM.copyWith(
+                              color: theme.colorTheme.primary.primary2),
+                        ),
+                        ...[
+                          BlocBuilder<AppInitialization, InitState>(
+                            builder: (context, state) {
+                              return state.maybeWhen(
+                                orElse: () => const SizedBox.shrink(),
+                                initialized: (
+                                  appConfig,
+                                  assetCount,
+                                  assetType,
+                                  system,
+                                  warranty,
+                                  brand,
+                                  solutionDesign,
+                                  solutionDesignBom,
+                                ) {
+                                  return Column(
+                                    children: [
+                                      // BomSystemSelector(
+                                      //   onChanged: (code) {
+                                      //     setState(() => _system = code);
+                                      //   },
+                                      // ),
+                                      if (_system != null)
+                                        BomButtonsSection(
+                                          key: PageStorageKey(
+                                              'bom-buttons-$activityFacilityId'),
+                                          solutionDesignBom: solutionDesignBom,
+                                          systemCode: _system!,
+                                          projectId: activityFacilityId,
+                                          origin: FormOrigin.submitForApproval,
+                                        ),
+                                    ],
+                                  );
+                                },
+                              );
+                            },
+                          )
+                        ],
+                        Text(
+                          'Please scan and upload the installation completion report',
+                          style: textTheme.bodyS
+                              .copyWith(color: theme.colorTheme.text.secondary),
+                        ),
+                        FileUploadWidget(
+                          allowedExtensions: const [
+                            "pdf",
+                            "jpg",
+                            "jpeg",
+                            "png"
+                          ],
+                          showPreview: true,
+                          allowMultiples: true,
+                          label: 'Upload',
+                          onFilesSelected: (files) {
+                            if (files.isEmpty) {
+                              return <PlatformFile, String?>{};
+                            }
+                            _ensureLocationLoaded();
+                            _handleUploads(files);
+                            return <PlatformFile, String?>{};
+                          },
+                        ),
+                        ExistingFilesOrLoader(
+                          existingReports: _existingReports,
+                          workflowDocuments: project?.workflow?.documents ?? [],
+                          readOnly: false,
+                          onRemove: (r) {
+                            setState(() {
+                              _existingReports?.remove(r);
+                            });
+                          },
+                        ),
+                        RejectionReasonsList(
+                          comments: context
+                                  .read<SelectedActivityFacilityBloc>()
+                                  .state
+                                  .whenOrNull(
+                                    selected: (wf) => wf.transactions
+                                        ?.expand(
+                                            (tx) => tx.comments ?? <Comment>[])
+                                        .toList(),
+                                  ) ??
+                              <Comment>[],
+                          excludeStandardTypes: true,
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: spacer4),
+                  Text(
+                    "Rejection List",
+                    style: textTheme.headingXl
+                        .copyWith(color: theme.colorTheme.primary.primary2),
+                  ),
+                  const SizedBox(height: spacer1),
+                  DigitCard(children: [
+                    DigitCheckbox(
+                        label: 'Inverter Rejection reason 1',
+                        onChanged: (value) {
+                          setState(() {
+                            rejection1 = value;
+                          });
+                        }),
+                    const SizedBox(height: spacer1),
+                    DigitCheckbox(
+                        label: 'Inverter Rejection reason 2',
+                        onChanged: (value) {
+                          setState(() {
+                            rejection2 = value;
+                          });
+                        }),
+                    const SizedBox(height: spacer1),
+                    DigitCheckbox(
+                        label: 'Panel  Rejection reason 1',
+                        onChanged: (value) {
+                          setState(() {
+                            rejection3 = value;
+                          });
+                        }),
+                  ])
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
