@@ -215,9 +215,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
             state.maybeWhen(
               loading: () {},
               success: (savedBomValues) async {
-                // context.read<OverallAssetSummaryBloc>().add(
-                //     OverallAssetSummaryEvent.loadCounts(
-                //         activityFacilityId: _currentProjectId!));
                 await _loadInitialCompletion();
               },
               failure: (msg) {
@@ -229,11 +226,24 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
             );
           },
         ),
-        BlocListener<OverallAssetSummaryBloc, OverallAssetSummaryState>(
-          listener: (context, state) {
-            state.maybeWhen(
-              loaded: (batteryCount, inverterCount, panelCount) {},
-              orElse: () {},
+        BlocListener<CacheAssetBloc, CacheAssetState>(
+          listener: (context, cacheState) {
+            cacheState.whenOrNull(
+              success: () {
+                context.read<OverallAssetSummaryBloc>().add(
+                      OverallAssetSummaryEvent.loadCounts(
+                          activityFacilityId: _currentProjectId!),
+                    );
+              },
+              failure: (error) {
+                context.read<OverallAssetSummaryBloc>().add(
+                      OverallAssetSummaryEvent.loadCounts(
+                          activityFacilityId: _currentProjectId!),
+                    );
+                context.showSnackBar(
+                  SnackBar(content: Text("Sync failed: $error")),
+                );
+              },
             );
           },
         ),
@@ -363,32 +373,19 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   loading: () => () {},
                                   progress: (_, __) => () {},
                                   orElse: () => () async {
-                                    print("It got here actually!");
                                     if (isDisabled) return;
-                                    print(
-                                        "It got here actually _ensureLocationLoaded!");
-                                    // ensure we have a lat/lng before saving completion reports
                                     await _ensureLocationLoaded();
 
                                     final selState = context
                                         .read<SelectedActivityFacilityBloc>()
                                         .state;
                                     selState.whenOrNull(selected: (project) {
-                                      print("It got here actually selState");
                                       context.read<ActivityFacilityBloc>().add(
                                             ActivityFacilityEvent
                                                 .addUnSubmitted(
                                                     project, resolvedUserType),
                                           );
 
-                                      // final summaryState = context
-                                      //     .read<AssetSummaryBloc>()
-                                      //     .state;
-
-                                      // summaryState.whenOrNull(
-                                      //  loaded: (summary) async {
-                                      // Build inputs from existing (kept) + newly picked
-                                      print("It got here actually loaded");
                                       final lat = _latitude?.toString() ?? '';
                                       final lng = _longitude?.toString() ?? '';
 
@@ -402,9 +399,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 longitude: lng,
                                                 index: null,
                                               ));
-
-                                      print(
-                                          "It got here actually loaded pickedInputs");
 
                                       final pickedInputs = _pickedFiles
                                           .where((pf) =>
@@ -428,10 +422,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                         ...pickedInputs
                                       ].toList();
 
-                                      print(
-                                          "It got here actually loaded inputs");
-
-                                      // Atomically clear then add
                                       context
                                           .read<CacheCompletionReportBloc>()
                                           .add(
@@ -453,8 +443,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               userType: resolvedUserType,
                                             ),
                                           );
-                                      // },
-                                      // );
                                     });
                                   },
                                 ),
