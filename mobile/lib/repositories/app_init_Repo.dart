@@ -34,6 +34,8 @@ class AppInitRepo {
       return MdmsResponseModel.fromJson(json.decode(localAppConfig));
     }
 
+    debugPrint("localAppConfig $localAppConfig");
+
     if (envConfig.variables.envType == EnvType.dev) {
       return _loadLocalAppConfig();
     }
@@ -46,6 +48,8 @@ class AppInitRepo {
     try {
       final response = await client.post(envConfig.variables.completeMdmsApiUrl,
           data: body, options: Options(headers: headers));
+
+      debugPrint("responseBody ${response.data}");
 
       final responseBody = MdmsResponseModel.fromJson(
         json.decode(response.toString())['MdmsRes'],
@@ -67,6 +71,7 @@ class AppInitRepo {
     if (localAssetCount != null) {
       final List<dynamic> decodedList =
           json.decode(localAssetCount) as List<dynamic>;
+      debugPrint("AssetCount decodedList $decodedList");
       return decodedList
           .map((item) => Mdms<AssetCountData>.fromJson(
                 item as Map<String, dynamic>,
@@ -84,6 +89,8 @@ class AppInitRepo {
     try {
       final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
+
+      debugPrint("responseBody ${response.data}");
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
       final List<Mdms<AssetCountData>> result = payloadList
@@ -110,6 +117,7 @@ class AppInitRepo {
     if (localAssetType != null) {
       final List<dynamic> decodedList =
           json.decode(localAssetType) as List<dynamic>;
+      debugPrint("AssetType decodedList $decodedList");
       return decodedList
           .map((item) => Mdms<AssetTypeData>.fromJson(
                 item as Map<String, dynamic>,
@@ -127,6 +135,8 @@ class AppInitRepo {
     try {
       final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
+
+      debugPrint("responseBody ${response.data}");
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
       final List<Mdms<AssetTypeData>> result = payloadList
@@ -153,6 +163,7 @@ class AppInitRepo {
     if (localSystem != null) {
       final List<dynamic> decodedList =
           json.decode(localSystem) as List<dynamic>;
+      debugPrint("System decodedList $decodedList");
       return decodedList
           .map((item) => Mdms<SystemData>.fromJson(
                 item as Map<String, dynamic>,
@@ -170,6 +181,8 @@ class AppInitRepo {
     try {
       final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
+
+      debugPrint("responseBody ${response.data}");
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
       final List<Mdms<SystemData>> result = payloadList
@@ -196,6 +209,7 @@ class AppInitRepo {
     if (localWarranty != null) {
       final List<dynamic> decodedList =
           json.decode(localWarranty) as List<dynamic>;
+      debugPrint("Warranty decodedList $decodedList");
       return decodedList
           .map((item) => Mdms<WarrantyData>.fromJson(
                 item as Map<String, dynamic>,
@@ -213,6 +227,8 @@ class AppInitRepo {
     try {
       final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
+
+      debugPrint("responseBody ${response.data}");
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
       final List<Mdms<WarrantyData>> result = payloadList
@@ -239,6 +255,7 @@ class AppInitRepo {
     if (localBrand != null) {
       final List<dynamic> decodedList =
           json.decode(localBrand) as List<dynamic>;
+      debugPrint("Brand decodedList $decodedList");
       return decodedList
           .map((item) => Mdms<BrandData>.fromJson(
                 item as Map<String, dynamic>,
@@ -256,6 +273,8 @@ class AppInitRepo {
     try {
       final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
+
+      debugPrint("responseBody ${response.data}");
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
       final List<Mdms<BrandData>> result = payloadList
@@ -278,10 +297,11 @@ class AppInitRepo {
 
     final SecureStore storage = SecureStore();
 
-    String? localSolutionDesign = await storage.getBrand();
+    String? localSolutionDesign = await storage.getSolutionDesignType();
     if (localSolutionDesign != null) {
       final List<dynamic> decodedList =
           json.decode(localSolutionDesign) as List<dynamic>;
+      debugPrint("AssetCount decodedList $decodedList");
       return decodedList
           .map((item) => Mdms<SolutionDesignType>.fromJson(
                 item as Map<String, dynamic>,
@@ -300,6 +320,8 @@ class AppInitRepo {
     try {
       final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
+
+      debugPrint("responseBody ${response.data}");
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
       final List<Mdms<SolutionDesignType>> result = payloadList
@@ -345,6 +367,8 @@ class AppInitRepo {
     try {
       final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
+
+      debugPrint("responseBody ${response.data}");
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
       final List<Mdms<SolutionDesignTypeBom>> result = payloadList
