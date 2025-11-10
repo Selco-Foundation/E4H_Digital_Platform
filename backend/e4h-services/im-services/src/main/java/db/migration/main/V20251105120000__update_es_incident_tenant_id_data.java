@@ -67,8 +67,8 @@ public class V20251105120000__update_es_incident_tenant_id_data extends BaseJava
             migrationLogger.flush();
 
             String esHost = getEnvOrDefault("EGOV_ES_HOST", "https://localhost:9200");
-            String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "elastic");
-            String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "8fwbD6HbJh6HU0oddsHm8TEI");
+            String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "");
+            String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "");
 
             log.info("Elasticsearch host: {}", esHost);
 
