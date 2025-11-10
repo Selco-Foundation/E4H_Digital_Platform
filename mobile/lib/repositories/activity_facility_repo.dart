@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_activity_facility_workflow.dart';
@@ -82,10 +81,6 @@ class ActivityFacilityRemoteRepository {
       Response response;
       String searchPath = "activity/v1/activities/_search";
 
-      if (envConfig.variables.envType == EnvType.dev) {
-        // return _loadLocalProjects();
-      }
-
       response = await dio.post(
         searchPath,
         queryParameters: {
@@ -127,8 +122,6 @@ class ActivityFacilityRemoteRepository {
         }
       }
     };
-
-    print("body ${jsonEncode(body)}");
 
     try {
       final resp = await dio.post(url,
@@ -176,25 +169,6 @@ class ActivityFacilityRemoteRepository {
       throw DioErrorParser.parse(dioErr);
     }
   }
-
-  Future<List<ActivityFacilityWorkflow>> _loadLocalActivityFacility() async {
-    try {
-      final jsonString = await rootBundle.loadString(
-          'assets/mocks/mockRejectedProject.json'); // Testing rejected Facilities
-      final jsonResponse = json.decode(jsonString);
-      final responseMap = jsonResponse['facility'];
-
-      List<ActivityFacilityWorkflow> activityFacilityList = [];
-      for (final activityFacility in responseMap) {
-        activityFacilityList
-            .add(ActivityFacilityWorkflow.fromJson(activityFacility));
-      }
-
-      return activityFacilityList;
-    } catch (e) {
-      throw Exception('Failed to load mock projects: $e');
-    }
-  }
 }
 
 class ActivityFacilityRepository {
@@ -225,7 +199,6 @@ class ActivityFacilityRepository {
     return excluded;
   }
 
-  // Convenience to apply the exclusion set to any list
   List<ActivityFacilityWorkflow> _applyExclusion(
     List<ActivityFacilityWorkflow> list,
     Set<String> excludedIds,
@@ -236,7 +209,6 @@ class ActivityFacilityRepository {
         .toList();
   }
 
-  /// Remote-first fetch with cache fallback
   Future<List<ActivityFacilityWorkflow>> fetchByWorkflow(
       {required ActivityFacilitySearchModel body,
       required List<String> workflowStatuses,
@@ -252,14 +224,12 @@ class ActivityFacilityRepository {
 
       if (remoteList != null) {
         await _replaceCache(workflowStatuses, remoteList);
-        // Even if remote succeeds, exclude projects in cacheUnsubmittedProjects for this user + type(s)
         final excludedIds = await _excludedIdsFor(userTypes);
         final filteredRemoteList = _applyExclusion(remoteList, excludedIds);
         return filteredRemoteList;
       }
     } catch (e) {
-      // on any error, fall back to cache
-      print("error in fetching remote project ${e.toString()}");
+      debugPrint("error in fetching remote project ${e.toString()}");
     }
     final cachedList = await readCache(workflowStatuses);
     final excludedIds = await _excludedIdsFor(userTypes);
@@ -272,14 +242,12 @@ class ActivityFacilityRepository {
   ) async {
     final col = _isar.cacheActivityFacilityWorkflows;
     await _isar.writeTxn(() async {
-      // DELETE step
       for (final status in statuses) {
         final toDelete = await col.where().statusEqualTo(status).findAll();
         for (final entry in toDelete) {
           await col.delete(entry.id);
         }
       }
-      // INSERT fresh
       for (final wf in newList) {
         await col.put(CacheActivityFacilityWorkflow(
           activityFacilityId: wf.activityFacility.id,

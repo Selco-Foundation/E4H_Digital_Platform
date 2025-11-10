@@ -134,8 +134,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             orElse: () => [],
             initialized: (appConfig, assetCount, assetType, system, warranty,
                 brand, solutionDesign, _) {
-              assetTypeList = assetType
-                  .map((at) => at.data)
+              assetTypeList = assetType.first.data.assetType
+                  .map((at) => at)
                   .where((at) =>
                       at.code.toUpperCase() == currentAssetType.toUpperCase())
                   .toList();
@@ -152,8 +152,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       (sd) => sd.code == selectedSolutionDesignCode)
                   ?.systemCode;
 
-              final systemCode =
-                  matchedSystemCode ?? system.firstOrNull?.data.code;
+              final systemCode = matchedSystemCode ??
+                  system.first.data.system.firstOrNull?.code;
 
               selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
                   asset.code.toUpperCase() == currentAssetType.toUpperCase());

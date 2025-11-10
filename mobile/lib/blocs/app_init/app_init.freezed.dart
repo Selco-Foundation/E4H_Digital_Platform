@@ -286,11 +286,11 @@ mixin _$InitState {
     required TResult Function(MdmsResponseModel appConfig) loadingMdms,
     required TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
@@ -304,11 +304,11 @@ mixin _$InitState {
     TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult? Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -322,11 +322,11 @@ mixin _$InitState {
     TResult Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -424,11 +424,11 @@ class _$UninitializedImpl extends _Uninitialized {
     required TResult Function(MdmsResponseModel appConfig) loadingMdms,
     required TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
@@ -445,11 +445,11 @@ class _$UninitializedImpl extends _Uninitialized {
     TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult? Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -466,11 +466,11 @@ class _$UninitializedImpl extends _Uninitialized {
     TResult Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -609,11 +609,11 @@ class _$DefaultedImpl extends Defaulted {
     required TResult Function(MdmsResponseModel appConfig) loadingMdms,
     required TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
@@ -630,11 +630,11 @@ class _$DefaultedImpl extends Defaulted {
     TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult? Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -651,11 +651,11 @@ class _$DefaultedImpl extends Defaulted {
     TResult Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -800,11 +800,11 @@ class _$LoadingMdmsImpl extends LoadingMdms {
     required TResult Function(MdmsResponseModel appConfig) loadingMdms,
     required TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
@@ -821,11 +821,11 @@ class _$LoadingMdmsImpl extends LoadingMdms {
     TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult? Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -842,11 +842,11 @@ class _$LoadingMdmsImpl extends LoadingMdms {
     TResult Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -919,11 +919,11 @@ abstract class _$$InitializedImplCopyWith<$Res> {
   @useResult
   $Res call(
       {MdmsResponseModel appConfig,
-      List<Mdms<AssetCount>> assetCount,
-      List<Mdms<AssetType>> assetType,
-      List<Mdms<System>> system,
-      List<Mdms<Warranty>> warranty,
-      List<Mdms<Brand>> brand,
+      List<Mdms<AssetCountData>> assetCount,
+      List<Mdms<AssetTypeData>> assetType,
+      List<Mdms<SystemData>> system,
+      List<Mdms<WarrantyData>> warranty,
+      List<Mdms<BrandData>> brand,
       List<Mdms<SolutionDesignType>> solutionDesign,
       List<Mdms<SolutionDesignTypeBom>> solutionDesignBom});
 
@@ -958,23 +958,23 @@ class __$$InitializedImplCopyWithImpl<$Res>
       assetCount: null == assetCount
           ? _value._assetCount
           : assetCount // ignore: cast_nullable_to_non_nullable
-              as List<Mdms<AssetCount>>,
+              as List<Mdms<AssetCountData>>,
       assetType: null == assetType
           ? _value._assetType
           : assetType // ignore: cast_nullable_to_non_nullable
-              as List<Mdms<AssetType>>,
+              as List<Mdms<AssetTypeData>>,
       system: null == system
           ? _value._system
           : system // ignore: cast_nullable_to_non_nullable
-              as List<Mdms<System>>,
+              as List<Mdms<SystemData>>,
       warranty: null == warranty
           ? _value._warranty
           : warranty // ignore: cast_nullable_to_non_nullable
-              as List<Mdms<Warranty>>,
+              as List<Mdms<WarrantyData>>,
       brand: null == brand
           ? _value._brand
           : brand // ignore: cast_nullable_to_non_nullable
-              as List<Mdms<Brand>>,
+              as List<Mdms<BrandData>>,
       solutionDesign: null == solutionDesign
           ? _value._solutionDesign
           : solutionDesign // ignore: cast_nullable_to_non_nullable
@@ -1000,11 +1000,11 @@ class __$$InitializedImplCopyWithImpl<$Res>
 class _$InitializedImpl extends Initialized {
   const _$InitializedImpl(
       {required this.appConfig,
-      required final List<Mdms<AssetCount>> assetCount,
-      required final List<Mdms<AssetType>> assetType,
-      required final List<Mdms<System>> system,
-      required final List<Mdms<Warranty>> warranty,
-      required final List<Mdms<Brand>> brand,
+      required final List<Mdms<AssetCountData>> assetCount,
+      required final List<Mdms<AssetTypeData>> assetType,
+      required final List<Mdms<SystemData>> system,
+      required final List<Mdms<WarrantyData>> warranty,
+      required final List<Mdms<BrandData>> brand,
       required final List<Mdms<SolutionDesignType>> solutionDesign,
       required final List<Mdms<SolutionDesignTypeBom>> solutionDesignBom})
       : _assetCount = assetCount,
@@ -1018,41 +1018,41 @@ class _$InitializedImpl extends Initialized {
 
   @override
   final MdmsResponseModel appConfig;
-  final List<Mdms<AssetCount>> _assetCount;
+  final List<Mdms<AssetCountData>> _assetCount;
   @override
-  List<Mdms<AssetCount>> get assetCount {
+  List<Mdms<AssetCountData>> get assetCount {
     if (_assetCount is EqualUnmodifiableListView) return _assetCount;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_assetCount);
   }
 
-  final List<Mdms<AssetType>> _assetType;
+  final List<Mdms<AssetTypeData>> _assetType;
   @override
-  List<Mdms<AssetType>> get assetType {
+  List<Mdms<AssetTypeData>> get assetType {
     if (_assetType is EqualUnmodifiableListView) return _assetType;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_assetType);
   }
 
-  final List<Mdms<System>> _system;
+  final List<Mdms<SystemData>> _system;
   @override
-  List<Mdms<System>> get system {
+  List<Mdms<SystemData>> get system {
     if (_system is EqualUnmodifiableListView) return _system;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_system);
   }
 
-  final List<Mdms<Warranty>> _warranty;
+  final List<Mdms<WarrantyData>> _warranty;
   @override
-  List<Mdms<Warranty>> get warranty {
+  List<Mdms<WarrantyData>> get warranty {
     if (_warranty is EqualUnmodifiableListView) return _warranty;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_warranty);
   }
 
-  final List<Mdms<Brand>> _brand;
+  final List<Mdms<BrandData>> _brand;
   @override
-  List<Mdms<Brand>> get brand {
+  List<Mdms<BrandData>> get brand {
     if (_brand is EqualUnmodifiableListView) return _brand;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_brand);
@@ -1126,11 +1126,11 @@ class _$InitializedImpl extends Initialized {
     required TResult Function(MdmsResponseModel appConfig) loadingMdms,
     required TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
@@ -1148,11 +1148,11 @@ class _$InitializedImpl extends Initialized {
     TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult? Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -1170,11 +1170,11 @@ class _$InitializedImpl extends Initialized {
     TResult Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -1232,22 +1232,22 @@ class _$InitializedImpl extends Initialized {
 abstract class Initialized extends InitState {
   const factory Initialized(
           {required final MdmsResponseModel appConfig,
-          required final List<Mdms<AssetCount>> assetCount,
-          required final List<Mdms<AssetType>> assetType,
-          required final List<Mdms<System>> system,
-          required final List<Mdms<Warranty>> warranty,
-          required final List<Mdms<Brand>> brand,
+          required final List<Mdms<AssetCountData>> assetCount,
+          required final List<Mdms<AssetTypeData>> assetType,
+          required final List<Mdms<SystemData>> system,
+          required final List<Mdms<WarrantyData>> warranty,
+          required final List<Mdms<BrandData>> brand,
           required final List<Mdms<SolutionDesignType>> solutionDesign,
           required final List<Mdms<SolutionDesignTypeBom>> solutionDesignBom}) =
       _$InitializedImpl;
   const Initialized._() : super._();
 
   MdmsResponseModel get appConfig;
-  List<Mdms<AssetCount>> get assetCount;
-  List<Mdms<AssetType>> get assetType;
-  List<Mdms<System>> get system;
-  List<Mdms<Warranty>> get warranty;
-  List<Mdms<Brand>> get brand;
+  List<Mdms<AssetCountData>> get assetCount;
+  List<Mdms<AssetTypeData>> get assetType;
+  List<Mdms<SystemData>> get system;
+  List<Mdms<WarrantyData>> get warranty;
+  List<Mdms<BrandData>> get brand;
   List<Mdms<SolutionDesignType>> get solutionDesign;
   List<Mdms<SolutionDesignTypeBom>> get solutionDesignBom;
   @JsonKey(ignore: true)
@@ -1324,11 +1324,11 @@ class _$ErrorImpl extends Error {
     required TResult Function(MdmsResponseModel appConfig) loadingMdms,
     required TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)
         initialized,
@@ -1345,11 +1345,11 @@ class _$ErrorImpl extends Error {
     TResult? Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult? Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,
@@ -1366,11 +1366,11 @@ class _$ErrorImpl extends Error {
     TResult Function(MdmsResponseModel appConfig)? loadingMdms,
     TResult Function(
             MdmsResponseModel appConfig,
-            List<Mdms<AssetCount>> assetCount,
-            List<Mdms<AssetType>> assetType,
-            List<Mdms<System>> system,
-            List<Mdms<Warranty>> warranty,
-            List<Mdms<Brand>> brand,
+            List<Mdms<AssetCountData>> assetCount,
+            List<Mdms<AssetTypeData>> assetType,
+            List<Mdms<SystemData>> system,
+            List<Mdms<WarrantyData>> warranty,
+            List<Mdms<BrandData>> brand,
             List<Mdms<SolutionDesignType>> solutionDesign,
             List<Mdms<SolutionDesignTypeBom>> solutionDesignBom)?
         initialized,

@@ -55,12 +55,12 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
   void _saveCacheSpecification() {
     final initState = context.read<AppInitialization>().state;
 
-    final systemList = initState.maybeWhen<List<Mdms<System>>>(
+    final systemList = initState.maybeWhen<List<Mdms<SystemData>>>(
       initialized: (_, __, ___, system, ____, _____, solutionDesign, ______) =>
           system,
       orElse: () => [],
     );
-    final mdmsAssetTypes = initState.maybeWhen<List<Mdms<AssetType>>>(
+    final mdmsAssetTypes = initState.maybeWhen<List<Mdms<AssetTypeData>>>(
       initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
           ___,
       orElse: () => [],
@@ -76,25 +76,22 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     final selectedSolutionDesignCode = project?.activityFacility.facility
         ?.facilityDetails?.solar_solution_design_type;
 
-    print("selectedSolutionDesignCode $selectedSolutionDesignCode");
-
     final matchedSystemCode = solutionDesignList
         .map((m) => m.data)
         .firstWhereOrNull((sd) => sd.code == selectedSolutionDesignCode)
         ?.systemCode;
 
-    print("matchedSystemCode $matchedSystemCode");
-
-    final systemCode = matchedSystemCode ?? systemList.lastOrNull?.data.code;
-    final systemName = systemList
-        .map((m) => m.data)
+    final systemCode =
+        matchedSystemCode ?? systemList.first.data.system.lastOrNull?.code;
+    final systemName = systemList.first.data.system
+        .map((m) => m)
         .firstWhereOrNull((sd) => sd.code == systemCode)
         ?.name;
-    print("systemCode $systemCode");
-    print("systemName $systemName");
 
-    final assetTypeModel = mdmsAssetTypes.map((m) => m.data).firstWhereOrNull(
-        (t) => t.code.toLowerCase() == selectedAssetType.toLowerCase());
+    final assetTypeModel = mdmsAssetTypes.first.data.assetType
+        .map((m) => m)
+        .firstWhereOrNull(
+            (t) => t.code.toLowerCase() == selectedAssetType.toLowerCase());
 
     final capField = assetTypeModel?.formFields.firstWhereOrNull(
       (f) => f.key == 'total_capacity' && f.system == systemCode,
@@ -197,7 +194,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
             children: [
               BlocBuilder<AppInitialization, InitState>(
                 builder: (initContext, initState) {
-                  final List<Mdms<AssetType>> assetTypeList =
+                  final List<Mdms<AssetTypeData>> assetTypeList =
                       initState.maybeWhen(
                           orElse: () => [],
                           initialized: (appConfig, assetCount, assetType,
@@ -244,10 +241,10 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                                 name: selectedAssetType ?? "",
                                 code: selectedAssetType ?? "",
                               ),
-                              items: assetTypeList
+                              items: assetTypeList.first.data.assetType
                                   .map((type) => DropdownItem(
-                                        name: type.data.name,
-                                        code: type.data.code,
+                                        name: type.name,
+                                        code: type.code,
                                       ))
                                   .toList(),
                             ),

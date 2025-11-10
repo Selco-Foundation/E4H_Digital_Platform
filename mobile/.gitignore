@@ -46,3 +46,4 @@ app.*.map.json
 
 .env
 .env.*
+assets/mocks
