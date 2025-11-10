@@ -1,8 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:isar/isar.dart';
 import 'package:mime/mime.dart';
@@ -52,7 +51,7 @@ class AssetRepository {
         final bytes = await file.readAsBytes();
         mimeType = lookupMimeType('', headerBytes: bytes);
       } catch (e) {
-        debugPrint("Error reading file for MIME type: $e");
+        AppLogger.instance.info("Error reading file for MIME type: $e");
       }
     }
 
@@ -70,13 +69,6 @@ class AssetRepository {
       "tenantId": envConfig.variables.tenantId,
       "module": "Incident",
     });
-
-    final tenantId = formData.fields
-        .firstWhere(
-          (field) => field.key == "tenantId",
-          orElse: () => const MapEntry("tenantId", "NOT_FOUND"),
-        )
-        .value;
 
     try {
       final response = await _dio.post("/filestore/v1/files", data: formData);
@@ -105,7 +97,6 @@ class AssetRepository {
     try {
       final response =
           await _dio.post('/asset-registry/v1/asset/$endpoint', data: payload);
-      debugPrint('Response body: ${response.data}');
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception(
@@ -123,7 +114,7 @@ class AssetRepository {
         Map<String, dynamic>.from(assetJson as Map),
       );
 
-      debugPrint("updated AssetId ${updatedAsset.assetId}");
+      AppLogger.instance.info("updated AssetId ${updatedAsset.assetId}");
 
       if ((updatedAsset.assetId ?? '').isNotEmpty) {
         await _writeBackAssetIdToCache(isar: isar, asset: updatedAsset);
@@ -133,10 +124,8 @@ class AssetRepository {
     } on DioError catch (e) {
       final code = _errorCodeFromDio(e);
       final isDuplicate = code == 'ERR_ASSET_DUPLICATE_VALIDATION';
-
-      debugPrint("Starting Duplicate Fetch and resending");
       if (isCreate && isDuplicate) {
-        debugPrint(
+        AppLogger.instance.info(
             "Fetching Duplicate isCreate: $isCreate isDuplicate: $isDuplicate");
         final remote = await _fetchAssetBySerial(
           activityFacilityId: asset.activityFacilityID! ?? '',
@@ -173,7 +162,7 @@ class AssetRepository {
           }
         }
       }
-      debugPrint("error message in duplicate ${e.message}");
+      AppLogger.instance.info("error message in duplicate ${e.message}");
       throw DioErrorParser.parse(e);
     }
   }
@@ -308,10 +297,8 @@ class AssetRepository {
               await isar.cacheAddNewAssets.delete(old.id);
             }
 
-            // find all PHOTO documents
             for (var doc in asset.documents ?? []) {
-              if (doc.documentType == 'PHOTO' || doc.documentType == 'ASSET') {
-                debugPrint("documentId: doc?.id ?? '', ${doc.id} type: $type");
+              if (doc.documentType == 'ASSET') {
                 await isar.cacheAddNewAssets.put(
                   CacheAddNewAsset(
                     assetId: asset.assetId,
@@ -356,7 +343,6 @@ class AssetRepository {
 
         for (var doc in activityFacility.workflow?.documents ?? []) {
           if (doc.documentType != 'ASSET' &&
-              doc.documentType != 'PHOTO' &&
               doc.documentType != 'INSTALLATION_REPORT') {
             final parts = doc.documentType?.split('-') ?? [];
             if (parts.length != 2) continue;
@@ -380,7 +366,7 @@ class AssetRepository {
         }
       });
     } on DioError catch (e) {
-      debugPrint(e.toString());
+      AppLogger.instance.info(e.toString());
       throw DioErrorParser.parse(e);
     }
   }
@@ -401,8 +387,6 @@ class AssetRepository {
       },
       'transactions': transactions.toList()
     };
-
-    debugPrint("payload ${jsonEncode(payload)}");
 
     try {
       final resp = await _dio.post('/activity/v1/activities/workflow/update',

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
@@ -23,11 +24,9 @@ class AssetSubmissionBloc
   final Isar _isar;
   final UnsubmittedActivityFacilityRepository _draftRepo;
 
-  // ----- Single vs Batch tracking -----
   bool _isBatchMode = false;
   List<String> _batchIds = const [];
 
-  // Track currently active single submit
   String? _activeSingleActivityFacilityId;
 
   AssetSubmissionBloc(this._isar)
@@ -51,7 +50,8 @@ class AssetSubmissionBloc
     _svcErrSub = svc.on(kEvtError).listen((data) {
       final pid = data?['activityFacilityId'] as String?;
       final msg = data?['message']?.toString();
-      print('[BLoC] kEvtError stream received pid=$pid msg=$msg');
+      AppLogger.instance
+          .info('[BLoC] kEvtError stream received pid=$pid msg=$msg');
       if (pid != null) {
         add(AssetSubmissionEvent.svcError(
             activityFacilityId: pid, message: msg));
@@ -61,7 +61,7 @@ class AssetSubmissionBloc
     _svcDoneSub?.cancel();
     _svcDoneSub = svc.on(kEvtDone).listen((data) {
       final pid = data?['activityFacilityId'] as String?;
-      print('[BLoC] kEvtDone stream received pid=$pid');
+      AppLogger.instance.info('[BLoC] kEvtDone stream received pid=$pid');
       if (pid != null) {
         add(AssetSubmissionEvent.svcDone(activityFacilityId: pid));
       }
@@ -122,16 +122,6 @@ class AssetSubmissionBloc
       _batchIds = const [];
       return;
     }
-
-    // for (final pid in activityFacilityIds) {
-    //   await _writeJobStatusUI(activityFacilityId: pid, status: 'queued');
-    //   await BackgroundServiceController.I.enqueueSubmission(
-    //     activityFacilityId: pid,
-    //     facilityId: event.facilityId,
-    //     userType: event.userType,
-    //     fromDraft: true,
-    //   );
-    // }
 
     for (final entry in localEntries) {
       final pid = entry.activityFacility.id;
@@ -227,7 +217,7 @@ class AssetSubmissionBloc
     await _writeJobStatusUI(
         activityFacilityId: activityFacilityId, status: 'queued');
 
-    print(
+    AppLogger.instance.info(
         '[BLoC] single submit firing for $activityFacilityId | _isBatchMode=$_isBatchMode | _activeSingleActivityFacilityId=$_activeSingleActivityFacilityId');
 
     await BackgroundServiceController.I.enqueueSubmission(
@@ -299,7 +289,7 @@ class AssetSubmissionBloc
       return;
     }
 
-    print('[BLoC] _handleSvcError -> batch emit failure');
+    AppLogger.instance.info('[BLoC] _handleSvcError -> batch emit failure');
     if (!emit.isDone) {
       emit(AssetSubmissionState.failure(message ?? 'Failed.'));
     }
@@ -316,7 +306,7 @@ class AssetSubmissionBloc
     );
 
     if (!_isBatchMode) {
-      print(
+      AppLogger.instance.info(
           '[BLoC] _handleSvcDone -> single emit success (force by !_isBatchMode)');
       if (!emit.isDone) {
         emit(const AssetSubmissionState.success());
@@ -325,7 +315,8 @@ class AssetSubmissionBloc
       await BackgroundServiceController.I.stopNow();
       return;
     }
-    print('[BLoC] _handleSvcDone -> batch (no immediate emit)');
+    AppLogger.instance
+        .info('[BLoC] _handleSvcDone -> batch (no immediate emit)');
   }
 
   Future<void> _writeJobStatusUI({

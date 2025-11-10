@@ -14,7 +14,7 @@ import '../../model/mdms/mdms.dart';
 import '../../model/solution_design_type/solution_design_type.dart';
 import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
-import '../../repositories/app_init_Repo.dart';
+import '../../repositories/app_init_repo.dart';
 import '../../utils/envConfig.dart' as env;
 import '../../utils/utils.dart';
 

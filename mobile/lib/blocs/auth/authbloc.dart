@@ -8,8 +8,8 @@ import '../../data/secure_storage/secureStore.dart';
 import '../../model/dataModel.dart';
 import '../../model/login/loginModel.dart';
 import '../../model/response/responsemodel.dart';
-import '../../repositories/app_init_Repo.dart';
-import '../../repositories/authRepo.dart';
+import '../../repositories/app_init_repo.dart';
+import '../../repositories/auth_repo.dart';
 
 part 'authbloc.freezed.dart';
 

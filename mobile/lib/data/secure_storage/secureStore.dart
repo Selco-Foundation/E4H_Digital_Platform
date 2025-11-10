@@ -34,7 +34,6 @@ class SecureStore {
     return await storage.read(key: locale);
   }
 
-  //App configs
   Future setAppConfig(MdmsResponseModel mdmsResponseModel) async {
     String jsonMdmsResponse = json.encode(mdmsResponseModel.toJson());
     await storage.write(key: 'appConfig', value: jsonMdmsResponse);
@@ -44,7 +43,6 @@ class SecureStore {
     return await storage.read(key: 'appConfig');
   }
 
-  //Asset count
   Future setAssetCount(List<Mdms<AssetCountData>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((assetCount) => assetCount.toJson()))
@@ -56,7 +54,6 @@ class SecureStore {
     return await storage.read(key: 'assetCount');
   }
 
-  //Asset type
   Future setAssetType(List<Mdms<AssetTypeData>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((assetType) => assetType.toJson()))
@@ -68,7 +65,6 @@ class SecureStore {
     return await storage.read(key: 'assetType');
   }
 
-  //System
   Future setSystem(List<Mdms<SystemData>> list) async {
     final List<Map<String, dynamic>> jsonList =
         list.map((mdms) => mdms.toJson((system) => system.toJson())).toList();
@@ -79,7 +75,6 @@ class SecureStore {
     return await storage.read(key: 'system');
   }
 
-  //Warranty
   Future setWarranty(List<Mdms<WarrantyData>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((warranty) => warranty.toJson()))
@@ -91,7 +86,6 @@ class SecureStore {
     return await storage.read(key: 'warranty');
   }
 
-  //Warranty
   Future setBrand(List<Mdms<BrandData>> list) async {
     final List<Map<String, dynamic>> jsonList =
         list.map((mdms) => mdms.toJson((brand) => brand.toJson())).toList();
@@ -102,7 +96,6 @@ class SecureStore {
     return await storage.read(key: 'brand');
   }
 
-  //SolutionDesignType
   Future setSolutionDesignType(List<Mdms<SolutionDesignType>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((solutionDesign) => solutionDesign.toJson()))
@@ -114,7 +107,6 @@ class SecureStore {
     return await storage.read(key: 'solutionDesign');
   }
 
-  //SolutionDesignType
   Future setSolutionDesignTypeBom(
       List<Mdms<SolutionDesignTypeBom>> list) async {
     final List<Map<String, dynamic>> jsonList = list
@@ -135,12 +127,10 @@ class SecureStore {
     );
   }
 
-  /// Read the entire forms schema map. Returns `null` if unset.
   Future<String?> getFormSchemas() async {
-    final raw = await storage.read(key: 'forms_schemas');
+    return await storage.read(key: 'forms_schemas');
   }
 
-  //access token
   Future setAccessToken(String? accessToken) async {
     await storage.write(key: 'accessToken', value: accessToken);
   }
@@ -153,7 +143,6 @@ class SecureStore {
     await storage.delete(key: 'accessToken');
   }
 
-  //other auth information
   Future setAccessInfo(ResponseModel accessInfo) async {
     String jsonAccessInfo = json.encode(accessInfo.toJson());
     await storage.write(key: 'accessInfo', value: jsonAccessInfo);
@@ -165,7 +154,6 @@ class SecureStore {
     try {
       return ResponseModel.fromJson(json.decode(jsonAccessInfo));
     } catch (err) {
-      print(err);
       rethrow;
     }
   }
@@ -174,7 +162,6 @@ class SecureStore {
     await storage.delete(key: 'accessInfo');
   }
 
-  //role actions
   Future setRoleActions(RoleActionsWrapperModel actionsWrapper) async {
     String jsonActionsWrapper = json.encode(actionsWrapper.toJson());
     await storage.write(key: 'actionsWrapper', value: jsonActionsWrapper);
@@ -188,12 +175,10 @@ class SecureStore {
     try {
       return RoleActionsWrapperModel.fromJson(json.decode(jsonActionsWrapper));
     } catch (err) {
-      print(err);
       rethrow;
     }
   }
 
-  //Individual ID
   Future setSelectedIndividual(String? id) async {
     await storage.write(key: 'individualId', value: id);
   }
@@ -208,12 +193,7 @@ class SecureStore {
   }
 
   String _kRawSchema(String schemaKey) => 'raw_schema_$schemaKey';
-  String _kProjDoc(String projectId, String schemaKey) =>
-      'proj_doc_${projectId}_$schemaKey';
-  String _kBomId(String projectId, String schemaKey) =>
-      'bom_id_${projectId}_$schemaKey';
 
-  // RAW schema (MDMS/mock) AS-IS
   Future<void> setRawSchemaDoc(
       String schemaKey, Map<String, dynamic> raw) async {
     await storage.write(key: _kRawSchema(schemaKey), value: jsonEncode(raw));

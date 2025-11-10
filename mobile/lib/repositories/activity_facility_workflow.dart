@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:isar/isar.dart';
 
@@ -26,7 +27,8 @@ class ActivityFacilityWorkflowRepository {
           .assetTypeEqualTo(type)
           .findAll();
 
-      debugPrint("[$type] found ${media.length} cached media uploads");
+      AppLogger.instance
+          .info("[$type] found ${media.length} cached media uploads");
 
       // for (final m in media) {
       //   if (m.filePath.isEmpty) continue;

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../model/appconfig/mdmsRequest.dart';
-import '../../repositories/app_init_Repo.dart';
+import '../../repositories/app_init_repo.dart';
 
 typedef FileTapCallback = void Function(String path);
 typedef RemoveReportCallback = void Function(ExistingReport report);

@@ -1,13 +1,13 @@
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
 import '../../model/activity_facility_workflow/activity_facility_workflow.dart';
-import '../../repositories/assetRepo.dart';
+import '../../repositories/asset_repo.dart';
 
 part 'cache_asset.freezed.dart';
 
-/// BLOC
 class CacheAssetBloc extends Bloc<CacheAssetEvent, CacheAssetState> {
   final AssetRepository _repo;
   final Isar isar;
@@ -31,22 +31,19 @@ class CacheAssetBloc extends Bloc<CacheAssetEvent, CacheAssetState> {
           userType: event.userType);
       emit(const CacheAssetState.success());
     } catch (e) {
-      print(e.toString());
+      AppLogger.instance.info(e.toString());
       emit(CacheAssetState.failure(e.toString()));
     }
   }
 }
 
-/// EVENTS
 @freezed
 class CacheAssetEvent with _$CacheAssetEvent {
-  /// Start a full “remote → local” sync for [projectId]
   const factory CacheAssetEvent.start(
           String projectId, String userType, ActivityFacilityWorkflow project) =
       _StartSync;
 }
 
-/// STATES
 @freezed
 class CacheAssetState with _$CacheAssetState {
   const factory CacheAssetState.initial() = _Initial;

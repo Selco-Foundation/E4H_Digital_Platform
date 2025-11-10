@@ -17,7 +17,7 @@ import '../blocs/activity_facility_bom/activity_facility_bom.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../repositories/activity_facility_repo.dart';
-import '../repositories/app_init_Repo.dart';
+import '../repositories/app_init_repo.dart';
 import '../repositories/bom_repo.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 import '../data/remote_client.dart';
@@ -374,7 +374,8 @@ class AppInitRepo {
         return Map<String, dynamic>.from(entry['data'] as Map);
       }
     } catch (e, st) {
-      debugPrint('FormsSchemaRepository.loadByName error: $e\n$st');
+      AppLogger.instance
+          .info('FormsSchemaRepository.loadByName error: $e\n$st');
     }
     return null;
   }
@@ -395,7 +396,8 @@ class AppInitRepo {
         }
       }
     } catch (e, st) {
-      debugPrint('FormsSchemaRepository.loadByUniqueIdentifier error: $e\n$st');
+      AppLogger.instance
+          .info('FormsSchemaRepository.loadByUniqueIdentifier error: $e\n$st');
     }
     return null;
   }

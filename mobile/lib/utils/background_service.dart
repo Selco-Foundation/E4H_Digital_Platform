@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' show DartPluginRegistrant;
 
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -19,30 +20,26 @@ import '../model/document/document.dart';
 import '../model/transaction/transaction.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../repositories/activity_facility_workflow.dart';
-import '../repositories/app_init_Repo.dart'; // envConfig
-import '../repositories/assetRepo.dart';
+import '../repositories/app_init_repo.dart'; // envConfig
+import '../repositories/asset_repo.dart';
 import '../repositories/bom_repo.dart';
 import '../utils/utils.dart';
 import 'constants.dart';
 
-// project submisison
 const String kMethodSubmit = 'submit_project';
 const String kEvtProgress = 'submission_progress';
 const String kEvtError = 'submission_error';
 const String kEvtDone = 'submission_done';
 const String kCmdStop = 'stopService';
 
-// project rejection
 const String kMethodReject = 'reject_project';
 const String kEvtRejectDone = 'rejection_done';
 const String kEvtRejectError = 'rejection_error';
 
-// Handshake so UI knows the service is ready
 const String kEvtReady = 'bg_ready';
 
 const String kCmdForeground = 'bring_to_foreground';
 
-// ===== Android notification channel =====
 const String _svcChannelId = 'asset_submission_channel';
 const String _svcChannelName = 'Asset Submission';
 const int _svcNotifId = 728331;
@@ -68,7 +65,7 @@ Future<void> ensureAndroidNotificationPermission() async {
 
 Future<void> setupBackgroundService() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await envConfig.initialize(); // UI isolate init
+  await envConfig.initialize();
   final isar = await Constants().isar;
 
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -112,7 +109,7 @@ Future<void> setupBackgroundService() async {
   _uiErrSub = uiService.on(kEvtError).listen((data) async {
     final pid = data?['activityFacilityId'] as String?;
     final msg = data?['message']?.toString();
-    debugPrint('[UI] kEvtError received: pid=$pid msg=$msg');
+    AppLogger.instance.info('[UI] kEvtError received: pid=$pid msg=$msg');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
@@ -683,7 +680,7 @@ Future<void> _performSubmissionForActivityFacility({
 
     return;
   } catch (e) {
-    print("e ${e.toString()}");
+    AppLogger.instance.info("e ${e.toString()}");
     throw PlainError(_pretty(e));
   }
 }

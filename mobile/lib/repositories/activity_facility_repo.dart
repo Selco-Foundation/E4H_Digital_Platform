@@ -1,7 +1,7 @@
 import 'dart:async';
 
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_activity_facility_workflow.dart';
@@ -32,10 +32,6 @@ class ActivityFacilityRemoteRepository {
       Response response;
       String searchPath = "activity/v1/activities/_search";
 
-      if (envConfig.variables.envType == EnvType.dev) {
-        // return _loadLocalActivityFacility();
-      }
-
       response = await dio.post(
         searchPath,
         queryParameters: {
@@ -55,8 +51,6 @@ class ActivityFacilityRemoteRepository {
         },
       );
 
-      print("response.data ${response.data}");
-
       final responseMap = response.data['facility'];
 
       List<ActivityFacilityWorkflow> activityFacilityList = [];
@@ -66,7 +60,7 @@ class ActivityFacilityRemoteRepository {
       }
       return activityFacilityList;
     } catch (err) {
-      print("err ${err.toString()}");
+      AppLogger.instance.info(err);
       rethrow;
     }
   }
@@ -215,7 +209,6 @@ class ActivityFacilityRepository {
       sortDirection = 'ASC'}) async {
     final userTypes = _resolveUserTypes(workflowStatuses);
     try {
-      print("workflowStatuses $workflowStatuses");
       final remoteList = await _remote.searchByWorkflow(
         body: body,
         workflowStatuses: workflowStatuses,
@@ -229,7 +222,7 @@ class ActivityFacilityRepository {
         return filteredRemoteList;
       }
     } catch (e) {
-      debugPrint("error in fetching remote project ${e.toString()}");
+      AppLogger.instance.info("error in fetching remote project $e");
     }
     final cachedList = await readCache(workflowStatuses);
     final excludedIds = await _excludedIdsFor(userTypes);

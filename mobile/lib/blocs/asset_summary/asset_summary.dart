@@ -44,7 +44,6 @@ class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
       final String activityFacilityId = event.activityFacilityId;
       final String assetType = event.assetType;
 
-      /// 1) Fetch count entry (if any)
       final CacheAssetCount? countEntry = await isar.cacheAssetCounts
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
@@ -52,7 +51,6 @@ class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
           .assetTypeEqualTo(assetType)
           .findFirst();
 
-      /// 2) Fetch specification entry (if any)
       final CacheSpecification? specEntry = await isar.cacheSpecifications
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
@@ -60,7 +58,6 @@ class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
           .assetTypeEqualTo(assetType)
           .findFirst();
 
-      /// 3) Fetch asset detail (warranty/brand/model)
       final CacheAssetDetail? detailEntry = await isar.cacheAssetDetails
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
@@ -81,8 +78,6 @@ class AssetSummaryBloc extends Bloc<AssetSummaryEvent, AssetSummaryState> {
           .filter()
           .assetTypeEqualTo(assetType)
           .findAll();
-
-      print("mediaEntries length ${mediaEntries.length}");
 
       final summary = AssetSummaryModel(
         countEntry: countEntry,

@@ -8,7 +8,7 @@ import '../../data/nosql/cache_unsubmitted_activity_facility.dart';
 import '../../model/activity_facility/activity_facility.dart';
 import '../../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../../repositories/activity_facility_repo.dart';
-import '../../repositories/app_init_Repo.dart';
+import '../../repositories/app_init_repo.dart';
 import '../../utils/utils.dart';
 
 part 'activity_facility.freezed.dart';
