@@ -36,7 +36,7 @@ import org.apache.hc.core5.ssl.SSLContextBuilder;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 
 @Slf4j
-public class V20251105120000__update_es_indices_with_facility_data extends BaseJavaMigration {
+public class V20251105120000__update_ticket_indices_with_facility_data extends BaseJavaMigration {
 
     private static final String[] ES_INDICES = {
         "computed-sla-im-services",
@@ -57,7 +57,7 @@ public class V20251105120000__update_es_indices_with_facility_data extends BaseJ
         ObjectMapper objectMapper = new ObjectMapper();
 
         // Initialize migration log file
-        String logFileName = "es_facility_update_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".log";
+        String logFileName = "es_ticket_indices_facility_update_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".log";
         String logFilePath = "./logs/" + logFileName;
         String absoluteLogPath = Paths.get(logFilePath).toAbsolutePath().normalize().toString();
         PrintWriter migrationLogger = initializeMigrationLogger(logFilePath, absoluteLogPath);
@@ -70,8 +70,8 @@ public class V20251105120000__update_es_indices_with_facility_data extends BaseJ
 
         // Get Elasticsearch configuration
         String esHost = getEnvOrDefault("EGOV_ES_HOST", "https://localhost:9200");
-        String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "elastic");
-        String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "8fwbD6HbJh6HU0oddsHm8TEI");
+        String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "");
+        String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "");
         String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
 
         log.info("Elasticsearch Host: {}", esHost);
