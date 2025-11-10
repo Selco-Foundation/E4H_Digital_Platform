@@ -59,15 +59,14 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
         orElse: () => [],
         initialized: (appConfig, assetCount, assetType, system, warranty, brand,
             solutionDesign, _) {
-          assetWarranties = warranty
-              .map((w) => w.data)
+          assetWarranties = warranty.first.data.warrantyDuration
+              .map((w) => w)
               .where((w) =>
                   w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
-              // .map((w) => w.duration)
               .toList();
 
-          assetBrands = brand
-              .map((b) => b.data)
+          assetBrands = brand.first.data.brand
+              .map((b) => b)
               .where((w) =>
                   w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
               .toList();

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:isar/isar.dart';
 import 'package:mime/mime.dart';
@@ -46,13 +47,12 @@ class AssetRepository {
     String fileName = file.path.split(Platform.pathSeparator).last;
     String? mimeType = lookupMimeType(fileName);
 
-    // Determine MIME type from content if needed
     if (mimeType == null) {
       try {
         final bytes = await file.readAsBytes();
         mimeType = lookupMimeType('', headerBytes: bytes);
       } catch (e) {
-        print("Error reading file for MIME type: $e");
+        debugPrint("Error reading file for MIME type: $e");
       }
     }
 
@@ -71,7 +71,6 @@ class AssetRepository {
       "module": "Incident",
     });
 
-    print("formdata $formData");
     final tenantId = formData.fields
         .firstWhere(
           (field) => field.key == "tenantId",
@@ -79,7 +78,6 @@ class AssetRepository {
         )
         .value;
 
-    print("tenantId: $tenantId");
     try {
       final response = await _dio.post("/filestore/v1/files", data: formData);
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -95,11 +93,9 @@ class AssetRepository {
 
   Future<Asset> createOrUpdateAsset(
       {required Asset asset, required Isar isar}) async {
-    // Determine create vs update
     final isCreate = asset.assetId == null || asset.assetId!.isEmpty;
     final endpoint = isCreate ? '_create' : '_update?assetID=${asset.assetId}';
 
-    // Build the nested payload
     final payload = {
       'assetDetail': {
         'Asset': asset.toJson(),
@@ -107,11 +103,9 @@ class AssetRepository {
     };
 
     try {
-      print('Request payload: ${jsonEncode(payload)}');
       final response =
           await _dio.post('/asset-registry/v1/asset/$endpoint', data: payload);
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.data}');
+      debugPrint('Response body: ${response.data}');
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception(
@@ -119,21 +113,17 @@ class AssetRepository {
           '${response.statusCode}',
         );
       }
-
-      // The API may wrap the asset under "asset" or "Asset"
       final data = response.data as Map<String, dynamic>;
       final assetJson = data['asset'] ?? data['Asset'];
       if (assetJson == null) {
         throw Exception('Asset data missing in response');
       }
 
-      // Parse the returned JSON into our model
       final updatedAsset = Asset.fromJson(
         Map<String, dynamic>.from(assetJson as Map),
       );
 
-      print("updatedAsset $updatedAsset");
-      print("updated AssetId ${updatedAsset.assetId}");
+      debugPrint("updated AssetId ${updatedAsset.assetId}");
 
       if ((updatedAsset.assetId ?? '').isNotEmpty) {
         await _writeBackAssetIdToCache(isar: isar, asset: updatedAsset);
@@ -144,9 +134,9 @@ class AssetRepository {
       final code = _errorCodeFromDio(e);
       final isDuplicate = code == 'ERR_ASSET_DUPLICATE_VALIDATION';
 
-      print("Starting Duplicate Fetch and resending");
+      debugPrint("Starting Duplicate Fetch and resending");
       if (isCreate && isDuplicate) {
-        print(
+        debugPrint(
             "Fetching Duplicate isCreate: $isCreate isDuplicate: $isDuplicate");
         final remote = await _fetchAssetBySerial(
           activityFacilityId: asset.activityFacilityID! ?? '',
@@ -174,7 +164,6 @@ class AssetRepository {
             '/asset-registry/v1/asset/_update?assetID=$remoteAssetId',
             data: updatePayload,
           );
-          print('Request payload: ${jsonEncode(payload)}');
           if (updateResp.statusCode == 200 || updateResp.statusCode == 201) {
             final m = updateResp.data as Map<String, dynamic>;
             final aj = m['asset'] ?? m['Asset'];
@@ -184,14 +173,11 @@ class AssetRepository {
           }
         }
       }
-      print("error message in duplicate ${e.message}");
+      debugPrint("error message in duplicate ${e.message}");
       throw DioErrorParser.parse(e);
     }
   }
 
-  /// Fetch remote assets and upsert into all your Isar caches,
-  /// clearing only the matching CacheAddNewAsset per serialNumber,
-  /// and wholesale-clearing media before re-inserting.
   Future<void> syncRemoteToLocal(
       {required ActivityFacilityWorkflow activityFacility,
       required String activityFacilityId,
@@ -204,7 +190,6 @@ class AssetRepository {
       );
       if (draft) return;
 
-      // fetch JSON, parse into Asset models
       final resp = await _dio.post(
         '/asset-registry/v1/asset/_search?tenantId=${envConfig.variables.tenantId}',
         data: {
@@ -214,47 +199,34 @@ class AssetRepository {
           }
         },
       );
-      print("resp ${resp.data}");
       if (resp.statusCode != 200 && resp.statusCode != 201) {
         throw Exception('Failed to fetch assets');
       }
       final List<dynamic> rawList = resp.data as List<dynamic>;
 
-      // parse each raw Map into our Asset model
       final assets = rawList
           .cast<Map<String, dynamic>>()
           .map((m) => Asset.fromJson(m))
           .toList();
 
-      // group by assetTypeID
       final byType = <String, List<Asset>>{};
       for (var asset in assets) {
         final type = asset.assetTypeID?.toLowerCase() ?? 'unknown';
         byType.putIfAbsent(type, () => []).add(asset);
       }
 
-      print("byType $byType");
-
-      // perform one big Isar transaction
       await isar.writeTxn(() async {
         for (var entry in byType.entries) {
           final type = entry.key;
           final list = entry.value;
 
-          print("entry $entry");
-          print("type $type");
-          print("assets $assets");
-
-          // — upsert count
           final countValue = list.length;
-          print("countValue $countValue of ${entry.key}");
           var countEntry = await isar.cacheAssetCounts
               .where()
               .activityFacilityIdEqualTo(activityFacilityId)
               .filter()
               .assetTypeEqualTo(type)
               .findFirst();
-          print("existingCount $countEntry");
           if (countEntry != null) {
             countEntry
               ..count = countValue
@@ -286,7 +258,6 @@ class AssetRepository {
               .filter()
               .assetTypeEqualTo(type)
               .findFirst();
-          print("specEntry $specEntry");
           if (specEntry != null) {
             specEntry
               ..system = spec.system
@@ -311,8 +282,6 @@ class AssetRepository {
               .filter()
               .assetTypeEqualTo(type)
               .findFirst();
-          print("detailEntry $detailEntry");
-          print("detailEntry ${detailEntry?.warrantyStartDate}");
           if (detailEntry != null) {
             detailEntry
               ..brand = detail.brand
@@ -325,10 +294,8 @@ class AssetRepository {
             await isar.cacheAssetDetails.put(detail);
           }
 
-          // — upsert each asset’s “main photo” in CacheAddNewAsset
           for (var asset in list) {
             final serial = asset.serialNumber ?? '';
-            // delete old by serial
             final oldList = await isar.cacheAddNewAssets
                 .where()
                 .activityFacilityIdEqualTo(activityFacilityId)
@@ -344,7 +311,7 @@ class AssetRepository {
             // find all PHOTO documents
             for (var doc in asset.documents ?? []) {
               if (doc.documentType == 'PHOTO' || doc.documentType == 'ASSET') {
-                print("documentId: doc?.id ?? '', ${doc.id} type: $type");
+                debugPrint("documentId: doc?.id ?? '', ${doc.id} type: $type");
                 await isar.cacheAddNewAssets.put(
                   CacheAddNewAsset(
                     assetId: asset.assetId,
@@ -387,20 +354,15 @@ class AssetRepository {
           }
         }
 
-        print("project.workflow ${activityFacility.workflow}");
-        print("Documents ${activityFacility.workflow?.documents}");
         for (var doc in activityFacility.workflow?.documents ?? []) {
           if (doc.documentType != 'ASSET' &&
               doc.documentType != 'PHOTO' &&
               doc.documentType != 'INSTALLATION_REPORT') {
-            // we only want strings like "inverter-image", i.e. exactly two parts
             final parts = doc.documentType?.split('-') ?? [];
             if (parts.length != 2) continue;
 
             final assetTypeFromDoc = parts[0];
-            print("assetTypeFromDoc $assetTypeFromDoc");
             final itemTypeFromDoc = parts[1];
-            print("itemTypeFromDoc $itemTypeFromDoc");
 
             await isar.cacheMediaUploads.put(
               CacheMediaUpload(
@@ -418,7 +380,7 @@ class AssetRepository {
         }
       });
     } on DioError catch (e) {
-      print(e);
+      debugPrint(e.toString());
       throw DioErrorParser.parse(e);
     }
   }
@@ -440,7 +402,7 @@ class AssetRepository {
       'transactions': transactions.toList()
     };
 
-    print("payload ${jsonEncode(payload)}");
+    debugPrint("payload ${jsonEncode(payload)}");
 
     try {
       final resp = await _dio.post('/activity/v1/activities/workflow/update',
@@ -457,9 +419,7 @@ class AssetRepository {
     }
   }
 
-  // Add this helper to AssetRepository
   Future<Map<String, dynamic>?> _fetchAssetBySerial({
-    // required String facilityId,
     required String activityFacilityId,
     required String serialNumber,
   }) async {
@@ -474,8 +434,6 @@ class AssetRepository {
       },
     );
 
-    print("something went wrong here only ${resp.data}");
-
     if (resp.statusCode == 200 || resp.statusCode == 201) {
       final data = resp.data;
       if (data is List) {
@@ -484,13 +442,6 @@ class AssetRepository {
               orElse: () => null,
             );
       }
-      // if (data is Map && data['assets'] is List) {
-      //   final list = (data['assets'] as List).cast<Map<String, dynamic>>();
-      //   return list.firstWhere(
-      //     (m) => (m['serialNumber'] ?? '') == serialNumber,
-      //     orElse: () => null,
-      //   );
-      // }
     }
     return null;
   }

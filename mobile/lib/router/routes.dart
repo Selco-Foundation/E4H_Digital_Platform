@@ -20,6 +20,7 @@ class Routes {
   static const inbox = 'inbox';
   static const inboxAssetSummary = 'inbox-asset-summary';
   static const submitForApproval = 'submit-for-approval';
+  static const submittedSaveSuccess = 'submitted-save-success';
   static const draft = 'draft';
   static const barcode = 'DigitScannerRoute';
   static const imageViewer = 'image-viewer?path';

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:selco/model/solution_design_type_bom/solution_design_type_bom.dart';
@@ -32,21 +33,20 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     Emitter<InitState> emit,
   ) async {
     final appInitRepo = AppInitRepo();
-    final envCfg = env.EnvironmentConfiguration.instance;
 
     try {
       final appConfig = await appInitRepo.searchAppConfiguration(
-        const MdmsRequestModel(
+        MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
-            tenantId: 'in',
+            tenantId: env.envConfig.variables.tenantId,
             moduleDetails: [
-              MdmsModuleDetailsModel(
+              const MdmsModuleDetailsModel(
                 moduleName: 'HCM-FIELD-APP-CONFIG',
                 masterDetails: [
                   MdmsMasterDetailsModel('appConfig'),
                 ],
               ),
-              MdmsModuleDetailsModel(
+              const MdmsModuleDetailsModel(
                 moduleName: 'module-version',
                 masterDetails: [
                   MdmsMasterDetailsModel('ROW_VERSIONS'),
@@ -69,77 +69,67 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     Emitter<InitState> emit,
   ) async {
     final appInitRepo = AppInitRepo();
-    final envCfg = env.EnvironmentConfiguration.instance;
     final appConfig = _cachedAppConfig;
 
     if (appConfig == null) {
       emit(const InitState.error('MDMS requested before appConfig.'));
       return;
     }
-
     emit(InitState.loadingMdms(appConfig: appConfig));
 
     try {
-      final assetCount = await appInitRepo.searchAssetCount(MdmsRequestModel(
+      final assetCountFut = appInitRepo.searchAssetCount(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
         tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset.AssetCount",
+        schemaCode: "asset-registry.AssetCountSchema",
         moduleDetails: [],
       )));
-      final assetCountList = assetCount ?? [];
 
-      final assetType = await appInitRepo.searchAssetType(MdmsRequestModel(
+      final assetTypeFut = appInitRepo.searchAssetType(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
         tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset.AssetType2",
+        schemaCode: "asset-registry.AssetTypeSchema",
         moduleDetails: [],
       )));
-      final assetTypeList = assetType ?? [];
 
-      final system = await appInitRepo.searchSystem(MdmsRequestModel(
+      final systemFut = appInitRepo.searchSystem(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
         tenantId: env.envConfig.variables.tenantId,
         schemaCode: "asset-registry.SystemSchema",
         moduleDetails: [],
       )));
-      final systemList = system ?? [];
 
-      final warranty = await appInitRepo.searchWarranty(MdmsRequestModel(
+      final warrantyFut = appInitRepo.searchWarranty(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
         tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset.WarrantyDuration",
+        schemaCode: "asset-registry.WarrantyDurationSchema",
         moduleDetails: [],
       )));
-      final warrantyList = warranty ?? [];
 
-      final brand = await appInitRepo.searchBrand(MdmsRequestModel(
+      final brandFut = appInitRepo.searchBrand(MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
         tenantId: env.envConfig.variables.tenantId,
         schemaCode: "asset-registry.BrandSchema",
         moduleDetails: [],
       )));
-      final brandList = brand ?? [];
 
-      final solutionDesign =
-          await appInitRepo.searchSolutionDesign(MdmsRequestModel(
+      final solutionDesignFut =
+          appInitRepo.searchSolutionDesign(MdmsRequestModel(
               mdmsCriteria: MdmsCriteriaModel(
         tenantId: env.envConfig.variables.tenantId,
         schemaCode: "facility.SolarSolutionDesignType",
         moduleDetails: [],
       )));
-      final solutionDesignList = solutionDesign ?? [];
 
-      final solutionDesignBom =
-          await appInitRepo.searchSolutionDesignTypeBom(MdmsRequestModel(
+      final solutionDesignBomFut =
+          appInitRepo.searchSolutionDesignTypeBom(MdmsRequestModel(
               mdmsCriteria: MdmsCriteriaModel(
         tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset.SolutionDesignTypeBom",
+        schemaCode: "common-masters.SolutionDesignTypeBOMForms",
         moduleDetails: [],
       )));
-      final solutionDesignBomList = solutionDesignBom ?? [];
 
-      // ---- Fetch FormConfig docs (raw) ----
-      final formsDocs = await appInitRepo.searchFormConfigsRaw(
+      final formsDocsFut = appInitRepo.searchFormConfigsRaw(
         MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
             tenantId: env.envConfig.variables.tenantId,
@@ -153,21 +143,52 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         ),
       );
 
-      // ---- Transform & store each schema ----
+      final results = await Future.wait([
+        assetCountFut,
+        assetTypeFut,
+        systemFut,
+        warrantyFut,
+        brandFut,
+        solutionDesignFut,
+        solutionDesignBomFut,
+        formsDocsFut,
+      ]);
+
+      final List<Mdms<AssetCountData>> assetCount =
+          (results[0] as List<Mdms<AssetCountData>>?) ??
+              <Mdms<AssetCountData>>[];
+
+      final List<Mdms<AssetTypeData>> assetType =
+          (results[1] as List<Mdms<AssetTypeData>>?) ?? <Mdms<AssetTypeData>>[];
+
+      final List<Mdms<SystemData>> system =
+          (results[2] as List<Mdms<SystemData>>?) ?? <Mdms<SystemData>>[];
+
+      final List<Mdms<WarrantyData>> warranty =
+          (results[3] as List<Mdms<WarrantyData>>?) ?? <Mdms<WarrantyData>>[];
+
+      final List<Mdms<BrandData>> brand =
+          (results[4] as List<Mdms<BrandData>>?) ?? <Mdms<BrandData>>[];
+
+      final List<Mdms<SolutionDesignType>> solutionDesign =
+          (results[5] as List<Mdms<SolutionDesignType>>?) ??
+              <Mdms<SolutionDesignType>>[];
+
+      final List<Mdms<SolutionDesignTypeBom>> solutionDesignBom =
+          (results[6] as List<Mdms<SolutionDesignTypeBom>>?) ??
+              <Mdms<SolutionDesignTypeBom>>[];
+
+      final List<dynamic> formsDocs = results[7] as List<dynamic>;
+
       for (final doc in formsDocs) {
         final transformed = transformSelcoFormMdmsDocToSchema(doc);
-
-        // carry uniqueIdentifier if present
         final uniqueId = doc['uniqueIdentifier']?.toString();
         if (uniqueId != null && uniqueId.isNotEmpty) {
           transformed['uniqueIdentifier'] = uniqueId;
         }
-
         await appInitRepo.upsertTransformedSchema(transformed);
       }
 
-      print("About emitting initState");
-      //go to the initialized state once configuration details are fetched
       emit(InitState.initialized(
         appConfig: appConfig,
         assetCount: assetCount,
@@ -178,139 +199,9 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         solutionDesign: solutionDesign,
         solutionDesignBom: solutionDesignBom,
       ));
-      print("After emitting initState");
     } catch (e) {
+      debugPrint(e.toString());
       emit(InitState.error('Failed to load MDMS: $e'));
-    }
-  }
-
-  //deal with AppInitEvent, fetches appConfig
-  FutureOr<void> doInitialization(
-      _AppLaunchEvent event, Emitter<InitState> emit) async {
-    //initialize repo for fetching appConfig
-    final appInitRepo = AppInitRepo();
-    final envConfigs = env.EnvironmentConfiguration.instance;
-    try {
-      final appConfig = await appInitRepo.searchAppConfiguration(
-        const MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-            tenantId: 'in',
-            moduleDetails: [
-              MdmsModuleDetailsModel(
-                moduleName: 'HCM-FIELD-APP-CONFIG',
-                masterDetails: [
-                  MdmsMasterDetailsModel('appConfig'),
-                ],
-              ),
-              MdmsModuleDetailsModel(
-                moduleName: 'module-version',
-                masterDetails: [
-                  MdmsMasterDetailsModel('ROW_VERSIONS'),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-
-      final assetCount = await appInitRepo.searchAssetCount(MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset.AssetCount",
-        moduleDetails: [],
-      )));
-      final assetCountList = assetCount ?? [];
-
-      final assetType = await appInitRepo.searchAssetType(MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset.AssetType2",
-        moduleDetails: [],
-      )));
-      final assetTypeList = assetType ?? [];
-
-      final system = await appInitRepo.searchSystem(MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset-registry.SystemSchema",
-        moduleDetails: [],
-      )));
-      final systemList = system ?? [];
-
-      final warranty = await appInitRepo.searchWarranty(MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset.WarrantyDuration",
-        moduleDetails: [],
-      )));
-      final warrantyList = warranty ?? [];
-
-      final brand = await appInitRepo.searchBrand(MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset-registry.BrandSchema",
-        moduleDetails: [],
-      )));
-      final brandList = brand ?? [];
-
-      final solutionDesign =
-          await appInitRepo.searchSolutionDesign(MdmsRequestModel(
-              mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "facility.SolarSolutionDesignType",
-        moduleDetails: [],
-      )));
-      final solutionDesignList = solutionDesign ?? [];
-
-      final solutionDesignBom =
-          await appInitRepo.searchSolutionDesignTypeBom(MdmsRequestModel(
-              mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset.SolutionDesignTypeBom",
-        moduleDetails: [],
-      )));
-      final solutionDesignBomList = solutionDesignBom ?? [];
-
-      // ---- Fetch FormConfig docs (raw) ----
-      final formsDocs = await appInitRepo.searchFormConfigsRaw(
-        MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-            tenantId: env.envConfig.variables.tenantId,
-            moduleDetails: [
-              const MdmsModuleDetailsModel(
-                moduleName: 'SELCO',
-                masterDetails: [MdmsMasterDetailsModel('FormConfig')],
-              ),
-            ],
-          ),
-        ),
-      );
-
-      // ---- Transform & store each schema ----
-      for (final doc in formsDocs) {
-        final transformed = transformSelcoFormMdmsDocToSchema(doc);
-
-        // carry uniqueIdentifier if present
-        final uniqueId = doc['uniqueIdentifier']?.toString();
-        if (uniqueId != null && uniqueId.isNotEmpty) {
-          transformed['uniqueIdentifier'] = uniqueId;
-        }
-
-        await appInitRepo.upsertTransformedSchema(transformed);
-      }
-
-      //go to the initialized state once configuration details are fetched
-      emit(InitState.initialized(
-          appConfig: appConfig,
-          assetCount: assetCountList,
-          assetType: assetTypeList,
-          system: systemList,
-          warranty: warrantyList,
-          brand: brandList,
-          solutionDesign: solutionDesignList,
-          solutionDesignBom: solutionDesignBomList));
-    } catch (err) {
-      rethrow;
     }
   }
 }
@@ -333,11 +224,11 @@ class InitState with _$InitState {
   }) = LoadingMdms;
   const factory InitState.initialized(
           {required MdmsResponseModel appConfig,
-          required List<Mdms<AssetCount>> assetCount,
-          required List<Mdms<AssetType>> assetType,
-          required List<Mdms<System>> system,
-          required List<Mdms<Warranty>> warranty,
-          required List<Mdms<Brand>> brand,
+          required List<Mdms<AssetCountData>> assetCount,
+          required List<Mdms<AssetTypeData>> assetType,
+          required List<Mdms<SystemData>> system,
+          required List<Mdms<WarrantyData>> warranty,
+          required List<Mdms<BrandData>> brand,
           required List<Mdms<SolutionDesignType>> solutionDesign,
           required List<Mdms<SolutionDesignTypeBom>> solutionDesignBom}) =
       Initialized;

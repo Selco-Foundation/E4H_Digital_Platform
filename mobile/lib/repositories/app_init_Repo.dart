@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 import '../data/remote_client.dart';
@@ -17,9 +18,9 @@ import '../model/system/system.dart';
 import '../model/warranty/warranty.dart';
 import '../utils/envConfig.dart';
 
-//create an instance of the environmentConfiguration class
-//envConfig is used everywhere to get certain variables, either from the .env file or by using certain predefined fallback values
 EnvironmentConfiguration envConfig = EnvironmentConfiguration.instance;
+
+const String mdmsV2Url = "egov-mdms-service/v2/_search";
 
 class AppInitRepo {
   Future<MdmsResponseModel> searchAppConfiguration(
@@ -28,8 +29,6 @@ class AppInitRepo {
     final body = mdmsRequestBody.toJson();
 
     final SecureStore storage = SecureStore();
-
-    // try to fetch locally
     String? localAppConfig = await storage.getAppConfig();
     if (localAppConfig != null) {
       return MdmsResponseModel.fromJson(json.decode(localAppConfig));
@@ -40,22 +39,17 @@ class AppInitRepo {
     }
 
     final headers = <String, String>{
-      // "content-type": 'application/x-www-form-urlencoded',
       "Access-Control-Allow-Origin": "*",
       "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
     };
 
     try {
-      //make an api call
-
       final response = await client.post(envConfig.variables.completeMdmsApiUrl,
           data: body, options: Options(headers: headers));
 
       final responseBody = MdmsResponseModel.fromJson(
         json.decode(response.toString())['MdmsRes'],
       );
-
-      //storage locally to avoid fetching in future
       storage.setAppConfig(responseBody);
 
       return responseBody;
@@ -64,33 +58,23 @@ class AppInitRepo {
     }
   }
 
-  Future<List<Mdms<AssetCount>>> searchAssetCount(
+  Future<List<Mdms<AssetCountData>>> searchAssetCount(
       MdmsRequestModel mdmsRequestBody) async {
     final body = mdmsRequestBody.toJson();
-
     final SecureStore storage = SecureStore();
 
-    // try to fetch locally
     String? localAssetCount = await storage.getAssetCount();
     if (localAssetCount != null) {
       final List<dynamic> decodedList =
           json.decode(localAssetCount) as List<dynamic>;
       return decodedList
-          .map((item) => Mdms<AssetCount>.fromJson(
+          .map((item) => Mdms<AssetCountData>.fromJson(
                 item as Map<String, dynamic>,
-                (json) => AssetCount.fromJson(json as Map<String, dynamic>),
+                (json) => AssetCountData.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
     }
 
-    if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalMdms<AssetCount>(
-        'assets/mocks/mockAssetCount.json',
-        (json) => AssetCount.fromJson(json),
-      );
-    }
-
-    print("Something is wrong here bro why get here at all?");
     final client = DioClient().dio;
     final headers = <String, String>{
       "Access-Control-Allow-Origin": "*",
@@ -98,14 +82,14 @@ class AppInitRepo {
     };
 
     try {
-      final response = await client.post("egov-mdms-service/v2/_search",
+      final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
-      final List<Mdms<AssetCount>> result = payloadList
-          .map((item) => Mdms<AssetCount>.fromJson(
+      final List<Mdms<AssetCountData>> result = payloadList
+          .map((item) => Mdms<AssetCountData>.fromJson(
                 item as Map<String, dynamic>,
-                (json) => AssetCount.fromJson(json as Map<String, dynamic>),
+                (json) => AssetCountData.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
 
@@ -116,30 +100,22 @@ class AppInitRepo {
     }
   }
 
-  Future<List<Mdms<AssetType>>> searchAssetType(
+  Future<List<Mdms<AssetTypeData>>> searchAssetType(
       MdmsRequestModel mdmsRequestBody) async {
     final body = mdmsRequestBody.toJson();
 
     final SecureStore storage = SecureStore();
 
-    // try to fetch locally
     String? localAssetType = await storage.getAssetType();
     if (localAssetType != null) {
       final List<dynamic> decodedList =
           json.decode(localAssetType) as List<dynamic>;
       return decodedList
-          .map((item) => Mdms<AssetType>.fromJson(
+          .map((item) => Mdms<AssetTypeData>.fromJson(
                 item as Map<String, dynamic>,
-                (json) => AssetType.fromJson(json as Map<String, dynamic>),
+                (json) => AssetTypeData.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
-    }
-
-    if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalMdms<AssetType>(
-        'assets/mocks/mockAssetType.json',
-        (json) => AssetType.fromJson(json),
-      );
     }
 
     final client = DioClient().dio;
@@ -149,14 +125,14 @@ class AppInitRepo {
     };
 
     try {
-      final response = await client.post("egov-mdms-service/v2/_search",
+      final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
-      final List<Mdms<AssetType>> result = payloadList
-          .map((item) => Mdms<AssetType>.fromJson(
+      final List<Mdms<AssetTypeData>> result = payloadList
+          .map((item) => Mdms<AssetTypeData>.fromJson(
                 item as Map<String, dynamic>,
-                (json) => AssetType.fromJson(json as Map<String, dynamic>),
+                (json) => AssetTypeData.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
 
@@ -167,30 +143,22 @@ class AppInitRepo {
     }
   }
 
-  Future<List<Mdms<System>>> searchSystem(
+  Future<List<Mdms<SystemData>>> searchSystem(
       MdmsRequestModel mdmsRequestBody) async {
     final body = mdmsRequestBody.toJson();
 
     final SecureStore storage = SecureStore();
 
-    // try to fetch locally
     String? localSystem = await storage.getSystem();
     if (localSystem != null) {
       final List<dynamic> decodedList =
           json.decode(localSystem) as List<dynamic>;
       return decodedList
-          .map((item) => Mdms<System>.fromJson(
+          .map((item) => Mdms<SystemData>.fromJson(
                 item as Map<String, dynamic>,
-                (json) => System.fromJson(json as Map<String, dynamic>),
+                (json) => SystemData.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
-    }
-
-    if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalMdms<System>(
-        'assets/mocks/mockSystem.json',
-        (json) => System.fromJson(json),
-      );
     }
 
     final client = DioClient().dio;
@@ -200,14 +168,14 @@ class AppInitRepo {
     };
 
     try {
-      final response = await client.post("egov-mdms-service/v2/_search",
+      final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
-      final List<Mdms<System>> result = payloadList
-          .map((item) => Mdms<System>.fromJson(
+      final List<Mdms<SystemData>> result = payloadList
+          .map((item) => Mdms<SystemData>.fromJson(
                 item as Map<String, dynamic>,
-                (json) => System.fromJson(json as Map<String, dynamic>),
+                (json) => SystemData.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
 
@@ -218,30 +186,22 @@ class AppInitRepo {
     }
   }
 
-  Future<List<Mdms<Warranty>>> searchWarranty(
+  Future<List<Mdms<WarrantyData>>> searchWarranty(
       MdmsRequestModel mdmsRequestBody) async {
     final body = mdmsRequestBody.toJson();
 
     final SecureStore storage = SecureStore();
 
-    // try to fetch locally
     String? localWarranty = await storage.getWarranty();
     if (localWarranty != null) {
       final List<dynamic> decodedList =
           json.decode(localWarranty) as List<dynamic>;
       return decodedList
-          .map((item) => Mdms<Warranty>.fromJson(
+          .map((item) => Mdms<WarrantyData>.fromJson(
                 item as Map<String, dynamic>,
-                (json) => Warranty.fromJson(json as Map<String, dynamic>),
+                (json) => WarrantyData.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
-    }
-
-    if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalMdms<Warranty>(
-        'assets/mocks/mockWarranty.json',
-        (json) => Warranty.fromJson(json),
-      );
     }
 
     final client = DioClient().dio;
@@ -251,14 +211,14 @@ class AppInitRepo {
     };
 
     try {
-      final response = await client.post("egov-mdms-service/v2/_search",
+      final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
-      final List<Mdms<Warranty>> result = payloadList
-          .map((item) => Mdms<Warranty>.fromJson(
+      final List<Mdms<WarrantyData>> result = payloadList
+          .map((item) => Mdms<WarrantyData>.fromJson(
                 item as Map<String, dynamic>,
-                (json) => Warranty.fromJson(json as Map<String, dynamic>),
+                (json) => WarrantyData.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
 
@@ -269,30 +229,22 @@ class AppInitRepo {
     }
   }
 
-  Future<List<Mdms<Brand>>> searchBrand(
+  Future<List<Mdms<BrandData>>> searchBrand(
       MdmsRequestModel mdmsRequestBody) async {
     final body = mdmsRequestBody.toJson();
 
     final SecureStore storage = SecureStore();
 
-    // try to fetch locally
     String? localBrand = await storage.getBrand();
     if (localBrand != null) {
       final List<dynamic> decodedList =
           json.decode(localBrand) as List<dynamic>;
       return decodedList
-          .map((item) => Mdms<Brand>.fromJson(
+          .map((item) => Mdms<BrandData>.fromJson(
                 item as Map<String, dynamic>,
-                (json) => Brand.fromJson(json as Map<String, dynamic>),
+                (json) => BrandData.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
-    }
-
-    if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalMdms<Brand>(
-        'assets/mocks/mockBrand.json',
-        (json) => Brand.fromJson(json),
-      );
     }
 
     final client = DioClient().dio;
@@ -302,14 +254,14 @@ class AppInitRepo {
     };
 
     try {
-      final response = await client.post("egov-mdms-service/v2/_search",
+      final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
-      final List<Mdms<Brand>> result = payloadList
-          .map((item) => Mdms<Brand>.fromJson(
+      final List<Mdms<BrandData>> result = payloadList
+          .map((item) => Mdms<BrandData>.fromJson(
                 item as Map<String, dynamic>,
-                (json) => Brand.fromJson(json as Map<String, dynamic>),
+                (json) => BrandData.fromJson(json as Map<String, dynamic>),
               ))
           .toList();
 
@@ -326,7 +278,6 @@ class AppInitRepo {
 
     final SecureStore storage = SecureStore();
 
-    // try to fetch locally
     String? localSolutionDesign = await storage.getBrand();
     if (localSolutionDesign != null) {
       final List<dynamic> decodedList =
@@ -340,13 +291,6 @@ class AppInitRepo {
           .toList();
     }
 
-    if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalMdms<SolutionDesignType>(
-        'assets/mocks/mockSolutionDesignType.json',
-        (json) => SolutionDesignType.fromJson(json),
-      );
-    }
-
     final client = DioClient().dio;
     final headers = <String, String>{
       "Access-Control-Allow-Origin": "*",
@@ -354,7 +298,7 @@ class AppInitRepo {
     };
 
     try {
-      final response = await client.post("egov-mdms-service/v2/_search",
+      final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
@@ -379,7 +323,6 @@ class AppInitRepo {
 
     final SecureStore storage = SecureStore();
 
-    // try to fetch locally
     String? localSolutionDesignBom = await storage.getSolutionDesignTypeBom();
     if (localSolutionDesignBom != null) {
       final List<dynamic> decodedList =
@@ -393,13 +336,6 @@ class AppInitRepo {
           .toList();
     }
 
-    if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalMdms<SolutionDesignTypeBom>(
-        'assets/mocks/mockSolutionDesignTypeBomForm.json',
-        (json) => SolutionDesignTypeBom.fromJson(json),
-      );
-    }
-
     final client = DioClient().dio;
     final headers = <String, String>{
       "Access-Control-Allow-Origin": "*",
@@ -407,7 +343,7 @@ class AppInitRepo {
     };
 
     try {
-      final response = await client.post("egov-mdms-service/v2/_search",
+      final response = await client.post(mdmsV2Url,
           data: body, options: Options(headers: headers));
 
       final List<dynamic> payloadList = response.data['mdms'] as List<dynamic>;
@@ -426,7 +362,6 @@ class AppInitRepo {
     }
   }
 
-  /// Load schema by its logical name, e.g. "AssetForm"
   Future<Map<String, dynamic>?> loadByName(String name) async {
     final SecureStore storage = SecureStore();
     final raw = await storage.getFormSchemas();
@@ -439,12 +374,11 @@ class AppInitRepo {
         return Map<String, dynamic>.from(entry['data'] as Map);
       }
     } catch (e, st) {
-      print('FormsSchemaRepository.loadByName error: $e\n$st');
+      debugPrint('FormsSchemaRepository.loadByName error: $e\n$st');
     }
     return null;
   }
 
-  /// Load by uniqueIdentifier, e.g. "AssetForm.SELCO"
   Future<Map<String, dynamic>?> loadByUniqueIdentifier(String uniqueId) async {
     final SecureStore storage = SecureStore();
     final raw = await storage.getFormSchemas();
@@ -461,20 +395,17 @@ class AppInitRepo {
         }
       }
     } catch (e, st) {
-      print('FormsSchemaRepository.loadByUniqueIdentifier error: $e\n$st');
+      debugPrint('FormsSchemaRepository.loadByUniqueIdentifier error: $e\n$st');
     }
     return null;
   }
 
-  /// Persist/merge a **single** transformed schema (output of your transformJson step)
-  /// under its `name`, keeping `previousVersion`.
   Future<void> upsertTransformedSchema(Map<String, dynamic> transformed) async {
     final name = transformed['name']?.toString();
     final newVersion = transformed['version'];
 
     if (name == null || name.isEmpty) return;
 
-    // Read existing
     final SecureStore storage = SecureStore();
     final raw = await storage.getFormSchemas();
     final Map<String, dynamic> existing = raw == null
@@ -520,16 +451,12 @@ class AppInitRepo {
     throw Exception('No "mdms" (or MdmsRes) array found in $filePath');
   }
 
-  /// Return the raw MDMS docs for FormConfig (each item is a Map with "data", etc.)
   Future<List<Map<String, dynamic>>> searchFormConfigsRaw(
       MdmsRequestModel mdmsRequestBody) async {
-    // Try secure store first if you want (optional). Skipped here on purpose.
-
     if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalMdmsRaw('assets/mocks/mockBOMFormConfig.updated.3.json');
+      return _loadLocalMdmsRaw('assets/mocks/mockBOMFormConfig.json');
     }
 
-    // PROD call
     final body = mdmsRequestBody.toJson();
     final client = DioClient().dio;
     final headers = <String, String>{
@@ -551,43 +478,5 @@ class AppInitRepo {
         .cast<Map>()
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
-  }
-
-  Future<List<Mdms<T>>> _loadLocalMdms<T>(
-    String filePath,
-    T Function(Map<String, dynamic>) fromJsonT,
-  ) async {
-    try {
-      // 1) Load the raw JSON string from assets
-      final jsonString = await rootBundle.loadString(filePath);
-      final Map<String, dynamic> decoded =
-          json.decode(jsonString) as Map<String, dynamic>;
-
-      // 2) Figure out whether the array is under "mdms" or "MdmsRes"
-      String? arrayKey;
-      if (decoded.containsKey('mdms')) {
-        arrayKey = 'mdms';
-      } else if (decoded.containsKey('MdmsRes')) {
-        arrayKey = 'MdmsRes';
-      } else {
-        throw Exception('No "mdms" or "MdmsRes" key found in $filePath');
-      }
-
-      final rawList = decoded[arrayKey];
-      if (rawList is! List) {
-        throw Exception('"$arrayKey" is not a List in $filePath');
-      }
-
-      // 3) Map each entry into `Mdms<T>.fromJson(...)`
-      return rawList
-          .cast<Map<String, dynamic>>()
-          .map((entry) => Mdms<T>.fromJson(
-                entry,
-                (inner) => fromJsonT(inner as Map<String, dynamic>),
-              ))
-          .toList();
-    } catch (e) {
-      throw Exception('Failed to load mock data from $filePath: $e');
-    }
   }
 }

@@ -6,7 +6,6 @@ part 'solution_design_type_bom.g.dart';
 @freezed
 class SolutionDesignTypeBom with _$SolutionDesignTypeBom {
   const factory SolutionDesignTypeBom({
-    required String solutionDesignTypeCode,
     required String systemCode,
     required List<BomEntry> bomForms,
   }) = _SolutionDesignTypeBom;
@@ -15,7 +14,6 @@ class SolutionDesignTypeBom with _$SolutionDesignTypeBom {
       _$SolutionDesignTypeBomFromJson(json);
 
   factory SolutionDesignTypeBom.fromMdmsJson(Map<String, dynamic> json) {
-    final code = json['solutionDesignTypeCode']?.toString() ?? '';
     final system = json['systemCode']?.toString() ?? '';
     final entries = <BomEntry>[];
 
@@ -29,7 +27,6 @@ class SolutionDesignTypeBom with _$SolutionDesignTypeBom {
     }
 
     return SolutionDesignTypeBom(
-      solutionDesignTypeCode: code,
       systemCode: system,
       bomForms: entries,
     );

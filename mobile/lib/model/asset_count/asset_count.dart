@@ -15,3 +15,16 @@ class AssetCount with _$AssetCount {
   factory AssetCount.fromJson(Map<String, dynamic> json) =>
       _$AssetCountFromJson(json);
 }
+
+@freezed
+class AssetCountData with _$AssetCountData {
+  const factory AssetCountData({
+    required int id,
+    required String module,
+    required String tenantId,
+    @JsonKey(name: 'AssetCount') required List<AssetCount> assetCount,
+  }) = _AssetCountData;
+
+  factory AssetCountData.fromJson(Map<String, dynamic> json) =>
+      _$AssetCountDataFromJson(json);
+}
