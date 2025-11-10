@@ -51,17 +51,17 @@ class _HomePageState extends State<HomePage> {
           .add(CacheSyncRecordEvent.fetch(_userType));
 
       _syncSub = context.read<CacheSyncRecordBloc>().stream.listen((state) {
-        if (_popupShown) return; // guard against repeats
+        if (_popupShown) return;
 
         state.maybeWhen(
           loaded: (_, pending) {
-            if (pending != null && pending > 0) {
+            if (pending > 0) {
               _popupShown = true;
               _showPopup(context);
             }
           },
           notFound: (val) {
-            if (val != null && val > 0) {
+            if (val > 0) {
               _popupShown = true;
               _showPopup(context);
             }
