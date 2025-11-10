@@ -1,7 +1,7 @@
 import 'dart:convert';
 
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
@@ -49,7 +49,7 @@ class AuthRepository {
     final secureStore = SecureStore();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
 
-    print("refreshing token accessInfo ${accessInfo}");
+    AppLogger.instance.info("refreshing token accessInfo ${accessInfo}");
     if (accessInfo!.refresh_token == null) {
       throw Exception("No refresh token stored");
     }
@@ -97,7 +97,6 @@ class AuthRepository {
     } catch (err) {
       if (err is DioException) {
         final data = err.response?.data;
-        debugPrint("data $data");
         String errorMessage = 'Unknown error';
         if (data is Map<String, dynamic>) {
           if (data.containsKey('error') &&

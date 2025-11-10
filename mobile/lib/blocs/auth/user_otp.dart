@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import '../../repositories/app_init_Repo.dart';
-import '../../repositories/authRepo.dart';
+import '../../repositories/app_init_repo.dart';
+import '../../repositories/auth_repo.dart';
 
 part 'user_otp.freezed.dart';
 

@@ -6,7 +6,6 @@ import '../../data/nosql/cache_media_upload.dart';
 
 part 'cache_media_upload.freezed.dart';
 
-/// Bloc responsible for CRUD on CacheMediaUpload
 class CacheMediaUploadBloc
     extends Bloc<CacheMediaUploadEvent, CacheMediaUploadState> {
   final Isar isar;
@@ -61,8 +60,6 @@ class CacheMediaUploadBloc
             .and()
             .filePathEqualTo(event.entry.filePath)
             .findFirst();
-
-        print("Existing is not null ${existing != null}");
 
         if (existing != null) {
           existing.updatedAt = DateTime.now();
@@ -152,7 +149,6 @@ class CacheMediaUploadBloc
             .filter()
             .assetTypeEqualTo(event.assetType);
         final all = await q.findAll();
-        // delete them by id
         for (final e in all) {
           await isar.cacheMediaUploads.delete(e.id);
         }
@@ -164,7 +160,6 @@ class CacheMediaUploadBloc
   }
 }
 
-/// Events for CacheMediaUploadBloc
 @freezed
 class CacheMediaUploadEvent with _$CacheMediaUploadEvent {
   const factory CacheMediaUploadEvent.get(
@@ -184,7 +179,6 @@ class CacheMediaUploadEvent with _$CacheMediaUploadEvent {
   ) = CacheMediaUploadEventDeleteAll;
 }
 
-/// States for CacheMediaUploadBloc
 @freezed
 class CacheMediaUploadState with _$CacheMediaUploadState {
   const factory CacheMediaUploadState.initial() = _Initial;

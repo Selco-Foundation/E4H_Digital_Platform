@@ -38,7 +38,7 @@ import 'data/nosql/localization.dart';
 import 'data/remote_client.dart';
 import 'model/appconfig/mdmsResponse.dart';
 import 'model/data_model.init.dart';
-import 'repositories/app_init_Repo.dart';
+import 'repositories/app_init_repo.dart';
 import 'router/app_router.dart';
 import 'utils/background_service.dart';
 import 'utils/constants.dart';
@@ -47,11 +47,9 @@ late Isar _isar;
 late Dio _dio;
 
 void main() async {
-  // Ensure Flutter widgets are initialized
   WidgetsFlutterBinding.ensureInitialized();
   initializeMappers();
 
-  // Initialize environment configurations, ISAR, dio
   await envConfig.initialize();
   _dio = DioClient().dio;
   _isar = await Constants().isar;
@@ -59,15 +57,10 @@ void main() async {
   await setupBackgroundService();
   await ensureAndroidNotificationPermission();
 
-  // Initialize shared preferences
   await AppSharedPreferences().init();
 
-  // Check if it's the first launch of the app
   if (AppSharedPreferences().isFirstLaunch) {
-    // Log first launch
     AppLogger.instance.info('App Launched First Time', title: 'main');
-
-    // Mark app as launched for the first time
     await AppSharedPreferences().appLaunchedFirstTime();
   }
   // Run the main app widget

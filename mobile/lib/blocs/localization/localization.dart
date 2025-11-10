@@ -8,8 +8,8 @@ import 'package:isar/isar.dart';
 import '../../data/app_shared_preferences.dart';
 import '../../data/nosql/localization.dart';
 import '../../model/appconfig/mdmsResponse.dart';
-import '../../repositories/app_init_Repo.dart';
-import '../../repositories/localizationRepo.dart';
+import '../../repositories/app_init_repo.dart';
+import '../../repositories/localization_repo.dart';
 import 'app_localization.dart';
 
 part 'localization.freezed.dart';

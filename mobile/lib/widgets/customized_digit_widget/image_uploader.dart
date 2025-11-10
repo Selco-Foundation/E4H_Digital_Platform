@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/ComponentTheme/pop_up_card_theme.dart';
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:digit_ui_components/utils/utils.dart';
 import 'package:digit_ui_components/utils/validators/file_validator.dart';
 import 'package:digit_ui_components/utils/validators/image_validator.dart';
@@ -140,7 +141,7 @@ class _ImageUploaderState extends State<ImageUploader> {
           widget.onImagesSelected(List<File>.from(_imageFiles));
         } else {
           if (kDebugMode) {
-            print('No image selected.');
+            AppLogger.instance.info('No image selected.');
           }
         }
       });

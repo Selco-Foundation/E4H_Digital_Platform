@@ -4,7 +4,7 @@ import 'package:synchronized/synchronized.dart';
 
 import '../model/request/requestInfo.dart';
 import '../model/response/responsemodel.dart';
-import '../repositories/authRepo.dart';
+import '../repositories/auth_repo.dart';
 import '../utils/constants.dart';
 import 'network_manager.dart';
 import 'remote_client.dart';

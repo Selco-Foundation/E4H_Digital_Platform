@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 
@@ -150,8 +151,6 @@ class BomRepository {
 
   Map<String, dynamic> extractKVFromRawDoc(Map<String, dynamic> raw) {
     final acc = <String, dynamic>{};
-
-    // Handle {data:{...}} and {data:{data:{...}}}
     dynamic root = raw;
     if (root is Map && root['data'] is Map) {
       root = root['data'];
@@ -184,9 +183,8 @@ class BomRepository {
     required String tenantId,
     required String facilityId,
     required String assignUserUuid,
-    getSolutionName, // inject resolver
+    getSolutionName,
   }) async {
-    // 1) Enrich once
     await enrichProjectDocs(
       isar: isar,
       activityFacilityId: activityFacilityId,
@@ -195,21 +193,17 @@ class BomRepository {
       assignUserUuid: assignUserUuid,
     );
 
-    // 2) Dirty docs
     final dirty = (await getAllForProject(isar, activityFacilityId))
         .where((d) => d.isDirty)
         .toList();
 
     if (dirty.isEmpty) return;
-
-    // 3) Merge all fieldName/value pairs
     final mergedKV = <String, dynamic>{};
     for (final d in dirty) {
       final kv = extractKVFromRawDoc(d.dataMap);
       mergedKV.addAll(kv);
     }
 
-    // 4) Decide UPDATE vs CREATE
     final firstId = dirty
         .firstWhere(
           (d) => (d.serverBomId != null && d.serverBomId!.isNotEmpty),
@@ -217,16 +211,11 @@ class BomRepository {
         )
         .serverBomId;
     final isUpdate = firstId != null && firstId.isNotEmpty;
-
-    // 5) Resolve API "name" from project.systemCode (solutionDesignType)
     final solutionName = await ActivityFacilityRepository(isar)
         .getSolutionDesignTypeFromCache(isar, activityFacilityId);
-    print("solutionName $solutionName");
     final apiName = (solutionName != null && solutionName.trim().isNotEmpty)
         ? solutionName.trim()
         : 'BOM.SolarSystem';
-
-    // 6) Build payload (merged)
     final payload = {
       "bom": [
         {
@@ -244,13 +233,11 @@ class BomRepository {
       "apiOperation": isUpdate ? "UPDATE" : "CREATE",
     };
 
-    print("payload $payload");
-
     final path =
         isUpdate ? 'activity/v1/bom/_update' : 'activity/v1/bom/_create';
     final response = await _dio.post(path, data: payload);
 
-    print("response.data ${response.data}");
+    AppLogger.instance.info("bom create/update ${response.data}");
 
     await isar.writeTxn(() async {
       for (final d in dirty) {
@@ -262,7 +249,6 @@ class BomRepository {
   }
 
   Future<Map<String, dynamic>> searchBom({
-    // required List<String> facilityIds,
     required List<String> activityFacilityIds,
     int offset = 0,
     int limit = 100,
@@ -299,7 +285,6 @@ class BomRepository {
 
       final res = await searchBom(activityFacilityIds: [activityFacilityId]);
       final boms = (res['bom'] as List?) ?? const [];
-      print("bom $boms");
       if (boms.isEmpty) {
         return (savedBomValues: false);
       }
@@ -307,7 +292,6 @@ class BomRepository {
       final bom = (boms.first as Map<String, dynamic>);
 
       bool savedValues = false;
-      print("bom $bom");
       final data = (bom['data'] as Map<String, dynamic>?);
       if (data != null) {
         final entryKey = '$activityFacilityId::$userType';
@@ -325,8 +309,8 @@ class BomRepository {
       }
       return (savedBomValues: savedValues);
     } catch (e, stack) {
-      print("syncBomForProject ERROR: $e");
-      print(stack);
+      AppLogger.instance.info("syncBomForProject ERROR: $e");
+      AppLogger.instance.info(stack);
       throw Exception("Error syncing bom");
     }
   }
@@ -338,12 +322,10 @@ class BomRepository {
   }) async {
     try {
       final entryKey = '$activityFacilityId::$userType';
-      print("entryKey $entryKey");
       final rec = await isar.cacheActivityFacilityBomValues
           .where()
           .entryKeyEqualTo(entryKey)
           .findFirst();
-      print("entryKey $entryKey");
       if (rec == null) {
         throw Exception("No BOM values found for project");
       }
@@ -356,10 +338,8 @@ class BomRepository {
           .findFirst();
 
       final saved = spec?.system.trim();
-      print("saved $saved");
       final system =
           (saved != null && saved.isNotEmpty) ? saved : SYSTEM_TYPE.DC.name;
-      print("system $system");
       final tenantId = env.envConfig.variables.tenantId;
       final body = {
         "system": system,
@@ -369,9 +349,6 @@ class BomRepository {
       final path = "activity/v1/bom/_save_pdf?tenantId=$tenantId";
 
       final response = await _dio.post(path, data: body);
-
-      print("response.type ${response.headers}");
-      print("response.status ${response.statusCode}");
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception("Generate BOM PDF failed: ${response.statusCode}");
@@ -392,7 +369,7 @@ class BomRepository {
 
       return filestoreId;
     } catch (e) {
-      print("error $e");
+      AppLogger.instance.info("error $e");
       throw Exception("Failed to generate BOM PDF filestoreId");
     }
   }
@@ -412,8 +389,8 @@ class BomRepository {
           .entryKeyEqualTo(entryKey)
           .findFirst();
 
-      final existingMap = (existing?.dataJson?.isNotEmpty ?? false)
-          ? (json.decode(existing!.dataJson!) as Map<String, dynamic>)
+      final existingMap = (existing?.dataJson.isNotEmpty ?? false)
+          ? (json.decode(existing!.dataJson) as Map<String, dynamic>)
           : <String, dynamic>{};
 
       final merged = deepMerge(existingMap, safeIncoming);
@@ -486,8 +463,6 @@ class BomRepository {
     }
   }
 
-  /// Watch a single schemaKey for this project; fires AFTER commit whenever
-  /// cacheBomDocs row(s) for (projectId, schemaKey) change.
   Stream<void> watchBomForSchema({
     required Isar isar,
     required String projectId,
@@ -498,12 +473,9 @@ class BomRepository {
         .activityFacilityIdEqualToAnySchemaKey(projectId)
         .filter()
         .schemaKeyEqualTo(schemaKey);
-    // Only tick on actual changes; we don't need an initial tick.
     return q.watchLazy(fireImmediately: false);
   }
 
-  /// Watch multiple schemaKeys for this project; emits a void event whenever
-  /// ANY of the keys changes. Lightweight and scoped.
   Stream<void> watchBomForSchemas({
     required Isar isar,
     required String projectId,
