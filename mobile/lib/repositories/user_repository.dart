@@ -8,7 +8,6 @@ import '../utils/envConfig.dart';
 class UserRepository {
   UserRepository();
 
-  //fetch user details
   Future<Response> searchUser(String url, String uuid) async {
     final client = DioClient().dio;
     client.interceptors.add(AuthTokenInterceptor());
@@ -28,7 +27,6 @@ class UserRepository {
     }
   }
 
-  //send the new details to the api
   Future<Response> updateUser(String url, UserModel user) async {
     final client = DioClient().dio;
 

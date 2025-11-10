@@ -1,8 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../model/solution_design_type/solution_design_type.dart';
-import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 
 import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/asset_count/asset_count.dart';
@@ -12,6 +10,8 @@ import '../../model/localization/localizationModel.dart';
 import '../../model/mdms/mdms.dart';
 import '../../model/response/responsemodel.dart';
 import '../../model/role_actions/role_actions_model.dart';
+import '../../model/solution_design_type/solution_design_type.dart';
+import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
 
@@ -45,7 +45,7 @@ class SecureStore {
   }
 
   //Asset count
-  Future setAssetCount(List<Mdms<AssetCount>> list) async {
+  Future setAssetCount(List<Mdms<AssetCountData>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((assetCount) => assetCount.toJson()))
         .toList();
@@ -57,7 +57,7 @@ class SecureStore {
   }
 
   //Asset type
-  Future setAssetType(List<Mdms<AssetType>> list) async {
+  Future setAssetType(List<Mdms<AssetTypeData>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((assetType) => assetType.toJson()))
         .toList();
@@ -69,7 +69,7 @@ class SecureStore {
   }
 
   //System
-  Future setSystem(List<Mdms<System>> list) async {
+  Future setSystem(List<Mdms<SystemData>> list) async {
     final List<Map<String, dynamic>> jsonList =
         list.map((mdms) => mdms.toJson((system) => system.toJson())).toList();
     await storage.write(key: 'system', value: json.encode(jsonList));
@@ -80,7 +80,7 @@ class SecureStore {
   }
 
   //Warranty
-  Future setWarranty(List<Mdms<Warranty>> list) async {
+  Future setWarranty(List<Mdms<WarrantyData>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((warranty) => warranty.toJson()))
         .toList();
@@ -92,7 +92,7 @@ class SecureStore {
   }
 
   //Warranty
-  Future setBrand(List<Mdms<Brand>> list) async {
+  Future setBrand(List<Mdms<BrandData>> list) async {
     final List<Map<String, dynamic>> jsonList =
         list.map((mdms) => mdms.toJson((brand) => brand.toJson())).toList();
     await storage.write(key: 'brand', value: json.encode(jsonList));

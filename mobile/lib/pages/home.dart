@@ -49,12 +49,7 @@ class _HomePageState extends State<HomePage> {
       context
           .read<CacheSyncRecordBloc>()
           .add(CacheSyncRecordEvent.fetch(_userType));
-      //_showPopup(context);
 
-      // REMOVE this line:
-      // _showPopup(context);
-
-      // ADD this listener (one-shot)
       _syncSub = context.read<CacheSyncRecordBloc>().stream.listen((state) {
         if (_popupShown) return; // guard against repeats
 
@@ -66,8 +61,6 @@ class _HomePageState extends State<HomePage> {
             }
           },
           notFound: (val) {
-            // If your bloc uses notFound(0) when nothing to sync, do nothing.
-            // If val > 0 you can also choose to show the popup:
             if (val != null && val > 0) {
               _popupShown = true;
               _showPopup(context);
@@ -139,7 +132,6 @@ class _HomePageState extends State<HomePage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('All drafts successfully synced!')),
         );
-        // Optionally refresh your cache sync record or project list here
         context
             .read<CacheSyncRecordBloc>()
             .add(CacheSyncRecordEvent.fetch(_userType));

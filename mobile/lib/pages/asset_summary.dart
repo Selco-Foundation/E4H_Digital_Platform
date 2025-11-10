@@ -198,7 +198,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
     );
   }
 
-  /// Builds the footer area, switching between “Send Back” and “Next”
   Widget _buildFooter() {
     return BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
       builder: (context, projectState) {
@@ -395,14 +394,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                               )
                             ];
 
-                            print(
-                                "Submitting transactions: ${jsonEncode(transactions.map((t) => {
-                                      'projectId': t.activityFacilityId,
-                                      'comments': t.comments
-                                          ?.map((c) => c.toJson())
-                                          .toList(),
-                                    }).toList())}");
-
                             Navigator.of(ctx).pop();
                             context.read<RejectionBloc>().add(
                                   RejectionEvent.submitRejection(
@@ -430,18 +421,18 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 
     final initState = context.read<AppInitialization>().state;
 
-    final List<Mdms<System>> systemMdmsList = initState.maybeWhen(
+    final List<Mdms<SystemData>> systemMdmsList = initState.maybeWhen(
       initialized: (appConfig, assetCount, assetType, system, warranty, brand,
               solutionDesign, _) =>
           system,
-      orElse: () => <Mdms<System>>[],
+      orElse: () => <Mdms<SystemData>>[],
     );
 
-    final List<Mdms<Brand>> brandMdmsList = initState.maybeWhen(
+    final List<Mdms<BrandData>> brandMdmsList = initState.maybeWhen(
       initialized: (appConfig, assetCount, assetType, system, warranty, brand,
               solutionDesign, _) =>
           brand,
-      orElse: () => <Mdms<Brand>>[],
+      orElse: () => <Mdms<BrandData>>[],
     );
 
     final countValue = summary.countEntry?.count.toString() ?? '—';
@@ -455,14 +446,14 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
     final capacity = summary.specEntry?.totalCapacity.toString() ?? '—';
     final capacityUnit = summary.specEntry?.totalCapacityUnit ?? '-';
 
-    final brand = brandMdmsList
-            .map((m) => m.data)
+    final brand = brandMdmsList.first.data.brand
+            .map((m) => m)
             .firstWhereOrNull((b) => b.code == (brandCode ?? ''))
             ?.name ??
         (brandCode ?? '—');
 
-    final system = systemMdmsList
-            .map((m) => m.data)
+    final system = systemMdmsList.first.data.system
+            .map((m) => m)
             .firstWhereOrNull((s) => s.code == (systemCode ?? ''))
             ?.name ??
         (systemCode ?? '—');

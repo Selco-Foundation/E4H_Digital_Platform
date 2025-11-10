@@ -3,7 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'asset_type.freezed.dart';
 
-// states
 @freezed
 class AssetTypeState with _$AssetTypeState {
   const factory AssetTypeState.initial() = AssetTypeInitial;

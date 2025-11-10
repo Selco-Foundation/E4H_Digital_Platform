@@ -9,7 +9,6 @@ part of 'solution_design_type_bom.dart';
 _$SolutionDesignTypeBomImpl _$$SolutionDesignTypeBomImplFromJson(
         Map<String, dynamic> json) =>
     _$SolutionDesignTypeBomImpl(
-      solutionDesignTypeCode: json['solutionDesignTypeCode'] as String,
       systemCode: json['systemCode'] as String,
       bomForms: (json['bomForms'] as List<dynamic>)
           .map((e) => BomEntry.fromJson(e as Map<String, dynamic>))
@@ -19,7 +18,6 @@ _$SolutionDesignTypeBomImpl _$$SolutionDesignTypeBomImplFromJson(
 Map<String, dynamic> _$$SolutionDesignTypeBomImplToJson(
         _$SolutionDesignTypeBomImpl instance) =>
     <String, dynamic>{
-      'solutionDesignTypeCode': instance.solutionDesignTypeCode,
       'systemCode': instance.systemCode,
       'bomForms': instance.bomForms,
     };

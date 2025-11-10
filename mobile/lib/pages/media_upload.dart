@@ -287,10 +287,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         .read<CacheMediaUploadBloc>()
                         .add(CacheMediaUploadEvent.add(entry));
                   }
-
-                  // context
-                  //     .read<InboxTypeBloc>()
-                  //     .add(const InboxTypeEvent.typeSelected(0));
                   context.router.push(const AssetSummaryRoute());
                 },
               ),
@@ -383,8 +379,8 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                                     content: Text('Could not fetch location')));
                               }
                             });
-                            return {for (final f in files) f: null};
-                            //return <PlatformFile, String?>{};
+                            // return {for (final f in files) f: null};
+                            return <PlatformFile, String?>{};
                           },
                         ),
                         if (_isVideosInitLoading)

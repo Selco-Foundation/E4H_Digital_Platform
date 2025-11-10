@@ -13,3 +13,16 @@ class System with _$System {
 
   factory System.fromJson(Map<String, dynamic> json) => _$SystemFromJson(json);
 }
+
+@freezed
+class SystemData with _$SystemData {
+  const factory SystemData({
+    required int id,
+    @JsonKey(name: 'System') required List<System> system,
+    required String module,
+    required String tenantId,
+  }) = _SystemData;
+
+  factory SystemData.fromJson(Map<String, dynamic> json) =>
+      _$SystemDataFromJson(json);
+}

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:synchronized/synchronized.dart';
 
 import '../model/request/requestInfo.dart';
@@ -34,8 +35,8 @@ class AuthTokenInterceptor extends Interceptor {
     final secureStore = SecureStore();
     final authToken = await secureStore.getAccessToken();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
-    print("options path ${options.path}");
-    print("options data ${(options.data.toString())}");
+    debugPrint("options path ${options.path}");
+    debugPrint("options data ${(options.data.toString())}");
     if (options.data is Map) {
       options.data = {
         ...options.data,
@@ -51,11 +52,6 @@ class AuthTokenInterceptor extends Interceptor {
                 userInfo: accessInfo?.userRequest)
             .toJson(),
       };
-      final d = options.data;
-      print('RequestInfo: ${d is FormData ? d.fields.firstWhere(
-            (f) => f.key == 'RequestInfo',
-            orElse: () => const MapEntry('', ''),
-          ).value : (d is Map<String, dynamic> ? d['RequestInfo'] : null)}');
     }
     return handler.next(options);
   }
@@ -72,7 +68,6 @@ class AuthTokenInterceptor extends Interceptor {
     }
 
     try {
-      // Ensure only one refresh happens at a time
       await _lock.synchronized(() async {
         final authRepo = AuthRepository();
         await authRepo.refreshToken();

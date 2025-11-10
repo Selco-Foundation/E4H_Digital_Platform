@@ -1,4 +1,5 @@
 import 'package:collection/collection.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_media_upload.dart';
@@ -25,27 +26,47 @@ class ActivityFacilityWorkflowRepository {
           .assetTypeEqualTo(type)
           .findAll();
 
-      print("[$type] found ${media.length} cached media uploads");
-      for (var m in media) {
-        print(
-            "media id=${m.id} filePath='${m.filePath}' itemType='${m.itemType}' media id=${m.id} activityFacilityId='${m.activityFacilityId}'");
-      }
+      debugPrint("[$type] found ${media.length} cached media uploads");
 
-      for (final m in media) {
-        if (m.filePath.isEmpty) continue;
-        final mediaId = await getFilestoreUrl(m.filePath);
-        print("mediaId $mediaId");
-        print("filePath-asset-type ${m.filePath} ${m.assetType}");
-        out.add(Document(
-          documentType: "${m.assetType}-${m.itemType}",
-          fileStore: mediaId,
-          documentUid:
-              "DOC-${m.assetType}-${m.itemType}-${DateTime.now().toUtc().millisecondsSinceEpoch}",
-          geoLocation: GeoLocation(
-              latitude: m.latitude ?? "", longitude: m.longitude ?? ""),
-        ));
+      // for (final m in media) {
+      //   if (m.filePath.isEmpty) continue;
+      //   final mediaId = await getFilestoreUrl(m.filePath);
+      //   debugPrint(
+      //       "mediaId $mediaId filePath-asset-type ${m.filePath} ${m.assetType}");
+      //   out.add(Document(
+      //     documentType: "${m.assetType}-${m.itemType}",
+      //     fileStore: mediaId,
+      //     documentUid:
+      //         "DOC-${m.assetType}-${m.itemType}-${DateTime.now().toUtc().millisecondsSinceEpoch}",
+      //     geoLocation: GeoLocation(
+      //         latitude: m.latitude ?? "", longitude: m.longitude ?? ""),
+      //   ));
+      // }
+
+      final validMedia = media.where((m) => m.filePath.isNotEmpty).toList();
+      int batchSize = 15;
+      for (var i = 0; i < validMedia.length; i += batchSize) {
+        final batch = validMedia.skip(i).take(batchSize).toList();
+
+        final batchFutures = batch.map((m) async {
+          final mediaId = await getFilestoreUrl(m.filePath);
+          debugPrint(
+              "mediaId $mediaId filePath-asset-type ${m.filePath} ${m.assetType}");
+          return Document(
+            documentType: "${m.assetType}-${m.itemType}",
+            fileStore: mediaId,
+            documentUid:
+                "DOC-${m.assetType}-${m.itemType}-${DateTime.now().toUtc().millisecondsSinceEpoch}",
+            geoLocation: GeoLocation(
+              latitude: m.latitude ?? "",
+              longitude: m.longitude ?? "",
+            ),
+          );
+        }).toList();
+
+        final docs = await Future.wait(batchFutures);
+        out.addAll(docs);
       }
-      print("documents - out $out");
     }
     return out;
   }
@@ -60,20 +81,17 @@ class ActivityFacilityWorkflowRepository {
     final spec = await isar.cacheSpecifications
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
-        .findFirst(); // fast path; indexed query
+        .findFirst();
 
     final saved = spec?.system.trim();
-    print("saved $saved");
     if (saved != null && saved.isNotEmpty) return saved;
 
-    // 2) Compute from MDMS if we have a code
     if (facilitySolutionDesignCode != null &&
         facilitySolutionDesignCode.trim().isNotEmpty) {
       final match = solutionDesignList
           .map((m) => m.data)
           .firstWhereOrNull((sd) => sd.code == facilitySolutionDesignCode);
       final computed = match?.systemCode.trim();
-      print("computed $computed");
       if (computed != null && computed.isNotEmpty) return computed;
     }
 

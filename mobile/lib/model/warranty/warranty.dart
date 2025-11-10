@@ -15,3 +15,16 @@ class Warranty with _$Warranty {
   factory Warranty.fromJson(Map<String, dynamic> json) =>
       _$WarrantyFromJson(json);
 }
+
+@freezed
+class WarrantyData with _$WarrantyData {
+  const factory WarrantyData({
+    required int id,
+    required String module,
+    required String tenantId,
+    @JsonKey(name: 'WarrantyDuration') required List<Warranty> warrantyDuration,
+  }) = _WarrantyData;
+
+  factory WarrantyData.fromJson(Map<String, dynamic> json) =>
+      _$WarrantyDataFromJson(json);
+}

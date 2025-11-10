@@ -8,7 +8,6 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/utils/utils.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
@@ -21,6 +20,7 @@ import '../model/asset_count/asset_count.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -49,14 +49,12 @@ class _AssetCountPageState extends State<AssetCountPage> {
   }
 
   void _setupInitial() {
-    // Grab selected project and dispatch initial load
     final sel = context.read<SelectedActivityFacilityBloc>().state;
     sel.whenOrNull(selected: (proj) {
       _currentActivityFacilityId = proj.activityFacility.id;
       _dispatchInitialLoad(proj.activityFacility.id);
     });
 
-    // Listen for loaded counts to seed local values
     _countSub = context.read<CacheAssetCountBloc>().stream.listen((state) {
       state.maybeWhen(
         loaded: (entries) {
@@ -116,18 +114,15 @@ class _AssetCountPageState extends State<AssetCountPage> {
           init.maybeWhen(
             initialized:
                 (_, list, __, ___, ____, _____, solutionDesign, ______) {
-              // set min/max for each from list
-              final inv = list.firstWhere((e) =>
-                  e.data.assetTypeCode.toUpperCase() ==
-                  ASSET_TYPES.INVERTER.name);
-              inverterData = inv.data;
-              final bat = list.firstWhere((e) =>
-                  e.data.assetTypeCode.toUpperCase() ==
-                  ASSET_TYPES.BATTERY.name);
-              batteryData = bat.data;
-              final pnl = list.firstWhere((e) =>
-                  e.data.assetTypeCode.toUpperCase() == ASSET_TYPES.PANEL.name);
-              panelData = pnl.data;
+              final inv = list.first.data.assetCount.firstWhere((e) =>
+                  e.assetTypeCode.toUpperCase() == ASSET_TYPES.INVERTER.name);
+              inverterData = inv;
+              final bat = list.first.data.assetCount.firstWhere((e) =>
+                  e.assetTypeCode.toUpperCase() == ASSET_TYPES.BATTERY.name);
+              batteryData = bat;
+              final pnl = list.first.data.assetCount.firstWhere((e) =>
+                  e.assetTypeCode.toUpperCase() == ASSET_TYPES.PANEL.name);
+              panelData = pnl;
             },
             orElse: () {},
           );
@@ -174,8 +169,6 @@ class _AssetCountPageState extends State<AssetCountPage> {
                           style: txt.bodyL
                               .copyWith(color: theme.colorTheme.text.primary)),
                       const SizedBox(height: spacer2),
-
-                      // ─ Inverter ───────────────────────────────
                       LabeledField(
                         label: 'Inverters',
                         labelStyle: txt.headingS
@@ -205,8 +198,6 @@ class _AssetCountPageState extends State<AssetCountPage> {
                           },
                         ),
                       ),
-
-                      // ─ Battery ────────────────────────────────
                       LabeledField(
                         label: 'Batteries',
                         labelStyle: txt.headingS
@@ -236,8 +227,6 @@ class _AssetCountPageState extends State<AssetCountPage> {
                           },
                         ),
                       ),
-
-                      // ─ Panel ─────────────────────────────────
                       LabeledField(
                         label: 'Panels',
                         labelStyle: txt.headingS

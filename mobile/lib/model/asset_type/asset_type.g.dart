@@ -43,3 +43,21 @@ Map<String, dynamic> _$$FormFieldImplToJson(_$FormFieldImpl instance) =>
       'options': instance.options,
       'types': instance.types,
     };
+
+_$AssetTypeDataImpl _$$AssetTypeDataImplFromJson(Map<String, dynamic> json) =>
+    _$AssetTypeDataImpl(
+      id: (json['id'] as num).toInt(),
+      module: json['module'] as String,
+      tenantId: json['tenantId'] as String,
+      assetType: (json['AssetType'] as List<dynamic>)
+          .map((e) => AssetType.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+
+Map<String, dynamic> _$$AssetTypeDataImplToJson(_$AssetTypeDataImpl instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'module': instance.module,
+      'tenantId': instance.tenantId,
+      'AssetType': instance.assetType,
+    };

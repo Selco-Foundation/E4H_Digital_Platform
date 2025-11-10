@@ -192,6 +192,12 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    SubmittedSaveSuccessRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const SubmittedSaveSuccessPage(),
+      );
+    },
     SyncLoadingRoute.name: (routeData) {
       final args = routeData.argsAs<SyncLoadingRouteArgs>();
       return AutoRoutePage<dynamic>(
