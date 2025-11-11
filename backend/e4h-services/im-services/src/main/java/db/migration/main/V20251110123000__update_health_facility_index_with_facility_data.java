@@ -139,7 +139,7 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
                         log.debug("✓ Updated documents for tenant: {} in index: {}", tenantId, indexName);
 
                         if (sleepMs > 0) {
-                            Thread.sleep(100);
+                            Thread.sleep(sleepMs);
                         }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();

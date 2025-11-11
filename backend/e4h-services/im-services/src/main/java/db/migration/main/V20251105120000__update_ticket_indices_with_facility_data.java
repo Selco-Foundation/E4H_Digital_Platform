@@ -142,7 +142,7 @@ public class V20251105120000__update_ticket_indices_with_facility_data extends B
 
                         // Small delay to avoid overwhelming Elasticsearch
                         if (sleepMs > 0) {
-                            Thread.sleep(100);
+                            Thread.sleep(sleepMs);
                         }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
