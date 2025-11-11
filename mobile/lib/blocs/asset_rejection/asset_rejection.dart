@@ -11,11 +11,11 @@ import '../../utils/background_service.dart'
 
 part 'asset_rejection.freezed.dart';
 
-StreamSubscription? _rejDoneSub;
-StreamSubscription? _rejErrSub;
-
 class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
   final Isar _isar;
+
+  StreamSubscription? _rejDoneSub;
+  StreamSubscription? _rejErrSub;
 
   RejectionBloc(this._isar) : super(const RejectionState.initial()) {
     on<_SubmitRejection>(_onSubmitRejection);

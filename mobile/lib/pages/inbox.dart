@@ -51,7 +51,6 @@ class _InboxPageState extends State<InboxPage> {
   }
 
   void _fetchProjects(UserTypeState userState, int tabIndex) {
-    // Compute workflowStatuses based on role & tabIndex
     context
         .read<ReportTypeBloc>()
         .add(const ReportTypeEvent.typeSelected("inbox"));
@@ -93,7 +92,6 @@ class _InboxPageState extends State<InboxPage> {
       },
     );
 
-    // Choose search vs sort vs basic fetch && Dispatch fetch + loading state
     if (_searchQuery.isNotEmpty) {
       context.read<ActivityFacilityBloc>().add(
             ActivityFacilityEvent.fetchActivityFacilityBySearch(
@@ -119,7 +117,6 @@ class _InboxPageState extends State<InboxPage> {
   void _onTabChanged(int index, UserTypeState userState) {
     setState(() {
       _selectedTabIndex = index;
-      // reset search & sort when tab changes
       _searchQuery = '';
       _sortDirection = null;
     });
@@ -127,8 +124,7 @@ class _InboxPageState extends State<InboxPage> {
     context.read<InboxTypeBloc>().add(
           userState.maybeWhen(
             supervisor: () => InboxTypeEvent.typeSelected(index),
-            orElse: () => InboxTypeEvent.typeSelected(
-                index + 1), // user tabs are shifted by +1 as it's just 2
+            orElse: () => InboxTypeEvent.typeSelected(index + 1),
           ),
         );
 
@@ -162,7 +158,6 @@ class _InboxPageState extends State<InboxPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header Row: Title and toggle User/Supervisor
                     Row(
                       children: [
                         Text(
@@ -243,8 +238,6 @@ class _InboxPageState extends State<InboxPage> {
                       ],
                     ),
                     const SizedBox(height: spacer4),
-
-                    // ── PROJECT LIST ─────────────────────────────────────────────────
                     BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
                       builder: (context, projectState) {
                         return projectState.maybeWhen(
@@ -257,7 +250,6 @@ class _InboxPageState extends State<InboxPage> {
                         );
                       },
                     ),
-
                     const SizedBox(height: spacer5),
                   ],
                 ),
@@ -304,15 +296,17 @@ class _InboxPageState extends State<InboxPage> {
                         title:
                             project.activityFacility.facility?.facilityName ??
                                 '---',
-                        dateAssigned: project.activityFacility.scheduledAt ??
-                            DateTime.now(),
+                        dateAssigned:
+                            project.workflow?.auditDetails?.lastModifiedTime ??
+                                DateTime.now(),
                         status: project.status ?? '---'),
                     rejected: () => InboxReportRejectedCard(
                       title: project.activityFacility.facility?.facilityName ??
                           '---',
                       status: project.status ?? '---',
-                      dateAssigned: project.activityFacility.scheduledAt ??
-                          DateTime.now(),
+                      dateAssigned:
+                          project.workflow?.auditDetails?.lastModifiedTime ??
+                              DateTime.now(),
                       onPress: () {
                         context.read<SelectedActivityFacilityBloc>().add(
                               SelectedActivityFacilityEvent.select(project),
@@ -332,8 +326,9 @@ class _InboxPageState extends State<InboxPage> {
                         title:
                             project.activityFacility.facility?.facilityName ??
                                 '---',
-                        dateAssigned: project.activityFacility.scheduledAt ??
-                            DateTime.now(),
+                        dateAssigned:
+                            project.workflow?.auditDetails?.lastModifiedTime ??
+                                DateTime.now(),
                         status: project.status ?? '---'),
                   );
                 },

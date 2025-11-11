@@ -23,13 +23,12 @@ val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build"
 rootProject.layout.buildDirectory.value(newBuildDir)
 
 subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
-}
-subprojects {
     val newSubprojectBuildDir = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
-    project.evaluationDependsOn(":app")
+    // project.evaluationDependsOn(":app")
+    if (path != ":app") {
+        project.evaluationDependsOn(":app")
+    }
 }
 
 subprojects {
@@ -42,15 +41,12 @@ subprojects {
     }
 }
 
-// 2) **Strip** any `package="…"` attribute from library manifests
 subprojects {
-    // this task type runs before merging the library manifest
     tasks.withType(ProcessLibraryManifest::class.java).configureEach {
         doFirst {
             val manifest = project.file("src/main/AndroidManifest.xml")
             if (manifest.exists()) {
                 val fixed = manifest.readText()
-                    // remove any package="…" attribute on the <manifest> tag
                     .replace(Regex("""<manifest\b([^>]*?)\bpackage="[^"]+"([^>]*?)>"""), "<manifest\$1\$2>")
                 manifest.writeText(fixed)
             }

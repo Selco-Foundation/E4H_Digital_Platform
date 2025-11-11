@@ -13,14 +13,20 @@ const WorkflowSchema = Schema(
   name: r'Workflow',
   id: 1996891966521180322,
   properties: {
-    r'documents': PropertySchema(
+    r'auditDetails': PropertySchema(
       id: 0,
+      name: r'auditDetails',
+      type: IsarType.object,
+      target: r'WorkflowAuditDetails',
+    ),
+    r'documents': PropertySchema(
+      id: 1,
       name: r'documents',
       type: IsarType.objectList,
       target: r'Document',
     ),
     r'rawJson': PropertySchema(
-      id: 1,
+      id: 2,
       name: r'rawJson',
       type: IsarType.string,
     )
@@ -37,6 +43,14 @@ int _workflowEstimateSize(
   Map<Type, List<int>> allOffsets,
 ) {
   var bytesCount = offsets.last;
+  {
+    final value = object.auditDetails;
+    if (value != null) {
+      bytesCount += 3 +
+          WorkflowAuditDetailsSchema.estimateSize(
+              value, allOffsets[WorkflowAuditDetails]!, allOffsets);
+    }
+  }
   {
     final list = object.documents;
     if (list != null) {
@@ -65,13 +79,19 @@ void _workflowSerialize(
   List<int> offsets,
   Map<Type, List<int>> allOffsets,
 ) {
-  writer.writeObjectList<Document>(
+  writer.writeObject<WorkflowAuditDetails>(
     offsets[0],
+    allOffsets,
+    WorkflowAuditDetailsSchema.serialize,
+    object.auditDetails,
+  );
+  writer.writeObjectList<Document>(
+    offsets[1],
     allOffsets,
     DocumentSchema.serialize,
     object.documents,
   );
-  writer.writeString(offsets[1], object.rawJson);
+  writer.writeString(offsets[2], object.rawJson);
 }
 
 Workflow _workflowDeserialize(
@@ -81,13 +101,18 @@ Workflow _workflowDeserialize(
   Map<Type, List<int>> allOffsets,
 ) {
   final object = Workflow(
-    documents: reader.readObjectList<Document>(
+    auditDetails: reader.readObjectOrNull<WorkflowAuditDetails>(
       offsets[0],
+      WorkflowAuditDetailsSchema.deserialize,
+      allOffsets,
+    ),
+    documents: reader.readObjectList<Document>(
+      offsets[1],
       DocumentSchema.deserialize,
       allOffsets,
       Document(),
     ),
-    rawJson: reader.readStringOrNull(offsets[1]),
+    rawJson: reader.readStringOrNull(offsets[2]),
   );
   return object;
 }
@@ -100,13 +125,19 @@ P _workflowDeserializeProp<P>(
 ) {
   switch (propertyId) {
     case 0:
+      return (reader.readObjectOrNull<WorkflowAuditDetails>(
+        offset,
+        WorkflowAuditDetailsSchema.deserialize,
+        allOffsets,
+      )) as P;
+    case 1:
       return (reader.readObjectList<Document>(
         offset,
         DocumentSchema.deserialize,
         allOffsets,
         Document(),
       )) as P;
-    case 1:
+    case 2:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -115,6 +146,23 @@ P _workflowDeserializeProp<P>(
 
 extension WorkflowQueryFilter
     on QueryBuilder<Workflow, Workflow, QFilterCondition> {
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> auditDetailsIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'auditDetails',
+      ));
+    });
+  }
+
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition>
+      auditDetailsIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'auditDetails',
+      ));
+    });
+  }
+
   QueryBuilder<Workflow, Workflow, QAfterFilterCondition> documentsIsNull() {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(const FilterCondition.isNull(
@@ -368,6 +416,13 @@ extension WorkflowQueryFilter
 
 extension WorkflowQueryObject
     on QueryBuilder<Workflow, Workflow, QFilterCondition> {
+  QueryBuilder<Workflow, Workflow, QAfterFilterCondition> auditDetails(
+      FilterQuery<WorkflowAuditDetails> q) {
+    return QueryBuilder.apply(this, (query) {
+      return query.object(q, r'auditDetails');
+    });
+  }
+
   QueryBuilder<Workflow, Workflow, QAfterFilterCondition> documentsElement(
       FilterQuery<Document> q) {
     return QueryBuilder.apply(this, (query) {

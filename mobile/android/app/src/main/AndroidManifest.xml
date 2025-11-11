@@ -65,7 +65,8 @@
         </activity>
         <service
             android:name="id.flutter.flutter_background_service.BackgroundService"
-            android:exported="true"
+            android:exported="false"
+            tools:replace="android:exported"
             tools:node="merge"
             android:stopWithTask="false"
             android:foregroundServiceType="dataSync|location" />

@@ -29,7 +29,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _AuthLoginEvent event, Emitter<AuthState> emit) async {
     ResponseModel response;
     final secureStore = SecureStore();
-    //Send a login request and retrieve the access_token for further requests
     emit(const AuthState.loading());
     try {
       response = await authRepository.validateLogin(LoginModel(
@@ -41,13 +40,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ));
 
       _accesstoken = response.access_token;
-      _refreshtoken = response.refresh_token!;
+      _refreshtoken = response.refresh_token ?? '';
       _userRequest = response.userRequest!;
 
-      //store accessToken in secure storage
       secureStore.setAccessToken(_accesstoken);
 
-      //store other access Information in secure storage
       secureStore.setAccessInfo(ResponseModel(
           access_token: _accesstoken,
           token_type: response.token_type,
@@ -55,7 +52,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           scope: response.scope,
           userRequest: _userRequest));
 
-      //change to authenticated state now that we have access
       emit(AuthState.authenticated(
           accesstoken: _accesstoken,
           refreshtoken: _refreshtoken,
@@ -68,17 +64,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         "enabled": true,
       });
 
-      //role actions must also be stored in secureStore so that we don't have to make calls for it repeatedly
       await secureStore.setRoleActions(actionsWrapper);
-
-      // final individualRemoteRepository = IndividualSearchRemoteRepository();
-
-      // final loggedInIndividual =
-      //     await individualRemoteRepository.searchIndividual(
-      //         IndividualSearchModel(
-      //           userUuid: [response.userRequest!.uuid],
-      //         ),
-      //         event.actionMap);
 
       secureStore.setSelectedIndividual(_userRequest.userName);
     } catch (err) {
@@ -92,7 +78,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         errorMessage = err.toString();
       }
       emit(AuthState.error(errorMessage));
-      // rethrow;
     }
   }
 
@@ -102,15 +87,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(const AuthState.unauthenticated());
   }
 
-  Future<FutureOr<void>> _onLoad(
-      AuthLoadEvent event, Emitter<AuthState> emit) async {
+  Future<void> _onLoad(AuthLoadEvent event, Emitter<AuthState> emit) async {
     final secureStore = SecureStore();
 
-    //first attempt to get the accessToken from local secure storage, if successful, the user need not go through the login page again
     ResponseModel? accessInfo;
     accessInfo = await secureStore.getAccessInfo();
 
     if (accessInfo != null) {
+      if (accessInfo.refresh_token == null || accessInfo.userRequest == null) {
+        emit(const AuthState.unauthenticated());
+        return;
+      }
       _accesstoken = accessInfo.access_token;
       _refreshtoken = accessInfo.refresh_token!;
       _userRequest = accessInfo.userRequest!;
@@ -120,7 +107,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           refreshtoken: _refreshtoken,
           userRequest: _userRequest));
     } else {
-      //stay in the unauthenicated state
       emit(const AuthState.unauthenticated());
     }
   }

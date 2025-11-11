@@ -14,15 +14,15 @@ import '../../utils/background_service.dart';
 
 part 'asset_submission.freezed.dart';
 
-StreamSubscription? _jobSub;
-StreamSubscription? _bulkJobsSub;
-StreamSubscription? _svcErrSub;
-StreamSubscription? _svcDoneSub;
-
 class AssetSubmissionBloc
     extends Bloc<AssetSubmissionEvent, AssetSubmissionState> {
   final Isar _isar;
   final UnsubmittedActivityFacilityRepository _draftRepo;
+
+  StreamSubscription? _jobSub;
+  StreamSubscription? _bulkJobsSub;
+  StreamSubscription? _svcErrSub;
+  StreamSubscription? _svcDoneSub;
 
   bool _isBatchMode = false;
   List<String> _batchIds = const [];
