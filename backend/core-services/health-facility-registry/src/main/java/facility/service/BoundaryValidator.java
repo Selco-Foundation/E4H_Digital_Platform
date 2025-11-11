@@ -52,12 +52,13 @@ public class BoundaryValidator {
         String codes = String.join(",", boundaryCodes);
 
         // Construct the complete URI for boundary search
-        String baseUri = UriComponentsBuilder.fromUriString(boundaryHost)
+        String uri = UriComponentsBuilder.fromUriString(boundaryHost)
                 .path(boundaryPath)
+                .queryParam("tenantId", tenantId)
+                .queryParam("codes", codes)
+                .queryParam("offset", 0)
+                .queryParam("limit", boundaryCodes.size())
                 .toUriString();
-
-        //Manually adding query params since the codes can contain spaces, adding query params in UriComponentsBuilder and calling toUriString() encodes spaces to %20
-        String uri = baseUri + "?tenantId=" + tenantId + "&codes=" + codes + "&offset=0" + "&limit=" + boundaryCodes.size();
 
         Map<String, Object> requestBody = Map.of("RequestInfo", requestInfo);
 
