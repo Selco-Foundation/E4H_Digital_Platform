@@ -1,6 +1,5 @@
 import 'package:collection/collection.dart';
 import 'package:digit_ui_components/utils/app_logger.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_media_upload.dart';
@@ -33,7 +32,7 @@ class ActivityFacilityWorkflowRepository {
       // for (final m in media) {
       //   if (m.filePath.isEmpty) continue;
       //   final mediaId = await getFilestoreUrl(m.filePath);
-      //   debugPrint(
+      //   AppLogger.instance.info(
       //       "mediaId $mediaId filePath-asset-type ${m.filePath} ${m.assetType}");
       //   out.add(Document(
       //     documentType: "${m.assetType}-${m.itemType}",
@@ -52,7 +51,7 @@ class ActivityFacilityWorkflowRepository {
 
         final batchFutures = batch.map((m) async {
           final mediaId = await getFilestoreUrl(m.filePath);
-          debugPrint(
+          AppLogger.instance.info(
               "mediaId $mediaId filePath-asset-type ${m.filePath} ${m.assetType}");
           return Document(
             documentType: "${m.assetType}-${m.itemType}",

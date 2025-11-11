@@ -1,5 +1,5 @@
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:synchronized/synchronized.dart';
 
 import '../model/request/requestInfo.dart';
@@ -35,8 +35,8 @@ class AuthTokenInterceptor extends Interceptor {
     final secureStore = SecureStore();
     final authToken = await secureStore.getAccessToken();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
-    debugPrint("options path ${options.path}");
-    debugPrint("options data ${(options.data.toString())}");
+    AppLogger.instance.info(options.path, title: "path");
+    AppLogger.instance.info(options.data, title: "data");
     if (options.data is Map) {
       options.data = {
         ...options.data,
