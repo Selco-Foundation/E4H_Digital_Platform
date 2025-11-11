@@ -50,7 +50,7 @@ public class V20251105120000__update_ticket_indices_with_facility_data extends B
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("🚀 Starting migration: Updating ES indices with facility data");
+        log.info("🚀 Starting migration: Updating ES ticket indices with facility data");
 
         // Create RestTemplate with SSL verification disabled and increased timeouts
         RestTemplate restTemplate = createRestTemplateWithDisabledSSL();
@@ -60,121 +60,120 @@ public class V20251105120000__update_ticket_indices_with_facility_data extends B
         String logFileName = "es_ticket_indices_facility_update_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".log";
         String logFilePath = "./logs/" + logFileName;
         String absoluteLogPath = Paths.get(logFilePath).toAbsolutePath().normalize().toString();
-        PrintWriter migrationLogger = initializeMigrationLogger(logFilePath, absoluteLogPath);
-
-        migrationLogger.println("========================================");
-        migrationLogger.println("ELASTICSEARCH FACILITY UPDATE LOG");
-        migrationLogger.println("Started at: " + LocalDateTime.now());
-        migrationLogger.println("========================================\n");
-        migrationLogger.flush();
-
-        // Get Elasticsearch configuration
-        String esHost = getEnvOrDefault("EGOV_ES_HOST", "https://localhost:9200");
-        String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "");
-        String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "");
-        String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
-
-        log.info("Elasticsearch Host: {}", esHost);
-
-        // Read facility mappings from PostgreSQL
-        Map<String, FacilityData> facilityMappingsByTenantId = loadFacilityMappings(context);
-
-        log.info("Loaded {} facility mappings from database", facilityMappingsByTenantId.size());
-        migrationLogger.println("Loaded " + facilityMappingsByTenantId.size() + " facility mappings from database\n");
-        migrationLogger.flush();
-
-        // Fetch boundary hierarchy details for facility boundary codes
-        String boundaryHost = getEnvOrDefault("EGOV_BOUNDARY_HOST", "http://localhost:8082");
-        String boundarySearchEndpoint = "/boundary-service/boundary-relationships/_search";
-        String boundaryTenantId = getEnvOrDefault("EGOV_BOUNDARY_TENANT_ID", "in");
-
-        Map<String, ObjectNode> boundaryDetailsByCode = fetchBoundaryHierarchyForFacilities(
-            restTemplate,
-            objectMapper,
-            facilityMappingsByTenantId.values(),
-            boundaryHost,
-            boundarySearchEndpoint,
-            boundaryTenantId,
-            authToken
-        );
-
-        facilityMappingsByTenantId.values().forEach(data -> {
-            if (data.getBoundaryCode() == null) {
-                return;
-            }
-            ObjectNode boundaryNode = boundaryDetailsByCode.get(data.getBoundaryCode());
-            if (boundaryNode != null) {
-                data.setBoundary(boundaryNode);
-            } else {
-                log.warn("No boundary hierarchy found for boundary code {}", data.getBoundaryCode());
-            }
-        });
-
-        migrationLogger.println("Fetched boundary hierarchy for " + boundaryDetailsByCode.size() + " facilities\n");
-        migrationLogger.flush();
-
-        // Update each Elasticsearch index
         int totalUpdated = 0;
         int totalFailed = 0;
 
-        for (String indexName : ES_INDICES) {
-            log.info("Processing index: {}", indexName);
-            migrationLogger.println("\n========================================");
-            migrationLogger.println("Processing Index: " + indexName);
+        try (PrintWriter migrationLogger = initializeMigrationLogger(logFilePath, absoluteLogPath)) {
+            migrationLogger.println("========================================");
+            migrationLogger.println("ELASTICSEARCH FACILITY UPDATE LOG");
+            migrationLogger.println("Started at: " + LocalDateTime.now());
             migrationLogger.println("========================================\n");
             migrationLogger.flush();
 
-            int updated = 0;
-            int failed = 0;
+            // Get Elasticsearch configuration
+            String esHost = getEnvOrDefault("EGOV_ES_HOST", "https://localhost:9200");
+            String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "");
+            String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "");
+            String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
 
-            for (Map.Entry<String, FacilityData> entry : facilityMappingsByTenantId.entrySet()) {
-                String tenantId = entry.getKey();
-                FacilityData facilityData = entry.getValue();
+            log.info("Elasticsearch Host: {}", esHost);
 
-                try {
-                    updateDocumentsInES(
-                        restTemplate, objectMapper, esHost, indexName,
-                        tenantId, facilityData, esUsername, esPassword,
-                        migrationLogger
-                    );
-                    updated++;
-                    log.debug("✓ Updated documents for tenant: {} in index: {}", tenantId, indexName);
+            // Read facility mappings from PostgreSQL
+            Map<String, FacilityData> facilityMappingsByTenantId = loadFacilityMappings(context);
 
-                    // Small delay to avoid overwhelming Elasticsearch
-                    Thread.sleep(100); // 100ms delay between requests
+            log.info("Loaded {} facility mappings from database", facilityMappingsByTenantId.size());
+            migrationLogger.println("Loaded " + facilityMappingsByTenantId.size() + " facility mappings from database\n");
+            migrationLogger.flush();
 
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    log.warn("Migration interrupted");
-                    throw e;
-                } catch (Exception e) {
-                    failed++;
-                    log.error("Error updating tenant {} in index {}: {}", tenantId, indexName, e.getMessage(), e);
+            // Fetch boundary hierarchy details for facility boundary codes
+            String boundaryHost = getEnvOrDefault("EGOV_BOUNDARY_HOST", "http://localhost:8082");
+            String boundarySearchEndpoint = "/boundary-service/boundary-relationships/_search";
+            String boundaryTenantId = getEnvOrDefault("EGOV_BOUNDARY_TENANT_ID", "in");
+
+            Map<String, ObjectNode> boundaryDetailsByCode = fetchBoundaryHierarchyForFacilities(
+                restTemplate,
+                objectMapper,
+                facilityMappingsByTenantId.values(),
+                boundaryHost,
+                boundarySearchEndpoint,
+                boundaryTenantId,
+                authToken
+            );
+
+            facilityMappingsByTenantId.values().forEach(data -> {
+                if (data.getBoundaryCode() == null) {
+                    return;
                 }
+                ObjectNode boundaryNode = boundaryDetailsByCode.get(data.getBoundaryCode());
+                if (boundaryNode != null) {
+                    data.setBoundary(boundaryNode);
+                } else {
+                    log.warn("No boundary hierarchy found for boundary code {}", data.getBoundaryCode());
+                }
+            });
+
+            migrationLogger.println("Fetched boundary hierarchy for " + boundaryDetailsByCode.size() + " facilities\n");
+            migrationLogger.flush();
+
+            // Update each Elasticsearch index
+            for (String indexName : ES_INDICES) {
+                log.info("Processing index: {}", indexName);
+                migrationLogger.println("\n========================================");
+                migrationLogger.println("Processing Index: " + indexName);
+                migrationLogger.println("========================================\n");
+                migrationLogger.flush();
+
+                int updated = 0;
+                int failed = 0;
+
+                for (Map.Entry<String, FacilityData> entry : facilityMappingsByTenantId.entrySet()) {
+                    String tenantId = entry.getKey();
+                    FacilityData facilityData = entry.getValue();
+
+                    try {
+                        updateDocumentsInES(
+                            restTemplate, objectMapper, esHost, indexName,
+                            tenantId, facilityData, esUsername, esPassword,
+                            migrationLogger
+                        );
+                        updated++;
+                        log.debug("✓ Updated documents for tenant: {} in index: {}", tenantId, indexName);
+
+                        // Small delay to avoid overwhelming Elasticsearch
+                        Thread.sleep(100); // 100ms delay between requests
+
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        log.warn("Migration interrupted");
+                        throw e;
+                    } catch (Exception e) {
+                        failed++;
+                        log.error("Error updating tenant {} in index {}: {}", tenantId, indexName, e.getMessage(), e);
+                    }
+                }
+
+                totalUpdated += updated;
+                totalFailed += failed;
+
+                log.info("Completed index {}: {} tenant updates succeeded, {} failed", indexName, updated, failed);
+                migrationLogger.println("\n----------------------------------------");
+                migrationLogger.println("Index " + indexName + " Summary:");
+                migrationLogger.println("  ✓ Successful Updates: " + updated);
+                migrationLogger.println("  ✗ Failed Updates: " + failed);
+                migrationLogger.println("----------------------------------------\n");
+                migrationLogger.flush();
             }
 
-            totalUpdated += updated;
-            totalFailed += failed;
-
-            log.info("Completed index {}: {} tenant updates succeeded, {} failed", indexName, updated, failed);
-            migrationLogger.println("\n----------------------------------------");
-            migrationLogger.println("Index " + indexName + " Summary:");
-            migrationLogger.println("  ✓ Successful Updates: " + updated);
-            migrationLogger.println("  ✗ Failed Updates: " + failed);
-            migrationLogger.println("----------------------------------------\n");
+            // Final summary
+            migrationLogger.println("\n========================================");
+            migrationLogger.println("MIGRATION SUMMARY");
+            migrationLogger.println("========================================");
+            migrationLogger.println("Total Successful Updates: " + totalUpdated);
+            migrationLogger.println("Total Failed Updates: " + totalFailed);
+            migrationLogger.println("\nCompleted at: " + LocalDateTime.now());
+            migrationLogger.println("========================================\n");
             migrationLogger.flush();
         }
-
-        // Final summary
-        migrationLogger.println("\n========================================");
-        migrationLogger.println("MIGRATION SUMMARY");
-        migrationLogger.println("========================================");
-        migrationLogger.println("Total Successful Updates: " + totalUpdated);
-        migrationLogger.println("Total Failed Updates: " + totalFailed);
-        migrationLogger.println("\nCompleted at: " + LocalDateTime.now());
-        migrationLogger.println("========================================\n");
-        migrationLogger.flush();
-        migrationLogger.close();
 
         log.info("✅ Migration completed: ES indices updated with facility data");
         log.info("Total successful updates: {}", totalUpdated);
@@ -413,14 +412,14 @@ public class V20251105120000__update_ticket_indices_with_facility_data extends B
         for (int i = 0; i < boundaryCodes.size(); i += batchSize) {
             List<String> batch = boundaryCodes.subList(i, Math.min(i + batchSize, boundaryCodes.size()));
             try {
-                String baseUri = UriComponentsBuilder.fromHttpUrl(boundaryHost + boundarySearchEndpoint)
+                String uriWithCodes = UriComponentsBuilder.fromHttpUrl(boundaryHost + boundarySearchEndpoint)
                         .queryParam("boundaryType", "Facility")
                         .queryParam("includeParents", true)
                         .queryParam("tenantId", boundaryTenantId)
+                        .queryParam("codes", String.join(",", batch))
                         .build(true)
                         .toUriString();
 
-                String uriWithCodes = baseUri + "&codes=" + String.join(",", batch);
                 URI uri = URI.create(uriWithCodes);
 
                 Map<String, Object> requestBody = Map.of(

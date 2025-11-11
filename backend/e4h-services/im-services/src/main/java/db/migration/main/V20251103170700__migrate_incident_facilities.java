@@ -640,7 +640,7 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
         JsonNode cityNode = tenant.get("city");
 
         // Create block boundary code
-        String blockBoundaryCode = String.format("India_%s_%s_%s", stateName, districtName, blockName);
+        String blockBoundaryCode = String.format("India_%s_%s_%s", stateName, districtName, blockName).replaceAll("\\s+", "");
 
         // Build facility address - extract all available fields from MDMS
         Map<String, Object> facilityAddress = new HashMap<>();

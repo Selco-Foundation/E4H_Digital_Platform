@@ -57,117 +57,116 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
         String logFileName = "es_health_facility_index_update_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".log";
         String logFilePath = "./logs/" + logFileName;
         String absoluteLogPath = Paths.get(logFilePath).toAbsolutePath().normalize().toString();
-        PrintWriter migrationLogger = initializeMigrationLogger(logFilePath, absoluteLogPath);
-
-        migrationLogger.println("========================================");
-        migrationLogger.println("HEALTH FACILITY INDEX UPDATE LOG");
-        migrationLogger.println("Started at: " + LocalDateTime.now());
-        migrationLogger.println("========================================\n");
-        migrationLogger.flush();
-
-        String esHost = getEnvOrDefault("EGOV_ES_HOST", "https://localhost:9200");
-        String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "");
-        String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "");
-        String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
-
-        log.info("Elasticsearch Host: {}", esHost);
-
-        Map<String, FacilityData> facilityMappingsByTenantId = loadFacilityMappings(context);
-
-        migrationLogger.println("Loaded " + facilityMappingsByTenantId.size() + " facility mappings from database\n");
-        migrationLogger.flush();
-
-        String boundaryHost = getEnvOrDefault("EGOV_BOUNDARY_HOST", "http://localhost:8082");
-        String boundarySearchEndpoint = "/boundary-service/boundary-relationships/_search";
-        String boundaryTenantId = getEnvOrDefault("EGOV_BOUNDARY_TENANT_ID", "in");
-
-        Map<String, ObjectNode> boundaryDetailsByCode = fetchBoundaryHierarchyForFacilities(
-            restTemplate,
-            objectMapper,
-            facilityMappingsByTenantId.values(),
-            boundaryHost,
-            boundarySearchEndpoint,
-            boundaryTenantId,
-            authToken
-        );
-
-        facilityMappingsByTenantId.values().forEach(data -> {
-            if (data.getBoundaryCode() == null) {
-                return;
-            }
-            ObjectNode boundaryNode = boundaryDetailsByCode.get(data.getBoundaryCode());
-            if (boundaryNode != null) {
-                data.setBoundary(boundaryNode);
-            } else {
-                log.warn("No boundary hierarchy found for boundary code {}", data.getBoundaryCode());
-            }
-        });
-
-        migrationLogger.println("Fetched boundary hierarchy for " + boundaryDetailsByCode.size() + " facilities\n");
-        migrationLogger.flush();
-
         int totalUpdated = 0;
         int totalFailed = 0;
 
-        for (String indexName : ES_INDICES) {
-            log.info("Processing index: {}", indexName);
-            migrationLogger.println("\n========================================");
-            migrationLogger.println("Processing Index: " + indexName);
+        try (PrintWriter migrationLogger = initializeMigrationLogger(logFilePath, absoluteLogPath)) {
+            migrationLogger.println("========================================");
+            migrationLogger.println("HEALTH FACILITY INDEX UPDATE LOG");
+            migrationLogger.println("Started at: " + LocalDateTime.now());
             migrationLogger.println("========================================\n");
             migrationLogger.flush();
 
-            int updated = 0;
-            int failed = 0;
+            String esHost = getEnvOrDefault("EGOV_ES_HOST", "https://localhost:9200");
+            String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "elastic");
+            String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "8fwbD6HbJh6HU0oddsHm8TEI");
+            String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
 
-            for (Map.Entry<String, FacilityData> entry : facilityMappingsByTenantId.entrySet()) {
-                String tenantId = entry.getKey();
-                FacilityData facilityData = entry.getValue();
+            log.info("Elasticsearch Host: {}", esHost);
 
-                try {
-                    updateDocumentsInES(
-                        restTemplate,
-                        objectMapper,
-                        esHost,
-                        indexName,
-                        tenantId,
-                        facilityData,
-                        esUsername,
-                        esPassword,
-                        migrationLogger
-                    );
-                    updated++;
-                    log.debug("✓ Updated documents for tenant: {} in index: {}", tenantId, indexName);
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    log.warn("Migration interrupted");
-                    throw e;
-                } catch (Exception e) {
-                    failed++;
-                    log.error("Error updating tenant {} in index {}: {}", tenantId, indexName, e.getMessage(), e);
+            Map<String, FacilityData> facilityMappingsByTenantId = loadFacilityMappings(context);
+
+            migrationLogger.println("Loaded " + facilityMappingsByTenantId.size() + " facility mappings from database\n");
+            migrationLogger.flush();
+
+            String boundaryHost = getEnvOrDefault("EGOV_BOUNDARY_HOST", "http://localhost:8082");
+            String boundarySearchEndpoint = "/boundary-service/boundary-relationships/_search";
+            String boundaryTenantId = getEnvOrDefault("EGOV_BOUNDARY_TENANT_ID", "in");
+
+            Map<String, ObjectNode> boundaryDetailsByCode = fetchBoundaryHierarchyForFacilities(
+                restTemplate,
+                objectMapper,
+                facilityMappingsByTenantId.values(),
+                boundaryHost,
+                boundarySearchEndpoint,
+                boundaryTenantId,
+                authToken
+            );
+
+            facilityMappingsByTenantId.values().forEach(data -> {
+                if (data.getBoundaryCode() == null) {
+                    return;
                 }
+                ObjectNode boundaryNode = boundaryDetailsByCode.get(data.getBoundaryCode());
+                if (boundaryNode != null) {
+                    data.setBoundary(boundaryNode);
+                } else {
+                    log.warn("No boundary hierarchy found for boundary code {}", data.getBoundaryCode());
+                }
+            });
+
+            migrationLogger.println("Fetched boundary hierarchy for " + boundaryDetailsByCode.size() + " facilities\n");
+            migrationLogger.flush();
+
+            for (String indexName : ES_INDICES) {
+                log.info("Processing index: {}", indexName);
+                migrationLogger.println("\n========================================");
+                migrationLogger.println("Processing Index: " + indexName);
+                migrationLogger.println("========================================\n");
+                migrationLogger.flush();
+
+                int updated = 0;
+                int failed = 0;
+
+                for (Map.Entry<String, FacilityData> entry : facilityMappingsByTenantId.entrySet()) {
+                    String tenantId = entry.getKey();
+                    FacilityData facilityData = entry.getValue();
+
+                    try {
+                        updateDocumentsInES(
+                            restTemplate,
+                            objectMapper,
+                            esHost,
+                            indexName,
+                            tenantId,
+                            facilityData,
+                            esUsername,
+                            esPassword,
+                            migrationLogger
+                        );
+                        updated++;
+                        log.debug("✓ Updated documents for tenant: {} in index: {}", tenantId, indexName);
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        log.warn("Migration interrupted");
+                        throw e;
+                    } catch (Exception e) {
+                        failed++;
+                        log.error("Error updating tenant {} in index {}: {}", tenantId, indexName, e.getMessage(), e);
+                    }
+                }
+
+                totalUpdated += updated;
+                totalFailed += failed;
+
+                migrationLogger.println("\n----------------------------------------");
+                migrationLogger.println("Index " + indexName + " Summary:");
+                migrationLogger.println("  ✓ Successful Updates: " + updated);
+                migrationLogger.println("  ✗ Failed Updates: " + failed);
+                migrationLogger.println("----------------------------------------\n");
+                migrationLogger.flush();
             }
 
-            totalUpdated += updated;
-            totalFailed += failed;
-
-            migrationLogger.println("\n----------------------------------------");
-            migrationLogger.println("Index " + indexName + " Summary:");
-            migrationLogger.println("  ✓ Successful Updates: " + updated);
-            migrationLogger.println("  ✗ Failed Updates: " + failed);
-            migrationLogger.println("----------------------------------------\n");
+            migrationLogger.println("\n========================================");
+            migrationLogger.println("MIGRATION SUMMARY");
+            migrationLogger.println("========================================");
+            migrationLogger.println("Total Successful Updates: " + totalUpdated);
+            migrationLogger.println("Total Failed Updates: " + totalFailed);
+            migrationLogger.println("\nCompleted at: " + LocalDateTime.now());
+            migrationLogger.println("========================================\n");
             migrationLogger.flush();
         }
-
-        migrationLogger.println("\n========================================");
-        migrationLogger.println("MIGRATION SUMMARY");
-        migrationLogger.println("========================================");
-        migrationLogger.println("Total Successful Updates: " + totalUpdated);
-        migrationLogger.println("Total Failed Updates: " + totalFailed);
-        migrationLogger.println("\nCompleted at: " + LocalDateTime.now());
-        migrationLogger.println("========================================\n");
-        migrationLogger.flush();
-        migrationLogger.close();
 
         log.info("✅ Migration completed: health facility index updated with facility data");
         log.info("Total successful updates: {}", totalUpdated);
@@ -276,8 +275,13 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
 
                 if (updated > 0) {
                     migrationLogger.println(String.format(
-                        "[SUCCESS] Tenant: %s | Index: %s | Updated: %d/%d documents | Facility: %s",
-                        tenantId, indexName, updated, total, facilityData.getFacilityId()
+                        "[SUCCESS] Tenant: %s | Index: %s | Updated: %d/%d documents | Facility: %s | Boundary: %s",
+                        tenantId,
+                        indexName,
+                        updated,
+                        total,
+                        facilityData.getFacilityId() != null ? facilityData.getFacilityId() : "N/A",
+                        facilityData.getBoundaryCode() != null ? facilityData.getBoundaryCode() : "N/A"
                     ));
                     migrationLogger.flush();
                 }
@@ -386,14 +390,14 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
         for (int i = 0; i < boundaryCodes.size(); i += batchSize) {
             List<String> batch = boundaryCodes.subList(i, Math.min(i + batchSize, boundaryCodes.size()));
             try {
-                String baseUri = UriComponentsBuilder.fromHttpUrl(boundaryHost + boundarySearchEndpoint)
+                String uriWithCodes = UriComponentsBuilder.fromHttpUrl(boundaryHost + boundarySearchEndpoint)
                     .queryParam("boundaryType", "Facility")
                     .queryParam("includeParents", true)
                     .queryParam("tenantId", boundaryTenantId)
+                    .queryParam("codes", String.join(",", batch))
                     .build(true)
                     .toUriString();
 
-                String uriWithCodes = baseUri + "&codes=" + String.join(",", batch);
                 URI uri = URI.create(uriWithCodes);
 
                 Map<String, Object> requestBody = Map.of(
