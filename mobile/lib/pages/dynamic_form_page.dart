@@ -444,8 +444,14 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                     if (!form.contains(k)) continue;
                     final ctrl = form.control(k);
 
+                    final schemaVal = pageSchema.properties?[k]?.value;
                     ctrl.reset(
-                        value: null, updateParent: true, emitEvent: false);
+                        value: (schemaVal != null &&
+                                schemaVal.toString().isNotEmpty)
+                            ? schemaVal
+                            : null,
+                        updateParent: true,
+                        emitEvent: false);
                   }
                   return form;
                 }
@@ -461,8 +467,14 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                         updateParent: true, emitEvent: false);
                     continue;
                   } else {
-                    ctrl.reset(
-                        value: null, updateParent: true, emitEvent: false);
+                    final schemaVal = pageSchema.properties?[k]?.value;
+                    if (schemaVal != null && schemaVal.toString().isNotEmpty) {
+                      ctrl.updateValue(schemaVal,
+                          updateParent: true, emitEvent: false);
+                    } else {
+                      ctrl.reset(
+                          value: null, updateParent: true, emitEvent: false);
+                    }
                   }
                 }
                 return form;
