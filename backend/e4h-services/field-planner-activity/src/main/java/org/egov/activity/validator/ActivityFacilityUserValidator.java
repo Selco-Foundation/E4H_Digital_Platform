@@ -6,12 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.repository.ActivityFacilityRepository;
-import org.egov.activity.service.ActivityService;
+import org.egov.activity.service.ActivityFacilityUsersService;
 import org.egov.activity.service.ServiceRequestRepository;
 import org.egov.activity.util.MDMSUtils;
 import org.egov.activity.web.models.*;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
+import org.egov.common.models.core.SearchResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -72,13 +73,17 @@ public class ActivityFacilityUserValidator {
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
         //Verify if ActivityAssignment request and mandatory fields are present
-        validateActivityFacilityUserRequest(request);
+        try {
+            validateActivityFacilityUserRequest(request);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
     }
 
-    private void validateActivityFacilityUserRequest(ActivityFacilityUserBulkRequest request) {
+    private void validateActivityFacilityUserRequest(ActivityFacilityUserBulkRequest request) throws Exception {
         Map<String, String> errorMap = new HashMap<>();
 
         if (request.getActivityFacilityUsers() == null || request.getActivityFacilityUsers().size() == 0) {
@@ -94,13 +99,14 @@ public class ActivityFacilityUserValidator {
 
             if (facilityUser.getUserId() == null) {
                 log.error("UserId is mandatory in Activity Facility User");
-                throw new CustomException("Activity_FACILITY", "User ID is mandatory in Activity Facility User");
+                throw new CustomException("FACILITY_ASSIGN_USER", "User ID is mandatory in Activity Facility User");
             }
 
             if (facilityUser.getActivityFacilityId() == null) {
                 log.error("Activity Facility ID is mandatory in Facility User");
-                throw new CustomException("BOM_ASSIGN_USER", "Activity Facility ID is mandatory");
+                throw new CustomException("FACILITY_ASSIGN_USER", "Activity Facility ID is mandatory");
             }
+
         }
 
         if (!errorMap.isEmpty())

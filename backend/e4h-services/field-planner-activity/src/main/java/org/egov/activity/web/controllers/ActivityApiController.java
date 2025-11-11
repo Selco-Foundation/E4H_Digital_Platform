@@ -254,7 +254,7 @@ public class ActivityApiController {
     }
 
     @RequestMapping(value = "/staff/v1/_create", method = RequestMethod.POST)
-    public ResponseEntity<ActivityFacilityUserResponse> facilityUsersV1CreatePost(@ApiParam(value = "Capture linkage of Activity Facility and staff user.", required = true) @Valid @RequestBody ActivityFacilityUserBulkRequest request) {
+    public ResponseEntity<ActivityFacilityUserResponse> facilityUsersV1CreatePost(@ApiParam(value = "Capture linkage of Activity Facility and staff user.", required = true) @Valid @RequestBody ActivityFacilityUserBulkRequest request) throws Exception {
 
         List<ActivityFacilityUser> staff = facilityUsersService.createActivityFacilityUsers(request);
         ActivityFacilityUserResponse response = ActivityFacilityUserResponse.builder()
