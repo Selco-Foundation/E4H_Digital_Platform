@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:http/http.dart' as http;
@@ -12,7 +13,6 @@ import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
 class PdfViewerPage extends StatefulWidget {
-  /// May be a local file path or a remote URL.
   final String path;
   const PdfViewerPage({@PathParam() required this.path, super.key});
 
@@ -35,7 +35,6 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
   Future<void> _preparePdf() async {
     String filePath = widget.path;
 
-    // If it's a URL, download it
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       final uri = Uri.parse(filePath);
       final response = await http.get(uri);
@@ -45,7 +44,6 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
         await tmp.writeAsBytes(response.bodyBytes);
         filePath = tmp.path;
       } else {
-        // download failed
         setState(() {
           _isLoading = false;
           _localPath = null;
@@ -77,37 +75,30 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
             const Expanded(
                 child: Center(child: Text('Failed to load document')))
           ] else ...[
-            // Page indicator
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text('Page ${_currentPage + 1} of $_pages'),
             ),
-
-            // The PDF itself fills the remaining space and handles swipes
             Expanded(
               child: PDFView(
                 filePath: _localPath,
                 enableSwipe: true,
-                swipeHorizontal: false, // vertical scroll
+                swipeHorizontal: false,
                 autoSpacing: true,
                 pageFling: true,
-                fitPolicy: FitPolicy.WIDTH, // fill width, stack pages
+                fitPolicy: FitPolicy.WIDTH,
                 onRender: (pages) {
                   setState(() => _pages = pages ?? 0);
                 },
-                onViewCreated: (controller) {
-                  // if you need it later
-                },
+                onViewCreated: (controller) {},
                 onPageChanged: (page, _) {
                   setState(() => _currentPage = page ?? 0);
                 },
                 onError: (err) {
-                  // handle generic PDF errors
-                  debugPrint('PDF error: $err');
+                  AppLogger.instance.info(err, title: "PDF error: ");
                 },
                 onPageError: (page, err) {
-                  // handle page‐specific errors
-                  debugPrint('PDF page $page error: $err');
+                  AppLogger.instance.info('PDF page $page error: $err');
                 },
               ),
             ),

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
@@ -87,7 +88,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
       }
     });
 
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
     userType = context.read<UserTypeBloc>().state.maybeWhen(
           supervisor: () => USER_TYPES.SUPERVISOR.name,
           orElse: () => USER_TYPES.FIELD_STAFF.name,
@@ -96,7 +96,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     selState.whenOrNull(selected: (project) {
       _currentProjectId = project.activityFacility.id;
       projectWorkflow = project;
-      // _solutionDesignTypeCode = "DC";
       context.read<CacheAssetBloc>().add(CacheAssetEvent.start(
           project.activityFacility.id, userType, project));
 
@@ -114,7 +113,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
       _loadProjectSystem();
       _loadInitialCompletion();
     });
-    //});
   }
 
   @override
@@ -302,7 +300,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                         },
                         loading: () {},
                         progress: (completed, total) {
-                          debugPrint("Progress: $completed / $total");
+                          AppLogger.instance
+                              .info("$completed / $total", title: "Progress:");
                         },
                         initial: () {},
                       );
@@ -316,8 +315,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                           showBackNavigation: true,
                           showHelp: false,
                         ),
-
-                        // ── FOOTER BUTTON ────────────────────────────────────────────────
                         footer: BlocBuilder<OverallAssetSummaryBloc,
                             OverallAssetSummaryState>(
                           builder: (context, overallState) {
@@ -450,8 +447,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                             );
                           },
                         ),
-
-                        // ── MAIN CONTENT ────────────────────────────────────────────────
                         children: [
                           Padding(
                             padding: const EdgeInsets.symmetric(
@@ -465,8 +460,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                       color: theme.colorTheme.primary.primary2),
                                 ),
                                 const SizedBox(height: spacer4),
-
-                                // ── COUNTS CARD ─────────────────────────────────────────
                                 BlocBuilder<OverallAssetSummaryBloc,
                                     OverallAssetSummaryState>(
                                   builder: (context, state) {
@@ -656,10 +649,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                     );
                                   },
                                 ),
-
                                 const SizedBox(height: spacer4),
-
-                                // ── COMPLETION REPORT (Supervisor only) ────────────────
                                 userState.maybeWhen(
                                   orElse: () => Container(),
                                   supervisor: () => Column(

@@ -123,7 +123,7 @@ Future<void> setupBackgroundService() async {
   _uiDoneSub?.cancel();
   _uiDoneSub = uiService.on(kEvtDone).listen((data) async {
     final pid = data?['activityFacilityId'] as String?;
-    debugPrint('[UI] kEvtDone received: pid=$pid');
+    AppLogger.instance.info('[UI] kEvtDone received: pid=$pid');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
@@ -134,7 +134,7 @@ Future<void> setupBackgroundService() async {
   _uiRejErrSub = uiService.on(kEvtRejectError).listen((data) async {
     final pid = data?['activityFacilityId'] as String?;
     final msg = data?['message']?.toString();
-    debugPrint('[UI] kEvtRejectError received: pid=$pid msg=$msg');
+    AppLogger.instance.info('[UI] kEvtRejectError received: pid=$pid msg=$msg');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
@@ -144,14 +144,15 @@ Future<void> setupBackgroundService() async {
   _uiRejDoneSub?.cancel();
   _uiRejDoneSub = uiService.on(kEvtRejectDone).listen((data) async {
     final pid = data?['activityFacilityId'] as String?;
-    debugPrint('[UI] kEvtRejectDone received: pid=$pid');
+    AppLogger.instance.info('[UI] kEvtRejectDone received: pid=$pid');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
         isar: uiIsar, activityFacilityId: pid, status: 'success');
   });
 
-  debugPrint('[UI] setupBackgroundService complete: BG listeners bound');
+  AppLogger.instance
+      .info('[UI] setupBackgroundService complete: BG listeners bound');
 }
 
 class BackgroundServiceController {
@@ -172,7 +173,8 @@ class BackgroundServiceController {
     final service = FlutterBackgroundService();
 
     if (await service.isRunning()) {
-      debugPrint('[UI] service already running -> invoke directly');
+      AppLogger.instance
+          .info('[UI] service already running -> invoke directly');
 
       await ensureAndroidNotificationPermission();
       service.invoke(kCmdForeground, {'content': 'Preparing…'});
@@ -189,13 +191,14 @@ class BackgroundServiceController {
     final readyStream = service.on(kEvtReady);
     await service.startService();
     final running = await service.isRunning();
-    debugPrint('[UI] service.startService() -> running=$running');
+    AppLogger.instance.info('[UI] service.startService() -> running=$running');
 
     try {
       await readyStream.first.timeout(const Duration(seconds: 8));
-      debugPrint('[UI] kEvtReady received. Submitting job...');
+      AppLogger.instance.info('[UI] kEvtReady received. Submitting job...');
     } catch (_) {
-      debugPrint('[UI] kEvtReady timeout; invoking after short delay');
+      AppLogger.instance
+          .info('[UI] kEvtReady timeout; invoking after short delay');
       await Future.delayed(const Duration(milliseconds: 300));
     }
 
@@ -214,11 +217,10 @@ class BackgroundServiceController {
   }) async {
     final service = FlutterBackgroundService();
 
-    // If the service is already running, bring it to foreground and invoke immediately.
     if (await service.isRunning()) {
-      debugPrint('[UI] service already running -> invoke REJECTION directly');
+      AppLogger.instance
+          .info('[UI] service already running -> invoke REJECTION directly');
 
-      // Make sure the notification is visible again.
       await ensureAndroidNotificationPermission();
       service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
 
@@ -230,17 +232,18 @@ class BackgroundServiceController {
       return;
     }
 
-    // Otherwise start it, then wait for kEvtReady (emitted from onStart)
     final readyStream = service.on(kEvtReady);
     await service.startService();
     final running = await service.isRunning();
-    debugPrint('[UI] service.startService() -> running=$running');
+    AppLogger.instance.info('[UI] service.startService() -> running=$running');
 
     try {
       await readyStream.first.timeout(const Duration(seconds: 8));
-      debugPrint('[UI] kEvtReady received. Submitting REJECTION job...');
+      AppLogger.instance
+          .info('[UI] kEvtReady received. Submitting REJECTION job...');
     } catch (_) {
-      debugPrint('[UI] kEvtReady timeout; proceeding after 300ms fallback');
+      AppLogger.instance
+          .info('[UI] kEvtReady timeout; proceeding after 300ms fallback');
       await Future.delayed(const Duration(milliseconds: 300));
     }
 
@@ -256,7 +259,7 @@ class BackgroundServiceController {
   Future<void> stopNow() async {
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
-      debugPrint('[UI] stopNow() -> kCmdStop');
+      AppLogger.instance.info('[UI] stopNow() -> kCmdStop');
       service.invoke(kCmdStop);
     }
   }
@@ -278,10 +281,6 @@ void onStart(ServiceInstance service) async {
   WidgetsFlutterBinding.ensureInitialized();
 
   DartPluginRegistrant.ensureInitialized();
-
-  // await envConfig.initialize();
-
-  //final isar = await Constants().isar;
   final envFuture = envConfig.initialize();
   final isarFuture = Constants().isar;
 
@@ -294,10 +293,11 @@ void onStart(ServiceInstance service) async {
   }
 
   service.on(kMethodSubmit).listen((payload) async {
-    debugPrint('[BG] submit received: $payload');
+    AppLogger.instance.info('[BG] submit received: $payload');
     final isar = await isarFuture;
     await envFuture;
-    debugPrint('[BG] onStart ready. isar#${identityHashCode(isar)}');
+    AppLogger.instance
+        .info('[BG] onStart ready. isar#${identityHashCode(isar)}');
 
     final activityFacilityId = payload?['activityFacilityId'] as String?;
     final facilityId = payload?['facilityId'] as String?;
@@ -312,14 +312,14 @@ void onStart(ServiceInstance service) async {
           activityFacilityId: activityFacilityId,
           status: 'running');
 
-      debugPrint('[BG] entering _performSubmissionForProject');
+      AppLogger.instance.info('[BG] entering _performSubmissionForProject');
       await _performSubmissionForActivityFacility(
         isar: isar,
         activityFacilityId: activityFacilityId,
         facilityId: facilityId!,
         userType: userType,
       );
-      debugPrint('[BG] _performSubmissionForProject done');
+      AppLogger.instance.info('[BG] _performSubmissionForProject done');
 
       await writeJobStatus(
           isar: isar,
@@ -327,13 +327,10 @@ void onStart(ServiceInstance service) async {
           status: 'success');
       service.invoke(kEvtProgress, {'completed': 1, 'total': 1});
 
-      // Include projectId so UI can mirror status
-      debugPrint('[BG] invoke kEvtDone pid=$activityFacilityId');
+      AppLogger.instance.info('[BG] invoke kEvtDone pid=$activityFacilityId');
       service.invoke(kEvtDone, {'activityFacilityId': activityFacilityId});
-
-      // DO NOT stop the service here; let UI stop it after consuming the event.
     } catch (e, st) {
-      debugPrint('[BG] ERROR: $e\n$st');
+      AppLogger.instance.info('$e\n$st', title: "[BG] ERROR:");
 
       final msg = _pretty(e);
       await writeJobStatus(
@@ -343,26 +340,23 @@ void onStart(ServiceInstance service) async {
         error: msg,
       );
 
-      // Notify UI/BLoC (include projectId)
-      debugPrint('[BG] invoke kEvtError pid=$activityFacilityId');
+      AppLogger.instance.info('[BG] invoke kEvtError pid=$activityFacilityId');
       service.invoke(kEvtError,
           {'activityFacilityId': activityFacilityId, 'message': msg});
-
-      // DO NOT stop here; UI stops after it receives failure.
     }
   });
 
   service.on(kMethodReject).listen((payload) async {
     final isar = await isarFuture;
     await envFuture;
-    debugPrint('[BG] onStart ready. isar#${identityHashCode(isar)}');
+    AppLogger.instance
+        .info('[BG] onStart ready. isar#${identityHashCode(isar)}');
     final activityFacilityId = payload?['activityFacilityId'] as String?;
     final userType = payload?['userType'] as String?;
     final txList = (payload?['transactions'] as List?)?.cast<Map>() ?? const [];
     if (activityFacilityId == null || userType == null) return;
 
     try {
-      // optional: reflect a “running” status in the same job table
       await writeJobStatus(
           isar: isar,
           activityFacilityId: activityFacilityId,
@@ -375,11 +369,10 @@ void onStart(ServiceInstance service) async {
         transactions: txList.map((m) => Map<String, dynamic>.from(m)).toList(),
       );
 
-      // success -> notify UI
       service
           .invoke(kEvtRejectDone, {'activityFacilityId': activityFacilityId});
     } catch (e, st) {
-      debugPrint('[BG][REJECT] ERROR: $e\n$st');
+      AppLogger.instance.info('$e\n$st', title: "[BG][REJECT] ERROR: ");
 
       await writeJobStatus(
         isar: isar,
@@ -396,11 +389,11 @@ void onStart(ServiceInstance service) async {
   });
 
   service.on(kCmdStop).listen((_) async {
-    debugPrint('[BG] stop requested');
+    AppLogger.instance.info('[BG] stop requested');
     if (service is AndroidServiceInstance) {
       service.setAsBackgroundService();
     }
-    await service.stopSelf(); // stopping foreground removes notification
+    await service.stopSelf();
   });
 
   service.on(kCmdForeground).listen((data) async {
@@ -491,7 +484,7 @@ Future<void> _performSubmissionForActivityFacility({
           documents.add(
             Document(
               id: saved.documentId,
-              documentType: "ASSET", // saved.documentType,
+              documentType: "ASSET",
               fileStore: photoId,
               documentUid: "DOC-ASSET-${saved.serialNumber}",
               additionalDetailsJson: null,
