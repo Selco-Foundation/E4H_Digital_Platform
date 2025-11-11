@@ -68,9 +68,10 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
             migrationLogger.flush();
 
             String esHost = getEnvOrDefault("EGOV_ES_HOST", "https://localhost:9200");
-            String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "elastic");
-            String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "8fwbD6HbJh6HU0oddsHm8TEI");
+            String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "");
+            String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "");
             String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
+            int sleepMs = Integer.parseInt(getEnvOrDefault("EGOV_ES_UPDATE_DELAY_MS", "100"));
 
             log.info("Elasticsearch Host: {}", esHost);
 
@@ -136,7 +137,10 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
                         );
                         updated++;
                         log.debug("✓ Updated documents for tenant: {} in index: {}", tenantId, indexName);
-                        Thread.sleep(100);
+
+                        if (sleepMs > 0) {
+                            Thread.sleep(100);
+                        }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         log.warn("Migration interrupted");

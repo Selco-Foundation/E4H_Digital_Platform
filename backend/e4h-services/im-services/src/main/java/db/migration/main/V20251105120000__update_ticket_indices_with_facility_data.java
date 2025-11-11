@@ -75,6 +75,7 @@ public class V20251105120000__update_ticket_indices_with_facility_data extends B
             String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "");
             String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "");
             String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
+            int sleepMs = Integer.parseInt(getEnvOrDefault("EGOV_ES_UPDATE_DELAY_MS", "100"));
 
             log.info("Elasticsearch Host: {}", esHost);
 
@@ -140,8 +141,9 @@ public class V20251105120000__update_ticket_indices_with_facility_data extends B
                         log.debug("✓ Updated documents for tenant: {} in index: {}", tenantId, indexName);
 
                         // Small delay to avoid overwhelming Elasticsearch
-                        Thread.sleep(100); // 100ms delay between requests
-
+                        if (sleepMs > 0) {
+                            Thread.sleep(100);
+                        }
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         log.warn("Migration interrupted");

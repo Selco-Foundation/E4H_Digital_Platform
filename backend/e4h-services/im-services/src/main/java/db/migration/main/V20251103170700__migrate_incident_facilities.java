@@ -463,6 +463,13 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                             }
                         }
                         return true;
+                    } else {
+                        String errorMsg = "Response is not a valid array or is empty";
+                        logSkippedFacility(
+                                migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                errorMsg, response.getBody()
+                        );
+                        return false;
                     }
                 } catch (Exception e) {
                     log.error("Error parsing facility response: {}", e.getMessage(), e);
