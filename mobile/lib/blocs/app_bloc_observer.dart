@@ -33,6 +33,7 @@ class AppBlocObserver extends BlocObserver {
     if (!kDebugMode) return;
 
     AppLogger.instance.error(
+      message: error.toString(),
       title: bloc.runtimeType.toString(),
       stackTrace: stackTrace,
     );

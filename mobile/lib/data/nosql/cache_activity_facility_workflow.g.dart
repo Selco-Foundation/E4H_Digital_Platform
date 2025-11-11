@@ -100,6 +100,7 @@ const CacheActivityFacilityWorkflowSchema = CollectionSchema(
     r'Workflow': WorkflowSchema,
     r'Document': DocumentSchema,
     r'GeoLocation': GeoLocationSchema,
+    r'WorkflowAuditDetails': WorkflowAuditDetailsSchema,
     r'Transaction': TransactionSchema,
     r'Comment': CommentSchema
   },
