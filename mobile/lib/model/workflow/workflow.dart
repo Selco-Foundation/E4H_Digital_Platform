@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:isar/isar.dart';
 
+import '../../data/nosql/workflow_audit_details.dart';
 import '../document/document.dart';
 
 part 'workflow.g.dart';
@@ -11,9 +12,16 @@ class Workflow {
   @Embedded()
   List<Document>? documents;
 
+  @Embedded()
+  WorkflowAuditDetails? auditDetails;
+
   String? rawJson;
 
-  Workflow({this.documents, this.rawJson});
+  Workflow({
+    this.documents,
+    this.auditDetails,
+    this.rawJson,
+  });
 
   @ignore
   Map<String, dynamic>? get raw =>
@@ -25,8 +33,13 @@ class Workflow {
             .map((d) => Document.fromJson(Map<String, dynamic>.from(d)))
             .toList()
         : null;
+    final details = json['auditDetails'] is Map<String, dynamic>
+        ? WorkflowAuditDetails.fromJson(
+            json['auditDetails'] as Map<String, dynamic>,
+          )
+        : null;
     final rawJson = json.isNotEmpty ? jsonEncode(json) : null;
-    return Workflow(documents: docs, rawJson: rawJson);
+    return Workflow(documents: docs, auditDetails: details, rawJson: rawJson);
   }
 
   Map<String, dynamic> toJson() => {

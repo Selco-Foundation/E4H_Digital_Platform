@@ -194,9 +194,9 @@ class _DraftPageState extends State<DraftPage> {
                                     title: project.activityFacility.facility
                                             ?.facilityName ??
                                         "",
-                                    dateAssigned:
-                                        project.activityFacility.scheduledAt ??
-                                            DateTime.now(),
+                                    dateAssigned: project.workflow?.auditDetails
+                                            ?.lastModifiedTime ??
+                                        DateTime.now(),
                                     status: project.status ?? '---',
                                   ),
                                   const SizedBox(height: spacer6),
