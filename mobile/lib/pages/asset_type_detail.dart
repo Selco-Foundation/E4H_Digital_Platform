@@ -18,6 +18,7 @@ import '../model/brand/brand.dart';
 import '../model/mdms/mdms.dart';
 import '../model/warranty/warranty.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
@@ -162,7 +163,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                             ? !isEnabledSupervisor
                             : !isEnabledFieldUser,
                         showSuffixIcon: false,
-                        text: i18.common.coreCommonNext,
+                        text: context.translate(i18.common.coreCommonNext),
                         onPress: () {
                           if (isSupervisor && !isEnabledSupervisor)
                             return;

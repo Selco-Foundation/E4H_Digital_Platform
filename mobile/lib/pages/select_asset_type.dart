@@ -20,6 +20,7 @@ import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../model/system/system.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
@@ -185,7 +186,7 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
             ),
             footer: FooterButton(
               showSuffixIcon: false,
-              text: i18.common.coreCommonNext,
+              text: context.translate(i18.common.coreCommonNext),
               isDisabled: state is AssetTypeInitial,
               onPress: () {
                 _handleNavigation(context);

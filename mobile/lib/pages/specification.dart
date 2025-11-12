@@ -6,13 +6,14 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/blocs/specification/specification.dart';
 
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
+import '../blocs/specification/specification.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
@@ -92,7 +93,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                     backgroundColor: theme.colorTheme.generic.background,
                     footer: FooterButton(
                       showSuffixIcon: false,
-                      text: i18.common.coreCommonNext,
+                      text: context.translate(i18.common.coreCommonNext),
                       onPress: () {
                         context.router.push(const AssetTypeDetailRoute());
                       },

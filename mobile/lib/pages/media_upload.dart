@@ -236,7 +236,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
               footer: FooterButton(
                 isDisabled: isDisabled,
                 showSuffixIcon: false,
-                text: i18.common.coreCommonNext,
+                text: context.translate(i18.common.coreCommonNext),
                 onPress: () async {
                   if (_currentActivityFacilityId == null) return;
                   context.read<CacheMediaUploadBloc>().add(

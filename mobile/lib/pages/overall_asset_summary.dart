@@ -359,7 +359,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   loading: () => 'Submitting...',
                                   progress: (completed, total) =>
                                       'Submitting... ($completed/$total)',
-                                  orElse: () => i18.common.coreCommonSubmit,
+                                  orElse: () => context
+                                      .translate(i18.common.coreCommonSubmit),
                                 ),
                                 isDisabled: assetSubmissionState.maybeWhen(
                                   loading: () => true,
