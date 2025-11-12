@@ -60,7 +60,8 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       _cachedAppConfig = appConfig;
       emit(InitState.defaulted(appConfig: appConfig));
     } catch (e) {
-      emit(InitState.error('Failed to load appConfig: $e'));
+      emit(const InitState.error(
+          'Failed to load configuration data. Please try again.'));
     }
   }
 
@@ -201,7 +202,8 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
       ));
     } catch (e) {
       AppLogger.instance.info(e.toString());
-      emit(InitState.error('Failed to load MDMS: $e'));
+      emit(const InitState.error(
+          'Failed to load configuration data. Please try again.'));
     }
   }
 }

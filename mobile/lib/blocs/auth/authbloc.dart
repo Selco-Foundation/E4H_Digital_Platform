@@ -41,6 +41,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
       _accesstoken = response.access_token;
       _refreshtoken = response.refresh_token ?? '';
+      if (response.userRequest == null) {
+        emit(const AuthState.error('Invalid response: missing user data'));
+        return;
+      }
       _userRequest = response.userRequest!;
 
       secureStore.setAccessToken(_accesstoken);

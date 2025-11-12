@@ -33,7 +33,7 @@
         android:fullBackupContent="false">
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_ANDROID_API_KEY"/>
+            android:value="ANDROID_API_KEY"/>
         <meta-data
             android:name="PERMISSION_CAMERA"
             android:value="true" />

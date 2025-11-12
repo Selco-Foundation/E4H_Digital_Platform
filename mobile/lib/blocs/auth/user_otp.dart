@@ -37,7 +37,7 @@ class UserOtpBloc extends Bloc<UserOtpEvent, UserOtpState> {
     } catch (err) {
       String message = 'Unknown error';
       if (err is Exception) {
-        message = err.toString();
+        message = err.toString().replaceFirst('Exception: ', '');
       }
       emit(UserOtpState.error(message));
     }
@@ -49,15 +49,15 @@ class UserOtpBloc extends Bloc<UserOtpEvent, UserOtpState> {
   }
 
   FutureOr<void> _onGetOtp(_GetOtpEvent event, Emitter<UserOtpState> emit) {
-    final current = state;
-    if (current is _OtpStored) {
-      emit(UserOtpState.otpStored(current.otp));
+    if (_storedOtp != null) {
+      emit(UserOtpState.otpStored(_storedOtp!));
     } else {
       emit(const UserOtpState.error('No OTP stored'));
     }
   }
 
   FutureOr<void> _onClearOtp(_ClearOtpEvent event, Emitter<UserOtpState> emit) {
+    _storedOtp = null;
     emit(const UserOtpState.initial());
   }
 

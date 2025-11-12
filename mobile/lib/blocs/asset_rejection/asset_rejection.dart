@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
@@ -39,6 +40,9 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
       if (aFid != null) {
         add(RejectionEvent.bgRejectError(
             activityFacilityId: aFid, message: msg));
+      } else {
+        AppLogger.instance.info("kEvtRejectDone missing activityFacilityId",
+            title: "Warning: ");
       }
     });
   }
@@ -50,9 +54,6 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
     return super.close();
   }
 
-  // ------------------------------------------------------------
-  // Submit rejection: enqueue a background job and wait for BG events
-  // ------------------------------------------------------------
   Future<void> _onSubmitRejection(
     _SubmitRejection event,
     Emitter<RejectionState> emit,
@@ -60,8 +61,6 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
     emit(const RejectionState.loading());
 
     try {
-      // Serialize transactions for the background isolate:
-      // Accepts List<Map<String,dynamic>> or objects with toJson()/toMap()
       final txMaps = event.transactions.map<Map<String, dynamic>>((t) {
         if (t is Map<String, dynamic>) return t;
         try {
@@ -86,30 +85,21 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
         userType: event.userType,
         transactions: txMaps,
       );
-
-      // Do NOT emit success here; we wait for kEvtRejectDone / kEvtRejectError
     } catch (e) {
       emit(RejectionState.failure(e.toString()));
     }
   }
 
-  // ------------------------------------------------------------
-  // BG -> success
-  // ------------------------------------------------------------
   Future<void> _onBgDone(
     _BgRejectDone event,
     Emitter<RejectionState> emit,
   ) async {
-    // Mirror to Isar so any UI watchers (if you have) will advance
     await _writeJobStatusUI(
         activityFacilityId: event.activityFacilityId, status: 'success');
     emit(const RejectionState.success());
     await BackgroundServiceController.I.stopNow();
   }
 
-  // ------------------------------------------------------------
-  // BG -> error
-  // ------------------------------------------------------------
   Future<void> _onBgError(
     _BgRejectError event,
     Emitter<RejectionState> emit,
@@ -123,7 +113,6 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
     await BackgroundServiceController.I.stopNow();
   }
 
-  // ---- Small helper to touch the same CacheSubmissionJob Isar used elsewhere ----
   Future<void> _writeJobStatusUI({
     required String activityFacilityId,
     required String status,
@@ -150,23 +139,18 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
   }
 }
 
-// ======================= Freezed =========================
 @freezed
 class RejectionEvent with _$RejectionEvent {
-  /// Kick off a background rejection job.
-  /// `transactions` can be List<Map<String,dynamic>> or objects with toJson()/toMap().
   const factory RejectionEvent.submitRejection({
     required String activityFacilityId,
     required String userType,
     required List<dynamic> transactions,
   }) = _SubmitRejection;
 
-  /// Emitted internally when BG signals success
   const factory RejectionEvent.bgRejectDone({
     required String activityFacilityId,
   }) = _BgRejectDone;
 
-  /// Emitted internally when BG signals error
   const factory RejectionEvent.bgRejectError({
     required String activityFacilityId,
     String? message,

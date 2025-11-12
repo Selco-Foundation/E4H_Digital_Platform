@@ -197,7 +197,7 @@ class ActivityFacilityBloc
 
       if (count > 0) {
         final cachedList = await repo.readCache(newStatuses);
-        final newlyAssigned = count - cachedList.length;
+        final newlyAssigned = (count - cachedList.length).clamp(0, count);
         emit(ActivityFacilityState.newlyAssignedLoaded(newlyAssigned));
       } else {
         emit(const ActivityFacilityState.newlyAssignedLoaded(0));

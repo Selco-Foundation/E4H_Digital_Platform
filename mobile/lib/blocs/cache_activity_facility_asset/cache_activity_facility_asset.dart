@@ -44,17 +44,30 @@ class CacheActivityFacilityAssetBloc extends Bloc<
       CacheActivityFacilityAssetEventAdd event,
       Emitter<CacheActivityFacilityAssetState> emit) async {
     try {
+      var inserted = false;
+      var persisted = event.entry;
       await isar.writeTxn(() async {
         final existing = await isar.cacheActivityFacilityAssets
             .where()
             .activityFacilityIdEqualTo(event.entry.activityFacilityId)
             .findFirst();
 
-        if (existing == null) {
-          await isar.cacheActivityFacilityAssets.put(event.entry);
+        if (existing != null) {
+          existing
+            ..progress = event.entry.progress
+            ..updatedAt = DateTime.now();
+          await isar.cacheActivityFacilityAssets.put(existing);
+          persisted = existing;
+          return;
         }
+        await isar.cacheActivityFacilityAssets.put(event.entry);
+        inserted = true;
       });
-      emit(CacheActivityFacilityAssetState.added(event.entry));
+      emit(
+        inserted
+            ? CacheActivityFacilityAssetState.added(persisted)
+            : CacheActivityFacilityAssetState.updated(persisted),
+      );
     } catch (e) {
       emit(CacheActivityFacilityAssetState.error(e.toString()));
     }
@@ -65,6 +78,8 @@ class CacheActivityFacilityAssetBloc extends Bloc<
     Emitter<CacheActivityFacilityAssetState> emit,
   ) async {
     try {
+      CacheActivityFacilityAsset? resultEntry;
+      bool isUpdate = false;
       await isar.writeTxn(() async {
         final existing = await isar.cacheActivityFacilityAssets
             .where()
@@ -75,18 +90,25 @@ class CacheActivityFacilityAssetBloc extends Bloc<
           existing.progress = event.entry.progress;
           existing.updatedAt = DateTime.now();
           await isar.cacheActivityFacilityAssets.put(existing);
-          emit(CacheActivityFacilityAssetState.updated(existing));
+          resultEntry = existing;
+          isUpdate = true;
         } else {
           final newEntry = CacheActivityFacilityAsset(
             activityFacilityId: event.entry.activityFacilityId,
             progress: event.entry.progress,
           );
           await isar.cacheActivityFacilityAssets.put(newEntry);
-          emit(CacheActivityFacilityAssetState.added(newEntry));
+          resultEntry = newEntry;
         }
       });
 
-      // Always refresh data after update
+      if (resultEntry != null) {
+        emit(
+          isUpdate
+              ? CacheActivityFacilityAssetState.updated(resultEntry!)
+              : CacheActivityFacilityAssetState.added(resultEntry!),
+        );
+      }
       add(CacheActivityFacilityAssetEvent.get(event.entry.activityFacilityId));
     } catch (e) {
       emit(CacheActivityFacilityAssetState.error(e.toString()));
