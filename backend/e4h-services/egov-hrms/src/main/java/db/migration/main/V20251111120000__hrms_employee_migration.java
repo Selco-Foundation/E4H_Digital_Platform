@@ -162,7 +162,7 @@ public class V20251111120000__hrms_employee_migration extends BaseJavaMigration 
 	private void processComplainantsForState(List<String> childTenants) {
 		for (String tenant : childTenants) {
 			String boundary = facilityTenantBoundaryMap.get(tenant);
-			if (boundary == null) {
+			if (boundary == null || boundary.trim().isEmpty()) {
 				recordFailure(String.format("No boundary mapping found for tenant %s", tenant));
 				continue;
 			}
@@ -284,11 +284,14 @@ public class V20251111120000__hrms_employee_migration extends BaseJavaMigration 
 			userNode.put("tenantId", TARGET_TENANT);
 			ArrayNode roles = (ArrayNode) userNode.get("roles");
 			if (roles != null) {
+				// Update all role tenants to TARGET_TENANT
 				for (JsonNode roleNode : roles) {
 					if (roleNode instanceof ObjectNode) {
 						((ObjectNode) roleNode).put("tenantId", TARGET_TENANT);
 					}
 				}
+				// Deduplicate roles by code to avoid "role tenant combination already exists" errors
+				deduplicateRolesByCode(userNode, roles);
 			}
 		}
 
@@ -322,6 +325,26 @@ public class V20251111120000__hrms_employee_migration extends BaseJavaMigration 
 				((ObjectNode) node).put("tenantId", TARGET_TENANT);
 			}
 		}
+	}
+
+	private void deduplicateRolesByCode(ObjectNode userNode, ArrayNode roles) {
+		Set<String> seenRoleCodes = new HashSet<>();
+		ArrayNode deduplicatedRoles = objectMapper.createArrayNode();
+		
+		for (JsonNode roleNode : roles) {
+			if (roleNode instanceof ObjectNode) {
+				JsonNode codeNode = roleNode.get("code");
+				if (codeNode != null && !codeNode.isNull()) {
+					String roleCode = codeNode.asText();
+					if (!seenRoleCodes.contains(roleCode)) {
+						seenRoleCodes.add(roleCode);
+						deduplicatedRoles.add(roleNode);
+					}
+				}
+			}
+		}
+		
+		userNode.set("roles", deduplicatedRoles);
 	}
 
 	private List<String> fetchTenants(String tenantId) {

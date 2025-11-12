@@ -786,13 +786,20 @@ public class V20251112163000__hrms_employee_vendor_migration extends BaseJavaMig
 	private List<String> buildCandidateTenantIds(ResolverUserInfo info) {
 		LinkedHashSet<String> candidates = new LinkedHashSet<>();
 		if (StringUtils.isNotBlank(info.getUserTenantId())) {
-			String stateTenant = extractStateTenant(info.getUserTenantId());
+			String userTenant = info.getUserTenantId().trim();
+			candidates.add(userTenant);
+			String stateTenant = extractStateTenant(userTenant);
 			if (StringUtils.isNotBlank(stateTenant)) {
 				candidates.add(stateTenant);
 			}
 		}
 		for (String roleTenant : info.getRoleTenantIds()) {
-			String stateTenant = extractStateTenant(roleTenant);
+			if (StringUtils.isBlank(roleTenant)) {
+				continue;
+			}
+			String normalized = roleTenant.trim();
+			candidates.add(normalized);
+			String stateTenant = extractStateTenant(normalized);
 			if (StringUtils.isNotBlank(stateTenant)) {
 				candidates.add(stateTenant);
 			}
