@@ -190,6 +190,9 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           type: userId.type,
           populators: {
             name: userId.name,
+            style: {
+              marginBottom: "5px"
+            },
           },
           isMandatory: true,
         },
@@ -201,27 +204,27 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           },
           isMandatory: true,
         },
-        {
-          label: t(city.label),
-          type: city.type,
-          populators: {
-            name: city.name,
-            customProps: {},
-            component: (props, customProps) => (
-              <Dropdown
-                option={sortedCities}
-                className="login-city-dd"
-                optionKey="i18nKey"
-                select={(d) => {
-                  props.onChange(d);
-                }}
-                t={t}
-                {...customProps}
-              />
-            ),
-          },
-          isMandatory: true,
-        },
+        // {
+        //   label: t(city.label),
+        //   type: city.type,
+        //   populators: {
+        //     name: city.name,
+        //     customProps: {},
+        //     component: (props, customProps) => (
+        //       <Dropdown
+        //         option={sortedCities}
+        //         className="login-city-dd"
+        //         optionKey="i18nKey"
+        //         select={(d) => {
+        //           props.onChange(d);
+        //         }}
+        //         t={t}
+        //         {...customProps}
+        //       />
+        //     ),
+        //   },
+        //   isMandatory: true,
+        // },
       ],
     },
   ];
