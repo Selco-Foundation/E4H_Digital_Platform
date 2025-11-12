@@ -27,7 +27,7 @@ class CacheActivityFacilityAssetBloc extends Bloc<
     try {
       final entries = await isar.cacheActivityFacilityAssets
           .where()
-          .activityFacilityIdEqualTo(event.projectId)
+          .activityFacilityIdEqualTo(event.activityFacilityId)
           .findAll();
 
       if (entries.isEmpty) {
@@ -131,7 +131,7 @@ class CacheActivityFacilityAssetBloc extends Bloc<
 
 @freezed
 class CacheActivityFacilityAssetEvent with _$CacheActivityFacilityAssetEvent {
-  const factory CacheActivityFacilityAssetEvent.get(String projectId) =
+  const factory CacheActivityFacilityAssetEvent.get(String activityFacilityId) =
       CacheActivityFacilityAssetEventGet;
   const factory CacheActivityFacilityAssetEvent.add(
       CacheActivityFacilityAsset entry) = CacheActivityFacilityAssetEventAdd;
