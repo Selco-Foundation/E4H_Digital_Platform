@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "react-query";
-import { QCService } from "../services/QC";
+import { AssetService } from "../services/Asset";
+import { FilestoreService } from "../services/Filestore";
 
 const getAssetName = (assetTypeID) => {
   switch(assetTypeID) {
@@ -38,7 +39,7 @@ const fetchFileStoreDocuments = async (documents) => {
   const fetchedDocuments = [];
   for (const document of documents) {
     if (document?.documentType?.toUpperCase() === "ASSET") {
-      const fileStoreResponse = await QCService.fetchImageFromFileStore(document?.fileStore);
+      const fileStoreResponse = await FilestoreService.fetchDocumentFromFilestore(document?.fileStore);
       fetchedDocuments.push(Digit.Utils.getFileUrl(fileStoreResponse[document?.fileStore]))
     }
   }
@@ -106,18 +107,24 @@ const formatData = async (data) => {
   return dataMap.values().toArray();
 }
 
-const fetchFacilityDetails = async (facilityId) => {
-  const facilityDetailsResponse = await QCService.fetchAssets(facilityId);
+const fetchFacilityDetails = async (filter) => {
+  const facilityDetailsResponse = await AssetService.fetchAssets(filter);
   return await formatData(facilityDetailsResponse);
 }
 
-const useAsset = (facilityId) => {
+const useAsset = (activityFacilityId) => {
 
-  const facility = facilityId;
+  const filter = {
+    criteria: {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+      activityFacilityID: activityFacilityId,
+    }
+  }
+
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["ASSET", facility],
-    () => fetchFacilityDetails(facility)
+    ["ASSET", filter],
+    () => fetchFacilityDetails(filter)
   );
 
   return {
