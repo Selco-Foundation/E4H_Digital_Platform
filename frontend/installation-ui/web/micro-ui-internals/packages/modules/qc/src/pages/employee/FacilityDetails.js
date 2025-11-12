@@ -15,10 +15,8 @@ const FacilityDetails = ({t}) => {
   const [assets, setAssets] = useState([]);
   const dispatch = useDispatch();
   const url = window.location.href;
-  const fieldPlanId = url.split("field-plan/")[1].split("/")[0];
-  const facilityIdentifier = url.split("facilities/")[1].split("/")[0].split("?")[0];
-  const facilityProjectId = facilityIdentifier.split("--")[0];
-  const facilityId = decodeURIComponent(facilityIdentifier.split("--")[1]);
+  const activityAssignmentId = url.split("field-plan/")[1].split("/")[0];
+  const activityFacilityId = url.split("facilities/")[1].split("/")[0].split("?")[0];
   const [facilityDetails, setFacilityDetails] = useState({});
   const [auditTrail, setAuditTrail] = useState([]);
   const [aggregatedAssets, setAggregatedAssets] = useState({});
@@ -31,10 +29,7 @@ const FacilityDetails = ({t}) => {
     data: fieldPlanData,
     revalidate: revalidateFieldPlans
   } = useFieldPlan({
-    Project : {
-      projectTypeId: "FieldPlan",
-      id: [fieldPlanId]
-    }
+    id: [activityAssignmentId]
   });
 
   const {
@@ -43,9 +38,9 @@ const FacilityDetails = ({t}) => {
     data: facilityData,
     revalidate: revalidateFacilityDetails,
     revalidateFacilities
-  } = useFacilityDetails(facilityProjectId);
+  } = useFacilityDetails(activityFacilityId);
 
-  const { isLoading, data: assetData } = useAsset(facilityId);
+  const { isLoading, data: assetData } = useAsset(activityFacilityId);
 
   useEffect(() => {
     if (assetData) {
@@ -95,7 +90,7 @@ const FacilityDetails = ({t}) => {
             alignItems: "center",
             height: "100%",
             width: "100%",
-            zIndex: 5,
+            zIndex: 10000000,
             backgroundColor: "gray",
             opacity: 0.5,
             position: "fixed",
@@ -145,6 +140,7 @@ const FacilityDetails = ({t}) => {
 
       {facilityDetails?.status && facilityDetails?.status.toUpperCase() === "SUBMITTED_BY_SUPERVISOR" && (
         <QCActions
+          t={t}
           revalidateData={revalidateData}
           setUpdatingWorkflow={setUpdatingWorkflow}
           aggregatedDocuments={aggregatedDocuments}
