@@ -118,6 +118,7 @@
 @import "./pages/employee/projectdetailstable.scss";
 @import "./pages/employee/pmprojectstable.scss";
 @import "./pages/employee/activitydetailstable.scss";
+@import "./pages/employee/qc/facilitytable.scss";
 
 .wbh-header-container {
   display: flex !important;
@@ -885,8 +886,10 @@ input[type="number"] {
   }
 }
 
-.employee-select-wrap {
-  .options-card {
-    margin-top: 0;
+.create-project-wrapper {
+  .employee-select-wrap {
+    .options-card {
+      margin-top: 40px;
+    }
   }
 }
