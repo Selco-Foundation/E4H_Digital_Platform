@@ -39,7 +39,7 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 public class V20251110123000__update_health_facility_index_with_facility_data extends BaseJavaMigration {
 
     private static final String[] ES_INDICES = {
-        "health-facility-index-migration-temp"
+        "health-facility-index"
     };
 
     @Override
@@ -68,8 +68,8 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
             migrationLogger.flush();
 
             String esHost = getEnvOrDefault("EGOV_ES_HOST", "https://localhost:9200");
-            String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "elastic");
-            String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "8fwbD6HbJh6HU0oddsHm8TEI");
+            String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "");
+            String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "");
             String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
             int sleepMs = Integer.parseInt(getEnvOrDefault("EGOV_ES_UPDATE_DELAY_MS", "100"));
 
