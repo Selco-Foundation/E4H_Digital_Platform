@@ -51,7 +51,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
   void initState() {
     super.initState();
 
-    // 1) start location updates:
     final locBloc = context.read<LocationBloc>();
     locBloc.add(const LocationEvent.requestPermission());
     locBloc.add(const LocationEvent.requestService());
@@ -304,8 +303,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         ],
                       ),
                       const SizedBox(height: spacer4),
-
-                      // ── Images Card ──
                       DigitCard(children: [
                         Text(
                           '$assetType Images',
@@ -336,16 +333,13 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                                     content: Text('Could not fetch location')));
                               }
                             });
-                            //return {for (final f in files) f: null};
                             return <PlatformFile, String?>{};
                           },
                         ),
                         if (_isImagesInitLoading)
                           const Center(child: CircularProgressIndicator())
                       ]),
-
                       const SizedBox(height: spacer4),
-
                       DigitCard(children: [
                         Text(
                           '$assetType Videos',
@@ -379,7 +373,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                                     content: Text('Could not fetch location')));
                               }
                             });
-                            // return {for (final f in files) f: null};
                             return <PlatformFile, String?>{};
                           },
                         ),

@@ -304,7 +304,7 @@ class ActivityFacilityEvent with _$ActivityFacilityEvent {
 
   const factory ActivityFacilityEvent.fetchActivityFacilitySorted({
     required List<String> workflowStatuses,
-    required String sortDirection, // ASC or DESC
+    required String sortDirection,
   }) = FetchActivityFacilitySortedEvent;
 
   const factory ActivityFacilityEvent.fetchActivityFacilityBySearch({
@@ -322,7 +322,6 @@ class ActivityFacilityEvent with _$ActivityFacilityEvent {
 class ActivityFacilityState with _$ActivityFacilityState {
   const factory ActivityFacilityState.initial() = _ActivityFacilityInitialState;
 
-  /// new loading state
   const factory ActivityFacilityState.loading() = _ActivityFacilityLoadingState;
 
   const factory ActivityFacilityState.inCache(bool isInCache) =

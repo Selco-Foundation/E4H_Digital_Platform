@@ -3,7 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'inbox_type.freezed.dart';
 
-// states
 @freezed
 class InboxTypeState with _$InboxTypeState {
   const factory InboxTypeState.submitted() = InboxTypeSubmitted;
@@ -11,13 +10,11 @@ class InboxTypeState with _$InboxTypeState {
   const factory InboxTypeState.approved() = InboxTypeApproved;
 }
 
-// events
 @freezed
 class InboxTypeEvent with _$InboxTypeEvent {
   const factory InboxTypeEvent.typeSelected(int inboxType) = InboxTypeSelected;
 }
 
-// bloc
 class InboxTypeBloc extends Bloc<InboxTypeEvent, InboxTypeState> {
   InboxTypeBloc() : super(const InboxTypeState.submitted()) {
     on<InboxTypeSelected>(_onTypeSelected);

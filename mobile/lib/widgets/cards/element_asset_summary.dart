@@ -29,7 +29,6 @@ class ElementAssetSummary extends StatelessWidget {
         Stack(
           alignment: Alignment.center,
           children: [
-            // Text on the left
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
@@ -37,7 +36,6 @@ class ElementAssetSummary extends StatelessWidget {
                 style: textTheme.headingS,
               ),
             ),
-            // Centered count
             Positioned.fill(
               child: Center(
                 child: Text(

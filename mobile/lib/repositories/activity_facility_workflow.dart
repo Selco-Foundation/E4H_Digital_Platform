@@ -29,21 +29,6 @@ class ActivityFacilityWorkflowRepository {
       AppLogger.instance
           .info("[$type] found ${media.length} cached media uploads");
 
-      // for (final m in media) {
-      //   if (m.filePath.isEmpty) continue;
-      //   final mediaId = await getFilestoreUrl(m.filePath);
-      //   AppLogger.instance.info(
-      //       "mediaId $mediaId filePath-asset-type ${m.filePath} ${m.assetType}");
-      //   out.add(Document(
-      //     documentType: "${m.assetType}-${m.itemType}",
-      //     fileStore: mediaId,
-      //     documentUid:
-      //         "DOC-${m.assetType}-${m.itemType}-${DateTime.now().toUtc().millisecondsSinceEpoch}",
-      //     geoLocation: GeoLocation(
-      //         latitude: m.latitude ?? "", longitude: m.longitude ?? ""),
-      //   ));
-      // }
-
       final validMedia = media.where((m) => m.filePath.isNotEmpty).toList();
       int batchSize = 15;
       for (var i = 0; i < validMedia.length; i += batchSize) {

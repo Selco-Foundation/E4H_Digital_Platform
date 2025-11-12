@@ -63,7 +63,6 @@ void main() async {
     AppLogger.instance.info('App Launched First Time', title: 'main');
     await AppSharedPreferences().appLaunchedFirstTime();
   }
-  // Run the main app widget
   runApp(MainApp(
     isar: _isar,
   ));
@@ -91,7 +90,6 @@ class _MainAppState extends State<MainApp> {
             ),
             BlocProvider(
               create: (context) {
-                //try to load credentials locally first to skip login page
                 return AuthBloc()..add(const AuthEvent.attemptLoad());
               },
             ),
@@ -135,7 +133,6 @@ class _MainAppState extends State<MainApp> {
                 var firstLanguage;
                 firstLanguage = languages?.last.value;
 
-                // Get the selected locale from shared preferences, or fallback to the default firstLanguage
                 return BlocProvider(
                     create: (context) => LocalizationBloc(widget.isar)
                       ..add(LocalizationEvent.onSelect(
@@ -152,7 +149,6 @@ class _MainAppState extends State<MainApp> {
                         theme: DigitTheme.instance.mobileTheme,
                         routerDelegate: _approuter.delegate(),
                         routeInformationParser: _approuter.defaultRouteParser(),
-                        // Define supported locales based on available languages
                         supportedLocales: languages != null
                             ? languages.map((e) {
                                 final results = e.value.split('_');
@@ -162,7 +158,6 @@ class _MainAppState extends State<MainApp> {
                                     : firstLanguage;
                               })
                             : [firstLanguage],
-                        // Define localizations delegates
                         localizationsDelegates: [
                           AppLocalizations.getDelegate(
                               appConfig.appConfig!, widget.isar),
@@ -175,10 +170,9 @@ class _MainAppState extends State<MainApp> {
                               languages!),
                           forms_localization.FormLocalization.getDelegate(
                             getLocalizationString(widget.isar, selectedLocale),
-                            languages!, // the same languages list you already have
+                            languages!,
                           ),
                         ],
-                        // Set the locale for the app
                         locale: languages != null
                             ? Locale(
                                 selectedLocale!.split("_").first,
@@ -212,13 +206,10 @@ class _MainAppState extends State<MainApp> {
   }
 }
 
-// Function to fetch localization values for the selected locale from Isar database
 Future<List<dynamic>> getLocalizationString(
     Isar isar, String selectedLocale) async {
-  // Initialize an empty list to store localization values
   List<dynamic> localizationValues = [];
 
-  // Query Isar database to fetch localization wrappers for the selected locale
   final List<LocalizationWrapper> localizationList =
       await isar.localizationWrappers
           .filter()
@@ -227,12 +218,9 @@ Future<List<dynamic>> getLocalizationString(
           )
           .findAll();
 
-  // Check if localization wrappers are found for the selected locale
   if (localizationList.isNotEmpty) {
-    // Add localization values to the list if found
     localizationValues.addAll(localizationList.first.localization!);
   }
 
-  // Return the fetched localization values
   return localizationValues;
 }

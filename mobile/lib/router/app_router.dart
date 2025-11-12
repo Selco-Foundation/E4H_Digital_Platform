@@ -37,9 +37,7 @@ export 'package:auto_route/auto_route.dart';
 
 part 'app_router.gr.dart';
 
-@AutoRouterConfig(modules: [
-//   DigitScannerRoute,
-])
+@AutoRouterConfig(modules: [])
 class AppRouter extends _$AppRouter {
   @override
   RouteType get defaultRouteType => const RouteType.material();

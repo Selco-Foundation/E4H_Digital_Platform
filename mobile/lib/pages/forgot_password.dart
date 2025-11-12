@@ -82,8 +82,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   Text(
                     "Enter your mobile number",
                     style: textTheme.headingXl.copyWith(
-                      color:
-                          theme.colorTheme.primary.primary2, // Use theme color
+                      color: theme.colorTheme.primary.primary2,
                     ),
                   ),
                   ReactiveWrapperField(

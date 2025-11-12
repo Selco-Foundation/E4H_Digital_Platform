@@ -3,7 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'specification.freezed.dart';
 
-/// --- BLOC ---
 class SpecificationBloc extends Bloc<SpecificationEvent, SpecificationState> {
   SpecificationBloc() : super(const SpecificationState.initial()) {
     on<SpecificationSave>(_onSave);
@@ -29,7 +28,6 @@ class SpecificationBloc extends Bloc<SpecificationEvent, SpecificationState> {
   }
 }
 
-/// --- STATES ---
 @freezed
 class SpecificationState with _$SpecificationState {
   const factory SpecificationState.initial() = SpecificationInitial;
@@ -41,7 +39,6 @@ class SpecificationState with _$SpecificationState {
   }) = SpecificationLoaded;
 }
 
-/// --- EVENTS ---
 @freezed
 class SpecificationEvent with _$SpecificationEvent {
   const factory SpecificationEvent.save({

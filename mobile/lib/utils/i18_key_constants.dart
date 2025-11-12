@@ -54,89 +54,17 @@ class Common {
   const Common();
 
   String get coreCommonProceed => 'CORE_COMMON_PROCEED';
-  // String get coreCommonContinue => 'CORE_COMMON_CONTINUE';
-  //
-  // String get coreCommonAge => 'CORE_COMMON_AGE';
-  //
-  // String get coreCommonName => 'CORE_COMMON_NAME';
-  //
-  // String get coreCommonEmailId => 'CORE_COMMON_EMAIL_ID';
-  //
-  // String get coreCommonGender => 'CORE_COMMON_GENDER';
-  //
-  // String get coreCommonMobileNumber => 'CORE_COMMON_MOBILE_NUMBER';
-  //
-  String get coreCommonSubmit => 'Submit'; //'CORE_COMMON_SUBMIT';
-
-  String get coreCommonSave => 'Save'; //'CORE_COMMON_SAVE';
-  //
-  // String get coreCommonCancel => 'CORE_COMMON_CANCEL';
-  //
-  // String get corecommonRequired => 'CORE_COMMON_REQUIRED';
-  //
-  // String get coreCommonReasonRequired => 'CORE_COMMON_REASON_REQUIRED';
-  //
-  // String get corecommonclose => 'CORE_COMMON_CLOSE';
-  //
-  String get coreCommonOk => 'Ok'; //'CORE_COMMON_OK';
-  //
-  // String get coreCommonNA => 'CORE_COMMON_NA';
-  //
-  String get coreCommonProfile => 'Profile'; // 'CORE_COMMON_PROFILE';
-  //
-  String get coreCommonLogout => 'Logout'; // 'CORE_COMMON_LOGOUT';
-
-  String get coreCommonLogin => 'Login'; // 'CORE_COMMON_LOGIN';
-
-  // String get coreCommonBack => 'CORE_COMMON_BACK';
-  //
-  // String get coreCommonHelp => 'CORE_COMMON_HELP';
-  //
-  String get coreCommonHome => 'Home'; //'CORE_COMMON_HOME';
-  //
-  // String get coreCommonViewDownloadedData => 'CORE_COMMON_VIEW_DOWNLOADED_DATA';
-  //
-  // String get coreCommonlanguage => 'CORE_COMMON_LANGUAGE';
-  //
-  // String get coreCommonSyncProgress => 'CORE_COMMON_SYNC_PROGRESS';
-  //
-  // String get coreCommonDataSynced => 'CORE_COMMON_DATA_SYNCED';
-  //
-  // String get coreCommonDataSyncFailed => 'CORE_COMMON_DATA_SYNC_FAILED';
-  //
-  // String get coreCommonDataSyncRetry => 'CORE_COMMON_DATA_SYNC_RETRY';
-  //
-  String get connectionLabel =>
-      'CORE_COMMON_CONNECTION_LABEL'; //todo to be confirmed
-  //
-  String get connectionContent =>
-      'CORE_COMMON_CONNECTION_CONTENT'; //todo to be confirmed
-  //
-  // String get coreCommonSkip => 'CORE_COMMON_SKIP';
-
-  String get coreCommonNext => 'Next'; // 'CORE_COMMON_NEXT';
-  String get coreCommonEdit => 'CORE_COMMON_EDIT'; // 'Edit';
-  //
-  // String get coreCommonYes => 'CORE_COMMON_YES';
-  //
-  // String get coreCommonNo => 'CORE_COMMON_NO';
-  // String get coreCommonGoback => 'CORE_COMMON_GO_BACK';
-  //
-  // String get coreCommonRequiredItems => 'CORE_COMMON_REQUIRED_ITEMS';
-  //
-  // String get min2CharsRequired => 'MIN_2_CHARS_REQUIRED';
-  //
-  // String get maxCharsRequired => 'MAX_CHARS_ALLOWED';
-  //
-  // String get noResultsFound => 'NO_RESULTS_FOUND';
-
-  // String get coreCommonSyncInProgress => 'CORE_COMMON_SYNC_IN_PROGRESS';
-  //
-  // String get facilitySearchHeaderLabel => 'FACILITY_SEARCH_HEADER_LABEL';
-  //
-  // String get coreCommonDownload => 'CORE_COMMON_DOWNLOAD';
-  // String get coreCommonDownloadFailed => 'CORE_COMMON_DOWNLOAD_FAILED';
-  // String get noMatchFound => 'CORE_COMMON_NO_MATCH_FOUND';
+  String get coreCommonSubmit => 'CORE_COMMON_SUBMIT';
+  String get coreCommonSave => 'CORE_COMMON_SAVE';
+  String get coreCommonOk => 'CORE_COMMON_OK';
+  String get coreCommonProfile => 'CORE_COMMON_PROFILE';
+  String get coreCommonLogout => 'CORE_COMMON_LOGOUT';
+  String get coreCommonLogin => 'CORE_COMMON_LOGIN';
+  String get coreCommonHome => 'CORE_COMMON_HOME';
+  String get connectionLabel => 'CORE_COMMON_CONNECTION_LABEL';
+  String get connectionContent => 'CORE_COMMON_CONNECTION_CONTENT';
+  String get coreCommonNext => 'CORE_COMMON_NEXT';
+  String get coreCommonEdit => 'CORE_COMMON_EDIT';
 }
 
 class Welcome {
@@ -157,17 +85,11 @@ class Welcome {
 
 class Login {
   const Login();
-
   String get labelText => 'LOGIN_LABEL_TEXT';
-
   String get userIdPlaceholder => 'USER_ID_PLACEHOLDER';
-
   String get passwordPlaceholder => 'PASSWORD_PLACEHOLDER';
-
   String get actionLabel => 'LOGIN_ACTION_LABEL';
-
   String get mobileNumberPlaceholder => 'MOBILE_NUMBER_PLACEHOLDER';
-
   String get otpPlaceholder => 'OTP_PLACEHOLDER';
 }
 
@@ -195,7 +117,6 @@ class Scanner {
   String get scannerDialogContent => 'SCANNER_DIALOG_CONTENT';
   String get scannerDialogPrimaryAction => 'SCANNER_DIALOG_PRIMARY_ACTION';
   String get scannerDialogSecondaryAction => 'SCANNER_DIALOG_SECONDARY_ACTION';
-  // String get scannedResourceCountMisMatch => 'SCANNED_RESOURCE_COUNT_MISMATCH';
 }
 
 class HomeShowcase {
@@ -1255,7 +1176,6 @@ class DeliverIntervention {
       'DELIVER_INTERVENTION_PAST_DELIVERY_DETAILS';
   String get wasDosePastDeliveryDetails =>
       'DELIVER_INTERVENTION_PAST_DOSE_DELIVERY_DETAILS';
-  //[todo] need to change the 24
   String get wasDosePastRecordDeliveryDetails =>
       'DELIVER_INTERVENTION_PAST_RECORD_DOSE_DELIVERY_DETAILS';
   String get resourceCannotBeZero => 'RESOURCE_QUANTITY_CANNOT_BE_ZERO';
@@ -1339,8 +1259,6 @@ class WarehouseDetails {
 
 class StockDetails {
   const StockDetails();
-
-  /// Page Title Keys
   String get receivedPageTitle => 'RECEIVED_STOCK_DETAILS';
 
   String get issuedPageTitle => 'ISSUED_STOCK_DETAILS';
@@ -1351,10 +1269,8 @@ class StockDetails {
 
   String get damagedPageTitle => 'DAMAGED_STOCK_DETAILS';
 
-  /// Select Product label
   String get selectProductLabel => 'STOCK_DETAILS_SELECT_PRODUCT';
 
-  /// Select Transacting party label
   String get selectTransactingPartyReceived => 'STOCK_DETAILS_RECEIVED_FROM';
 
   String get selectTransactingPartyIssued => 'STOCK_DETAILS_ISSUED_TO';
@@ -1369,7 +1285,6 @@ class StockDetails {
     return 'STOCK_DETAILS_RECEIVED_FROM_LOST';
   }
 
-  /// Quantity sent/received/lost/damaged label
   String get quantityReceivedLabel => 'STOCK_DETAILS_QUANTITY_RECEIVED';
 
   String get quantitySentLabel => 'STOCK_DETAILS_QUANTITY_SENT';
@@ -1380,15 +1295,12 @@ class StockDetails {
 
   String get quantityDamagedLabel => 'STOCK_DETAILS_QUANTITY_DAMAGED';
 
-  /// Waybill number label
   String get waybillNumberLabel => 'STOCK_DETAILS_WAYBILL_NUMBER';
 
-  /// Number of product indicated on waybill title
   String get quantityOfProductIndicatedOnWaybillLabel {
     return 'STOCK_DETAILS_WAYBILL_QUANTITY';
   }
 
-  /// Lost/Damaged during label
   String get transactionReasonLost => 'STOCK_DETAILS_LOST_DURING';
 
   String get transactionReasonDamaged => 'STOCK_DETAILS_DAMAGED_DURING';

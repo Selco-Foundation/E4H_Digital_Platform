@@ -20,7 +20,7 @@ import '../model/document/document.dart';
 import '../model/transaction/transaction.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../repositories/activity_facility_workflow.dart';
-import '../repositories/app_init_repo.dart'; // envConfig
+import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
 import '../repositories/bom_repo.dart';
 import '../utils/utils.dart';
@@ -213,7 +213,7 @@ class BackgroundServiceController {
   Future<void> enqueueRejection({
     required String activityFacilityId,
     required String userType,
-    required List<Map<String, dynamic>> transactions, // serialize in BLoC
+    required List<Map<String, dynamic>> transactions,
   }) async {
     final service = FlutterBackgroundService();
 

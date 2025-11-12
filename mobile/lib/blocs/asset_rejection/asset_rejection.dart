@@ -77,7 +77,6 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
         throw Exception('Transaction must be Map or have toJson/toMap');
       }).toList();
 
-      // (Optional) reflect a 'queued' status locally so any watchers can show progress
       await _writeJobStatusUI(
         activityFacilityId: event.activityFacilityId,
         status: 'queued',

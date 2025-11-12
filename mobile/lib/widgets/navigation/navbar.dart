@@ -20,9 +20,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: theme.colorTheme.primary.primary2,
       leading: showMenu
           ? GestureDetector(
-              onTap: () {
-                //
-              },
+              onTap: () {},
               child: IconButton(
                 icon:
                     const Icon(Icons.menu, color: Colors.white, size: spacer6),
@@ -35,21 +33,17 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          // Image.asset(
-          //   AssetImages.DIGIT_LOGO,
-          //   height: spacer4,
-          // ),
           Text("E4H",
               style: textTheme.headingM.copyWith(
                 color: const DigitColors().light.paperPrimary,
               )),
           const SizedBox(width: spacer2),
           Container(
-            width: 1, // to-do Need to ask about this vertical line
+            width: 1,
             height: spacer6,
             color: const DigitColors().light.paperPrimary,
           ),
-          const SizedBox(width: spacer2), // Reduced spacing
+          const SizedBox(width: spacer2),
           Text("Asset Management",
               style: textTheme.bodyS.copyWith(
                 color: const DigitColors().light.paperPrimary,

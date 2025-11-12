@@ -130,7 +130,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             Navigator.of(context).maybePop();
           },
           failure: (message) {
-            Navigator.of(context, rootNavigator: true).pop(); // Remove loader
+            Navigator.of(context, rootNavigator: true).pop();
             context.showSnackBar(SnackBar(content: Text(message)));
           },
           orElse: () {},
@@ -380,7 +380,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                                 activityFacilityId:
                                     selected.activityFacility.id,
                                 comments: reasons.map((e) {
-                                  // Always produce JSON object, even if reason is empty.
                                   final message = jsonEncode({
                                     'reason': e['reason'],
                                     'comment': e['comment'],

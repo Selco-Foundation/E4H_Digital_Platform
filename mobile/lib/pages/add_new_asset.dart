@@ -242,7 +242,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       );
     }
 
-    // Request location service after permissions
     final locBloc = context.read<LocationBloc>();
     locBloc.add(const LocationEvent.requestPermission());
     locBloc.add(const LocationEvent.requestService());
@@ -253,7 +252,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       setState(() {
         final newAsset = AssetModel(serialNumber: '');
 
-        // Copy battery/panel properties from first asset to maintain consistency
         if (_assets.isNotEmpty &&
             (currentAssetType == 'battery' || currentAssetType == 'panel')) {
           newAsset.batteryType = _assets.first.batteryType;
@@ -343,7 +341,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   }
                 });
 
-                // Prefill the futures map so each card has its future ready
                 _cachedImageFutures.clear();
                 for (var i = 0; i < _assets.length; i++) {
                   final path = _assets[i].photoPath;
@@ -396,7 +393,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                           CacheAddNewAssetEvent.deleteAll(
                               _currentActivityFacilityId!, currentAssetType));
 
-                      // 2) await completion (either deleted or error)
                       await context
                           .read<CacheAddNewAssetBloc>()
                           .stream
@@ -643,7 +639,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                         asset.photoPath = copiedPath;
                         asset.latitude = _latitude.toString();
                         asset.longitude = _longitude.toString();
-                        // invalidate this card's future so it reloads the new local file
                         _cachedImageFutures.remove(index);
                       });
                     },
@@ -703,7 +698,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
   Widget _batteryCapacity(ThemeData theme, DigitTextTheme textTheme,
       List<AssetModel> assets, String heading) {
-    // Use first asset to control the values for all assets
     final firstAsset =
         assets.isNotEmpty ? assets.first : AssetModel(serialNumber: '');
 
@@ -730,7 +724,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   ),
                   onSelect: (DropdownItem sel) {
                     setState(() {
-                      // Update all assets with the same value
                       for (var asset in assets) {
                         asset.batteryType = sel.code;
                       }
@@ -755,7 +748,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       ),
                       onSelect: (DropdownItem sel) {
                         setState(() {
-                          // Update all assets with the same value
                           for (var asset in assets) {
                             asset.batteryVoltage = sel.code;
                           }
@@ -798,7 +790,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       ),
                       onSelect: (DropdownItem sel) {
                         setState(() {
-                          // Update all assets with the same value
                           for (var asset in assets) {
                             asset.batteryCapacity = sel.code;
                           }
@@ -832,7 +823,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
   Widget _panelCapacity(ThemeData theme, DigitTextTheme textTheme,
       List<AssetModel> assets, String heading) {
-    // Use first asset to control the values for all assets
     final firstAsset =
         assets.isNotEmpty ? assets.first : AssetModel(serialNumber: '');
 
@@ -863,7 +853,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                         ),
                         onSelect: (DropdownItem sel) {
                           setState(() {
-                            // Update all assets with the same value
                             for (var asset in assets) {
                               asset.panelCapacity = sel.code;
                             }

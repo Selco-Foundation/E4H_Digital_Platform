@@ -28,7 +28,6 @@ class _InstallationReportPageState extends State<InstallationReportPage> {
   @override
   void initState() {
     super.initState();
-    // Fire the fetch event once when the page is first shown
     WidgetsBinding.instance.addPostFrameCallback((_) {
       userType = context.read<UserTypeBloc>().state.maybeWhen(
             supervisor: () => USER_TYPES.SUPERVISOR.name,

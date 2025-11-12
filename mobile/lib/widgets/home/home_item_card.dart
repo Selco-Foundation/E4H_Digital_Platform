@@ -75,7 +75,6 @@ class HomeItemCard extends StatelessWidget {
                           : theme.colorTheme.primary.primary1,
                     ),
                     textAlign: TextAlign.center,
-                    // overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],

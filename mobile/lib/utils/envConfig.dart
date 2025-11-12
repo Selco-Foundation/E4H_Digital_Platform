@@ -94,7 +94,6 @@ class Variables {
     'https://health-dev.digit.org/',
   );
 
-  //this is the endpoint for service registry, rest are hard-coded
   static const _mdmsApi = EnvEntry(
     'MDMS_API_PATH',
     'egov-mdms-service/v1/_search',
@@ -105,7 +104,6 @@ class Variables {
     'default',
   );
 
-  //In order to search for role-actions, use this endpoint
   static const _actionMapUrl = EnvEntry(
     'ACTIONS_API_PATH',
     'access/v1/actions/mdms/_get',
@@ -124,8 +122,7 @@ class Variables {
       ? _mdmsApi.value
       : _dotEnv.get(_mdmsApi.key, fallback: _mdmsApi.value);
 
-  String get completeMdmsApiUrl =>
-      '${baseUrl}${mdmsApiPath}'; // Concatenate base URL with API path
+  String get completeMdmsApiUrl => '${baseUrl}${mdmsApiPath}';
 
   String get actionMapApiPath => useFallbackValues
       ? _actionMapUrl.value

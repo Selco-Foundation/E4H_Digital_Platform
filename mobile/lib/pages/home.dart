@@ -228,7 +228,6 @@ class _HomePageState extends State<HomePage> {
         'icon': Icons.autorenew,
         'label': 'Data Sync',
         'onPressed': () {
-          // Directly start sync
           context
               .read<AssetSubmissionBloc>()
               .add(AssetSubmissionEvent.submitAllDrafts(userType: _userType));

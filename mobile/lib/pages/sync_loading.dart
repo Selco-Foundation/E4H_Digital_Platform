@@ -37,9 +37,7 @@ class SyncLoadingPage extends StatelessWidget {
                   size: const Size(120, 90),
                   strokeWidth: 3,
                   baseColor: theme.colorTheme.alert.infoBg,
-                  //theme.colorTheme.text.disabled, // light gray
-                  progressColor:
-                      theme.colorTheme.primary.primary1, // your brand
+                  progressColor: theme.colorTheme.primary.primary1,
                 ),
                 SizedBox(height: context.height * 0.03),
                 Text(
@@ -85,7 +83,6 @@ class SyncLoadingPage extends StatelessWidget {
 }
 
 class CloudProgressIndicator extends StatelessWidget {
-  /// 0.0 → 1.0
   final double progress;
   final double strokeWidth;
   final Color baseColor;
@@ -187,12 +184,10 @@ class _CloudPainter extends CustomPainter {
     final metrics = path.computeMetrics().toList();
     final totalLength = metrics.fold(0.0, (sum, metric) => sum + metric.length);
 
-    // NEW: Precisely locate the top of Curve 3
     // The top of Curve 3 is at the midpoint of the curve's control points
     final curve3Top = Offset(w * 0.575, h * 0.02); // (45%+70%)/2 = 57.5%
     double? startDistance;
 
-    // NEW: Improved search algorithm to find exact top point
     double currentDistance = 0;
     double minDistance = double.infinity;
 

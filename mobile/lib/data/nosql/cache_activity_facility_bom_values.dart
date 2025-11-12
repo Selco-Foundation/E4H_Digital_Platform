@@ -13,7 +13,7 @@ class CacheActivityFacilityBomValues {
   late String userType;
 
   @Index(unique: true, replace: true, caseSensitive: false)
-  late String entryKey; // "$projectId::$userType"
+  late String entryKey; // "$activityFacilityId::$userType"
 
   late String dataJson;
 

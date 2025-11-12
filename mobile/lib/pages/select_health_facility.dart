@@ -10,7 +10,6 @@ import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:selco/utils/extensions.dart';
 
 import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/app_init/app_init.dart';
@@ -23,6 +22,7 @@ import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
@@ -39,7 +39,6 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
   String? _sortDirection;
   String _searchQuery = '';
 
-  /// Local accumulator: projectId -> (assetType -> bestProgress)
   final Map<String, Map<String, int>> _progress = {};
 
   @override
@@ -93,7 +92,6 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
     context.router.push(const AssetCountRoute());
   }
 
-  /// Compute fraction from the local `_progress` accumulator
   double _fractionForProject(String projectId) {
     final isSupervisor = context.read<UserTypeBloc>().state.maybeWhen(
           supervisor: () => true,
@@ -162,7 +160,6 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                       initial: () => _loadingIndicator(),
                       loading: () => _loadingIndicator(),
                       fetched: (projectList) {
-                        // Prefetch counts for each project & type
                         for (final p in projectList) {
                           for (final t in const [
                             'inverter',
@@ -238,7 +235,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                     onChange: (text) {
                       setState(() {
                         _searchQuery = text;
-                        _sortDirection = null; // clear sort
+                        _sortDirection = null;
                       });
                       _fetchProject();
                     },
@@ -261,7 +258,6 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
     );
   }
 
-  /// Extracted helper to render a vertical list of cards
   Widget _buildProjectList(List<ActivityFacilityWorkflow> projects) {
     if (projects.isEmpty) {
       return const Padding(
@@ -287,8 +283,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
               systemDesignCode: project.activityFacility.facility
                       ?.facilityDetails?.solar_solution_design_type ??
                   '',
-              fraction: _fractionForProject(
-                  project.activityFacility.id), // <<< progress here
+              fraction: _fractionForProject(project.activityFacility.id),
             ),
             const SizedBox(height: spacer5),
           ],
@@ -377,8 +372,6 @@ class InstallationReportCard extends StatelessWidget {
   final DateTime dateAssigned;
   final String? systemDesignCode;
   final Function() onPress;
-
-  /// Injected progress fraction (0.0 → 1.0)
   final double fraction;
 
   const InstallationReportCard({

@@ -20,11 +20,9 @@ class NetworkService {
   /// Returns true if the internet is reachable (opens sockets to known hosts).
   Future<bool> hasInternet(
       {Duration timeout = const Duration(seconds: 3)}) async {
-    // internet_connection_checker_plus already handles multiple endpoints + timeouts.
     return _internet.hasInternetAccess.timeout(timeout, onTimeout: () => false);
   }
 
-  /// Throws if no internet; prefer this in interceptors.
   Future<void> ensureOnlineOrThrow() async {
     final hasIface = await hasNetwork();
     if (!hasIface) {

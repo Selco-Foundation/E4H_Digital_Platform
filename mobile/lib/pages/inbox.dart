@@ -38,7 +38,6 @@ class _InboxPageState extends State<InboxPage> {
   @override
   void initState() {
     super.initState();
-    // Trigger initial fetch after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userState = context.read<UserTypeBloc>().state;
       if (userState.maybeWhen(supervisor: () => true, orElse: () => false)) {
@@ -75,7 +74,6 @@ class _InboxPageState extends State<InboxPage> {
         }
       },
       orElse: () {
-        // User role
         if (tabIndex == 0) {
           workflowStatuses = [
             WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_FIELD_SUPERVISOR.name,
@@ -138,7 +136,6 @@ class _InboxPageState extends State<InboxPage> {
 
     return BlocBuilder<UserTypeBloc, UserTypeState>(
       builder: (context, userState) {
-        // Determine tab labels based on user type
         final tabs = userState.maybeWhen(
           supervisor: () => ['For Review', 'Rejected', 'Approved'],
           orElse: () => ['Rejected', 'Approved'],
@@ -199,7 +196,7 @@ class _InboxPageState extends State<InboxPage> {
                                 onChange: (text) {
                                   setState(() {
                                     _searchQuery = text;
-                                    _sortDirection = null; // clear sort
+                                    _sortDirection = null;
                                   });
                                   _fetchProjects(userState, _selectedTabIndex);
                                 },

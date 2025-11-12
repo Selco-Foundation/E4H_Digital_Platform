@@ -3,7 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'user_type.freezed.dart';
 
-// states
 @freezed
 class UserTypeState with _$UserTypeState {
   const factory UserTypeState.initial() = UserTypeInitial;
@@ -11,13 +10,11 @@ class UserTypeState with _$UserTypeState {
   const factory UserTypeState.supervisor() = UserTypeSupervisor;
 }
 
-// events
 @freezed
 class UserTypeEvent with _$UserTypeEvent {
   const factory UserTypeEvent.typeSelected(String userType) = UserTypeSelected;
 }
 
-// bloc
 class UserTypeBloc extends Bloc<UserTypeEvent, UserTypeState> {
   UserTypeBloc() : super(const UserTypeState.initial()) {
     on<UserTypeSelected>(_onTypeSelected);

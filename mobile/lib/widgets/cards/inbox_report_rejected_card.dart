@@ -11,7 +11,6 @@ import 'package:selco/utils/extensions.dart';
 class InboxReportRejectedCard extends StatelessWidget {
   final String? title;
   final String? status;
-  //final String? reason;
   final DateTime dateAssigned;
   final Function() onPress;
 
@@ -20,7 +19,6 @@ class InboxReportRejectedCard extends StatelessWidget {
     this.title,
     this.status,
     required this.dateAssigned,
-    // this.reason,
     required this.onPress,
   });
 
@@ -57,11 +55,6 @@ class InboxReportRejectedCard extends StatelessWidget {
                             .copyWith(color: theme.colorTheme.text.primary),
                       ),
                       const SizedBox(height: spacer4),
-                      // Text(
-                      //   'Rejection Reason',
-                      //   style: textTheme.headingS
-                      //       .copyWith(color: theme.colorTheme.text.primary),
-                      // ),
                       Text(
                         'Submission Date',
                         style: textTheme.headingS
@@ -83,13 +76,6 @@ class InboxReportRejectedCard extends StatelessWidget {
                             .copyWith(color: theme.colorTheme.text.primary),
                       ),
                       const SizedBox(height: spacer4),
-                      // Text(
-                      //   reason ?? '',
-                      //   style: textTheme.bodyL
-                      //       .copyWith(color: theme.colorTheme.text.primary),
-                      //   softWrap: true,
-                      //   overflow: TextOverflow.visible,
-                      // ),
                       Text(
                         formattedDate,
                         style: textTheme.bodyL

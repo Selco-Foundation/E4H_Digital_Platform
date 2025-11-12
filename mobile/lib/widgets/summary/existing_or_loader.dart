@@ -10,43 +10,37 @@ import '../../router/app_router.dart';
 import '../../widgets/summary/summary.dart';
 import '../files/pdf_card.dart';
 
-/// Rename PDFs using workflow documentType **only when** the filePath
-/// contains that document's fileStoreId (so we don't mix names by order).
 List<ExistingReport> _applyPdfNamesByFileStoreId(
   List<ExistingReport> existing,
   List<Document> docs,
 ) {
   if (existing.isEmpty || docs.isEmpty) return existing;
 
-  // Map fileStoreId -> documentType (both lowercased for easy matching)
   final byFsId = <String, String>{};
   for (final d in docs) {
     final fsid = (d.fileStore ?? '').toLowerCase();
     final dtype = (d.documentType ?? '').toLowerCase();
     if (fsid.isNotEmpty && dtype.isNotEmpty) {
-      byFsId[fsid] = dtype; // e.g. 58a28418-... -> installation_report
+      byFsId[fsid] = dtype;
     }
   }
 
   return existing.map((e) {
     final isPdf = (e.fileType.toLowerCase() == 'pdf');
-    if (!isPdf) return e; // images/unknown untouched
+    if (!isPdf) return e;
 
     final pathLower = e.filePath.toLowerCase();
     String? matchedDocType;
 
-    // Match by fileStoreId substring in the saved file name/path
     for (final entry in byFsId.entries) {
       if (pathLower.contains(entry.key)) {
-        matchedDocType = entry.value; // already lowercased
+        matchedDocType = entry.value;
         break;
       }
     }
 
-    // Only rename when we have a positive match
     if (matchedDocType != null && matchedDocType.isNotEmpty) {
-      final clean =
-          '${matchedDocType.replaceAll('_', ' ')}.pdf'; // installation_report.pdf or installation_report_bom.pdf
+      final clean = '${matchedDocType.replaceAll('_', ' ')}.pdf';
       return ExistingReport(
         isarId: e.isarId,
         filePath: e.filePath,
@@ -55,13 +49,10 @@ List<ExistingReport> _applyPdfNamesByFileStoreId(
       );
     }
 
-    // No match -> keep as-is (prevents wrong swaps)
     return e;
   }).toList();
 }
 
-/// Widget to display a list of existing files (images & pdfs).
-/// showEditButton toggles whether remove icons are shown.
 Widget existingFilesSection({
   required BuildContext context,
   required List<ExistingReport> existing,
@@ -132,7 +123,6 @@ Widget existingFilesSection({
                     onTap: () => onTapPdf(pdf.filePath),
                     child: pdfCard(
                         context: context,
-                        // filePath: pdf.filePath,
                         fileSize: fileSizeFor(pdf.filePath),
                         filePath: _display.replaceAll('_', ' ')),
                   ),
@@ -148,7 +138,6 @@ Widget existingFilesSection({
   );
 }
 
-/// A small cancel icon (used to remove) overlaid widget
 Widget cancelIcon({required BuildContext context, Function()? onPress}) {
   final theme = Theme.of(context);
   return Positioned(

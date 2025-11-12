@@ -19,25 +19,6 @@ class CustomDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // final appInitializationBloc = context.read<AppInitialization>();
-    // final appConfig =
-    //     (appInitializationBloc.state as Initialized).appConfig;
-    // final languages = appConfig;
-    // final localizationModulesList = appConfig;
-    // final authBloc = context.read<AuthBloc>();
-    // bool isDistributor = authBloc.state != const AuthState.unauthenticated()
-    //     ? context.loggedInUserRoles
-    //     .where(
-    //       (role) => role.code == RolesType.distributor.toValue(),
-    // )
-    //     .toList()
-    //     .isNotEmpty
-    //     : false;
-
-    // return BlocBuilder<AppInitialization, InitState>(
-    //   builder: (context, state) {
-    //     final actionMap = state.entityActionMapping;
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         return Padding(
@@ -48,7 +29,6 @@ class CustomDrawer extends StatelessWidget {
                 leading: GestureDetector(
                   onTap: () {
                     Navigator.of(context, rootNavigator: true).pop();
-                    // context.router.push(UserQRDetailsRoute());
                   },
                   child: QrImageView(
                     data: value.userRequest!.uuid,
@@ -72,20 +52,6 @@ class CustomDrawer extends StatelessWidget {
                 },
                 icon: Icons.home,
               ),
-              // if (appInitializationBloc.state is Initialized) ...[
-              //   SidebarItem(
-              //     title: AppLocalizations.of(context).translate(
-              //       i18.common.coreCommonlanguage,
-              //     ),
-              //     isSearchEnabled: false,
-              //     icon: Icons.language,
-              //     onPressed: () {},
-              //     children: (localizationModulesList != null)
-              //         ? buildLanguage(localizationModulesList, languages,
-              //             context, appConfig)
-              //         : null,
-              //   )
-              // ],
               SidebarItem(
                 title: AppLocalizations.of(context).translate(
                   i18.common.coreCommonProfile,
@@ -102,7 +68,6 @@ class CustomDrawer extends StatelessWidget {
                   if (isOnline) {
                     if (context.mounted) {
                       Navigator.of(context, rootNavigator: true).pop();
-                      // context.router.push(ProfileRoute());
                     }
                   } else {
                     if (context.mounted) {
@@ -147,8 +112,6 @@ class CustomDrawer extends StatelessWidget {
         );
       },
     );
-    //   },
-    // );
   }
 }
 

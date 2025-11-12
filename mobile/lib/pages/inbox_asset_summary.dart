@@ -64,7 +64,6 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
   }
 
   void _reload() {
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
     userType = context.read<UserTypeBloc>().state.maybeWhen(
           supervisor: () => USER_TYPES.SUPERVISOR.name,
           orElse: () => USER_TYPES.FIELD_STAFF.name,
@@ -79,7 +78,6 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
       _loadProjectSystem();
       _loadInitialCompletion();
     });
-    // });
   }
 
   Future<void> _sendBackReport(BuildContext popupCtx) async {
@@ -412,8 +410,6 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                   ],
                                 ),
                                 const SizedBox(height: spacer4),
-
-                                // ── COMPLETION REPORT (Supervisor only) ────────────────
                                 if (userType == USER_TYPES.SUPERVISOR.name)
                                   Column(
                                     children: [
@@ -445,13 +441,6 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                   ) {
                                                     return Column(
                                                       children: [
-                                                        // BomSystemSelector(
-                                                        //   onChanged: (code) {
-                                                        //     setState(() =>
-                                                        //         _system =
-                                                        //             code);
-                                                        //   },
-                                                        // ),
                                                         if (_system != null)
                                                           BomButtonsSection(
                                                             key: PageStorageKey(

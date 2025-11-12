@@ -13,10 +13,6 @@ import '../../router/app_router.dart';
 import '../../utils/utils.dart';
 import '../summary/summary.dart';
 
-// ---------------------------
-// Shared constants/utilities
-// ---------------------------
-
 const _kBomSystemKey = 'bom_system_code';
 const _kDefaultSystem = 'DC';
 
@@ -45,15 +41,10 @@ String _prettySystemLabel(String v) {
   }
 }
 
-// -----------------------------------------------------------------
-// BomSystemSelector (COMPACT DROPDOWN VERSION)
-// Loads initial value from SecureStore (defaults to DC), shows a small dropdown,
-// saves on change, and calls onChanged(systemCode).
-// -----------------------------------------------------------------
 class BomSystemSelector extends StatefulWidget {
   const BomSystemSelector({
     super.key,
-    required this.onChanged, // (String systemCode) -> void
+    required this.onChanged,
   });
 
   final void Function(String systemCode) onChanged;
@@ -73,7 +64,6 @@ class _BomSystemSelectorState extends State<BomSystemSelector>
   @override
   void initState() {
     super.initState();
-    // Load once from SecureStore and notify parent
     Future(() async {
       final stored = await SecureStore().storage.read(key: _kBomSystemKey);
       final resolved = (stored != null && _systemOptions.contains(stored))
@@ -84,7 +74,7 @@ class _BomSystemSelectorState extends State<BomSystemSelector>
         _selected = resolved;
         _loading = false;
       });
-      widget.onChanged(resolved); // initialize parent with stored/default
+      widget.onChanged(resolved);
     });
   }
 
@@ -95,8 +85,6 @@ class _BomSystemSelectorState extends State<BomSystemSelector>
     if (_loading) {
       return const SizedBox.shrink();
     }
-
-    // Compact dropdown; minimal padding; no giant buttons.
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: DropdownButtonFormField<String>(
@@ -127,11 +115,6 @@ class _BomSystemSelectorState extends State<BomSystemSelector>
   }
 }
 
-// -----------------------------------------------------------------
-// BomButtonsSection
-// Now manages its own async state. It never hides previous buttons while
-// refreshing; it reuses last good data until the new data is ready.
-// -----------------------------------------------------------------
 class BomButtonsSection extends StatefulWidget {
   const BomButtonsSection({
     super.key,
@@ -142,7 +125,7 @@ class BomButtonsSection extends StatefulWidget {
   });
 
   final List<dynamic> solutionDesignBom;
-  final String systemCode; // 'DC', 'AC_OFF_GRID', etc.
+  final String systemCode;
   final String projectId;
   final FormOrigin origin;
 
@@ -175,13 +158,12 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
   @override
   void didUpdateWidget(covariant BomButtonsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Recompute a signature and only refresh when inputs truly change.
     final sig = '${widget.projectId}|${widget.origin}|${widget.systemCode}';
     if (sig != _lastSig && !_loading) {
       _refreshModels();
     }
     if (oldWidget.projectId != widget.projectId) {
-      _restartBomWatcherForSchemas(const []); // project changed; clear watcher
+      _restartBomWatcherForSchemas(const []);
     }
   }
 
@@ -192,12 +174,11 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
 
   @override
   void dispose() {
-    _bomWatchSub?.cancel(); // <-- ADD THIS
+    _bomWatchSub?.cancel();
     super.dispose();
   }
 
   void _restartBomWatcherForSchemas(List<String> schemaKeys) {
-    // <-- ADD THIS
     _bomWatchSub?.cancel();
     if (schemaKeys.isEmpty) {
       _bomWatchSub = null;

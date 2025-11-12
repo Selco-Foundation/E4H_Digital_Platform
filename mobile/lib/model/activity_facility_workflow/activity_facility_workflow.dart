@@ -23,7 +23,6 @@ class ActivityFacilityWorkflow with _$ActivityFacilityWorkflow {
       _$ActivityFacilityWorkflowFromJson(json);
 }
 
-/// Converts between a loosely-typed API map and our strongly-typed ActivityFacility.
 class ActivityFacilityConverter
     implements JsonConverter<ActivityFacility, Map<String, dynamic>> {
   const ActivityFacilityConverter();
@@ -33,19 +32,14 @@ class ActivityFacilityConverter
 
   @override
   ActivityFacility fromJson(Map<String, dynamic> json) {
-    // Normalize nested maps
     final m = _asMap(json);
-
-    // API now sends Facility INSIDE the payload root (not in additionalDetails)
-    // Example shape (see uploaded response):
-    // { id, tenantId, activityId, status, scheduledAt, ..., facility: {...}, ... }
 
     final model = ActivityFacility(
       id: (m['id'] ?? '').toString(),
       tenantId: m['tenantId']?.toString(),
       activityId: m['activityId']?.toString(),
       fieldPlanId: m['fieldPlanId']?.toString(),
-      facilityId: m['facilityId']?.toString(), // present on wrapper sometimes
+      facilityId: m['facilityId']?.toString(),
       status: m['status']?.toString(),
       scheduledAt: (m['scheduledAt'] is int)
           ? DateTime.fromMillisecondsSinceEpoch(m['scheduledAt'] as int)
@@ -56,12 +50,10 @@ class ActivityFacilityConverter
       completedAt: (m['completedAt'] is int)
           ? DateTime.fromMillisecondsSinceEpoch(m['completedAt'] as int)
           : null,
-      // audit, assigned fields (optional)
       assignedUser: m['assignedUser']?.toString(),
       assignedEmployeeUser: m['assignedEmployeeUser']?.toString(),
     );
 
-    // ---- Facility (required for UI) ----
     if (m['facility'] is Map) {
       try {
         final f = Map<String, dynamic>.from(m['facility'] as Map);
@@ -71,7 +63,6 @@ class ActivityFacilityConverter
       }
     }
 
-    // ---- Address (legacy parity: if present at root) ----
     if (m['address'] is Map) {
       try {
         model.address = AddressModelMapper.fromMap(
@@ -85,7 +76,6 @@ class ActivityFacilityConverter
 
   @override
   Map<String, dynamic> toJson(ActivityFacility model) {
-    // round-trip if needed back to API
     return model.toMap();
   }
 }

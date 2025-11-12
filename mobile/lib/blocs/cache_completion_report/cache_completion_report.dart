@@ -8,14 +8,13 @@ import '../../data/nosql/cache_completion_report.dart';
 
 part 'cache_completion_report.freezed.dart';
 
-/// Small input model for bulk adds
 class CompletionFileInput {
   final String projectId;
-  final String filePath; // local path or filestore id
-  final String fileType; // "pdf" | "image" | "unknown"
-  final String fileName; // display name
-  final String latitude; // required
-  final String longitude; // required
+  final String filePath;
+  final String fileType;
+  final String fileName;
+  final String latitude;
+  final String longitude;
   final int? index;
 
   CompletionFileInput({
@@ -31,43 +30,35 @@ class CompletionFileInput {
 
 @freezed
 class CacheCompletionReportEvent with _$CacheCompletionReportEvent {
-  /// Load all completion files for a project
   const factory CacheCompletionReportEvent.load(String projectId) = _Load;
 
-  /// Add or update a single file (upsert using unique entryId).
-  /// entryId is computed internally from (projectId + filePath).
   const factory CacheCompletionReportEvent.addOrUpdate({
     required String projectId,
     required String filePath,
-    required String fileType, // "pdf" | "image" | "unknown"
+    required String fileType,
     required String fileName,
     required String latitude,
     required String longitude,
     int? index,
   }) = _AddOrUpdate;
 
-  /// Bulk add/update many files in one transaction
   const factory CacheCompletionReportEvent.addMany({
     required List<CompletionFileInput> files,
   }) = _AddMany;
 
-  /// Remove one by Isar id
   const factory CacheCompletionReportEvent.removeById({
     required int id,
   }) = _RemoveById;
 
-  /// Remove by (projectId + filePath)
   const factory CacheCompletionReportEvent.removeByPath({
     required String projectId,
     required String filePath,
   }) = _RemoveByPath;
 
-  /// Bulk delete by entryIds (projectId::filePath)
   const factory CacheCompletionReportEvent.deleteManyByEntryId({
     required List<String> entryIds,
   }) = _DeleteManyByEntryId;
 
-  /// Clear all files for a project
   const factory CacheCompletionReportEvent.clearProject(String projectId) =
       _ClearProject;
 
@@ -82,7 +73,6 @@ class CacheCompletionReportState with _$CacheCompletionReportState {
   const factory CacheCompletionReportState.initial() = _Initial;
   const factory CacheCompletionReportState.loading() = _Loading;
 
-  /// Loaded list for the current project (if any)
   const factory CacheCompletionReportState.loaded({
     required String projectId,
     required List<CacheCompletionReport> files,
@@ -107,8 +97,6 @@ class CacheCompletionReportBloc
     on<_ReplaceAllForProject>(_onReplaceAllForProject);
   }
 
-  // ----------------- Helpers -----------------
-
   String _entryIdOf(String projectId, String filePath) =>
       '$projectId::$filePath';
 
@@ -131,8 +119,6 @@ class CacheCompletionReportBloc
     ));
   }
 
-  // ----------------- Handlers -----------------
-
   Future<void> _onLoad(
     _Load event,
     Emitter<CacheCompletionReportState> emit,
@@ -153,9 +139,6 @@ class CacheCompletionReportBloc
       final entryId = _entryIdOf(event.projectId, event.filePath);
 
       await isar.writeTxn(() async {
-        // Because entryId has a unique index (replace: true),
-        // we can upsert by putting a row with the same entryId.
-        // First check if it exists to preserve createdAt.
         final existing = await isar.cacheCompletionReports
             .where()
             .entryIdEqualTo(entryId)
@@ -202,7 +185,6 @@ class CacheCompletionReportBloc
     if (event.files.isEmpty) return;
 
     try {
-      // Group by project to emit correct loaded states
       final groups = <String, List<CompletionFileInput>>{};
       for (final f in event.files) {
         groups.putIfAbsent(f.projectId, () => []).add(f);
@@ -248,7 +230,6 @@ class CacheCompletionReportBloc
         }
       });
 
-      // Emit loaded for each affected project
       for (final pid in groups.keys) {
         await _emitLoadedForProject(pid, emit);
       }
@@ -308,7 +289,6 @@ class CacheCompletionReportBloc
     if (event.entryIds.isEmpty) return;
 
     try {
-      // capture projectIds to refresh later
       final affected = <String>{};
       for (final eid in event.entryIds) {
         final rec = await isar.cacheCompletionReports
@@ -368,7 +348,6 @@ class CacheCompletionReportBloc
       final pid = event.projectId;
 
       await isar.writeTxn(() async {
-        // 1) delete everything for this project
         final existing = await isar.cacheCompletionReports
             .where()
             .activityFacilityIdEqualTo(pid)
@@ -377,7 +356,6 @@ class CacheCompletionReportBloc
           await isar.cacheCompletionReports.delete(r.id);
         }
 
-        // 2) add the new ones
         for (final f in event.files) {
           final entryId = _entryIdOf(f.projectId, f.filePath);
           await isar.cacheCompletionReports.put(

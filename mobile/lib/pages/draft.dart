@@ -93,14 +93,14 @@ class _DraftPageState extends State<DraftPage> {
       },
       failure: (errorMessage) {
         if (_syncRoute != null) {
-          Navigator.of(context).pop(); // close SyncLoadingPage
+          Navigator.of(context).pop();
           _syncRoute = null;
         }
         _showSyncDialog(context, error: errorMessage);
       },
       success: () {
         if (_syncRoute != null) {
-          Navigator.of(context).pop(); // close SyncLoadingPage
+          Navigator.of(context).pop();
           _syncRoute = null;
         }
         ScaffoldMessenger.of(context).showSnackBar(

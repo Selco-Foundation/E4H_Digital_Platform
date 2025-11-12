@@ -1,33 +1,28 @@
 // Importing necessary packages and files
 import "package:dio/dio.dart"; // Dio package for HTTP requests
+
 import '../utils/envConfig.dart';
 import 'api_interceptors.dart';
 
-// The DioClient class for managing the Dio instance
 class DioClient {
-  late Dio _dio; // Private instance of Dio
+  late Dio _dio;
 
-  // Singleton instance of DioClient
   static final DioClient _instance = DioClient._internal();
 
-  // Factory constructor for DioClient
   factory DioClient() {
     return _instance;
   }
 
-  // Private constructor of DioClient
   DioClient._internal() {
-    init(); // Initialize the Dio client during construction
+    init();
   }
 
-  // Getter method to access the Dio instance
   Dio get dio => _dio;
 
-  // Initialization method for the Dio client
   void init() {
     _dio = Dio()
       ..interceptors.addAll([
-        AuthTokenInterceptor(), // Custom interceptor for handling authentication tokens
+        AuthTokenInterceptor(),
       ])
       ..options = BaseOptions(
         connectTimeout: Duration(
@@ -39,8 +34,7 @@ class DioClient {
         receiveTimeout: Duration(
           milliseconds: envConfig.variables.receiveTimeout,
         ),
-        baseUrl: envConfig.variables
-            .baseUrl, // Base URL for API endpoints from the environment configuration
+        baseUrl: envConfig.variables.baseUrl,
       );
 
     _dio.options.baseUrl = envConfig.variables.baseUrl;

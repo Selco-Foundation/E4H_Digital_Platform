@@ -151,19 +151,14 @@ class _LoginPageState extends State<LoginPage> {
                               if (!form.valid) return;
 
                               FocusManager.instance.primaryFocus?.unfocus();
-                              // context.router.push(const HomeRoute());
                               context.read<AuthBloc>().add(
                                     AuthEvent.login(
-                                      // Extract and trim username from form control
                                       username: (form.control(_userId).value
                                               as String)
                                           .trim(),
-                                      // Extract and trim password from form control
                                       password: (form.control(_password).value
                                               as String)
                                           .trim(),
-                                      // Pass action map if needed
-                                      // actionMap: actionMap,
                                     ),
                                   );
                             },

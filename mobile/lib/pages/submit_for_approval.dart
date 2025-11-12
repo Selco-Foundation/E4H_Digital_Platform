@@ -69,7 +69,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
             String pageName
           })>> _buttonsWithActionsFuture;
 
-  // for completion report upload
   List<PlatformFile> _pickedFiles = [];
   List<ExistingReport> _existingReports = [];
 
@@ -106,8 +105,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
           supervisor: () => USER_TYPES.SUPERVISOR.name,
           orElse: () => USER_TYPES.FIELD_STAFF.name,
         );
-    // Kick off the cache sync
-    //  WidgetsBinding.instance.addPostFrameCallback((_) {
     final selState = context.read<SelectedActivityFacilityBloc>().state;
     selState.whenOrNull(selected: (selProject) {
       activityFacilityId = selProject.activityFacility.id;
@@ -450,11 +447,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                                 ) {
                                   return Column(
                                     children: [
-                                      // BomSystemSelector(
-                                      //   onChanged: (code) {
-                                      //     setState(() => _system = code);
-                                      //   },
-                                      // ),
                                       if (_system != null)
                                         BomButtonsSection(
                                           key: PageStorageKey(
@@ -571,13 +563,11 @@ class RejectedEditAssetSummary extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    // 1) Grab the ProjectWorkflow to extract comments
     final workflow = context
         .watch<SelectedActivityFacilityBloc>()
         .state
         .whenOrNull(selected: (wf) => wf);
 
-    // 2) Build a map: AssetType (title case) → List<Comment>
     final commentsByType = <String, List<Comment>>{};
     if (workflow?.transactions != null) {
       for (final tx in workflow!.transactions!) {
@@ -681,7 +671,6 @@ class RejectedEditAssetSummary extends StatelessWidget {
   }
 }
 
-/// Extracted widget to render a card of rejection reasons.
 class RejectionReasonsList extends StatelessWidget {
   final List<Comment>? comments;
   final bool excludeStandardTypes;
@@ -755,7 +744,7 @@ class RejectionReasonsList extends StatelessWidget {
         .label
         .copyWith(color: theme.colorTheme.text.primary);
 
-    final reason = comment.reason; // may be null
+    final reason = comment.reason;
     final details = comment.displayComment;
 
     return Column(

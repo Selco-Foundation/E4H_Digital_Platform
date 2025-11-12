@@ -91,18 +91,10 @@ class CacheAssetDetailBloc
           existing.updatedAt = DateTime.now();
           await isar.cacheAssetDetails.put(existing);
         } else {
-          // final newEntry = CacheAssetDetail(
-          //   projectId: event.entry.projectId,
-          //   assetType: event.entry.assetType,
-          //   warranty: event.entry.warranty,
-          //   brand: event.entry.brand,
-          //   model: event.entry.model,
-          // );
           await isar.cacheAssetDetails.put(event.entry);
         }
       });
 
-      // Emit the newly updated/added entry
       final updatedEntry = await isar.cacheAssetDetails
           .where()
           .activityFacilityIdEqualTo(event.entry.activityFacilityId)
@@ -133,7 +125,6 @@ class CacheAssetDetailBloc
   }
 }
 
-/// Events for CacheAssetDetailBloc
 @freezed
 class CacheAssetDetailEvent with _$CacheAssetDetailEvent {
   const factory CacheAssetDetailEvent.get(
@@ -151,7 +142,6 @@ class CacheAssetDetailEvent with _$CacheAssetDetailEvent {
       CacheAssetDetailEventDelete;
 }
 
-/// States for CacheAssetDetailBloc
 @freezed
 class CacheAssetDetailState with _$CacheAssetDetailState {
   const factory CacheAssetDetailState.initial() = _Initial;

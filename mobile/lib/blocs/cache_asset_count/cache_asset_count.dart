@@ -6,20 +6,18 @@ import '../../data/nosql/cache_asset_count.dart';
 
 part 'cache_asset_count.freezed.dart';
 
-/// BLoC responsible for CRUD and fetching all asset counts for a project
 class CacheAssetCountBloc
     extends Bloc<CacheAssetCountEvent, CacheAssetCountState> {
   final Isar isar;
 
   CacheAssetCountBloc(this.isar) : super(const CacheAssetCountState.initial()) {
     on<CacheAssetCountEventGet>(_getCacheAssetCount);
-    on<CacheAssetCountEventGetAll>(_getAllCacheAssetCounts); // new
+    on<CacheAssetCountEventGetAll>(_getAllCacheAssetCounts);
     on<CacheAssetCountEventAdd>(_addCacheAssetCount);
     on<CacheAssetCountEventUpdate>(_updateCacheAssetCount);
     on<CacheAssetCountEventDelete>(_deleteCacheAssetCount);
   }
 
-  /// Fetch a single assetType’s entry for [activityFacilityId]
   Future<void> _getCacheAssetCount(
     CacheAssetCountEventGet event,
     Emitter<CacheAssetCountState> emit,
@@ -43,7 +41,6 @@ class CacheAssetCountBloc
     }
   }
 
-  /// NEW: Fetch *all* asset‐type entries for [activityFacilityId] in one shot
   Future<void> _getAllCacheAssetCounts(
     CacheAssetCountEventGetAll event,
     Emitter<CacheAssetCountState> emit,
@@ -53,7 +50,7 @@ class CacheAssetCountBloc
       final entries = await isar.cacheAssetCounts
           .where()
           .activityFacilityIdEqualTo(event.projectId)
-          .findAll(); // no assetType filter
+          .findAll();
 
       if (entries.isEmpty) {
         emit(const CacheAssetCountState.notFound());
@@ -152,25 +149,20 @@ class CacheAssetCountBloc
 
 @freezed
 class CacheAssetCountEvent with _$CacheAssetCountEvent {
-  /// Load one asset‐type’s count for [projectId]
   const factory CacheAssetCountEvent.get(
     String projectId,
     String assetType,
   ) = CacheAssetCountEventGet;
 
-  /// NEW: Load *all* counts for [projectId] at once
   const factory CacheAssetCountEvent.getAll(String projectId) =
       CacheAssetCountEventGetAll;
 
-  /// Insert or overwrite a single asset count record
   const factory CacheAssetCountEvent.add(CacheAssetCount entry) =
       CacheAssetCountEventAdd;
 
-  /// Update progress (or other fields) for an existing asset count entry
   const factory CacheAssetCountEvent.update(CacheAssetCount entry) =
       CacheAssetCountEventUpdate;
 
-  /// Delete by Isar id
   const factory CacheAssetCountEvent.delete(int id) =
       CacheAssetCountEventDelete;
 }
