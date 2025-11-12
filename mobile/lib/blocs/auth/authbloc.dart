@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -60,17 +61,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           accesstoken: _accesstoken,
           refreshtoken: _refreshtoken,
           userRequest: _userRequest));
+      try {
+        const String _ACTION_MASTER = 'actions-test';
+        final actionsWrapper = await authRepository.searchRoleActions({
+          "roleCodes": response.userRequest?.roles.map((e) => e.code).toList(),
+          "tenantId": envConfig.variables.tenantId,
+          "actionMaster": _ACTION_MASTER,
+          "enabled": true,
+        });
 
-      final actionsWrapper = await authRepository.searchRoleActions({
-        "roleCodes": response.userRequest?.roles.map((e) => e.code).toList(),
-        "tenantId": envConfig.variables.tenantId,
-        "actionMaster": "actions-test",
-        "enabled": true,
-      });
+        await secureStore.setRoleActions(actionsWrapper);
 
-      await secureStore.setRoleActions(actionsWrapper);
-
-      secureStore.setSelectedIndividual(_userRequest.userName);
+        secureStore.setSelectedIndividual(_userRequest.userName);
+      } catch (e) {
+        AppLogger.instance.info(e, title: 'Action Wrapper error');
+      }
     } catch (err) {
       String errorMessage = 'Unknown error occurred';
       if (err is DioException) {

@@ -30,6 +30,9 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
       final aFid = data?['activityFacilityId'] as String?;
       if (aFid != null) {
         add(RejectionEvent.bgRejectDone(activityFacilityId: aFid));
+      } else {
+        AppLogger.instance.info("kEvtRejectDone missing activityFacilityId",
+            title: "Warning: ");
       }
     });
 

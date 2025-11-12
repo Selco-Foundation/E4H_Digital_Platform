@@ -18,7 +18,7 @@ final _privateConstructorUsedError = UnsupportedError(
 mixin _$CacheActivityFacilityAssetEvent {
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) get,
+    required TResult Function(String activityFacilityId) get,
     required TResult Function(CacheActivityFacilityAsset entry) add,
     required TResult Function(CacheActivityFacilityAsset entry) update,
     required TResult Function(int id) delete,
@@ -26,7 +26,7 @@ mixin _$CacheActivityFacilityAssetEvent {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? get,
+    TResult? Function(String activityFacilityId)? get,
     TResult? Function(CacheActivityFacilityAsset entry)? add,
     TResult? Function(CacheActivityFacilityAsset entry)? update,
     TResult? Function(int id)? delete,
@@ -34,7 +34,7 @@ mixin _$CacheActivityFacilityAssetEvent {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? get,
+    TResult Function(String activityFacilityId)? get,
     TResult Function(CacheActivityFacilityAsset entry)? add,
     TResult Function(CacheActivityFacilityAsset entry)? update,
     TResult Function(int id)? delete,
@@ -98,7 +98,7 @@ abstract class _$$CacheActivityFacilityAssetEventGetImplCopyWith<$Res> {
           $Res Function(_$CacheActivityFacilityAssetEventGetImpl) then) =
       __$$CacheActivityFacilityAssetEventGetImplCopyWithImpl<$Res>;
   @useResult
-  $Res call({String projectId});
+  $Res call({String activityFacilityId});
 }
 
 /// @nodoc
@@ -114,12 +114,12 @@ class __$$CacheActivityFacilityAssetEventGetImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? projectId = null,
+    Object? activityFacilityId = null,
   }) {
     return _then(_$CacheActivityFacilityAssetEventGetImpl(
-      null == projectId
-          ? _value.projectId
-          : projectId // ignore: cast_nullable_to_non_nullable
+      null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
               as String,
     ));
   }
@@ -129,14 +129,14 @@ class __$$CacheActivityFacilityAssetEventGetImplCopyWithImpl<$Res>
 
 class _$CacheActivityFacilityAssetEventGetImpl
     implements CacheActivityFacilityAssetEventGet {
-  const _$CacheActivityFacilityAssetEventGetImpl(this.projectId);
+  const _$CacheActivityFacilityAssetEventGetImpl(this.activityFacilityId);
 
   @override
-  final String projectId;
+  final String activityFacilityId;
 
   @override
   String toString() {
-    return 'CacheActivityFacilityAssetEvent.get(projectId: $projectId)';
+    return 'CacheActivityFacilityAssetEvent.get(activityFacilityId: $activityFacilityId)';
   }
 
   @override
@@ -144,12 +144,12 @@ class _$CacheActivityFacilityAssetEventGetImpl
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$CacheActivityFacilityAssetEventGetImpl &&
-            (identical(other.projectId, projectId) ||
-                other.projectId == projectId));
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, projectId);
+  int get hashCode => Object.hash(runtimeType, activityFacilityId);
 
   @JsonKey(ignore: true)
   @override
@@ -162,36 +162,36 @@ class _$CacheActivityFacilityAssetEventGetImpl
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) get,
+    required TResult Function(String activityFacilityId) get,
     required TResult Function(CacheActivityFacilityAsset entry) add,
     required TResult Function(CacheActivityFacilityAsset entry) update,
     required TResult Function(int id) delete,
   }) {
-    return get(projectId);
+    return get(activityFacilityId);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? get,
+    TResult? Function(String activityFacilityId)? get,
     TResult? Function(CacheActivityFacilityAsset entry)? add,
     TResult? Function(CacheActivityFacilityAsset entry)? update,
     TResult? Function(int id)? delete,
   }) {
-    return get?.call(projectId);
+    return get?.call(activityFacilityId);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? get,
+    TResult Function(String activityFacilityId)? get,
     TResult Function(CacheActivityFacilityAsset entry)? add,
     TResult Function(CacheActivityFacilityAsset entry)? update,
     TResult Function(int id)? delete,
     required TResult orElse(),
   }) {
     if (get != null) {
-      return get(projectId);
+      return get(activityFacilityId);
     }
     return orElse();
   }
@@ -238,10 +238,11 @@ class _$CacheActivityFacilityAssetEventGetImpl
 
 abstract class CacheActivityFacilityAssetEventGet
     implements CacheActivityFacilityAssetEvent {
-  const factory CacheActivityFacilityAssetEventGet(final String projectId) =
+  const factory CacheActivityFacilityAssetEventGet(
+          final String activityFacilityId) =
       _$CacheActivityFacilityAssetEventGetImpl;
 
-  String get projectId;
+  String get activityFacilityId;
   @JsonKey(ignore: true)
   _$$CacheActivityFacilityAssetEventGetImplCopyWith<
           _$CacheActivityFacilityAssetEventGetImpl>
@@ -318,7 +319,7 @@ class _$CacheActivityFacilityAssetEventAddImpl
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) get,
+    required TResult Function(String activityFacilityId) get,
     required TResult Function(CacheActivityFacilityAsset entry) add,
     required TResult Function(CacheActivityFacilityAsset entry) update,
     required TResult Function(int id) delete,
@@ -329,7 +330,7 @@ class _$CacheActivityFacilityAssetEventAddImpl
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? get,
+    TResult? Function(String activityFacilityId)? get,
     TResult? Function(CacheActivityFacilityAsset entry)? add,
     TResult? Function(CacheActivityFacilityAsset entry)? update,
     TResult? Function(int id)? delete,
@@ -340,7 +341,7 @@ class _$CacheActivityFacilityAssetEventAddImpl
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? get,
+    TResult Function(String activityFacilityId)? get,
     TResult Function(CacheActivityFacilityAsset entry)? add,
     TResult Function(CacheActivityFacilityAsset entry)? update,
     TResult Function(int id)? delete,
@@ -475,7 +476,7 @@ class _$CacheActivityFacilityAssetEventUpdateImpl
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) get,
+    required TResult Function(String activityFacilityId) get,
     required TResult Function(CacheActivityFacilityAsset entry) add,
     required TResult Function(CacheActivityFacilityAsset entry) update,
     required TResult Function(int id) delete,
@@ -486,7 +487,7 @@ class _$CacheActivityFacilityAssetEventUpdateImpl
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? get,
+    TResult? Function(String activityFacilityId)? get,
     TResult? Function(CacheActivityFacilityAsset entry)? add,
     TResult? Function(CacheActivityFacilityAsset entry)? update,
     TResult? Function(int id)? delete,
@@ -497,7 +498,7 @@ class _$CacheActivityFacilityAssetEventUpdateImpl
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? get,
+    TResult Function(String activityFacilityId)? get,
     TResult Function(CacheActivityFacilityAsset entry)? add,
     TResult Function(CacheActivityFacilityAsset entry)? update,
     TResult Function(int id)? delete,
@@ -632,7 +633,7 @@ class _$CacheActivityFacilityAssetEventDeleteImpl
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String projectId) get,
+    required TResult Function(String activityFacilityId) get,
     required TResult Function(CacheActivityFacilityAsset entry) add,
     required TResult Function(CacheActivityFacilityAsset entry) update,
     required TResult Function(int id) delete,
@@ -643,7 +644,7 @@ class _$CacheActivityFacilityAssetEventDeleteImpl
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String projectId)? get,
+    TResult? Function(String activityFacilityId)? get,
     TResult? Function(CacheActivityFacilityAsset entry)? add,
     TResult? Function(CacheActivityFacilityAsset entry)? update,
     TResult? Function(int id)? delete,
@@ -654,7 +655,7 @@ class _$CacheActivityFacilityAssetEventDeleteImpl
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String projectId)? get,
+    TResult Function(String activityFacilityId)? get,
     TResult Function(CacheActivityFacilityAsset entry)? add,
     TResult Function(CacheActivityFacilityAsset entry)? update,
     TResult Function(int id)? delete,
