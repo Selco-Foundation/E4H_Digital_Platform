@@ -88,6 +88,11 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
         transactions: txMaps,
       );
     } catch (e) {
+      await _writeJobStatusUI(
+        activityFacilityId: event.activityFacilityId,
+        status: 'failed',
+        error: e.toString(),
+      );
       emit(RejectionState.failure(e.toString()));
     }
   }
