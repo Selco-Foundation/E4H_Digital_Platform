@@ -154,7 +154,7 @@ public class BoundaryRelationshipValidator {
                     .build());
 
             if(CollectionUtils.isEmpty(resultSet)) {
-                throw new CustomException("PARENT_NOT_FOUND", "Parent entity for current boundary relationship does not exist.");
+                throw new CustomException("PARENT_NOT_FOUND", String.format("Parent entity with boundary code %s does not exist.", body.getBoundaryRelationship().getParent()));
             } else {
                 ancestralMaterializedPath = resultSet.get(0).getAncestralMaterializedPath();
                 boundaryType = resultSet.get(0).getBoundaryType();
