@@ -284,10 +284,15 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
         String insertSQL = """
                 INSERT INTO facility_tenant_id_map (hfr_or_nin_id, tenant_id, facility_id, boundary_code)
                 VALUES (?, ?, ?, ?)
+                ON CONFLICT (hfr_or_nin_id) DO UPDATE\s
+                SET tenant_id = EXCLUDED.tenant_id,
+                    facility_id = EXCLUDED.facility_id,
+                    boundary_code = EXCLUDED.boundary_code
                 """;
 
-        try (var connection = context.getConnection();
+        try (var connection = context.getConfiguration().getDataSource().getConnection();
              var preparedStatement = connection.prepareStatement(insertSQL)) {
+            connection.setAutoCommit(false);
 
             int batchCount = 0;
             for (Map.Entry<String, FacilityMapping> entry : facilityMappings.entrySet()) {
@@ -312,6 +317,7 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                     // Execute batch every 100 records
                     if (batchCount % 100 == 0) {
                         preparedStatement.executeBatch();
+                        connection.commit();
                         log.debug("Persisted {} facility mappings to database", batchCount);
                     }
                 }
@@ -320,6 +326,7 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
             // Execute remaining batch
             if (batchCount % 100 != 0) {
                 preparedStatement.executeBatch();
+                connection.commit();
             }
 
             log.info("Successfully persisted {} facility mappings to facility_tenant_id_map table", batchCount);
