@@ -44,7 +44,7 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
         add(RejectionEvent.bgRejectError(
             activityFacilityId: aFid, message: msg));
       } else {
-        AppLogger.instance.info("kEvtRejectDone missing activityFacilityId",
+        AppLogger.instance.info("kEvtRejectError missing activityFacilityId",
             title: "Warning: ");
       }
     });
