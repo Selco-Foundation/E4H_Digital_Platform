@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.core5.util.Timeout;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 import org.springframework.http.*;
@@ -71,7 +73,7 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
             String esUsername = getEnvOrDefault("EGOV_ES_USERNAME", "");
             String esPassword = getEnvOrDefault("EGOV_ES_PASSWORD", "");
             String authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
-            int sleepMs = Integer.parseInt(getEnvOrDefault("EGOV_ES_UPDATE_DELAY_MS", "100"));
+            int sleepMs = Integer.parseInt(getEnvOrDefault("EGOV_ES_UPDATE_DELAY_MS", "0"));
 
             log.info("Elasticsearch Host: {}", esHost);
 
@@ -540,28 +542,39 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
     }
 
     private RestTemplate createRestTemplateWithDisabledSSL() throws Exception {
+        // Create SSL context that trusts all certificates
         SSLContext sslContext = SSLContextBuilder.create()
-            .loadTrustMaterial(null, new TrustAllStrategy())
-            .build();
+                .loadTrustMaterial(null, new TrustAllStrategy())  // Trust all certificates
+                .build();
 
+        // Create SSL socket factory with no hostname verification
         SSLConnectionSocketFactory sslSocketFactory = new SSLConnectionSocketFactory(
-            sslContext,
-            (hostname, session) -> true
+                sslContext,
+                (hostname, session) -> true  // Accept all hostnames
         );
 
+        // Create connection manager with SSL config
         HttpClientConnectionManager connectionManager = PoolingHttpClientConnectionManagerBuilder.create()
-            .setSSLSocketFactory(sslSocketFactory)
-            .build();
+                .setSSLSocketFactory(sslSocketFactory)
+                .build();
 
+        // Configure request timeouts
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setResponseTimeout(Timeout.ofSeconds(60))  // 60 seconds response timeout
+                .build();
+
+        // Build Apache HttpClient with SSL config
         CloseableHttpClient httpClient = HttpClients.custom()
-            .setConnectionManager(connectionManager)
-            .build();
+                .setConnectionManager(connectionManager)
+                .setDefaultRequestConfig(requestConfig)
+                .build();
 
+        // Create request factory with Apache HttpClient and timeouts
         HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory(httpClient);
-        requestFactory.setConnectTimeout(30000);
-        requestFactory.setConnectionRequestTimeout(30000);
+        requestFactory.setConnectTimeout(30000);  // 30 seconds connection timeout
+        requestFactory.setConnectionRequestTimeout(30000);  // 30 seconds request timeout
 
-        log.info("RestTemplate created with Apache HttpClient5, SSL verification disabled and extended timeouts");
+        log.info("RestTemplate created with Apache HttpClient5, SSL verification disabled, timeouts: 30s connect/request, 60s response");
         return new RestTemplate(requestFactory);
     }
 
