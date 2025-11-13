@@ -2,6 +2,7 @@ package facility.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Generated;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,7 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import java.util.Map;
 
 /**
- * Facility
+ * FacilityCreate
  */
 @Validated
 @Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-14T17:15:00.238919256+05:30[Asia/Kolkata]")
@@ -19,12 +20,9 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Facility {
+public class FacilityCreate {
     @JsonProperty("tenant_id")
     private String tenantId = null;
-
-    @JsonProperty("facility_id")
-    private String facilityId = null;
 
     @JsonProperty("facility_category")
     private String facilityCategory = null;
@@ -59,8 +57,9 @@ public class Facility {
     @JsonProperty("isActive")
     private Boolean isActive = null;
 
-    @JsonProperty("boundaryCode")
-    private String boundaryCode = null;
+    @JsonProperty("blockBoundaryCode")
+    @NotBlank(message = "blockBoundaryCode is mandatory")
+    private String blockBoundaryCode;
 
     @JsonProperty("isOnmReady")
     private Boolean isOnmReady = false;

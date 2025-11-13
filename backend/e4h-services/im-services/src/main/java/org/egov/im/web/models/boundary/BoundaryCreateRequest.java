@@ -1,7 +1,6 @@
-package facility.web.models;
+package org.egov.im.web.models.boundary;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.annotation.Generated;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -15,25 +14,23 @@ import org.springframework.validation.annotation.Validated;
 import java.util.List;
 
 /**
- * FacilityCreateRequest
+ * BoundaryCreateRequest
  */
 @Validated
-@Generated(value = "org.egov.codegen.SpringBootCodegen", date = "2025-05-14T17:15:00.238919256+05:30[Asia/Kolkata]")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class FacilityCreateRequest {
+public class BoundaryCreateRequest {
 
     @JsonProperty("RequestInfo")
-    @NotNull
+    @Valid
     private RequestInfo requestInfo = null;
 
-    @JsonProperty("facilities")
-    @NotNull
-    @Size(min = 1, message = "At least one facility must be provided")
     @Valid
-    private List<FacilityCreate> facilities = null;
-
+    @NotNull
+    @JsonProperty("Boundary")
+    @Size(min = 1, max = 300)
+    private List<Boundary> boundary = null;
 
 }
