@@ -3,6 +3,7 @@ package digit.repository.rowmapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import digit.web.models.Boundary;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.tracer.model.CustomException;
 import org.springframework.dao.DataAccessException;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
+@Slf4j
 public class BoundaryEntityRowMapper implements ResultSetExtractor<List<Boundary>> {
 
     private ObjectMapper mapper;
@@ -25,6 +27,7 @@ public class BoundaryEntityRowMapper implements ResultSetExtractor<List<Boundary
 
     @Override
     public List<Boundary> extractData(ResultSet resultSet) throws SQLException , DataAccessException {
+        log.info("Starting extraction of Boundary entities from ResultSet...");
 
         List<Boundary> boundaryList = new ArrayList<>();
 
@@ -50,7 +53,9 @@ public class BoundaryEntityRowMapper implements ResultSetExtractor<List<Boundary
             }
 
             boundaryList.add(boundary);
+            log.trace("Mapped Boundary entity: {}", boundary);
         }
+        log.info("Completed extraction. Total Boundaries mapped: {}", boundaryList.size());
         return boundaryList;
     }
 

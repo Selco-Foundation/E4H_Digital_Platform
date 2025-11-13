@@ -1,6 +1,7 @@
 package digit.repository.rowmapper;
 
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
@@ -11,12 +12,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Component
+@Slf4j
 public class BoundaryRelationshipRowMapper implements ResultSetExtractor<List<BoundaryRelationshipDTO>> {
 
     @Override
     public List<BoundaryRelationshipDTO> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
         List<BoundaryRelationshipDTO> boundaryRelationshipDTOList = new ArrayList<>();
 
+        log.debug("Starting to extract BoundaryRelationshipDTO records from ResultSet...");
         while(resultSet.next()) {
             AuditDetails auditDetails = AuditDetails.builder()
                     .createdBy(resultSet.getString("createdby"))
@@ -37,8 +40,10 @@ public class BoundaryRelationshipRowMapper implements ResultSetExtractor<List<Bo
                     .build();
 
             boundaryRelationshipDTOList.add(boundaryRelationshipDTO);
+            log.trace("Extracted BoundaryRelationshipDTO: {}", boundaryRelationshipDTO);
         }
 
+        log.debug("Finished extracting {} BoundaryRelationshipDTO records", boundaryRelationshipDTOList.size());
         return boundaryRelationshipDTOList;
     }
 }

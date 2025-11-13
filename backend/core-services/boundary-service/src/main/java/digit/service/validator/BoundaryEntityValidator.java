@@ -7,6 +7,7 @@ import digit.errors.ErrorCodes;
 import digit.repository.impl.BoundaryRepositoryImpl;
 import digit.util.GeoUtil;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -17,6 +18,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
+@Slf4j
 public class BoundaryEntityValidator {
 
     private final ObjectMapper objectMapper;
@@ -36,6 +38,7 @@ public class BoundaryEntityValidator {
      * @param boundaryRequest
      */
     public void validateCreateBoundaryRequest(BoundaryRequest boundaryRequest) {
+        log.info("Validating create boundary request, totalBoundaries={}", boundaryRequest.getBoundary().size());
 
         // validate the geometry
         validateBoundaryGeometry(boundaryRequest.getBoundary());
@@ -45,6 +48,8 @@ public class BoundaryEntityValidator {
 
         // validate for unique boundaries in the request
         checkForDuplicatesInRequest(boundaryRequest);
+
+        log.info("Create boundary request validation successful");
     }
 
     /**
@@ -52,12 +57,15 @@ public class BoundaryEntityValidator {
      * @param boundaryRequest
      */
     public void validateUpdateBoundaryRequest(BoundaryRequest boundaryRequest) {
+        log.info("Validating update boundary request, totalBoundaries={}", boundaryRequest.getBoundary().size());
 
         // validate for code and tenantId to exist
         validateIfBoundaryEntityExist(boundaryRequest);
 
         // validate for valid geometry
         validateBoundaryGeometry(boundaryRequest.getBoundary());
+
+        log.info("Update boundary request validation successful");
     }
 
     /**
@@ -66,6 +74,7 @@ public class BoundaryEntityValidator {
      * @param boundaryList
      */
     private void validateBoundaryGeometry(List<Boundary> boundaryList) {
+        log.debug("Validating geometry for {} boundaries", boundaryList.size());
 
         boundaryList.forEach(boundary -> {
             // Only execute if geometry is present
@@ -96,6 +105,7 @@ public class BoundaryEntityValidator {
      * @return
      */
     public Map<String, Set<String>> createTenantIdtoCodeMap(BoundaryRequest boundaryRequest) {
+        log.debug("Creating tenantId->code map for {} boundaries", boundaryRequest.getBoundary().size());
         return boundaryRequest.getBoundary().stream()
                 .collect(Collectors.groupingBy(Boundary::getTenantId, Collectors.mapping(Boundary::getCode, Collectors.toSet())));
     }
@@ -105,11 +115,13 @@ public class BoundaryEntityValidator {
      * @param boundaryRequest
      */
     public void checkForDuplicatesInDB(BoundaryRequest boundaryRequest) {
+        log.debug("Checking for duplicate boundaries in DB");
 
         // create a map of tenantId to code from request
         Map<String, Set<String>> tenantIdToCodeMap = createTenantIdtoCodeMap(boundaryRequest);
 
         tenantIdToCodeMap.forEach((tenantId, codes) -> {
+            log.debug("Checking duplicates in DB for tenantId={}, codes={}", tenantId, codes);
 
             // get the list of boundaries with the given tenantId and codes
             List<Boundary> boundaryList = boundaryRepository.search( BoundarySearchCriteria.builder()
@@ -123,6 +135,7 @@ public class BoundaryEntityValidator {
                 throw new CustomException(ErrorCodes.DUPLICATE_CODE_CODE , ErrorCodes.DUPLICATE_CODE_MSG + BoundaryConstants.OPENING_BRACKET + tenantId + "," + codes + BoundaryConstants.CLOSING_BRACKET);
             }
         });
+        log.debug("No duplicate codes found in DB");
     }
 
     /**
@@ -130,11 +143,13 @@ public class BoundaryEntityValidator {
      * @param boundaryRequest
      */
     public void validateIfBoundaryEntityExist(BoundaryRequest boundaryRequest) {
+        log.debug("Validating if boundary entity exists in DB");
 
             // create a map of tenantId to code from request
             Map<String, Set<String>> tenantIdToCodeMap = createTenantIdtoCodeMap(boundaryRequest);
 
             tenantIdToCodeMap.forEach((tenantId, codes) -> {
+                log.debug("Validating existence for tenantId={}, codes={}", tenantId, codes);
 
                 // get the list of boundaries for a given tenantId and codes from db
                 List<Boundary> boundaryList = boundaryRepository.search(BoundarySearchCriteria.builder()
@@ -148,6 +163,7 @@ public class BoundaryEntityValidator {
                         throw new CustomException(ErrorCodes.NOT_FOUND_CODE_AND_TENANT_ID_CODE , ErrorCodes.NOT_FOUND_CODE_AND_TENANT_ID_MSG + BoundaryConstants.OPENING_BRACKET + tenantId + "," + codes + BoundaryConstants.CLOSING_BRACKET );
                 }
             });
+        log.debug("All boundary entities exist in DB");
     }
 
     /**
@@ -155,6 +171,7 @@ public class BoundaryEntityValidator {
      * @param boundaryRequest
      */
     public void checkForDuplicatesInRequest(BoundaryRequest boundaryRequest) {
+        log.debug("Checking for duplicate boundaries in request, totalBoundaries={}", boundaryRequest.getBoundary().size());
 
         Set<Boundary> boundarySet = new HashSet<>(boundaryRequest.getBoundary());
 
@@ -162,5 +179,6 @@ public class BoundaryEntityValidator {
         if (boundarySet.size() != boundaryRequest.getBoundary().size()) {
             throw new CustomException(ErrorCodes.DUPLICATE_BOUNDARY_CODE, ErrorCodes.DUPLICATE_BOUNDARY_MSG);
         }
+        log.debug("No duplicate boundaries found within request");
     }
 }

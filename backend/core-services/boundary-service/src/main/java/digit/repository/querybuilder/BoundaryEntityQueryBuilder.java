@@ -3,6 +3,7 @@ package digit.repository.querybuilder;
 import digit.config.ApplicationProperties;
 import digit.util.QueryUtil;
 import digit.web.models.BoundarySearchCriteria;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ObjectUtils;
@@ -10,6 +11,7 @@ import org.springframework.util.ObjectUtils;
 import java.util.*;
 
 @Component
+@Slf4j
 public class BoundaryEntityQueryBuilder {
 
     private ApplicationProperties config;
@@ -29,9 +31,13 @@ public class BoundaryEntityQueryBuilder {
      * @return
      */
     public String getBoundaryDataSearchQuery(BoundarySearchCriteria boundarySearchCriteria, List<Object> preparedStmtList) {
+        log.debug("Building boundary data search query for criteria: {}", boundarySearchCriteria);
         String query = buildQuery(boundarySearchCriteria , preparedStmtList);
         query = QueryUtil.addOrderByClause(query , BOUNDARY_DATA_QUERY_ORDER_BY_CLAUSE);
         query = getPaginatedQuery(query , boundarySearchCriteria , preparedStmtList);
+
+        log.debug("Final search query: {}", query);
+        log.debug("Prepared statement values: {}", preparedStmtList);
         return query;
     }
 
@@ -45,16 +51,19 @@ public class BoundaryEntityQueryBuilder {
         StringBuilder builder = new StringBuilder(SEARCH_BOUNDARY_ENTITY_QUERY);
 
         if (!Objects.isNull(boundarySearchCriteria.getTenantId())) {
+            log.trace("Adding tenantId filter: {}", boundarySearchCriteria.getTenantId());
             QueryUtil.addClauseIfRequired(builder , preparedStmtList);
             builder.append(" boundary.tenantid = ? ");
             preparedStmtList.add(boundarySearchCriteria.getTenantId());
         }
         if (!Objects.isNull(boundarySearchCriteria.getCodes())) {
+            log.trace("Adding codes filter: {}", boundarySearchCriteria.getCodes());
             QueryUtil.addClauseIfRequired(builder , preparedStmtList);
             builder.append(" boundary.code IN ( ").append(QueryUtil.createQuery(boundarySearchCriteria.getCodes().size())).append(" )");
             Set<String> codes = new HashSet<>(boundarySearchCriteria.getCodes());
             QueryUtil.addToPreparedStatement(preparedStmtList , codes);
         }
+        log.debug("Built query so far: {}", builder);
         return builder.toString();
     }
 
@@ -75,6 +84,8 @@ public class BoundaryEntityQueryBuilder {
         // Append limit
         paginatedQuery.append(" LIMIT ? ");
         preparedStmtList.add(ObjectUtils.isEmpty(boundarySearchCriteria.getLimit()) ? config.getDefaultLimit() : (boundarySearchCriteria.getLimit() > config.getMaxDefaultLimit() ? config.getMaxDefaultLimit() : boundarySearchCriteria.getLimit()) );
+        log.debug("Final paginated query: {}", paginatedQuery);
+        log.debug("Prepared statement values after pagination: {}", preparedStmtList);
 
         return paginatedQuery.toString();
     }

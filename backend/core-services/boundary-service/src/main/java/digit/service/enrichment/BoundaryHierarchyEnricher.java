@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import digit.web.models.BoundaryTypeHierarchy;
 import digit.web.models.BoundaryTypeHierarchyRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.utils.AuditDetailsEnrichmentUtil;
 import org.egov.common.utils.UUIDEnrichmentUtil;
 import org.egov.tracer.model.CustomException;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
+@Slf4j
 public class BoundaryHierarchyEnricher {
 
     private ObjectMapper objectMapper;
@@ -25,6 +27,7 @@ public class BoundaryHierarchyEnricher {
      * @param body
      */
     public void enrichBoundaryHierarchyDefinition(BoundaryTypeHierarchyRequest body) {
+        log.debug("BoundaryHierarchyEnricher::enrichBoundaryHierarchyDefinition");
         UUIDEnrichmentUtil.enrichRandomUuid(body.getBoundaryHierarchy(), "id");
         body.getBoundaryHierarchy().setAuditDetails(AuditDetailsEnrichmentUtil.prepareAuditDetails(body.getBoundaryHierarchy().getAuditDetails(), body.getRequestInfo(), Boolean.TRUE));
         body.getBoundaryHierarchy().setBoundaryHierarchyJsonNode(getBoundaryHierarchyJsonNode(body.getBoundaryHierarchy().getBoundaryHierarchy()));
@@ -37,6 +40,7 @@ public class BoundaryHierarchyEnricher {
      */
     private JsonNode getBoundaryHierarchyJsonNode(List<BoundaryTypeHierarchy> boundaryHierarchyList) {
         try {
+            log.debug("BoundaryHierarchyEnricher::getBoundaryHierarchyJsonNode");
             String jsonString = objectMapper.writeValueAsString(boundaryHierarchyList);
             JsonNode jsonNode = objectMapper.readTree(jsonString);
             return jsonNode;

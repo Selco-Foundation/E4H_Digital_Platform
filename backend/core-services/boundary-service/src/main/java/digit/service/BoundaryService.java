@@ -5,6 +5,7 @@ import digit.service.enrichment.BoundaryEntityEnricher;
 import digit.service.validator.BoundaryEntityValidator;
 import digit.util.ResponseUtil;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.utils.ResponseInfoUtil;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
+@Slf4j
 public class BoundaryService {
 
     private final BoundaryEntityValidator boundaryEntityValidator;
@@ -40,18 +42,27 @@ public class BoundaryService {
      */
     public BoundaryResponse createBoundary(BoundaryRequest boundaryRequest) {
 
+        log.info("Received request to create boundary with {} records",
+                boundaryRequest.getBoundary() != null ? boundaryRequest.getBoundary().size() : 0);
+
         // validate the request
+        log.debug("Validating boundary create request: {}", boundaryRequest);
         boundaryEntityValidator.validateCreateBoundaryRequest(boundaryRequest);
 
         // enrich the request
+        log.debug("Enriching boundary create request...");
         BoundaryEntityEnricher.enrichCreateBoundaryRequest(boundaryRequest);
 
         // create response
+        log.debug("Creating boundary response for request...");
         BoundaryResponse boundaryResponse = responseUtil.createBoundaryResponse(boundaryRequest);
 
         // delegating the request to repository to further persist in db
+        log.info("Persisting boundary request to repository...");
         repository.create(boundaryRequest);
 
+        log.info("Boundary creation successful for {} records",
+                boundaryRequest.getBoundary() != null ? boundaryRequest.getBoundary().size() : 0);
         return boundaryResponse;
     }
 
@@ -61,9 +72,13 @@ public class BoundaryService {
      * @return
      */
     public BoundaryResponse searchBoundary(BoundarySearchCriteria boundarySearchCriteria , RequestInfo requestInfo) {
+        log.info("Searching boundaries with criteria: {}", boundarySearchCriteria);
+
 
         // Search for boundary entity
         List<Boundary> boundaryList = repository.search(boundarySearchCriteria);
+        log.info("Found {} boundary records for search criteria",
+                boundaryList != null ? boundaryList.size() : 0);
 
         // create response info
         ResponseInfo responseInfo = ResponseInfoUtil.createResponseInfoFromRequestInfo(requestInfo , Boolean.TRUE);
@@ -80,28 +95,38 @@ public class BoundaryService {
      * @return boundaryResponse
      */
     public BoundaryResponse updateBoundary(BoundaryRequest boundaryRequest) {
+        log.info("Received request to update boundary with {} records",
+                boundaryRequest.getBoundary() != null ? boundaryRequest.getBoundary().size() : 0);
 
         // validate the request
+        log.debug("Validating boundary update request: {}", boundaryRequest);
         boundaryEntityValidator.validateUpdateBoundaryRequest(boundaryRequest);
 
         // enrich the request
+        log.debug("Enriching boundary update request...");
         BoundaryEntityEnricher.enrichUpdateBoundaryRequest(boundaryRequest);
 
         // create response
+        log.debug("Creating boundary response for update request...");
         BoundaryResponse boundaryResponse = responseUtil.createBoundaryResponse(boundaryRequest);
 
         // delegating the request to repository to update the record in db
+        log.info("Updating boundary records in repository...");
         repository.update(boundaryRequest);
 
+        log.info("Boundary update successful for {} records",
+                boundaryRequest.getBoundary() != null ? boundaryRequest.getBoundary().size() : 0);
         return boundaryResponse;
     }
 
 
     public void buildFlatHierarchy(EnrichedBoundary boundary, List<FlatBoundaryResponse> result, List<String> path) {
+        log.debug("Building flat hierarchy for boundary: {}", boundary.getCode());
         path.add(boundary.getCode());
 
         if (boundary.getChildren() == null || boundary.getChildren().isEmpty()) {
             FlatBoundaryResponse flat = getFlatBoundaryResponse(path);
+            log.trace("Adding flat boundary response: {}", flat);
             result.add(flat);
         } else {
             for (EnrichedBoundary child : boundary.getChildren()) {
@@ -125,6 +150,7 @@ public class BoundaryService {
         flat.setBlock(block);
 
         flat.setCode(block);
+        log.debug("Generated FlatBoundaryResponse: {}", flat);
         return flat;
     }
 

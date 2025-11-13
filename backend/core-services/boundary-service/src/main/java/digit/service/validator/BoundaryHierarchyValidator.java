@@ -4,6 +4,7 @@ import digit.errors.ErrorCodes;
 import digit.repository.BoundaryHierarchyRepository;
 import digit.web.models.BoundaryTypeHierarchyRequest;
 import digit.web.models.BoundaryTypeHierarchySearchCriteria;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Component
+@Slf4j
 public class BoundaryHierarchyValidator {
 
     private BoundaryHierarchyRepository boundaryHierarchyRepository;
@@ -30,6 +32,10 @@ public class BoundaryHierarchyValidator {
      * @param body
      */
     public void validateBoundaryTypeHierarchy(BoundaryTypeHierarchyRequest body) {
+        log.info("Validating boundary type hierarchy, tenantId={}, hierarchyType={}, totalNodes={}",
+                body.getBoundaryHierarchy().getTenantId(),
+                body.getBoundaryHierarchy().getHierarchyType(),
+                body.getBoundaryHierarchy().getBoundaryHierarchy().size());
 
         // Validate if only single root node exists
         validateIfSingleRootNodeExists(body);
@@ -40,6 +46,10 @@ public class BoundaryHierarchyValidator {
         // Validate if provided boundary hierarchy already exists
         validateIfBoundaryHierarchyAlreadyExists(body);
 
+        log.info("Boundary type hierarchy validation successful, tenantId={}, hierarchyType={}",
+                body.getBoundaryHierarchy().getTenantId(),
+                body.getBoundaryHierarchy().getHierarchyType());
+
     }
 
     /**
@@ -49,6 +59,9 @@ public class BoundaryHierarchyValidator {
      */
     private void validateIfBoundaryHierarchyFormsDAG(BoundaryTypeHierarchyRequest body) {
 
+        log.debug("Validating DAG structure for hierarchyType={}, tenantId={}",
+                body.getBoundaryHierarchy().getHierarchyType(),
+                body.getBoundaryHierarchy().getTenantId());
         Map<String, String> parentToChildMap = new LinkedHashMap<>();
 
         // Populate parent boundaries
@@ -71,6 +84,9 @@ public class BoundaryHierarchyValidator {
                 parentToChildMap.put(boundaryTypeHierarchy.getParentBoundaryType(), boundaryTypeHierarchy.getBoundaryType());
             }
         });
+        log.debug("DAG validation successful for hierarchyType={}, tenantId={}",
+                body.getBoundaryHierarchy().getHierarchyType(),
+                body.getBoundaryHierarchy().getTenantId());
     }
 
     /**
@@ -83,6 +99,10 @@ public class BoundaryHierarchyValidator {
                 .filter(boundaryTypeHierarchy -> ObjectUtils.isEmpty(boundaryTypeHierarchy.getParentBoundaryType()))
                 .count();
 
+        log.debug("Root node validation: totalRoots={} for hierarchyType={}, tenantId={}",
+                nullParentCount,
+                body.getBoundaryHierarchy().getHierarchyType(),
+                body.getBoundaryHierarchy().getTenantId());
         if(nullParentCount > 1) {
             throw new CustomException(ErrorCodes.MULTIPLE_ROOT_NODES_ERR_CODE, ErrorCodes.MULTIPLE_ROOT_NODES_ERR_MSG);
         }
@@ -99,11 +119,17 @@ public class BoundaryHierarchyValidator {
                 .tenantId(body.getBoundaryHierarchy().getTenantId())
                 .hierarchyType(body.getBoundaryHierarchy().getHierarchyType())
                 .build();
+        log.debug("Checking if hierarchy already exists in DB: tenantId={}, hierarchyType={}",
+                boundaryTypeHierarchySearchCriteria.getTenantId(),
+                boundaryTypeHierarchySearchCriteria.getHierarchyType());
 
         // Check if boundary type with the provided tenantId and hierarchy type already exists
         if(!CollectionUtils.isEmpty(boundaryHierarchyRepository.search(boundaryTypeHierarchySearchCriteria))) {
             throw new CustomException(ErrorCodes.DUPLICATE_RECORD_CODE, ErrorCodes.DUPLICATE_RECORD_MSG);
         }
+        log.debug("Hierarchy does not already exist in DB for tenantId={}, hierarchyType={}",
+                boundaryTypeHierarchySearchCriteria.getTenantId(),
+                boundaryTypeHierarchySearchCriteria.getHierarchyType());
     }
 
 }

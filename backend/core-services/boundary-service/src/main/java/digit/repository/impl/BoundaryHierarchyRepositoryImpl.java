@@ -45,6 +45,7 @@ public class BoundaryHierarchyRepositoryImpl implements BoundaryHierarchyReposit
      */
     @Override
     public void create(BoundaryTypeHierarchyRequest boundaryTypeHierarchyRequest) {
+        log.debug("Pushing boundary type hierarchy request to Kafka : {}", applicationProperties.getCreateBoundaryHierarchyTopic());
         producer.push(applicationProperties.getCreateBoundaryHierarchyTopic(), boundaryTypeHierarchyRequest);
     }
 
@@ -55,6 +56,7 @@ public class BoundaryHierarchyRepositoryImpl implements BoundaryHierarchyReposit
      */
     @Override
     public void update(BoundaryTypeHierarchyRequest boundaryTypeHierarchyRequest) {
+        log.debug("Pushing boundary type hierarchy request to Kafka with topic: {}",applicationProperties.getUpdateBoundaryHierarchyTopic());
         producer.push(applicationProperties.getUpdateBoundaryHierarchyTopic(), boundaryTypeHierarchyRequest);
     }
 
@@ -69,6 +71,7 @@ public class BoundaryHierarchyRepositoryImpl implements BoundaryHierarchyReposit
     public List<BoundaryTypeHierarchyDefinition> search(BoundaryTypeHierarchySearchCriteria boundaryTypeHierarchySearchCriteria) {
         List<Object> preparedStmtList = new ArrayList<>();
         String query = boundaryHierarchyTypeQueryBuilder.getBoundaryHierarchyTypeSearchQuery(boundaryTypeHierarchySearchCriteria, preparedStmtList);
+        log.debug("Building boundary hierarchy type search query with criteria: {}", query);
         return jdbcTemplate.query(query, preparedStmtList.toArray(), boundaryHierarchyTypeRowMapper);
     }
 

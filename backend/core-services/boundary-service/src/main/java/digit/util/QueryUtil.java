@@ -1,6 +1,7 @@
 package digit.util;
 
 import com.google.gson.Gson;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.stream.IntStream;
 
 import static digit.util.BoundaryConstants.*;
 
+@Slf4j
 public class QueryUtil {
 
     private QueryUtil() {
@@ -26,10 +28,14 @@ public class QueryUtil {
      * @param preparedStmtList
      */
     public static void addClauseIfRequired(StringBuilder query, List<Object> preparedStmtList) {
+
         if (preparedStmtList.isEmpty()) {
             query.append(" WHERE ");
+            log.debug("QueryUtil::addClauseIfRequired: Added WHERE clause to query so far: {}", query);
         } else {
             query.append(" AND ");
+            log.debug("QueryUtil::addClauseIfRequired: Added AND clause to query so far: {}", query);
+
         }
     }
 
@@ -41,6 +47,7 @@ public class QueryUtil {
      * @return
      */
     public static String createQuery(Integer size) {
+        log.debug("Creating query with size: {}", size);
         StringBuilder builder = new StringBuilder();
 
         IntStream.range(0, size).forEach(i -> {
@@ -49,6 +56,7 @@ public class QueryUtil {
                 builder.append(",");
         });
 
+        log.debug("Created IN clause placeholders for size {}: {}", size, builder.toString());
         return builder.toString();
     }
 
@@ -61,6 +69,7 @@ public class QueryUtil {
     public static void addToPreparedStatement(List<Object> preparedStmtList, Set<String> ids) {
         ids.forEach(id -> {
             preparedStmtList.add(id);
+            log.debug("Added {} ids to prepared statement list. Current size: {}", ids.size(), preparedStmtList.size());
         });
     }
 
@@ -97,6 +106,7 @@ public class QueryUtil {
 
         String partialJsonQueryString = gson.toJson(queryMap);
 
+        log.debug("Prepared partial JSON string from filter map: {}", partialJsonQueryString);
         return partialJsonQueryString;
     }
 
@@ -118,11 +128,13 @@ public class QueryUtil {
             // For the final level simply put the value in the map.
         else if (index == nestedKeyArray.length - 1) {
             currentQueryMap.put(nestedKeyArray[index], value);
+            log.debug("Inserted final key-value pair: {} -> {}", nestedKeyArray[index], value);
             return;
         }
 
         // For non terminal levels, add a child map.
         currentQueryMap.put(nestedKeyArray[index], new HashMap<>());
+        log.info("Created nested object for key: {}", nestedKeyArray[index]);
 
         // Make a recursive call to enrich data in next level.
         prepareNestedQueryMap(index + 1, nestedKeyArray, (Map<String, Object>) currentQueryMap.get(nestedKeyArray[index]), value);
