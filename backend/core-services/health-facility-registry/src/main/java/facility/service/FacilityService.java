@@ -10,6 +10,7 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,6 +26,7 @@ public class FacilityService {
     private final FacilityMdmsValidator facilityMdmsValidator;
     private final BoundaryValidator boundaryValidator;
     private final FacilityQueryDao facilityQueryDao;
+    private final BoundaryService boundaryService;
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -33,7 +35,8 @@ public class FacilityService {
             IdgenUtil idgenUtil,
             FacilityMdmsValidator facilityMdmsValidator,
             BoundaryValidator boundaryValidator,
-            FacilityQueryDao facilityQueryDao
+            FacilityQueryDao facilityQueryDao,
+            BoundaryService boundaryService
     ) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
@@ -42,6 +45,7 @@ public class FacilityService {
         this.facilityMdmsValidator = facilityMdmsValidator;
         this.boundaryValidator = boundaryValidator;
         this.facilityQueryDao = facilityQueryDao;
+        this.boundaryService = boundaryService;
     }
 
     /**
@@ -49,38 +53,79 @@ public class FacilityService {
      * Validates against MDMS, ensures boundary codes are valid,
      * generates facility IDs and address IDs if missing, and checks for uniqueness.
      *
+     * <p><b>Boundary Creation Behavior:</b></p>
+     * <ul>
+     *   <li>Facility boundaries are created via external boundary service API calls</li>
+     *   <li>Boundary codes are validated before creation to ensure parent boundaries exist</li>
+     * </ul>
+     *
      * @param request FacilityCreateRequest containing a list of facilities
      * @return list of successfully validated and pushed facilities
+     * @throws CustomException if validation fails (MDMS, uniqueness, boundary validation)
      */
+    @Transactional(rollbackFor = Exception.class)
     public List<Facility> createFacility(FacilityCreateRequest request) {
-        List<Facility> facilities = request.getFacilities();
+        List<FacilityCreate> facilities = request.getFacilities();
 
-        // Group facilities by tenant ID for batch validation and processing
-        Map<String, List<Facility>> facilitiesByTenant = facilities.stream()
-                .collect(Collectors.groupingBy(Facility::getTenantId));
+        // Group facility create requests by tenant ID for batch validation and processing
+        Map<String, List<FacilityCreate>> facilitiesByTenant = facilities.stream()
+                .collect(Collectors.groupingBy(FacilityCreate::getTenantId));
 
         List<Facility> validatedFacilities = new ArrayList<>();
 
-        for (Map.Entry<String, List<Facility>> entry : facilitiesByTenant.entrySet()) {
+        for (Map.Entry<String, List<FacilityCreate>> entry : facilitiesByTenant.entrySet()) {
             String tenantId = entry.getKey();
-            List<Facility> tenantFacilities = entry.getValue();
+            List<FacilityCreate> facilityCreateList = entry.getValue();
+            List<Facility> tenantFacilities = new ArrayList<>();
 
-            // Validate facilities against MDMS master data
-            facilityMdmsValidator.validateAgainstMDMS(tenantFacilities, tenantId, request.getRequestInfo());
-
-            // Validate boundary codes in bulk
-            Set<String> boundaryCodes = tenantFacilities.stream()
-                    .map(Facility::getBoundaryCode)
-                    .filter(Objects::nonNull)
+            // Validate block boundary codes in bulk
+            Set<String> blockBoundaryCodes = facilityCreateList.stream()
+                    .map(FacilityCreate::getBlockBoundaryCode)
                     .collect(Collectors.toSet());
-            boundaryValidator.validateBoundaries(boundaryCodes, tenantId, request.getRequestInfo());
+            boundaryValidator.validateBoundaries(blockBoundaryCodes, tenantId, request.getRequestInfo());
 
-            for (Facility facility : tenantFacilities) {
-                // Generate facility ID if not present
-                if (facility.getFacilityId() == null) {
-                    facility.setFacilityId(idgenUtil.getIdList(
-                            request.getRequestInfo(), tenantId, "facility.id", "", 1).get(0));
-                }
+            List<Boundary> boundaryList = new ArrayList<>();
+            List<BoundaryRelation> boundaryRelationList = new ArrayList<>();
+
+            for (FacilityCreate facilityCreate : facilityCreateList) {
+                Facility facility = Facility.builder()
+                        .tenantId(tenantId)
+                        .facilityCategory(facilityCreate.getFacilityCategory())
+                        .facilityType(facilityCreate.getFacilityType())
+                        .facilitySubtype(facilityCreate.getFacilitySubtype())
+                        .facilityName(facilityCreate.getFacilityName())
+                        .facilityOwnership(facilityCreate.getFacilityOwnership())
+                        .facilityRegion(facilityCreate.getFacilityRegion())
+                        .address(facilityCreate.getAddress())
+                        .facilityDetails(facilityCreate.getFacilityDetails())
+                        .wfStatus(facilityCreate.getWfStatus())
+                        .additionalDetails(facilityCreate.getAdditionalDetails())
+                        .isActive(facilityCreate.getIsActive())
+                        .isOnmReady(facilityCreate.getIsOnmReady())
+                        .build();
+
+                facility.setFacilityId(idgenUtil.getIdList(
+                        request.getRequestInfo(), tenantId, "facility.id", "", 1
+                ).get(0));
+
+                String facilityBoundaryCode = facilityCreate.getBlockBoundaryCode() + "_" + facility.getFacilityId();
+
+                boundaryList.add(
+                        Boundary.builder()
+                                .tenantId(tenantId)
+                                .code(facilityBoundaryCode)
+                                .build()
+                );
+                boundaryRelationList.add(
+                        BoundaryRelation.builder()
+                                .tenantId(tenantId)
+                                .boundaryType("Facility")
+                                .code(facilityBoundaryCode)
+                                .parent(facilityCreate.getBlockBoundaryCode())
+                                .hierarchyType("SELCO")
+                                .build()
+                );
+                facility.setBoundaryCode(facilityBoundaryCode);
 
                 // Set default workflow status and activation flag
                 if (facility.getWfStatus() == null) facility.setWfStatus("CREATED");
@@ -97,6 +142,28 @@ public class FacilityService {
                 // Check uniqueness of facility name + boundaryCode
                 validateFacilityNameBoundaryCodeUnique(facility, tenantId);
 
+                tenantFacilities.add(facility);
+            }
+
+            // Validate facilities against MDMS master data
+            facilityMdmsValidator.validateAgainstMDMS(tenantFacilities, tenantId, request.getRequestInfo());
+
+            //todo: handle boundary or boundary relation creation failure??
+            BoundaryCreateRequest boundaryCreateRequest = BoundaryCreateRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .boundary(boundaryList)
+                    .build();
+            boundaryService.createBoundaries(boundaryCreateRequest);
+
+            for (BoundaryRelation boundaryRelation: boundaryRelationList) {
+                BoundaryRelationshipRequest boundaryRelationshipRequest = BoundaryRelationshipRequest.builder()
+                        .requestInfo(request.getRequestInfo())
+                        .boundaryRelationship(boundaryRelation)
+                        .build();
+                boundaryService.createBoundaryRelationship(boundaryRelationshipRequest);
+            }
+
+            for (Facility facility : tenantFacilities) {
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
                 validatedFacilities.add(facility);

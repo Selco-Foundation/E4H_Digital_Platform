@@ -41,9 +41,9 @@ serviceMaps:
               id, tenant_id, facility_name, facility_type,
               facility_category, facility_subtype, facility_ownership,
               facility_region, addressId, facility_details,
-              wf_status, additional_details, is_active, boundary_code
+              wf_status, additional_details, is_active, boundary_code, is_onm_ready
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           basePath: $
           jsonMaps:
             - jsonPath: $.facility_id
@@ -64,6 +64,7 @@ serviceMaps:
               dbType: JSONB
             - jsonPath: $.isActive
             - jsonPath: $.boundaryCode
+            - jsonPath: $.isOnmReady
 
     - version: 1.0
       description: Updates a single Facility object
@@ -75,7 +76,7 @@ serviceMaps:
               facility_name = ?, facility_type = ?, facility_category = ?,
               facility_subtype = ?, facility_ownership = ?, facility_region = ?,
               addressId = ?, facility_details = ?, wf_status = ?,
-              additional_details = ?, is_active = ?
+              additional_details = ?, is_active = ?, is_onm_ready = ?
             WHERE id = ? AND tenant_id = ?;
           basePath: $
           jsonMaps:
@@ -94,5 +95,6 @@ serviceMaps:
               type: JSON
               dbType: JSONB
             - jsonPath: $.isActive
+            - jsonPath: $.isOnmReady
             - jsonPath: $.id
             - jsonPath: $.tenantId
