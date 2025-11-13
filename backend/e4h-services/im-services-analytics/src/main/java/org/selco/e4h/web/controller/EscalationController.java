@@ -113,6 +113,7 @@ public class EscalationController {
             // Fetch master data
             List<EscalationRecipient> escalationRecipients = masterDataService.fetchEscalationRecipients(requestInfo);
             List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
+            Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
             if (escalationRecipients.isEmpty()) {
                 log.warn("No escalation recipients found in MDMS");
                 escalationStatusService.publishGeneralFailureStatus("weekly", "No escalation recipients found in MDMS");
@@ -122,7 +123,7 @@ public class EscalationController {
             log.info("Found {} escalation recipients and {} active tenants", escalationRecipients.size(), activeTenantIds.size());
             
             // Process weekly reports using Incident.EscalationRecipient MDMS
-            processWeeklyReportsWithEscalationRecipients(requestInfo, escalationRecipients, activeTenantIds);
+            processWeeklyReportsWithEscalationRecipients(requestInfo, escalationRecipients, activeTenantIds, activeTenantIdsName);
             
             log.info("Completed weekly DRE system report processing");
             return ResponseEntity.ok("Weekly DRE system report processing completed successfully");
@@ -141,7 +142,7 @@ public class EscalationController {
      */
     private void processWeeklyReportsWithEscalationRecipients(RequestInfo requestInfo, 
                                                            List<EscalationRecipient> escalationRecipients, 
-                                                           List<String> activeTenantIds) {
+                                                           List<String> activeTenantIds, Map<String, String> activeTenantIdsName) {
         try {
             log.info("Processing weekly reports with {} escalation recipients for {} active tenants", 
                 escalationRecipients.size(), activeTenantIds.size());
@@ -184,7 +185,7 @@ public class EscalationController {
                 List<EscalationRecipient> recipientsForEmail = entry.getValue();
                 
                 try {
-                    processWeeklyReportForEmail(requestInfo, emailId, recipientsForEmail, activeTenantIds);
+                    processWeeklyReportForEmail(requestInfo, emailId, recipientsForEmail, activeTenantIds, activeTenantIdsName);
         } catch (Exception e) {
                     log.error("Error processing weekly report for email: {}", emailId, e);
                 }
@@ -244,7 +245,7 @@ public class EscalationController {
      */
     private void processWeeklyReportForEmail(RequestInfo requestInfo, String emailId, 
                                           List<EscalationRecipient> recipients, 
-                                          List<String> activeTenantIds) {
+                                          List<String> activeTenantIds, Map<String, String> activeTenantIdsName) {
         try {
             log.info("Processing weekly report for email: {} with {} recipients", emailId, recipients.size());
             
@@ -258,7 +259,11 @@ public class EscalationController {
             for (String tenantId : relevantTenantIds) {
                 try {
                     // Generate weekly report data for this tenant
-                    WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(tenantId, requestInfo);
+                    String state = activeTenantIdsName.get(tenantId);
+                    if (state==null || !state.trim().isEmpty())
+                        continue;
+
+                    WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(state, requestInfo);
                     reportDataByTenant.put(tenantId, reportData);
                     
                     // Generate CSV for download only if there's data
@@ -522,10 +527,11 @@ public class EscalationController {
             String recipientRoleName = recipientRole.getRole();
             
             if ("state".equals(recipientRole.getBoundaryLevel())) {
+                Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
                 // State level processing - Loop 3
                 for (String tenantId : activeTenantIds) {
                     try {
-                        processStateLevelEscalation(requestInfo, escalationRecipient, recipientRole, tenantId, escalationType);
+                        processStateLevelEscalation(requestInfo, escalationRecipient, recipientRole, tenantId, escalationType, activeTenantIdsName);
                     } catch (Exception e) {
                         log.error("Error processing state level escalation for tenant: {}", tenantId, e);
                         escalationStatusService.publishFailureStatus(escalationType, escalationId, tenantId, recipientRoleName, e.getMessage());
@@ -551,7 +557,7 @@ public class EscalationController {
      * Process state level escalation with separate queries per escalation item
      */
     private void processStateLevelEscalation(RequestInfo requestInfo, EscalationRecipient escalationRecipient,
-                                           RecipientRole recipientRole, String tenantId, String escalationType) {
+                                           RecipientRole recipientRole, String tenantId, String escalationType, Map<String, String> activeTenantIdsName) {
         String escalationId = escalationRecipient.getId().toString();
         String recipientRoleName = recipientRole.getRole();
         
@@ -586,8 +592,12 @@ public class EscalationController {
             
             // One query per escalation item in array (LLD requirement)
             // Pass RequestInfo for MDMS-driven threshold calculation
+            String state = activeTenantIdsName.get(tenantId);
+            if (state==null || !state.trim().isEmpty())
+                continue;
+
             List<EscalationTicket> tickets = slaBreachService.findSLABreachTickets(
-                    tenantId,
+                    state,
                     item.getWorkflowStates(),
                     escalationId,
                     item.getEscalationLevel(),

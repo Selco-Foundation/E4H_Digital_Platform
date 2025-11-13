@@ -76,9 +76,11 @@ public class PrioritySLAService {
         Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
         Map<String, Object> auditDetails = (Map<String, Object>) data.get("auditDetails");
         Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+        Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
         Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
 
-        String tenantId = (String) data.get("tenantId");
+//        String tenantId = (String) data.get("tenantId");
+        String tenantId = (String) boundary.get("stateCode");
         String IncidentId = (String) incident.get("incidentId");
 
         //get process instances

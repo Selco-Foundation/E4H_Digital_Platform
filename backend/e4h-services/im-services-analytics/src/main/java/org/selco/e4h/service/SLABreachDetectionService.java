@@ -34,17 +34,16 @@ public class SLABreachDetectionService {
      * that don't already have the specified escalation recipient ID
      * Updated to support MDMS-driven breach threshold calculation (percentage or number strategy)
      */
-    public List<EscalationTicket> findSLABreachTickets(String tenantId, List<String> workflowStates, 
+    public List<EscalationTicket> findSLABreachTickets(String state, List<String> workflowStates,
                                                        String escalationRecipientId, String escalationLevel,
                                                        RequestInfo requestInfo) {
         try {
-            log.info("Finding SLA breach tickets for tenant: {}, workflow states: {}, escalation level: {}, excluding escalation: {}", 
-                tenantId, workflowStates, escalationLevel, escalationRecipientId);
-            
+            log.info("Finding SLA breach tickets for tenant: {}, workflow states: {}, escalation level: {}, excluding escalation: {}",
+                    state, workflowStates, escalationLevel, escalationRecipientId);
             // Build Elasticsearch query for SLA breach tickets with escalation level threshold from MDMS
-            Map<String, Object> query = buildSLABreachQueryWithLevel(tenantId, workflowStates, 
+            Map<String, Object> query = buildSLABreachQueryWithLevel(state, workflowStates,
                 escalationRecipientId, escalationLevel, requestInfo);
-            
+            log.info("Query ES: {} ", query);
             // Execute query using ElasticsearchClient
             List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(query);
             
@@ -73,13 +72,13 @@ public class SLABreachDetectionService {
             }
             
             log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} additional filters, {} final)", 
-                breachTickets.size(), tenantId, escalationLevel, additionalFilterCount, filteredTickets.size());
+                breachTickets.size(), state, escalationLevel, additionalFilterCount, filteredTickets.size());
             
             return filteredTickets;
             
         } catch (Exception e) {
-            log.error("Error finding SLA breach tickets for tenant: {} with escalation level: {}", 
-                tenantId, escalationLevel, e);
+            log.error("Error finding SLA breach tickets for state: {} with escalation level: {}",
+                    state, escalationLevel, e);
             // Fallback to empty list if query fails
             return new ArrayList<>();
         }
@@ -217,7 +216,7 @@ public class SLABreachDetectionService {
      * Build Elasticsearch query for SLA breach tickets with escalation level threshold from MDMS
      * Supports both "percentage" and "number" breach calculation strategies per LLD V2
      */
-    private Map<String, Object> buildSLABreachQueryWithLevel(String tenantId, List<String> workflowStates, 
+    private Map<String, Object> buildSLABreachQueryWithLevel(String state, List<String> workflowStates,
                                                              String escalationRecipientId, String escalationLevel,
                                                              RequestInfo requestInfo) {
         Map<String, Object> query = new HashMap<>();
@@ -227,7 +226,7 @@ public class SLABreachDetectionService {
         // Filter by tenant
         Map<String, Object> tenantFilter = new HashMap<>();
         Map<String, Object> tenantWildcard = new HashMap<>();
-        tenantWildcard.put("Data.tenantId.keyword", tenantId + "*");
+        tenantWildcard.put("Data.incident.boundary.blockCode.keyword", state + "*");
         tenantFilter.put("wildcard", tenantWildcard);
         must.add(tenantFilter);
 
@@ -291,8 +290,8 @@ public class SLABreachDetectionService {
         bool.put("must_not", mustNot);
         query.put("bool", bool);
 
-        log.debug("SLA breach query for tenant {} with escalation level {}: {}", 
-            tenantId, escalationLevel, query);
+        log.debug("SLA breach query for tenant {} with escalation level {}: {}",
+                state, escalationLevel, query);
         return query;
     }
 

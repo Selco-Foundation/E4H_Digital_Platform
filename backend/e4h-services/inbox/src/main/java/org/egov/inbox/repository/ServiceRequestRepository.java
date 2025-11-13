@@ -68,6 +68,7 @@ public class ServiceRequestRepository {
 			response = restTemplate.postForObject(uri.toString(), entity, Map.class);
 		} catch (HttpClientErrorException e) {
 			//log.error("External Service threw an Exception: ", e);
+			e.printStackTrace();
 			throw new ServiceCallException(e.getResponseBodyAsString());
 		} catch (Exception e) {
 			log.debug("Exception while fetching from searcher: ", e);
