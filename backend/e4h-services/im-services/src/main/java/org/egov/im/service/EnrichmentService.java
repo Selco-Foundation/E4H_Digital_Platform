@@ -225,6 +225,11 @@ public class EnrichmentService {
             }
         }
 
+        // Enrich boundary object for indexing only (not persisted to database)
+        if (incidentRequest.getIncident().getBoundaryCode() != null) {
+            Boundary boundary = enrichBoundaryFromBoundaryCode(incidentRequest);
+            indexView.setBoundary(boundary);
+        }
 
     }
 
@@ -270,6 +275,127 @@ public class EnrichmentService {
             converted.append(ch);
         }
         return converted.toString();
+    }
+
+    /**
+     * Enriches boundary object from boundary service using boundaryCode from incident request
+     * @param incidentRequest The incident request containing boundaryCode
+     */
+    private Boundary enrichBoundaryFromBoundaryCode(IncidentRequest incidentRequest) {
+        Incident incident = incidentRequest.getIncident();
+        RequestInfo requestInfo = incidentRequest.getRequestInfo();
+        String boundaryCode = incident.getBoundaryCode();
+        String tenantId = incident.getTenantId();
+
+        if (boundaryCode == null || boundaryCode.isEmpty()) {
+            log.debug("No boundaryCode provided in incident request, skipping boundary enrichment");
+            return null;
+        }
+
+        try {
+            String url = UriComponentsBuilder.fromHttpUrl(config.getBoundaryHost() + config.getBoundarySearchPath())
+                    .queryParam("tenantId", tenantId != null ? tenantId.split("\\.")[0] : "")
+                    .queryParam("codes", boundaryCode)
+                    .queryParam("includeParents", "true")
+                    .queryParam("boundaryType", "Facility")
+                    .toUriString();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("RequestInfo", requestInfo);
+
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    requestEntity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> responseMap = responseEntity.getBody();
+
+            if (responseMap != null) {
+                List<Map<String, Object>> boundaryRelationships = (List<Map<String, Object>>) responseMap.get("TenantBoundary");
+
+                if (boundaryRelationships != null && !boundaryRelationships.isEmpty()) {
+                    // Get the first tenant boundary entry
+                    Map<String, Object> tenantBoundary = boundaryRelationships.get(0);
+                    List<Map<String, Object>> boundaries = (List<Map<String, Object>>) tenantBoundary.get("boundary");
+
+                    if (boundaries != null && !boundaries.isEmpty()) {
+                        // Build boundary hierarchy
+                        Boundary boundary = buildBoundaryHierarchy(boundaries);
+                        
+                        if (boundary != null) {
+                            log.debug("Enriched boundary for indexing for boundaryCode: {}", boundaryCode);
+                            return boundary;
+                        }
+                    } else {
+                        log.warn("No boundaries found in response for boundaryCode: {}", boundaryCode);
+                    }
+                } else {
+                    log.warn("No boundary relationships found for boundaryCode: {}", boundaryCode);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error enriching boundary details for boundaryCode: {}", boundaryCode, e);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Builds boundary hierarchy from boundary service response
+     * @param boundaries List of boundary objects from boundary service
+     * @return Boundary object with hierarchy codes
+     */
+    private Boundary buildBoundaryHierarchy(List<Map<String, Object>> boundaries) {
+        Boundary boundary = new Boundary();
+        
+        for (Map<String, Object> boundaryItem : boundaries) {
+            String code = (String) boundaryItem.get("code");
+            String boundaryType = (String) boundaryItem.get("boundaryType");
+            
+            if (code != null && boundaryType != null) {
+                switch (boundaryType.toLowerCase()) {
+                    case "country":
+                        boundary.setCountryCode(code);
+                        break;
+                    case "state":
+                        boundary.setStateCode(code);
+                        break;
+                    case "district":
+                        boundary.setDistrictCode(code);
+                        break;
+                    case "block":
+                        boundary.setBlockCode(code);
+                        break;
+                    case "facility":
+                        boundary.setFacilityCode(code);
+                        break;
+                    default:
+                        log.debug("Unknown boundaryType: {}", boundaryType);
+                }
+            }
+            
+            // Recursively process children if present
+            List<Map<String, Object>> children = (List<Map<String, Object>>) boundaryItem.get("children");
+            if (children != null && !children.isEmpty()) {
+                Boundary childBoundary = buildBoundaryHierarchy(children);
+                // Merge child boundary codes into parent
+                if (childBoundary.getCountryCode() != null) boundary.setCountryCode(childBoundary.getCountryCode());
+                if (childBoundary.getStateCode() != null) boundary.setStateCode(childBoundary.getStateCode());
+                if (childBoundary.getDistrictCode() != null) boundary.setDistrictCode(childBoundary.getDistrictCode());
+                if (childBoundary.getBlockCode() != null) boundary.setBlockCode(childBoundary.getBlockCode());
+                if (childBoundary.getFacilityCode() != null) boundary.setFacilityCode(childBoundary.getFacilityCode());
+            }
+        }
+        
+        return boundary;
     }
 
     /**

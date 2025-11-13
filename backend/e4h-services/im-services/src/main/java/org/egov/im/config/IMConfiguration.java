@@ -300,4 +300,11 @@ public class IMConfiguration {
 
     @Value("${egov.facility.search.path}")
     private String facilitySearchPath;
+
+    //Boundary Service Config
+    @Value("${egov.boundary.host}")
+    private String boundaryHost;
+
+    @Value("${egov.boundary.search.path}")
+    private String boundarySearchPath;
 }
