@@ -6,6 +6,8 @@ import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
 import { PMReducers, initPMComponents } from "@selco/digit-ui-module-pm";
 import { Loader } from "@egovernments/digit-ui-components";
 
+import "@egovernments/digit-ui-components-css/dist/index.css";
+import "@egovernments/digit-ui-css/dist/index.css";
 import "@selco/installation-ui-css/example/index.css";
 
 import { pgrCustomizations, overrideComponents } from "./pgr";
