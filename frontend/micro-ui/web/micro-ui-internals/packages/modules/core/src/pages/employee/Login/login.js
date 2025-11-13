@@ -247,7 +247,6 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           label={propsConfig.texts.submitButtonLabel}
           secondaryActionLabel={propsConfig.texts.secondaryButtonLabel}
           onSecondayActionClick={onForgotPassword}
-          heading={propsConfig.texts.header}
           headingStyle={{ textAlign: "center" }}
           cardStyle={isMobile ? { margin: "auto", minWidth: "300px" } : { margin: "auto", minWidth: "400px" }}
           className="loginFormStyleEmployee"
