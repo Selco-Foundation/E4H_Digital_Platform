@@ -64,4 +64,8 @@ public class HRMSUtils {
 				|| !CollectionUtils.isEmpty(criteria.getDepartments()) || !CollectionUtils.isEmpty(criteria.getDesignations()));
 	}
 
+	public boolean isJurisdictionSearchReqd(EmployeeSearchCriteria criteria) {
+		return (!CollectionUtils.isEmpty(criteria.getBoundaryCodes()));
+	}
+
 }

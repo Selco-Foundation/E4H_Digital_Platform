@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.hrms.config.PropertiesManager;
+import org.egov.hrms.service.BoundaryService;
 import org.egov.hrms.web.contract.EmployeeSearchCriteria;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +21,9 @@ public class EmployeeQueryBuilder {
 
 	@Autowired
 	private PropertiesManager properties;
+	
+	@Autowired
+	private BoundaryService boundaryService;
 	
 	/**
 	 * Returns query for searching employees
@@ -138,6 +143,30 @@ public class EmployeeQueryBuilder {
 
 
 	}
+
+	public String getJurisdictionSearchQuery(EmployeeSearchCriteria criteria, List<Object> preparedStmtList, RequestInfo requestInfo) {
+		StringBuilder builder = new StringBuilder(EmployeeQueries.HRMS_GET_JURISDICTION);
+		addWhereClauseJurisdiction(criteria, builder, preparedStmtList, requestInfo);
+		return builder.toString();
+	}
+
+	private void addWhereClauseJurisdiction(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList, RequestInfo requestInfo) {
+		if(!CollectionUtils.isEmpty(criteria.getBoundaryCodes())){
+			// Fetch hierarchical boundary codes from boundary service (all ancestor boundaries)
+			List<String> hierarchicalBoundaries = boundaryService.getAncestorBoundaries(
+					requestInfo, 
+					criteria.getTenantId(), 
+					criteria.getBoundaryCodes(), 
+					null  // hierarchyType - defaults to ADMIN if null
+			);
+			builder.append(" and jurisdiction.boundary IN (").append(createQuery(hierarchicalBoundaries)).append(")");
+			addToPreparedStatement(preparedStmtList, hierarchicalBoundaries);
+		}
+		// Only consider active jurisdictions
+		builder.append(" and jurisdiction.isactive = ?");
+		preparedStmtList.add(true);
+	}
+
 
 
 	private String createQuery(List<?> ids) {

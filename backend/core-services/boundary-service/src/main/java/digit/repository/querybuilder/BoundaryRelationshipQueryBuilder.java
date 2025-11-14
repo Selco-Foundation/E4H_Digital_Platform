@@ -43,6 +43,12 @@ public class BoundaryRelationshipQueryBuilder {
             preparedStmtList.add(boundaryRelationshipSearchCriteria.getParent());
         }
 
+        if(!CollectionUtils.isEmpty(boundaryRelationshipSearchCriteria.getParentCodes())) {
+            QueryUtil.addClauseIfRequired(builder, preparedStmtList);
+            builder.append(" parent IN ( ").append(QueryUtil.createQuery(boundaryRelationshipSearchCriteria.getParentCodes().size())).append(" )");
+            QueryUtil.addToPreparedStatement(preparedStmtList, new HashSet<>(boundaryRelationshipSearchCriteria.getParentCodes()));
+        }
+
         if(!boundaryRelationshipSearchCriteria.getIsSearchForRootNode()) {
             if (!ObjectUtils.isEmpty(boundaryRelationshipSearchCriteria.getBoundaryType())) {
                 QueryUtil.addClauseIfRequired(builder, preparedStmtList);
