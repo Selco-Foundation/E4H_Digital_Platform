@@ -58,4 +58,3 @@ CREATE INDEX idx_facility_status ON facility(tenant_id, wf_status);
 
 CREATE UNIQUE INDEX uniq_facility_name_boundary
 ON facility (tenant_id, facility_name, boundary_code);
-
