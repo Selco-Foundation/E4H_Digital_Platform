@@ -32,6 +32,11 @@ public class WeeklyReportService {
     private static final SimpleDateFormat DATE_RANGE_FORMAT = new SimpleDateFormat("dd MMM");
     private static final SimpleDateFormat TODAY_FORMAT = new SimpleDateFormat("dd MMM yyyy");
     
+    // Constants for field names and values
+    private static final String FIELD_FILED_DATE = "filedDate";
+    private static final String FIELD_CREATED_TIME = "createdTime";
+    private static final String SYSTEM_STATUS_NON_FUNCTIONAL = "NON_FUNCTIONAL";
+    
     static {
         // Set timezone to IST for date formatting
         TimeZone istTimeZone = TimeZone.getTimeZone("Asia/Kolkata");
@@ -66,18 +71,18 @@ public class WeeklyReportService {
         
         // Normalize filedDate from any of the possible locations and formats
         // Check multiple locations: Data.filedDate, root filedDate, Data.incident.filedDate, Data.incident.auditDetails.createdTime
-        Long filedDate = parseFiledDate(data.get("filedDate"));
+        Long filedDate = parseFiledDate(data.get(FIELD_FILED_DATE));
         if (filedDate == null) {
-            filedDate = parseFiledDate(ticket.get("filedDate"));
+            filedDate = parseFiledDate(ticket.get(FIELD_FILED_DATE));
         }
         if (filedDate == null) {
             Map<String, Object> incident = (Map<String, Object>) data.get("incident");
             if (incident != null) {
-                filedDate = parseFiledDate(incident.get("filedDate"));
+                filedDate = parseFiledDate(incident.get(FIELD_FILED_DATE));
                 if (filedDate == null) {
                     Map<String, Object> audit = (Map<String, Object>) incident.get("auditDetails");
                     if (audit != null) {
-                        filedDate = parseFiledDate(audit.get("createdTime"));
+                        filedDate = parseFiledDate(audit.get(FIELD_CREATED_TIME));
                     }
                 }
             }
@@ -222,20 +227,25 @@ public class WeeklyReportService {
             
             for (Map<String, Object> ticket : filteredTickets) {
                 TicketData ticketData = extractTicketData(ticket);
-                if (ticketData == null) continue;
                 
                 // Filter by date (tickets filed before or on the specified date)
-                if (ticketData.getFiledDate() == null) {
+                boolean shouldSkip = false;
+                if (ticketData == null) {
+                    shouldSkip = true;
+                } else if (ticketData.getFiledDate() == null) {
                     skippedNoFiledDate++;
-                    continue;
-                }
-                
-                if (ticketData.getFiledDate() > date.getTime()) {
+                    shouldSkip = true;
+                } else if (ticketData.getFiledDate() > date.getTime()) {
                     skippedAfterDate++;
+                    shouldSkip = true;
+                }
+                
+                if (shouldSkip) {
                     continue;
                 }
                 
-                if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
+                // Count functional vs non-functional
+                if (SYSTEM_STATUS_NON_FUNCTIONAL.equals(ticketData.getSystemFunctional())) {
                     nonFunctionalCount++;
                 } else {
                     functionalCount++;
@@ -282,14 +292,15 @@ public class WeeklyReportService {
             
             for (Map<String, Object> ticket : filteredTickets) {
                 TicketData ticketData = extractTicketData(ticket);
-                if (ticketData == null) continue;
                 
-                // Only consider non-functional tickets
-                if (!"NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) continue;
-                if (ticketData.getFiledDate() == null) continue;
-                
-                String facilityTenantId = ticketData.getTenantId();
-                if (facilityTenantId == null) continue;
+                // Only consider non-functional tickets with valid filedDate and tenantId
+                String facilityTenantId = ticketData != null ? ticketData.getTenantId() : null;
+                if (ticketData == null 
+                    || !SYSTEM_STATUS_NON_FUNCTIONAL.equals(ticketData.getSystemFunctional())
+                    || ticketData.getFiledDate() == null
+                    || facilityTenantId == null) {
+                    continue;
+                }
                 
                 // For each facility, keep only the ticket with the oldest filedDate
                 TicketData existing = oldestTicketByFacility.get(facilityTenantId);
@@ -357,14 +368,15 @@ public class WeeklyReportService {
             
             for (Map<String, Object> ticket : filteredTickets) {
                 TicketData ticketData = extractTicketData(ticket);
-                if (ticketData == null) continue;
                 
-                // Only consider non-functional tickets
-                if (!"NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) continue;
-                if (ticketData.getFiledDate() == null) continue;
-                
-                String facilityTenantId = ticketData.getTenantId();
-                if (facilityTenantId == null) continue;
+                // Only consider non-functional tickets with valid filedDate and tenantId
+                String facilityTenantId = ticketData != null ? ticketData.getTenantId() : null;
+                if (ticketData == null 
+                    || !SYSTEM_STATUS_NON_FUNCTIONAL.equals(ticketData.getSystemFunctional())
+                    || ticketData.getFiledDate() == null
+                    || facilityTenantId == null) {
+                    continue;
+                }
                 
                 // Extract root state tenant ID
                 String rootTenantId = facilityTenantId.contains(".")
