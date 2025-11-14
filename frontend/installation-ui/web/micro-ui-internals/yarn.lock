@@ -1558,6 +1558,16 @@
     react-webcam "7.2.0"
     styled-components "5.0.0"
 
+"@egovernments/digit-ui-css@1.8.41":
+  version "1.8.41"
+  resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-css/-/digit-ui-css-1.8.41.tgz#b59501a90def690d474c09577f484ef1dfaba354"
+  integrity sha512-wmzia9KyPL/DqJ3yVSLQwm7XMrG71xztHwWzhBDWC3/SaAOI81SvaLft+BvWI0juT5mi7rWx0VpF25WXXgQK0g==
+  dependencies:
+    node-sass "4.14.1"
+    normalize.css "8.0.1"
+    postcss-scss "3.0.5"
+    tailwindcss "1.9.6"
+
 "@egovernments/digit-ui-libraries@1.8.1-beta.1":
   version "1.8.1-beta.1"
   resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-libraries/-/digit-ui-libraries-1.8.1-beta.1.tgz#9ebcc420b44d51eb6879bea25e0a0106e0295b65"
@@ -13070,8 +13080,6 @@ postcss-font-variant@^4.0.0:
   version "4.0.1"
   resolved "https://registry.yarnpkg.com/postcss-font-variant/-/postcss-font-variant-4.0.1.tgz#42d4c0ab30894f60f98b17561eb5c0321f502641"
   integrity sha512-I3ADQSTNtLTTd8uxZhtSOrTCQ9G4qUVKPjHiDk0bV75QSxXjVWiJVJ2VLdspGUi9fbW9BcjKJoRvxAH1pckqmA==
-  dependencies:
-    postcss "^7.0.2"
 
 postcss-functions@^3.0.0:
   version "3.0.0"

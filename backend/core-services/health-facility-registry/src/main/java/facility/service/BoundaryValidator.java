@@ -41,6 +41,7 @@ public class BoundaryValidator {
      */
     public void validateBoundaries(Set<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
         Objects.requireNonNull(boundaryCodes, "boundaryCodes cannot be null");
+        boundaryCodes.forEach(boundaryCode -> Objects.requireNonNull(boundaryCode, "boundary codes cannot be null"));
         Objects.requireNonNull(tenantId, "tenantId cannot be null");
         Objects.requireNonNull(requestInfo, "RequestInfo cannot be null");
 
@@ -55,6 +56,8 @@ public class BoundaryValidator {
                 .path(boundaryPath)
                 .queryParam("tenantId", tenantId)
                 .queryParam("codes", codes)
+                .queryParam("offset", 0)
+                .queryParam("limit", boundaryCodes.size())
                 .toUriString();
 
         Map<String, Object> requestBody = Map.of("RequestInfo", requestInfo);
