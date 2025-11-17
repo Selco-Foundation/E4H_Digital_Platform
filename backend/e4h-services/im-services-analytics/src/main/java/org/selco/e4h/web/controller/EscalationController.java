@@ -995,10 +995,18 @@ public class EscalationController {
     }
 
     private String resolveHfType(Map<String, Object> data) {
-        String type = getStringValue(data, "phcType");
-        if (!type.isEmpty()) return type;
-        Map<String, Object> incident = (Map<String, Object>) data.get("incident");
-        return incident != null ? getStringValue(incident, "phcSubType") : "";
+       Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+        if (incident != null) {
+            // Check localized version first (if available)
+            String type = getStringValue(incident, "phcSubType_localized");
+            if (!type.isEmpty()) return type;
+            
+            // Use phcSubType from incident (same as daily email - e.g., "Primary Health Center")
+            type = getStringValue(incident, "phcSubType");
+            if (!type.isEmpty()) return type;
+        }
+        
+        return "";
     }
 
     private String resolveVendor(Map<String, Object> data) {
