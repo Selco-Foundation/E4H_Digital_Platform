@@ -59,7 +59,7 @@ public class IncidentService {
 
                         incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
                         incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
-                        Map<String, Object> tickets = esClient.getTicketsByTenantId(0, 1000, tenantId);
+                        Map<String, Object> tickets = esClient.getHFByTenantId(tenantId);
                         log.info("List tickets from tenant id {} {}", tenantId, tickets.size());
                         if(tickets!=null){
                             Map<String, Object> source = (Map<String, Object>)tickets.get("_source");
