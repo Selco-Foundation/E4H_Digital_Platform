@@ -34,7 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 
 @Slf4j
-public class V20251105120000__update_es_incident_tenant_id_data extends BaseJavaMigration {
+public class V20251114123000__update_es_incident_tenant_id_data extends BaseJavaMigration {
 
     private static final String[] ES_INDICES = {
             "computed-sla-im-services-write",
