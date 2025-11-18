@@ -41,6 +41,11 @@ public class QueryBuilderUtil {
             params.add(request.getBoundaryCode());
         }
 
+        if (request.getIsOnmReady() != null) {
+            whereClause.append(" AND is_onm_ready = ?");
+            params.add(request.getIsOnmReady());
+        }
+
         return new QueryBuilderResult(whereClause.toString(), params);
     }
 }

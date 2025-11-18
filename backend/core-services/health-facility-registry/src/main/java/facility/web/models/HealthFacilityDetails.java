@@ -24,11 +24,11 @@ import jakarta.validation.constraints.Size;
 @Builder
 public class HealthFacilityDetails {
 
-    @Size(min = 12, max = 12)
+    @Size(min = 10, max = 10)
     @JsonProperty("hfr_id")
     private String hfrId;
 
-    @Size(min = 10, max = 10)
+    @Size(min = 12, max = 12)
     @JsonProperty("nin_id")
     private String ninId;
 
