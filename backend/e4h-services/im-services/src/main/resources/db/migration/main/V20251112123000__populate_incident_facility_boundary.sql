@@ -5,16 +5,13 @@
 UPDATE public.eg_incident_v2 inc
 SET facilityid = map.facility_id
 FROM public.facility_tenant_id_map map
-WHERE inc.tenantid = map.tenant_id
-  AND inc.facilityid IS NULL;
+WHERE inc.tenantid = map.tenant_id;
 
 -- Update boundaryCode from facility_tenant_id_map table
 UPDATE public.eg_incident_v2 inc
 SET boundarycode = map.boundary_code
 FROM public.facility_tenant_id_map map
-WHERE inc.tenantid = map.tenant_id
-  AND inc.boundarycode IS NULL
-  AND map.boundary_code IS NOT NULL;
+WHERE inc.tenantid = map.tenant_id;
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_eg_incident_v2_facilityid ON public.eg_incident_v2(facilityid);
