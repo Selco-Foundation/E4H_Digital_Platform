@@ -47,7 +47,7 @@ import java.util.UUID;
 import java.util.Locale;
 
 @Slf4j
-public class V20251112163000__hrms_employee_vendor_migration extends BaseJavaMigration {
+public class V20251116123000__hrms_employee_vendor_migration extends BaseJavaMigration {
 
 	private static final String TARGET_TENANT = "in";
 	private static final String COMPLAINT_RESOLVER_ROLE = "COMPLAINT_RESOLVER";
@@ -79,7 +79,7 @@ public class V20251112163000__hrms_employee_vendor_migration extends BaseJavaMig
 	private String mdmsSearchEndpoint;
 	private String hrmsHost;
 	private String hrmsSearchEndpoint;
-	private String hrmsUpdateEndpoint;
+	private String hrmsCreateEndpoint;
 
 	private RequestInfo requestInfo;
 	private final Map<String, String> facilityTenantBoundaryMap = new LinkedHashMap<>();
@@ -174,7 +174,7 @@ public class V20251112163000__hrms_employee_vendor_migration extends BaseJavaMig
 		mdmsSearchEndpoint = getEnvOrDefault("EGOV_MDMS_SEARCH_ENDPOINT", "/egov-mdms-service/v1/_search");
 		hrmsHost = getEnvOrDefault("EGOV_HRMS_HOST", "http://localhost:9999");
 		hrmsSearchEndpoint = getEnvOrDefault("EGOV_HRMS_SEARCH_ENDPOINT", "/egov-hrms/employees/_search");
-		hrmsUpdateEndpoint = getEnvOrDefault("EGOV_HRMS_UPDATE_ENDPOINT", "/egov-hrms/employees/_update");
+		hrmsCreateEndpoint = getEnvOrDefault("EGOV_HRMS_UPDATE_ENDPOINT", "/egov-hrms/employees/_create");
 	}
 
 	private void loadFacilityTenantBoundaryMap(Connection connection) {
@@ -744,7 +744,7 @@ public class V20251112163000__hrms_employee_vendor_migration extends BaseJavaMig
 		payload.set("Employees", array);
 
 		try {
-			postForJson(hrmsHost + hrmsUpdateEndpoint, payload);
+			postForJson(hrmsHost + hrmsCreateEndpoint, payload);
 			log.info("Updated employee {}", employee.path("uuid").asText());
 			logToFile("Updated employee %s", employee.path("uuid").asText());
 			return true;

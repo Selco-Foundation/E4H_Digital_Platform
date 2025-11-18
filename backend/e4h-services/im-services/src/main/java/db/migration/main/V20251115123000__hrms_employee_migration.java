@@ -35,7 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
-public class V20251111120000__hrms_employee_migration extends BaseJavaMigration {
+public class V20251115123000__hrms_employee_migration extends BaseJavaMigration {
 
 	private static final String TARGET_TENANT = "in";
 	private static final int MDMS_LIMIT = 300;
@@ -70,7 +70,7 @@ public class V20251111120000__hrms_employee_migration extends BaseJavaMigration 
 	private String mdmsSearchEndpoint;
 	private String hrmsHost;
 	private String hrmsSearchEndpoint;
-	private String hrmsUpdateEndpoint;
+	private String hrmsCreateEndpoint;
 
 	private RequestInfo requestInfo;
 	private Map<String, String> facilityTenantBoundaryMap = new HashMap<>();
@@ -141,7 +141,7 @@ public class V20251111120000__hrms_employee_migration extends BaseJavaMigration 
 		mdmsSearchEndpoint = getEnvOrDefault("EGOV_MDMS_SEARCH_ENDPOINT", "/egov-mdms-service/v1/_search");
 		hrmsHost = getEnvOrDefault("EGOV_HRMS_HOST", "http://localhost:9999");
 		hrmsSearchEndpoint = getEnvOrDefault("EGOV_HRMS_SEARCH_ENDPOINT", "/egov-hrms/employees/_search");
-		hrmsUpdateEndpoint = getEnvOrDefault("EGOV_HRMS_UPDATE_ENDPOINT", "/egov-hrms/employees/_update");
+		hrmsCreateEndpoint = getEnvOrDefault("EGOV_HRMS_CREATE_ENDPOINT", "/egov-hrms/employees/_create");
 	}
 
 	private void loadFacilityTenantBoundaryMap(Connection connection) {
@@ -265,7 +265,7 @@ public class V20251111120000__hrms_employee_migration extends BaseJavaMigration 
 		updatePayload.set("Employees", employeesArray);
 
 		try {
-			postForJson(hrmsHost + hrmsUpdateEndpoint, updatePayload);
+			postForJson(hrmsHost + hrmsCreateEndpoint, updatePayload);
 			totalEmployeesMigrated++;
 			log.info("Migrated employee {} from {} to {}", employee.path("uuid").asText(), sourceTenant, TARGET_TENANT);
 			logToFile("Migrated employee %s from %s to %s",
