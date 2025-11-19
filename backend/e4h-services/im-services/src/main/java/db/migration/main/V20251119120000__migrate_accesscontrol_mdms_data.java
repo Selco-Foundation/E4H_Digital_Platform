@@ -256,7 +256,7 @@ public class V20251119120000__migrate_accesscontrol_mdms_data extends BaseJavaMi
     }
 
     private int queryNextUniqueIdentifier(Context context, String schemaCode) throws Exception {
-        String sql = "SELECT COALESCE(MAX(uniqueidentifier)::int, 0) FROM eg_mdms_data WHERE schemacode = ? AND tenantid = ?";
+        String sql = "SELECT COALESCE(MAX(uniqueidentifier::int), 0) FROM eg_mdms_data WHERE schemacode = ? AND tenantid = ?";
         try (Connection connection = context.getConfiguration().getDataSource().getConnection();
              PreparedStatement statement = connection.prepareStatement(sql)) {
             statement.setString(1, schemaCode);
