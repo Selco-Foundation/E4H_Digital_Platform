@@ -41,8 +41,8 @@ import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 public class V20251105120000__update_ticket_indices_with_facility_data extends BaseJavaMigration {
 
     private static final String[] ES_INDICES = {
-        "computed-sla-im-services",
-        "audit-computed-sla-im-services"
+        "computed-sla-im-services-write",
+        "audit-computed-sla-im-services-write"
     };
 
     @Override
