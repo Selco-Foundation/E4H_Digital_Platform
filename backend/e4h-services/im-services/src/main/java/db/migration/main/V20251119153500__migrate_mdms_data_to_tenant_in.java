@@ -245,11 +245,11 @@ public class V20251119153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
     ) throws Exception {
         String schemaCode = schemaDefinition.path("code").asText();
 
-        // Retry delays: 2s, 5s, 10s, 20s, 30s
-        int[] retryDelays = {2000, 5000, 10000, 20000, 30000};
-        int maxRetries = 5;
+        // Retry delays: 2s, 5s, 15s, 30s
+        int[] retryDelays = {2000, 5000, 15000, 30000};
+        int maxAttempts = 5;
 
-        for (int attempt = 0; attempt < maxRetries; attempt++) {
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
             try {
                 ObjectNode result = attemptCreateSchema(
                     restTemplate, objectMapper, mdmsHost, schemaDefinition, authToken, schemaCode, migrationLogger
@@ -260,35 +260,39 @@ public class V20251119153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
                 }
 
                 // If not successful and not last attempt, retry
-                int delayMs = retryDelays[attempt];
-                log.warn("Retry attempt {} for schema {} after {}ms", attempt + 1, schemaCode, delayMs);
-                migrationLogger.println("[RETRY] Attempt " + (attempt + 1) + "/" + maxRetries + " - Retrying after " + delayMs + "ms");
-                migrationLogger.flush();
-                Thread.sleep(delayMs);
+                if (attempt < maxAttempts - 1 ) {
+                    int delayMs = retryDelays[attempt];
+                    log.warn("Retry attempt {} for schema {} after {}ms", attempt + 1, schemaCode, delayMs);
+                    migrationLogger.println("[RETRY] Attempt " + (attempt + 1) + "/" + maxAttempts + " - Retrying after " + delayMs + "ms");
+                    migrationLogger.flush();
+                    Thread.sleep(delayMs);
+                }
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw e;
             } catch (Exception e) {
                 // If not last attempt, retry
-                int delayMs = retryDelays[attempt];
-                log.warn(
-                        "Exception on attempt {} for schema {}: {}. Retrying after {}ms",
-                        attempt + 1, schemaCode, e.getMessage(), delayMs
-                );
-                migrationLogger.println("[RETRY] Exception on attempt " + (attempt + 1) + ": " + e.getMessage() + " - Retrying after " + delayMs + "ms");
-                migrationLogger.flush();
-                try {
-                    Thread.sleep(delayMs);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw ie;
+                if (attempt < maxAttempts - 1 ) {
+                    int delayMs = retryDelays[attempt];
+                    log.warn(
+                            "Exception on attempt {} for schema {}: {}. Retrying after {}ms",
+                            attempt + 1, schemaCode, e.getMessage(), delayMs
+                    );
+                    migrationLogger.println("[RETRY] Exception on attempt " + (attempt + 1) + ": " + e.getMessage() + " - Retrying after " + delayMs + "ms");
+                    migrationLogger.flush();
+                    try {
+                        Thread.sleep(delayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw ie;
+                    }
                 }
             }
         }
 
         log.error("All retry attempts failed for schema: {}", schemaCode);
-        migrationLogger.println("[FAILED] All " + maxRetries + " retry attempts exhausted");
+        migrationLogger.println("[FAILED] All " + maxAttempts + " attempts exhausted");
         migrationLogger.flush();
         return null;
     }
@@ -487,11 +491,11 @@ public class V20251119153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
         String schemaCode = mdmsRecord.path("schemaCode").asText();
         String uniqueIdentifier = mdmsRecord.path("uniqueIdentifier").asText();
 
-        // Retry delays: 2s, 5s, 10s, 20s, 30s (last retry)
-        int[] retryDelays = {2000, 5000, 10000, 20000, 30000};
-        int maxRetries = 5;
+        // Retry delays: 2s, 5s, 15s, 30s (last retry)
+        int[] retryDelays = {2000, 5000, 15000, 30000};
+        int maxAttempts = 5;
 
-        for (int attempt = 0; attempt < maxRetries; attempt++) {
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
             try {
                 boolean success = attemptCreateMdmsData(
                     restTemplate, objectMapper, mdmsHost, mdmsRecord, authToken,
@@ -507,35 +511,39 @@ public class V20251119153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
                 }
 
                 // If not successful and not last attempt, retry
-                int delayMs = retryDelays[attempt];
-                log.warn("Retry attempt {} for {} - {} after {}ms", attempt + 1, schemaCode, uniqueIdentifier, delayMs);
-                migrationLogger.println("  [RETRY] Attempt " + (attempt + 1) + "/" + maxRetries + " - Retrying after " + delayMs + "ms");
-                migrationLogger.flush();
-                Thread.sleep(delayMs);
+                if (attempt < maxAttempts - 1) {
+                    int delayMs = retryDelays[attempt];
+                    log.warn("Retry attempt {} for {} - {} after {}ms", attempt + 1, schemaCode, uniqueIdentifier, delayMs);
+                    migrationLogger.println("  [RETRY] Attempt " + (attempt + 1) + "/" + maxAttempts + " - Retrying after " + delayMs + "ms");
+                    migrationLogger.flush();
+                    Thread.sleep(delayMs);
+                }
 
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw e;
             } catch (Exception e) {
                 // If not last attempt, retry
-                int delayMs = retryDelays[attempt];
-                log.warn(
-                        "Exception on attempt {} for {} - {}: {}. Retrying after {}ms",
-                        attempt + 1, schemaCode, uniqueIdentifier, e.getMessage(), delayMs
-                );
-                migrationLogger.println("  [RETRY] Exception on attempt " + (attempt + 1) + ": " + e.getMessage() + " - Retrying after " + delayMs + "ms");
-                migrationLogger.flush();
-                try {
-                    Thread.sleep(delayMs);
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    throw ie;
+                if (attempt < maxAttempts - 1) {
+                    int delayMs = retryDelays[attempt];
+                    log.warn(
+                            "Exception on attempt {} for {} - {}: {}. Retrying after {}ms",
+                            attempt + 1, schemaCode, uniqueIdentifier, e.getMessage(), delayMs
+                    );
+                    migrationLogger.println("  [RETRY] Exception on attempt " + (attempt + 1) + ": " + e.getMessage() + " - Retrying after " + delayMs + "ms");
+                    migrationLogger.flush();
+                    try {
+                        Thread.sleep(delayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw ie;
+                    }
                 }
             }
         }
 
         log.error("All retry attempts failed for {} - {}", schemaCode, uniqueIdentifier);
-        migrationLogger.println("  [FAILED] All " + maxRetries + " retry attempts exhausted");
+        migrationLogger.println("  [FAILED] All " + maxAttempts + " attempts exhausted");
         migrationLogger.flush();
         return false;
     }
