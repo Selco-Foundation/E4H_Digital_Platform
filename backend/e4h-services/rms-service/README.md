@@ -16,7 +16,7 @@ Device Telemetry → Data Collector → Rule Engine → Deduplication Manager �
    - **Currently Working**: Inverter data (high voltage) - `center_details/graph` ✅
    - **Currently Working**: Battery data (voltage = 0) - `center_details/graph` ✅
    - **Currently Working**: Battery data (deep discharge/overcharge) - `center_details/graph` ✅
-   - **Disabled**: Grid data (voltage readings) - endpoint not available
+   - **Currently Working**: Grid data (voltage variation) - `center_details/graph` ✅
 
 2. **Rule Engine Layer**: Applies anomaly detection rules
    - **Active**: Panel: Solar consumption < 10% for 7 consecutive days ✅
@@ -24,7 +24,7 @@ Device Telemetry → Data Collector → Rule Engine → Deduplication Manager �
    - **Active**: Inverter: High voltage > 250V ✅
    - **Active**: Battery: Voltage = 0 (burnt/disconnected) ✅
    - **Active**: Battery: Deep discharging/overcharging (abnormal pattern over 2-3 days) ✅
-   - **Disabled**: Grid: Voltage < 200V (low) or > 250V (high) (endpoint not available)
+   - **Active**: Grid: Voltage < 200V (low) or > 250V (high) ✅
 
 3. **Deduplication Manager**: Prevents duplicate tickets
    - Maintains active_alerts table
@@ -123,6 +123,10 @@ Manually triggers mapping validation. This will:
 ### Battery
 - **Burnt/Disconnected**: Battery voltage = 0 ✅ (WORKING)
 - **Deep Discharging / Overcharging**: Abnormal charging vs discharging pattern over 2-3 days ✅ (WORKING)
+
+### Grid
+- **Voltage Variation - Low**: Grid voltage < 200V ✅ (WORKING)
+- **Voltage Variation - High**: Grid voltage > 250V ✅ (WORKING)
 
 ### Disabled (Endpoints Not Available)
 

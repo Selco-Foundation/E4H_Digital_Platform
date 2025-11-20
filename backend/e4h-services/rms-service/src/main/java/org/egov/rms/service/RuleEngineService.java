@@ -365,53 +365,90 @@ public class RuleEngineService {
     /**
      * Applies grid-level anomaly rules
      * Rule: Grid voltage < 200V (Low) or > 250V (High)
+     * Note: API already filters by voltage thresholds, so facilities are already filtered
      */
     public List<Alert> applyGridRules(List<RMSFacilityData> facilities) {
         log.info("Applying grid-level anomaly rules to {} facilities", facilities.size());
         List<Alert> alerts = new ArrayList<>();
 
         for (RMSFacilityData facility : facilities) {
-            // Check low voltage
-            if (facility.getMinVoltage() != null && 
-                facility.getMinVoltage() < config.getGridVoltageLowThreshold()) {
-                
+            String facilityId = facility.getFacilityId() != null ? 
+                    facility.getFacilityId() : facility.getCenterId();
+            String facilityName = facility.getFacilityName() != null ? 
+                    facility.getFacilityName() : facility.getCenterName();
+            
+            if (facilityId == null) {
+                continue;
+            }
+            
+            // Check low voltage (minVoltage is set for low voltage facilities)
+            if (facility.getMinVoltage() != null) {
                 Alert alert = Alert.builder()
                         .id(UUID.randomUUID().toString())
-                        .facilityId(facility.getFacilityId())
+                        .facilityId(facilityId)
                         .hfrId(facility.getHfrId())
                         .alertType(Alert.AlertType.GRID)
                         .alertSubType(Alert.AlertSubType.VOLTAGE_VARIATION_LOW)
                         .status(Alert.AlertStatus.ACTIVE)
                         .detectedAt(Instant.now())
-                        .metadata(buildMetadata(facility, "minVoltage", facility.getMinVoltage()))
+                        .metadata(buildGridVoltageMetadata(facility, facilityName, facility.getMinVoltage(), true))
                         .build();
 
                 alerts.add(alert);
-                log.debug("Grid low voltage alert created for facility: {}", facility.getFacilityId());
+                log.debug("Grid low voltage alert created for facility: {} (voltage: {}V)", 
+                        facilityId, facility.getMinVoltage());
             }
 
-            // Check high voltage
-            if (facility.getMaxVoltage() != null && 
-                facility.getMaxVoltage() > config.getGridVoltageHighThreshold()) {
-                
+            // Check high voltage (maxVoltage is set for high voltage facilities)
+            if (facility.getMaxVoltage() != null) {
                 Alert alert = Alert.builder()
                         .id(UUID.randomUUID().toString())
-                        .facilityId(facility.getFacilityId())
+                        .facilityId(facilityId)
                         .hfrId(facility.getHfrId())
                         .alertType(Alert.AlertType.GRID)
                         .alertSubType(Alert.AlertSubType.VOLTAGE_VARIATION_HIGH)
                         .status(Alert.AlertStatus.ACTIVE)
                         .detectedAt(Instant.now())
-                        .metadata(buildMetadata(facility, "maxVoltage", facility.getMaxVoltage()))
+                        .metadata(buildGridVoltageMetadata(facility, facilityName, facility.getMaxVoltage(), false))
                         .build();
 
                 alerts.add(alert);
-                log.debug("Grid high voltage alert created for facility: {}", facility.getFacilityId());
+                log.debug("Grid high voltage alert created for facility: {} (voltage: {}V)", 
+                        facilityId, facility.getMaxVoltage());
             }
         }
 
         log.info("Generated {} grid-level alerts", alerts.size());
         return alerts;
+    }
+
+    /**
+     * Builds detailed metadata for grid voltage alerts
+     */
+    private String buildGridVoltageMetadata(RMSFacilityData facility, String facilityName, Double voltage, boolean isLow) {
+        try {
+            StringBuilder metadata = new StringBuilder();
+            metadata.append("{\"facilityName\":\"").append(
+                    facilityName != null ? facilityName : 
+                    (facility.getFacilityName() != null ? facility.getFacilityName() : 
+                     (facility.getCenterName() != null ? facility.getCenterName() : ""))).append("\"");
+            
+            if (voltage != null) {
+                if (isLow) {
+                    metadata.append(",\"minVoltage\":").append(voltage);
+                    metadata.append(",\"threshold\":").append(config.getGridVoltageLowThreshold());
+                } else {
+                    metadata.append(",\"maxVoltage\":").append(voltage);
+                    metadata.append(",\"threshold\":").append(config.getGridVoltageHighThreshold());
+                }
+            }
+            
+            metadata.append("}");
+            return metadata.toString();
+        } catch (Exception e) {
+            log.warn("Error building grid voltage metadata", e);
+            return "{\"error\":\"Failed to build metadata\"}";
+        }
     }
 
     /**

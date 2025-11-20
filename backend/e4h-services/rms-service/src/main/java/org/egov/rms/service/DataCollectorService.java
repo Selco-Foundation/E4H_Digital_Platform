@@ -755,9 +755,39 @@ public class DataCollectorService {
 
     /**
      * Collects grid voltage data for low/high voltage conditions
+     * Makes separate API calls for low voltage (< 200V) and high voltage (> 250V)
      */
     public List<RMSFacilityData> collectGridVoltageData() {
         log.info("Collecting grid voltage data");
+        List<RMSFacilityData> allFacilities = new ArrayList<>();
+        
+        try {
+            // Collect high voltage facilities (> 250V)
+            List<RMSFacilityData> highVoltageFacilities = collectGridHighVoltageData();
+            allFacilities.addAll(highVoltageFacilities);
+            
+            // Collect low voltage facilities (< 200V)
+            List<RMSFacilityData> lowVoltageFacilities = collectGridLowVoltageData();
+            allFacilities.addAll(lowVoltageFacilities);
+
+            log.info("Collected grid voltage data for {} facilities ({} high, {} low)", 
+                    allFacilities.size(), highVoltageFacilities.size(), lowVoltageFacilities.size());
+            
+            // Enrich with HFR IDs from mapping table
+            mappingService.enrichFacilitiesWithHfrId(allFacilities);
+            
+            return allFacilities;
+        } catch (Exception e) {
+            log.error("Error collecting grid voltage data", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Collects grid voltage data for high voltage conditions (> 250V)
+     */
+    private List<RMSFacilityData> collectGridHighVoltageData() {
+        log.info("Collecting grid high voltage data (> 250V)");
         List<RMSFacilityData> allFacilities = new ArrayList<>();
         
         try {
@@ -766,57 +796,230 @@ public class DataCollectorService {
             boolean hasMore = true;
 
             while (hasMore) {
-                RMSApiRequest request = RMSApiRequest.builder()
-                        .graphType("gridVoltage")
-                        .timeRange(RMSApiRequest.TimeRange.builder()
-                                .timePeriod(RMSApiRequest.TimePeriod.builder()
-                                        .label("Today")
-                                        .value("today")
-                                        .build())
-                                .customRange(new HashMap<>())
-                                .build())
-                        .pagination(RMSApiRequest.Pagination.builder()
-                                .page(page)
-                                .size(pageSize)
-                                .build())
-                        .filters(new HashMap<String, Object>() {{
-                            put("voltageLow", new HashMap<String, Object>() {{
-                                put("lt", config.getGridVoltageLowThreshold());
-                            }});
-                            put("voltageHigh", new HashMap<String, Object>() {{
-                                put("gt", config.getGridVoltageHighThreshold());
-                            }});
-                        }})
-                        .build();
-
-                RMSApiResponse response = callRMSApi(config.getCenterDetailsEndpoint(), request);
+                // Build request matching the working curl for high voltage
+                Map<String, Object> timePeriod = new HashMap<>();
+                timePeriod.put("value", "today");
                 
-                if (response != null && response.getData() != null) {
-                    if (response.getData().getLowVoltageFacilities() != null) {
-                        allFacilities.addAll(response.getData().getLowVoltageFacilities());
-                    }
-                    if (response.getData().getHighVoltageFacilities() != null) {
-                        allFacilities.addAll(response.getData().getHighVoltageFacilities());
+                Map<String, Object> timeRange = new HashMap<>();
+                timeRange.put("time_period", timePeriod);
+                timeRange.put("custom_range", new HashMap<>());
+                
+                List<Map<String, Object>> filters = new ArrayList<>();
+                Map<String, Object> filterHigh = new HashMap<>();
+                filterHigh.put("compareFunction", "gt");
+                filterHigh.put("compareValue", 250);
+                filters.add(filterHigh);
+                
+                Map<String, Object> pagination = new HashMap<>();
+                pagination.put("page", page);
+                pagination.put("size", pageSize);
+                
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("graphType", "gridVoltage_Filtered");
+                requestBody.put("time_range", timeRange);
+                requestBody.put("frequency", "daily");
+                requestBody.put("aggregation", "avg");
+                requestBody.put("filters", filters);
+                requestBody.put("pagination", pagination);
+
+                PanelGraphResponse response = callGridVoltageApi(config.getCenterDetailsEndpoint(), requestBody);
+                
+                if (response != null && response.getData() != null && 
+                    response.getData().getFacilities() != null) {
+                    
+                    List<PanelGraphResponse.PanelFacility> facilities = response.getData().getFacilities();
+                    
+                    for (PanelGraphResponse.PanelFacility panelFacility : facilities) {
+                        // Convert PanelFacility to RMSFacilityData
+                        RMSFacilityData facility = convertGridVoltageToRMSFacilityData(panelFacility, true);
+                        if (facility != null) {
+                            allFacilities.add(facility);
+                        }
                     }
                     
-                    RMSApiResponse.Pagination pagination = response.getData().getPagination();
-                    if (pagination != null && pagination.getTotalPages() != null) {
-                        hasMore = page < pagination.getTotalPages();
-                        page++;
-                    } else {
+                    // Check if there are more pages
+                    if (facilities.size() < pageSize) {
                         hasMore = false;
+                    } else {
+                        page++;
                     }
                 } else {
                     hasMore = false;
                 }
             }
 
-            log.info("Collected grid voltage data for {} facilities", allFacilities.size());
+            log.info("Collected grid high voltage data for {} facilities", allFacilities.size());
             return allFacilities;
         } catch (Exception e) {
-            log.error("Error collecting grid voltage data", e);
+            log.error("Error collecting grid high voltage data", e);
             return new ArrayList<>();
         }
+    }
+
+    /**
+     * Collects grid voltage data for low voltage conditions (< 200V)
+     */
+    private List<RMSFacilityData> collectGridLowVoltageData() {
+        log.info("Collecting grid low voltage data (< 200V)");
+        List<RMSFacilityData> allFacilities = new ArrayList<>();
+        
+        try {
+            int page = 1;
+            int pageSize = 100;
+            boolean hasMore = true;
+
+            while (hasMore) {
+                // Build request for low voltage
+                Map<String, Object> timePeriod = new HashMap<>();
+                timePeriod.put("value", "today");
+                
+                Map<String, Object> timeRange = new HashMap<>();
+                timeRange.put("time_period", timePeriod);
+                timeRange.put("custom_range", new HashMap<>());
+                
+                List<Map<String, Object>> filters = new ArrayList<>();
+                Map<String, Object> filterLow = new HashMap<>();
+                filterLow.put("compareFunction", "lt");
+                filterLow.put("compareValue", 200);
+                filters.add(filterLow);
+                
+                Map<String, Object> pagination = new HashMap<>();
+                pagination.put("page", page);
+                pagination.put("size", pageSize);
+                
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("graphType", "gridVoltage_Filtered");
+                requestBody.put("time_range", timeRange);
+                requestBody.put("frequency", "daily");
+                requestBody.put("aggregation", "avg");
+                requestBody.put("filters", filters);
+                requestBody.put("pagination", pagination);
+
+                PanelGraphResponse response = callGridVoltageApi(config.getCenterDetailsEndpoint(), requestBody);
+                
+                if (response != null && response.getData() != null && 
+                    response.getData().getFacilities() != null) {
+                    
+                    List<PanelGraphResponse.PanelFacility> facilities = response.getData().getFacilities();
+                    
+                    for (PanelGraphResponse.PanelFacility panelFacility : facilities) {
+                        // Convert PanelFacility to RMSFacilityData
+                        RMSFacilityData facility = convertGridVoltageToRMSFacilityData(panelFacility, false);
+                        if (facility != null) {
+                            allFacilities.add(facility);
+                        }
+                    }
+                    
+                    // Check if there are more pages
+                    if (facilities.size() < pageSize) {
+                        hasMore = false;
+                    } else {
+                        page++;
+                    }
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            log.info("Collected grid low voltage data for {} facilities", allFacilities.size());
+            return allFacilities;
+        } catch (Exception e) {
+            log.error("Error collecting grid low voltage data", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Converts PanelFacility to RMSFacilityData for grid voltage
+     * @param isHighVoltage true for high voltage, false for low voltage
+     */
+    private RMSFacilityData convertGridVoltageToRMSFacilityData(PanelGraphResponse.PanelFacility panelFacility, boolean isHighVoltage) {
+        try {
+            PanelGraphResponse.CenterData centerData = panelFacility.getCenterData();
+            PanelGraphResponse.Consumption consumption = panelFacility.getConsumption();
+            
+            if (centerData == null || consumption == null) {
+                return null;
+            }
+            
+            // Map HFRID to hfrId (handle "Not available" case)
+            String hfrId = null;
+            if (centerData.getHfrid() != null && 
+                !centerData.getHfrid().isEmpty() && 
+                !centerData.getHfrid().equalsIgnoreCase("Not available") &&
+                !centerData.getHfrid().equalsIgnoreCase("Not Available")) {
+                hfrId = centerData.getHfrid().trim();
+            }
+            
+            // Extract grid voltage from voltageReadings
+            Double gridVoltage = null;
+            if (consumption.getVoltageReadings() != null && !consumption.getVoltageReadings().isEmpty()) {
+                gridVoltage = consumption.getVoltageReadings().get(0);
+            }
+            
+            RMSFacilityData facility = RMSFacilityData.builder()
+                    .facilityId(centerData.getCenterId())
+                    .centerId(centerData.getCenterId())
+                    .facilityName(centerData.getCenterName())
+                    .centerName(centerData.getCenterName())
+                    .hfrId(hfrId)
+                    .deviceName(centerData.getDeviceName())
+                    .statusOfDevice(centerData.getStatusOfDevice())
+                    .gridVoltage(gridVoltage)
+                    .minVoltage(isHighVoltage ? null : gridVoltage) // Store as minVoltage for low voltage
+                    .maxVoltage(isHighVoltage ? gridVoltage : null) // Store as maxVoltage for high voltage
+                    .build();
+            
+            return facility;
+        } catch (Exception e) {
+            log.error("Error converting grid voltage PanelFacility to RMSFacilityData", e);
+            return null;
+        }
+    }
+
+    /**
+     * Calls center_details/graph API for grid voltage data
+     */
+    private PanelGraphResponse callGridVoltageApi(String endpoint, Map<String, Object> requestBody) throws Exception {
+        String url = config.getRmsApiBaseUrl() + endpoint;
+        RestTemplate rt = restTemplateAcceptingAllCerts();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("Accept", "application/json");
+        headers.set("Access-Token", config.getRmsApiAccessToken());
+        
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+        
+        int attempts = 0;
+        long delay = config.getRetryBackoffDelay();
+        
+        while (attempts < config.getRetryMaxAttempts()) {
+            try {
+                log.debug("Calling RMS grid voltage API: {} (attempt {})", url, attempts + 1);
+                ResponseEntity<PanelGraphResponse> response = rt.exchange(
+                        url, HttpMethod.POST, entity, PanelGraphResponse.class);
+                
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    return response.getBody();
+                }
+            } catch (RestClientException e) {
+                attempts++;
+                if (attempts >= config.getRetryMaxAttempts()) {
+                    log.error("Failed to call RMS grid voltage API after {} attempts: {}", config.getRetryMaxAttempts(), e.getMessage());
+                    throw e;
+                }
+                log.warn("RMS grid voltage API call failed (attempt {}), retrying after {}ms: {}", attempts, delay, e.getMessage());
+                try {
+                    Thread.sleep(delay);
+                    delay *= 2; // Exponential backoff
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during retry", ie);
+                }
+            }
+        }
+        
+        return null;
     }
 
     /**

@@ -56,6 +56,9 @@ public class RMSOrchestratorService {
             // Collect battery data (deep discharge/overcharge) and apply rules
             processBatteryDeepDischargeAlerts(requestInfo);
             
+            // Collect grid data (voltage variation) and apply rules
+            processGridAlerts(requestInfo);
+            
             log.info("Completed RMS workflow execution");
         } catch (Exception e) {
             log.error("Error during RMS workflow execution", e);

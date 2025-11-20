@@ -243,11 +243,54 @@ public class PayloadGenerator {
                 }
                 break;
             case GRID:
-                comments.append("Grid Voltage Alert:\n");
                 if (alert.getAlertSubType() == Alert.AlertSubType.VOLTAGE_VARIATION_LOW) {
-                    comments.append("Grid voltage is below 200V (Low Voltage).\n\n");
+                    comments.append("Grid Low Voltage Alert:\n");
+                    comments.append("Grid meter voltage detected below 200V.\n\n");
+                    comments.append("Low grid voltage can cause equipment malfunction, reduced efficiency, ");
+                    comments.append("and potential damage to electrical devices. This condition requires ");
+                    comments.append("immediate attention to ensure proper power supply to the facility.\n\n");
+                    
+                    // Extract voltage from metadata if available
+                    if (alert.getMetadata() != null) {
+                        try {
+                            if (alert.getMetadata().contains("\"minVoltage\"")) {
+                                int voltageStart = alert.getMetadata().indexOf("\"minVoltage\":") + 13;
+                                int voltageEnd = alert.getMetadata().indexOf(",", voltageStart);
+                                if (voltageEnd == -1) voltageEnd = alert.getMetadata().indexOf("}", voltageStart);
+                                if (voltageEnd > voltageStart) {
+                                    String voltageStr = alert.getMetadata().substring(voltageStart, voltageEnd).trim();
+                                    comments.append("Detected Grid Voltage: ").append(voltageStr).append("V\n");
+                                    comments.append("Threshold: 200V\n");
+                                }
+                            }
+                        } catch (Exception e) {
+                            // Ignore parsing errors
+                        }
+                    }
                 } else if (alert.getAlertSubType() == Alert.AlertSubType.VOLTAGE_VARIATION_HIGH) {
-                    comments.append("Grid voltage is above 250V (High Voltage).\n\n");
+                    comments.append("Grid High Voltage Alert:\n");
+                    comments.append("Grid meter voltage detected above 250V.\n\n");
+                    comments.append("High grid voltage can cause equipment damage, overheating, and safety risks. ");
+                    comments.append("This condition requires immediate attention to prevent damage to electrical ");
+                    comments.append("devices and ensure safe operation of the facility.\n\n");
+                    
+                    // Extract voltage from metadata if available
+                    if (alert.getMetadata() != null) {
+                        try {
+                            if (alert.getMetadata().contains("\"maxVoltage\"")) {
+                                int voltageStart = alert.getMetadata().indexOf("\"maxVoltage\":") + 13;
+                                int voltageEnd = alert.getMetadata().indexOf(",", voltageStart);
+                                if (voltageEnd == -1) voltageEnd = alert.getMetadata().indexOf("}", voltageStart);
+                                if (voltageEnd > voltageStart) {
+                                    String voltageStr = alert.getMetadata().substring(voltageStart, voltageEnd).trim();
+                                    comments.append("Detected Grid Voltage: ").append(voltageStr).append("V\n");
+                                    comments.append("Threshold: 250V\n");
+                                }
+                            }
+                        } catch (Exception e) {
+                            // Ignore parsing errors
+                        }
+                    }
                 }
                 break;
         }
