@@ -74,4 +74,7 @@ public class IndexView {
 
     @JsonProperty("latestRejectReason")
     private String latestRejectReason;
+
+    @JsonProperty("boundary")
+    private Boundary boundary;
 }

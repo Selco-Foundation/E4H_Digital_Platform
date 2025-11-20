@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: weekly-escalation
+  namespace: default  # Change to your namespace
+spec:
+  # Schedule: Monday at 9:00 AM IST (09:00)
+  # Cron format: minute hour day month day-of-week
+  # timeZone: "Asia/Kolkata" handles IST conversion automatically
+  schedule: "0 9 * * 1"  # 09:00 IST, Monday
+  timeZone: "Asia/Kolkata"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: weekly-escalation
+            image: weekly-escalation-cron:latest  # Your Docker image
+            imagePullPolicy: IfNotPresent
+          restartPolicy: OnFailure
+

@@ -30,55 +30,118 @@ public class SLABreachDetectionService {
     private static final long ESCALATION_LEVEL_CACHE_INTERVAL = 3600000; // 1 hour
 
     /**
+     * Utility method to build escalation exclusion filters
+     */
+    private List<Map<String, Object>> buildEscalationExclusionFilters(String escalationRecipientId, String escalationLevel) {
+        List<Map<String, Object>> mustNot = new ArrayList<>();
+        if (escalationRecipientId != null) {
+            // Use simple term queries instead of nested query to avoid mapping issues
+            // This approach works with regular object fields (not nested)
+
+            // Exclude tickets with same escalationId
+            Map<String, Object> escalationIdFilter = new HashMap<>();
+            Map<String, Object> escalationIdTerm = new HashMap<>();
+            escalationIdTerm.put("Data.incident.escalations.escalationId.keyword", escalationRecipientId);
+            escalationIdFilter.put("term", escalationIdTerm);
+            mustNot.add(escalationIdFilter);
+
+            // Exclude tickets with same escalationLevel
+            Map<String, Object> escalationLevelFilter = new HashMap<>();
+            Map<String, Object> escalationLevelTerm = new HashMap<>();
+            escalationLevelTerm.put("Data.incident.escalations.escalationLevel.keyword", escalationLevel);
+            escalationLevelFilter.put("term", escalationLevelTerm);
+            mustNot.add(escalationLevelFilter);
+
+            log.debug("Added escalation exclusion filters for recipientId: {} and level: {}",
+                escalationRecipientId, escalationLevel);
+        }
+        return mustNot;
+    }
+
+    // Reusable helpers to reduce duplication in query building
+    private void addSlaFilter(List<Map<String, Object>> must, String escalationLevel, RequestInfo requestInfo, boolean countryLevel) {
+        EscalationLevel levelConfig = getEscalationLevelConfig(escalationLevel, requestInfo);
+        if (levelConfig == null) {
+            String scope = countryLevel ? "(country level)" : "";
+            log.error("EscalationLevel config not found for {} {} - MDMS configuration is required", escalationLevel, scope);
+            throw new RuntimeException("EscalationLevel configuration not found for " + escalationLevel + ". Please ensure MDMS is properly configured.");
+        }
+
+        Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, levelConfig);
+        if (slaFilter != null) {
+            must.add(slaFilter);
+            if (countryLevel) {
+                log.debug("Added SLA filter for {} (country level) using strategy: {} with threshold: {} hours / {}%",
+                    escalationLevel, levelConfig.getBreachCalculationStrategy(), levelConfig.getBreachThresholdInHours(), levelConfig.getBreachThresholdInPercentage());
+            } else {
+                log.debug("Added SLA filter for {} using strategy: {} with threshold: {} hours / {}%",
+                    escalationLevel, levelConfig.getBreachCalculationStrategy(), levelConfig.getBreachThresholdInHours(), levelConfig.getBreachThresholdInPercentage());
+            }
+        }
+    }
+
+    private void addL1AntiOverlapIfNeeded(List<Map<String, Object>> must, String escalationLevel, RequestInfo requestInfo) {
+        if (!"LEVEL_ONE".equals(escalationLevel)) return;
+        EscalationLevel l2Config = getEscalationLevelConfig("LEVEL_TWO", requestInfo);
+        if (l2Config == null || !"number".equalsIgnoreCase(l2Config.getBreachCalculationStrategy())) return;
+        Integer l2Hours = l2Config.getBreachThresholdInHours();
+        if (l2Hours == null) return;
+
+        long l2Ms = (long) l2Hours * 60 * 60 * 1000L;
+        Map<String, Object> gtRange = new HashMap<>();
+        Map<String, Object> gtRangeBody = new HashMap<>();
+        gtRangeBody.put("gt", l2Ms);
+        gtRange.put("Data.slaRemaining", gtRangeBody);
+        Map<String, Object> range = new HashMap<>();
+        range.put("range", gtRange);
+        must.add(range);
+        log.debug("Added anti-overlap filter for LEVEL_ONE: slaRemaining > {}ms", l2Ms);
+    }
+
+    /**
      * Find tickets in SLA breach for a specific tenant, workflow states, and escalation level
      * that don't already have the specified escalation recipient ID
      * Updated to support MDMS-driven breach threshold calculation (percentage or number strategy)
      */
-    public List<EscalationTicket> findSLABreachTickets(String state, List<String> workflowStates,
+    public List<EscalationTicket> findSLABreachTickets(String tenantId, List<String> workflowStates, 
                                                        String escalationRecipientId, String escalationLevel,
                                                        RequestInfo requestInfo) {
         try {
-            log.info("Finding SLA breach tickets for tenant: {}, workflow states: {}, escalation level: {}, excluding escalation: {}",
-                    state, workflowStates, escalationLevel, escalationRecipientId);
+            log.info("Finding SLA breach tickets for tenant: {}, workflow states: {}, escalation level: {}, excluding escalation: {}", 
+                tenantId, workflowStates, escalationLevel, escalationRecipientId);
+            
             // Build Elasticsearch query for SLA breach tickets with escalation level threshold from MDMS
-            Map<String, Object> query = buildSLABreachQueryWithLevel(state, workflowStates,
+            Map<String, Object> query = buildSLABreachQueryWithLevel(tenantId, workflowStates, 
                 escalationRecipientId, escalationLevel, requestInfo);
-            log.info("Query ES: {} ", query);
+
+            // Wrap inside a "query" map for Elasticsearch
+            Map<String, Object> finalQuery = new HashMap<>();
+            finalQuery.put("query", query);
+            finalQuery.put("size", 10000); // ensure we fetch enough docs beyond ES default 10
+            finalQuery.put("track_total_hits", true);
+
+            log.info("Executing Elasticsearch query: {}", finalQuery);
+
             // Execute query using ElasticsearchClient
-            List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(query);
+            List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(finalQuery);
             
             // The Elasticsearch query already filters for SLA breach and escalation exclusions
             // Only apply post-filtering for special cases like LEVEL_TWO aged tickets
             List<EscalationTicket> filteredTickets = new ArrayList<>();
-            int additionalFilterCount = 0;
-            long currentTime = System.currentTimeMillis();
             
             for (EscalationTicket ticket : breachTickets) {
-                // For LEVEL_TWO, apply additional age filtering (16+ hours breached)
-                if ("LEVEL_TWO".equals(escalationLevel)) {
-                    if (isTicketAgedBeyondBreach(ticket, currentTime, 16.0)) {
-                        filteredTickets.add(ticket);
-                        log.debug("Ticket {} included in LEVEL_TWO escalation - breached for more than 16 hours", 
-                            ticket.getIncidentId());
-                    } else {
-                        additionalFilterCount++;
-                        log.debug("Skipping ticket {} - not aged enough for LEVEL_TWO escalation", 
-                            ticket.getIncidentId());
-                    }
-                } else {
-                    // For LEVEL_ZERO and LEVEL_ONE, use tickets as returned by Elasticsearch
-                    filteredTickets.add(ticket);
-                }
+                // Follow MDMS-driven ES filter strictly for all levels including LEVEL_TWO
+                filteredTickets.add(ticket);
             }
             
-            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} additional filters, {} final)", 
-                breachTickets.size(), state, escalationLevel, additionalFilterCount, filteredTickets.size());
+            log.info("Found {} tickets in SLA breach for tenant: {} with escalation level: {} ({} final)",
+                breachTickets.size(), tenantId, escalationLevel, filteredTickets.size());
             
             return filteredTickets;
             
         } catch (Exception e) {
-            log.error("Error finding SLA breach tickets for state: {} with escalation level: {}",
-                    state, escalationLevel, e);
+            log.error("Error finding SLA breach tickets for tenant: {} with escalation level: {}", 
+                tenantId, escalationLevel, e);
             // Fallback to empty list if query fails
             return new ArrayList<>();
         }
@@ -100,8 +163,14 @@ public class SLABreachDetectionService {
             Map<String, Object> query = buildSLABreachQueryWithLevelForCountry(workflowStates, 
                 escalationRecipientId, escalationLevel, requestInfo);
             
+            // Wrap and add pagination settings
+            Map<String, Object> finalQuery = new HashMap<>();
+            finalQuery.put("query", query);
+            finalQuery.put("size", 10000);
+            finalQuery.put("track_total_hits", true);
+
             // Execute query using ElasticsearchClient
-            List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(query);
+            List<EscalationTicket> breachTickets = elasticSearchClient.searchTickets(finalQuery);
             
             log.info("Found {} tickets in SLA breach for country level with escalation level: {}", 
                 breachTickets.size(), escalationLevel);
@@ -216,18 +285,18 @@ public class SLABreachDetectionService {
      * Build Elasticsearch query for SLA breach tickets with escalation level threshold from MDMS
      * Supports both "percentage" and "number" breach calculation strategies per LLD V2
      */
-    private Map<String, Object> buildSLABreachQueryWithLevel(String state, List<String> workflowStates,
+    private Map<String, Object> buildSLABreachQueryWithLevel(String tenantId, List<String> workflowStates, 
                                                              String escalationRecipientId, String escalationLevel,
                                                              RequestInfo requestInfo) {
         Map<String, Object> query = new HashMap<>();
         Map<String, Object> bool = new HashMap<>();
         List<Map<String, Object>> must = new ArrayList<>();
 
-        // Filter by tenant
+        // Filter by tenant - use prefix match to include state and all its sub-tenants
         Map<String, Object> tenantFilter = new HashMap<>();
-        Map<String, Object> tenantWildcard = new HashMap<>();
-        tenantWildcard.put("Data.incident.boundary.blockCode.keyword", state + "*");
-        tenantFilter.put("wildcard", tenantWildcard);
+        Map<String, Object> tenantPrefix = new HashMap<>();
+        tenantPrefix.put("Data.tenantId.keyword", tenantId);
+        tenantFilter.put("prefix", tenantPrefix);
         must.add(tenantFilter);
 
         // Filter by workflow states
@@ -237,61 +306,19 @@ public class SLABreachDetectionService {
         statusFilter.put("terms", statusTerms);
         must.add(statusFilter);
 
-        // Filter by SLA breach based on escalation level configuration from MDMS
-        EscalationLevel escalationLevelConfig = getEscalationLevelConfig(escalationLevel, requestInfo);
-        
-        if (escalationLevelConfig == null) {
-            log.error("EscalationLevel config not found for {} - MDMS configuration is required", escalationLevel);
-            throw new RuntimeException("EscalationLevel configuration not found for " + escalationLevel + ". Please ensure MDMS is properly configured.");
-        }
-        
-        // Build SLA filter based on calculation strategy from MDMS
-            Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
-            if (slaFilter != null) {
-                must.add(slaFilter);
-            log.debug("Added SLA filter for {} using strategy: {} with threshold: {} hours / {}%", 
-                escalationLevel, 
-                escalationLevelConfig.getBreachCalculationStrategy(),
-                escalationLevelConfig.getBreachThresholdInHours(),
-                escalationLevelConfig.getBreachThresholdInPercentage());
-        }
+        // Add SLA filter and anti-overlap if needed
+        addSlaFilter(must, escalationLevel, requestInfo, false);
+        addL1AntiOverlapIfNeeded(must, escalationLevel, requestInfo);
 
         // Exclude tickets already escalated to this recipient AND level
-        List<Map<String, Object>> mustNot = new ArrayList<>();
-        if (escalationRecipientId != null) {
-            Map<String, Object> escalationFilter = new HashMap<>();
-            Map<String, Object> escalationNested = new HashMap<>();
-            Map<String, Object> escalationQuery = new HashMap<>();
-            Map<String, Object> escalationBool = new HashMap<>();
-            List<Map<String, Object>> escalationMust = new ArrayList<>();
-            
-            // Check for same escalationId AND escalationLevel
-            Map<String, Object> escalationIdTerm = new HashMap<>();
-            escalationIdTerm.put("Data.incident.escalations.escalationId.keyword", escalationRecipientId);
-            Map<String, Object> termFilter = new HashMap<>();
-            termFilter.put("term", escalationIdTerm);
-            escalationMust.add(termFilter);
-            
-            Map<String, Object> escalationLevelTerm = new HashMap<>();
-            escalationLevelTerm.put("Data.incident.escalations.escalationLevel.keyword", escalationLevel);
-            Map<String, Object> levelFilter = new HashMap<>();
-            levelFilter.put("term", escalationLevelTerm);
-            escalationMust.add(levelFilter);
-            
-            escalationBool.put("must", escalationMust);
-            escalationQuery.put("bool", escalationBool);
-            escalationNested.put("query", escalationQuery);
-            escalationNested.put("path", "Data.incident.escalations");
-            escalationFilter.put("nested", escalationNested);
-            mustNot.add(escalationFilter);
-        }
+        List<Map<String, Object>> mustNot = buildEscalationExclusionFilters(escalationRecipientId, escalationLevel);
 
         bool.put("must", must);
         bool.put("must_not", mustNot);
         query.put("bool", bool);
 
-        log.debug("SLA breach query for tenant {} with escalation level {}: {}",
-                state, escalationLevel, query);
+        log.debug("SLA breach query for tenant {} with escalation level {}: {}", 
+            tenantId, escalationLevel, query);
         return query;
     }
 
@@ -449,54 +476,12 @@ public class SLABreachDetectionService {
         statusFilter.put("terms", statusTerms);
         must.add(statusFilter);
         
-        // Filter by SLA breach based on escalation level configuration from MDMS
-        EscalationLevel escalationLevelConfig = getEscalationLevelConfig(escalationLevel, requestInfo);
-        
-        if (escalationLevelConfig == null) {
-            log.error("EscalationLevel config not found for {} (country level) - MDMS configuration is required", escalationLevel);
-            throw new RuntimeException("EscalationLevel configuration not found for " + escalationLevel + ". Please ensure MDMS is properly configured.");
-        }
-        
-        // Build SLA filter based on calculation strategy from MDMS
-            Map<String, Object> slaFilter = buildSLAFilter(escalationLevel, escalationLevelConfig);
-            if (slaFilter != null) {
-                must.add(slaFilter);
-            log.debug("Added SLA filter for {} (country level) using strategy: {} with threshold: {} hours / {}%", 
-                escalationLevel, 
-                escalationLevelConfig.getBreachCalculationStrategy(),
-                escalationLevelConfig.getBreachThresholdInHours(),
-                escalationLevelConfig.getBreachThresholdInPercentage());
-        }
+        // Add SLA filter and anti-overlap (country level)
+        addSlaFilter(must, escalationLevel, requestInfo, true);
+        addL1AntiOverlapIfNeeded(must, escalationLevel, requestInfo);
         
         // Exclude tickets already escalated to this recipient AND level
-        List<Map<String, Object>> mustNot = new ArrayList<>();
-        if (escalationRecipientId != null) {
-            Map<String, Object> escalationFilter = new HashMap<>();
-            Map<String, Object> escalationNested = new HashMap<>();
-            Map<String, Object> escalationQuery = new HashMap<>();
-            Map<String, Object> escalationBool = new HashMap<>();
-            List<Map<String, Object>> escalationMust = new ArrayList<>();
-            
-            // Check for same escalationId AND escalationLevel
-            Map<String, Object> escalationIdTerm = new HashMap<>();
-            escalationIdTerm.put("Data.incident.escalations.escalationId.keyword", escalationRecipientId);
-            Map<String, Object> termFilter = new HashMap<>();
-            termFilter.put("term", escalationIdTerm);
-            escalationMust.add(termFilter);
-            
-            Map<String, Object> escalationLevelTerm = new HashMap<>();
-            escalationLevelTerm.put("Data.incident.escalations.escalationLevel.keyword", escalationLevel);
-            Map<String, Object> levelFilter = new HashMap<>();
-            levelFilter.put("term", escalationLevelTerm);
-            escalationMust.add(levelFilter);
-            
-            escalationBool.put("must", escalationMust);
-            escalationQuery.put("bool", escalationBool);
-            escalationNested.put("query", escalationQuery);
-            escalationNested.put("path", "Data.incident.escalations");
-            escalationFilter.put("nested", escalationNested);
-            mustNot.add(escalationFilter);
-        }
+        List<Map<String, Object>> mustNot = buildEscalationExclusionFilters(escalationRecipientId, escalationLevel);
 
         bool.put("must", must);
         bool.put("must_not", mustNot);
