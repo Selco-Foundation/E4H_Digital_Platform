@@ -217,8 +217,8 @@ public class RuleEngineService {
 
     /**
      * Applies battery-level anomaly rules
-     * Rule 1: Battery voltage = 0
-     * Rule 2: Deep discharging / Overcharging (to be implemented with additional data)
+     * Rule: Battery voltage = 0
+     * Note: API already filters by voltage = 0, so all facilities here meet the criteria
      */
     public List<Alert> applyBatteryRules(List<RMSFacilityData> facilities) {
         log.info("Applying battery-level anomaly rules to {} facilities", facilities.size());
@@ -226,36 +226,58 @@ public class RuleEngineService {
 
         for (RMSFacilityData facility : facilities) {
             // Rule: Battery voltage = 0
-            if (facility.getBatteryReadings() != null && !facility.getBatteryReadings().isEmpty()) {
-                boolean hasZeroVoltage = facility.getBatteryReadings().stream()
-                        .anyMatch(reading -> {
-                            if (reading.size() >= 2 && reading.get(1) instanceof Number) {
-                                double voltage = ((Number) reading.get(1)).doubleValue();
-                                return voltage == 0.0;
-                            }
-                            return false;
-                        });
+            // Note: API already filters for voltage = 0, so all facilities here meet the criteria
+            String facilityId = facility.getFacilityId() != null ? 
+                    facility.getFacilityId() : facility.getCenterId();
+            String facilityName = facility.getFacilityName() != null ? 
+                    facility.getFacilityName() : facility.getCenterName();
+            
+            if (facilityId != null) {
+                // Build detailed metadata with battery voltage information
+                String metadata = buildBatteryMetadata(facility, facilityName);
+                
+                Alert alert = Alert.builder()
+                        .id(UUID.randomUUID().toString())
+                        .facilityId(facilityId)
+                        .hfrId(facility.getHfrId())
+                        .alertType(Alert.AlertType.BATTERY)
+                        .alertSubType(Alert.AlertSubType.BURNT_DISCONNECTED)
+                        .status(Alert.AlertStatus.ACTIVE)
+                        .detectedAt(Instant.now())
+                        .metadata(metadata)
+                        .build();
 
-                if (hasZeroVoltage) {
-                    Alert alert = Alert.builder()
-                            .id(UUID.randomUUID().toString())
-                            .facilityId(facility.getFacilityId())
-                            .hfrId(facility.getHfrId())
-                            .alertType(Alert.AlertType.BATTERY)
-                            .alertSubType(Alert.AlertSubType.BURNT_DISCONNECTED)
-                            .status(Alert.AlertStatus.ACTIVE)
-                            .detectedAt(Instant.now())
-                            .metadata(buildMetadata(facility, "batteryReadings", facility.getBatteryReadings()))
-                            .build();
-
-                    alerts.add(alert);
-                    log.debug("Battery burnt/disconnected alert created for facility: {}", facility.getFacilityId());
-                }
+                alerts.add(alert);
+                log.debug("Battery burnt/disconnected alert created for facility: {} (voltage: {}V)", 
+                        facilityId, facility.getBatteryVoltage());
             }
         }
 
         log.info("Generated {} battery-level alerts", alerts.size());
         return alerts;
+    }
+
+    /**
+     * Builds detailed metadata for battery alerts
+     */
+    private String buildBatteryMetadata(RMSFacilityData facility, String facilityName) {
+        try {
+            StringBuilder metadata = new StringBuilder();
+            metadata.append("{\"facilityName\":\"").append(
+                    facilityName != null ? facilityName : 
+                    (facility.getFacilityName() != null ? facility.getFacilityName() : 
+                     (facility.getCenterName() != null ? facility.getCenterName() : ""))).append("\"");
+            
+            if (facility.getBatteryVoltage() != null) {
+                metadata.append(",\"batteryVoltage\":").append(facility.getBatteryVoltage());
+            }
+            
+            metadata.append("}");
+            return metadata.toString();
+        } catch (Exception e) {
+            log.warn("Error building battery metadata", e);
+            return "{\"error\":\"Failed to build metadata\"}";
+        }
     }
 
     /**

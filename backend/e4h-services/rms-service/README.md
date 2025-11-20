@@ -14,14 +14,14 @@ Device Telemetry → Data Collector → Rule Engine → Deduplication Manager �
    - **Currently Working**: Panel data (solar vs grid consumption) - `center_details/graph` ✅
    - **Currently Working**: Inverter data (no signal detection) - `centerDatas/get` ✅
    - **Currently Working**: Inverter data (high voltage) - `center_details/graph` ✅
-   - **Disabled**: Battery data (voltage readings) - endpoint not available
+   - **Currently Working**: Battery data (voltage = 0) - `center_details/graph` ✅
    - **Disabled**: Grid data (voltage readings) - endpoint not available
 
 2. **Rule Engine Layer**: Applies anomaly detection rules
    - **Active**: Panel: Solar consumption < 10% for 7 consecutive days ✅
    - **Active**: Inverter: No signal for 2+ days ✅
    - **Active**: Inverter: High voltage > 250V ✅
-   - **Disabled**: Battery: Voltage = 0 (burnt/disconnected) (endpoint not available)
+   - **Active**: Battery: Voltage = 0 (burnt/disconnected) ✅
    - **Disabled**: Grid: Voltage < 200V (low) or > 250V (high) (endpoint not available)
 
 3. **Deduplication Manager**: Prevents duplicate tickets
@@ -117,6 +117,9 @@ Manually triggers mapping validation. This will:
 ### Inverter
 - **Shutdown**: No signal for 2+ consecutive days ✅ (WORKING)
 - **High Voltage**: UPS/PCU voltage > 250V ✅ (WORKING)
+
+### Battery
+- **Burnt/Disconnected**: Battery voltage = 0 ✅ (WORKING)
 
 ### Disabled (Endpoints Not Available)
 

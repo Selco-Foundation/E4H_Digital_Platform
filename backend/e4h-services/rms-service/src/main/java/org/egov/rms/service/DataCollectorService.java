@@ -429,6 +429,7 @@ public class DataCollectorService {
 
     /**
      * Collects battery data for voltage = 0 conditions
+     * API filters facilities with battery voltage = 0 for today
      */
     public List<RMSFacilityData> collectBatteryVoltageZeroData() {
         log.info("Collecting battery data for voltage = 0 conditions");
@@ -440,38 +441,47 @@ public class DataCollectorService {
             boolean hasMore = true;
 
             while (hasMore) {
-                RMSApiRequest request = RMSApiRequest.builder()
-                        .graphType("batteryVoltage")
-                        .timeRange(RMSApiRequest.TimeRange.builder()
-                                .timePeriod(RMSApiRequest.TimePeriod.builder()
-                                        .label("Today")
-                                        .value("today")
-                                        .build())
-                                .customRange(new HashMap<>())
-                                .build())
-                        .pagination(RMSApiRequest.Pagination.builder()
-                                .page(page)
-                                .size(pageSize)
-                                .build())
-                        .filters(new HashMap<String, Object>() {{
-                            put("batteryVoltage", new HashMap<String, Object>() {{
-                                put("eq", 0);
-                            }});
-                        }})
-                        .build();
+                // Build request matching the working curl
+                Map<String, Object> timePeriod = new HashMap<>();
+                timePeriod.put("value", "today");
+                
+                Map<String, Object> timeRange = new HashMap<>();
+                timeRange.put("time_period", timePeriod);
+                timeRange.put("custom_range", new HashMap<>());
+                
+                List<Map<String, Object>> filters = new ArrayList<>();
+                Map<String, Object> filter = new HashMap<>();
+                filter.put("compareFunction", "eq");
+                filter.put("compareValue", 0);
+                filters.add(filter);
+                
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("graphType", "batteryVoltage_Filtered");
+                requestBody.put("time_range", timeRange);
+                requestBody.put("frequency", "daily");
+                requestBody.put("aggregation", "avg");
+                requestBody.put("filters", filters);
 
-                RMSApiResponse response = callRMSApi(config.getCenterDetailsEndpoint(), request);
+                PanelGraphResponse response = callBatteryVoltageApi(config.getCenterDetailsEndpoint(), requestBody);
                 
                 if (response != null && response.getData() != null && 
                     response.getData().getFacilities() != null) {
-                    allFacilities.addAll(response.getData().getFacilities());
                     
-                    RMSApiResponse.Pagination pagination = response.getData().getPagination();
-                    if (pagination != null && pagination.getTotalPages() != null) {
-                        hasMore = page < pagination.getTotalPages();
-                        page++;
-                    } else {
+                    List<PanelGraphResponse.PanelFacility> facilities = response.getData().getFacilities();
+                    
+                    for (PanelGraphResponse.PanelFacility panelFacility : facilities) {
+                        // Convert PanelFacility to RMSFacilityData
+                        RMSFacilityData facility = convertBatteryFacilityToRMSFacilityData(panelFacility);
+                        if (facility != null) {
+                            allFacilities.add(facility);
+                        }
+                    }
+                    
+                    // Check if there are more pages
+                    if (facilities.size() < pageSize) {
                         hasMore = false;
+                    } else {
+                        page++;
                     }
                 } else {
                     hasMore = false;
@@ -479,11 +489,104 @@ public class DataCollectorService {
             }
 
             log.info("Collected battery voltage zero data for {} facilities", allFacilities.size());
+            
+            // Enrich with HFR IDs from mapping table
+            mappingService.enrichFacilitiesWithHfrId(allFacilities);
+            
             return allFacilities;
         } catch (Exception e) {
             log.error("Error collecting battery voltage zero data", e);
             return new ArrayList<>();
         }
+    }
+
+    /**
+     * Converts PanelFacility to RMSFacilityData for battery voltage = 0
+     */
+    private RMSFacilityData convertBatteryFacilityToRMSFacilityData(PanelGraphResponse.PanelFacility panelFacility) {
+        try {
+            PanelGraphResponse.CenterData centerData = panelFacility.getCenterData();
+            PanelGraphResponse.Consumption consumption = panelFacility.getConsumption();
+            
+            if (centerData == null || consumption == null) {
+                return null;
+            }
+            
+            // Map HFRID to hfrId (handle "Not available" case)
+            String hfrId = null;
+            if (centerData.getHfrid() != null && 
+                !centerData.getHfrid().isEmpty() && 
+                !centerData.getHfrid().equalsIgnoreCase("Not available")) {
+                hfrId = centerData.getHfrid().trim();
+            }
+            
+            // Extract battery voltage from voltageReadings (should be 0)
+            Double batteryVoltage = null;
+            if (consumption.getVoltageReadings() != null && !consumption.getVoltageReadings().isEmpty()) {
+                batteryVoltage = consumption.getVoltageReadings().get(0);
+            }
+            
+            RMSFacilityData facility = RMSFacilityData.builder()
+                    .facilityId(centerData.getCenterId())
+                    .centerId(centerData.getCenterId())
+                    .facilityName(centerData.getCenterName())
+                    .centerName(centerData.getCenterName())
+                    .hfrId(hfrId)
+                    .deviceName(centerData.getDeviceName())
+                    .statusOfDevice(centerData.getStatusOfDevice())
+                    .batteryVoltage(batteryVoltage)
+                    .build();
+            
+            return facility;
+        } catch (Exception e) {
+            log.error("Error converting battery PanelFacility to RMSFacilityData", e);
+            return null;
+        }
+    }
+
+    /**
+     * Calls center_details/graph API for battery voltage data
+     */
+    private PanelGraphResponse callBatteryVoltageApi(String endpoint, Map<String, Object> requestBody) throws Exception {
+        String url = config.getRmsApiBaseUrl() + endpoint;
+        RestTemplate rt = restTemplateAcceptingAllCerts();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("Accept", "application/json");
+        headers.set("Access-Token", config.getRmsApiAccessToken());
+        
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+        
+        int attempts = 0;
+        long delay = config.getRetryBackoffDelay();
+        
+        while (attempts < config.getRetryMaxAttempts()) {
+            try {
+                log.debug("Calling RMS battery voltage API: {} (attempt {})", url, attempts + 1);
+                ResponseEntity<PanelGraphResponse> response = rt.exchange(
+                        url, HttpMethod.POST, entity, PanelGraphResponse.class);
+                
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    return response.getBody();
+                }
+            } catch (RestClientException e) {
+                attempts++;
+                if (attempts >= config.getRetryMaxAttempts()) {
+                    log.error("Failed to call RMS battery voltage API after {} attempts: {}", config.getRetryMaxAttempts(), e.getMessage());
+                    throw e;
+                }
+                log.warn("RMS battery voltage API call failed (attempt {}), retrying after {}ms: {}", attempts, delay, e.getMessage());
+                try {
+                    Thread.sleep(delay);
+                    delay *= 2; // Exponential backoff
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during retry", ie);
+                }
+            }
+        }
+        
+        return null;
     }
 
     /**

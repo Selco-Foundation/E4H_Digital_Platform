@@ -109,6 +109,9 @@ public class PanelGraphResponse {
 
         @JsonProperty("totalConsumptionDatas")
         private List<Double> totalConsumptionDatas;
+
+        @JsonProperty("voltageReadings")
+        private List<Double> voltageReadings;
     }
 
     @Data

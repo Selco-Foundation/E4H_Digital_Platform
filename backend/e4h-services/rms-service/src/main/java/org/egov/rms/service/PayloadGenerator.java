@@ -171,8 +171,26 @@ public class PayloadGenerator {
                 break;
             case BATTERY:
                 if (alert.getAlertSubType() == Alert.AlertSubType.BURNT_DISCONNECTED) {
-                    comments.append("Battery Alert:\n");
-                    comments.append("Battery voltage detected as 0, indicating the battery may be burnt or disconnected.\n\n");
+                    comments.append("Battery Burnt/Disconnected Alert:\n");
+                    comments.append("Battery voltage detected as 0V, indicating the battery may be burnt, ");
+                    comments.append("disconnected, or completely discharged.\n\n");
+                    comments.append("This condition requires immediate attention as the battery is not providing ");
+                    comments.append("any power backup, leaving the facility dependent solely on grid power.\n\n");
+                    
+                    // Extract voltage from metadata if available
+                    if (alert.getMetadata() != null && alert.getMetadata().contains("\"batteryVoltage\"")) {
+                        try {
+                            int voltageStart = alert.getMetadata().indexOf("\"batteryVoltage\":") + 17;
+                            int voltageEnd = alert.getMetadata().indexOf(",", voltageStart);
+                            if (voltageEnd == -1) voltageEnd = alert.getMetadata().indexOf("}", voltageStart);
+                            if (voltageEnd > voltageStart) {
+                                String voltageStr = alert.getMetadata().substring(voltageStart, voltageEnd).trim();
+                                comments.append("Detected Battery Voltage: ").append(voltageStr).append("V\n");
+                            }
+                        } catch (Exception e) {
+                            // Ignore parsing errors
+                        }
+                    }
                 }
                 break;
             case GRID:
