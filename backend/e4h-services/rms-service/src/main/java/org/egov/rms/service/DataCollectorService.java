@@ -4,7 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.config.RMSConfiguration;
-import org.egov.rms.model.*;
+import org.egov.rms.model.CenterDatasResponse;
+import org.egov.rms.model.PanelGraphResponse;
+import org.egov.rms.model.RMSApiRequest;
+import org.egov.rms.model.RMSApiResponse;
+import org.egov.rms.model.RMSApiResponseV2;
+import org.egov.rms.model.RMSFacilityData;
+import org.egov.rms.service.CenterIdMappingService;
 import org.egov.rms.service.CenterIdMappingService;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -35,13 +41,166 @@ public class DataCollectorService {
 
     /**
      * Collects panel-level data for solar consumption analysis
-     * DISABLED: center_details/graph endpoint is not working
+     * API filters facilities with solar consumption < 10% for last 7 days
      */
     public List<RMSFacilityData> collectPanelData() {
-        log.warn("Panel data collection is disabled - center_details/graph endpoint is not working");
-        return new ArrayList<>();
-        // Disabled until RMS team fixes the endpoint
-        // The center_details/graph endpoint is currently not working
+        log.info("Collecting panel data for solar vs grid consumption analysis");
+        List<RMSFacilityData> allFacilities = new ArrayList<>();
+        
+        try {
+            int page = 1;
+            int pageSize = 100;
+            boolean hasMore = true;
+
+            while (hasMore) {
+                // Build request matching the working curl
+                Map<String, Object> timePeriod = new HashMap<>();
+                timePeriod.put("value", "last_seven_days");
+                
+                Map<String, Object> timeRange = new HashMap<>();
+                timeRange.put("time_period", timePeriod);
+                timeRange.put("custom_range", new HashMap<>());
+                
+                // Filters should be an array as per the curl example
+                List<Map<String, Object>> filters = new ArrayList<>();
+                Map<String, Object> filter = new HashMap<>();
+                filter.put("compareFunction", "lte");
+                filter.put("compareValue", 10);
+                filters.add(filter);
+                
+                Map<String, Object> pagination = new HashMap<>();
+                pagination.put("page", page);
+                pagination.put("size", pageSize);
+                
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("graphType", "solarVsGrid_Eb_Diff");
+                requestBody.put("time_range", timeRange);
+                requestBody.put("frequency", "daily");
+                requestBody.put("aggregation", "deltaSum");
+                requestBody.put("filters", filters);
+                requestBody.put("pagination", pagination);
+
+                PanelGraphResponse response = callPanelGraphApi(config.getCenterDetailsEndpoint(), requestBody);
+                
+                if (response != null && response.getData() != null && 
+                    response.getData().getFacilities() != null) {
+                    
+                    List<PanelGraphResponse.PanelFacility> facilities = response.getData().getFacilities();
+                    
+                    for (PanelGraphResponse.PanelFacility panelFacility : facilities) {
+                        // Convert PanelFacility to RMSFacilityData
+                        RMSFacilityData facility = convertPanelFacilityToRMSFacilityData(panelFacility);
+                        if (facility != null) {
+                            allFacilities.add(facility);
+                        }
+                    }
+                    
+                    // Check if there are more pages (if pagination info is available)
+                    if (facilities.size() < pageSize) {
+                        hasMore = false;
+                    } else {
+                        page++;
+                    }
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            log.info("Collected panel data for {} facilities", allFacilities.size());
+            
+            // Enrich with HFR IDs from mapping table
+            mappingService.enrichFacilitiesWithHfrId(allFacilities);
+            
+            return allFacilities;
+        } catch (Exception e) {
+            log.error("Error collecting panel data", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Converts PanelFacility to RMSFacilityData
+     */
+    private RMSFacilityData convertPanelFacilityToRMSFacilityData(PanelGraphResponse.PanelFacility panelFacility) {
+        try {
+            PanelGraphResponse.CenterData centerData = panelFacility.getCenterData();
+            PanelGraphResponse.Consumption consumption = panelFacility.getConsumption();
+            
+            if (centerData == null || consumption == null) {
+                return null;
+            }
+            
+            // Map HFRID to hfrId (handle "Not available" case)
+            String hfrId = null;
+            if (centerData.getHfrid() != null && 
+                !centerData.getHfrid().isEmpty() && 
+                !centerData.getHfrid().equalsIgnoreCase("Not available")) {
+                hfrId = centerData.getHfrid().trim();
+            }
+            
+            RMSFacilityData facility = RMSFacilityData.builder()
+                    .facilityId(centerData.getCenterId())
+                    .centerId(centerData.getCenterId())
+                    .facilityName(centerData.getCenterName())
+                    .centerName(centerData.getCenterName())
+                    .hfrId(hfrId)
+                    .deviceName(centerData.getDeviceName())
+                    .statusOfDevice(centerData.getStatusOfDevice())
+                    .solarPercent(consumption.getSolarPercents())
+                    .solarConsumption(consumption.getSolarDatas())
+                    .gridConsumption(consumption.getGridDatas())
+                    .build();
+            
+            return facility;
+        } catch (Exception e) {
+            log.error("Error converting PanelFacility to RMSFacilityData", e);
+            return null;
+        }
+    }
+
+    /**
+     * Calls center_details/graph API for panel data
+     */
+    private PanelGraphResponse callPanelGraphApi(String endpoint, Map<String, Object> requestBody) throws Exception {
+        String url = config.getRmsApiBaseUrl() + endpoint;
+        RestTemplate rt = restTemplateAcceptingAllCerts();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("Accept", "application/json");
+        headers.set("Access-Token", config.getRmsApiAccessToken());
+        
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+        
+        int attempts = 0;
+        long delay = config.getRetryBackoffDelay();
+        
+        while (attempts < config.getRetryMaxAttempts()) {
+            try {
+                log.debug("Calling RMS panel graph API: {} (attempt {})", url, attempts + 1);
+                ResponseEntity<PanelGraphResponse> response = rt.exchange(
+                        url, HttpMethod.POST, entity, PanelGraphResponse.class);
+                
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    return response.getBody();
+                }
+            } catch (RestClientException e) {
+                attempts++;
+                if (attempts >= config.getRetryMaxAttempts()) {
+                    log.error("Failed to call RMS panel graph API after {} attempts: {}", config.getRetryMaxAttempts(), e.getMessage());
+                    throw e;
+                }
+                log.warn("RMS panel graph API call failed (attempt {}), retrying after {}ms: {}", attempts, delay, e.getMessage());
+                try {
+                    Thread.sleep(delay);
+                    delay *= 2; // Exponential backoff
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during retry", ie);
+                }
+            }
+        }
+        
+        return null;
     }
 
     /**

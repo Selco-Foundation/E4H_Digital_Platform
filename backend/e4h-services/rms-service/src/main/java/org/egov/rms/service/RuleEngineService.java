@@ -22,6 +22,7 @@ public class RuleEngineService {
     /**
      * Applies panel-level anomaly rules
      * Rule: Solar consumption < 10% of total for 7 consecutive days
+     * Note: API already filters for < 10%, so we just need to verify 7+ days of data
      */
     public List<Alert> applyPanelRules(List<RMSFacilityData> facilities) {
         log.info("Applying panel-level anomaly rules to {} facilities", facilities.size());
@@ -32,29 +33,89 @@ public class RuleEngineService {
                 continue;
             }
 
-            // Check if all days have solar consumption < threshold
+            // API already filters for < 10%, so we verify:
+            // 1. All days have solar consumption < threshold (double-check)
+            // 2. At least 7 days of data (indicating 7 consecutive days)
             boolean allDaysBelowThreshold = facility.getSolarPercent().stream()
-                    .allMatch(percent -> percent < config.getSolarThresholdPercent());
+                    .allMatch(percent -> percent <= config.getSolarThresholdPercent());
 
-            if (allDaysBelowThreshold && facility.getSolarPercent().size() >= 7) {
+            int daysCount = facility.getSolarPercent().size();
+            
+            if (allDaysBelowThreshold && daysCount >= 7) {
+                // Build detailed metadata with consumption data
+                String metadata = buildPanelMetadata(facility);
+                
                 Alert alert = Alert.builder()
                         .id(UUID.randomUUID().toString())
-                        .facilityId(facility.getFacilityId())
+                        .facilityId(facility.getFacilityId() != null ? 
+                                facility.getFacilityId() : facility.getCenterId())
                         .hfrId(facility.getHfrId())
                         .alertType(Alert.AlertType.PANEL)
                         .alertSubType(Alert.AlertSubType.LOW_GENERATION)
                         .status(Alert.AlertStatus.ACTIVE)
                         .detectedAt(Instant.now())
-                        .metadata(buildMetadata(facility, "solarPercent", facility.getSolarPercent()))
+                        .metadata(metadata)
                         .build();
 
                 alerts.add(alert);
-                log.debug("Panel low generation alert created for facility: {}", facility.getFacilityId());
+                log.debug("Panel low generation alert created for facility: {} ({} days of low generation)", 
+                        facility.getFacilityId(), daysCount);
             }
         }
 
         log.info("Generated {} panel-level alerts", alerts.size());
         return alerts;
+    }
+
+    /**
+     * Builds detailed metadata for panel alerts
+     */
+    private String buildPanelMetadata(RMSFacilityData facility) {
+        try {
+            StringBuilder metadata = new StringBuilder();
+            metadata.append("{\"facilityName\":\"").append(
+                    facility.getFacilityName() != null ? facility.getFacilityName() : 
+                    (facility.getCenterName() != null ? facility.getCenterName() : "")).append("\"");
+            
+            if (facility.getSolarPercent() != null && !facility.getSolarPercent().isEmpty()) {
+                metadata.append(",\"solarPercent\":[");
+                for (int i = 0; i < facility.getSolarPercent().size(); i++) {
+                    if (i > 0) metadata.append(",");
+                    metadata.append(facility.getSolarPercent().get(i));
+                }
+                metadata.append("]");
+                metadata.append(",\"daysCount\":").append(facility.getSolarPercent().size());
+                metadata.append(",\"averageSolarPercent\":").append(
+                        facility.getSolarPercent().stream()
+                                .mapToDouble(Double::doubleValue)
+                                .average()
+                                .orElse(0.0));
+            }
+            
+            if (facility.getSolarConsumption() != null && !facility.getSolarConsumption().isEmpty()) {
+                metadata.append(",\"solarConsumption\":[");
+                for (int i = 0; i < facility.getSolarConsumption().size(); i++) {
+                    if (i > 0) metadata.append(",");
+                    metadata.append(facility.getSolarConsumption().get(i));
+                }
+                metadata.append("]");
+            }
+            
+            if (facility.getGridConsumption() != null && !facility.getGridConsumption().isEmpty()) {
+                metadata.append(",\"gridConsumption\":[");
+                for (int i = 0; i < facility.getGridConsumption().size(); i++) {
+                    if (i > 0) metadata.append(",");
+                    metadata.append(facility.getGridConsumption().get(i));
+                }
+                metadata.append("]");
+            }
+            
+            metadata.append("}");
+            return metadata.toString();
+        } catch (Exception e) {
+            log.warn("Error building panel metadata", e);
+            return "{\"error\":\"Failed to build metadata\"}";
+        }
     }
 
     /**

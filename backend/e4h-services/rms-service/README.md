@@ -11,14 +11,14 @@ Device Telemetry → Data Collector → Rule Engine → Deduplication Manager �
 ### Key Components
 
 1. **Data Collector Layer**: Fetches telemetry data from RMS APIs
-   - **Currently Working**: Inverter data (no signal detection) - `centerDatas/get`
-   - **Disabled**: Panel data (solar vs grid consumption) - `center_details/graph` endpoint not working
+   - **Currently Working**: Panel data (solar vs grid consumption) - `center_details/graph` ✅
+   - **Currently Working**: Inverter data (no signal detection) - `centerDatas/get` ✅
    - **Disabled**: Battery data (voltage readings) - endpoint not available
    - **Disabled**: Grid data (voltage readings) - endpoint not available
 
 2. **Rule Engine Layer**: Applies anomaly detection rules
-   - **Active**: Inverter: No signal for 2+ days
-   - **Disabled**: Panel: Solar consumption < 10% for 7 consecutive days (endpoint not working)
+   - **Active**: Panel: Solar consumption < 10% for 7 consecutive days ✅
+   - **Active**: Inverter: No signal for 2+ days ✅
    - **Disabled**: Inverter: High voltage > 250V (endpoint not available)
    - **Disabled**: Battery: Voltage = 0 (burnt/disconnected) (endpoint not available)
    - **Disabled**: Grid: Voltage < 200V (low) or > 250V (high) (endpoint not available)
@@ -110,13 +110,13 @@ Manually triggers mapping validation. This will:
 
 ### Currently Active
 
+### Panel
+- **Low Generation**: Solar consumption < 10% for 7 consecutive days ✅ (WORKING)
+
 ### Inverter
 - **Shutdown**: No signal for 2+ consecutive days ✅ (WORKING)
 
 ### Disabled (Endpoints Not Available)
-
-### Panel
-- **Low Generation**: Solar consumption < 10% for 7 consecutive days ❌ (endpoint not working)
 
 ### Inverter
 - **High Voltage**: PCU voltage > 250V ❌ (endpoint not available)

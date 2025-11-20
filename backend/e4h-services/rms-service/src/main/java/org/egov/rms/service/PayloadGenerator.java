@@ -40,21 +40,19 @@ public class PayloadGenerator {
 //            }
 
             // Map alert type/subtype to IM service incident type/subtype
-//            String incidentType = mapAlertTypeToIncidentType(alert.getAlertType());
-            String incidentType = "RMS Device";
-//            String incidentSubType = mapAlertSubTypeToIncidentSubType(alert.getAlertSubType(), alert.getAlertType());
-            String incidentSubType = "Burnt";
+            String incidentType = mapAlertTypeToIncidentType(alert.getAlertType());
+            String incidentSubType = mapAlertSubTypeToIncidentSubType(alert.getAlertSubType(), alert.getAlertType());
 
             // Build incident payload
             IMServiceRequest.Incident incident = IMServiceRequest.Incident.builder()
-                    .incidentType("RMS Device")
-                    .incidentSubType("Mishandling")
-                    .tenantId("pg.bagalkot")
-                    .district("BAGALKOTE")
-                    .block("Bagalkot")
-                    .phcType("pg.bagalkot")
-                    .phcSubType("Urban Primary Health Center")
-                    .comments("")
+                    .incidentType(incidentType)
+                    .incidentSubType(incidentSubType)
+                    .tenantId(config.getDefaultTenantId())
+                    .district("BAGALKOTE") // TODO: Extract from mapping or facility data
+                    .block("Bagalkot") // TODO: Extract from mapping or facility data
+                    .phcType(config.getDefaultTenantId())
+                    .phcSubType("Urban Primary Health Center") // TODO: Extract from facility type
+                    .comments(buildComments(alert, null))
                     .systemFunctional("FUNCTIONAL")
                     .source("RMS")
                     .additionalDetail(buildAdditionalDetail(alert, null))
@@ -125,18 +123,57 @@ public class PayloadGenerator {
     }
 
     /**
-     * Builds comments for the ticket
+     * Builds comments for the ticket explaining what caused the trigger
      */
     private String buildComments(Alert alert, FacilityDetails facilityDetails) {
         StringBuilder comments = new StringBuilder();
-        comments.append("RMS Alert: ").append(alert.getAlertType()).append(" - ")
-                .append(alert.getAlertSubType()).append("\n");
-//        comments.append("Facility: ").append(facilityDetails.getFacilityName()).append("\n");
-        comments.append("HFR ID: ").append(alert.getHfrId()).append("\n");
-        comments.append("Detected at: ").append(alert.getDetectedAt()).append("\n");
         
+        // Explain what caused the trigger based on alert type
+        switch (alert.getAlertType()) {
+            case PANEL:
+                if (alert.getAlertSubType() == Alert.AlertSubType.LOW_GENERATION) {
+                    comments.append("Panel Low Generation Alert:\n");
+                    comments.append("Solar panel energy consumption has been less than 10% of total consumption ");
+                    comments.append("(Solar + Grid) for 7 consecutive days.\n\n");
+                    comments.append("This indicates that the solar panels are not generating sufficient power, ");
+                    comments.append("requiring the facility to rely primarily on grid power.\n\n");
+                }
+                break;
+            case INVERTER:
+                if (alert.getAlertSubType() == Alert.AlertSubType.SHUTDOWN) {
+                    comments.append("Inverter Shutdown Alert:\n");
+                    comments.append("No signal or communication with RMS device detected for more than 2 consecutive days.\n\n");
+                    comments.append("This indicates the inverter device may be offline, disconnected, or experiencing ");
+                    comments.append("communication issues with the monitoring system.\n\n");
+                }
+                break;
+            case BATTERY:
+                if (alert.getAlertSubType() == Alert.AlertSubType.BURNT_DISCONNECTED) {
+                    comments.append("Battery Alert:\n");
+                    comments.append("Battery voltage detected as 0, indicating the battery may be burnt or disconnected.\n\n");
+                }
+                break;
+            case GRID:
+                comments.append("Grid Voltage Alert:\n");
+                if (alert.getAlertSubType() == Alert.AlertSubType.VOLTAGE_VARIATION_LOW) {
+                    comments.append("Grid voltage is below 200V (Low Voltage).\n\n");
+                } else if (alert.getAlertSubType() == Alert.AlertSubType.VOLTAGE_VARIATION_HIGH) {
+                    comments.append("Grid voltage is above 250V (High Voltage).\n\n");
+                }
+                break;
+        }
+        
+        // Add facility and detection info
+        comments.append("Facility ID: ").append(alert.getFacilityId()).append("\n");
+        if (alert.getHfrId() != null && !alert.getHfrId().isEmpty()) {
+            comments.append("HFR ID: ").append(alert.getHfrId()).append("\n");
+        }
+        comments.append("Alert Detected at: ").append(alert.getDetectedAt()).append("\n");
+        
+        // Add detailed metadata if available
         if (alert.getMetadata() != null && !alert.getMetadata().isEmpty()) {
-            comments.append("Details: ").append(alert.getMetadata());
+            comments.append("\nTechnical Details:\n");
+            comments.append(alert.getMetadata());
         }
         
         return comments.toString();
