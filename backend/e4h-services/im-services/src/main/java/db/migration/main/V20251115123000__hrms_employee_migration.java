@@ -277,14 +277,14 @@ public class V20251115123000__hrms_employee_migration extends BaseJavaMigration 
 	}
 
 	private void createEmployeeWithRetry(ObjectNode updatePayload, String employeeUuid) throws Exception {
-		int maxRetries = 5;
-		int[] delaysInSeconds = {1, 2, 4, 8, 15}; // Total max delay: 30 seconds
-		
+		int maxRetries = 6;
+		int[] delaysInSeconds = {1, 7, 15, 25, 30};
+
 		Exception lastException = null;
 		
 		for (int attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
-				postForJson(hrmsHost + hrmsCreateEndpoint, updatePayload);
+				postForJsonWithoutRecording(hrmsHost + hrmsCreateEndpoint, updatePayload);
 				if (attempt > 1) {
 					log.info("Successfully created employee {} on attempt {}", employeeUuid, attempt);
 					logToFile("Successfully created employee %s on attempt %d", employeeUuid, attempt);
@@ -481,6 +481,24 @@ public class V20251115123000__hrms_employee_migration extends BaseJavaMigration 
 		} catch (Exception e) {
 			String message = "HTTP POST failed for url " + url + " : " + e.getMessage();
 			recordFailure(message);
+			throw new RuntimeException(message, e);
+		}
+	}
+
+	private JsonNode postForJsonWithoutRecording(String url, JsonNode body) {
+		try {
+			HttpHeaders headers = new HttpHeaders();
+			headers.setContentType(MediaType.APPLICATION_JSON);
+			headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+			HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
+			ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
+			if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+				throw new IllegalStateException("Non-success response " + response.getStatusCode());
+			}
+			return objectMapper.readTree(response.getBody());
+		} catch (Exception e) {
+			String message = "HTTP POST failed for url " + url + " : " + e.getMessage();
+			// Don't record failure here - let the retry logic handle it
 			throw new RuntimeException(message, e);
 		}
 	}
