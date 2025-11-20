@@ -364,6 +364,12 @@ public class V20251115123000__hrms_employee_migration extends BaseJavaMigration 
 					ObjectNode node = (ObjectNode) jurisdictionNode;
 					node.put("tenantId", TARGET_TENANT);
 					node.put("boundary", boundary);
+					
+					// Set boundaryType based on boundary pattern
+					if (boundary != null) {
+						String boundaryType = determineBoundaryType(boundary);
+						node.put("boundaryType", boundaryType);
+					}
 				}
 			}
 		}
@@ -465,6 +471,17 @@ public class V20251115123000__hrms_employee_migration extends BaseJavaMigration 
 		}
 		String value = node.asText(null);
 		return (value == null || value.trim().isEmpty()) ? null : value.trim();
+	}
+
+	private String determineBoundaryType(String boundary) {
+		if (boundary == null || boundary.isEmpty()) {
+			return "";
+		}
+		String[] parts = boundary.split("_");
+		if (boundary.contains("FAC") || boundary.contains("/") || parts.length > 2) {
+			return "Facility";
+		}
+		return "State";
 	}
 
 	private JsonNode postForJson(String url, JsonNode body) {

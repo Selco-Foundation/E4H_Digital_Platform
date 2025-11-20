@@ -454,6 +454,14 @@ public class V20251116123000__hrms_employee_vendor_migration extends BaseJavaMig
 				jurisdictionNode.put("boundary", target.getBoundary());
 				mutated = true;
 			}
+			
+			// Set boundaryType based on boundary pattern
+			String expectedBoundaryType = determineBoundaryType(target.getBoundary());
+			String currentBoundaryType = textOrNull(jurisdictionNode.get("boundaryType"));
+			if (!Objects.equals(currentBoundaryType, expectedBoundaryType)) {
+				jurisdictionNode.put("boundaryType", expectedBoundaryType);
+				mutated = true;
+			}
 
 			if (jurisdictionNode.has("isActive") && !jurisdictionNode.get("isActive").asBoolean()) {
 				jurisdictionNode.put("isActive", true);
@@ -876,6 +884,17 @@ public class V20251116123000__hrms_employee_vendor_migration extends BaseJavaMig
 		}
 		String value = node.asText(null);
 		return value == null ? null : value.trim().isEmpty() ? null : value.trim();
+	}
+
+	private String determineBoundaryType(String boundary) {
+		if (boundary == null || boundary.isEmpty()) {
+			return "";
+		}
+		String[] parts = boundary.split("_");
+		if (boundary.contains("FAC") || boundary.contains("/") || parts.length > 2) {
+			return "Facility";
+		}
+		return "State";
 	}
 
 	private JsonNode postForJson(String url, JsonNode body) {
