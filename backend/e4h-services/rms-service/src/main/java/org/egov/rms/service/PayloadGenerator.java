@@ -104,19 +104,19 @@ public class PayloadGenerator {
             case LOW_GENERATION:
                 return "Low Generation (RMS data)";
             case SHUTDOWN:
-                return "Shutdown (RMS data)";
+                return "ShutdownInverter";
             case HIGH_VOLTAGE:
-                return "High Voltage (RMS data)";
+                return "VoltageInverter";
             case BURNT_DISCONNECTED:
-                return "Burnt/Disconnected (RMS data)";
+                return "BurntorDamaged";
             case DEEP_DISCHARGING:
-                return "Deep Discharging / Overcharging (RMS data)";
+                return "DeepDischarge";
             case OVERCHARGING:
-                return "Deep Discharging / Overcharging (RMS data)";
+                return "DeepDischarge";
             case VOLTAGE_VARIATION_LOW:
-                return "Voltage Variation - Low (RMS data)";
+                return "VoltageInverter";
             case VOLTAGE_VARIATION_HIGH:
-                return "Voltage Variation - High (RMS data)";
+                return "highvoltage";
             default:
                 return "RMS Data Alert";
         }

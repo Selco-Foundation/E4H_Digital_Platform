@@ -73,8 +73,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectPanelData();
             List<Alert> alerts = ruleEngineService.applyPanelRules(facilities);
-            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(uniqueAlerts, requestInfo);
+//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(alerts, requestInfo);
         } catch (Exception e) {
             log.error("Error processing panel alerts", e);
         }
@@ -103,8 +103,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectInverterHighVoltageData();
             List<Alert> alerts = ruleEngineService.applyInverterRules(facilities, false);
-            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(uniqueAlerts, requestInfo);
+//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(alerts, requestInfo);
         } catch (Exception e) {
             log.error("Error processing inverter high voltage alerts", e);
         }
@@ -118,8 +118,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectBatteryVoltageZeroData();
             List<Alert> alerts = ruleEngineService.applyBatteryRules(facilities);
-            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(uniqueAlerts, requestInfo);
+//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(alerts, requestInfo);
         } catch (Exception e) {
             log.error("Error processing battery alerts", e);
         }
@@ -133,8 +133,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectBatteryDeepDischargeData();
             List<Alert> alerts = ruleEngineService.applyBatteryDeepDischargeRules(facilities);
-            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(uniqueAlerts, requestInfo);
+//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(alerts, requestInfo);
         } catch (Exception e) {
             log.error("Error processing battery deep discharge alerts", e);
         }
@@ -148,8 +148,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectGridVoltageData();
             List<Alert> alerts = ruleEngineService.applyGridRules(facilities);
-            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(uniqueAlerts, requestInfo);
+//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(alerts, requestInfo);
         } catch (Exception e) {
             log.error("Error processing grid alerts", e);
         }
@@ -175,8 +175,10 @@ public class RMSOrchestratorService {
         
         int successCount = 0;
         int failureCount = 0;
-        
+        int limit = 0;
         for (Alert alert : alertsToProcess) {
+            if (limit>2)
+                break;
             try {
                 IMServiceRequest ticketRequest = payloadGenerator.generateTicketPayload(alert, requestInfo);
                 
@@ -195,6 +197,7 @@ public class RMSOrchestratorService {
                 log.error("Error creating ticket for alert: {}", alert.getId(), e);
                 failureCount++;
             }
+            limit++;
         }
         
         log.info("Ticket creation completed: {} succeeded, {} failed (processed {} out of {} alerts)", 
