@@ -288,10 +288,8 @@ public class InboxServiceV2 {
         Map<String, Object> finalQueryBody = queryBuilder.getESQuery(inboxRequest, Boolean.TRUE, Boolean.TRUE);
 
         try {
-            if (log.isDebugEnabled()) {
-                String q = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(finalQueryBody);
-                log.debug("📑 ES Query for Inbox:\n{}", q);
-            }
+            String q = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(finalQueryBody);
+            log.debug("📑 ES Query for Inbox:\n{}", q);
         } catch (Exception e) {
             log.warn("⚠️ Failed to serialize ES query for Inbox", e);
         }
