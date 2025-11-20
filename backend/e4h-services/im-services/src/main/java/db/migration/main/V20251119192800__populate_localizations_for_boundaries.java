@@ -31,7 +31,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class V20251118192800__populate_localizations_for_boundaries extends BaseJavaMigration {
+public class V20251119192800__populate_localizations_for_boundaries extends BaseJavaMigration {
 
     private static final String TARGET_TENANT_ID = "in";
     private static final String TARGET_MODULE = "rainmaker-in";
@@ -168,10 +168,18 @@ public class V20251118192800__populate_localizations_for_boundaries extends Base
                 ));
 
                 if (!messages.isEmpty()) {
+                    // Deduplicate messages by code (tenant + locale + module + code must be unique)
+                    List<ObjectNode> deduplicatedMessages = deduplicateMessages(messages, migrationLogger);
+                    int duplicateCount = messages.size() - deduplicatedMessages.size();
+                    if (duplicateCount > 0) {
+                        migrationLogger.println("  Removed " + duplicateCount + " duplicate message(s) for locale: " + locale);
+                        migrationLogger.flush();
+                    }
+
                     // Bulk upsert messages for this locale
                     int created = upsertLocalizationMessages(
                         restTemplate, objectMapper, localizationHost, TARGET_MODULE, TARGET_TENANT_ID,
-                        messages, authToken, migrationLogger
+                        deduplicatedMessages, authToken, migrationLogger
                     );
                     totalMessagesCreated += created;
                     migrationLogger.println("Created " + created + " messages for locale: " + locale);
@@ -283,7 +291,7 @@ public class V20251118192800__populate_localizations_for_boundaries extends Base
                         JsonNode message = messages.get(i);
                         String code = message.path("code").asText();
                         String localizedMessage = message.path("message").asText();
-                        
+
                         if (code != null && !code.isEmpty() && localizedMessage != null && !localizedMessage.isEmpty()) {
                             localizationMap.put(code, localizedMessage);
                         }
@@ -408,7 +416,7 @@ public class V20251118192800__populate_localizations_for_boundaries extends Base
                 String boundaryCode = rs.getString("boundary_code");
                 String facilityName = rs.getString("facility_name");
 
-                if (boundaryCode != null && !boundaryCode.isEmpty() && 
+                if (boundaryCode != null && !boundaryCode.isEmpty() &&
                     facilityName != null && !facilityName.isEmpty() &&
                     tenantId != null && !tenantId.isEmpty()) {
                     facilities.add(new BoundaryInfo(boundaryCode, "Facility", facilityName, tenantId));
@@ -511,6 +519,27 @@ public class V20251118192800__populate_localizations_for_boundaries extends Base
             .collect(java.util.stream.Collectors.joining("_"));
         if (!code.startsWith("India_")) code = "India_" + code;
         return code;
+    }
+
+    /**
+     * Deduplicate messages by code (keeps first occurrence)
+     */
+    private List<ObjectNode> deduplicateMessages(List<ObjectNode> messages, PrintWriter migrationLogger) {
+        Map<String, ObjectNode> uniqueMessages = new LinkedHashMap<>();
+
+        for (ObjectNode message : messages) {
+            String code = message.path("code").asText();
+            if (code != null && !code.isEmpty()) {
+                if (uniqueMessages.containsKey(code)) {
+                    migrationLogger.println("    [DUPLICATE] Code: " + code + " (keeping first occurrence)");
+                    migrationLogger.flush();
+                } else {
+                    uniqueMessages.put(code, message);
+                }
+            }
+        }
+
+        return new ArrayList<>(uniqueMessages.values());
     }
 
     /**
