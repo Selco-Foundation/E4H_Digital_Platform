@@ -122,5 +122,9 @@ public class RMSConfiguration {
 
     @Value("${rms.mapping.validation.cron:0 0 3 * * 0}")
     private String mappingValidationCron;
+
+    // Testing Configuration
+    @Value("${rms.testing.max.tickets.per.trigger:-1}")
+    private Integer maxTicketsPerTrigger; // -1 means unlimited, positive number limits tickets per trigger
 }
 

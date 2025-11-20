@@ -157,14 +157,26 @@ public class RMSOrchestratorService {
 
     /**
      * Creates tickets for alerts
+     * Limits the number of tickets created per trigger if testing limit is configured
      */
     private void createTickets(List<Alert> alerts, RequestInfo requestInfo) {
         log.info("Creating tickets for {} alerts", alerts.size());
         
+        // Apply testing limit if configured (for testing purposes)
+        List<Alert> alertsToProcess = alerts;
+        if (config.getMaxTicketsPerTrigger() != null && config.getMaxTicketsPerTrigger() > 0) {
+            int limit = config.getMaxTicketsPerTrigger();
+            if (alerts.size() > limit) {
+                alertsToProcess = alerts.subList(0, limit);
+                log.info("Testing mode: Limiting ticket creation to {} tickets (out of {} total alerts)", 
+                        limit, alerts.size());
+            }
+        }
+        
         int successCount = 0;
         int failureCount = 0;
         
-        for (Alert alert : alerts) {
+        for (Alert alert : alertsToProcess) {
             try {
                 IMServiceRequest ticketRequest = payloadGenerator.generateTicketPayload(alert, requestInfo);
                 
@@ -185,7 +197,8 @@ public class RMSOrchestratorService {
             }
         }
         
-        log.info("Ticket creation completed: {} succeeded, {} failed", successCount, failureCount);
+        log.info("Ticket creation completed: {} succeeded, {} failed (processed {} out of {} alerts)", 
+                successCount, failureCount, alertsToProcess.size(), alerts.size());
     }
 
     /**
