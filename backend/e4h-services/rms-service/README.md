@@ -13,13 +13,14 @@ Device Telemetry → Data Collector → Rule Engine → Deduplication Manager �
 1. **Data Collector Layer**: Fetches telemetry data from RMS APIs
    - **Currently Working**: Panel data (solar vs grid consumption) - `center_details/graph` ✅
    - **Currently Working**: Inverter data (no signal detection) - `centerDatas/get` ✅
+   - **Currently Working**: Inverter data (high voltage) - `center_details/graph` ✅
    - **Disabled**: Battery data (voltage readings) - endpoint not available
    - **Disabled**: Grid data (voltage readings) - endpoint not available
 
 2. **Rule Engine Layer**: Applies anomaly detection rules
    - **Active**: Panel: Solar consumption < 10% for 7 consecutive days ✅
    - **Active**: Inverter: No signal for 2+ days ✅
-   - **Disabled**: Inverter: High voltage > 250V (endpoint not available)
+   - **Active**: Inverter: High voltage > 250V ✅
    - **Disabled**: Battery: Voltage = 0 (burnt/disconnected) (endpoint not available)
    - **Disabled**: Grid: Voltage < 200V (low) or > 250V (high) (endpoint not available)
 
@@ -115,6 +116,7 @@ Manually triggers mapping validation. This will:
 
 ### Inverter
 - **Shutdown**: No signal for 2+ consecutive days ✅ (WORKING)
+- **High Voltage**: UPS/PCU voltage > 250V ✅ (WORKING)
 
 ### Disabled (Endpoints Not Available)
 

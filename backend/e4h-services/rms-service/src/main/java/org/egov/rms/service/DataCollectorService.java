@@ -271,6 +271,7 @@ public class DataCollectorService {
 
     /**
      * Collects inverter data for high voltage conditions
+     * API filters facilities with PCU voltage > 250V for today
      */
     public List<RMSFacilityData> collectInverterHighVoltageData() {
         log.info("Collecting inverter data for high voltage conditions");
@@ -282,38 +283,51 @@ public class DataCollectorService {
             boolean hasMore = true;
 
             while (hasMore) {
-                RMSApiRequest request = RMSApiRequest.builder()
-                        .graphType("PCUvoltage")
-                        .timeRange(RMSApiRequest.TimeRange.builder()
-                                .timePeriod(RMSApiRequest.TimePeriod.builder()
-                                        .label("Today")
-                                        .value("today")
-                                        .build())
-                                .customRange(new HashMap<>())
-                                .build())
-                        .pagination(RMSApiRequest.Pagination.builder()
-                                .page(page)
-                                .size(pageSize)
-                                .build())
-                        .filters(new HashMap<String, Object>() {{
-                            put("voltage", new HashMap<String, Object>() {{
-                                put("gt", config.getInverterHighVoltageThreshold());
-                            }});
-                        }})
-                        .build();
-
-                RMSApiResponse response = callRMSApi(config.getCenterDetailsEndpoint(), request);
+                // Build request matching the working curl
+                Map<String, Object> timePeriod = new HashMap<>();
+                timePeriod.put("label", "Today");
+                timePeriod.put("value", "today");
                 
-                if (response != null && response.getData() != null && 
-                    response.getData().getFacilities() != null) {
-                    allFacilities.addAll(response.getData().getFacilities());
+                Map<String, Object> timeRange = new HashMap<>();
+                timeRange.put("time_period", timePeriod);
+                timeRange.put("custom_range", new HashMap<>());
+                
+                List<Map<String, Object>> filters = new ArrayList<>();
+                Map<String, Object> filter = new HashMap<>();
+                filter.put("compareFunction", "gt");
+                filter.put("compareValue", config.getInverterHighVoltageThreshold());
+                filters.add(filter);
+                
+                Map<String, Object> pagination = new HashMap<>();
+                pagination.put("page", page);
+                pagination.put("size", pageSize);
+                
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("graphType", "PCUvoltage_Filtered");
+                requestBody.put("time_range", timeRange);
+                requestBody.put("frequency", "daily");
+                requestBody.put("aggregation", "avg");
+                requestBody.put("filters", filters);
+                requestBody.put("pagination", pagination);
+
+                InverterVoltageResponse response = callInverterVoltageApi(config.getCenterDetailsEndpoint(), requestBody);
+                
+                if (response != null && response.getCenterDatas() != null) {
+                    List<InverterVoltageResponse.CenterData> centerDatas = response.getCenterDatas();
                     
-                    RMSApiResponse.Pagination pagination = response.getData().getPagination();
-                    if (pagination != null && pagination.getTotalPages() != null) {
-                        hasMore = page < pagination.getTotalPages();
-                        page++;
-                    } else {
+                    for (InverterVoltageResponse.CenterData centerData : centerDatas) {
+                        // Convert CenterData to RMSFacilityData
+                        RMSFacilityData facility = convertInverterVoltageToRMSFacilityData(centerData);
+                        if (facility != null) {
+                            allFacilities.add(facility);
+                        }
+                    }
+                    
+                    // Check if there are more pages
+                    if (centerDatas.size() < pageSize) {
                         hasMore = false;
+                    } else {
+                        page++;
                     }
                 } else {
                     hasMore = false;
@@ -321,11 +335,96 @@ public class DataCollectorService {
             }
 
             log.info("Collected inverter high voltage data for {} facilities", allFacilities.size());
+            
+            // Enrich with HFR IDs from mapping table
+            mappingService.enrichFacilitiesWithHfrId(allFacilities);
+            
             return allFacilities;
         } catch (Exception e) {
             log.error("Error collecting inverter high voltage data", e);
             return new ArrayList<>();
         }
+    }
+
+    /**
+     * Converts InverterVoltageResponse.CenterData to RMSFacilityData
+     */
+    private RMSFacilityData convertInverterVoltageToRMSFacilityData(InverterVoltageResponse.CenterData centerData) {
+        try {
+            if (centerData == null) {
+                return null;
+            }
+            
+            // Map HFRID to hfrId (handle "Not available" case)
+            String hfrId = null;
+            if (centerData.getHfrid() != null && 
+                !centerData.getHfrid().isEmpty() && 
+                !centerData.getHfrid().equalsIgnoreCase("Not available") &&
+                !centerData.getHfrid().equalsIgnoreCase("Not Available")) {
+                hfrId = centerData.getHfrid().trim();
+            }
+            
+            RMSFacilityData facility = RMSFacilityData.builder()
+                    .facilityId(centerData.getCenterId())
+                    .centerId(centerData.getCenterId())
+                    .facilityName(centerData.getCenterName())
+                    .centerName(centerData.getCenterName())
+                    .hfrId(hfrId)
+                    .deviceName(centerData.getDeviceName())
+                    .statusOfDevice(centerData.getStatusOfDevice())
+                    .voltage(centerData.getVoltage())
+                    .build();
+            
+            return facility;
+        } catch (Exception e) {
+            log.error("Error converting InverterVoltageResponse.CenterData to RMSFacilityData", e);
+            return null;
+        }
+    }
+
+    /**
+     * Calls center_details/graph API for inverter voltage data
+     */
+    private InverterVoltageResponse callInverterVoltageApi(String endpoint, Map<String, Object> requestBody) throws Exception {
+        String url = config.getRmsApiBaseUrl() + endpoint;
+        RestTemplate rt = restTemplateAcceptingAllCerts();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("Accept", "application/json");
+        headers.set("Access-Token", config.getRmsApiAccessToken());
+        
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+        
+        int attempts = 0;
+        long delay = config.getRetryBackoffDelay();
+        
+        while (attempts < config.getRetryMaxAttempts()) {
+            try {
+                log.debug("Calling RMS inverter voltage API: {} (attempt {})", url, attempts + 1);
+                ResponseEntity<InverterVoltageResponse> response = rt.exchange(
+                        url, HttpMethod.POST, entity, InverterVoltageResponse.class);
+                
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    return response.getBody();
+                }
+            } catch (RestClientException e) {
+                attempts++;
+                if (attempts >= config.getRetryMaxAttempts()) {
+                    log.error("Failed to call RMS inverter voltage API after {} attempts: {}", config.getRetryMaxAttempts(), e.getMessage());
+                    throw e;
+                }
+                log.warn("RMS inverter voltage API call failed (attempt {}), retrying after {}ms: {}", attempts, delay, e.getMessage());
+                try {
+                    Thread.sleep(delay);
+                    delay *= 2; // Exponential backoff
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during retry", ie);
+                }
+            }
+        }
+        
+        return null;
     }
 
     /**

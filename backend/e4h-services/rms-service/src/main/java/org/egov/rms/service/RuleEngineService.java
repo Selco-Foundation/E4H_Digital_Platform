@@ -68,6 +68,32 @@ public class RuleEngineService {
     }
 
     /**
+     * Builds detailed metadata for inverter high voltage alerts
+     */
+    private String buildInverterVoltageMetadata(RMSFacilityData facility, String facilityName) {
+        try {
+            StringBuilder metadata = new StringBuilder();
+            metadata.append("{\"facilityName\":\"").append(
+                    facilityName != null ? facilityName : 
+                    (facility.getFacilityName() != null ? facility.getFacilityName() : 
+                     (facility.getCenterName() != null ? facility.getCenterName() : ""))).append("\"");
+            
+            if (facility.getVoltage() != null) {
+                metadata.append(",\"voltage\":").append(facility.getVoltage());
+                metadata.append(",\"voltageThreshold\":").append(config.getInverterHighVoltageThreshold());
+                metadata.append(",\"excessVoltage\":").append(
+                        facility.getVoltage() - config.getInverterHighVoltageThreshold());
+            }
+            
+            metadata.append("}");
+            return metadata.toString();
+        } catch (Exception e) {
+            log.warn("Error building inverter voltage metadata", e);
+            return "{\"error\":\"Failed to build metadata\"}";
+        }
+    }
+
+    /**
      * Builds detailed metadata for panel alerts
      */
     private String buildPanelMetadata(RMSFacilityData facility) {
@@ -155,32 +181,34 @@ public class RuleEngineService {
                             facilityId, facility.getLastSyncTime());
                 }
             } else {
-                // Rule: High voltage
-                if (facility.getVoltageReadings() != null && !facility.getVoltageReadings().isEmpty()) {
-                    boolean hasHighVoltage = facility.getVoltageReadings().stream()
-                            .anyMatch(reading -> {
-                                if (reading.size() >= 2 && reading.get(1) instanceof Number) {
-                                    double voltage = ((Number) reading.get(1)).doubleValue();
-                                    return voltage > config.getInverterHighVoltageThreshold();
-                                }
-                                return false;
-                            });
+                // Rule: High voltage (> 250V)
+                // Note: DataCollectorService already filters by voltage > threshold, so all facilities here meet the criteria
+                // We just need to create alerts for them
+                String facilityId = facility.getFacilityId() != null ? 
+                        facility.getFacilityId() : facility.getCenterId();
+                String facilityName = facility.getFacilityName() != null ? 
+                        facility.getFacilityName() : facility.getCenterName();
+                
+                if (facilityId != null && facility.getVoltage() != null && 
+                    facility.getVoltage() > config.getInverterHighVoltageThreshold()) {
+                    
+                    // Build detailed metadata with voltage information
+                    String metadata = buildInverterVoltageMetadata(facility, facilityName);
+                    
+                    Alert alert = Alert.builder()
+                            .id(UUID.randomUUID().toString())
+                            .facilityId(facilityId)
+                            .hfrId(facility.getHfrId())
+                            .alertType(Alert.AlertType.INVERTER)
+                            .alertSubType(Alert.AlertSubType.HIGH_VOLTAGE)
+                            .status(Alert.AlertStatus.ACTIVE)
+                            .detectedAt(Instant.now())
+                            .metadata(metadata)
+                            .build();
 
-                    if (hasHighVoltage) {
-                        Alert alert = Alert.builder()
-                                .id(UUID.randomUUID().toString())
-                                .facilityId(facility.getFacilityId())
-                                .hfrId(facility.getHfrId())
-                                .alertType(Alert.AlertType.INVERTER)
-                                .alertSubType(Alert.AlertSubType.HIGH_VOLTAGE)
-                                .status(Alert.AlertStatus.ACTIVE)
-                                .detectedAt(Instant.now())
-                                .metadata(buildMetadata(facility, "voltageReadings", facility.getVoltageReadings()))
-                                .build();
-
-                        alerts.add(alert);
-                        log.debug("Inverter high voltage alert created for facility: {}", facility.getFacilityId());
-                    }
+                    alerts.add(alert);
+                    log.debug("Inverter high voltage alert created for facility: {} (voltage: {}V)", 
+                            facilityId, facility.getVoltage());
                 }
             }
         }

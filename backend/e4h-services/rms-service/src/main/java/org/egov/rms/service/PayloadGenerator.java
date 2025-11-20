@@ -145,6 +145,28 @@ public class PayloadGenerator {
                     comments.append("No signal or communication with RMS device detected for more than 2 consecutive days.\n\n");
                     comments.append("This indicates the inverter device may be offline, disconnected, or experiencing ");
                     comments.append("communication issues with the monitoring system.\n\n");
+                } else if (alert.getAlertSubType() == Alert.AlertSubType.HIGH_VOLTAGE) {
+                    comments.append("Inverter High Voltage Alert:\n");
+                    comments.append("UPS/PCU voltage detected above 250V in single-phase AC system.\n\n");
+                    comments.append("This indicates the inverter is experiencing high voltage conditions which can ");
+                    comments.append("damage connected equipment and pose safety risks. Immediate attention is required.\n\n");
+                    
+                    // Extract voltage from metadata if available
+                    if (alert.getMetadata() != null && alert.getMetadata().contains("\"voltage\"")) {
+                        try {
+                            // Simple extraction - voltage value should be in metadata
+                            int voltageStart = alert.getMetadata().indexOf("\"voltage\":") + 10;
+                            int voltageEnd = alert.getMetadata().indexOf(",", voltageStart);
+                            if (voltageEnd == -1) voltageEnd = alert.getMetadata().indexOf("}", voltageStart);
+                            if (voltageEnd > voltageStart) {
+                                String voltageStr = alert.getMetadata().substring(voltageStart, voltageEnd).trim();
+                                comments.append("Detected Voltage: ").append(voltageStr).append("V\n");
+                                comments.append("Threshold: 250V\n");
+                            }
+                        } catch (Exception e) {
+                            // Ignore parsing errors
+                        }
+                    }
                 }
                 break;
             case BATTERY:

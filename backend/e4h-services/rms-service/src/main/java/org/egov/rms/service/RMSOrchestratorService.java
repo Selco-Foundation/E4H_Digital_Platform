@@ -28,9 +28,10 @@ public class RMSOrchestratorService {
 
     /**
      * Executes the complete RMS workflow: collect data, apply rules, deduplicate, generate tickets
-     * Currently supports 2 working endpoints:
+     * Currently supports 3 working endpoints:
      * - Panel low generation - center_details/graph (WORKING)
      * - Inverter no signal - centerDatas/get (WORKING)
+     * - Inverter high voltage - center_details/graph (WORKING)
      */
     public void executeWorkflow() {
         log.info("Starting RMS workflow execution");
@@ -42,9 +43,11 @@ public class RMSOrchestratorService {
             // Collect inverter data (no signal) and apply rules
             processInverterNoSignalAlerts(requestInfo);
             
+            // Collect inverter data (high voltage) and apply rules
+            processInverterHighVoltageAlerts(requestInfo);
+            
             // Collect panel data (low generation) and apply rules
             processPanelAlerts(requestInfo);
-            // processInverterHighVoltageAlerts(requestInfo);
             // processBatteryAlerts(requestInfo);
             // processGridAlerts(requestInfo);
             
