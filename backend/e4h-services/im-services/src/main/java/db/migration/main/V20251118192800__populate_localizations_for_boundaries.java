@@ -31,7 +31,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class V20251117192800__populate_localizations_for_boundaries extends BaseJavaMigration {
+public class V20251118192800__populate_localizations_for_boundaries extends BaseJavaMigration {
 
     private static final String TARGET_TENANT_ID = "in";
     private static final String TARGET_MODULE = "rainmaker-in";

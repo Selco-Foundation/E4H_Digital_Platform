@@ -26,7 +26,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
-public class V20251117153500__migrate_mdms_data_to_tenant_in extends BaseJavaMigration {
+public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMigration {
 
     private static final String SOURCE_TENANT_ID = "pg";
     private static final String TARGET_TENANT_ID = "in";

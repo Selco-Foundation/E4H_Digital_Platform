@@ -27,7 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
-public class V20251117181600__migrate_localization_data_to_in extends BaseJavaMigration {
+public class V20251118181600__migrate_localization_data_to_in extends BaseJavaMigration {
 
     private static final String TARGET_TENANT_ID = "in";
     private static final String TARGET_MODULE_FOR_STATE_MODULES = "rainmaker-in";
