@@ -590,6 +590,170 @@ public class DataCollectorService {
     }
 
     /**
+     * Collects battery data for deep discharging/overcharging conditions
+     * API identifies abnormal charging/discharging patterns over 2-3 days
+     */
+    public List<RMSFacilityData> collectBatteryDeepDischargeData() {
+        log.info("Collecting battery data for deep discharging/overcharging conditions");
+        List<RMSFacilityData> allFacilities = new ArrayList<>();
+        
+        try {
+            int page = 1;
+            int pageSize = 100;
+            boolean hasMore = true;
+
+            while (hasMore) {
+                // Build request matching the working curl
+                Map<String, Object> timePeriod = new HashMap<>();
+                timePeriod.put("label", "Last 7 days");
+                timePeriod.put("value", "last_three_days");
+                
+                Map<String, Object> timeRange = new HashMap<>();
+                timeRange.put("time_period", timePeriod);
+                timeRange.put("custom_range", new HashMap<>());
+                
+                Map<String, Object> pagination = new HashMap<>();
+                pagination.put("page", page);
+                pagination.put("size", pageSize);
+                
+                Map<String, Object> requestBody = new HashMap<>();
+                requestBody.put("graphType", "batteryChargeVsDischarge_Eb_Filtered");
+                requestBody.put("time_range", timeRange);
+                requestBody.put("frequency", "daily");
+                requestBody.put("aggregation", "deltaSum");
+                requestBody.put("pagination", pagination);
+
+                PanelGraphResponse response = callBatteryChargeDischargeApi(config.getCenterDetailsEndpoint(), requestBody);
+                
+                if (response != null && response.getData() != null && 
+                    response.getData().getFacilities() != null) {
+                    
+                    List<PanelGraphResponse.PanelFacility> facilities = response.getData().getFacilities();
+                    
+                    for (PanelGraphResponse.PanelFacility panelFacility : facilities) {
+                        // Convert PanelFacility to RMSFacilityData
+                        // Only include facilities with abnormal battery health (info field indicates abnormality)
+                        if (panelFacility.getBatteryHealth() != null && 
+                            panelFacility.getBatteryHealth().getInfo() != null &&
+                            !panelFacility.getBatteryHealth().getInfo().isEmpty()) {
+                            
+                            RMSFacilityData facility = convertBatteryChargeDischargeToRMSFacilityData(panelFacility);
+                            if (facility != null) {
+                                allFacilities.add(facility);
+                            }
+                        }
+                    }
+                    
+                    // Check if there are more pages
+                    if (facilities.size() < pageSize) {
+                        hasMore = false;
+                    } else {
+                        page++;
+                    }
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            log.info("Collected battery deep discharge/overcharge data for {} facilities", allFacilities.size());
+            
+            // Enrich with HFR IDs from mapping table
+            mappingService.enrichFacilitiesWithHfrId(allFacilities);
+            
+            return allFacilities;
+        } catch (Exception e) {
+            log.error("Error collecting battery deep discharge data", e);
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Converts PanelFacility to RMSFacilityData for battery deep discharge/overcharge
+     */
+    private RMSFacilityData convertBatteryChargeDischargeToRMSFacilityData(PanelGraphResponse.PanelFacility panelFacility) {
+        try {
+            PanelGraphResponse.CenterData centerData = panelFacility.getCenterData();
+            PanelGraphResponse.BatteryHealth batteryHealth = panelFacility.getBatteryHealth();
+            
+            if (centerData == null || batteryHealth == null) {
+                return null;
+            }
+            
+            // Map HFRID to hfrId (handle "Not available" case)
+            String hfrId = null;
+            if (centerData.getHfrid() != null && 
+                !centerData.getHfrid().isEmpty() && 
+                !centerData.getHfrid().equalsIgnoreCase("Not available") &&
+                !centerData.getHfrid().equalsIgnoreCase("Not Available")) {
+                hfrId = centerData.getHfrid().trim();
+            }
+            
+            RMSFacilityData facility = RMSFacilityData.builder()
+                    .facilityId(centerData.getCenterId())
+                    .centerId(centerData.getCenterId())
+                    .facilityName(centerData.getCenterName())
+                    .centerName(centerData.getCenterName())
+                    .hfrId(hfrId)
+                    .deviceName(centerData.getDeviceName())
+                    .statusOfDevice(centerData.getStatusOfDevice())
+                    .batteryCharging(batteryHealth.getBatteryCharging())
+                    .batteryDischarging(batteryHealth.getBatteryDischarging())
+                    .batteryHealthInfo(batteryHealth.getInfo())
+                    .build();
+            
+            return facility;
+        } catch (Exception e) {
+            log.error("Error converting battery charge/discharge PanelFacility to RMSFacilityData", e);
+            return null;
+        }
+    }
+
+    /**
+     * Calls center_details/graph API for battery charge vs discharge data
+     */
+    private PanelGraphResponse callBatteryChargeDischargeApi(String endpoint, Map<String, Object> requestBody) throws Exception {
+        String url = config.getRmsApiBaseUrl() + endpoint;
+        RestTemplate rt = restTemplateAcceptingAllCerts();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Content-Type", "application/json");
+        headers.set("Accept", "application/json");
+        headers.set("Access-Token", config.getRmsApiAccessToken());
+        
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+        
+        int attempts = 0;
+        long delay = config.getRetryBackoffDelay();
+        
+        while (attempts < config.getRetryMaxAttempts()) {
+            try {
+                log.debug("Calling RMS battery charge/discharge API: {} (attempt {})", url, attempts + 1);
+                ResponseEntity<PanelGraphResponse> response = rt.exchange(
+                        url, HttpMethod.POST, entity, PanelGraphResponse.class);
+                
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    return response.getBody();
+                }
+            } catch (RestClientException e) {
+                attempts++;
+                if (attempts >= config.getRetryMaxAttempts()) {
+                    log.error("Failed to call RMS battery charge/discharge API after {} attempts: {}", config.getRetryMaxAttempts(), e.getMessage());
+                    throw e;
+                }
+                log.warn("RMS battery charge/discharge API call failed (attempt {}), retrying after {}ms: {}", attempts, delay, e.getMessage());
+                try {
+                    Thread.sleep(delay);
+                    delay *= 2; // Exponential backoff
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Interrupted during retry", ie);
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    /**
      * Collects grid voltage data for low/high voltage conditions
      */
     public List<RMSFacilityData> collectGridVoltageData() {

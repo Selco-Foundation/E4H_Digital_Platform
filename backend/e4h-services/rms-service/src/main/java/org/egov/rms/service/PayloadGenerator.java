@@ -191,6 +191,55 @@ public class PayloadGenerator {
                             // Ignore parsing errors
                         }
                     }
+                } else if (alert.getAlertSubType() == Alert.AlertSubType.DEEP_DISCHARGING || 
+                          alert.getAlertSubType() == Alert.AlertSubType.OVERCHARGING) {
+                    comments.append("Battery Deep Discharging/Overcharging Alert:\n");
+                    comments.append("Abnormal battery charging vs discharging pattern detected over 2-3 days.\n\n");
+                    
+                    if (alert.getAlertSubType() == Alert.AlertSubType.DEEP_DISCHARGING) {
+                        comments.append("The battery is experiencing deep discharging, where it is being ");
+                        comments.append("discharged more than it is being charged. This can lead to battery ");
+                        comments.append("degradation and reduced lifespan.\n\n");
+                    } else {
+                        comments.append("The battery is experiencing overcharging, where it is being charged ");
+                        comments.append("excessively. This can cause battery damage, overheating, and safety risks.\n\n");
+                    }
+                    
+                    // Extract battery health info from metadata
+                    if (alert.getMetadata() != null) {
+                        try {
+                            if (alert.getMetadata().contains("\"batteryCharging\"")) {
+                                int chargingStart = alert.getMetadata().indexOf("\"batteryCharging\":") + 18;
+                                int chargingEnd = alert.getMetadata().indexOf(",", chargingStart);
+                                if (chargingEnd == -1) chargingEnd = alert.getMetadata().indexOf("}", chargingStart);
+                                if (chargingEnd > chargingStart) {
+                                    String chargingStr = alert.getMetadata().substring(chargingStart, chargingEnd).trim();
+                                    comments.append("Battery Charging: ").append(chargingStr).append(" kWh\n");
+                                }
+                            }
+                            
+                            if (alert.getMetadata().contains("\"batteryDischarging\"")) {
+                                int dischargingStart = alert.getMetadata().indexOf("\"batteryDischarging\":") + 21;
+                                int dischargingEnd = alert.getMetadata().indexOf(",", dischargingStart);
+                                if (dischargingEnd == -1) dischargingEnd = alert.getMetadata().indexOf("}", dischargingStart);
+                                if (dischargingEnd > dischargingStart) {
+                                    String dischargingStr = alert.getMetadata().substring(dischargingStart, dischargingEnd).trim();
+                                    comments.append("Battery Discharging: ").append(dischargingStr).append(" kWh\n");
+                                }
+                            }
+                            
+                            if (alert.getMetadata().contains("\"batteryHealthInfo\"")) {
+                                int infoStart = alert.getMetadata().indexOf("\"batteryHealthInfo\":\"") + 20;
+                                int infoEnd = alert.getMetadata().indexOf("\"", infoStart);
+                                if (infoEnd > infoStart) {
+                                    String infoStr = alert.getMetadata().substring(infoStart, infoEnd);
+                                    comments.append("Abnormality Type: ").append(infoStr).append("\n");
+                                }
+                            }
+                        } catch (Exception e) {
+                            // Ignore parsing errors
+                        }
+                    }
                 }
                 break;
             case GRID:

@@ -216,6 +216,57 @@ public class RuleEngineService {
     }
 
     /**
+     * Applies battery-level anomaly rules for deep discharge/overcharge
+     * Rule: Abnormal charging vs discharging pattern over 2-3 days
+     * Note: API already identifies abnormal patterns via batteryHealth.info field
+     */
+    public List<Alert> applyBatteryDeepDischargeRules(List<RMSFacilityData> facilities) {
+        log.info("Applying battery deep discharge/overcharge rules to {} facilities", facilities.size());
+        List<Alert> alerts = new ArrayList<>();
+
+        for (RMSFacilityData facility : facilities) {
+            // Rule: Deep discharge or overcharge
+            // Note: API already identifies abnormal patterns, so all facilities here meet the criteria
+            String facilityId = facility.getFacilityId() != null ? 
+                    facility.getFacilityId() : facility.getCenterId();
+            String facilityName = facility.getFacilityName() != null ? 
+                    facility.getFacilityName() : facility.getCenterName();
+            
+            if (facilityId != null && facility.getBatteryHealthInfo() != null) {
+                // Determine alert subtype based on battery health info
+                Alert.AlertSubType alertSubType = Alert.AlertSubType.DEEP_DISCHARGING;
+                if (facility.getBatteryHealthInfo().equalsIgnoreCase("overcharge")) {
+                    alertSubType = Alert.AlertSubType.OVERCHARGING;
+                } else if (facility.getBatteryHealthInfo().equalsIgnoreCase("deepDischarge") || 
+                          facility.getBatteryHealthInfo().toLowerCase().contains("discharge")) {
+                    alertSubType = Alert.AlertSubType.DEEP_DISCHARGING;
+                }
+                
+                // Build detailed metadata with battery health information
+                String metadata = buildBatteryDeepDischargeMetadata(facility, facilityName);
+                
+                Alert alert = Alert.builder()
+                        .id(UUID.randomUUID().toString())
+                        .facilityId(facilityId)
+                        .hfrId(facility.getHfrId())
+                        .alertType(Alert.AlertType.BATTERY)
+                        .alertSubType(alertSubType)
+                        .status(Alert.AlertStatus.ACTIVE)
+                        .detectedAt(Instant.now())
+                        .metadata(metadata)
+                        .build();
+
+                alerts.add(alert);
+                log.debug("Battery deep discharge/overcharge alert created for facility: {} (info: {})", 
+                        facilityId, facility.getBatteryHealthInfo());
+            }
+        }
+
+        log.info("Generated {} battery deep discharge/overcharge alerts", alerts.size());
+        return alerts;
+    }
+
+    /**
      * Applies battery-level anomaly rules
      * Rule: Battery voltage = 0
      * Note: API already filters by voltage = 0, so all facilities here meet the criteria
@@ -255,6 +306,37 @@ public class RuleEngineService {
 
         log.info("Generated {} battery-level alerts", alerts.size());
         return alerts;
+    }
+
+    /**
+     * Builds detailed metadata for battery deep discharge/overcharge alerts
+     */
+    private String buildBatteryDeepDischargeMetadata(RMSFacilityData facility, String facilityName) {
+        try {
+            StringBuilder metadata = new StringBuilder();
+            metadata.append("{\"facilityName\":\"").append(
+                    facilityName != null ? facilityName : 
+                    (facility.getFacilityName() != null ? facility.getFacilityName() : 
+                     (facility.getCenterName() != null ? facility.getCenterName() : ""))).append("\"");
+            
+            if (facility.getBatteryHealthInfo() != null) {
+                metadata.append(",\"batteryHealthInfo\":\"").append(facility.getBatteryHealthInfo()).append("\"");
+            }
+            
+            if (facility.getBatteryCharging() != null) {
+                metadata.append(",\"batteryCharging\":").append(facility.getBatteryCharging());
+            }
+            
+            if (facility.getBatteryDischarging() != null) {
+                metadata.append(",\"batteryDischarging\":").append(facility.getBatteryDischarging());
+            }
+            
+            metadata.append("}");
+            return metadata.toString();
+        } catch (Exception e) {
+            log.warn("Error building battery deep discharge metadata", e);
+            return "{\"error\":\"Failed to build metadata\"}";
+        }
     }
 
     /**

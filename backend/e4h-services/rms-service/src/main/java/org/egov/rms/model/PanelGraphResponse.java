@@ -124,6 +124,9 @@ public class PanelGraphResponse {
 
         @JsonProperty("batteryDischarging")
         private Double batteryDischarging;
+
+        @JsonProperty("info")
+        private String info; // "deepDischarge" or "overcharge" or other abnormality indicators
     }
 }
 

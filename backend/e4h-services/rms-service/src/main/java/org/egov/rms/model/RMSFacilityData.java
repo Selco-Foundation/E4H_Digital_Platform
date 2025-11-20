@@ -87,6 +87,16 @@ public class RMSFacilityData {
     @JsonProperty("batteryReadings")
     private List<List<Object>> batteryReadings;
 
+    // Battery health info for deep discharge/overcharge detection
+    @JsonProperty("batteryCharging")
+    private Double batteryCharging;
+
+    @JsonProperty("batteryDischarging")
+    private Double batteryDischarging;
+
+    @JsonProperty("batteryHealthInfo")
+    private String batteryHealthInfo; // "deepDischarge", "overcharge", etc.
+
     @JsonProperty("gridVoltage")
     private Double gridVoltage;
 

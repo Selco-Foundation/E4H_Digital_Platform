@@ -53,6 +53,9 @@ public class RMSOrchestratorService {
             // Collect battery data (voltage = 0) and apply rules
             processBatteryAlerts(requestInfo);
             
+            // Collect battery data (deep discharge/overcharge) and apply rules
+            processBatteryDeepDischargeAlerts(requestInfo);
+            
             log.info("Completed RMS workflow execution");
         } catch (Exception e) {
             log.error("Error during RMS workflow execution", e);
@@ -105,10 +108,10 @@ public class RMSOrchestratorService {
     }
 
     /**
-     * Processes battery alerts
+     * Processes battery alerts (voltage = 0)
      */
     private void processBatteryAlerts(RequestInfo requestInfo) {
-        log.info("Processing battery alerts");
+        log.info("Processing battery alerts (voltage = 0)");
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectBatteryVoltageZeroData();
             List<Alert> alerts = ruleEngineService.applyBatteryRules(facilities);
@@ -116,6 +119,21 @@ public class RMSOrchestratorService {
             createTickets(uniqueAlerts, requestInfo);
         } catch (Exception e) {
             log.error("Error processing battery alerts", e);
+        }
+    }
+
+    /**
+     * Processes battery deep discharge/overcharge alerts
+     */
+    private void processBatteryDeepDischargeAlerts(RequestInfo requestInfo) {
+        log.info("Processing battery deep discharge/overcharge alerts");
+        try {
+            List<RMSFacilityData> facilities = dataCollectorService.collectBatteryDeepDischargeData();
+            List<Alert> alerts = ruleEngineService.applyBatteryDeepDischargeRules(facilities);
+            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(uniqueAlerts, requestInfo);
+        } catch (Exception e) {
+            log.error("Error processing battery deep discharge alerts", e);
         }
     }
 
