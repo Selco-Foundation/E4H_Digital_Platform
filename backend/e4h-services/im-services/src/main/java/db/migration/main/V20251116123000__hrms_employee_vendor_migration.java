@@ -107,7 +107,7 @@ public class V20251116123000__hrms_employee_vendor_migration extends BaseJavaMig
 		logFilePath = logsDir.resolve(logFileName).toAbsolutePath().normalize();
 
 		try (PrintWriter logger = initializeMigrationLogger(logFilePath);
-		     Connection connection = context.getConnection()) {
+		     Connection connection = context.getConfiguration().getDataSource().getConnection()) {
 			this.migrationLogger = logger;
 			logSectionHeader();
 
@@ -744,7 +744,7 @@ public class V20251116123000__hrms_employee_vendor_migration extends BaseJavaMig
 		payload.set("Employees", array);
 
 		try {
-			postForJson(hrmsHost + hrmsCreateEndpoint, payload);
+			updateEmployeeWithRetry(payload, employee.path("uuid").asText());
 			log.info("Updated employee {}", employee.path("uuid").asText());
 			logToFile("Updated employee %s", employee.path("uuid").asText());
 			return true;
@@ -753,6 +753,68 @@ public class V20251116123000__hrms_employee_vendor_migration extends BaseJavaMig
 					employee.path("uuid").asText(), e.getMessage()));
 			return false;
 		}
+	}
+
+	private void updateEmployeeWithRetry(ObjectNode updatePayload, String employeeUuid) throws Exception {
+		int maxRetries = 5;
+		int[] delaysInSeconds = {1, 2, 4, 8, 15}; // Total max delay: 30 seconds
+		
+		Exception lastException = null;
+		
+		for (int attempt = 1; attempt <= maxRetries; attempt++) {
+			try {
+				postForJson(hrmsHost + hrmsCreateEndpoint, updatePayload);
+				if (attempt > 1) {
+					log.info("Successfully updated employee {} on attempt {}", employeeUuid, attempt);
+					logToFile("Successfully updated employee %s on attempt %d", employeeUuid, attempt);
+				}
+				return; // Success
+			} catch (Exception e) {
+				lastException = e;
+				String errorMessage = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
+				
+				// Check if user already exists - skip retry logic for these specific errors
+				// These are permanent errors that won't be resolved by retrying
+				if (errorMessage.contains("err_hrms_user_exist_mob") || 
+					errorMessage.contains("err_hrms_user_exist_username") ||
+					errorMessage.contains("already exists for the entered mobile number") ||
+					errorMessage.contains("already exists for the entered user name") ||
+					errorMessage.contains("user already exists with same username and mobile number") ||
+					errorMessage.contains("user already exists with the same mobile number") ||
+					errorMessage.contains("user already exists with the same username") ||
+					errorMessage.contains("duplicate key") ||
+					errorMessage.contains("unique constraint violation")) {
+					log.warn("User already exists for employee {} (detected duplicate user error), skipping retry", employeeUuid);
+					logToFile("User already exists for employee %s (detected duplicate user error), skipping retry", employeeUuid);
+					throw e; // Don't retry, propagate the exception
+				}
+				
+				// For other errors (like "user creation failed at user service"), retry
+				// If this was the last attempt, throw the exception
+				if (attempt == maxRetries) {
+					log.error("Failed to update employee {} after {} attempts", employeeUuid, maxRetries);
+					logToFile("Failed to update employee %s after %d attempts", employeeUuid, maxRetries);
+					throw e;
+				}
+				
+				// Otherwise, log and retry with delay
+				int delaySeconds = delaysInSeconds[attempt - 1];
+				log.warn("Attempt {} failed for employee {}: {}. Retrying in {} seconds...", 
+						attempt, employeeUuid, e.getMessage(), delaySeconds);
+				logToFile("Attempt %d failed for employee %s: %s. Retrying in %d seconds...", 
+						attempt, employeeUuid, e.getMessage(), delaySeconds);
+				
+				try {
+					Thread.sleep(delaySeconds * 1000L);
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+					throw new RuntimeException("Migration interrupted during retry delay", ie);
+				}
+			}
+		}
+		
+		// This should never be reached due to the throw in the loop, but just in case
+		throw lastException;
 	}
 
 	private String resolveBoundary(String tenantId) {
