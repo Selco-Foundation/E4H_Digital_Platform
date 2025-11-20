@@ -312,7 +312,7 @@ public class V20251115123000__hrms_employee_migration extends BaseJavaMigration 
 				
 				// For other errors (like "user creation failed at user service"), retry
 				// If this was the last attempt, throw the exception
-				if (attempt == maxRetries) {
+				if (attempt >= maxRetries) {
 					log.error("Failed to create employee {} after {} attempts", employeeUuid, maxRetries);
 					logToFile("Failed to create employee %s after %d attempts", employeeUuid, maxRetries);
 					throw e;
