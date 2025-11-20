@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:digit_forms_engine/blocs/forms/forms.dart';
 import 'package:digit_forms_engine/json_forms.dart';
-import 'package:digit_forms_engine/models/property_schema/property_schema.dart';
 import 'package:digit_forms_engine/models/schema_object/schema_object.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
@@ -53,23 +52,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   int _formSeed = 0;
   static const String _initialUserType = 'SUPERVISOR';
 
-  Map<String, dynamic> _subsetForPage(
-    SchemaObject schema,
-    String pageName,
-    Map<String, dynamic> kv,
-  ) {
-    final page = schema.pages[pageName];
-    if (page == null || page.properties == null) return const {};
-    final allowed = page.properties!.keys.toSet();
-    final out = <String, dynamic>{};
-    for (final entry in kv.entries) {
-      if (allowed.contains(entry.key)) {
-        out[entry.key] = entry.value;
-      }
-    }
-    return out;
-  }
-
   Future<void> _loadInitialKVForProject() async {
     final isar = context.read<ActivityFacilityBloc>().isar;
     final kv = await BomRepository().getProjectBomKV(
@@ -82,70 +64,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       _projectInitialKV = kv ?? const {};
       _formSeed++;
     });
-  }
-
-  String _prettyLabel(String s) {
-    if (s.trim().isEmpty) return s;
-    final spaced = s.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
-    return spaced.replaceAllMapped(
-        RegExp(r'\b[a-z]'), (m) => m.group(0)!.toUpperCase());
-  }
-
-  String _labelForKey(PropertySchema pageSchema, String key) {
-    final raw = pageSchema?.properties?[key]?.label ?? key;
-    return _prettyLabel(raw);
-  }
-
-  dynamic _coerceForControl(AbstractControl<Object?> control, dynamic v) {
-    if (v == null) return null;
-
-    if (control is FormControl<DateTime?>) {
-      if (v is DateTime) return v;
-      if (v is String) return DateTime.tryParse(v);
-      return null;
-    }
-
-    if (control is FormControl<int?>) {
-      if (v is int) return v;
-      if (v is double) return v.toInt();
-      if (v is String) return int.tryParse(v);
-      return null;
-    }
-
-    if (control is FormControl<double?>) {
-      if (v is double) return v;
-      if (v is int) return v.toDouble();
-      if (v is String) return double.tryParse(v);
-      return null;
-    }
-
-    if (control is FormControl<bool?>) {
-      if (v is bool) return v;
-      if (v is String) {
-        final s = v.toLowerCase().trim();
-        if (s == 'true' || s == '1' || s == 'yes') return true;
-        if (s == 'false' || s == '0' || s == 'no') return false;
-      }
-      if (v is num) return v != 0;
-      return null;
-    }
-
-    return v;
-  }
-
-  String? _currentSchemaKey(FormsState state) {
-    final requested = widget.schemaName ?? widget.uniqueIdentifier;
-    if (requested != null && state.cachedSchemas.containsKey(requested)) {
-      return requested;
-    }
-    final active = state.activeSchemaKey;
-    if (active != null && state.cachedSchemas.containsKey(active)) {
-      return active;
-    }
-    for (final e in state.cachedSchemas.entries) {
-      if (e.value.pages.containsKey(widget.pageName)) return e.key;
-    }
-    return state.cachedSchemas.isEmpty ? null : state.cachedSchemas.keys.first;
   }
 
   Future<void> _ensureSchemaLoaded() async {
@@ -231,11 +149,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     bloc.add(FormsUpdateEvent(schema: schemaObj, schemaKey: cacheKey));
   }
 
-  bool _isLastPage(SchemaObject schema) {
-    final lastKey = schema.pages.keys.isEmpty ? null : schema.pages.keys.last;
-    return lastKey == widget.pageName;
-  }
-
   void _popUntilThenRefreshOrigin(BuildContext context, FormOrigin origin) {
     final root = context.router.root;
 
@@ -286,7 +199,11 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
     if (_lastProjectId != widget.projectId) {
       final formsBloc = context.read<FormsBloc>();
-      final currentKey = _currentSchemaKey(formsBloc.state);
+      final currentKey = currentSchemaKey(
+          state: formsBloc.state,
+          pageName: widget.pageName,
+          schemaName: widget.schemaName,
+          uniqueIdentifier: widget.uniqueIdentifier);
       if (currentKey != null) {
         formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
       }
@@ -390,7 +307,11 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             await _loadInitialKVForProject();
             if (!mounted) return;
             final formsBloc = context.read<FormsBloc>();
-            final currentKey = _currentSchemaKey(formsBloc.state);
+            final currentKey = currentSchemaKey(
+                state: formsBloc.state,
+                pageName: widget.pageName,
+                schemaName: widget.schemaName,
+                uniqueIdentifier: widget.uniqueIdentifier);
             if (currentKey != null) {
               formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
             }
@@ -404,7 +325,11 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             if (state is FormsSubmittedState) return;
           },
           builder: (context, state) {
-            final currentKey = _currentSchemaKey(state);
+            final currentKey = currentSchemaKey(
+                state: state,
+                pageName: widget.pageName,
+                schemaName: widget.schemaName,
+                uniqueIdentifier: widget.uniqueIdentifier);
             if (currentKey == null) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -421,7 +346,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             final pageIndex =
                 schemaObject.pages.keys.toList().indexOf(widget.pageName);
 
-            final pageDefaults = _subsetForPage(
+            final pageDefaults = subsetForPage(
               schemaObject,
               widget.pageName,
               _projectInitialKV,
@@ -461,7 +386,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
                   if (pageDefaults.containsKey(k)) {
                     final raw = pageDefaults[k];
-                    final coerced = _coerceForControl(ctrl, raw);
+                    final coerced = coerceForControl(ctrl, raw);
                     ctrl.updateValue(coerced,
                         updateParent: true, emitEvent: false);
                     continue;
@@ -515,7 +440,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
                           if (missing.isNotEmpty) {
                             final first = missing.first;
-                            final label = _labelForKey(pageSchema, first);
+                            final label = labelForKey(pageSchema, first);
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('$label is required')),
                             );
@@ -523,7 +448,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                           }
                           if (invalid.isNotEmpty) {
                             final first = invalid.first;
-                            final label = _labelForKey(pageSchema, first);
+                            final label = labelForKey(pageSchema, first);
 
                             final c = form.control(first);
                             String? reason;
@@ -589,7 +514,8 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                                 ),
                               );
 
-                          final lastPage = _isLastPage(schemaObject);
+                          final lastPage = isLastPage(
+                              schema: schemaObject, pageName: widget.pageName);
                           if (!lastPage) {
                             final keys = schemaObject.pages.keys.toList();
                             final idx = keys.indexOf(widget.pageName);

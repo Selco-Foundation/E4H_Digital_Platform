@@ -2,13 +2,20 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
 import '../pages/add_new_asset.dart';
+import '../pages/amc_draft.dart';
+import '../pages/amc_dynamic_form.dart';
+import '../pages/amc_home.dart';
+import '../pages/amc_inbox.dart';
+import '../pages/amc_otp.dart';
+import '../pages/amc_report_home.dart';
+import '../pages/amc_select_facility.dart';
 import '../pages/asset_count.dart';
 import '../pages/asset_summary.dart';
 import '../pages/asset_type_detail.dart';
 import '../pages/authenticated.dart';
 import '../pages/data_save_success.dart';
 import '../pages/draft.dart';
-import '../pages/dynamic_form_page.dart';
+import '../pages/dynamic_form.dart';
 import '../pages/enter_otp.dart';
 import '../pages/forgot_password.dart';
 import '../pages/home.dart';
@@ -97,6 +104,16 @@ class AppRouter extends _$AppRouter {
           AutoRoute(page: VideoPlayerRoute.page, path: Routes.videoViewer),
           AutoRoute(page: PdfViewerRoute.page, path: Routes.pdfViewer),
           AutoRoute(page: DynamicFormsRoute.page, path: Routes.dynamicForm),
+          AutoRoute(page: AmcHomeRoute.page, path: Routes.amcHome),
+          AutoRoute(page: AmcReportHomeRoute.page, path: Routes.amcReportHome),
+          AutoRoute(
+              page: AmcSelectFacilityRoute.page,
+              path: Routes.amcSelectFacility),
+          AutoRoute(
+              page: AmcDynamicFormRoute.page, path: Routes.amcDynamicForm),
+          AutoRoute(page: AmcOtpRoute.page, path: Routes.amcOtp),
+          AutoRoute(page: AmcDraftRoute.page, path: Routes.amcDraft),
+          AutoRoute(page: AmcInboxRoute.page, path: Routes.amcInbox)
         ])
       ];
 }

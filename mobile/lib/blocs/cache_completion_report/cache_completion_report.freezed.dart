@@ -397,7 +397,6 @@ class _$AddOrUpdateImpl implements _AddOrUpdate {
   final String filePath;
   @override
   final String fileType;
-// "pdf" | "image" | "unknown"
   @override
   final String fileName;
   @override
@@ -571,7 +570,7 @@ abstract class _AddOrUpdate implements CacheCompletionReportEvent {
 
   String get projectId;
   String get filePath;
-  String get fileType; // "pdf" | "image" | "unknown"
+  String get fileType;
   String get fileName;
   String get latitude;
   String get longitude;
