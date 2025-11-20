@@ -48,16 +48,19 @@ public class WeeklyReportService {
     /**
      * Utility method to filter tickets by tenant and process them
      */
-    private List<Map<String, Object>> filterTicketsByTenant(List<Map<String, Object>> tickets, String tenantId) {
+    private List<Map<String, Object>> filterTicketsByTenant(List<Map<String, Object>> tickets, String stateCode) {
         return tickets.stream()
             .filter(ticket -> {
                 Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
                 if (data == null) return false;
 
-                String ticketTenantId = (String) data.get("tenantId");
-                if (ticketTenantId == null) return false;
+//                String ticketTenantId = (String) data.get("tenantId");
+                Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+                Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
+                String ticketStateCode = (String) boundary.get("stateCode");
+                if (ticketStateCode == null) return false;
 
-                return ticketTenantId.equals(tenantId) || ticketTenantId.startsWith(tenantId + ".");
+                return ticketStateCode.equals(stateCode) || ticketStateCode.startsWith(stateCode + ".");
             })
             .collect(Collectors.toList());
     }
@@ -134,9 +137,9 @@ public class WeeklyReportService {
     /**
      * Generate weekly report data for a specific tenant
      */
-    public WeeklyReportData generateWeeklyReportData(String tenantId, RequestInfo requestInfo) {
+    public WeeklyReportData generateWeeklyReportData(String stateCode, RequestInfo requestInfo) {
         try {
-            log.info("Generating weekly report data for tenant: {}", tenantId);
+            log.info("Generating weekly report data for tenant: {}", stateCode);
             
             // Get date range for the previous week (Monday to Sunday)
             Date[] weekDates = getPreviousWeekDates();
@@ -160,8 +163,8 @@ public class WeeklyReportService {
             log.info("Weekly report period: {} to {} ({})", weekStartStr, weekEndStr, dateRange);
             
             // Get functional/non-functional counts at start and end of week
-            FunctionalMetrics startMetrics = getFunctionalMetrics(tenantId, weekStart);
-            FunctionalMetrics endMetrics = getFunctionalMetrics(tenantId, weekEnd);
+            FunctionalMetrics startMetrics = getFunctionalMetrics(stateCode, weekStart);
+            FunctionalMetrics endMetrics = getFunctionalMetrics(stateCode, weekEnd);
             
             // Calculate percentages
             int totalStart = startMetrics.getFunctionalCount() + startMetrics.getNonFunctionalCount();
@@ -177,14 +180,14 @@ public class WeeklyReportService {
             ArrowData nonFuncArrow = commonUtility.calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
             
             // Get age bucket data
-            AgeBucketData ageBucketData = getAgeBucketData(tenantId);
+            AgeBucketData ageBucketData = getAgeBucketData(stateCode);
             
             // Get state-wise data
-            Map<String, WeeklyReportData.StateAgeBucketData> stateData = getStateWiseAgeBucketData(tenantId);
+            Map<String, WeeklyReportData.StateAgeBucketData> stateData = getStateWiseAgeBucketData(stateCode);
             
             // Build the report data
             WeeklyReportData reportData = WeeklyReportData.builder()
-                .tenantId(tenantId)
+                .tenantId(stateCode)
                 .dateRange(dateRange)
                 .weekStartDate(weekStartStr)
                 .weekEndDate(weekEndStr)
@@ -194,15 +197,15 @@ public class WeeklyReportService {
                 .nonFunctionalArrow(nonFuncArrow)
                 .totalAgeBuckets(ageBucketData)
                 .stateData(stateData)
-                .stateList(formatStateList(tenantId, stateData.keySet()))
+                .stateList(formatStateList(stateCode, stateData.keySet()))
                 .todayFormatted(todayFormatted)
                 .build();
             
-            log.info("Successfully generated weekly report data for tenant: {}", tenantId);
+            log.info("Successfully generated weekly report data for tenant: {}", stateCode);
             return reportData;
             
         } catch (Exception e) {
-            log.error("Error generating weekly report data for tenant: {}", tenantId, e);
+            log.error("Error generating weekly report data for tenant: {}", stateCode, e);
             throw new RuntimeException("Failed to generate weekly report data", e);
         }
     }
@@ -210,15 +213,15 @@ public class WeeklyReportService {
     /**
      * Get functional/non-functional metrics for a specific date using Elasticsearch
      */
-    private FunctionalMetrics getFunctionalMetrics(String tenantId, Date date) {
+    private FunctionalMetrics getFunctionalMetrics(String stateCode, Date date) {
         try {
             // Query Elasticsearch for tickets as of the specified date
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
-            log.info("Fetched {} total tickets from ES for tenant: {}", tickets.size(), tenantId);
+            log.info("Fetched {} total tickets from ES for tenant: {}", tickets.size(), stateCode);
 
             // Filter tickets by tenant
-            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, tenantId);
-            log.info("Filtered to {} tickets for tenant: {}", filteredTickets.size(), tenantId);
+            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, stateCode);
+            log.info("Filtered to {} tickets for tenant: {}", filteredTickets.size(), stateCode);
 
             int functionalCount = 0;
             int nonFunctionalCount = 0;
@@ -253,7 +256,7 @@ public class WeeklyReportService {
             }
             
             log.info("Functional metrics for {} on {}: Functional={}, Non-Functional={}, Skipped(no filedDate)={}, Skipped(after date)={}",
-                tenantId, date, functionalCount, nonFunctionalCount, skippedNoFiledDate, skippedAfterDate);
+                    stateCode, date, functionalCount, nonFunctionalCount, skippedNoFiledDate, skippedAfterDate);
             
             return FunctionalMetrics.builder()
                 .functionalCount(functionalCount)
@@ -261,7 +264,7 @@ public class WeeklyReportService {
                 .build();
                 
         } catch (Exception e) {
-            log.error("Error getting functional metrics from Elasticsearch for tenant: {} on date: {}", tenantId, date, e);
+            log.error("Error getting functional metrics from Elasticsearch for tenant: {} on date: {}", stateCode, date, e);
             return FunctionalMetrics.builder()
                 .functionalCount(0)
                 .nonFunctionalCount(0)
@@ -279,13 +282,13 @@ public class WeeklyReportService {
      * - For facilities with multiple tickets, consider only the oldest ticket
      * - Counts unique facilities (HFs), not tickets
      */
-    private AgeBucketData getAgeBucketData(String tenantId) {
+    private AgeBucketData getAgeBucketData(String stateCode) {
         try {
             // Query Elasticsearch for all open tickets
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             
             // Filter tickets by tenant
-            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, tenantId);
+            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, stateCode);
 
             // Group tickets by facility (tenantId) and find oldest ticket per facility
             Map<String, TicketData> oldestTicketByFacility = new HashMap<>();
@@ -294,19 +297,23 @@ public class WeeklyReportService {
                 TicketData ticketData = extractTicketData(ticket);
 
                 // Only consider non-functional tickets with valid filedDate and tenantId
-                String facilityTenantId = ticketData != null ? ticketData.getTenantId() : null;
+                Map<String, Object> data = ticketData.getData();
+                Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+                Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
+                String facilityStateCode = (String) boundary.get("stateCode");
+//                String facilityTenantId = ticketData != null ? ticketData.getTenantId() : null;
                 if (ticketData == null
                     || !SYSTEM_STATUS_NON_FUNCTIONAL.equals(ticketData.getSystemFunctional())
                     || ticketData.getFiledDate() == null
-                    || facilityTenantId == null) {
+                    || facilityStateCode == null) {
                     continue;
                 }
 
                 // For each facility, keep only the ticket with the oldest filedDate
-                TicketData existing = oldestTicketByFacility.get(facilityTenantId);
+                TicketData existing = oldestTicketByFacility.get(facilityStateCode);
                 if (existing == null || existing.getFiledDate() == null ||
                     ticketData.getFiledDate() < existing.getFiledDate()) {
-                    oldestTicketByFacility.put(facilityTenantId, ticketData);
+                    oldestTicketByFacility.put(facilityStateCode, ticketData);
                 }
             }
 
@@ -332,7 +339,7 @@ public class WeeklyReportService {
             }
             
             log.info("Age bucket data for {}: Total facilities={}, <1Wk={}, <1Mo={}, <3Mo={}",
-                tenantId, oldestTicketByFacility.size(), totalLt1Wk, totalLt1Mo, totalLt3Mo);
+                stateCode, oldestTicketByFacility.size(), totalLt1Wk, totalLt1Mo, totalLt3Mo);
             
             return AgeBucketData.builder()
                 .totalLt1Wk(totalLt1Wk)
@@ -341,7 +348,7 @@ public class WeeklyReportService {
                 .build();
                 
         } catch (Exception e) {
-            log.error("Error getting age bucket data from Elasticsearch for tenant: {}", tenantId, e);
+            log.error("Error getting age bucket data from Elasticsearch for tenant: {}", stateCode, e);
             return AgeBucketData.builder()
                 .totalLt1Wk(0)
                 .totalLt1Mo(0)
@@ -354,13 +361,13 @@ public class WeeklyReportService {
      * Get state-wise age bucket data using Elasticsearch
      * Counts unique facilities (HFs) per state, using oldest ticket per facility
      */
-    private Map<String, WeeklyReportData.StateAgeBucketData> getStateWiseAgeBucketData(String tenantId) {
+    private Map<String, WeeklyReportData.StateAgeBucketData> getStateWiseAgeBucketData(String stateCode) {
         try {
             // Query Elasticsearch for all open tickets
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             
             // Filter tickets by tenant
-            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, tenantId);
+            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, stateCode);
 
             // Group tickets by state and facility, find oldest ticket per facility
             // Structure: state -> facilityTenantId -> oldest TicketData
@@ -425,12 +432,12 @@ public class WeeklyReportService {
             }
             
             log.info("State-wise age bucket data for {}: {} states, total facilities={}",
-                tenantId, stateData.size(),
+                stateCode, stateData.size(),
                 stateFacilityMap.values().stream().mapToInt(Map::size).sum());
             return stateData;
             
         } catch (Exception e) {
-            log.error("Error getting state-wise age bucket data from Elasticsearch for tenant: {}", tenantId, e);
+            log.error("Error getting state-wise age bucket data from Elasticsearch for tenant: {}", stateCode, e);
             return new HashMap<>();
         }
     }
