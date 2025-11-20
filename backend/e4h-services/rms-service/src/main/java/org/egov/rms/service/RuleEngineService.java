@@ -182,16 +182,14 @@ public class RuleEngineService {
                 }
             } else {
                 // Rule: High voltage (> 250V)
-                // Note: DataCollectorService already filters by voltage > threshold, so all facilities here meet the criteria
+                // Note: API already filters by voltage > threshold, so all facilities here meet the criteria
                 // We just need to create alerts for them
                 String facilityId = facility.getFacilityId() != null ? 
                         facility.getFacilityId() : facility.getCenterId();
                 String facilityName = facility.getFacilityName() != null ? 
                         facility.getFacilityName() : facility.getCenterName();
                 
-                if (facilityId != null && facility.getVoltage() != null && 
-                    facility.getVoltage() > config.getInverterHighVoltageThreshold()) {
-                    
+                if (facilityId != null) {
                     // Build detailed metadata with voltage information
                     String metadata = buildInverterVoltageMetadata(facility, facilityName);
                     
