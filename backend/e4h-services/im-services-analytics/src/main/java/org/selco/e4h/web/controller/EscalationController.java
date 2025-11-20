@@ -260,30 +260,24 @@ public class EscalationController {
                     // Generate weekly report data for this tenant
                     WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(tenantId, requestInfo);
                     reportDataByTenant.put(tenantId, reportData);
-                    
-                    // Generate CSV for download only if there's data
-                    String csvContent = generateWeeklyReportCsv(reportData, tenantId);
-                    String csvFileName = generateCsvFileName(tenantId);
-                    log.info("Generated CSV content length: {} for tenant: {}", csvContent.length(), tenantId);
-                    
-                    // Only upload CSV if it has actual data (more than just header)
-                    if (csvContent.length() > 200) { // Header is about 150 chars, so 200+ means there's data
-                        String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
-                        log.info("CSV upload result for tenant {}: {}", tenantId, csvFileStoreId);
-                        
-                        if (csvFileStoreId != null) {
-                            csvFileStoreIds.put(tenantId, csvFileStoreId);
-                            log.info("Added CSV fileStoreId {} for tenant {}", csvFileStoreId, tenantId);
-                        }
-                    } else {
-                        log.info("Skipping CSV upload for tenant {} - no data to include", tenantId);
-                    }
-                    
                 } catch (Exception e) {
                     log.error("Error generating weekly report data for tenant: {}", tenantId, e);
                 }
             }
-            
+
+            // Build ONE consolidated CSV across all mapped states and upload to tenant "in"
+            try {
+                String consolidatedCsv = generateConsolidatedWeeklyCsv(relevantTenantIds, requestInfo);
+                String consolidatedFileName = generateCsvFileName();
+                String consolidatedFsId = uploadCsvToFileStore(consolidatedCsv, consolidatedFileName, "in", requestInfo);
+                if (consolidatedFsId != null) {
+                    csvFileStoreIds.put("in", consolidatedFsId);
+                    log.info("Uploaded consolidated weekly CSV with filestoreId {} under tenant 'in'", consolidatedFsId);
+                }
+            } catch (Exception e) {
+                log.error("Failed to generate/upload consolidated weekly CSV", e);
+            }
+
             // Send consolidated email with all states
             sendConsolidatedWeeklyReportEmail(requestInfo, emailId, reportDataByTenant, csvFileStoreIds);
             
@@ -390,9 +384,9 @@ public class EscalationController {
         double funcEndPct = totalEnd > 0 ? (totalFuncEnd * 100.0 / totalEnd) : 0;
         double nonFuncEndPct = totalEnd > 0 ? (totalNonFuncEnd * 100.0 / totalEnd) : 0;
         
-        // Calculate arrows
-        ArrowData funcArrow = calculateArrow(funcStartPct, funcEndPct, true);
-        ArrowData nonFuncArrow = calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
+        // Calculate arrows using shared utility
+        ArrowData funcArrow = commonUtility.calculateArrow(funcStartPct, funcEndPct, true);
+        ArrowData nonFuncArrow = commonUtility.calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
         
         // Create consolidated state list - use tenant IDs if no state data
         String consolidatedStateList;
@@ -447,47 +441,6 @@ public class EscalationController {
             .build();
 
     }
-    
-    /**
-     * Calculate arrow direction and class for percentage changes
-     */
-    private ArrowData calculateArrow(double startPct, double endPct, boolean isFunctional) {
-        double change = endPct - startPct;
-        
-        if (Math.abs(change) < 0.1) {
-            return ArrowData.builder()
-                .arrow("")
-                .arrowClass("")
-                .build();
-        }
-        
-        if (isFunctional) {
-            if (change > 0) {
-                return ArrowData.builder()
-                    .arrow("↑")
-                    .arrowClass("up")
-                    .build();
-            } else {
-                return ArrowData.builder()
-                    .arrow("↓")
-                    .arrowClass("down")
-                    .build();
-            }
-        } else {
-            if (change > 0) {
-                return ArrowData.builder()
-                    .arrow("↑")
-                    .arrowClass("down")
-                    .build();
-            } else {
-                return ArrowData.builder()
-                    .arrow("↓")
-                    .arrowClass("up")
-                    .build();
-            }
-        }
-    }
-    
     /**
      * Process a single escalation recipient
      * Based on LLD sequence diagram Loop 1
@@ -594,24 +547,33 @@ public class EscalationController {
                     requestInfo
             );
 
+            // Always process escalation level, even with zero counts
+            List<EscalationTicket> filteredTickets = new ArrayList<>();
             if (tickets != null && !tickets.isEmpty()) {
-                ticketsByLevel.put(item.getEscalationLevel(), tickets);
-                
-                // Generate CSV for this level
-                String csvContent = csvGenerationService.generateEscalationCsv(tickets);
-                String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), tenantId);
-                String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
-                
-                if (csvFileStoreId != null) {
-                    csvFileStoreIds.add(csvFileStoreId);
-                    csvFileNames.add(csvFileName);
-                }
-
-                // Update Elasticsearch for this level
-                elasticsearchEscalationService.updateEscalationsForTickets(tickets, escalationId, item.getEscalationLevel());
-                
-                log.info("Found {} tickets for escalation level: {}", tickets.size(), item.getEscalationLevel());
+                // Filter tickets by MDMS workflow states to match email template logic
+                filteredTickets = filterTicketsByWorkflowStates(tickets, item.getWorkflowStates());
             }
+            
+            // Always add to ticketsByLevel (even if empty) for consistent email generation
+            ticketsByLevel.put(item.getEscalationLevel(), filteredTickets);
+            
+            // Always generate CSV (with headers only if no tickets)
+            String csvContent = csvGenerationService.generateEscalationCsv(filteredTickets);
+            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), tenantId);
+            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+            
+            if (csvFileStoreId != null) {
+                csvFileStoreIds.add(csvFileStoreId);
+                csvFileNames.add(csvFileName);
+            }
+
+            // Update Elasticsearch for this level (only if there are tickets)
+            if (!filteredTickets.isEmpty()) {
+                elasticsearchEscalationService.updateEscalationsForTickets(filteredTickets, escalationId, item.getEscalationLevel());
+            }
+            
+            log.info("Processed escalation level: {} with {} tickets (filtered from {} total)", 
+                item.getEscalationLevel(), filteredTickets.size(), tickets != null ? tickets.size() : 0);
         }
 
         // Always send email (even with zero counts) - use new role-based email generation
@@ -674,24 +636,33 @@ public class EscalationController {
                     requestInfo
             );
 
+            // Always process escalation level, even with zero counts
+            List<EscalationTicket> filteredTickets = new ArrayList<>();
             if (tickets != null && !tickets.isEmpty()) {
-                ticketsByLevel.put(item.getEscalationLevel(), tickets);
-                
-                // Generate CSV for this level
-                String csvContent = csvGenerationService.generateEscalationCsv(tickets);
-                String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), "in");
-                String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
-                
-                if (csvFileStoreId != null) {
-                    csvFileStoreIds.add(csvFileStoreId);
-                    csvFileNames.add(csvFileName);
-                }
-
-                // Update Elasticsearch for this level
-                elasticsearchEscalationService.updateEscalationsForTickets(tickets, escalationId, item.getEscalationLevel());
-                
-                log.info("Found {} tickets for country escalation level: {}", tickets.size(), item.getEscalationLevel());
+                // Filter tickets by MDMS workflow states to match email template logic
+                filteredTickets = filterTicketsByWorkflowStates(tickets, item.getWorkflowStates());
             }
+            
+            // Always add to ticketsByLevel (even if empty) for consistent email generation
+            ticketsByLevel.put(item.getEscalationLevel(), filteredTickets);
+            
+            // Always generate CSV (with headers only if no tickets)
+            String csvContent = csvGenerationService.generateEscalationCsv(filteredTickets);
+            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), "in");
+            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+            
+            if (csvFileStoreId != null) {
+                csvFileStoreIds.add(csvFileStoreId);
+                csvFileNames.add(csvFileName);
+            }
+
+            // Update Elasticsearch for this level (only if there are tickets)
+            if (!filteredTickets.isEmpty()) {
+                elasticsearchEscalationService.updateEscalationsForTickets(filteredTickets, escalationId, item.getEscalationLevel());
+            }
+            
+            log.info("Processed country escalation level: {} with {} tickets (filtered from {} total)", 
+                item.getEscalationLevel(), filteredTickets.size(), tickets != null ? tickets.size() : 0);
         }
 
         // Special handling for CENTRAL_POC: Create combined CSV for L1 section (LEVEL_ZERO + LEVEL_ONE)
@@ -783,8 +754,24 @@ public class EscalationController {
     }
     
     /**
+     * Filter tickets by MDMS workflow states to ensure consistency between email template and CSV
+     */
+    private List<EscalationTicket> filterTicketsByWorkflowStates(List<EscalationTicket> tickets, List<String> mdmsWorkflowStates) {
+        if (mdmsWorkflowStates == null || mdmsWorkflowStates.isEmpty()) {
+            return tickets;
+        }
+        
+        return tickets.stream()
+            .filter(ticket -> {
+                String ticketStatus = ticket.getApplicationStatus();
+                return ticketStatus != null && mdmsWorkflowStates.contains(ticketStatus);
+            })
+            .collect(Collectors.toList());
+    }
+    
+    /**
      * Send role-based escalation email
-     * Handles all 4 roles: STATE_POC, CENTRAL_POC, CENTRAL_ONM_PROJECT_MANAGER, CENTRAL_OPERATIONS_LEAD
+     * Handles all 4 roles: STATE_POC, CENTRAL_POC, CENTRAL_ONM_PROJECT_MANAGER, SENIOR_PROGRAM_MANAGER
      * Always sends email even with zero ticket counts
      */
     private void sendRoleBasedEscalationEmail(RequestInfo requestInfo, List<User> users, 
@@ -942,91 +929,150 @@ public class EscalationController {
     }
 
     /**
-     * Generate weekly report CSV content using Elasticsearch computed-sla-im-services-write index
+     * Generate a single consolidated weekly CSV across all mapped state tenants.
+     * The CSV includes both functional and non-functional facilities and is intended
+     * to be uploaded under tenantId = "in".
      */
-    private String generateWeeklyReportCsv(WeeklyReportData reportData, String tenantId) {
+    private String generateConsolidatedWeeklyCsv(Set<String> stateTenantIds, RequestInfo requestInfo) {
+        StringBuilder csv = new StringBuilder();
+        appendCsvHeader(csv);
+
         try {
-            log.info("Generating CSV for tenant: {}", tenantId);
-            StringBuilder csv = new StringBuilder();
-            
-            // CSV Header - Health Facility focused
-            csv.append("Facility Code,Facility Name,Facility Type,District,Block,System Status,Ticket ID,Comments,Application Status,Age in Days,State\n");
-            
-            // Query Elasticsearch computed-sla-im-services-write index for all tickets
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
-            log.info("Fetched {} tickets from Elasticsearch for CSV generation", tickets.size());
-            
-            try {
-                for (Map<String, Object> ticket : tickets) {
-                    Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
-                    if (data != null) {
-                        // Filter by tenant
-                        String ticketTenantId = (String) data.get("tenantid");
-                        if (!tenantId.equals(ticketTenantId)) {
-                            continue;
-                        }
-                        csv.append(escapeCsvField(getStringValue(data, "tenantid"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "tenantid"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "phctype"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "district"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "block"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "systemfunctional"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "incidentid"))).append(",");
-                        csv.append(escapeCsvField(getStringValue(data, "comments"))).append(",");
-                        
-                        // Get application status from nested structure
-                        Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
-                        String applicationStatus = "N/A";
-                        if (currentProcessInstance != null) {
-                            Map<String, Object> state = (Map<String, Object>) currentProcessInstance.get("state");
-                            if (state != null) {
-                                applicationStatus = getStringValue(state, "applicationStatus");
-                            }
-                        }
-                        csv.append(escapeCsvField(applicationStatus)).append(",");
-                        
-                        // Calculate age in days
-                        Long filedDate = (Long) data.get("fileddate");
-                        String ageInDays = "";
-                        if (filedDate != null) {
-                            long ageInMillis = System.currentTimeMillis() - filedDate;
-                            long ageInDaysLong = ageInMillis / (1000 * 60 * 60 * 24);
-                            ageInDays = String.valueOf(ageInDaysLong);
-                        }
-                        csv.append(ageInDays).append(",");
-                        csv.append(escapeCsvField(commonUtility.getStateDisplayName(tenantId))).append("\n");
-                    }
-                }
-                
-                log.info("Generated CSV with {} tickets from Elasticsearch for tenant: {}", tickets.size(), tenantId);
-                
-            } catch (Exception e) {
-                log.error("Error processing Elasticsearch data for CSV generation for tenant: {}", tenantId, e);
-                // Fallback to summary data
-                csv.append("SUMMARY,Weekly Report Summary,ALL,ALL,ALL,");
-                if (reportData.getWeekEndMetrics() != null) {
-                    int endTotal = reportData.getWeekEndMetrics().getFunctionalCount() + reportData.getWeekEndMetrics().getNonFunctionalCount();
-                    double funcEndPct = endTotal > 0 ? (reportData.getWeekEndMetrics().getFunctionalCount() * 100.0 / endTotal) : 0;
-                    csv.append("Functional: ").append(reportData.getWeekEndMetrics().getFunctionalCount()).append(" (").append(String.format("%.1f", funcEndPct)).append("%),");
-                    csv.append("N/A,");
-                    csv.append("Summary data,");
-                    csv.append("N/A,");
-                    csv.append("N/A,");
-                    csv.append(tenantId).append("\n");
-                } else {
-                    csv.append("No data available,N/A,Summary data,N/A,N/A,");
-                    csv.append(tenantId).append("\n");
-                }
+            log.info("Consolidated CSV: fetched {} tickets from ES", tickets.size());
+
+            Map<String, Map<String, Object>> facilityAgg = new LinkedHashMap<>();
+            for (Map<String, Object> ticket : tickets) {
+                Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
+                if (data == null) continue;
+
+                String tenantId = getStringValue(data, "tenantId");
+                if (!isInScope(tenantId, stateTenantIds)) continue;
+
+                String facilityName = resolveFacilityName(data);
+                String ninOrHfr = getStringValue(data, "nin_hfr_id");
+                String stateRoot = rootTenant(tenantId);
+                String district = getStringValue(data, "district");
+                String block = getStringValue(data, "block");
+                String hfType = resolveHfType(data);
+                String vendor = resolveVendor(data);
+                String status = extractApplicationStatus(data);
+                boolean isClosed = isClosed(status);
+                boolean isFunctional = "FUNCTIONAL".equalsIgnoreCase(getStringValue(data, "systemFunctional"));
+
+                Map<String, Object> row = getOrCreateFacilityRow(facilityAgg, facilityName, ninOrHfr, stateRoot, district, block, hfType, vendor);
+                incrementCounts(row, isClosed, isFunctional);
             }
-            
-            return csv.toString();
-            
+
+            facilityAgg.values().forEach(r -> appendCsvRow(csv, r));
+
         } catch (Exception e) {
-            log.error("Error generating weekly report CSV", e);
-            return "Error generating CSV content";
+            log.error("Error generating consolidated weekly CSV", e);
         }
+
+        return csv.toString();
     }
-    
+
+    private void appendCsvHeader(StringBuilder csv) {
+        csv.append("\"Health Facility\",\"NIN OR HFR\",\"Solar Working\",\"State\",\"District\",\"Block\",\"Health Facility Type\",\"Mapped Vendor\",\"No of Ticket\",\"Open Ticket\",\"Closed Ticket\"\r\n");
+    }
+
+    private boolean isInScope(String tenantId, Set<String> stateTenantIds) {
+        if (tenantId == null || tenantId.isEmpty()) return false;
+        for (String state : stateTenantIds) {
+            if (tenantId.equalsIgnoreCase(state) || tenantId.startsWith(state + ".")) return true;
+        }
+        return false;
+    }
+
+    private String rootTenant(String tenantId) {
+        return tenantId.contains(".") ? tenantId.substring(0, tenantId.indexOf('.')) : tenantId;
+    }
+
+    private String resolveFacilityName(Map<String, Object> data) {
+        String name = getStringValue(data, "tenantId_localized");
+        return name.isEmpty() ? getStringValue(data, "tenantId") : name;
+    }
+
+    private String resolveHfType(Map<String, Object> data) {
+       Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+        if (incident != null) {
+            // Check localized version first (if available)
+            String type = getStringValue(incident, "phcSubType_localized");
+            if (!type.isEmpty()) return type;
+            
+            // Use phcSubType from incident (same as daily email - e.g., "Primary Health Center")
+            type = getStringValue(incident, "phcSubType");
+            if (!type.isEmpty()) return type;
+        }
+        
+        return "";
+    }
+
+    private String resolveVendor(Map<String, Object> data) {
+        String vendor = getStringValue(data, "mappedVendorName");
+        return vendor.isEmpty() ? getStringValue(data, "mappedVendorUserName") : vendor;
+    }
+
+    private String extractApplicationStatus(Map<String, Object> data) {
+        Map<String, Object> cpi = (Map<String, Object>) data.get("currentProcessInstance");
+        if (cpi == null) return "N/A";
+        Map<String, Object> st = (Map<String, Object>) cpi.get("state");
+        return st != null ? getStringValue(st, "applicationStatus") : "N/A";
+    }
+
+    private boolean isClosed(String status) {
+        return status.equalsIgnoreCase("RESOLVED") ||
+               status.equalsIgnoreCase("CLOSED_AFTER_RESOLUTION") ||
+               status.equalsIgnoreCase("CLOSED_AFTER_REJECTION") ||
+               status.equalsIgnoreCase("REJECTED");
+    }
+
+    private Map<String, Object> getOrCreateFacilityRow(Map<String, Map<String, Object>> agg,
+                                                       String facility, String nin, String stateRoot,
+                                                       String district, String block, String type, String vendor) {
+        String key = facility + "|" + district + "|" + block + "|" + stateRoot;
+        return agg.computeIfAbsent(key, k -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("facility", facility);
+            m.put("nin", nin);
+            m.put("state", commonUtility.getStateDisplayName(stateRoot));
+            m.put("district", district);
+            m.put("block", block);
+            m.put("type", type);
+            m.put("vendor", vendor);
+            m.put("total", 0L);
+            m.put("open", 0L);
+            m.put("closed", 0L);
+            m.put("solarWorking", "No");
+            return m;
+        });
+    }
+
+    private void incrementCounts(Map<String, Object> row, boolean isClosed, boolean isFunctional) {
+        row.put("total", (long) row.get("total") + 1);
+        if (isClosed) {
+            row.put("closed", (long) row.get("closed") + 1);
+        } else {
+            row.put("open", (long) row.get("open") + 1);
+        }
+        if (isFunctional) row.put("solarWorking", "Yes");
+    }
+
+    private void appendCsvRow(StringBuilder csv, Map<String, Object> row) {
+        csv.append(escapeCsvField((String) row.get("facility"))).append(",")
+           .append(escapeCsvField((String) row.get("nin"))).append(",")
+           .append(escapeCsvField((String) row.get("solarWorking"))).append(",")
+           .append(escapeCsvField((String) row.get("state"))).append(",")
+           .append(escapeCsvField((String) row.get("district"))).append(",")
+           .append(escapeCsvField((String) row.get("block"))).append(",")
+           .append(escapeCsvField((String) row.get("type"))).append(",")
+           .append(escapeCsvField((String) row.get("vendor"))).append(",")
+           .append(row.get("total")).append(",")
+           .append(row.get("open")).append(",")
+           .append(row.get("closed")).append("\r\n");
+    }
+
     
     /**
      * Helper method to safely get string value from map
@@ -1050,12 +1096,12 @@ public class EscalationController {
     /**
      * Generate CSV filename for weekly report
      */
-    private String generateCsvFileName(String tenantId) {
+    private String generateCsvFileName() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
         dateFormat.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
         String timestamp = dateFormat.format(new Date());
         
-        return String.format("weekly_report_%s_%s.csv", tenantId, timestamp);
+        return String.format("weekly_report_%s.csv", timestamp);
     }
     
     /**
