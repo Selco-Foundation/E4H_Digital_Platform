@@ -93,11 +93,11 @@ public class ScheduledVisitValidator {
                 throw new CustomException("AMC Configuration", "Facility ID is mandatory");
             }
             // Get existing facility with facilityID from facility service
-            Facility existingFacility = amcConfigurationValidator.getFacilityById(scheduledVisit.getFacilityId());
-            if (existingFacility == null) {
-                log.error("Facility ID do not exist");
-                throw new CustomException("AMC Configuration", "Facility ID do not exist");
-            }
+//            Facility existingFacility = amcConfigurationValidator.getFacilityById(scheduledVisit.getFacilityId());
+//            if (existingFacility == null) {
+//                log.error("Facility ID do not exist");
+//                throw new CustomException("AMC Configuration", "Facility ID do not exist");
+//            }
 
             if (scheduledVisit.getAmcConfigurationId() == null || scheduledVisit.getAmcConfigurationId().isEmpty()) {
                 log.error("Amc Configuration ID is mandatory in Amc Configuration");

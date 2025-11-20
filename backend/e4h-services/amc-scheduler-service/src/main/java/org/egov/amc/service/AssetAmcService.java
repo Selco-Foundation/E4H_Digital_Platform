@@ -57,9 +57,9 @@ public class AssetAmcService {
         for (AssetAmc amcConfiguration : request.getAssetAmcs()) {
             assetAmcEnrichment.enrichAssetAmcOnCreate(amcConfiguration, request.getRequestInfo());
             log.info("Enriched with AMC Ids and AuditDetails {}", amcConfiguration);
-            producer.push(amcServiceConfiguration.getSaveAssetAmcTopic(), request);
             log.info("Pushed to kafka");
         }
+        producer.push(amcServiceConfiguration.getSaveAssetAmcTopic(), request);
         return request;
     }
 

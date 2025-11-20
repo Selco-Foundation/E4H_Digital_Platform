@@ -12,10 +12,17 @@ import java.util.Map;
 @AllArgsConstructor
 @Builder
 public class Workflow {
-    private String action;
-    private String comment;
-    private List<String> assignees;
+    @JsonProperty("action")
+    private String action = null;
+    @JsonProperty("comments")
+    private String comments = null;
+    @JsonProperty("documents")
     private @Valid List<Document> documents = null;
-    private Map<String, Object> additionalDetails;
+    @JsonProperty("assignes")
+    private @Valid List<String> assignes = null;
+    @JsonProperty("rating")
+    private Integer rating = null;
+    @JsonProperty("additionalDetails")
+    private Object additionalDetails = null;
 }
 

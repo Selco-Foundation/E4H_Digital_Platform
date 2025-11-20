@@ -25,6 +25,7 @@ public class ScheduledVisit {
     private VisitReport visitReport;
     private Workflow workflow;
     private List<ProcessInstance> processInstances;
+    private List<Transaction> transactions;
     private List<ScheduledVisitAssignment> assignments;
     private Map<String, Object> additionalDetails;
     private AuditDetails auditDetails;

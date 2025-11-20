@@ -277,7 +277,7 @@ public class AssetAmcValidator {
 //        checkAssetAmcsIfEmpty(fieldPlans);
         doNullAndEmptyChecks(tenantId, assetAmc);
 //
-        if ((assetAmc.getStartDateFrom() != null && assetAmc.getStartDateFrom() != null && assetAmc.getEndDateTo() != 0) && (assetAmc.getEndDateTo().compareTo(assetAmc.getEndDateTo()) > 0)) {
+        if ((assetAmc.getStartDateFrom() != null && assetAmc.getStartDateFrom() != null && assetAmc.getStartDateTo() != 0) && (assetAmc.getEndDateTo().compareTo(assetAmc.getEndDateTo()) > 0)) {
             log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
             throw new CustomException("INVALID_DATE", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
         }

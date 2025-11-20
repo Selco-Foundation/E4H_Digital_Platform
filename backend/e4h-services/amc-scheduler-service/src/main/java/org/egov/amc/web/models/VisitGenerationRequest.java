@@ -14,10 +14,10 @@ public class VisitGenerationRequest {
     private RequestInfo requestInfo;
 
     @JsonProperty("generationStartDate")
-    private String generationStartDate; // format: date (yyyy-MM-dd)
+    private Long generationStartDate; // format: date (yyyy-MM-dd)
 
     @JsonProperty("generationEndDate")
-    private String generationEndDate; // format: date (yyyy-MM-dd)
+    private Long generationEndDate; // format: date (yyyy-MM-dd)
 
     @JsonProperty("regenerateExisting")
     private Boolean regenerateExisting = false;
