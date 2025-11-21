@@ -438,14 +438,19 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 			// Update password in the nested user object
 			userNode.put("password", password);
 
+			employeeNode.set("user", userNode);
+
 			// Create HRMS update payload with employee object
-			// HRMS expects Employees array with RequestInfo
 			ObjectNode payload = objectMapper.createObjectNode();
 			payload.set("RequestInfo", buildRequestInfoBody());
+			
+			// Add key and action fields (required for HRMS update endpoint)
+			payload.put("key", "UPDATE");
+			payload.put("action", "UPDATE");
 
-			// Wrap employee in Employees array
+			// Wrap employee in Employees array (now definitely contains updated user.password)
 			ArrayNode employeesArray = objectMapper.createArrayNode();
-			employeesArray.add(employeeNode); // Employee already has updated user.password
+			employeesArray.add(employeeNode); // Employee now explicitly has updated user.password
 			payload.set("Employees", employeesArray);
 
 			log.info("Updating password via HRMS for {} {} ({})", userType, userName, userUuid);
@@ -474,8 +479,12 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 		
 		for (int attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
-				// HRMS uses create endpoint for updates
-				postForJsonWithoutRecording(hrmsHost + hrmsUpdateEndpoint, payload);
+				// Build URL with tenantId as query parameter (required for HRMS update)
+				String url = UriComponentsBuilder.fromHttpUrl(hrmsHost + hrmsUpdateEndpoint)
+						.queryParam("tenantId", TARGET_TENANT)
+						.toUriString();
+				
+				postForJsonWithoutRecording(url, payload);
 				if (attempt > 1) {
 					log.info("Successfully updated employee user {} on attempt {}", userUuid, attempt);
 					logToFile("Successfully updated employee user %s on attempt %d", userUuid, attempt);
