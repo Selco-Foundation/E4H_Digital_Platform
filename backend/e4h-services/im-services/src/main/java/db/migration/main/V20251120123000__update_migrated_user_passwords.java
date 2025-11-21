@@ -16,6 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -93,9 +94,9 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 	private final RestTemplate restTemplate = new RestTemplate();
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
-	private String userHost;
-	private String userSearchEndpoint;
-	private String userUpdateEndpoint;
+	private String hrmsHost;
+	private String hrmsSearchEndpoint;
+	private String hrmsUpdateEndpoint;
 
 	private RequestInfo requestInfo;
 	private PrintWriter migrationLogger;
@@ -165,9 +166,9 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 	}
 
 	private void initializeEnv() {
-		userHost = getEnvOrDefault("EGOV_USER_HOST", "http://localhost:8284");
-		userSearchEndpoint = getEnvOrDefault("EGOV_USER_SEARCH_ENDPOINT", "/user/_search");
-		userUpdateEndpoint = getEnvOrDefault("EGOV_USER_UPDATE_ENDPOINT", "/user/users/_updatenovalidate");
+		hrmsHost = getEnvOrDefault("EGOV_HRMS_HOST", "http://localhost:8090");
+		hrmsSearchEndpoint = getEnvOrDefault("EGOV_HRMS_SEARCH_ENDPOINT", "/egov-hrms/employees/_search");
+		hrmsUpdateEndpoint = getEnvOrDefault("EGOV_HRMS_UPDATE_ENDPOINT", "/egov-hrms/employees/_update");
 	}
 
 	/**
@@ -186,54 +187,73 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 	}
 
 	/**
-	 * Fetches users for a specific role at the given offset
+	 * Fetches employees for a specific role at the given offset using HRMS API
 	 * @param roleCode The role code to search for
 	 * @param offset The pagination offset
-	 * @return ArrayNode containing users, or null if error
+	 * @return ArrayNode containing employees, or null if error
 	 */
-	private ArrayNode fetchUsersByRole(String roleCode, int offset) {
-		// Build request body with search criteria for single role
-		ObjectNode requestBody = objectMapper.createObjectNode();
-		requestBody.set("RequestInfo", buildRequestInfoBody());
-		requestBody.put("tenantId", TARGET_TENANT);
-		requestBody.put("active", true);
-		requestBody.put("pageSize", USER_SEARCH_LIMIT);
-		requestBody.put("offset", offset);
-		
-		// Add single role code
-		ArrayNode roleCodes = objectMapper.createArrayNode();
-		roleCodes.add(roleCode);
-		requestBody.set("roleCodes", roleCodes);
+	private ArrayNode fetchEmployeesByRole(String roleCode, int offset) {
+		try {
+			// Build HRMS search URL with query parameters
+			UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(hrmsHost + hrmsSearchEndpoint)
+					.queryParam("tenantId", TARGET_TENANT)
+					.queryParam("roles", roleCode)
+					.queryParam("isActive", true)
+					.queryParam("limit", USER_SEARCH_LIMIT)
+					.queryParam("offset", offset);
 
-		// Make POST request with search criteria in body
-		String url = userHost + userSearchEndpoint;
-		JsonNode response = postForJson(url, requestBody);
-		return response != null && response.has("user") ? (ArrayNode) response.get("user") : null;
+			// Build request body with RequestInfo
+			ObjectNode requestBody = objectMapper.createObjectNode();
+			requestBody.set("RequestInfo", buildRequestInfoBody());
+
+			// Make POST request to HRMS search endpoint
+			String url = builder.toUriString();
+			JsonNode response = postForJson(url, requestBody);
+			
+			// HRMS returns Employees array (not user array)
+			return response != null && response.has("Employees") ? (ArrayNode) response.get("Employees") : null;
+		} catch (Exception e) {
+			recordFailure(String.format("Failed to fetch employees for role %s at offset %d : %s", 
+					roleCode, offset, e.getMessage()));
+			log.error("Error fetching employees for role {} at offset {}: {}", roleCode, offset, e.getMessage());
+			return null;
+		}
 	}
 
 	/**
-	 * Processes a batch of users and updates their passwords
-	 * @param usersNode The array of user nodes to process
+	 * Processes a batch of employees and updates their user passwords
+	 * Employees have a nested user object that contains the user details
+	 * @param employeesNode The array of employee nodes to process
 	 * @param roleCode The role code being processed (for logging)
 	 * @param isVendorRole Whether this is a vendor role
 	 * @return ProcessBatchResult containing processing statistics
 	 */
-	private ProcessBatchResult processUserBatch(ArrayNode usersNode, String roleCode, boolean isVendorRole) {
+	private ProcessBatchResult processEmployeeBatch(ArrayNode employeesNode, String roleCode, boolean isVendorRole) {
 		int newUsers = 0;
 		int duplicateUsers = 0;
 		int updatedUsers = 0;
 		
-		// Process users as they're fetched (streaming approach)
-		for (JsonNode node : usersNode) {
+		// Process employees as they're fetched (streaming approach)
+		for (JsonNode node : employeesNode) {
 			if (!(node instanceof ObjectNode)) {
 				continue;
 			}
 			
-			ObjectNode userNode = (ObjectNode) node;
+			ObjectNode employeeNode = (ObjectNode) node;
+			
+			// Get user object from employee (employees have nested user object)
+			JsonNode userNodeObj = employeeNode.get("user");
+			if (userNodeObj == null || !(userNodeObj instanceof ObjectNode)) {
+				recordFailure(String.format("Employee %s has no user object - skipping", 
+						textOrNull(employeeNode.get("uuid"))));
+				continue;
+			}
+			
+			ObjectNode userNode = (ObjectNode) userNodeObj;
 			String userUuid = textOrNull(userNode.get("uuid"));
 			
 			if (StringUtils.isBlank(userUuid)) {
-				recordFailure(String.format("User with role %s has no UUID - skipping", roleCode));
+				recordFailure(String.format("Employee user with role %s has no UUID - skipping", roleCode));
 				continue;
 			}
 			
@@ -251,8 +271,8 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 			
 			String userName = textOrNull(userNode.get("userName"));
 			
-			// Process the user based on role type
-			boolean success = processUserPassword(userNode, userUuid, userName, isVendorRole);
+			// Process the employee's user password based on role type
+			boolean success = processEmployeePassword(employeeNode, userNode, userUuid, userName, isVendorRole);
 			
 			if (success) {
 				updatedUsers++;
@@ -268,7 +288,7 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 				Thread.sleep(DELAY_BETWEEN_UPDATES_MS);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
-				recordFailure("Migration interrupted during user processing delay");
+				recordFailure("Migration interrupted during employee processing delay");
 				break;
 			}
 			
@@ -285,18 +305,19 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 	}
 
 	/**
-	 * Processes user password update (consolidates vendor and regular user logic)
-	 * @param userNode The user node
+	 * Processes employee password update via HRMS API (consolidates vendor and regular user logic)
+	 * @param employeeNode The employee node (has nested user object)
+	 * @param userNode The user node from employee
 	 * @param userUuid The user UUID
 	 * @param userName The username
 	 * @param isVendorRole Whether this is a vendor role
 	 * @return true if successful, false otherwise
 	 */
-	private boolean processUserPassword(ObjectNode userNode, String userUuid, String userName, boolean isVendorRole) {
+	private boolean processEmployeePassword(ObjectNode employeeNode, ObjectNode userNode, String userUuid, String userName, boolean isVendorRole) {
 		if (isVendorRole) {
-			return updateVendorPassword(userNode, userUuid, userName);
+			return updateVendorPasswordViaHRMS(employeeNode, userNode, userUuid, userName);
 		} else {
-			return updateUserPassword(userNode, userUuid, userName, DEFAULT_PASSWORD);
+			return updateEmployeePasswordViaHRMS(employeeNode, userNode, userUuid, userName, DEFAULT_PASSWORD);
 		}
 	}
 
@@ -317,10 +338,10 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 
 		while (true) {
 			try {
-				// Build and fetch users for this role at current offset
-				ArrayNode usersNode = fetchUsersByRole(roleCode, offset);
+				// Build and fetch employees for this role at current offset using HRMS API
+				ArrayNode employeesNode = fetchEmployeesByRole(roleCode, offset);
 				
-				if (usersNode == null || usersNode.isEmpty()) {
+				if (employeesNode == null || employeesNode.isEmpty()) {
 					consecutiveEmptyPages++;
 					if (consecutiveEmptyPages >= maxConsecutiveEmptyPages) {
 						log.info("Received {} consecutive empty pages for role {}, stopping fetch", consecutiveEmptyPages, roleCode);
@@ -334,8 +355,8 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 				// Reset empty pages counter when we get results
 				consecutiveEmptyPages = 0;
 
-				// Process batch of users
-				ProcessBatchResult result = processUserBatch(usersNode, roleCode, isVendorRole);
+				// Process batch of employees (employees have nested user objects)
+				ProcessBatchResult result = processEmployeeBatch(employeesNode, roleCode, isVendorRole);
 				
 				// Update counters
 				roleUsersProcessed += result.newUsers;
@@ -350,18 +371,18 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 				}
 
 				// Break if we got fewer results than requested (last page)
-				if (usersNode.size() < USER_SEARCH_LIMIT) {
-					log.info("Received {} users (less than page size {}) for role {}, stopping fetch", 
-							usersNode.size(), USER_SEARCH_LIMIT, roleCode);
+				if (employeesNode.size() < USER_SEARCH_LIMIT) {
+					log.info("Received {} employees (less than page size {}) for role {}, stopping fetch", 
+							employeesNode.size(), USER_SEARCH_LIMIT, roleCode);
 					break;
 				}
 
 				offset += USER_SEARCH_LIMIT;
 				
 			} catch (Exception e) {
-				recordFailure(String.format("Failed to fetch users for role %s at offset %d : %s", 
+				recordFailure(String.format("Failed to fetch employees for role %s at offset %d : %s", 
 						roleCode, offset, e.getMessage()));
-				log.error("Error processing users for role {} at offset {}: {}", roleCode, offset, e.getMessage());
+				log.error("Error processing employees for role {} at offset {}: {}", roleCode, offset, e.getMessage());
 				break;
 			}
 		}
@@ -373,7 +394,7 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 	}
 
 
-	private boolean updateVendorPassword(ObjectNode userNode, String userUuid, String userName) {
+	private boolean updateVendorPasswordViaHRMS(ObjectNode employeeNode, ObjectNode userNode, String userUuid, String userName) {
 		// Guard against null or blank userName
 		if (StringUtils.isBlank(userName)) {
 			recordFailure(String.format("Vendor user has null or blank userName (uuid: %s) - cannot lookup password mapping, skipping",
@@ -393,52 +414,59 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 			vendorPassword = VENDOR_FALLBACK_PASSWORD;
 		}
 
-		// Update password using common method
-		return updatePassword(userNode, userUuid, userName, vendorPassword, "vendor");
+		// Update password via HRMS API
+		return updateEmployeePasswordViaHRMS(employeeNode, userNode, userUuid, userName, vendorPassword);
 	}
 
-	private boolean updateUserPassword(ObjectNode userNode, String userUuid, String userName, String password) {
-		// Update password using common method
-		return updatePassword(userNode, userUuid, userName, password, "user");
+	private boolean updateEmployeePasswordViaHRMS(ObjectNode employeeNode, ObjectNode userNode, String userUuid, String userName, String password) {
+		// Update password via HRMS API using common method
+		return updateEmployeePassword(employeeNode, userNode, userUuid, userName, password, "user");
 	}
 
 	/**
-	 * Common method to update user password via API
-	 * @param userNode The user object node
+	 * Common method to update employee password via HRMS API
+	 * @param employeeNode The employee node (has nested user object)
+	 * @param userNode The user node from employee
 	 * @param userUuid The user UUID
 	 * @param userName The username
 	 * @param password The password to set
 	 * @param userType The type of user ("vendor" or "user") for logging purposes
 	 * @return true if successful, false otherwise
 	 */
-	private boolean updatePassword(ObjectNode userNode, String userUuid, String userName, String password, String userType) {
+	private boolean updateEmployeePassword(ObjectNode employeeNode, ObjectNode userNode, String userUuid, String userName, String password, String userType) {
 		try {
-			// Set the password
+			// Update password in the nested user object
 			userNode.put("password", password);
 
-			// Create update payload
+			// Create HRMS update payload with employee object
+			// HRMS expects Employees array with RequestInfo
 			ObjectNode payload = objectMapper.createObjectNode();
 			payload.set("RequestInfo", buildRequestInfoBody());
-			payload.set("user", userNode);
-
-			log.info("Updating password for {} {} ({})", userType, userName, userUuid);
-			logToFile("Updating password for %s %s (%s)", userType, userName, userUuid);
-
-			// Call user update API
-			updateUserWithRetry(payload, userUuid, userName);
 			
-			log.info("Successfully updated password for {} {} ({})", userType, userName, userUuid);
-			logToFile("Successfully updated password for %s %s (%s)", userType, userName, userUuid);
+			// Wrap employee in Employees array
+			ArrayNode employeesArray = objectMapper.createArrayNode();
+			employeesArray.add(employeeNode); // Employee already has updated user.password
+			payload.set("Employees", employeesArray);
+
+			log.info("Updating password via HRMS for {} {} ({})", userType, userName, userUuid);
+			logToFile("Updating password via HRMS for %s %s (%s)", userType, userName, userUuid);
+
+			// Call HRMS update API (uses create endpoint for updates)
+			updateEmployeeWithRetry(payload, userUuid, userName);
+			
+			log.info("Successfully updated password via HRMS for {} {} ({})", userType, userName, userUuid);
+			logToFile("Successfully updated password via HRMS for %s %s (%s)", userType, userName, userUuid);
 			return true;
 
 		} catch (Exception e) {
-			recordFailure(String.format("Failed to update password for %s %s (%s) : %s",
+			recordFailure(String.format("Failed to update password via HRMS for %s %s (%s) : %s",
 					userType, userName, userUuid, e.getMessage()));
 			return false;
 		}
 	}
 
-	private void updateUserWithRetry(ObjectNode payload, String userUuid, String userName) throws Exception {
+
+	private void updateEmployeeWithRetry(ObjectNode payload, String userUuid, String userName) throws Exception {
 		int maxRetries = 3;
 		int[] delaysInSeconds = {2, 5, 10};
 		
@@ -446,10 +474,11 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 		
 		for (int attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
-				postForJsonWithoutRecording(userHost + userUpdateEndpoint, payload);
+				// HRMS uses create endpoint for updates
+				postForJsonWithoutRecording(hrmsHost + hrmsUpdateEndpoint, payload);
 				if (attempt > 1) {
-					log.info("Successfully updated user {} on attempt {}", userUuid, attempt);
-					logToFile("Successfully updated user %s on attempt %d", userUuid, attempt);
+					log.info("Successfully updated employee user {} on attempt {}", userUuid, attempt);
+					logToFile("Successfully updated employee user %s on attempt %d", userUuid, attempt);
 				}
 				return; // Success
 			} catch (Exception e) {
@@ -457,26 +486,27 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 				String errorMessage = e.getMessage() != null ? e.getMessage().toLowerCase() : "";
 				
 				// Check for permanent errors that shouldn't be retried
-				if (errorMessage.contains("user not found") ||
-					errorMessage.contains("invalid user") ||
+				if (errorMessage.contains("employee not found") ||
+					errorMessage.contains("user not found") ||
+					errorMessage.contains("invalid") ||
 					errorMessage.contains("does not exist")) {
-					log.warn("User {} not found, skipping", userUuid);
-					logToFile("User %s not found, skipping", userUuid);
+					log.warn("Employee user {} not found, skipping", userUuid);
+					logToFile("Employee user %s not found, skipping", userUuid);
 					throw e; // Don't retry, propagate the exception
 				}
 				
 				// If this was the last attempt, throw the exception
 				if (attempt >= maxRetries) {
-					log.error("Failed to update user {} after {} attempts", userUuid, maxRetries);
-					logToFile("Failed to update user %s after %d attempts", userUuid, maxRetries);
+					log.error("Failed to update employee user {} after {} attempts", userUuid, maxRetries);
+					logToFile("Failed to update employee user %s after %d attempts", userUuid, maxRetries);
 					throw e;
 				}
 				
 				// Otherwise, log and retry with delay
 				int delaySeconds = delaysInSeconds[attempt - 1];
-				log.warn("Attempt {} failed for user {}: {}. Retrying in {} seconds...", 
+				log.warn("Attempt {} failed for employee user {}: {}. Retrying in {} seconds...", 
 						attempt, userUuid, e.getMessage(), delaySeconds);
-				logToFile("Attempt %d failed for user %s: %s. Retrying in %d seconds...", 
+				logToFile("Attempt %d failed for employee user %s: %s. Retrying in %d seconds...", 
 						attempt, userUuid, e.getMessage(), delaySeconds);
 				
 				try {
@@ -593,11 +623,13 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 		logToFile("Target Roles: %s", String.join(", ", MIGRATED_ROLES));
 		logToFile("Vendor Role: %s (with specific passwords - passwords masked in logs)", VENDOR_ROLE);
 		logToFile("Total Vendors in mapping: %d", VENDOR_PASSWORDS.size());
-		logToFile("User Search Endpoint: %s%s", userHost, userSearchEndpoint);
+		logToFile("HRMS Search Endpoint: %s%s", hrmsHost, hrmsSearchEndpoint);
+		logToFile("HRMS Update Endpoint: %s%s", hrmsHost, hrmsUpdateEndpoint);
 		logToFile("Batch Size: %d users", PASSWORD_UPDATE_BATCH_SIZE);
 		logToFile("Delay Between Updates: %d ms", DELAY_BETWEEN_UPDATES_MS);
-		logToFile("Note: Fetching only users with target roles (optimized query)");
-		logToFile("Note: Processing with rate limiting to avoid API overload");
+			logToFile("Note: Using HRMS APIs for employee search and password updates");
+			logToFile("Note: Fetching employees by role with optimized query");
+			logToFile("Note: Processing with rate limiting to avoid API overload");
 		logToFile("Security Note: Passwords are masked in logs for security");
 		logToFile("========================================");
 	}
