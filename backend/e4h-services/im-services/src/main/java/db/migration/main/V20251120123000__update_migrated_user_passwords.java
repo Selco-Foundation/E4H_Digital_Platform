@@ -35,6 +35,7 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 
 	private static final String TARGET_TENANT = "in";
 	private static final String DEFAULT_PASSWORD = "Health@2026";
+	private static final String VENDOR_FALLBACK_PASSWORD = "Energy@123";
 	private static final String VENDOR_ROLE = "COMPLAINT_RESOLVER";
 	private static final int USER_SEARCH_LIMIT = 100;
 	private static final int PASSWORD_UPDATE_BATCH_SIZE = 50; // Process 50 users, then log progress
@@ -322,9 +323,10 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 		String vendorPassword = VENDOR_PASSWORDS.get(userName.toLowerCase());
 		
 		if (vendorPassword == null) {
-			recordFailure(String.format("No password mapping found for vendor %s (%s) - skipping",
-					userName, userUuid));
-			return false;
+			// Fallback: If vendor not found in mapping, use vendor fallback password
+			log.warn("No password mapping found for vendor {} ({}), using fallback password", userName, userUuid);
+			logToFile("No password mapping found for vendor %s (%s), using fallback password Energy@123", userName, userUuid);
+			vendorPassword = VENDOR_FALLBACK_PASSWORD;
 		}
 
 		// Update password using common method
