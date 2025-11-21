@@ -91,7 +91,7 @@ public class ScheduledVisitQueryBuilder {
     }
 
     public String getScheduledVisitSearchQuery(ScheduledVisitSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
-        //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
+        //This uses a ternary operator to choose between SCHEDULED_VISIT_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         String query = criteria.isCountQuery() ? SCHEDULED_VISIT_COUNT_QUERY : FETCH_SCHEDULED_VISIT_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
 

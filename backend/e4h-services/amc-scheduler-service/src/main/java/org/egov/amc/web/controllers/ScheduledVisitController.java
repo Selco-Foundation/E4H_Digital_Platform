@@ -46,7 +46,7 @@ public class ScheduledVisitController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
-    @RequestMapping(value = "/visit/_generate", method = RequestMethod.POST)
+    @RequestMapping(value = "/configuration/_generate", method = RequestMethod.POST)
     public ResponseEntity<ScheduledVisitResponse> generateVisits(@Validated @RequestBody VisitGenerationRequest request
     ) {
         log.info("Received request to generate visits for configuration: {}", request);
