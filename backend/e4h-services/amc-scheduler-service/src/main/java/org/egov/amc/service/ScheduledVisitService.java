@@ -210,6 +210,7 @@ public class ScheduledVisitService {
     private void handleTransactions(VisitReportSubmissionRequest request, ProcessInstance updatedWorkflow) {
         Transaction transaction = new Transaction();
         transaction.setProcessInstanceId(updatedWorkflow.getId());
+        transaction.setVisitReport(request.getVisitReport());
         String userUUID = request.getRequestInfo().getUserInfo().getUuid();
         transaction.setVisitId(request.getVisitId());
         transaction.setAuditDetails(amcConfigurationServiceUtil.getAuditDetails(userUUID, null, true));
@@ -266,7 +267,7 @@ public class ScheduledVisitService {
             transaction.setVisitId(rs.getString("visit_id"));
             transaction.setProcessInstanceId(rs.getString("process_instance_id"));
             try {
-                transaction.setVisitReport(mapper.readValue(rs.getString("sv_visit_report"), VisitReport.class));
+                transaction.setVisitReport(mapper.readValue(rs.getString("visit_report"), VisitReport.class));
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
@@ -364,7 +365,7 @@ public class ScheduledVisitService {
         return Objects.equals(scheduledVisitsFromDB.getId(), scheduledVisits.getId()) &&
                 Objects.equals(scheduledVisitsFromDB.getTenantId(), scheduledVisits.getTenantId()) &&
                 Objects.equals(scheduledVisitsFromDB.getAmcConfigurationId(), scheduledVisits.getAmcConfigurationId()) &&
-                Objects.equals(scheduledVisitsFromDB.getFacility(), scheduledVisits.getFacility());
+                Objects.equals(scheduledVisitsFromDB.getFacilityId(), scheduledVisits.getFacilityId());
         // Note: We allow startDate, endDate, vendorId, geographyDetails, activities and auditDetails to be different
     }
 

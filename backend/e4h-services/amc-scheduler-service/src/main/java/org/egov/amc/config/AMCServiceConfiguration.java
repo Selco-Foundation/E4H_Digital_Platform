@@ -15,9 +15,6 @@ public class AMCServiceConfiguration {
     @Value("${egov.product.host}")
     private String productHost;
 
-    @Value("${fieldplan.facility.idgen.id.format}")
-    private String fieldPlanFacilityIdFormat;
-
     @Value("${egov.household.host}")
     private String householdServiceHost;
 
