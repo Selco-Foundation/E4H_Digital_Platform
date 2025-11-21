@@ -1,0 +1,373 @@
+serviceMaps:
+  serviceName: AMC
+  mappings:
+    - version: 1.0
+      name: AMC Configuration
+      description: Persists amc configuration in amc config table
+      fromTopic: save-amc-configuration
+      isTransaction: true
+      isAuditEnabled: true
+      module: AMC
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.[0].auditDetails.createdBy
+      transactionCodeJsonPath: $.id
+      auditAttributeBasePath: $.*
+      queryMaps:
+        - query: INSERT INTO amc_configuration (id, tenant_id, vendor_id, facility_id, asset_types, project_id, duration_months, visit_frequency_months, configuration_start_date, configuration_end_date, status, additional_details, created_by, created_time, last_modified_by, last_modified_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          basePath: $.AmcConfigurations.*
+          jsonMaps:
+            - jsonPath: $.AmcConfigurations.*.id
+
+            - jsonPath: $.AmcConfigurations.*.tenantId
+
+            - jsonPath: $.AmcConfigurations.*.vendorId
+
+            - jsonPath: $.AmcConfigurations.*.facilityId
+
+            - jsonPath: $.AmcConfigurations.*.assetTypes
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.projectId
+
+            - jsonPath: $.AmcConfigurations.*.durationMonths
+
+            - jsonPath: $.AmcConfigurations.*.visitFrequencyMonths
+
+            - jsonPath: $.AmcConfigurations.*.configurationStartDate
+
+            - jsonPath: $.AmcConfigurations.*.configurationEndDate
+
+            - jsonPath: $.AmcConfigurations.*.status
+
+            - jsonPath: $.AmcConfigurations.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.auditDetails.createdBy
+
+            - jsonPath: $.AmcConfigurations.*.auditDetails.createdTime
+
+            - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedTime
+
+        - query: INSERT INTO amc_configuration_assignments (id, tenant_id, amc_configuration_id, assigned_user, created_by, created_time, last_modified_by, last_modified_time) VALUES(?, ?, ?, ?, ?, ?, ?, ?);
+          basePath: $.AmcConfigurations.*.assignments.*
+          jsonMaps:
+            - jsonPath: $.AmcConfigurations.*.assignments.*.id
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.tenantId
+
+            - jsonPath: $.AmcConfigurations[*][?({id} in @.assignments[*].id)].id
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.assignedUser
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.createdBy
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.createdTime
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      name: Projects
+      description: Updates amc configuration in amc config table
+      fromTopic: update-amc-configuration
+      isTransaction: true
+      isAuditEnabled: true
+      module: PROJECT
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.[0].auditDetails.createdBy
+      transactionCodeJsonPath: $.id
+      auditAttributeBasePath: $.*
+      queryMaps:
+        - query: UPDATE amc_configuration SET vendor_id = ?, facility_id = ?, asset_types = ?, project_id = ?, duration_months = ?, visit_frequency_months = ?, configuration_start_date = ?, configuration_end_date = ?, status = ?, additional_details = ?, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
+          basePath: $.AmcConfigurations.*
+          jsonMaps:
+            - jsonPath: $.AmcConfigurations.*.vendorId
+
+            - jsonPath: $.AmcConfigurations.*.facilityId
+
+            - jsonPath: $.AmcConfigurations.*.assetTypes
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.projectId
+
+            - jsonPath: $.AmcConfigurations.*.durationMonths
+
+            - jsonPath: $.AmcConfigurations.*.visitFrequencyMonths
+
+            - jsonPath: $.AmcConfigurations.*.configurationStartDate
+
+            - jsonPath: $.AmcConfigurations.*.configurationEndDate
+
+            - jsonPath: $.AmcConfigurations.*.status
+
+            - jsonPath: $.AmcConfigurations.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.AmcConfigurations.*.auditDetails.lastModifiedTime
+
+            - jsonPath: $.AmcConfigurations.*.id
+
+        - query: INSERT INTO amc_configuration_assignments (id, tenant_id, amc_configuration_id, assigned_user, created_by, created_time, last_modified_by, last_modified_time) VALUES(?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET assigned_user=?, lastModifiedBy=?, lastModifiedTime=?;
+          basePath: $.AmcConfigurations.*.assignments.*
+          jsonMaps:
+            - jsonPath: $.AmcConfigurations.*.assignments.*.id
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.tenantId
+
+            - jsonPath: $.AmcConfigurations[*][?({id} in @.assignments[*].id)].id
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.assignedUser
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.createdBy
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.createdTime
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.lastModifiedTime
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.assignedUser
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.AmcConfigurations.*.assignments.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      description: Saves a asset AMC
+      fromTopic: save-asset-amc
+      isTransaction: true
+      isAuditEnabled: true
+      module: AMC
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.[0].auditDetails.createdBy
+      transactionCodeJsonPath: $.id
+      auditAttributeBasePath: $.*
+      queryMaps:
+        - query: INSERT INTO asset_amc (id, tenant_id, asset_id, amc_configuration_id, amc_start_date, amc_end_date, status, is_legacy_asset, additional_details, created_by, created_time, last_modified_by, last_modified_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          basePath: $.AssetAmcs.*
+          jsonMaps:
+            - jsonPath: $.AssetAmcs.*.id
+
+            - jsonPath: $.AssetAmcs.*.tenantId
+
+            - jsonPath: $.AssetAmcs.*.assetId
+
+            - jsonPath: $.AssetAmcs.*.amcConfigurationId
+
+            - jsonPath: $.AssetAmcs.*.amcStartDate
+
+            - jsonPath: $.AssetAmcs.*.amcEndDate
+
+            - jsonPath: $.AssetAmcs.*.status
+
+            - jsonPath: $.AssetAmcs.*.isLegacyAsset
+
+            - jsonPath: $.AssetAmcs.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AssetAmcs.*.auditDetails.createdBy
+
+            - jsonPath: $.AssetAmcs.*.auditDetails.createdTime
+
+            - jsonPath: $.AssetAmcs.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.AssetAmcs.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      name: Projects
+      description: Updates asset amc in asset amc table
+      fromTopic: update-asset-amc
+      isTransaction: true
+      isAuditEnabled: true
+      module: AMC
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.[0].auditDetails.createdBy
+      transactionCodeJsonPath: $.id
+      auditAttributeBasePath: $.*
+      queryMaps:
+        - query: UPDATE asset_amc SET asset_id = ?, amc_start_date = ?, amc_end_date = ?, status = ?, is_legacy_asset = ?, additional_details = ?, last_modified_by = ?, last_modified_time = ? WHERE id = ?;
+          basePath: $.AssetAmcs.*
+          jsonMaps:
+            - jsonPath: $.AssetAmcs.*.assetId
+
+            - jsonPath: $.AssetAmcs.*.amcStartDate
+
+            - jsonPath: $.AssetAmcs.*.amcEndDate
+
+            - jsonPath: $.AssetAmcs.*.status
+
+            - jsonPath: $.AssetAmcs.*.isLegacyAsset
+
+            - jsonPath: $.AssetAmcs.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.AssetAmcs.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.AssetAmcs.*.auditDetails.lastModifiedTime
+
+            - jsonPath: $.AssetAmcs.*.id
+
+    - version: 1.0
+      description: Saves a Scheduled Visit
+      fromTopic: save-scheduled-visit
+      isTransaction: true
+      isAuditEnabled: true
+      module: AMC
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.[0].auditDetails.createdBy
+      transactionCodeJsonPath: $.id
+      auditAttributeBasePath: $.*
+      queryMaps:
+        - query: INSERT INTO scheduled_visits (id, tenant_id, amc_configuration_id, facility_id, visit_number, scheduled_date, actual_visit_date, status, visit_report, additional_details, created_by, created_time, last_modified_by, last_modified_time) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          basePath: $.ScheduledVisit.*
+          jsonMaps:
+            - jsonPath: $.ScheduledVisit.*.id
+
+            - jsonPath: $.ScheduledVisit.*.tenantId
+
+            - jsonPath: $.ScheduledVisit.*.amcConfigurationId
+
+            - jsonPath: $.ScheduledVisit.*.facilityId
+
+            - jsonPath: $.ScheduledVisit.*.visitNumber
+
+            - jsonPath: $.ScheduledVisit.*.scheduledDate
+
+            - jsonPath: $.ScheduledVisit.*.actualVisitDate
+
+            - jsonPath: $.ScheduledVisit.*.status
+
+            - jsonPath: $.ScheduledVisit.*.visitReport
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.ScheduledVisit.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.ScheduledVisit.*.auditDetails.createdBy
+
+            - jsonPath: $.ScheduledVisit.*.auditDetails.createdTime
+
+            - jsonPath: $.ScheduledVisit.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.ScheduledVisit.*.auditDetails.lastModifiedTime
+
+        - query: INSERT INTO scheduled_visit_assignments (id, tenant_id, scheduled_visit_id, assigned_user, created_by, created_time, last_modified_by, last_modified_time) VALUES(?, ?, ?, ?, ?, ?, ?, ?);
+          basePath: $.ScheduledVisit.*.assignments.*
+          jsonMaps:
+            - jsonPath: $.ScheduledVisit.*.assignments.*.id
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.tenantId
+
+            - jsonPath: $.ScheduledVisit[*][?({id} in @.assignments[*].id)].id
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.assignedUser
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.createdBy
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.createdTime
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      description: Update a Scheduled Visit
+      fromTopic: update-scheduled-visit
+      isTransaction: true
+      isAuditEnabled: true
+      module: AMC
+      objecIdJsonPath: $.id
+      tenantIdJsonPath: $.tenantId
+      userUuidJsonPath: $.[0].auditDetails.createdBy
+      transactionCodeJsonPath: $.id
+      auditAttributeBasePath: $.*
+      queryMaps:
+        - query: UPDATE public.scheduled_visits SET visit_number=?, scheduled_date=?, actual_visit_date=?, status=?, visit_report=?, additional_details=?, last_modified_by=?, last_modified_time=? WHERE id=?;
+          basePath: $.ScheduledVisit.*
+          jsonMaps:
+            - jsonPath: $.ScheduledVisit.*.visitNumber
+
+            - jsonPath: $.ScheduledVisit.*.scheduledDate
+
+            - jsonPath: $.ScheduledVisit.*.actualVisitDate
+
+            - jsonPath: $.ScheduledVisit.*.status
+
+            - jsonPath: $.ScheduledVisit.*.visitReport
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.ScheduledVisit.*.additionalDetails
+              type: JSON
+              dbType: JSONB
+
+            - jsonPath: $.ScheduledVisit.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.ScheduledVisit.*.auditDetails.lastModifiedTime
+
+            - jsonPath: $.ScheduledVisit.*.id
+
+        - query: INSERT INTO scheduled_visit_assignments (id, tenant_id, scheduled_visit_id, assigned_user, created_by, created_time, last_modified_by, last_modified_time) VALUES(?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET assigned_user=?, lastModifiedBy=?, lastModifiedTime=? ;
+          basePath: $.ScheduledVisit.*.assignments.*
+          jsonMaps:
+            - jsonPath: $.ScheduledVisit.*.assignments.*.id
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.tenantId
+
+            - jsonPath: $.ScheduledVisit[*][?({id} in @.assignments[*].id)].id
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.assignedUser
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.createdBy
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.createdTime
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.lastModifiedTime
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.assignedUser
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.lastModifiedBy
+
+            - jsonPath: $.ScheduledVisit.*.assignments.*.auditDetails.lastModifiedTime
+
+    - version: 1.0
+      description: Persists visit transactions
+      fromTopic: visit-transaction-create
+      isTransaction: true
+      module: AMC
+      objecIdJsonPath: $.transactions.*.transactionId
+      auditAttributeBasePath: $.transactions.*.auditDetails
+      queryMaps:
+        - query: INSERT INTO visit_transaction (id, visit_id, process_instance_id, visit_report, created_by, last_modified_by, created_time, last_modified_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          basePath: $.transactions.*
+          jsonMaps:
+            - jsonPath: $.transactions.*.transactionId
+            - jsonPath: $.transactions.*.visitId
+            - jsonPath: $.transactions.*.processInstanceId
+            - jsonPath: $.transactions.*.visitReport
+              type: JSON
+              dbType: JSONB
+            - jsonPath: $.transactions.*.auditDetails.createdBy
+            - jsonPath: $.transactions.*.auditDetails.lastModifiedBy
+            - jsonPath: $.transactions.*.auditDetails.createdTime
+            - jsonPath: $.transactions.*.auditDetails.lastModifiedTime
