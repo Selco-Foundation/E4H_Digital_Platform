@@ -89,7 +89,21 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
 
       try {
         const hrmsResponse = await Digit.HRMSService.search("in", null, { codes: user.info.userName });
+        const hrmsUser = hrmsResponse?.Employees?.[0];
         Digit.SessionStorage.set("HRMS.User", hrmsResponse?.Employees?.[0]);
+
+        let jurisdictionBoundaries = {};
+        for (let jurisdiction of hrmsUser?.jurisdictions) {
+          if (jurisdiction?.boundaryType) {
+            const key = jurisdiction.boundaryType.toLowerCase();
+            jurisdictionBoundaries = {
+              ...jurisdictionBoundaries,
+              [key]: [...(jurisdictionBoundaries[key] || []), jurisdiction.boundary],
+            }
+          }
+        }
+        Digit.SessionStorage.set("Jurisdiction.Boundaries", jurisdictionBoundaries);
+
       } catch (err) {
         console.error("Failed to fetch HRMS User", err);
       }
