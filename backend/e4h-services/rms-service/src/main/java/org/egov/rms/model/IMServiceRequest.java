@@ -68,6 +68,9 @@ public class IMServiceRequest {
 
         @JsonProperty("reporter")
         private User reporter;
+
+        @JsonProperty("boundaryCode")
+        private String boundaryCode;
     }
 
     @Data
