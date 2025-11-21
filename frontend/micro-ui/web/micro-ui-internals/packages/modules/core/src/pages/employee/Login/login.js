@@ -87,6 +87,13 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         console.error("Login report failed", err);
       }
 
+      try {
+        const hrmsResponse = await Digit.HRMSService.search("in", null, { codes: user.info.userName });
+        Digit.SessionStorage.set("HRMS.User", hrmsResponse?.Employees?.[0]);
+      } catch (err) {
+        console.error("Failed to fetch HRMS User", err);
+      }
+
       const fromParam = new URLSearchParams(location.search).get("from");
       if (fromParam) {
         redirectPath = decodeURIComponent(fromParam) || `/${window.contextPath}/employee`;
@@ -108,23 +115,17 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   }, [user, history, location.search]);
 
   const onLogin = async (data) => {
-    if (!data.city) {
-      alert(t("ES_SELECT_HEALTH_CARE"));
-      return;
-    }
     setDisable(true);
-
     const requestData = {
       ...data,
       userType: "EMPLOYEE",
+      tenantId: "in",
     };
-    requestData.tenantId = data.city.code;
     delete requestData.city;
     try {
       const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
       setUser({ info, ...tokens });
-
 
       try {
         const tenantIdForLabel = info?.tenantId || requestData.tenantId;
@@ -150,27 +151,17 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   };
 
   useEffect(() => {
-    if (cities && cities.length > 0) {
-      const queryParams = new URLSearchParams(window.location.search);
-      const username = queryParams.get("username");
-      const password = queryParams.get("passwd");
-      const tenantId = queryParams.get("tenantid");
+    const queryParams = new URLSearchParams(window.location.search);
+    const username = queryParams.get("username");
+    const password = queryParams.get("passwd");
 
-      if (username && password && tenantId) {
-        const city = cities.find((city) => city.code === tenantId);
-        if (city) {
-          onLogin({
-            username,
-            password,
-            city,
-          });
-        } else {
-          setShowToast("CORE_COMMON_INVALID_LOGIN_CREDENTIALS");
-          setTimeout(closeToast, 5000);
-        }
-      }
+    if (username && password) {
+      onLogin({
+        username,
+        password,
+      });
     }
-  }, [cities]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const closeToast = () => {
     setShowToast(null);
@@ -201,30 +192,12 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           type: password.type,
           populators: {
             name: password.name,
+            style: {
+              marginBottom: "25px"
+            },
           },
           isMandatory: true,
-        },
-        // {
-        //   label: t(city.label),
-        //   type: city.type,
-        //   populators: {
-        //     name: city.name,
-        //     customProps: {},
-        //     component: (props, customProps) => (
-        //       <Dropdown
-        //         option={sortedCities}
-        //         className="login-city-dd"
-        //         optionKey="i18nKey"
-        //         select={(d) => {
-        //           props.onChange(d);
-        //         }}
-        //         t={t}
-        //         {...customProps}
-        //       />
-        //     ),
-        //   },
-        //   isMandatory: true,
-        // },
+        }
       ],
     },
   ];

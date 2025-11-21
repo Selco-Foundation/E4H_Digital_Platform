@@ -6,7 +6,6 @@ import ErrorBoundary from "../../components/ErrorBoundaries";
 import TopBarSideBar from "../../components/TopBarSideBar";
 import ChangePassword from "./ChangePassword";
 import ForgotPassword from "./ForgotPassword";
-import LanguageSelection from "./LanguageSelection";
 import EmployeeLogin from "./Login";
 import UserProfile from "../citizen/Home/UserProfile";
 import ErrorComponent from "../../components/ErrorComponent";
@@ -94,11 +93,8 @@ const EmployeeApp = ({
                   }}
                 />
               </Route>
-              <Route path={`${path}/user/language-selection`}>
-                <LanguageSelection />
-              </Route>
               <Route>
-                <Redirect to={`${path}/user/language-selection`} />
+                <Redirect to={`${path}/user/login`} />
               </Route>
             </Switch>
           </div>
