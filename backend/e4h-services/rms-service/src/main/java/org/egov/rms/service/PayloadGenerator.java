@@ -55,7 +55,6 @@ public class PayloadGenerator {
                     .comments(buildComments(alert, null))
                     .systemFunctional("FUNCTIONAL")
                     .source("RMS")
-                    .boundaryCode("India_Karnataka_Raichur_Lingasugur_FAC/2025/52302")
                     .additionalDetail(buildAdditionalDetail(alert, null))
                     .reporter(buildReporter(requestInfo))
                     .build();
