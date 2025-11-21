@@ -80,7 +80,7 @@ jobs:
           build-args: |
             JAR_FILE=backend/e4h-services/rms-service/target/*.jar
 
-      - name: Build and Push Docker image for Vendor-Registry-DB
+      - name: Build and Push Docker image for Rms-Service-DB
         run: |
           docker build  -t selcohub/rms-service-db:${{ env.VERSION }}-${{ env.commit_hash }} -f  Dockerfile .
           docker push selcohub/rms-service-db:${{ env.VERSION }}-${{ env.commit_hash }}
