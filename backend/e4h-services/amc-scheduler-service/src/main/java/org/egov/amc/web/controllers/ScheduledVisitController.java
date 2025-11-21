@@ -46,11 +46,11 @@ public class ScheduledVisitController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
-    @RequestMapping(value = "/{configurationId}/visit/_generate", method = RequestMethod.POST)
-    public ResponseEntity<ScheduledVisitResponse> generateVisits(@PathVariable("configurationId") String configurationId, @Validated @RequestBody VisitGenerationRequest request
+    @RequestMapping(value = "/visit/_generate", method = RequestMethod.POST)
+    public ResponseEntity<ScheduledVisitResponse> generateVisits(@Validated @RequestBody VisitGenerationRequest request
     ) {
-        log.info("Received request to generate visits for configuration: {}", configurationId);
-        ScheduledVisitResponse response = scheduledVisitService.generateScheduledVisits(configurationId, request);
+        log.info("Received request to generate visits for configuration: {}", request);
+        ScheduledVisitResponse response = scheduledVisitService.generateScheduledVisits(request);
         return ResponseEntity.accepted().body(response);
     }
 

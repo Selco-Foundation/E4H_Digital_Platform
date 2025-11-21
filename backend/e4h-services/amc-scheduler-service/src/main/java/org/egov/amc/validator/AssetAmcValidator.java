@@ -118,9 +118,6 @@ public class AssetAmcValidator {
                 throw new CustomException("Asset AMC", "Start Date Asset AMC is mandatory");
             }
 
-            // Check if assetAmc dates are within assetAmc dates
-//            isAssetAmcWithinProject(existingProject, assetAmc, errorMap);
-
             if (StringUtils.isBlank(assetAmc.getTenantId())) {
                 log.error(TENANT_ID_IS_MANDATORY_IN_FIELDPLAN_REQUEST_BODY);
                 errorMap.put("TENANT_ID", "Tenant ID is mandatory");

@@ -13,6 +13,8 @@ public class VisitGenerationRequest {
     @JsonProperty("RequestInfo")
     private RequestInfo requestInfo;
 
+    private String configurationId;
+
     @JsonProperty("generationStartDate")
     private Long generationStartDate; // format: date (yyyy-MM-dd)
 

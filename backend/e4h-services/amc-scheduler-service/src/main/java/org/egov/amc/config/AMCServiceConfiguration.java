@@ -24,9 +24,6 @@ public class AMCServiceConfiguration {
     @Value("${visit.management.transaction.kafka.create.topic}")
     private String transactionPersistTopic;
 
-    @Value("${fieldPlan.facility.consumer.bulk.unassign.topic}")
-    private String bulkUnassignFieldPlanFacilityTopic;
-
     @Value("${egov.project.host}")
     private String projectServiceHost;
 
@@ -48,23 +45,12 @@ public class AMCServiceConfiguration {
     @Value("${egov.v2.search.facility.url}")
     private String facilityServiceSearchUrlV2;
 
-    @Value("${egov.fieldplan.activity.host}")
-    private String fieldPlanActivityServiceHost;
-
-    @Value("${egov.fieldplan.activity.search.url}")
-    private String fieldPlanActivitySearchUrl;
-
-    @Value("${egov.facility.activity.create.url}")
-    private String facilityActivityCreateUrl;
-
-    @Value("${egov.fieldplan.activity.update.url}")
-    private String fieldPlanActivityUpdateUrl;
-
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
     @Value("${egov.mdms.host}")
     private String mdmsHost;
+
     @Value("${egov.mdms.search.endpoint}")
     private String mdmsEndPoint;
 

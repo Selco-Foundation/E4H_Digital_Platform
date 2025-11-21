@@ -70,17 +70,20 @@ public class ScheduledVisitService {
         return request;
     }
 
-    public ScheduledVisitResponse generateScheduledVisits(String configurationId, VisitGenerationRequest request) {
+    public ScheduledVisitResponse generateScheduledVisits(VisitGenerationRequest request) {
         if (request == null)
             throw new CustomException("GENERATE_VISIT_ERROR", "The request is empty");
 
-        log.info("Generating scheduled visits for AMC configuration {}", configurationId);
+        if (request.getConfigurationId() == null || request.getConfigurationId().isEmpty())
+            throw new CustomException("GENERATE_VISIT_ERROR", "Configuration ID is mandatory");
+
+        log.info("Generating scheduled visits for AMC configuration {}", request.getConfigurationId());
         // Check id configuration ID exist
-        AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder().ids(List.of(configurationId)).tenantId(request.getRequestInfo().getUserInfo().getTenantId()).build();
+        AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder().ids(List.of(request.getConfigurationId())).tenantId(request.getRequestInfo().getUserInfo().getTenantId()).build();
         AmcConfigurationSearchRequest searchRequest = AmcConfigurationSearchRequest.builder().RequestInfo(request.getRequestInfo()).searchCriteria(criteria).build();
         List<AmcConfiguration> amcConfigurationList = amcConfigurationService.searchAmcConfiguration(searchRequest, 10, 0, request.getRequestInfo().getUserInfo().getTenantId(), false, null);
         if(amcConfigurationList==null || amcConfigurationList.isEmpty())
-            throw new CustomException("GENERATE_VISIT_ERROR", "The configuration ID: "+ configurationId +" do not exist");
+            throw new CustomException("GENERATE_VISIT_ERROR", "The configuration ID: "+ request.getConfigurationId() +" do not exist");
 
         // Beginning of the scheduling horizon (defaults to configuration start date if not provided)
         // End of the scheduling horizon (defaults to configuration end date if not provided)
@@ -99,17 +102,25 @@ public class ScheduledVisitService {
             throw new CustomException("GENERATE_VISIT_ERROR", "Cannot generate scheduled visit for this configuration");
 
         List<ScheduledVisit> scheduledVisitList = new ArrayList<>();
+        int i =1;
         for (Long visitDate : generateAmcVisits){
+            List<ScheduledVisitAssignment> assignments = new ArrayList<>();
+            for (AmcConfigurationAssignment amcConfigurationAssignment : amcConfiguration.getAssignments()){
+                ScheduledVisitAssignment scheduledVisitAssignment = ScheduledVisitAssignment.builder().assignedUser(amcConfigurationAssignment.getAssignedUser()).build();
+                assignments.add(scheduledVisitAssignment);
+            }
             ScheduledVisit visit = ScheduledVisit.builder()
                     .tenantId(amcConfiguration.getTenantId())
                     .amcConfigurationId(amcConfiguration.getId())
                     .facilityId(amcConfiguration.getFacilityId())
-                    .visitNumber(generateAmcVisits.size())
+                    .visitNumber(i)
                     .scheduledDate(visitDate)
+                    .assignments(assignments)
                     .status("DRAFT")
                     .build();
 
             scheduledVisitList.add(visit);
+            i++;
         }
 
         ScheduledVisitRequest scheduledVisitRequest = ScheduledVisitRequest.builder().requestInfo(request.getRequestInfo()).scheduledVisits(scheduledVisitList).build();
