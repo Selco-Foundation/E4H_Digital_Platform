@@ -1,4 +1,4 @@
-package org.egov.activity.web.models;
+package org.egov.asset.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
@@ -19,22 +19,34 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class BomSearchCriteria {
+public class ActivityFacilitySearchCriteria {
 
     @JsonProperty("ids")
     private @Valid List<String> ids = null;
 
+    @JsonProperty("fieldPlanIds")
+    private @Valid List<String> fieldPlanId = null;
+
     @JsonProperty("facilityIds")
     private @Valid List<String> facilityId = null;
 
-    @JsonProperty("activityFacilityIds")
-    private @Valid List<String> activityFacilityId = null;
+    @JsonProperty("activityIds")
+    private @Valid List<String> activityId = null;
 
     @JsonProperty("statuses")
-    private @Valid List<String> name = null;
+    private @Valid List<String> statuses = null;
 
-    @JsonProperty("assignUser")
-    private String assignUser = null;
+    @JsonProperty("assignedToMe")
+    private String assignedToMe = null;
+
+    @JsonProperty("assignedUserId")
+    private String assignedUserId = null;
+
+    @JsonProperty("facilityName")
+    private @Valid String facilityName = null;
+
+    @JsonProperty("boundaryCodes")
+    private @Valid List<String> boundaryCodes = null;
 
     private String tenantId;
 

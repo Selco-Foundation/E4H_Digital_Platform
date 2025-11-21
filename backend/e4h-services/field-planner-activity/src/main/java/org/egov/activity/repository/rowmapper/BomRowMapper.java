@@ -25,6 +25,7 @@ public class BomRowMapper implements RowMapper<BillOfMaterial> {
                     .id(resultSet.getString("bom_bomId"))
                     .tenantId(resultSet.getString("bom_tenantId"))
                     .facilityId(resultSet.getString("bom_facilityId"))
+                    .activityFacilityId(resultSet.getString("bom_activityFacilityId"))
                     .name(resultSet.getString("bom_name"))
                     .assignUser(resultSet.getString("bom_assignedUser"))
                     .isActive(resultSet.getBoolean("bom_isActive"))

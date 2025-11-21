@@ -6,12 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.repository.ActivityFacilityRepository;
-import org.egov.activity.service.ActivityService;
+import org.egov.activity.service.ActivityFacilityUsersService;
 import org.egov.activity.service.ServiceRequestRepository;
 import org.egov.activity.util.MDMSUtils;
 import org.egov.activity.web.models.*;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
+import org.egov.common.models.core.SearchResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -25,11 +26,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.egov.activity.util.ActivityConstants.*;
+import static org.egov.activity.util.ActivityConstants.BOM_FORM;
+import static org.egov.activity.util.ActivityConstants.MDMS_COMMON_MASTERS_MODULE_NAME;
 
 @Component
 @Slf4j
-public class BomValidator {
+public class ActivityFacilityUserValidator {
 
     @Autowired
     ActivityFacilityRepository activityFacilityRepository;
@@ -38,7 +40,7 @@ public class BomValidator {
     private final ServiceRequestClient serviceRequestRepository;
 
     private ServiceRequestRepository serviceRequest;
-    private ActivityService activityService;
+//    private ActivityService activityService;
 
     private final ActivityConfiguration activityConfiguration;
 
@@ -57,83 +59,54 @@ public class BomValidator {
     @Qualifier("objectMapper")
     ObjectMapper mapper;
 
-    public BomValidator(ServiceRequestClient serviceRequestRepository, ActivityConfiguration activityConfiguration, ServiceRequestRepository serviceRequest, ActivityService activityService){
+    public ActivityFacilityUserValidator(ServiceRequestClient serviceRequestRepository, ActivityConfiguration activityConfiguration, ServiceRequestRepository serviceRequest){
         this.serviceRequestRepository = serviceRequestRepository;
         this.activityConfiguration = activityConfiguration;
         this.serviceRequest = serviceRequest;
-        this.activityService = activityService;
+//        this.activityService = activityService;
     }
 
-    public void validateCreateBomRequest(BomBulkRequest request) {
+    public void validateCreateActivityFacilityUsersRequest(ActivityFacilityUserBulkRequest request) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
         //Verify if ActivityAssignment request and mandatory fields are present
-        validateBomRequest(request);
-
-//        validateRequestMDMSData(request, request.getRequestInfo().getUserInfo().getTenantId(),errorMap);
+        try {
+            validateActivityFacilityUserRequest(request);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
     }
 
-    private void validateBomRequest(BomBulkRequest request) {
+    private void validateActivityFacilityUserRequest(ActivityFacilityUserBulkRequest request) throws Exception {
         Map<String, String> errorMap = new HashMap<>();
 
-        if (request.getBillOfMaterials() == null || request.getBillOfMaterials().size() == 0) {
+        if (request.getActivityFacilityUsers() == null || request.getActivityFacilityUsers().size() == 0) {
             log.error("Activity list is empty. Activity is mandatory");
             throw new CustomException("ACTIVITY", "Activity are mandatory");
         }
 
-        for (BillOfMaterial billOfMaterial : request.getBillOfMaterials()) {
-            if (billOfMaterial == null) {
+        for (ActivityFacilityUser facilityUser : request.getActivityFacilityUsers()) {
+            if (facilityUser == null) {
                 log.error("Activity Assignment is mandatory in Activities");
                 throw new CustomException("Activity", "Activity is mandatory");
             }
 
-            if (billOfMaterial.getName() == null) {
-                log.error("Name is mandatory in FieldPlans");
-                throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
+            if (facilityUser.getUserId() == null) {
+                log.error("UserId is mandatory in Activity Facility User");
+                throw new CustomException("FACILITY_ASSIGN_USER", "User ID is mandatory in Activity Facility User");
             }
 
-            if (billOfMaterial.getAssignUser() == null) {
-                log.error("Assign User is mandatory in BOM");
-                throw new CustomException("BOM_ASSIGN_USER", "Assign User is mandatory");
+            if (facilityUser.getActivityFacilityId() == null) {
+                log.error("Activity Facility ID is mandatory in Facility User");
+                throw new CustomException("FACILITY_ASSIGN_USER", "Activity Facility ID is mandatory");
             }
 
-//            if (billOfMaterial.getFacilityId() == null) {
-//                log.error("Facility ID is mandatory in FieldPlans");
-//                throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
-//            }
-//
-//            // Get existing facility with facilityId from facility service
-//            Facility existingfacility = getFacilityById(billOfMaterial.getFacilityId());
-//            if (existingfacility == null) {
-//                log.error("Facility ID do not exist");
-//                throw new CustomException("Activity_ERROR", "Facility ID do not exist");
-//            }
-
-            if (billOfMaterial.getActivityFacilityId() == null) {
-                log.error("Activity Facility ID is mandatory in FieldPlans");
-                throw new CustomException("Activity_FACILITY", "Activity Facility ID is mandatory");
-            }
-
-            // 1. Fetch the existing facility
-            List<ActivityFacility> activityFacilities = getActivityFacilityById(request.getRequestInfo(), billOfMaterial);
-            if (activityFacilities == null || activityFacilities.isEmpty()) {
-                throw new CustomException("ACTIVITY_FACILITY_NOT_FOUND", "Activity Facility not found with ID: " + billOfMaterial.getActivityFacilityId());
-            }
-
-            if (StringUtils.isBlank(billOfMaterial.getTenantId())) {
-                log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
-                errorMap.put("TENANT_ID", "Tenant ID is mandatory");
-            }
-            if (billOfMaterial.getData() == null) {
-                log.error(DATA_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
-                errorMap.put("ACTIVITIES", "Activity is mandatory");
-            }
         }
 
         if (!errorMap.isEmpty())
@@ -326,21 +299,21 @@ public class BomValidator {
         return null;
     }
 
-    public List<ActivityFacility> getActivityFacilityById(RequestInfo requestInfo, BillOfMaterial billOfMaterial){
-        ActivityFacilitySearchCriteria searchCriteria = ActivityFacilitySearchCriteria.builder()
-                .ids(List.of(billOfMaterial.getActivityFacilityId()))
-                .tenantId(activityConfiguration.getTenantId())
-                .build();
-
-        ActivityFacilitySearchRequest searchRequest = ActivityFacilitySearchRequest.builder()
-                .criteria(searchCriteria)
-                .requestInfo(requestInfo)
-                .build();
-
-        List<ActivityFacility> activityFacilities = activityService.searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
-                activityConfiguration.getTenantId(), false, null);
-
-        return activityFacilities;
-
-    }
+//    public List<ActivityFacility> getActivityFacilityById(RequestInfo requestInfo, BillOfMaterial billOfMaterial){
+//        ActivityFacilitySearchCriteria searchCriteria = ActivityFacilitySearchCriteria.builder()
+//                .ids(List.of(billOfMaterial.getActivityFacilityId()))
+//                .tenantId(activityConfiguration.getTenantId())
+//                .build();
+//
+//        ActivityFacilitySearchRequest searchRequest = ActivityFacilitySearchRequest.builder()
+//                .criteria(searchCriteria)
+//                .requestInfo(requestInfo)
+//                .build();
+//
+//        List<ActivityFacility> activityFacilities = activityService.searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
+//                activityConfiguration.getTenantId(), false, null);
+//
+//        return activityFacilities;
+//
+//    }
 }

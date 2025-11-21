@@ -19,22 +19,16 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class BomSearchCriteria {
+public class ActivityFacilityUserSearchCriteria {
 
-    @JsonProperty("ids")
-    private @Valid List<String> ids = null;
+    @JsonProperty("id")
+    private @Valid List<String> id = null;
 
-    @JsonProperty("facilityIds")
-    private @Valid List<String> facilityId = null;
-
-    @JsonProperty("activityFacilityIds")
+    @JsonProperty("activityFacilityId")
     private @Valid List<String> activityFacilityId = null;
 
-    @JsonProperty("statuses")
-    private @Valid List<String> name = null;
-
-    @JsonProperty("assignUser")
-    private String assignUser = null;
+    @JsonProperty("userId")
+    private @Valid List<String> userId = null;
 
     private String tenantId;
 
