@@ -1,0 +1,2401 @@
+[ {
+  "variable" : "mms_make",
+  "value" : {
+    "path" : "$.mms_make"
+  }
+}, {
+  "variable" : "mms_capacity",
+  "value" : {
+    "path" : "$.mms_capacity"
+  }
+}, {
+  "variable" : "mms_qty",
+  "value" : {
+    "path" : "$.mms_qty"
+  }
+}, {
+  "variable" : "mms_description",
+  "value" : {
+    "path" : "$.mms_description"
+  }
+}, {
+  "variable" : "inverter_make",
+  "value" : {
+    "path" : "$.inverter_make"
+  }
+}, {
+  "variable" : "inverter_capacity",
+  "value" : {
+    "path" : "$.inverter_capacity"
+  }
+}, {
+  "variable" : "inverter_qty",
+  "value" : {
+    "path" : "$.inverter_qty"
+  }
+}, {
+  "variable" : "inverter_description",
+  "value" : {
+    "path" : "$.inverter_description"
+  }
+}, {
+  "variable" : "changeover1_make",
+  "value" : {
+    "path" : "$.changeover1_make"
+  }
+}, {
+  "variable" : "changeover1_capacity",
+  "value" : {
+    "path" : "$.changeover1_capacity"
+  }
+}, {
+  "variable" : "changeover1_qty",
+  "value" : {
+    "path" : "$.changeover1_qty"
+  }
+}, {
+  "variable" : "changeover1_description",
+  "value" : {
+    "path" : "$.changeover1_description"
+  }
+}, {
+  "variable" : "changeover2_make",
+  "value" : {
+    "path" : "$.changeover2_make"
+  }
+}, {
+  "variable" : "changeover2_capacity",
+  "value" : {
+    "path" : "$.changeover2_capacity"
+  }
+}, {
+  "variable" : "changeover2_qty",
+  "value" : {
+    "path" : "$.changeover2_qty"
+  }
+}, {
+  "variable" : "changeover2_description",
+  "value" : {
+    "path" : "$.changeover2_description"
+  }
+}, {
+  "variable" : "module_ajb_pv1f_make",
+  "value" : {
+    "path" : "$.module_ajb_pv1f_make"
+  }
+}, {
+  "variable" : "module_ajb_pv1f_capacity",
+  "value" : {
+    "path" : "$.module_ajb_pv1f_capacity"
+  }
+}, {
+  "variable" : "module_ajb_pv1f_qty",
+  "value" : {
+    "path" : "$.module_ajb_pv1f_qty"
+  }
+}, {
+  "variable" : "module_ajb_pv1f_description",
+  "value" : {
+    "path" : "$.module_ajb_pv1f_description"
+  }
+}, {
+  "variable" : "ajb_inverter_dc_make",
+  "value" : {
+    "path" : "$.ajb_inverter_dc_make"
+  }
+}, {
+  "variable" : "ajb_inverter_dc_capacity",
+  "value" : {
+    "path" : "$.ajb_inverter_dc_capacity"
+  }
+}, {
+  "variable" : "ajb_inverter_dc_qty",
+  "value" : {
+    "path" : "$.ajb_inverter_dc_qty"
+  }
+}, {
+  "variable" : "ajb_inverter_dc_description",
+  "value" : {
+    "path" : "$.ajb_inverter_dc_description"
+  }
+}, {
+  "variable" : "battery_battery_dc_make",
+  "value" : {
+    "path" : "$.battery_battery_dc_make"
+  }
+}, {
+  "variable" : "battery_battery_dc_capacity",
+  "value" : {
+    "path" : "$.battery_battery_dc_capacity"
+  }
+}, {
+  "variable" : "battery_battery_dc_qty",
+  "value" : {
+    "path" : "$.battery_battery_dc_qty"
+  }
+}, {
+  "variable" : "battery_battery_dc_description",
+  "value" : {
+    "path" : "$.battery_battery_dc_description"
+  }
+}, {
+  "variable" : "battery_inverter_dc_make",
+  "value" : {
+    "path" : "$.battery_inverter_dc_make"
+  }
+}, {
+  "variable" : "battery_inverter_dc_capacity",
+  "value" : {
+    "path" : "$.battery_inverter_dc_capacity"
+  }
+}, {
+  "variable" : "battery_inverter_dc_qty",
+  "value" : {
+    "path" : "$.battery_inverter_dc_qty"
+  }
+}, {
+  "variable" : "battery_inverter_dc_description",
+  "value" : {
+    "path" : "$.battery_inverter_dc_description"
+  }
+}, {
+  "variable" : "dc_earthing_make",
+  "value" : {
+    "path" : "$.dc_earthing_make"
+  }
+}, {
+  "variable" : "dc_earthing_capacity",
+  "value" : {
+    "path" : "$.dc_earthing_capacity"
+  }
+}, {
+  "variable" : "dc_earthing_qty",
+  "value" : {
+    "path" : "$.dc_earthing_qty"
+  }
+}, {
+  "variable" : "dc_earthing_description",
+  "value" : {
+    "path" : "$.dc_earthing_description"
+  }
+}, {
+  "variable" : "earthing_cable_cos_sd_make",
+  "value" : {
+    "path" : "$.earthing_cable_cos_sd_make"
+  }
+}, {
+  "variable" : "earthing_cable_cos_sd_capacity",
+  "value" : {
+    "path" : "$.earthing_cable_cos_sd_capacity"
+  }
+}, {
+  "variable" : "earthing_cable_cos_sd_qty",
+  "value" : {
+    "path" : "$.earthing_cable_cos_sd_qty"
+  }
+}, {
+  "variable" : "earthing_cable_cos_sd_description",
+  "value" : {
+    "path" : "$.earthing_cable_cos_sd_description"
+  }
+}, {
+  "variable" : "voltage_sensing_red_make",
+  "value" : {
+    "path" : "$.voltage_sensing_red_make"
+  }
+}, {
+  "variable" : "voltage_sensing_red_capacity",
+  "value" : {
+    "path" : "$.voltage_sensing_red_capacity"
+  }
+}, {
+  "variable" : "voltage_sensing_red_qty",
+  "value" : {
+    "path" : "$.voltage_sensing_red_qty"
+  }
+}, {
+  "variable" : "voltage_sensing_red_description",
+  "value" : {
+    "path" : "$.voltage_sensing_red_description"
+  }
+}, {
+  "variable" : "earthing_cable_agib_make",
+  "value" : {
+    "path" : "$.earthing_cable_agib_make"
+  }
+}, {
+  "variable" : "earthing_cable_agib_capacity",
+  "value" : {
+    "path" : "$.earthing_cable_agib_capacity"
+  }
+}, {
+  "variable" : "earthing_cable_agib_qty",
+  "value" : {
+    "path" : "$.earthing_cable_agib_qty"
+  }
+}, {
+  "variable" : "earthing_cable_agib_description",
+  "value" : {
+    "path" : "$.earthing_cable_agib_description"
+  }
+}, {
+  "variable" : "lightning_down_conductor_make",
+  "value" : {
+    "path" : "$.lightning_down_conductor_make"
+  }
+}, {
+  "variable" : "lightning_down_conductor_capacity",
+  "value" : {
+    "path" : "$.lightning_down_conductor_capacity"
+  }
+}, {
+  "variable" : "lightning_down_conductor_qty",
+  "value" : {
+    "path" : "$.lightning_down_conductor_qty"
+  }
+}, {
+  "variable" : "lightning_down_conductor_description",
+  "value" : {
+    "path" : "$.lightning_down_conductor_description"
+  }
+}, {
+  "variable" : "earthing_kit_make",
+  "value" : {
+    "path" : "$.earthing_kit_make"
+  }
+}, {
+  "variable" : "earthing_kit_capacity",
+  "value" : {
+    "path" : "$.earthing_kit_capacity"
+  }
+}, {
+  "variable" : "earthing_kit_qty",
+  "value" : {
+    "path" : "$.earthing_kit_qty"
+  }
+}, {
+  "variable" : "earthing_kit_description",
+  "value" : {
+    "path" : "$.earthing_kit_description"
+  }
+}, {
+  "variable" : "lightning_protection_make",
+  "value" : {
+    "path" : "$.lightning_protection_make"
+  }
+}, {
+  "variable" : "lightning_protection_capacity",
+  "value" : {
+    "path" : "$.lightning_protection_capacity"
+  }
+}, {
+  "variable" : "lightning_protection_qty",
+  "value" : {
+    "path" : "$.lightning_protection_qty"
+  }
+}, {
+  "variable" : "lightning_protection_description",
+  "value" : {
+    "path" : "$.lightning_protection_description"
+  }
+}, {
+  "variable" : "grid_input_protection_make",
+  "value" : {
+    "path" : "$.grid_input_protection_make"
+  }
+}, {
+  "variable" : "grid_input_protection_capacity",
+  "value" : {
+    "path" : "$.grid_input_protection_capacity"
+  }
+}, {
+  "variable" : "grid_input_protection_qty",
+  "value" : {
+    "path" : "$.grid_input_protection_qty"
+  }
+}, {
+  "variable" : "grid_input_protection_description",
+  "value" : {
+    "path" : "$.grid_input_protection_description"
+  }
+}, {
+  "variable" : "battery_trolley_box_make",
+  "value" : {
+    "path" : "$.battery_trolley_box_make"
+  }
+}, {
+  "variable" : "battery_trolley_box_capacity",
+  "value" : {
+    "path" : "$.battery_trolley_box_capacity"
+  }
+}, {
+  "variable" : "battery_trolley_box_qty",
+  "value" : {
+    "path" : "$.battery_trolley_box_qty"
+  }
+}, {
+  "variable" : "battery_trolley_box_description",
+  "value" : {
+    "path" : "$.battery_trolley_box_description"
+  }
+}, {
+  "variable" : "battery_rack_acid_absorbent_mat_make",
+  "value" : {
+    "path" : "$.battery_rack_acid_absorbent_mat_make"
+  }
+}, {
+  "variable" : "battery_rack_acid_absorbent_mat_capacity",
+  "value" : {
+    "path" : "$.battery_rack_acid_absorbent_mat_capacity"
+  }
+}, {
+  "variable" : "battery_rack_acid_absorbent_mat_qty",
+  "value" : {
+    "path" : "$.battery_rack_acid_absorbent_mat_qty"
+  }
+}, {
+  "variable" : "battery_rack_acid_absorbent_mat_description",
+  "value" : {
+    "path" : "$.battery_rack_acid_absorbent_mat_description"
+  }
+}, {
+  "variable" : "battery_rack_electrical_insulation_mat_make",
+  "value" : {
+    "path" : "$.battery_rack_electrical_insulation_mat_make"
+  }
+}, {
+  "variable" : "battery_rack_electrical_insulation_mat_capacity",
+  "value" : {
+    "path" : "$.battery_rack_electrical_insulation_mat_capacity"
+  }
+}, {
+  "variable" : "battery_rack_electrical_insulation_mat_qty",
+  "value" : {
+    "path" : "$.battery_rack_electrical_insulation_mat_qty"
+  }
+}, {
+  "variable" : "battery_rack_electrical_insulation_mat_description",
+  "value" : {
+    "path" : "$.battery_rack_electrical_insulation_mat_description"
+  }
+}, {
+  "variable" : "inverter_elevation_leg_make",
+  "value" : {
+    "path" : "$.inverter_elevation_leg_make"
+  }
+}, {
+  "variable" : "inverter_elevation_leg_capacity",
+  "value" : {
+    "path" : "$.inverter_elevation_leg_capacity"
+  }
+}, {
+  "variable" : "inverter_elevation_leg_qty",
+  "value" : {
+    "path" : "$.inverter_elevation_leg_qty"
+  }
+}, {
+  "variable" : "inverter_elevation_leg_description",
+  "value" : {
+    "path" : "$.inverter_elevation_leg_description"
+  }
+}, {
+  "variable" : "inverter_rack_electrical_insulation_mat_make",
+  "value" : {
+    "path" : "$.inverter_rack_electrical_insulation_mat_make"
+  }
+}, {
+  "variable" : "inverter_rack_electrical_insulation_mat_capacity",
+  "value" : {
+    "path" : "$.inverter_rack_electrical_insulation_mat_capacity"
+  }
+}, {
+  "variable" : "inverter_rack_electrical_insulation_mat_qty",
+  "value" : {
+    "path" : "$.inverter_rack_electrical_insulation_mat_qty"
+  }
+}, {
+  "variable" : "inverter_rack_electrical_insulation_mat_description",
+  "value" : {
+    "path" : "$.inverter_rack_electrical_insulation_mat_description"
+  }
+}, {
+  "variable" : "dc_combiner_box_make",
+  "value" : {
+    "path" : "$.dc_combiner_box_make"
+  }
+}, {
+  "variable" : "dc_combiner_box_capacity",
+  "value" : {
+    "path" : "$.dc_combiner_box_capacity"
+  }
+}, {
+  "variable" : "dc_combiner_box_qty",
+  "value" : {
+    "path" : "$.dc_combiner_box_qty"
+  }
+}, {
+  "variable" : "dc_combiner_box_description",
+  "value" : {
+    "path" : "$.dc_combiner_box_description"
+  }
+}, {
+  "variable" : "solar_array_junction_box_make",
+  "value" : {
+    "path" : "$.solar_array_junction_box_make"
+  }
+}, {
+  "variable" : "solar_array_junction_box_capacity",
+  "value" : {
+    "path" : "$.solar_array_junction_box_capacity"
+  }
+}, {
+  "variable" : "solar_array_junction_box_qty",
+  "value" : {
+    "path" : "$.solar_array_junction_box_qty"
+  }
+}, {
+  "variable" : "solar_array_junction_box_description",
+  "value" : {
+    "path" : "$.solar_array_junction_box_description"
+  }
+}, {
+  "variable" : "marking_ac_earthing_make",
+  "value" : {
+    "path" : "$.marking_ac_earthing_make"
+  }
+}, {
+  "variable" : "marking_ac_earthing_capacity",
+  "value" : {
+    "path" : "$.marking_ac_earthing_capacity"
+  }
+}, {
+  "variable" : "marking_ac_earthing_qty",
+  "value" : {
+    "path" : "$.marking_ac_earthing_qty"
+  }
+}, {
+  "variable" : "marking_ac_earthing_description",
+  "value" : {
+    "path" : "$.marking_ac_earthing_description"
+  }
+}, {
+  "variable" : "marking_dc_earthing_make",
+  "value" : {
+    "path" : "$.marking_dc_earthing_make"
+  }
+}, {
+  "variable" : "marking_dc_earthing_capacity",
+  "value" : {
+    "path" : "$.marking_dc_earthing_capacity"
+  }
+}, {
+  "variable" : "marking_dc_earthing_qty",
+  "value" : {
+    "path" : "$.marking_dc_earthing_qty"
+  }
+}, {
+  "variable" : "marking_dc_earthing_description",
+  "value" : {
+    "path" : "$.marking_dc_earthing_description"
+  }
+}, {
+  "variable" : "marking_lightning_arrester_make",
+  "value" : {
+    "path" : "$.marking_lightning_arrester_make"
+  }
+}, {
+  "variable" : "marking_lightning_arrester_capacity",
+  "value" : {
+    "path" : "$.marking_lightning_arrester_capacity"
+  }
+}, {
+  "variable" : "marking_lightning_arrester_qty",
+  "value" : {
+    "path" : "$.marking_lightning_arrester_qty"
+  }
+}, {
+  "variable" : "marking_lightning_arrester_description",
+  "value" : {
+    "path" : "$.marking_lightning_arrester_description"
+  }
+}, {
+  "variable" : "sld_make",
+  "value" : {
+    "path" : "$.sld_make"
+  }
+}, {
+  "variable" : "sld_capacity",
+  "value" : {
+    "path" : "$.sld_capacity"
+  }
+}, {
+  "variable" : "sld_qty",
+  "value" : {
+    "path" : "$.sld_qty"
+  }
+}, {
+  "variable" : "sld_description",
+  "value" : {
+    "path" : "$.sld_description"
+  }
+}, {
+  "variable" : "dos_donts_poster_make",
+  "value" : {
+    "path" : "$.dos_donts_poster_make"
+  }
+}, {
+  "variable" : "dos_donts_poster_capacity",
+  "value" : {
+    "path" : "$.dos_donts_poster_capacity"
+  }
+}, {
+  "variable" : "dos_donts_poster_qty",
+  "value" : {
+    "path" : "$.dos_donts_poster_qty"
+  }
+}, {
+  "variable" : "dos_donts_poster_description",
+  "value" : {
+    "path" : "$.dos_donts_poster_description"
+  }
+}, {
+  "variable" : "signboard_danger_make",
+  "value" : {
+    "path" : "$.signboard_danger_make"
+  }
+}, {
+  "variable" : "signboard_danger_capacity",
+  "value" : {
+    "path" : "$.signboard_danger_capacity"
+  }
+}, {
+  "variable" : "signboard_danger_qty",
+  "value" : {
+    "path" : "$.signboard_danger_qty"
+  }
+}, {
+  "variable" : "signboard_danger_description",
+  "value" : {
+    "path" : "$.signboard_danger_description"
+  }
+}, {
+  "variable" : "grid_connection_wiring_make",
+  "value" : {
+    "path" : "$.grid_connection_wiring_make"
+  }
+}, {
+  "variable" : "grid_connection_wiring_capacity",
+  "value" : {
+    "path" : "$.grid_connection_wiring_capacity"
+  }
+}, {
+  "variable" : "grid_connection_wiring_qty",
+  "value" : {
+    "path" : "$.grid_connection_wiring_qty"
+  }
+}, {
+  "variable" : "grid_connection_wiring_description",
+  "value" : {
+    "path" : "$.grid_connection_wiring_description"
+  }
+}, {
+  "variable" : "fire_extinguisher_make",
+  "value" : {
+    "path" : "$.fire_extinguisher_make"
+  }
+}, {
+  "variable" : "fire_extinguisher_capacity",
+  "value" : {
+    "path" : "$.fire_extinguisher_capacity"
+  }
+}, {
+  "variable" : "fire_extinguisher_qty",
+  "value" : {
+    "path" : "$.fire_extinguisher_qty"
+  }
+}, {
+  "variable" : "fire_extinguisher_description",
+  "value" : {
+    "path" : "$.fire_extinguisher_description"
+  }
+}, {
+  "variable" : "metallic_enclosure_make",
+  "value" : {
+    "path" : "$.metallic_enclosure_make"
+  }
+}, {
+  "variable" : "metallic_enclosure_capacity",
+  "value" : {
+    "path" : "$.metallic_enclosure_capacity"
+  }
+}, {
+  "variable" : "metallic_enclosure_qty",
+  "value" : {
+    "path" : "$.metallic_enclosure_qty"
+  }
+}, {
+  "variable" : "metallic_enclosure_description",
+  "value" : {
+    "path" : "$.metallic_enclosure_description"
+  }
+}, {
+  "variable" : "consumables_make",
+  "value" : {
+    "path" : "$.consumables_make"
+  }
+}, {
+  "variable" : "consumables_capacity",
+  "value" : {
+    "path" : "$.consumables_capacity"
+  }
+}, {
+  "variable" : "consumables_qty",
+  "value" : {
+    "path" : "$.consumables_qty"
+  }
+}, {
+  "variable" : "consumables_description",
+  "value" : {
+    "path" : "$.consumables_description"
+  }
+}, {
+  "variable" : "led_bulb_1_make",
+  "value" : {
+    "path" : "$.led_bulb_1_make"
+  }
+}, {
+  "variable" : "led_bulb_1_capacity",
+  "value" : {
+    "path" : "$.led_bulb_1_capacity"
+  }
+}, {
+  "variable" : "led_bulb_1_qty",
+  "value" : {
+    "path" : "$.led_bulb_1_qty"
+  }
+}, {
+  "variable" : "led_bulb_1_remarks",
+  "value" : {
+    "path" : "$.led_bulb_1_remarks"
+  }
+}, {
+  "variable" : "led_bulb_2_make",
+  "value" : {
+    "path" : "$.led_bulb_2_make"
+  }
+}, {
+  "variable" : "led_bulb_2_capacity",
+  "value" : {
+    "path" : "$.led_bulb_2_capacity"
+  }
+}, {
+  "variable" : "led_bulb_2_qty",
+  "value" : {
+    "path" : "$.led_bulb_2_qty"
+  }
+}, {
+  "variable" : "led_bulb_2_remarks",
+  "value" : {
+    "path" : "$.led_bulb_2_remarks"
+  }
+}, {
+  "variable" : "led_tube_light_1_make",
+  "value" : {
+    "path" : "$.led_tube_light_1_make"
+  }
+}, {
+  "variable" : "led_tube_light_1_capacity",
+  "value" : {
+    "path" : "$.led_tube_light_1_capacity"
+  }
+}, {
+  "variable" : "led_tube_light_1_qty",
+  "value" : {
+    "path" : "$.led_tube_light_1_qty"
+  }
+}, {
+  "variable" : "led_tube_light_1_remarks",
+  "value" : {
+    "path" : "$.led_tube_light_1_remarks"
+  }
+}, {
+  "variable" : "led_tube_light_2_make",
+  "value" : {
+    "path" : "$.led_tube_light_2_make"
+  }
+}, {
+  "variable" : "led_tube_light_2_capacity",
+  "value" : {
+    "path" : "$.led_tube_light_2_capacity"
+  }
+}, {
+  "variable" : "led_tube_light_2_qty",
+  "value" : {
+    "path" : "$.led_tube_light_2_qty"
+  }
+}, {
+  "variable" : "led_tube_light_2_remarks",
+  "value" : {
+    "path" : "$.led_tube_light_2_remarks"
+  }
+}, {
+  "variable" : "ceiling_fan_regulators_make",
+  "value" : {
+    "path" : "$.ceiling_fan_regulators_make"
+  }
+}, {
+  "variable" : "ceiling_fan_regulators_capacity",
+  "value" : {
+    "path" : "$.ceiling_fan_regulators_capacity"
+  }
+}, {
+  "variable" : "ceiling_fan_regulators_qty",
+  "value" : {
+    "path" : "$.ceiling_fan_regulators_qty"
+  }
+}, {
+  "variable" : "ceiling_fan_regulators_remarks",
+  "value" : {
+    "path" : "$.ceiling_fan_regulators_remarks"
+  }
+}, {
+  "variable" : "wall_mounted_fan_make",
+  "value" : {
+    "path" : "$.wall_mounted_fan_make"
+  }
+}, {
+  "variable" : "wall_mounted_fan_capacity",
+  "value" : {
+    "path" : "$.wall_mounted_fan_capacity"
+  }
+}, {
+  "variable" : "wall_mounted_fan_qty",
+  "value" : {
+    "path" : "$.wall_mounted_fan_qty"
+  }
+}, {
+  "variable" : "wall_mounted_fan_remarks",
+  "value" : {
+    "path" : "$.wall_mounted_fan_remarks"
+  }
+}, {
+  "variable" : "outdoor_light_auto_control_make",
+  "value" : {
+    "path" : "$.outdoor_light_auto_control_make"
+  }
+}, {
+  "variable" : "outdoor_light_auto_control_capacity",
+  "value" : {
+    "path" : "$.outdoor_light_auto_control_capacity"
+  }
+}, {
+  "variable" : "outdoor_light_auto_control_qty",
+  "value" : {
+    "path" : "$.outdoor_light_auto_control_qty"
+  }
+}, {
+  "variable" : "outdoor_light_auto_control_remarks",
+  "value" : {
+    "path" : "$.outdoor_light_auto_control_remarks"
+  }
+}, {
+  "variable" : "outdoor_light_arm_make",
+  "value" : {
+    "path" : "$.outdoor_light_arm_make"
+  }
+}, {
+  "variable" : "outdoor_light_arm_capacity",
+  "value" : {
+    "path" : "$.outdoor_light_arm_capacity"
+  }
+}, {
+  "variable" : "outdoor_light_arm_qty",
+  "value" : {
+    "path" : "$.outdoor_light_arm_qty"
+  }
+}, {
+  "variable" : "outdoor_light_arm_remarks",
+  "value" : {
+    "path" : "$.outdoor_light_arm_remarks"
+  }
+}, {
+  "variable" : "ac_distribution_box_make",
+  "value" : {
+    "path" : "$.ac_distribution_box_make"
+  }
+}, {
+  "variable" : "ac_distribution_box_capacity",
+  "value" : {
+    "path" : "$.ac_distribution_box_capacity"
+  }
+}, {
+  "variable" : "ac_distribution_box_qty",
+  "value" : {
+    "path" : "$.ac_distribution_box_qty"
+  }
+}, {
+  "variable" : "ac_distribution_box_description",
+  "value" : {
+    "path" : "$.ac_distribution_box_description"
+  }
+}, {
+  "variable" : "rccb_1_make",
+  "value" : {
+    "path" : "$.rccb_1_make"
+  }
+}, {
+  "variable" : "rccb_1_capacity",
+  "value" : {
+    "path" : "$.rccb_1_capacity"
+  }
+}, {
+  "variable" : "rccb_1_qty",
+  "value" : {
+    "path" : "$.rccb_1_qty"
+  }
+}, {
+  "variable" : "rccb_1_description",
+  "value" : {
+    "path" : "$.rccb_1_description"
+  }
+}, {
+  "variable" : "rccb_2_make",
+  "value" : {
+    "path" : "$.rccb_2_make"
+  }
+}, {
+  "variable" : "rccb_2_capacity",
+  "value" : {
+    "path" : "$.rccb_2_capacity"
+  }
+}, {
+  "variable" : "rccb_2_qty",
+  "value" : {
+    "path" : "$.rccb_2_qty"
+  }
+}, {
+  "variable" : "rccb_2_description",
+  "value" : {
+    "path" : "$.rccb_2_description"
+  }
+}, {
+  "variable" : "rccb_3_make",
+  "value" : {
+    "path" : "$.rccb_3_make"
+  }
+}, {
+  "variable" : "rccb_3_capacity",
+  "value" : {
+    "path" : "$.rccb_3_capacity"
+  }
+}, {
+  "variable" : "rccb_3_qty",
+  "value" : {
+    "path" : "$.rccb_3_qty"
+  }
+}, {
+  "variable" : "rccb_3_description",
+  "value" : {
+    "path" : "$.rccb_3_description"
+  }
+}, {
+  "variable" : "isolator_1_make",
+  "value" : {
+    "path" : "$.isolator_1_make"
+  }
+}, {
+  "variable" : "isolator_1_capacity",
+  "value" : {
+    "path" : "$.isolator_1_capacity"
+  }
+}, {
+  "variable" : "isolator_1_qty",
+  "value" : {
+    "path" : "$.isolator_1_qty"
+  }
+}, {
+  "variable" : "isolator_1_description",
+  "value" : {
+    "path" : "$.isolator_1_description"
+  }
+}, {
+  "variable" : "isolator_2_make",
+  "value" : {
+    "path" : "$.isolator_2_make"
+  }
+}, {
+  "variable" : "isolator_2_capacity",
+  "value" : {
+    "path" : "$.isolator_2_capacity"
+  }
+}, {
+  "variable" : "isolator_2_qty",
+  "value" : {
+    "path" : "$.isolator_2_qty"
+  }
+}, {
+  "variable" : "isolator_2_description",
+  "value" : {
+    "path" : "$.isolator_2_description"
+  }
+}, {
+  "variable" : "isolator_3_make",
+  "value" : {
+    "path" : "$.isolator_3_make"
+  }
+}, {
+  "variable" : "isolator_3_capacity",
+  "value" : {
+    "path" : "$.isolator_3_capacity"
+  }
+}, {
+  "variable" : "isolator_3_qty",
+  "value" : {
+    "path" : "$.isolator_3_qty"
+  }
+}, {
+  "variable" : "isolator_3_description",
+  "value" : {
+    "path" : "$.isolator_3_description"
+  }
+}, {
+  "variable" : "main_mcb_make",
+  "value" : {
+    "path" : "$.main_mcb_make"
+  }
+}, {
+  "variable" : "main_mcb_capacity",
+  "value" : {
+    "path" : "$.main_mcb_capacity"
+  }
+}, {
+  "variable" : "main_mcb_qty",
+  "value" : {
+    "path" : "$.main_mcb_qty"
+  }
+}, {
+  "variable" : "main_mcb_description",
+  "value" : {
+    "path" : "$.main_mcb_description"
+  }
+}, {
+  "variable" : "mcb_circuit_1_make",
+  "value" : {
+    "path" : "$.mcb_circuit_1_make"
+  }
+}, {
+  "variable" : "mcb_circuit_1_capacity",
+  "value" : {
+    "path" : "$.mcb_circuit_1_capacity"
+  }
+}, {
+  "variable" : "mcb_circuit_1_qty",
+  "value" : {
+    "path" : "$.mcb_circuit_1_qty"
+  }
+}, {
+  "variable" : "mcb_circuit_1_description",
+  "value" : {
+    "path" : "$.mcb_circuit_1_description"
+  }
+}, {
+  "variable" : "mcb_circuit_2_make",
+  "value" : {
+    "path" : "$.mcb_circuit_2_make"
+  }
+}, {
+  "variable" : "mcb_circuit_2_capacity",
+  "value" : {
+    "path" : "$.mcb_circuit_2_capacity"
+  }
+}, {
+  "variable" : "mcb_circuit_2_qty",
+  "value" : {
+    "path" : "$.mcb_circuit_2_qty"
+  }
+}, {
+  "variable" : "mcb_circuit_2_description",
+  "value" : {
+    "path" : "$.mcb_circuit_2_description"
+  }
+}, {
+  "variable" : "mcb_circuit_3_make",
+  "value" : {
+    "path" : "$.mcb_circuit_3_make"
+  }
+}, {
+  "variable" : "mcb_circuit_3_capacity",
+  "value" : {
+    "path" : "$.mcb_circuit_3_capacity"
+  }
+}, {
+  "variable" : "mcb_circuit_3_qty",
+  "value" : {
+    "path" : "$.mcb_circuit_3_qty"
+  }
+}, {
+  "variable" : "mcb_circuit_3_description",
+  "value" : {
+    "path" : "$.mcb_circuit_3_description"
+  }
+}, {
+  "variable" : "mcb_circuit_4_make",
+  "value" : {
+    "path" : "$.mcb_circuit_4_make"
+  }
+}, {
+  "variable" : "mcb_circuit_4_capacity",
+  "value" : {
+    "path" : "$.mcb_circuit_4_capacity"
+  }
+}, {
+  "variable" : "mcb_circuit_4_qty",
+  "value" : {
+    "path" : "$.mcb_circuit_4_qty"
+  }
+}, {
+  "variable" : "mcb_circuit_4_description",
+  "value" : {
+    "path" : "$.mcb_circuit_4_description"
+  }
+}, {
+  "variable" : "mcb_circuit_5_make",
+  "value" : {
+    "path" : "$.mcb_circuit_5_make"
+  }
+}, {
+  "variable" : "mcb_circuit_5_capacity",
+  "value" : {
+    "path" : "$.mcb_circuit_5_capacity"
+  }
+}, {
+  "variable" : "mcb_circuit_5_qty",
+  "value" : {
+    "path" : "$.mcb_circuit_5_qty"
+  }
+}, {
+  "variable" : "mcb_circuit_5_description",
+  "value" : {
+    "path" : "$.mcb_circuit_5_description"
+  }
+}, {
+  "variable" : "fan_regulator_make",
+  "value" : {
+    "path" : "$.fan_regulator_make"
+  }
+}, {
+  "variable" : "fan_regulator_capacity",
+  "value" : {
+    "path" : "$.fan_regulator_capacity"
+  }
+}, {
+  "variable" : "fan_regulator_qty",
+  "value" : {
+    "path" : "$.fan_regulator_qty"
+  }
+}, {
+  "variable" : "fan_regulator_description",
+  "value" : {
+    "path" : "$.fan_regulator_description"
+  }
+}, {
+  "variable" : "socket_modular_make",
+  "value" : {
+    "path" : "$.socket_modular_make"
+  }
+}, {
+  "variable" : "socket_modular_capacity",
+  "value" : {
+    "path" : "$.socket_modular_capacity"
+  }
+}, {
+  "variable" : "socket_modular_qty",
+  "value" : {
+    "path" : "$.socket_modular_qty"
+  }
+}, {
+  "variable" : "socket_modular_description",
+  "value" : {
+    "path" : "$.socket_modular_description"
+  }
+}, {
+  "variable" : "switch_modular_make",
+  "value" : {
+    "path" : "$.switch_modular_make"
+  }
+}, {
+  "variable" : "switch_modular_capacity",
+  "value" : {
+    "path" : "$.switch_modular_capacity"
+  }
+}, {
+  "variable" : "switch_modular_qty",
+  "value" : {
+    "path" : "$.switch_modular_qty"
+  }
+}, {
+  "variable" : "switch_modular_description",
+  "value" : {
+    "path" : "$.switch_modular_description"
+  }
+}, {
+  "variable" : "16_a_combo_socket_with_indicators_make",
+  "value" : {
+    "path" : "$.16_a_combo_socket_with_indicators_make"
+  }
+}, {
+  "variable" : "16_a_combo_socket_with_indicators_capacity",
+  "value" : {
+    "path" : "$.16_a_combo_socket_with_indicators_capacity"
+  }
+}, {
+  "variable" : "16_a_combo_socket_with_indicators_qty",
+  "value" : {
+    "path" : "$.16_a_combo_socket_with_indicators_qty"
+  }
+}, {
+  "variable" : "16_a_combo_socket_with_indicators_description",
+  "value" : {
+    "path" : "$.16_a_combo_socket_with_indicators_description"
+  }
+}, {
+  "variable" : "power_cable_1_red_make",
+  "value" : {
+    "path" : "$.power_cable_1_red_make"
+  }
+}, {
+  "variable" : "power_cable_1_red_capacity",
+  "value" : {
+    "path" : "$.power_cable_1_red_capacity"
+  }
+}, {
+  "variable" : "power_cable_1_red_qty",
+  "value" : {
+    "path" : "$.power_cable_1_red_qty"
+  }
+}, {
+  "variable" : "power_cable_1_red_description",
+  "value" : {
+    "path" : "$.power_cable_1_red_description"
+  }
+}, {
+  "variable" : "power_cable_1_black_make",
+  "value" : {
+    "path" : "$.power_cable_1_black_make"
+  }
+}, {
+  "variable" : "power_cable_1_black_capacity",
+  "value" : {
+    "path" : "$.power_cable_1_black_capacity"
+  }
+}, {
+  "variable" : "power_cable_1_black_qty",
+  "value" : {
+    "path" : "$.power_cable_1_black_qty"
+  }
+}, {
+  "variable" : "power_cable_1_black_description",
+  "value" : {
+    "path" : "$.power_cable_1_black_description"
+  }
+}, {
+  "variable" : "power_cable_2_red_make",
+  "value" : {
+    "path" : "$.power_cable_2_red_make"
+  }
+}, {
+  "variable" : "power_cable_2_red_capacity",
+  "value" : {
+    "path" : "$.power_cable_2_red_capacity"
+  }
+}, {
+  "variable" : "power_cable_2_red_qty",
+  "value" : {
+    "path" : "$.power_cable_2_red_qty"
+  }
+}, {
+  "variable" : "power_cable_2_red_description",
+  "value" : {
+    "path" : "$.power_cable_2_red_description"
+  }
+}, {
+  "variable" : "power_cable_2_black_make",
+  "value" : {
+    "path" : "$.power_cable_2_black_make"
+  }
+}, {
+  "variable" : "power_cable_2_black_capacity",
+  "value" : {
+    "path" : "$.power_cable_2_black_capacity"
+  }
+}, {
+  "variable" : "power_cable_2_black_qty",
+  "value" : {
+    "path" : "$.power_cable_2_black_qty"
+  }
+}, {
+  "variable" : "power_cable_2_black_description",
+  "value" : {
+    "path" : "$.power_cable_2_black_description"
+  }
+}, {
+  "variable" : "power_cable_3_red_make",
+  "value" : {
+    "path" : "$.power_cable_3_red_make"
+  }
+}, {
+  "variable" : "power_cable_3_red_capacity",
+  "value" : {
+    "path" : "$.power_cable_3_red_capacity"
+  }
+}, {
+  "variable" : "power_cable_3_red_qty",
+  "value" : {
+    "path" : "$.power_cable_3_red_qty"
+  }
+}, {
+  "variable" : "power_cable_3_red_description",
+  "value" : {
+    "path" : "$.power_cable_3_red_description"
+  }
+}, {
+  "variable" : "power_cable_3_black_make",
+  "value" : {
+    "path" : "$.power_cable_3_black_make"
+  }
+}, {
+  "variable" : "power_cable_3_black_capacity",
+  "value" : {
+    "path" : "$.power_cable_3_black_capacity"
+  }
+}, {
+  "variable" : "power_cable_3_black_qty",
+  "value" : {
+    "path" : "$.power_cable_3_black_qty"
+  }
+}, {
+  "variable" : "power_cable_3_black_description",
+  "value" : {
+    "path" : "$.power_cable_3_black_description"
+  }
+}, {
+  "variable" : "earthing_cable_1_green_make",
+  "value" : {
+    "path" : "$.earthing_cable_1_green_make"
+  }
+}, {
+  "variable" : "earthing_cable_1_green_capacity",
+  "value" : {
+    "path" : "$.earthing_cable_1_green_capacity"
+  }
+}, {
+  "variable" : "earthing_cable_1_green_qty",
+  "value" : {
+    "path" : "$.earthing_cable_1_green_qty"
+  }
+}, {
+  "variable" : "earthing_cable_1_green_description",
+  "value" : {
+    "path" : "$.earthing_cable_1_green_description"
+  }
+}, {
+  "variable" : "earthing_cable_2_green_make",
+  "value" : {
+    "path" : "$.earthing_cable_2_green_make"
+  }
+}, {
+  "variable" : "earthing_cable_2_green_capacity",
+  "value" : {
+    "path" : "$.earthing_cable_2_green_capacity"
+  }
+}, {
+  "variable" : "earthing_cable_2_green_qty",
+  "value" : {
+    "path" : "$.earthing_cable_2_green_qty"
+  }
+}, {
+  "variable" : "earthing_cable_2_green_description",
+  "value" : {
+    "path" : "$.earthing_cable_2_green_description"
+  }
+}, {
+  "variable" : "ceiling_rose_make",
+  "value" : {
+    "path" : "$.ceiling_rose_make"
+  }
+}, {
+  "variable" : "ceiling_rose_capacity",
+  "value" : {
+    "path" : "$.ceiling_rose_capacity"
+  }
+}, {
+  "variable" : "ceiling_rose_qty",
+  "value" : {
+    "path" : "$.ceiling_rose_qty"
+  }
+}, {
+  "variable" : "ceiling_rose_description",
+  "value" : {
+    "path" : "$.ceiling_rose_description"
+  }
+}, {
+  "variable" : "angle_holder_make",
+  "value" : {
+    "path" : "$.angle_holder_make"
+  }
+}, {
+  "variable" : "angle_holder_capacity",
+  "value" : {
+    "path" : "$.angle_holder_capacity"
+  }
+}, {
+  "variable" : "angle_holder_qty",
+  "value" : {
+    "path" : "$.angle_holder_qty"
+  }
+}, {
+  "variable" : "angle_holder_description",
+  "value" : {
+    "path" : "$.angle_holder_description"
+  }
+}, {
+  "variable" : "1_modular_switch_box_with_plate_make",
+  "value" : {
+    "path" : "$.1_modular_switch_box_with_plate_make"
+  }
+}, {
+  "variable" : "1_modular_switch_box_with_plate_capacity",
+  "value" : {
+    "path" : "$.1_modular_switch_box_with_plate_capacity"
+  }
+}, {
+  "variable" : "1_modular_switch_box_with_plate_qty",
+  "value" : {
+    "path" : "$.1_modular_switch_box_with_plate_qty"
+  }
+}, {
+  "variable" : "1_modular_switch_box_with_plate_description",
+  "value" : {
+    "path" : "$.1_modular_switch_box_with_plate_description"
+  }
+}, {
+  "variable" : "2_modular_switch_box_with_plate_make",
+  "value" : {
+    "path" : "$.2_modular_switch_box_with_plate_make"
+  }
+}, {
+  "variable" : "2_modular_switch_box_with_plate_capacity",
+  "value" : {
+    "path" : "$.2_modular_switch_box_with_plate_capacity"
+  }
+}, {
+  "variable" : "2_modular_switch_box_with_plate_qty",
+  "value" : {
+    "path" : "$.2_modular_switch_box_with_plate_qty"
+  }
+}, {
+  "variable" : "2_modular_switch_box_with_plate_description",
+  "value" : {
+    "path" : "$.2_modular_switch_box_with_plate_description"
+  }
+}, {
+  "variable" : "3_modular_switch_box_with_plate_make",
+  "value" : {
+    "path" : "$.3_modular_switch_box_with_plate_make"
+  }
+}, {
+  "variable" : "3_modular_switch_box_with_plate_capacity",
+  "value" : {
+    "path" : "$.3_modular_switch_box_with_plate_capacity"
+  }
+}, {
+  "variable" : "3_modular_switch_box_with_plate_qty",
+  "value" : {
+    "path" : "$.3_modular_switch_box_with_plate_qty"
+  }
+}, {
+  "variable" : "3_modular_switch_box_with_plate_description",
+  "value" : {
+    "path" : "$.3_modular_switch_box_with_plate_description"
+  }
+}, {
+  "variable" : "4_modular_switch_box_with_plate_make",
+  "value" : {
+    "path" : "$.4_modular_switch_box_with_plate_make"
+  }
+}, {
+  "variable" : "4_modular_switch_box_with_plate_capacity",
+  "value" : {
+    "path" : "$.4_modular_switch_box_with_plate_capacity"
+  }
+}, {
+  "variable" : "4_modular_switch_box_with_plate_qty",
+  "value" : {
+    "path" : "$.4_modular_switch_box_with_plate_qty"
+  }
+}, {
+  "variable" : "4_modular_switch_box_with_plate_description",
+  "value" : {
+    "path" : "$.4_modular_switch_box_with_plate_description"
+  }
+}, {
+  "variable" : "6_modular_switch_box_with_plate_make",
+  "value" : {
+    "path" : "$.6_modular_switch_box_with_plate_make"
+  }
+}, {
+  "variable" : "6_modular_switch_box_with_plate_capacity",
+  "value" : {
+    "path" : "$.6_modular_switch_box_with_plate_capacity"
+  }
+}, {
+  "variable" : "6_modular_switch_box_with_plate_qty",
+  "value" : {
+    "path" : "$.6_modular_switch_box_with_plate_qty"
+  }
+}, {
+  "variable" : "6_modular_switch_box_with_plate_description",
+  "value" : {
+    "path" : "$.6_modular_switch_box_with_plate_description"
+  }
+}, {
+  "variable" : "8_modular_switch_box_with_plate_make",
+  "value" : {
+    "path" : "$.8_modular_switch_box_with_plate_make"
+  }
+}, {
+  "variable" : "8_modular_switch_box_with_plate_capacity",
+  "value" : {
+    "path" : "$.8_modular_switch_box_with_plate_capacity"
+  }
+}, {
+  "variable" : "8_modular_switch_box_with_plate_qty",
+  "value" : {
+    "path" : "$.8_modular_switch_box_with_plate_qty"
+  }
+}, {
+  "variable" : "8_modular_switch_box_with_plate_description",
+  "value" : {
+    "path" : "$.8_modular_switch_box_with_plate_description"
+  }
+}, {
+  "variable" : "modular_box_blank_plate_dummy_make",
+  "value" : {
+    "path" : "$.modular_box_blank_plate_dummy_make"
+  }
+}, {
+  "variable" : "modular_box_blank_plate_dummy_capacity",
+  "value" : {
+    "path" : "$.modular_box_blank_plate_dummy_capacity"
+  }
+}, {
+  "variable" : "modular_box_blank_plate_dummy_qty",
+  "value" : {
+    "path" : "$.modular_box_blank_plate_dummy_qty"
+  }
+}, {
+  "variable" : "modular_box_blank_plate_dummy_description",
+  "value" : {
+    "path" : "$.modular_box_blank_plate_dummy_description"
+  }
+}, {
+  "variable" : "upvc_conduit_pipe_white_make",
+  "value" : {
+    "path" : "$.upvc_conduit_pipe_white_make"
+  }
+}, {
+  "variable" : "upvc_conduit_pipe_white_capacity",
+  "value" : {
+    "path" : "$.upvc_conduit_pipe_white_capacity"
+  }
+}, {
+  "variable" : "upvc_conduit_pipe_white_qty",
+  "value" : {
+    "path" : "$.upvc_conduit_pipe_white_qty"
+  }
+}, {
+  "variable" : "upvc_conduit_pipe_white_description",
+  "value" : {
+    "path" : "$.upvc_conduit_pipe_white_description"
+  }
+}, {
+  "variable" : "upvc_coupler_white_make",
+  "value" : {
+    "path" : "$.upvc_coupler_white_make"
+  }
+}, {
+  "variable" : "upvc_coupler_white_capacity",
+  "value" : {
+    "path" : "$.upvc_coupler_white_capacity"
+  }
+}, {
+  "variable" : "upvc_coupler_white_qty",
+  "value" : {
+    "path" : "$.upvc_coupler_white_qty"
+  }
+}, {
+  "variable" : "upvc_coupler_white_description",
+  "value" : {
+    "path" : "$.upvc_coupler_white_description"
+  }
+}, {
+  "variable" : "upvc_conduit_tee_joint_make",
+  "value" : {
+    "path" : "$.upvc_conduit_tee_joint_make"
+  }
+}, {
+  "variable" : "upvc_conduit_tee_joint_capacity",
+  "value" : {
+    "path" : "$.upvc_conduit_tee_joint_capacity"
+  }
+}, {
+  "variable" : "upvc_conduit_tee_joint_qty",
+  "value" : {
+    "path" : "$.upvc_conduit_tee_joint_qty"
+  }
+}, {
+  "variable" : "upvc_conduit_tee_joint_description",
+  "value" : {
+    "path" : "$.upvc_conduit_tee_joint_description"
+  }
+}, {
+  "variable" : "upvc_short_long_elbow_white_make",
+  "value" : {
+    "path" : "$.upvc_short_long_elbow_white_make"
+  }
+}, {
+  "variable" : "upvc_short_long_elbow_white_capacity",
+  "value" : {
+    "path" : "$.upvc_short_long_elbow_white_capacity"
+  }
+}, {
+  "variable" : "upvc_short_long_elbow_white_qty",
+  "value" : {
+    "path" : "$.upvc_short_long_elbow_white_qty"
+  }
+}, {
+  "variable" : "upvc_short_long_elbow_white_description",
+  "value" : {
+    "path" : "$.upvc_short_long_elbow_white_description"
+  }
+}, {
+  "variable" : "2_way_junction_box_make",
+  "value" : {
+    "path" : "$.2_way_junction_box_make"
+  }
+}, {
+  "variable" : "2_way_junction_box_capacity",
+  "value" : {
+    "path" : "$.2_way_junction_box_capacity"
+  }
+}, {
+  "variable" : "2_way_junction_box_qty",
+  "value" : {
+    "path" : "$.2_way_junction_box_qty"
+  }
+}, {
+  "variable" : "2_way_junction_box_description",
+  "value" : {
+    "path" : "$.2_way_junction_box_description"
+  }
+}, {
+  "variable" : "3_way_junction_box_make",
+  "value" : {
+    "path" : "$.3_way_junction_box_make"
+  }
+}, {
+  "variable" : "3_way_junction_box_capacity",
+  "value" : {
+    "path" : "$.3_way_junction_box_capacity"
+  }
+}, {
+  "variable" : "3_way_junction_box_qty",
+  "value" : {
+    "path" : "$.3_way_junction_box_qty"
+  }
+}, {
+  "variable" : "3_way_junction_box_description",
+  "value" : {
+    "path" : "$.3_way_junction_box_description"
+  }
+}, {
+  "variable" : "4_way_junction_box_make",
+  "value" : {
+    "path" : "$.4_way_junction_box_make"
+  }
+}, {
+  "variable" : "4_way_junction_box_capacity",
+  "value" : {
+    "path" : "$.4_way_junction_box_capacity"
+  }
+}, {
+  "variable" : "4_way_junction_box_qty",
+  "value" : {
+    "path" : "$.4_way_junction_box_qty"
+  }
+}, {
+  "variable" : "4_way_junction_box_description",
+  "value" : {
+    "path" : "$.4_way_junction_box_description"
+  }
+}, {
+  "variable" : "square_box_make",
+  "value" : {
+    "path" : "$.square_box_make"
+  }
+}, {
+  "variable" : "square_box_capacity",
+  "value" : {
+    "path" : "$.square_box_capacity"
+  }
+}, {
+  "variable" : "square_box_qty",
+  "value" : {
+    "path" : "$.square_box_qty"
+  }
+}, {
+  "variable" : "square_box_description",
+  "value" : {
+    "path" : "$.square_box_description"
+  }
+}, {
+  "variable" : "plastic_wall_lug_make",
+  "value" : {
+    "path" : "$.plastic_wall_lug_make"
+  }
+}, {
+  "variable" : "plastic_wall_lug_capacity",
+  "value" : {
+    "path" : "$.plastic_wall_lug_capacity"
+  }
+}, {
+  "variable" : "plastic_wall_lug_qty",
+  "value" : {
+    "path" : "$.plastic_wall_lug_qty"
+  }
+}, {
+  "variable" : "plastic_wall_lug_description",
+  "value" : {
+    "path" : "$.plastic_wall_lug_description"
+  }
+}, {
+  "variable" : "screw_make",
+  "value" : {
+    "path" : "$.screw_make"
+  }
+}, {
+  "variable" : "screw_capacity",
+  "value" : {
+    "path" : "$.screw_capacity"
+  }
+}, {
+  "variable" : "screw_qty",
+  "value" : {
+    "path" : "$.screw_qty"
+  }
+}, {
+  "variable" : "screw_description",
+  "value" : {
+    "path" : "$.screw_description"
+  }
+}, {
+  "variable" : "electrical_insulating_tape_make",
+  "value" : {
+    "path" : "$.electrical_insulating_tape_make"
+  }
+}, {
+  "variable" : "electrical_insulating_tape_capacity",
+  "value" : {
+    "path" : "$.electrical_insulating_tape_capacity"
+  }
+}, {
+  "variable" : "electrical_insulating_tape_qty",
+  "value" : {
+    "path" : "$.electrical_insulating_tape_qty"
+  }
+}, {
+  "variable" : "electrical_insulating_tape_description",
+  "value" : {
+    "path" : "$.electrical_insulating_tape_description"
+  }
+}, {
+  "variable" : "pipe_saddle_clamps_make",
+  "value" : {
+    "path" : "$.pipe_saddle_clamps_make"
+  }
+}, {
+  "variable" : "pipe_saddle_clamps_capacity",
+  "value" : {
+    "path" : "$.pipe_saddle_clamps_capacity"
+  }
+}, {
+  "variable" : "pipe_saddle_clamps_qty",
+  "value" : {
+    "path" : "$.pipe_saddle_clamps_qty"
+  }
+}, {
+  "variable" : "pipe_saddle_clamps_description",
+  "value" : {
+    "path" : "$.pipe_saddle_clamps_description"
+  }
+}, {
+  "variable" : "saddle_nail_make",
+  "value" : {
+    "path" : "$.saddle_nail_make"
+  }
+}, {
+  "variable" : "saddle_nail_capacity",
+  "value" : {
+    "path" : "$.saddle_nail_capacity"
+  }
+}, {
+  "variable" : "saddle_nail_qty",
+  "value" : {
+    "path" : "$.saddle_nail_qty"
+  }
+}, {
+  "variable" : "saddle_nail_description",
+  "value" : {
+    "path" : "$.saddle_nail_description"
+  }
+}, {
+  "variable" : "cable_tie_make",
+  "value" : {
+    "path" : "$.cable_tie_make"
+  }
+}, {
+  "variable" : "cable_tie_capacity",
+  "value" : {
+    "path" : "$.cable_tie_capacity"
+  }
+}, {
+  "variable" : "cable_tie_qty",
+  "value" : {
+    "path" : "$.cable_tie_qty"
+  }
+}, {
+  "variable" : "cable_tie_description",
+  "value" : {
+    "path" : "$.cable_tie_description"
+  }
+}, {
+  "variable" : "cable_lugs_1_make",
+  "value" : {
+    "path" : "$.cable_lugs_1_make"
+  }
+}, {
+  "variable" : "cable_lugs_1_capacity",
+  "value" : {
+    "path" : "$.cable_lugs_1_capacity"
+  }
+}, {
+  "variable" : "cable_lugs_1_qty",
+  "value" : {
+    "path" : "$.cable_lugs_1_qty"
+  }
+}, {
+  "variable" : "cable_lugs_1_description",
+  "value" : {
+    "path" : "$.cable_lugs_1_description"
+  }
+}, {
+  "variable" : "cable_lugs_2_make",
+  "value" : {
+    "path" : "$.cable_lugs_2_make"
+  }
+}, {
+  "variable" : "cable_lugs_2_capacity",
+  "value" : {
+    "path" : "$.cable_lugs_2_capacity"
+  }
+}, {
+  "variable" : "cable_lugs_2_qty",
+  "value" : {
+    "path" : "$.cable_lugs_2_qty"
+  }
+}, {
+  "variable" : "cable_lugs_2_description",
+  "value" : {
+    "path" : "$.cable_lugs_2_description"
+  }
+}, {
+  "variable" : "flexible_pipe_make",
+  "value" : {
+    "path" : "$.flexible_pipe_make"
+  }
+}, {
+  "variable" : "flexible_pipe_capacity",
+  "value" : {
+    "path" : "$.flexible_pipe_capacity"
+  }
+}, {
+  "variable" : "flexible_pipe_qty",
+  "value" : {
+    "path" : "$.flexible_pipe_qty"
+  }
+}, {
+  "variable" : "flexible_pipe_description",
+  "value" : {
+    "path" : "$.flexible_pipe_description"
+  }
+}, {
+  "variable" : "labelling_tags_load_identification_tags_make",
+  "value" : {
+    "path" : "$.labelling_tags_load_identification_tags_make"
+  }
+}, {
+  "variable" : "labelling_tags_load_identification_tags_capacity",
+  "value" : {
+    "path" : "$.labelling_tags_load_identification_tags_capacity"
+  }
+}, {
+  "variable" : "labelling_tags_load_identification_tags_qty",
+  "value" : {
+    "path" : "$.labelling_tags_load_identification_tags_qty"
+  }
+}, {
+  "variable" : "labelling_tags_load_identification_tags_description",
+  "value" : {
+    "path" : "$.labelling_tags_load_identification_tags_description"
+  }
+}, {
+  "variable" : "labelling_tags_cable_identification_tags_make",
+  "value" : {
+    "path" : "$.labelling_tags_cable_identification_tags_make"
+  }
+}, {
+  "variable" : "labelling_tags_cable_identification_tags_capacity",
+  "value" : {
+    "path" : "$.labelling_tags_cable_identification_tags_capacity"
+  }
+}, {
+  "variable" : "labelling_tags_cable_identification_tags_qty",
+  "value" : {
+    "path" : "$.labelling_tags_cable_identification_tags_qty"
+  }
+}, {
+  "variable" : "labelling_tags_cable_identification_tags_description",
+  "value" : {
+    "path" : "$.labelling_tags_cable_identification_tags_description"
+  }
+}, {
+  "variable" : "sfp_date",
+  "value" : {
+    "path" : "$.sfp_date"
+  }
+}, {
+  "variable" : "sfp_weather",
+  "value" : {
+    "path" : "$.sfp_weather"
+  }
+}, {
+  "variable" : "array_size_kwp",
+  "value" : {
+    "path" : "$.array_size_kwp"
+  }
+}, {
+  "variable" : "array_no_modules",
+  "value" : {
+    "path" : "$.array_no_modules"
+  }
+}, {
+  "variable" : "array_no_strings",
+  "value" : {
+    "path" : "$.array_no_strings"
+  }
+}, {
+  "variable" : "array_no_modules_per_string",
+  "value" : {
+    "path" : "$.array_no_modules_per_string"
+  }
+}, {
+  "variable" : "array_each_module_wp",
+  "value" : {
+    "path" : "$.array_each_module_wp"
+  }
+}, {
+  "variable" : "ajb_off_voc_mv_anchor",
+  "value" : {
+    "path" : "$.ajb_off_voc_mv_anchor"
+  }
+}, {
+  "variable" : "ajb_off_voc_string_1",
+  "value" : {
+    "path" : "$.ajb_off_voc_string_1"
+  }
+}, {
+  "variable" : "ajb_off_voc_string_2",
+  "value" : {
+    "path" : "$.ajb_off_voc_string_2"
+  }
+}, {
+  "variable" : "ajb_off_voc_string_3",
+  "value" : {
+    "path" : "$.ajb_off_voc_string_3"
+  }
+}, {
+  "variable" : "ajb_off_voc_string_4",
+  "value" : {
+    "path" : "$.ajb_off_voc_string_4"
+  }
+}, {
+  "variable" : "ajb_off_voc_string_5",
+  "value" : {
+    "path" : "$.ajb_off_voc_string_5"
+  }
+}, {
+  "variable" : "ajb_off_voc_uom",
+  "value" : {
+    "path" : "$.ajb_off_voc_uom"
+  }
+}, {
+  "variable" : "ajb_on_vmp_mv_anchor",
+  "value" : {
+    "path" : "$.ajb_on_vmp_mv_anchor"
+  }
+}, {
+  "variable" : "ajb_on_vmp_string_1",
+  "value" : {
+    "path" : "$.ajb_on_vmp_string_1"
+  }
+}, {
+  "variable" : "ajb_on_vmp_string_2",
+  "value" : {
+    "path" : "$.ajb_on_vmp_string_2"
+  }
+}, {
+  "variable" : "ajb_on_vmp_string_3",
+  "value" : {
+    "path" : "$.ajb_on_vmp_string_3"
+  }
+}, {
+  "variable" : "ajb_on_vmp_string_4",
+  "value" : {
+    "path" : "$.ajb_on_vmp_string_4"
+  }
+}, {
+  "variable" : "ajb_on_vmp_string_5",
+  "value" : {
+    "path" : "$.ajb_on_vmp_string_5"
+  }
+}, {
+  "variable" : "ajb_on_vmp_uom",
+  "value" : {
+    "path" : "$.ajb_on_vmp_uom"
+  }
+}, {
+  "variable" : "ajb_on_imp_mv_anchor",
+  "value" : {
+    "path" : "$.ajb_on_imp_mv_anchor"
+  }
+}, {
+  "variable" : "ajb_on_imp_string_1",
+  "value" : {
+    "path" : "$.ajb_on_imp_string_1"
+  }
+}, {
+  "variable" : "ajb_on_imp_string_2",
+  "value" : {
+    "path" : "$.ajb_on_imp_string_2"
+  }
+}, {
+  "variable" : "ajb_on_imp_string_3",
+  "value" : {
+    "path" : "$.ajb_on_imp_string_3"
+  }
+}, {
+  "variable" : "ajb_on_imp_string_4",
+  "value" : {
+    "path" : "$.ajb_on_imp_string_4"
+  }
+}, {
+  "variable" : "ajb_on_imp_string_5",
+  "value" : {
+    "path" : "$.ajb_on_imp_string_5"
+  }
+}, {
+  "variable" : "ajb_on_imp_uom",
+  "value" : {
+    "path" : "$.ajb_on_imp_uom"
+  }
+}, {
+  "variable" : "bb_voltage_mv",
+  "value" : {
+    "path" : "$.bb_voltage_mv"
+  }
+}, {
+  "variable" : "bb_voltage_uom",
+  "value" : {
+    "path" : "$.bb_voltage_uom"
+  }
+}, {
+  "variable" : "bb_current_mv",
+  "value" : {
+    "path" : "$.bb_current_mv"
+  }
+}, {
+  "variable" : "bb_current_uom",
+  "value" : {
+    "path" : "$.bb_current_uom"
+  }
+}, {
+  "variable" : "ph1_load_voltage_mv",
+  "value" : {
+    "path" : "$.ph1_load_voltage_mv"
+  }
+}, {
+  "variable" : "ph1_load_voltage_uom",
+  "value" : {
+    "path" : "$.ph1_load_voltage_uom"
+  }
+}, {
+  "variable" : "ph1_output_freq_mv",
+  "value" : {
+    "path" : "$.ph1_output_freq_mv"
+  }
+}, {
+  "variable" : "ph1_output_freq_uom",
+  "value" : {
+    "path" : "$.ph1_output_freq_uom"
+  }
+}, {
+  "variable" : "ph1_output_current_full_load_mv",
+  "value" : {
+    "path" : "$.ph1_output_current_full_load_mv"
+  }
+}, {
+  "variable" : "ph1_output_current_full_load_uom",
+  "value" : {
+    "path" : "$.ph1_output_current_full_load_uom"
+  }
+}, {
+  "variable" : "ph1_grid_input_voltage_mv",
+  "value" : {
+    "path" : "$.ph1_grid_input_voltage_mv"
+  }
+}, {
+  "variable" : "ph1_grid_input_voltage_uom",
+  "value" : {
+    "path" : "$.ph1_grid_input_voltage_uom"
+  }
+}, {
+  "variable" : "ph1_inverter_output_frequency_mv",
+  "value" : {
+    "path" : "$.ph1_inverter_output_frequency_mv"
+  }
+}, {
+  "variable" : "ph1_inverter_output_frequency_uom",
+  "value" : {
+    "path" : "$.ph1_inverter_output_frequency_uom"
+  }
+}, {
+  "variable" : "ph1_grid_input_current_mv",
+  "value" : {
+    "path" : "$.ph1_grid_input_current_mv"
+  }
+}, {
+  "variable" : "ph1_grid_input_current_uom",
+  "value" : {
+    "path" : "$.ph1_grid_input_current_uom"
+  }
+}, {
+  "variable" : "ph3_rpn_voltage_mv_off",
+  "value" : {
+    "path" : "$.ph3_rpn_voltage_mv_off"
+  }
+}, {
+  "variable" : "ph3_rpn_voltage_uom_off",
+  "value" : {
+    "path" : "$.ph3_rpn_voltage_uom_off"
+  }
+}, {
+  "variable" : "ph3_rpn_voltage_mv_on",
+  "value" : {
+    "path" : "$.ph3_rpn_voltage_mv_on"
+  }
+}, {
+  "variable" : "ph3_rpn_voltage_uom_on",
+  "value" : {
+    "path" : "$.ph3_rpn_voltage_uom_on"
+  }
+}, {
+  "variable" : "ph3_rpn_freq_mv_off",
+  "value" : {
+    "path" : "$.ph3_rpn_freq_mv_off"
+  }
+}, {
+  "variable" : "ph3_rpn_freq_uom_off",
+  "value" : {
+    "path" : "$.ph3_rpn_freq_uom_off"
+  }
+}, {
+  "variable" : "ph3_rpn_freq_mv_on",
+  "value" : {
+    "path" : "$.ph3_rpn_freq_mv_on"
+  }
+}, {
+  "variable" : "ph3_rpn_freq_uom_on",
+  "value" : {
+    "path" : "$.ph3_rpn_freq_uom_on"
+  }
+}, {
+  "variable" : "ph3_ypn_voltage_mv_off",
+  "value" : {
+    "path" : "$.ph3_ypn_voltage_mv_off"
+  }
+}, {
+  "variable" : "ph3_ypn_voltage_uom_off",
+  "value" : {
+    "path" : "$.ph3_ypn_voltage_uom_off"
+  }
+}, {
+  "variable" : "ph3_ypn_voltage_mv_on",
+  "value" : {
+    "path" : "$.ph3_ypn_voltage_mv_on"
+  }
+}, {
+  "variable" : "ph3_ypn_voltage_uom_on",
+  "value" : {
+    "path" : "$.ph3_ypn_voltage_uom_on"
+  }
+}, {
+  "variable" : "ph3_ypn_freq_mv_off",
+  "value" : {
+    "path" : "$.ph3_ypn_freq_mv_off"
+  }
+}, {
+  "variable" : "ph3_ypn_freq_uom_off",
+  "value" : {
+    "path" : "$.ph3_ypn_freq_uom_off"
+  }
+}, {
+  "variable" : "ph3_ypn_freq_mv_on",
+  "value" : {
+    "path" : "$.ph3_ypn_freq_mv_on"
+  }
+}, {
+  "variable" : "ph3_ypn_freq_uom_on",
+  "value" : {
+    "path" : "$.ph3_ypn_freq_uom_on"
+  }
+}, {
+  "variable" : "ph3_bpn_voltage_mv_off",
+  "value" : {
+    "path" : "$.ph3_bpn_voltage_mv_off"
+  }
+}, {
+  "variable" : "ph3_bpn_voltage_uom_off",
+  "value" : {
+    "path" : "$.ph3_bpn_voltage_uom_off"
+  }
+}, {
+  "variable" : "ph3_bpn_voltage_mv_on",
+  "value" : {
+    "path" : "$.ph3_bpn_voltage_mv_on"
+  }
+}, {
+  "variable" : "ph3_bpn_voltage_uom_on",
+  "value" : {
+    "path" : "$.ph3_bpn_voltage_uom_on"
+  }
+}, {
+  "variable" : "ph3_bpn_freq_mv_off",
+  "value" : {
+    "path" : "$.ph3_bpn_freq_mv_off"
+  }
+}, {
+  "variable" : "ph3_bpn_freq_uom_off",
+  "value" : {
+    "path" : "$.ph3_bpn_freq_uom_off"
+  }
+}, {
+  "variable" : "ph3_bpn_freq_mv_on",
+  "value" : {
+    "path" : "$.ph3_bpn_freq_mv_on"
+  }
+}, {
+  "variable" : "ph3_bpn_freq_uom_on",
+  "value" : {
+    "path" : "$.ph3_bpn_freq_uom_on"
+  }
+}, {
+  "variable" : "ph3_r_y_voltage_mv",
+  "value" : {
+    "path" : "$.ph3_r_y_voltage_mv"
+  }
+}, {
+  "variable" : "ph3_r_y_voltage_uom",
+  "value" : {
+    "path" : "$.ph3_r_y_voltage_uom"
+  }
+}, {
+  "variable" : "ph3_r_b_voltage_mv",
+  "value" : {
+    "path" : "$.ph3_r_b_voltage_mv"
+  }
+}, {
+  "variable" : "ph3_r_b_voltage_uom",
+  "value" : {
+    "path" : "$.ph3_r_b_voltage_uom"
+  }
+}, {
+  "variable" : "ph3_y_b_voltage_mv",
+  "value" : {
+    "path" : "$.ph3_y_b_voltage_mv"
+  }
+}, {
+  "variable" : "ph3_y_b_voltage_uom",
+  "value" : {
+    "path" : "$.ph3_y_b_voltage_uom"
+  }
+}, {
+  "variable" : "disp_inverter_priority",
+  "value" : {
+    "path" : "$.disp_inverter_priority"
+  }
+}, {
+  "variable" : "disp_grid_export",
+  "value" : {
+    "path" : "$.disp_grid_export"
+  }
+}, {
+  "variable" : "disp_battery_settings_ah",
+  "value" : {
+    "path" : "$.disp_battery_settings_ah"
+  }
+}, {
+  "variable" : "disp_battery_type",
+  "value" : {
+    "path" : "$.disp_battery_type"
+  }
+}, {
+  "variable" : "disp_load_running_on",
+  "value" : {
+    "path" : "$.disp_load_running_on"
+  }
+}, {
+  "variable" : "chg_switch_orientation",
+  "value" : {
+    "path" : "$.chg_switch_orientation"
+  }
+}, {
+  "variable" : "chg_switch_functional",
+  "value" : {
+    "path" : "$.chg_switch_functional"
+  }
+}, {
+  "variable" : "sock_v_pn_mv",
+  "value" : {
+    "path" : "$.sock_v_pn_mv"
+  }
+}, {
+  "variable" : "sock_v_pn_uom",
+  "value" : {
+    "path" : "$.sock_v_pn_uom"
+  }
+}, {
+  "variable" : "sock_v_pe_mv",
+  "value" : {
+    "path" : "$.sock_v_pe_mv"
+  }
+}, {
+  "variable" : "sock_v_pe_uom",
+  "value" : {
+    "path" : "$.sock_v_pe_uom"
+  }
+}, {
+  "variable" : "sock_v_en_mv",
+  "value" : {
+    "path" : "$.sock_v_en_mv"
+  }
+}, {
+  "variable" : "sock_v_en_uom",
+  "value" : {
+    "path" : "$.sock_v_en_uom"
+  }
+}, {
+  "variable" : "ept_dc_earthing_mv",
+  "value" : {
+    "path" : "$.ept_dc_earthing_mv"
+  }
+}, {
+  "variable" : "ept_dc_earthing_uom",
+  "value" : {
+    "path" : "$.ept_dc_earthing_uom"
+  }
+}, {
+  "variable" : "ept_ac_earthing_mv",
+  "value" : {
+    "path" : "$.ept_ac_earthing_mv"
+  }
+}, {
+  "variable" : "ept_ac_earthing_uom",
+  "value" : {
+    "path" : "$.ept_ac_earthing_uom"
+  }
+}, {
+  "variable" : "ept_lightning_arrester1_mv",
+  "value" : {
+    "path" : "$.ept_lightning_arrester1_mv"
+  }
+}, {
+  "variable" : "ept_lightning_arrester1_uom",
+  "value" : {
+    "path" : "$.ept_lightning_arrester1_uom"
+  }
+}, {
+  "variable" : "ept_lightning_arrester2_mv",
+  "value" : {
+    "path" : "$.ept_lightning_arrester2_mv"
+  }
+}, {
+  "variable" : "ept_lightning_arrester2_uom",
+  "value" : {
+    "path" : "$.ept_lightning_arrester2_uom"
+  }
+}, {
+  "variable" : "orientation_operational_instructions_status",
+  "value" : {
+    "path" : "$.orientation_operational_instructions_status"
+  }
+}, {
+  "variable" : "orientation_operational_instructions_remarks",
+  "value" : {
+    "path" : "$.orientation_operational_instructions_remarks"
+  }
+}, {
+  "variable" : "orientation_routine_maintenance_status",
+  "value" : {
+    "path" : "$.orientation_routine_maintenance_status"
+  }
+}, {
+  "variable" : "orientation_routine_maintenance_remarks",
+  "value" : {
+    "path" : "$.orientation_routine_maintenance_remarks"
+  }
+}, {
+  "variable" : "stickers_pasted_status",
+  "value" : {
+    "path" : "$.stickers_pasted_status"
+  }
+}, {
+  "variable" : "stickers_pasted_remarks",
+  "value" : {
+    "path" : "$.stickers_pasted_remarks"
+  }
+}, {
+  "variable" : "posters_pasted_status",
+  "value" : {
+    "path" : "$.posters_pasted_status"
+  }
+}, {
+  "variable" : "posters_pasted_remarks",
+  "value" : {
+    "path" : "$.posters_pasted_remarks"
+  }
+}, {
+  "variable" : "orientation_additional_remarks",
+  "value" : {
+    "path" : "$.orientation_additional_remarks"
+  }
+} ]
