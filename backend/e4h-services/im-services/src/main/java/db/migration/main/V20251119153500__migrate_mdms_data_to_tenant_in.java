@@ -26,7 +26,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
-public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMigration {
+public class V20251119153500__migrate_mdms_data_to_tenant_in extends BaseJavaMigration {
 
     private static final String SOURCE_TENANT_ID = "pg";
     private static final String TARGET_TENANT_ID = "in";
@@ -194,10 +194,10 @@ public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
                 if (schemaDefinitions != null && !schemaDefinitions.isEmpty()) {
                     // Get first schema definition
                     ObjectNode schemaDef = (ObjectNode) schemaDefinitions.get(0);
-                    
+
                     // Change tenantId to target tenant
                     schemaDef.put("tenantId", TARGET_TENANT_ID);
-                    
+
                     // Remove id, audit details to let system generate new one
                     schemaDef.remove("id");
                     schemaDef.remove("auditDetails");
@@ -233,7 +233,7 @@ public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
     }
 
     /**
-     * Create schema definition in target tenant
+     * Create schema definition in target tenant with retry mechanism
      */
     private ObjectNode createSchema(
         RestTemplate restTemplate,
@@ -243,6 +243,72 @@ public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
         String authToken,
         PrintWriter migrationLogger
     ) throws Exception {
+        String schemaCode = schemaDefinition.path("code").asText();
+
+        // Retry delays: 2s, 5s, 15s, 30s
+        int[] retryDelays = {2000, 5000, 15000, 30000};
+        int maxAttempts = 5;
+
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+                ObjectNode result = attemptCreateSchema(
+                    restTemplate, objectMapper, mdmsHost, schemaDefinition, authToken, schemaCode, migrationLogger
+                );
+
+                if (result != null) {
+                    return result;
+                }
+
+                // If not successful and not last attempt, retry
+                if (attempt < maxAttempts - 1 ) {
+                    int delayMs = retryDelays[attempt];
+                    log.warn("Retry attempt {} for schema {} after {}ms", attempt + 1, schemaCode, delayMs);
+                    migrationLogger.println("[RETRY] Attempt " + (attempt + 1) + "/" + maxAttempts + " - Retrying after " + delayMs + "ms");
+                    migrationLogger.flush();
+                    Thread.sleep(delayMs);
+                }
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw e;
+            } catch (Exception e) {
+                // If not last attempt, retry
+                if (attempt < maxAttempts - 1 ) {
+                    int delayMs = retryDelays[attempt];
+                    log.warn(
+                            "Exception on attempt {} for schema {}: {}. Retrying after {}ms",
+                            attempt + 1, schemaCode, e.getMessage(), delayMs
+                    );
+                    migrationLogger.println("[RETRY] Exception on attempt " + (attempt + 1) + ": " + e.getMessage() + " - Retrying after " + delayMs + "ms");
+                    migrationLogger.flush();
+                    try {
+                        Thread.sleep(delayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw ie;
+                    }
+                }
+            }
+        }
+
+        log.error("All retry attempts failed for schema: {}", schemaCode);
+        migrationLogger.println("[FAILED] All " + maxAttempts + " attempts exhausted");
+        migrationLogger.flush();
+        return null;
+    }
+
+    /**
+     * Attempt to create schema definition (single attempt)
+     */
+    private ObjectNode attemptCreateSchema(
+        RestTemplate restTemplate,
+        ObjectMapper objectMapper,
+        String mdmsHost,
+        ObjectNode schemaDefinition,
+        String authToken,
+        String schemaCode,
+        PrintWriter migrationLogger
+    ) {
         String schemaCreateUrl = mdmsHost + "/egov-mdms-service/schema/v1/_create";
 
         ObjectNode requestBody = objectMapper.createObjectNode();
@@ -254,7 +320,7 @@ public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> httpEntity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
 
-            log.debug("Creating schema: {}", schemaDefinition.path("code").asText());
+            log.debug("Creating schema: {}", schemaCode);
             ResponseEntity<String> response = restTemplate.exchange(
                 schemaCreateUrl,
                 HttpMethod.POST,
@@ -263,29 +329,45 @@ public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
             );
 
             if (response.getStatusCode().is2xxSuccessful()) {
-                log.info("✓ Schema created successfully: {}", schemaDefinition.path("code").asText());
-                migrationLogger.println("[SUCCESS] Schema created: " + schemaDefinition.path("code").asText());
+                log.info("✓ Schema created successfully: {}", schemaCode);
+                migrationLogger.println("[SUCCESS] Schema created: " + schemaCode);
                 migrationLogger.flush();
                 return schemaDefinition;
             } else {
-                log.error("Schema creation failed: {} - {}", schemaDefinition.path("code").asText(), response.getStatusCode());
-                migrationLogger.println("[FAILED] Schema creation failed: " + schemaDefinition.path("code").asText());
-                migrationLogger.println("Status: " + response.getStatusCode() + " - " + response.getBody());
+                // Check if it's a duplicate error in the response body
+                String responseBody = response.getBody();
+                if (isDuplicateError(responseBody, objectMapper)) {
+                    log.warn("Schema already exists: {}", schemaCode);
+                    migrationLogger.println("[SKIPPED] Schema already exists: " + schemaCode);
+                    migrationLogger.flush();
+                    return schemaDefinition; // Return it anyway as it exists
+                }
+                log.error("Schema creation failed: {} - {}", schemaCode, response.getStatusCode());
+                migrationLogger.println("[FAILED] Schema creation failed: " + schemaCode);
+                migrationLogger.println("Status: " + response.getStatusCode() + " - " + responseBody);
                 migrationLogger.flush();
                 return null;
             }
 
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            // Check if it's a duplicate (409 or similar)
-            if (e.getStatusCode().value() == 409 || e.getResponseBodyAsString().contains("already exists")) {
-                log.warn("Schema already exists: {}", schemaDefinition.path("code").asText());
-                migrationLogger.println("[SKIPPED] Schema already exists: " + schemaDefinition.path("code").asText());
+            String responseBody = e.getResponseBodyAsString();
+            // Check if it's a duplicate - don't retry for duplicates
+            if (isDuplicateError(responseBody, objectMapper)) {
+                log.warn("Schema already exists: {}", schemaCode);
+                migrationLogger.println("[SKIPPED] Schema already exists: " + schemaCode);
                 migrationLogger.flush();
                 return schemaDefinition; // Return it anyway as it exists
             }
-            log.error("HTTP error creating schema {}: {} - {}", schemaDefinition.path("code").asText(), e.getStatusCode(), e.getResponseBodyAsString());
-            migrationLogger.println("[FAILED] Schema creation HTTP error: " + schemaDefinition.path("code").asText());
-            migrationLogger.println("Status: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            // For other HTTP errors, return null to trigger retry
+            log.error("HTTP error creating schema {}: {} - {}", schemaCode, e.getStatusCode(), responseBody);
+            migrationLogger.println("[FAILED] Schema creation HTTP error: " + schemaCode);
+            migrationLogger.println("Status: " + e.getStatusCode() + " - " + responseBody);
+            migrationLogger.flush();
+            return null;
+        } catch (Exception e) {
+            log.error("Error creating schema {}: {}", schemaCode, e.getMessage(), e);
+            migrationLogger.println("[FAILED] Schema creation exception: " + schemaCode);
+            migrationLogger.println("Error: " + e.getMessage());
             migrationLogger.flush();
             return null;
         }
@@ -342,13 +424,13 @@ public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
                     // Process each MDMS record
                     for (int i = 0; i < mdmsArray.size(); i++) {
                         ObjectNode mdmsRecord = (ObjectNode) mdmsArray.get(i);
-                        
+
                         // Change tenantId to target tenant
                         mdmsRecord.put("tenantId", TARGET_TENANT_ID);
-                        
+
                         // Remove id to let system generate new one
                         mdmsRecord.remove("id");
-                        
+
                         // Update audit details
                         ObjectNode auditDetails = objectMapper.createObjectNode();
                         long currentTime = System.currentTimeMillis();
@@ -395,7 +477,7 @@ public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
     }
 
     /**
-     * Create MDMS data record in target tenant
+     * Create MDMS data record in target tenant with retry mechanism
      */
     private boolean createMdmsData(
         RestTemplate restTemplate,
@@ -408,6 +490,77 @@ public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
     ) throws InterruptedException {
         String schemaCode = mdmsRecord.path("schemaCode").asText();
         String uniqueIdentifier = mdmsRecord.path("uniqueIdentifier").asText();
+
+        // Retry delays: 2s, 5s, 15s, 30s (last retry)
+        int[] retryDelays = {2000, 5000, 15000, 30000};
+        int maxAttempts = 5;
+
+        for (int attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+                boolean success = attemptCreateMdmsData(
+                    restTemplate, objectMapper, mdmsHost, mdmsRecord, authToken,
+                    schemaCode, uniqueIdentifier, migrationLogger
+                );
+
+                if (success) {
+                    // Small delay to avoid overwhelming the service
+                    if (sleepMs > 0) {
+                        Thread.sleep(sleepMs);
+                    }
+                    return true;
+                }
+
+                // If not successful and not last attempt, retry
+                if (attempt < maxAttempts - 1) {
+                    int delayMs = retryDelays[attempt];
+                    log.warn("Retry attempt {} for {} - {} after {}ms", attempt + 1, schemaCode, uniqueIdentifier, delayMs);
+                    migrationLogger.println("  [RETRY] Attempt " + (attempt + 1) + "/" + maxAttempts + " - Retrying after " + delayMs + "ms");
+                    migrationLogger.flush();
+                    Thread.sleep(delayMs);
+                }
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw e;
+            } catch (Exception e) {
+                // If not last attempt, retry
+                if (attempt < maxAttempts - 1) {
+                    int delayMs = retryDelays[attempt];
+                    log.warn(
+                            "Exception on attempt {} for {} - {}: {}. Retrying after {}ms",
+                            attempt + 1, schemaCode, uniqueIdentifier, e.getMessage(), delayMs
+                    );
+                    migrationLogger.println("  [RETRY] Exception on attempt " + (attempt + 1) + ": " + e.getMessage() + " - Retrying after " + delayMs + "ms");
+                    migrationLogger.flush();
+                    try {
+                        Thread.sleep(delayMs);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw ie;
+                    }
+                }
+            }
+        }
+
+        log.error("All retry attempts failed for {} - {}", schemaCode, uniqueIdentifier);
+        migrationLogger.println("  [FAILED] All " + maxAttempts + " attempts exhausted");
+        migrationLogger.flush();
+        return false;
+    }
+
+    /**
+     * Attempt to create MDMS data record (single attempt)
+     */
+    private boolean attemptCreateMdmsData(
+        RestTemplate restTemplate,
+        ObjectMapper objectMapper,
+        String mdmsHost,
+        ObjectNode mdmsRecord,
+        String authToken,
+        String schemaCode,
+        String uniqueIdentifier,
+        PrintWriter migrationLogger
+    ) {
         String createUrl = mdmsHost + "/egov-mdms-service/v2/_create/" + schemaCode;
 
         ObjectNode requestBody = objectMapper.createObjectNode();
@@ -427,42 +580,66 @@ public class V20251118153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
                 String.class
             );
 
-            boolean success = false;
             if (response.getStatusCode().is2xxSuccessful()) {
                 log.debug("✓ MDMS data created: {} - {}", schemaCode, uniqueIdentifier);
-                success = true;
+                return true;
             } else {
+                // Check if it's a duplicate error in the response body
+                String responseBody = response.getBody();
+                if (isDuplicateError(responseBody, objectMapper)) {
+                    log.debug("MDMS data already exists: {} - {}", schemaCode, uniqueIdentifier);
+                    return true; // Count as success since it exists
+                }
                 log.warn("MDMS data creation failed: {} - {} - {}", schemaCode, uniqueIdentifier, response.getStatusCode());
                 migrationLogger.println("  [FAILED] " + uniqueIdentifier + " - Status: " + response.getStatusCode());
                 migrationLogger.flush();
+                return false;
             }
-
-            // Small delay to avoid overwhelming the service
-            if (sleepMs > 0) {
-                Thread.sleep(sleepMs);
-            }
-
-            return success;
 
         } catch (HttpClientErrorException | HttpServerErrorException e) {
-            // Check if it's a duplicate
-            if (e.getStatusCode().value() == 409 || e.getResponseBodyAsString().contains("already exists")) {
+            String responseBody = e.getResponseBodyAsString();
+            // Check if it's a duplicate - don't retry for duplicates
+            if (isDuplicateError(responseBody, objectMapper)) {
                 log.debug("MDMS data already exists: {} - {}", schemaCode, uniqueIdentifier);
                 return true; // Count as success since it exists
             }
-            log.warn("HTTP error creating MDMS data {} - {}: {} - {}", schemaCode, uniqueIdentifier, e.getStatusCode(), e.getResponseBodyAsString());
-            migrationLogger.println("  [FAILED] " + uniqueIdentifier + " - HTTP " + e.getStatusCode() + ": " + e.getResponseBodyAsString());
+            // For other HTTP errors, return false to trigger retry
+            log.warn("HTTP error creating MDMS data {} - {}: {} - {}", schemaCode, uniqueIdentifier, e.getStatusCode(), responseBody);
+            migrationLogger.println("  [FAILED] " + uniqueIdentifier + " - HTTP " + e.getStatusCode() + ": " + responseBody);
             migrationLogger.flush();
             return false;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw e;
         } catch (Exception e) {
             log.warn("Error creating MDMS data {} - {}: {}", schemaCode, uniqueIdentifier, e.getMessage());
             migrationLogger.println("  [FAILED] " + uniqueIdentifier + " - Exception: " + e.getMessage());
             migrationLogger.flush();
             return false;
         }
+    }
+
+    /**
+     * Check if the response indicates a duplicate record error
+     */
+    private boolean isDuplicateError(String responseBody, ObjectMapper objectMapper) {
+        if (responseBody == null || responseBody.isEmpty()) {
+            return false;
+        }
+        try {
+            JsonNode responseNode = objectMapper.readTree(responseBody);
+            JsonNode errorsNode = responseNode.path("Errors");
+            if (errorsNode.isArray()) {
+                for (JsonNode error : errorsNode) {
+                    String errorCode = error.path("code").asText();
+                    if ("DUPLICATE_RECORD".equals(errorCode) || "DUPLICATE_SCHEMA_CODE".equals(errorCode)) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // If parsing fails, fall back to string check
+            log.debug("Failed to parse response body for duplicate check: {}", e.getMessage());
+            return responseBody.contains("DUPLICATE_RECORD") || responseBody.contains("DUPLICATE_SCHEMA_CODE") || responseBody.contains("already exists");
+        }
+        return false;
     }
 
     /**
