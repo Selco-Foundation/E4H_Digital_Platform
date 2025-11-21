@@ -309,44 +309,45 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 	}
 
 	private boolean updateVendorPassword(ObjectNode userNode, String userUuid, String userName) {
-		try {
-			// Get vendor password from the mapping
-			String vendorPassword = VENDOR_PASSWORDS.get(userName.toLowerCase());
-			
-			if (vendorPassword == null) {
-				recordFailure(String.format("No password mapping found for vendor %s (%s) - skipping",
-						userName, userUuid));
-				return false;
-			}
-
-			// Set the vendor-specific password
-			userNode.put("password", vendorPassword);
-
-			// Create update payload
-			ObjectNode payload = objectMapper.createObjectNode();
-			payload.set("RequestInfo", buildRequestInfoBody());
-			payload.set("user", userNode);
-
-			log.info("Updating password for vendor {} ({})", userName, userUuid);
-			logToFile("Updating password for vendor %s (%s) with specific password", userName, userUuid);
-
-			// Call user update API
-			updateUserWithRetry(payload, userUuid, userName);
-			
-			log.info("Successfully updated password for vendor {} ({})", userName, userUuid);
-			logToFile("Successfully updated password for vendor %s (%s)", userName, userUuid);
-			return true;
-
-		} catch (Exception e) {
-			recordFailure(String.format("Failed to update password for vendor %s (%s) : %s",
-					userName, userUuid, e.getMessage()));
+		// Guard against null or blank userName
+		if (StringUtils.isBlank(userName)) {
+			recordFailure(String.format("Vendor user has null or blank userName (uuid: %s) - cannot lookup password mapping, skipping",
+					userUuid));
+			log.warn("Skipping vendor password update: userName is null or blank for user {}", userUuid);
+			logToFile("Skipping vendor password update: userName is null or blank for user %s", userUuid);
 			return false;
 		}
+		
+		// Get vendor password from the mapping
+		String vendorPassword = VENDOR_PASSWORDS.get(userName.toLowerCase());
+		
+		if (vendorPassword == null) {
+			recordFailure(String.format("No password mapping found for vendor %s (%s) - skipping",
+					userName, userUuid));
+			return false;
+		}
+
+		// Update password using common method
+		return updatePassword(userNode, userUuid, userName, vendorPassword, "vendor");
 	}
 
 	private boolean updateUserPassword(ObjectNode userNode, String userUuid, String userName, String password) {
+		// Update password using common method
+		return updatePassword(userNode, userUuid, userName, password, "user");
+	}
+
+	/**
+	 * Common method to update user password via API
+	 * @param userNode The user object node
+	 * @param userUuid The user UUID
+	 * @param userName The username
+	 * @param password The password to set
+	 * @param userType The type of user ("vendor" or "user") for logging purposes
+	 * @return true if successful, false otherwise
+	 */
+	private boolean updatePassword(ObjectNode userNode, String userUuid, String userName, String password, String userType) {
 		try {
-			// Set the new password
+			// Set the password
 			userNode.put("password", password);
 
 			// Create update payload
@@ -354,19 +355,19 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 			payload.set("RequestInfo", buildRequestInfoBody());
 			payload.set("user", userNode);
 
-			log.info("Updating password for user {} ({})", userName, userUuid);
-			logToFile("Updating password for user %s (%s)", userName, userUuid);
+			log.info("Updating password for {} {} ({})", userType, userName, userUuid);
+			logToFile("Updating password for %s %s (%s)", userType, userName, userUuid);
 
 			// Call user update API
 			updateUserWithRetry(payload, userUuid, userName);
 			
-			log.info("Successfully updated password for user {} ({})", userName, userUuid);
-			logToFile("Successfully updated password for user %s (%s)", userName, userUuid);
+			log.info("Successfully updated password for {} {} ({})", userType, userName, userUuid);
+			logToFile("Successfully updated password for %s %s (%s)", userType, userName, userUuid);
 			return true;
 
 		} catch (Exception e) {
-			recordFailure(String.format("Failed to update password for user %s (%s) : %s",
-					userName, userUuid, e.getMessage()));
+			recordFailure(String.format("Failed to update password for %s %s (%s) : %s",
+					userType, userName, userUuid, e.getMessage()));
 			return false;
 		}
 	}
@@ -433,24 +434,21 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 	}
 
 	private JsonNode postForJson(String url, JsonNode body) {
-		try {
-			HttpHeaders headers = new HttpHeaders();
-			headers.setContentType(MediaType.APPLICATION_JSON);
-			headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-			HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
-			ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-			if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-				throw new IllegalStateException("Non-success response " + response.getStatusCode());
-			}
-			return objectMapper.readTree(response.getBody());
-		} catch (Exception e) {
-			String message = "HTTP POST failed for url " + url + " : " + e.getMessage();
-			recordFailure(message);
-			throw new RuntimeException(message, e);
-		}
+		return postForJson(url, body, true);
 	}
 
 	private JsonNode postForJsonWithoutRecording(String url, JsonNode body) {
+		return postForJson(url, body, false);
+	}
+
+	/**
+	 * Common method to perform HTTP POST request
+	 * @param url The URL to POST to
+	 * @param body The request body
+	 * @param recordFailure Whether to record failures in the failures list
+	 * @return The JSON response node
+	 */
+	private JsonNode postForJson(String url, JsonNode body, boolean recordFailure) {
 		try {
 			HttpHeaders headers = new HttpHeaders();
 			headers.setContentType(MediaType.APPLICATION_JSON);
@@ -463,6 +461,9 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 			return objectMapper.readTree(response.getBody());
 		} catch (Exception e) {
 			String message = "HTTP POST failed for url " + url + " : " + e.getMessage();
+			if (recordFailure) {
+				recordFailure(message);
+			}
 			throw new RuntimeException(message, e);
 		}
 	}
@@ -522,15 +523,16 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 		logToFile("USER PASSWORD UPDATE MIGRATION LOG");
 		logToFile("Log File: %s", logFilePath);
 		logToFile("Start Time: %s", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
-		logToFile("Default Password: %s", DEFAULT_PASSWORD);
+		logToFile("Default Password: [MASKED] (Default password will be set for migrated users)");
 		logToFile("Target Roles: %s", String.join(", ", MIGRATED_ROLES));
-		logToFile("Vendor Role: %s (with specific passwords)", VENDOR_ROLE);
+		logToFile("Vendor Role: %s (with specific passwords - passwords masked in logs)", VENDOR_ROLE);
 		logToFile("Total Vendors in mapping: %d", VENDOR_PASSWORDS.size());
 		logToFile("User Search Endpoint: %s%s", userHost, userSearchEndpoint);
 		logToFile("Batch Size: %d users", PASSWORD_UPDATE_BATCH_SIZE);
 		logToFile("Delay Between Updates: %d ms", DELAY_BETWEEN_UPDATES_MS);
 		logToFile("Note: Fetching only users with target roles (optimized query)");
 		logToFile("Note: Processing with rate limiting to avoid API overload");
+		logToFile("Security Note: Passwords are masked in logs for security");
 		logToFile("========================================");
 	}
 
