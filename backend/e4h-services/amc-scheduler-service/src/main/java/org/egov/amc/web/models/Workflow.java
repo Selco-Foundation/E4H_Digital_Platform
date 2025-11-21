@@ -1,0 +1,28 @@
+package org.egov.amc.web.models;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.*;
+
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Map;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Workflow {
+    @JsonProperty("action")
+    private String action = null;
+    @JsonProperty("comments")
+    private String comments = null;
+    @JsonProperty("documents")
+    private @Valid List<Document> documents = null;
+    @JsonProperty("assignes")
+    private @Valid List<String> assignes = null;
+    @JsonProperty("rating")
+    private Integer rating = null;
+    @JsonProperty("additionalDetails")
+    private Object additionalDetails = null;
+}
+

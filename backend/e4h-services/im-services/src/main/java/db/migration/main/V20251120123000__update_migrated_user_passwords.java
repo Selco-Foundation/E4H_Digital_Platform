@@ -178,7 +178,7 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 		int newUsers;
 		int duplicateUsers;
 		int updatedUsers;
-		
+
 		ProcessBatchResult(int newUsers, int duplicateUsers, int updatedUsers) {
 			this.newUsers = newUsers;
 			this.duplicateUsers = duplicateUsers;
@@ -209,11 +209,11 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 			// Make POST request to HRMS search endpoint
 			String url = builder.toUriString();
 			JsonNode response = postForJson(url, requestBody);
-			
+
 			// HRMS returns Employees array (not user array)
 			return response != null && response.has("Employees") ? (ArrayNode) response.get("Employees") : null;
 		} catch (Exception e) {
-			recordFailure(String.format("Failed to fetch employees for role %s at offset %d : %s", 
+			recordFailure(String.format("Failed to fetch employees for role %s at offset %d : %s",
 					roleCode, offset, e.getMessage()));
 			log.error("Error fetching employees for role {} at offset {}: {}", roleCode, offset, e.getMessage());
 			return null;
@@ -232,48 +232,48 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 		int newUsers = 0;
 		int duplicateUsers = 0;
 		int updatedUsers = 0;
-		
+
 		// Process employees as they're fetched (streaming approach)
 		for (JsonNode node : employeesNode) {
 			if (!(node instanceof ObjectNode)) {
 				continue;
 			}
-			
+
 			ObjectNode employeeNode = (ObjectNode) node;
-			
+
 			// Get user object from employee (employees have nested user object)
 			JsonNode userNodeObj = employeeNode.get("user");
 			if (userNodeObj == null || !(userNodeObj instanceof ObjectNode)) {
-				recordFailure(String.format("Employee %s has no user object - skipping", 
+				recordFailure(String.format("Employee %s has no user object - skipping",
 						textOrNull(employeeNode.get("uuid"))));
 				continue;
 			}
-			
+
 			ObjectNode userNode = (ObjectNode) userNodeObj;
 			String userUuid = textOrNull(userNode.get("uuid"));
-			
+
 			if (StringUtils.isBlank(userUuid)) {
 				recordFailure(String.format("Employee user with role %s has no UUID - skipping", roleCode));
 				continue;
 			}
-			
+
 			// Skip if already processed (user might have multiple roles)
 			if (processedUserUuids.contains(userUuid)) {
 				duplicateUsers++;
 				totalExistingUsersSkipped++;
 				continue;
 			}
-			
+
 			// Mark as processed
 			processedUserUuids.add(userUuid);
 			newUsers++;
 			totalUsersEvaluated++;
-			
+
 			String userName = textOrNull(userNode.get("userName"));
-			
+
 			// Process the employee's user password based on role type
 			boolean success = processEmployeePassword(employeeNode, userNode, userUuid, userName, isVendorRole);
-			
+
 			if (success) {
 				updatedUsers++;
 				if (isVendorRole) {
@@ -282,7 +282,7 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 					totalUsersUpdated++;
 				}
 			}
-			
+
 			// Small delay to avoid overwhelming the API
 			try {
 				Thread.sleep(DELAY_BETWEEN_UPDATES_MS);
@@ -291,7 +291,7 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 				recordFailure("Migration interrupted during employee processing delay");
 				break;
 			}
-			
+
 			// Log progress every batch
 			if (totalUsersEvaluated % PASSWORD_UPDATE_BATCH_SIZE == 0) {
 				log.info("Progress: Evaluated {} users, Updated {} regular users, Updated {} vendors",
@@ -300,7 +300,7 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 						totalUsersEvaluated, totalUsersUpdated, totalVendorsUpdated);
 			}
 		}
-		
+
 		return new ProcessBatchResult(newUsers, duplicateUsers, updatedUsers);
 	}
 
@@ -332,7 +332,7 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 		int maxConsecutiveEmptyPages = 3; // Safety limit to prevent infinite loops
 		int roleUsersProcessed = 0;
 		int roleUsersUpdated = 0;
-		
+
 		log.info("Starting to process users with role: {} (vendor: {})", roleCode, isVendorRole);
 		logToFile("Starting to process users with role: %s (vendor: %s)", roleCode, isVendorRole);
 
@@ -340,7 +340,7 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 			try {
 				// Build and fetch employees for this role at current offset using HRMS API
 				ArrayNode employeesNode = fetchEmployeesByRole(roleCode, offset);
-				
+
 				if (employeesNode == null || employeesNode.isEmpty()) {
 					consecutiveEmptyPages++;
 					if (consecutiveEmptyPages >= maxConsecutiveEmptyPages) {
@@ -357,39 +357,39 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 
 				// Process batch of employees (employees have nested user objects)
 				ProcessBatchResult result = processEmployeeBatch(employeesNode, roleCode, isVendorRole);
-				
+
 				// Update counters
 				roleUsersProcessed += result.newUsers;
 				roleUsersUpdated += result.updatedUsers;
-				
+
 				// Log progress for this role
 				if (result.newUsers > 0 || result.duplicateUsers > 0) {
-					log.info("Role {}: Processed {} users so far (offset: {}, new: {}, updated: {}, duplicates: {})", 
+					log.info("Role {}: Processed {} users so far (offset: {}, new: {}, updated: {}, duplicates: {})",
 							roleCode, roleUsersProcessed, offset, result.newUsers, result.updatedUsers, result.duplicateUsers);
-					logToFile("Role %s: Processed %d users so far (offset: %d, new: %d, updated: %d, duplicates: %d)", 
+					logToFile("Role %s: Processed %d users so far (offset: %d, new: %d, updated: %d, duplicates: %d)",
 							roleCode, roleUsersProcessed, offset, result.newUsers, result.updatedUsers, result.duplicateUsers);
 				}
 
 				// Break if we got fewer results than requested (last page)
 				if (employeesNode.size() < USER_SEARCH_LIMIT) {
-					log.info("Received {} employees (less than page size {}) for role {}, stopping fetch", 
+					log.info("Received {} employees (less than page size {}) for role {}, stopping fetch",
 							employeesNode.size(), USER_SEARCH_LIMIT, roleCode);
 					break;
 				}
 
 				offset += USER_SEARCH_LIMIT;
-				
+
 			} catch (Exception e) {
-				recordFailure(String.format("Failed to fetch employees for role %s at offset %d : %s", 
+				recordFailure(String.format("Failed to fetch employees for role %s at offset %d : %s",
 						roleCode, offset, e.getMessage()));
 				log.error("Error processing employees for role {} at offset {}: {}", roleCode, offset, e.getMessage());
 				break;
 			}
 		}
 
-		log.info("Completed processing role {}: Processed {} users, Updated {} users", 
+		log.info("Completed processing role {}: Processed {} users, Updated {} users",
 				roleCode, roleUsersProcessed, roleUsersUpdated);
-		logToFile("Completed processing role %s: Processed %d users, Updated %d users", 
+		logToFile("Completed processing role %s: Processed %d users, Updated %d users",
 				roleCode, roleUsersProcessed, roleUsersUpdated);
 	}
 
@@ -442,7 +442,7 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 			// HRMS expects Employees array with RequestInfo
 			ObjectNode payload = objectMapper.createObjectNode();
 			payload.set("RequestInfo", buildRequestInfoBody());
-			
+
 			// Wrap employee in Employees array
 			ArrayNode employeesArray = objectMapper.createArrayNode();
 			employeesArray.add(employeeNode); // Employee already has updated user.password
@@ -504,9 +504,9 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 				
 				// Otherwise, log and retry with delay
 				int delaySeconds = delaysInSeconds[attempt - 1];
-				log.warn("Attempt {} failed for employee user {}: {}. Retrying in {} seconds...", 
+				log.warn("Attempt {} failed for employee user {}: {}. Retrying in {} seconds...",
 						attempt, userUuid, e.getMessage(), delaySeconds);
-				logToFile("Attempt %d failed for employee user %s: %s. Retrying in %d seconds...", 
+				logToFile("Attempt %d failed for employee user %s: %s. Retrying in %d seconds...",
 						attempt, userUuid, e.getMessage(), delaySeconds);
 				
 				try {
