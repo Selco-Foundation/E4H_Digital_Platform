@@ -120,7 +120,7 @@ public class AssetService {
         }
 
         if (asset.getActivityFacilityID() != null && !asset.getActivityFacilityID().isBlank()) {
-            query.append(" AND  = ?");
+            query.append(" AND activity_facility_id = ?");
             params.add(asset.getActivityFacilityID());
         }
 
