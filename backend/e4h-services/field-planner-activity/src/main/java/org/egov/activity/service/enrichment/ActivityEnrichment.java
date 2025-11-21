@@ -68,6 +68,7 @@ public class ActivityEnrichment {
     public void enrichActivityFacilityRequestOnCreate(ActivityFacility activityFacility, RequestInfo requestInfo) {
         activityFacility.setId(UUID.randomUUID().toString());
         activityFacility.setStatus(SCHEDULED_STATUS);
+        activityFacility.setIsDeleted(false);
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityFacility.getActivityId())).build();
         Activity existingActivity = activityFacilityRepository.getActivityObject(criteria);
         activityFacility.setActivityId(existingActivity.getId());
@@ -108,7 +109,7 @@ public class ActivityEnrichment {
 
         // Get Full assigned user Infos from HRMS
         if(activityFacility.getAssignedUser() !=null && !activityFacility.getAssignedUser().isEmpty()){
-            Employee employee =  activityValidator.getUserById(request, activityFacility);
+            Employee employee =  activityValidator.getUserById(request, activityFacility.getAssignedUser());
             if(employee !=null){
                 activityFacility.setAssignedEmployeeUser(employee.getUser());
             }
