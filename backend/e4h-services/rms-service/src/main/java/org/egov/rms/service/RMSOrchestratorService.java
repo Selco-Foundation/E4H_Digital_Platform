@@ -73,8 +73,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectPanelData();
             List<Alert> alerts = ruleEngineService.applyPanelRules(facilities);
-//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(alerts, requestInfo);
+            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(uniqueAlerts, requestInfo, "Panel Low Generation");
         } catch (Exception e) {
             log.error("Error processing panel alerts", e);
         }
@@ -89,7 +89,7 @@ public class RMSOrchestratorService {
             List<RMSFacilityData> facilities = dataCollectorService.collectInverterNoSignalData();
             List<Alert> alerts = ruleEngineService.applyInverterRules(facilities, true);
 //            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(alerts, requestInfo);
+            createTickets(alerts, requestInfo, "Inverter No Signal");
         } catch (Exception e) {
             log.error("Error processing inverter no-signal alerts", e);
         }
@@ -103,8 +103,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectInverterHighVoltageData();
             List<Alert> alerts = ruleEngineService.applyInverterRules(facilities, false);
-//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(alerts, requestInfo);
+            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(uniqueAlerts, requestInfo, "Inverter High Voltage");
         } catch (Exception e) {
             log.error("Error processing inverter high voltage alerts", e);
         }
@@ -118,8 +118,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectBatteryVoltageZeroData();
             List<Alert> alerts = ruleEngineService.applyBatteryRules(facilities);
-//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(alerts, requestInfo);
+            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(uniqueAlerts, requestInfo, "Battery Voltage Zero");
         } catch (Exception e) {
             log.error("Error processing battery alerts", e);
         }
@@ -133,8 +133,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectBatteryDeepDischargeData();
             List<Alert> alerts = ruleEngineService.applyBatteryDeepDischargeRules(facilities);
-//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(alerts, requestInfo);
+            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(uniqueAlerts, requestInfo, "Battery Deep Discharge");
         } catch (Exception e) {
             log.error("Error processing battery deep discharge alerts", e);
         }
@@ -148,8 +148,8 @@ public class RMSOrchestratorService {
         try {
             List<RMSFacilityData> facilities = dataCollectorService.collectGridVoltageData();
             List<Alert> alerts = ruleEngineService.applyGridRules(facilities);
-//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(alerts, requestInfo);
+            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(uniqueAlerts, requestInfo, "Grid Voltage Variation");
         } catch (Exception e) {
             log.error("Error processing grid alerts", e);
         }
@@ -158,27 +158,27 @@ public class RMSOrchestratorService {
     /**
      * Creates tickets for alerts
      * Limits the number of tickets created per trigger if testing limit is configured
+     * Each trigger independently creates up to the configured limit
      */
-    private void createTickets(List<Alert> alerts, RequestInfo requestInfo) {
-        log.info("Creating tickets for {} alerts", alerts.size());
+    private void createTickets(List<Alert> alerts, RequestInfo requestInfo, String triggerName) {
+        log.info("Creating tickets for {} alerts (trigger: {})", alerts.size(), triggerName);
         
         // Apply testing limit if configured (for testing purposes)
+        // Each trigger independently creates up to the configured limit
         List<Alert> alertsToProcess = alerts;
         if (config.getMaxTicketsPerTrigger() != null && config.getMaxTicketsPerTrigger() > 0) {
             int limit = config.getMaxTicketsPerTrigger();
             if (alerts.size() > limit) {
                 alertsToProcess = alerts.subList(0, limit);
-                log.info("Testing mode: Limiting ticket creation to {} tickets (out of {} total alerts)", 
-                        limit, alerts.size());
+                log.info("Testing mode: Limiting ticket creation for '{}' trigger to {} tickets (out of {} total alerts)", 
+                        triggerName, limit, alerts.size());
             }
         }
         
         int successCount = 0;
         int failureCount = 0;
-        int limit = 0;
+        
         for (Alert alert : alertsToProcess) {
-            if (limit>2)
-                break;
             try {
                 IMServiceRequest ticketRequest = payloadGenerator.generateTicketPayload(alert, requestInfo);
                 
@@ -197,11 +197,10 @@ public class RMSOrchestratorService {
                 log.error("Error creating ticket for alert: {}", alert.getId(), e);
                 failureCount++;
             }
-            limit++;
         }
         
-        log.info("Ticket creation completed: {} succeeded, {} failed (processed {} out of {} alerts)", 
-                successCount, failureCount, alertsToProcess.size(), alerts.size());
+        log.info("Ticket creation completed for '{}' trigger: {} succeeded, {} failed (processed {} out of {} alerts)", 
+                triggerName, successCount, failureCount, alertsToProcess.size(), alerts.size());
     }
 
     /**
