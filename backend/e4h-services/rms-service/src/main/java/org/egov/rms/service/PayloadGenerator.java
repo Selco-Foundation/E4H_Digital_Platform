@@ -48,13 +48,14 @@ public class PayloadGenerator {
                     .incidentType(incidentType)
                     .incidentSubType(incidentSubType)
                     .tenantId(config.getDefaultTenantId())
-                    .district("BAGALKOTE") // TODO: Extract from mapping or facility data
-                    .block("Bagalkot") // TODO: Extract from mapping or facility data
+                    .district("Raichur") // TODO: Extract from mapping or facility data
+                    .block("Lingasugur") // TODO: Extract from mapping or facility data
                     .phcType(config.getDefaultTenantId())
                     .phcSubType("Urban Primary Health Center") // TODO: Extract from facility type
                     .comments(buildComments(alert, null))
                     .systemFunctional("FUNCTIONAL")
                     .source("RMS")
+                    .boundaryCode("India_Karnataka_Raichur_Lingasugur_FAC/2025/52302")
                     .additionalDetail(buildAdditionalDetail(alert, null))
                     .reporter(buildReporter(requestInfo))
                     .build();
