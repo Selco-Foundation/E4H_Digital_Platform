@@ -2,35 +2,21 @@ export const Complaint = {
   create: async ({
     cityCode,
     comments,
-    district,
     uploadedFile,
-    block,
-    reporterName,
     complaintType,
     subType,
     systemFunctionality,
     healthcentre,
-    healthCareType,
     tenantId,
   }) => {
-    const tenantIdNew = tenantId;
-    let mobileNumber = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.mobileNumber;
-    var serviceDefs = await Digit.MDMSService.getServiceDefs(tenantIdNew, "Incident");
-    let phcSubType = [];
-    if (healthCareType?.centreType !== null) {
-      phcSubType = healthCareType?.centreType.replace(/\s+/g, "").toUpperCase();
-    }
     const defaultData = {
       incident: {
-        district: district?.codeNew || district?.key,
-        tenantId: tenantIdNew,
+        tenantId: tenantId,
         incidentType: complaintType?.key,
         incidentSubtype: subType?.key,
         systemFunctional: systemFunctionality?.key,
-        phcType: healthcentre?.code || healthcentre?.key || healthcentre?.name,
-        phcSubType: healthCareType?.centreTypeKey || healthCareType?.centreType,
+        boundaryCode: healthcentre?.code,
         comments: comments,
-        block: block?.codeKey || block?.key,
         additionalDetail: {
           fileStoreId: uploadedFile,
           reopenreason: [],

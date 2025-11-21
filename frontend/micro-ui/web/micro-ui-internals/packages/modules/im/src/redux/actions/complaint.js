@@ -1,16 +1,11 @@
 import { CREATE_COMPLAINT } from "./types";
 
 const createComplaint = ({
-  cityCode,
   complaintType,
  comments,
  healthcentre,
  subType,
  systemFunctionality,
- healthCareType,
- reporterName,
- district,
- block,
  uploadImages,
  uploadedFile,
   tenantId
@@ -18,15 +13,11 @@ const createComplaint = ({
   const response = await Digit.Complaint.create({
     comments,
     complaintType,
-    block,
-    healthCareType,
     uploadedFile,
     healthcentre,
     subType,
     systemFunctionality,
     uploadImages,
-    district,
-    reporterName,
     tenantId
 
     
