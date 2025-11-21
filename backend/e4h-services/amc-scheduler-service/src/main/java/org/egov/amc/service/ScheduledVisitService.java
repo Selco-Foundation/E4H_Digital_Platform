@@ -104,11 +104,16 @@ public class ScheduledVisitService {
         List<ScheduledVisit> scheduledVisitList = new ArrayList<>();
         int i =1;
         for (Long visitDate : generateAmcVisits){
-            List<ScheduledVisitAssignment> assignments = new ArrayList<>();
-            for (AmcConfigurationAssignment amcConfigurationAssignment : amcConfiguration.getAssignments()){
-                ScheduledVisitAssignment scheduledVisitAssignment = ScheduledVisitAssignment.builder().assignedUser(amcConfigurationAssignment.getAssignedUser()).build();
-                assignments.add(scheduledVisitAssignment);
-            }
+//            List<ScheduledVisitAssignment> assignments = new ArrayList<>();
+//            for (AmcConfigurationAssignment amcConfigurationAssignment : amcConfiguration.getAssignments()){
+//                ScheduledVisitAssignment scheduledVisitAssignment = ScheduledVisitAssignment.builder().assignedUser(amcConfigurationAssignment.getAssignedUser()).build();
+//                assignments.add(scheduledVisitAssignment);
+//            }
+            List<ScheduledVisitAssignment> assignments = amcConfiguration.getAssignments().stream()
+                            .map(a -> ScheduledVisitAssignment.builder()
+                                    .assignedUser(a.getAssignedUser())
+                                    .build())
+                            .toList();
             ScheduledVisit visit = ScheduledVisit.builder()
                     .tenantId(amcConfiguration.getTenantId())
                     .amcConfigurationId(amcConfiguration.getId())
