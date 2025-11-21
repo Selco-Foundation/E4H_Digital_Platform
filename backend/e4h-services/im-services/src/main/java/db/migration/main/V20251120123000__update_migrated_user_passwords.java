@@ -438,14 +438,19 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 			// Update password in the nested user object
 			userNode.put("password", password);
 
+			employeeNode.set("user", userNode);
+
 			// Create HRMS update payload with employee object
-			// HRMS expects Employees array with RequestInfo
 			ObjectNode payload = objectMapper.createObjectNode();
 			payload.set("RequestInfo", buildRequestInfoBody());
+			
+			// Add key and action fields (required for HRMS update endpoint)
+			payload.put("key", "UPDATE");
+			payload.put("action", "UPDATE");
 
-			// Wrap employee in Employees array
+			// Wrap employee in Employees array (now definitely contains updated user.password)
 			ArrayNode employeesArray = objectMapper.createArrayNode();
-			employeesArray.add(employeeNode); // Employee already has updated user.password
+			employeesArray.add(employeeNode); // Employee now explicitly has updated user.password
 			payload.set("Employees", employeesArray);
 
 			log.info("Updating password via HRMS for {} {} ({})", userType, userName, userUuid);
@@ -474,8 +479,12 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 		
 		for (int attempt = 1; attempt <= maxRetries; attempt++) {
 			try {
-				// HRMS uses create endpoint for updates
-				postForJsonWithoutRecording(hrmsHost + hrmsUpdateEndpoint, payload);
+				// Build URL with tenantId as query parameter (required for HRMS update)
+				String url = UriComponentsBuilder.fromHttpUrl(hrmsHost + hrmsUpdateEndpoint)
+						.queryParam("tenantId", TARGET_TENANT)
+						.toUriString();
+				
+				postForJsonWithoutRecording(url, payload);
 				if (attempt > 1) {
 					log.info("Successfully updated employee user {} on attempt {}", userUuid, attempt);
 					logToFile("Successfully updated employee user %s on attempt %d", userUuid, attempt);
@@ -570,28 +579,64 @@ public class V20251120123000__update_migrated_user_passwords extends BaseJavaMig
 
 	private RequestInfo buildRequestInfo() {
 		RequestInfo info = new RequestInfo();
-		info.setApiId("PASSWORD-UPDATE-MIGRATION");
+		info.setApiId("Rainmaker");
 		info.setVer("1.0");
 		info.setTs(Instant.now().toEpochMilli());
 		info.setAction("_update");
 		info.setDid("password-migration-job");
 		info.setKey("");
-		info.setMsgId(UUID.randomUUID().toString());
-		info.setAuthToken(getEnvOrDefault("EGOV_AUTH_TOKEN", ""));
+		// Format: timestamp|locale (e.g., "1721928782456|en_LB")
+		long timestamp = Instant.now().toEpochMilli();
+		info.setMsgId(timestamp + "|en_IN");
+		info.setAuthToken(getEnvOrDefault("EGOV_AUTH_TOKEN", "356d4933-c86c-44a8-8b0a-e7df8f3ecbef"));
 
 		User user = new User();
-		user.setUuid(getEnvOrDefault("EGOV_AUTH_USER_UUID", "00000000-0000-0000-0000-000000000001"));
-		user.setUserName(getEnvOrDefault("EGOV_AUTH_USERNAME", "password-migration"));
-		user.setName("Password Migration User");
-		user.setMobileNumber(getEnvOrDefault("EGOV_AUTH_MOBILE", "9999999999"));
+		// Set user ID if available from environment
+		String userId = getEnvOrDefault("EGOV_AUTH_USER_ID", "19975");
+		if (!userId.isEmpty()) {
+			try {
+				user.setId(Long.parseLong(userId));
+			} catch (NumberFormatException e) {
+				log.warn("Invalid user ID format, skipping: {}", userId);
+			}
+		}
+		user.setUuid(getEnvOrDefault("EGOV_AUTH_USER_UUID", "b723dadd-235b-471c-989f-49b52418c66e"));
+		user.setUserName(getEnvOrDefault("EGOV_AUTH_USERNAME", "SYSTEMUSER"));
+		user.setName(getEnvOrDefault("EGOV_AUTH_USER_NAME", "System User for India"));
+		user.setMobileNumber(getEnvOrDefault("EGOV_AUTH_MOBILE", "9876543215"));
+		user.setEmailId(getEnvOrDefault("EGOV_AUTH_EMAIL", "abcf@selcofoundation.org"));
 		user.setType("EMPLOYEE");
 		user.setTenantId(TARGET_TENANT);
 
-		Role role = new Role();
-		role.setCode(getEnvOrDefault("EGOV_AUTH_ROLE_CODE", "ADMIN"));
-		role.setName(getEnvOrDefault("EGOV_AUTH_ROLE_NAME", "Admin"));
+		// Add multiple roles as per working curl
+		List<Role> roles = new ArrayList<>();
+		
+		Role employeeRole = new Role();
+		employeeRole.setName("Employee");
+		employeeRole.setCode("EMPLOYEE");
+		employeeRole.setTenantId(TARGET_TENANT);
+		roles.add(employeeRole);
 
-		user.setRoles(Collections.singletonList(role));
+		Role systemRole = new Role();
+		systemRole.setName("System user");
+		systemRole.setCode("SYSTEM");
+		systemRole.setTenantId(TARGET_TENANT);
+		roles.add(systemRole);
+
+		// Allow additional roles from environment
+		String additionalRoles = getEnvOrDefault("EGOV_AUTH_ADDITIONAL_ROLES", "");
+		if (!additionalRoles.isEmpty()) {
+			String[] roleCodes = additionalRoles.split(",");
+			for (String roleCode : roleCodes) {
+				Role role = new Role();
+				role.setCode(roleCode.trim());
+				role.setName(roleCode.trim());
+				role.setTenantId(TARGET_TENANT);
+				roles.add(role);
+			}
+		}
+
+		user.setRoles(roles);
 		info.setUserInfo(user);
 		return info;
 	}
