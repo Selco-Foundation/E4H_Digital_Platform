@@ -694,6 +694,7 @@ async def get_amc_configuration_template(
 
     sheet_name = "amc-configurations"
     columns = [
+        "Facility Id",
         "NIN/HFR ID",
         "BoundaryCode",
         "Health Facility Name",
@@ -799,6 +800,7 @@ async def get_amc_configuration_template(
 
             # Create one row per facility (asset types are handled internally during processing)
             rows.append({
+                "Facility Id": facility_id,
                 "NIN/HFR ID": nin_hfr_id,
                 "BoundaryCode": boundary_code,
                 "Health Facility Name": facility_name,

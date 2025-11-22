@@ -2482,7 +2482,7 @@ async def validate_amc_configurations_excel_sheet(
             df['error'] = ''
 
         required_columns = [
-            "NIN/HFR ID",
+            "Facility Id",
             "Health Facility Name",
             "Vendor",
             "AMC-Frequency",
@@ -2749,7 +2749,7 @@ async def bulk_ingest_amc_configurations(
         if 'error' not in df.columns:
             df['error'] = ''
 
-        required_columns = ["NIN/HFR ID", "Health Facility Name", "Vendor", "AMC-Frequency", "AMC-Duration"]
+        required_columns = ["Facility Id", "Health Facility Name", "Vendor", "AMC-Frequency", "AMC-Duration"]
 
         # Initialize clients
         facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
@@ -2768,41 +2768,33 @@ async def bulk_ingest_amc_configurations(
         for index, row in df.iterrows():
             try:
                 # Skip empty rows
-                if pd.isna(row.get("NIN/HFR ID")) and pd.isna(row.get("Health Facility Name")):
+                if pd.isna(row.get("Facility Id")) and pd.isna(row.get("Health Facility Name")):
                     df.at[index, 'status'] = 'skipped'
                     df.at[index, 'error'] = 'Empty row'
                     continue
 
-                # Get facility by NIN/HFR ID
-                nin_hfr_id = str(row.get("NIN/HFR ID", "")).strip()
+                # Get facility by Facility ID
+                facility_id = str(row.get("Facility Id", "")).strip()
+                if not facility_id:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = 'Facility Id is required'
+                    continue
+
                 facility = None
                 try:
-                    # Try NIN ID first
-                    facility_response = facility_client.search_facility(tenant_id='in', nin_id=nin_hfr_id)
+                    facility_response = facility_client.search_facility(tenant_id='in', facility_id=facility_id)
                     facilities = facility_response.get('facilities', [])
                     if facilities:
                         facility = facilities[0]
-                    else:
-                        # Try HFR ID
-                        facility_response = facility_client.search_facility(tenant_id='in', hfr_id=nin_hfr_id)
-                        facilities = facility_response.get('facilities', [])
-                        if facilities:
-                            facility = facilities[0]
                 except Exception as e:
-                    logger.error(f"Error searching facility for {nin_hfr_id}: {e}")
+                    logger.error(f"Error searching facility for {facility_id}: {e}")
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = f'Error searching facility: {str(e)}'
                     continue
 
                 if not facility:
                     df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f'Facility not found for NIN/HFR ID: {nin_hfr_id}'
-                    continue
-
-                facility_id = facility.get('facility_id')
-                if not facility_id:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = 'Facility ID not found in facility data'
+                    df.at[index, 'error'] = f'Facility not found for Facility Id: {facility_id}'
                     continue
 
                 # Get vendor and vendor mapping (data retrieval, not validation)
