@@ -102,8 +102,30 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
             }
           }
         }
-        Digit.SessionStorage.set("Jurisdiction.Boundaries", jurisdictionBoundaries);
-
+        let boundaryCodes = {};
+        if (jurisdictionBoundaries?.facility?.length) {
+          boundaryCodes = {
+            codes: jurisdictionBoundaries.facility,
+            type: "facility",
+          }
+        } else if (jurisdictionBoundaries?.block?.length) {
+          boundaryCodes = {
+            codes: jurisdictionBoundaries.block,
+            type: "block",
+          }
+        } else if (jurisdictionBoundaries?.district?.length) {
+          boundaryCodes = {
+            codes: jurisdictionBoundaries.district,
+            type: "district",
+          }
+        } else if (jurisdictionBoundaries?.state?.length) {
+          boundaryCodes = {
+            codes: jurisdictionBoundaries.state,
+            type: "state",
+          }
+        }
+        Digit.SessionStorage.set("Jurisdiction.Boundaries", boundaryCodes);
+        Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", boundaryCodes);
       } catch (err) {
         console.error("Failed to fetch HRMS User", err);
       }

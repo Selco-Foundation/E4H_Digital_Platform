@@ -50,86 +50,20 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
   const [blockUI, setBlockUI] = useState(false);
   const [selectBoundaryCode, setSelectBoundaryCode] = useState("");
-  const hrmsUser = Digit.SessionStorage.get("HRMS.User");
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
 
-  useEffect(() => {
-    const setBoundaryCodes = async () => {
-      const boundaryCode = hrmsUser?.jurisdictions?.[0]?.boundary;
-      setSelectBoundaryCode(boundaryCode);
-
-      const params = {
-        tenantId : "in",
-        includeChildren : true,
-        includeParents : true,
-        hierarchyType: "SELCO",
-        codes: boundaryCode,
-      }
-      const boundaryResponse = await Digit.BoundaryService.fetchBoundaryRelations(params);
-
-      const findStateBoundaryCode = (boundaries) => {
-        if (!boundaries?.length) return "";
-
-        for (let boundary of boundaries) {
-          if (boundary?.boundaryType === "State") return boundary?.code;
-          const possibleStateChild = findStateBoundaryCode(boundary.children);
-          if (possibleStateChild) return possibleStateChild;
-        }
-        return "";
-      }
-
-      setStateBoundaryCode(findStateBoundaryCode(boundaryResponse?.TenantBoundary?.[0]?.boundary));
-    }
-
-    setBoundaryCodes();
-  }, []);
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes?.join(","));
 
   useEffect(() => {
-    const extractBoundaries = (boundaries) => {
-      const compiledBoundaries = {};
-
-      const compileBoundaries = (boundaries, parentCode, compiledObject) => {
-        if (!boundaries?.length) return;
-        for (let boundary of boundaries) {
-          compiledObject[boundary?.boundaryType] = [...(compiledObject[boundary?.boundaryType] || []), {
-            code: boundary?.code,
-            parentCode: parentCode,
-          }]
-          compileBoundaries(boundary?.children, boundary?.code, compiledObject);
-        }
-      }
-
-      compileBoundaries(boundaries, "", compiledBoundaries);
-      return compiledBoundaries;
+    setSelectBoundaryCode(jurisdictionCurrentBoundary?.codes?.join(","));
+    if (boundaryData) {
+      setStateBoundaryCode(boundaryData.states?.map((state) => state?.code)?.join(","));
+      setDistrictMenu(boundaryData.districts);
+      setBlockOptions(boundaryData.blocks);
+      setFacilityOptions(boundaryData.facilities);
     }
-
-    const fetchDistrictMenu = async () => {
-      const boundaryCodes = hrmsUser?.jurisdictions?.map((jurisdiction) => jurisdiction.boundary)?.join(",");
-      if (boundaryCodes) {
-        const params = {
-          tenantId : "in",
-          includeChildren : true,
-          includeParents : true,
-          hierarchyType: "SELCO",
-          boundaryType: "State",
-          codes: boundaryCodes,
-        }
-        const boundaryResponse = await Digit.BoundaryService.fetchBoundaryRelations(params);
-
-        const {
-          District: districts,
-          Block: blocks,
-          Facility: facilities,
-        } = extractBoundaries(boundaryResponse?.TenantBoundary?.[0]?.boundary);
-
-        setDistrictMenu(districts);
-        setBlockOptions(blocks);
-        setFacilityOptions(facilities);
-      }
-    }
-
-    fetchDistrictMenu();
-  }, [t]);
+  }, [boundaryData, t]);
 
   useEffect(() => {
     setSortedDistrictMenu(

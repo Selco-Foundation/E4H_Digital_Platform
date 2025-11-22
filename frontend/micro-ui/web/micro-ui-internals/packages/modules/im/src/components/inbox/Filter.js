@@ -9,7 +9,6 @@ let wfQuery = {};
 
 const Filter = (props) => {
   let { uuid } = Digit.UserService.getUser().info;
-  const stateTenantId = Digit.ULBService.getStateId();
   const { searchParams } = props;
   const { t } = useTranslation();
   const [districtMenu, setDistrictMenu] = useState([]);
@@ -27,25 +26,8 @@ const Filter = (props) => {
   const loggedInUser = Digit.UserService.getUser();
   const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === uuid;
 
-  const getBoundaryCodes = () => {
-    const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries") || {};
-    if (jurisdictionBoundaries?.facility?.length) {
-      return  jurisdictionBoundaries.facility.join(",")
-    }
-    if (jurisdictionBoundaries?.block?.length) {
-      return  jurisdictionBoundaries.block.join(",")
-    }
-    if (jurisdictionBoundaries?.district?.length) {
-      return  jurisdictionBoundaries.district.join(",")
-    }
-    if (jurisdictionBoundaries?.state?.length) {
-      return  jurisdictionBoundaries.state.join(",")
-    }
-    return "";
-  }
-  const boundaryCodes = getBoundaryCodes();
-
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(boundaryCodes);
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {};
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes?.join(","));
 
   const state = Digit.ULBService.getStateId();
   const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["SystemFunctionality"]);
