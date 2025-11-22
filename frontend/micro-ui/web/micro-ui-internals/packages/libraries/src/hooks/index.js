@@ -90,6 +90,7 @@ import useGetFAQsJSON from "./useGetFAQsJSON";
 import useGetHowItWorksJSON from "./useHowItWorksJSON";
 import { usePrivacyContext } from "./usePrivacyContext";
 import useStaticData from "./useStaticData";
+import useBoundary from "./im/useBoundary";
 
 
 
@@ -158,6 +159,10 @@ const survey = {
   useSurveyInbox,
 };
 
+const im = {
+  useBoundary
+}
+
 const Hooks = {
   useSessionStorage,
   useQueryParams,
@@ -190,6 +195,7 @@ const Hooks = {
   useAccessControl,
   usePrivacyContext,
   pgr,
+  im,
  
   dss,
   
