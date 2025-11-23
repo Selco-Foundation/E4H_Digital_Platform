@@ -152,22 +152,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   void _popUntilThenRefreshOrigin(BuildContext context, FormOrigin origin) {
     final root = context.router.root;
 
-    late final PageRouteInfo targetRoute;
-    switch (origin) {
-      case FormOrigin.overallSummary:
-      case FormOrigin.submitted:
-        targetRoute = OverallAssetSummaryRoute(
-            refresh: DateTime.now().millisecondsSinceEpoch);
-        break;
-      case FormOrigin.inboxSummary:
-        targetRoute = InboxAssetSummaryRoute(
-            refresh: DateTime.now().millisecondsSinceEpoch);
-        break;
-      case FormOrigin.submitForApproval:
-        targetRoute = SubmitForApprovalRoute(
-            refresh: DateTime.now().millisecondsSinceEpoch);
-        break;
-    }
+    const PageRouteInfo targetRoute = AmcMediaUploadRoute();
 
     root.navigate(targetRoute);
 
@@ -419,7 +404,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
                       builder: (context, form, child) => DigitButton(
                         label: (pageIndex) < schemaObject.pages.length - 1
                             ? (pageSchema.actionLabel ?? 'Next')
-                            : (pageSchema.actionLabel ?? 'Submit'),
+                            : (pageSchema.actionLabel ?? 'Next'),
                         onPressed: () async {
                           final propKeys =
                               (pageSchema.properties?.keys.toList() ??

@@ -29,7 +29,7 @@
             "label": "Scheduled Maintenance (AMC) Report",
             "order": 1,
             "description": "",
-            "actionLabel": "Submit",
+            "actionLabel": "Next",
             "properties": [
               {
                 "type": "string",

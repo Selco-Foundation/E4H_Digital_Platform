@@ -53,6 +53,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AmcInboxPage(),
       );
     },
+    AmcMediaUploadRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcMediaUploadPage(),
+      );
+    },
     AmcOtpRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -395,6 +401,20 @@ class AmcInboxRoute extends PageRouteInfo<void> {
         );
 
   static const String name = 'AmcInboxRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcMediaUploadPage]
+class AmcMediaUploadRoute extends PageRouteInfo<void> {
+  const AmcMediaUploadRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcMediaUploadRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcMediaUploadRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
 }

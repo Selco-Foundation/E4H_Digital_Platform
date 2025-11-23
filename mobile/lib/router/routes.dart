@@ -34,4 +34,5 @@ class Routes {
   static const amcOtp = 'amc-otp';
   static const amcDraft = 'amc-draft';
   static const amcInbox = 'amc-inbox';
+  static const amcMediaUpload = 'amc-media-upload';
 }

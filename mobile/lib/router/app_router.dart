@@ -6,6 +6,7 @@ import '../pages/amc_draft.dart';
 import '../pages/amc_dynamic_form.dart';
 import '../pages/amc_home.dart';
 import '../pages/amc_inbox.dart';
+import '../pages/amc_media_upload.dart';
 import '../pages/amc_otp.dart';
 import '../pages/amc_report_home.dart';
 import '../pages/amc_select_facility.dart';
@@ -113,7 +114,9 @@ class AppRouter extends _$AppRouter {
               page: AmcDynamicFormRoute.page, path: Routes.amcDynamicForm),
           AutoRoute(page: AmcOtpRoute.page, path: Routes.amcOtp),
           AutoRoute(page: AmcDraftRoute.page, path: Routes.amcDraft),
-          AutoRoute(page: AmcInboxRoute.page, path: Routes.amcInbox)
+          AutoRoute(page: AmcInboxRoute.page, path: Routes.amcInbox),
+          AutoRoute(
+              page: AmcMediaUploadRoute.page, path: Routes.amcMediaUpload),
         ])
       ];
 }

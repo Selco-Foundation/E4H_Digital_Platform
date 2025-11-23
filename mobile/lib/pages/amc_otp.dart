@@ -47,12 +47,12 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
               footer: FooterButton(
                 isDisabled: !form.valid,
                 showSuffixIcon: false,
-                text: "Submit",
+                text: context.translate(i18.common.coreCommonNext),
                 onPress: () {
                   form.markAllAsTouched();
                   if (!form.valid) return;
 
-                  // FocusManager.instance.primaryFocus?.unfocus();
+                  FocusManager.instance.primaryFocus?.unfocus();
                   // context.read<UserOtpBloc>().add(UserOtpEvent.storeOtp(
                   //     otp: (form.control(_otp).value as String).trim()));
                 },
@@ -84,7 +84,18 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                           },
                         ),
                       ),
-                    )
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          textAlign: TextAlign.end,
+                          "Resend OTP",
+                          style: textTheme.linkM
+                              .copyWith(color: theme.colorTheme.alert.error),
+                        ),
+                      ],
+                    ),
                   ],
                 )
               ],
