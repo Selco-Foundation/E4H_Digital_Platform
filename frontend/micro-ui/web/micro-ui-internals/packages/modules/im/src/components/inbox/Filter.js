@@ -8,7 +8,7 @@ let pgrQuery = {};
 let wfQuery = {};
 
 const Filter = (props) => {
-  let { uuid } = Digit.UserService.getUser().info;
+  let { userName } = Digit.UserService.getUser().info;
   const { searchParams } = props;
   const { t } = useTranslation();
   const [districtMenu, setDistrictMenu] = useState([]);
@@ -24,7 +24,7 @@ const Filter = (props) => {
     [t]
   );
   const loggedInUser = Digit.UserService.getUser();
-  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === uuid;
+  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === userName;
 
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {};
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes?.join(","));
@@ -55,7 +55,7 @@ const isCodePresent = (array, codeToCheck) =>{
   const [wfFilters, setWfFilters] = useState(
     searchParams?.filters?.wfFilters ||
     (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER") ?
-      { assignee: [{ code: uuid }] } :
+      { assignee: [{ code: userName }] } :
       { assignee: [{ code: "" }] })
   );
 
@@ -176,8 +176,8 @@ const isCodePresent = (array, codeToCheck) =>{
 
   const onRadioChange = (value) => {
     setSelectedAssigned(value);
-    uuid = value.code === "ASSIGNED_TO_ME" ? uuid : "";
-    setWfFilters({ ...wfFilters, assignee: [{ code: uuid }] });
+    userName = value.code === "ASSIGNED_TO_ME" ? userName : "";
+    setWfFilters({ ...wfFilters, assignee: [{ code: userName }] });
   };
 
   useEffect(() => {
