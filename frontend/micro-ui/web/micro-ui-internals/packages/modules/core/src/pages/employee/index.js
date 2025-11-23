@@ -37,6 +37,7 @@ const EmployeeApp = ({
   const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
   const bgImageUrl = window?.globalConfigs?.getConfig("BG_IMAGE");
   const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+  const user = Digit.UserService.getUser();
 
   useEffect(() => {
     Digit.UserService.setType("employee");
@@ -99,69 +100,71 @@ const EmployeeApp = ({
             </Switch>
           </div>
         </Route>
-        <Route>
-          <TopBarSideBar
-            t={t}
-            stateInfo={stateInfo}
-            userDetails={userDetails}
-            CITIZEN={CITIZEN}
-            cityDetails={cityDetails}
-            mobileView={mobileView}
-            handleUserDropdownSelection={handleUserDropdownSelection}
-            logoUrl={logoUrl}
-            modules={modules}
-          />
-          <div className={`main ${DSO ? "m-auto" : ""}`}>
-            <div className="employee-app-wrapper">
-              <ErrorBoundary initData={initData}>
-                <AppModules stateCode={stateCode} userType="employee" modules={modules} appTenants={appTenants} />
-              </ErrorBoundary>
-            </div>
+        {(!!user && !!user?.access_token && !!user?.info) && (
+          <Route>
+            <TopBarSideBar
+              t={t}
+              stateInfo={stateInfo}
+              userDetails={userDetails}
+              CITIZEN={CITIZEN}
+              cityDetails={cityDetails}
+              mobileView={mobileView}
+              handleUserDropdownSelection={handleUserDropdownSelection}
+              logoUrl={logoUrl}
+              modules={modules}
+            />
+            <div className={`main ${DSO ? "m-auto" : ""}`}>
+              <div className="employee-app-wrapper">
+                <ErrorBoundary initData={initData}>
+                  <AppModules stateCode={stateCode} userType="employee" modules={modules} appTenants={appTenants} />
+                </ErrorBoundary>
+              </div>
 
-            <div
-              style={
-                window.location.href.includes("/im/inbox")
-                  ? { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "15px", marginTop: "10px" }
-                  : { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "58px", marginTop: "-26px" }
-              }
-            >
-              {logos.map((logo, index) => (
+              <div
+                style={
+                  window.location.href.includes("/im/inbox")
+                    ? { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "15px", marginTop: "10px" }
+                    : { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "58px", marginTop: "-26px" }
+                }
+              >
+                {logos.map((logo, index) => (
+                  <img
+                    key={index}
+                    className="bannerLogo"
+                    src={logo.url}
+                    alt={logo.alt}
+                    style={{
+                      height: "3rem",
+                      width: "3rem",
+                      cursor: "pointer",
+                      marginRight: "unset",
+                      paddingRight: "unset",
+                    }}
+                  />
+                ))}
+              </div>
+              <div
+                className="employee-home-footer"
+                style={
+                  window.location.href.includes("/im/inbox")
+                    ? { padding: "0px", height: "auto", marginBottom: "30px" }
+                    : { padding: "0px", height: "auto", marginBottom: "73px", marginTop: "-43px" }
+                }
+              >
                 <img
-                  key={index}
-                  className="bannerLogo"
-                  src={logo.url}
-                  alt={logo.alt}
-                  style={{
-                    height: "3rem",
-                    width: "3rem",
-                    cursor: "pointer",
-                    marginRight: "unset",
-                    paddingRight: "unset",
+                  alt="Powered by DIGIT"
+                  src={window?.globalConfigs?.getConfig?.("DIGIT_FOOTER")}
+                  style={{ height: "1.1rem", cursor: "pointer" }}
+                  onClick={() => {
+                    window.open(window?.globalConfigs?.getConfig?.("DIGIT_HOME_URL"), "_blank").focus();
                   }}
                 />
-              ))}
+              </div>
             </div>
-            <div
-              className="employee-home-footer"
-              style={
-                window.location.href.includes("/im/inbox")
-                  ? { padding: "0px", height: "auto", marginBottom: "30px" }
-                  : { padding: "0px", height: "auto", marginBottom: "73px", marginTop: "-43px" }
-              }
-            >
-              <img
-                alt="Powered by DIGIT"
-                src={window?.globalConfigs?.getConfig?.("DIGIT_FOOTER")}
-                style={{ height: "1.1rem", cursor: "pointer" }}
-                onClick={() => {
-                  window.open(window?.globalConfigs?.getConfig?.("DIGIT_HOME_URL"), "_blank").focus();
-                }}
-              />
-            </div>
-          </div>
-        </Route>
+          </Route>
+        )}
         <Route>
-          <Redirect to={`${path}/user/language-selection`} />
+          <Redirect to={{pathname: `${path}/user/login`, search: `?from=${encodeURIComponent(location.pathname + location.search)}` }} />
         </Route>
       </Switch>
     </div>
