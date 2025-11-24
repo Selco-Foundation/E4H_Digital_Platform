@@ -440,7 +440,21 @@ public class EnrichmentService {
 
                     if (facilityId != null) {
                         incident.setFacilityId(facilityId);
-                        log.debug("Enriched facilityId: {} for boundaryCode: {}", facilityId, boundaryCode);
+                        
+                        // Set phcType to tenantId
+                        incident.setPhcType(tenantId);
+                        
+                        // Set phcSubType to facilityType from facility response
+                        String facilityType = (String) facility.get("facility_type");
+                        if (facilityType == null) {
+                            facilityType = (String) facility.get("type");
+                        }
+                        if (facilityType != null) {
+                            incident.setPhcSubType(facilityType);
+                        }
+                        
+                        log.debug("Enriched facilityId: {}, phcType: {}, phcSubType: {} for boundaryCode: {}", 
+                                facilityId, tenantId, facilityType, boundaryCode);
                     } else {
                         log.warn("Facility found but facility_id is null for boundaryCode: {}", boundaryCode);
                     }
