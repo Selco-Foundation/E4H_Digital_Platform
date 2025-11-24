@@ -99,4 +99,9 @@ public class ScheduledVisitController {
         ScheduledVisitResponse visitResponse = ScheduledVisitResponse.builder().responseInfo(responseInfo).scheduledVisits(scheduledVisits).totalCount(count).build();
         return new ResponseEntity<ScheduledVisitResponse>(visitResponse, HttpStatus.OK);
     }
+
+    @RequestMapping(value = "/_resend_otp", method = RequestMethod.POST)
+    public OtpResponse resendOTP(@ApiParam(value = "Capture details of scheduled visit.", required = true) @Valid @RequestBody ResendOTPRequest request) {
+        return scheduledVisitService.resendOTP(request);
+    }
 }
