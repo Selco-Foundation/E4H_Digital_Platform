@@ -33,6 +33,16 @@ public class AMCServiceConfiguration {
     @Value("${egov.asset.search.url}")
     private String assetServiceSearchUrl;
 
+    @Value("${egov.otp.host}")
+    private String otpServiceHost;
+
+    @Value("${egov.otp.create.url}")
+    private String otpServiceCreateUrl;
+
+    @Value("${egov.otp.validate.url}")
+    private String otpServiceValidateUrl;
+
+
     @Value("${egov.facility.host}")
     private String facilityServiceHost;
 
