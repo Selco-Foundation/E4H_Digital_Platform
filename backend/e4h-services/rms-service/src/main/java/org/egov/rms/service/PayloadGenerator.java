@@ -48,10 +48,10 @@ public class PayloadGenerator {
                     .incidentType(incidentType)
                     .incidentSubType(incidentSubType)
                     .tenantId(config.getDefaultTenantId())
-                    .district("Raichur") // TODO: Extract from mapping or facility data
-                    .block("Lingasugur") // TODO: Extract from mapping or facility data
-                    .phcType(config.getDefaultTenantId())
-                    .phcSubType("Urban Primary Health Center") // TODO: Extract from facility type
+                    .district("RAICHUR") // TODO: Extract from mapping or facility data
+                    .block("Raichur") // TODO: Extract from mapping or facility data
+                    .phcType("pg.dummy")
+                    .phcSubType("Primary Health Centre") // TODO: Extract from facility type
                     .comments(buildComments(alert, null))
                     .systemFunctional("FUNCTIONAL")
                     .source("RMS")
