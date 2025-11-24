@@ -45,8 +45,8 @@ public class PayloadGenerator {
 
             // Build incident payload
             IMServiceRequest.Incident incident = IMServiceRequest.Incident.builder()
-                    .incidentType(incidentType)
-                    .incidentSubType(incidentSubType)
+                    .incidentType("PANEL")
+                    .incidentSubType("OtherPanel")
                     .tenantId("pg.dummy")
                     .district("RAICHUR") // TODO: Extract from mapping or facility data
                     .block("Raichur") // TODO: Extract from mapping or facility data
@@ -332,7 +332,7 @@ public class PayloadGenerator {
      */
     private IMServiceRequest.User buildReporter(RequestInfo requestInfo) {
         return IMServiceRequest.User.builder()
-                .uuid("cd831d19-3799-4e73-a52a-237930f1e450")
+                .uuid("d2a12218-c71b-4aa3-b7e4-a811c522ef0c")
                 .tenantId("pg")
                 .build();
     }
