@@ -46,8 +46,7 @@ public class ScheduledVisitQueryBuilder {
             "    ) AS assignments " +
             " " +
             "FROM scheduled_visits sv LEFT JOIN amc_configuration ac ON sv.amc_configuration_id = ac.id LEFT JOIN facility f ON sv.facility_id = f.id LEFT JOIN scheduled_visit_assignments sva ON sv.id = sva.scheduled_visit_id ";
-    private static final String SCHEDULED_VISIT_COUNT_QUERY = "SELECT COUNT(*) FROM scheduled_visits sv LEFT JOIN amc_configuration ac ON sv.amc_configuration_id = ac.id LEFT JOIN facility f ON sv.facility_id = f.id " +
-            "LEFT JOIN scheduled_visit_assignments sva ON sv.id = sva.scheduled_visit_id ";
+    private static final String SCHEDULED_VISIT_COUNT_QUERY = "SELECT COUNT(*) FROM scheduled_visits sv LEFT JOIN amc_configuration ac ON sv.amc_configuration_id = ac.id LEFT JOIN facility f ON sv.facility_id = f.id ";
 
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (ORDER BY sv_last_modified_time DESC , sv_visit_id) offset_ FROM " +
