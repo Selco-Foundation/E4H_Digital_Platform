@@ -6,6 +6,8 @@ const createComplaint = ({
  healthcentre,
  subType,
  systemFunctionality,
+ district,
+ block,
  uploadImages,
  uploadedFile,
   tenantId
@@ -13,6 +15,8 @@ const createComplaint = ({
   const response = await Digit.Complaint.create({
     comments,
     complaintType,
+    district,
+    block,
     uploadedFile,
     healthcentre,
     subType,

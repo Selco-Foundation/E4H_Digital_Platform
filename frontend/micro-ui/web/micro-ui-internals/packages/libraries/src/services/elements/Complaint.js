@@ -2,6 +2,8 @@ export const Complaint = {
   create: async ({
     cityCode,
     comments,
+    district,
+    block,
     uploadedFile,
     complaintType,
     subType,
@@ -12,6 +14,8 @@ export const Complaint = {
     const defaultData = {
       incident: {
         tenantId: tenantId,
+        district: district?.code,
+        block: block?.code,
         incidentType: complaintType?.key,
         incidentSubtype: subType?.key,
         systemFunctional: systemFunctionality?.key,

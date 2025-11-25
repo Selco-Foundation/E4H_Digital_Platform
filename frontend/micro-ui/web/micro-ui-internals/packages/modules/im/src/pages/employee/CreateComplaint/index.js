@@ -336,6 +336,8 @@ export const CreateComplaint = ({ parentUrl }) => {
       complaintType,
       subType,
       systemFunctionality,
+      district,
+      block,
       healthcentre,
       uploadedFile,
       tenantId,
