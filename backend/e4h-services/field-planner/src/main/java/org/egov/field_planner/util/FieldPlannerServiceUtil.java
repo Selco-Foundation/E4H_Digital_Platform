@@ -6,16 +6,16 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.models.project.Project;
+import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -26,6 +26,14 @@ import static java.util.Objects.isNull;
 public class FieldPlannerServiceUtil {
     @Autowired
     private ObjectMapper objectMapper;
+
+    private final FieldPlannerConfiguration fieldPlannerConfiguration;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+
+    public FieldPlannerServiceUtil(FieldPlannerConfiguration fieldPlannerConfiguration, KafkaTemplate<String, Object> kafkaTemplate) {
+        this.fieldPlannerConfiguration = fieldPlannerConfiguration;
+        this.kafkaTemplate = kafkaTemplate;
+    }
 
     public AuditDetails getAuditDetails(String by, AuditDetails auditDetails, Boolean isCreate) {
         Long time = System.currentTimeMillis();
@@ -131,5 +139,43 @@ public class FieldPlannerServiceUtil {
 
         // Format as YYYY-YY
         return String.format("%d-%02d", startYear, endYear % 100);
+    }
+
+    public static String replaceActivityAssignmentEmailBody(String role, String fieldPlanName, String username, String password, String contenue){
+        return contenue.replace(":role",role )
+                .replace(":fieldPlanName", fieldPlanName)
+                .replace(":login_agent", username)
+                .replace(":password_agent", password);
+    }
+
+    public void sendEmailViaKafka(String emailId, String subject, String body, String tenantId) {
+        try {
+            // Create Email object following egov-notification-mail contract
+            Map<String, Object> email = new HashMap<>();
+            email.put("emailTo", new HashSet<>(Arrays.asList(emailId)));  // Set<String>
+            email.put("subject", subject);
+            email.put("body", body);
+//            email.put("isHTML", true);
+            email.put("tenantId", tenantId);
+
+            // Note: CSV files are not attached as email attachments anymore
+            // Download functionality is provided via download buttons in the email template
+
+            // Create EmailRequest wrapper with RequestInfo
+            Map<String, Object> emailRequest = new HashMap<>();
+            emailRequest.put("requestInfo", new HashMap<>());  // Empty RequestInfo is acceptable
+            emailRequest.put("email", email);
+
+            // Publish to Kafka
+            String topic = fieldPlannerConfiguration.getNotificationEmailTopic();
+            kafkaTemplate.send(topic, emailRequest);
+
+            log.info("Published email to Kafka topic: {} for user: {} (no attachments - download buttons used instead)",
+                    topic, emailId);
+
+        } catch (Exception e) {
+            log.error("Error sending email via Kafka for user: {}", emailId, e);
+            throw new RuntimeException("Failed to send email via Kafka", e);
+        }
     }
 }

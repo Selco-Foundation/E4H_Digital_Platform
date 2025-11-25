@@ -1,5 +1,6 @@
 package org.selco.e4h.util;
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.selco.e4h.service.UpdateService;
@@ -18,6 +19,9 @@ import static org.selco.e4h.util.IMConstants.*;
 @RequiredArgsConstructor
 public class ElasticSearchClient {
 
+    @Value("${es.index.computed.sla.im.services}")
+    private String computedSlaImServicesIndex;
+
     private final RestTemplate restTemplate;
     private final UpdateService updateService;
 
@@ -27,11 +31,18 @@ public class ElasticSearchClient {
     @Value("${egov.indexer.es.port.no}")
     private int esPort;
 
-    private static final String SEARCH_PATH = "_search";
-    private static final String INDEX_NAME = "computed-sla-im-services-write";
-    private static final String OLD_INDEX_NAME = "im-services";
+    @Value("${php.kafka.topic.indexer}")
+    private String phcIndex;
 
-    private static final String INDEX_NAME_AUDIT = "phc-master-list-new-2";
+    private static final String SEARCH_PATH = "_search";
+    private static final String OLD_INDEX_NAME = "im-services";
+    private String INDEX_NAME;
+    private static final String INDEX_NAME_PHC = "phc-master-list-new-2";
+
+    @PostConstruct
+    public void init() {
+        this.INDEX_NAME = computedSlaImServicesIndex;
+    }
 
     private static final String DOC_PATH = "_doc";
 
@@ -43,8 +54,12 @@ public class ElasticSearchClient {
         return fetchTickets(OLD_INDEX_NAME, from, size,  closedTickets);
     }
 
-    public Map<String, Object> getTicketsByTenantId(int from, int size, String tenantId) {
-        return fetchTicketById(INDEX_NAME_AUDIT, from, size, tenantId);
+    public Map<String, Object> getHFByTenantId(String tenantId) {
+        return fetchTicketById(phcIndex, tenantId);
+    }
+
+    public List<Map<String, Object>> getAllPHC(int from, int size) {
+        return fetchAllPHCs(phcIndex, from, size);
     }
 
     private List<Map<String, Object>> fetchTickets(String indexName, int from, int size, Boolean closedTickets) {
@@ -61,11 +76,22 @@ public class ElasticSearchClient {
         }
     }
 
-    private Map<String, Object> fetchTicketById(String indexName, int from, int size, String tenantId) {
+    private List<Map<String, Object>> fetchAllPHCs(String indexName, int from, int size) {
+        String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
+        Map<String, Object> query = buildHFQuery(from, size);
+        HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
+        try {
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            return parseESHits(response);
+        } catch (Exception e) {
+            log.error("Failed to fetch open tickets from index '{}'", indexName, e);
+            return Collections.emptyList();
+        }
+    }
+
+    private Map<String, Object> fetchTicketById(String indexName, String tenantId) {
         String uri = getBaseUrl() + "/" + indexName + "/" + DOC_PATH + "/" + tenantId;
 
-
-        // HttpEntity sans body (GET n’a pas de payload)
         HttpEntity<String> entity = new HttpEntity<>(updateService.buildHeaders());
 
         try {
@@ -90,9 +116,9 @@ public class ElasticSearchClient {
         Map<String, Object> bool = new HashMap<>();
 
         List<Map<String, Object>> mustNot = new ArrayList<>();
-        mustNot.add(Map.of("term", Map.of("Data.currentProcessInstance.state.isTerminateState", true)));
 
         if(!closedTickets) {
+            mustNot.add(Map.of("term", Map.of("Data.currentProcessInstance.state.isTerminateState", true)));
             mustNot.add(Map.of("terms", Map.of(
                     "Data.currentProcessInstance.state.applicationStatus.keyword",
                     List.of(REJECTED, CLOSED_AFTER_REJECTION, RESOLVED, CLOSED_AFTER_RESOLUTION)
@@ -100,6 +126,18 @@ public class ElasticSearchClient {
         }
 
         bool.put("must_not", mustNot);
+        query.put("query", Map.of("bool", bool));
+        query.put("_source", true);
+        query.put("from", from);
+        query.put("size", size);
+
+        return query;
+    }
+
+    private Map<String, Object> buildHFQuery(int from, int size) {
+        Map<String, Object> query = new HashMap<>();
+        Map<String, Object> bool = new HashMap<>();
+
         query.put("query", Map.of("bool", bool));
         query.put("_source", true);
         query.put("from", from);
@@ -133,9 +171,9 @@ public class ElasticSearchClient {
         HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
 
         try {
-            log.debug("Executing Elasticsearch query: {}", query);
-            ResponseEntity<Map> response = restTemplate.exchange(uri, HttpMethod.GET, entity, Map.class);
-            return parseEscalationTickets(response.getBody());
+            log.info("Executing Elasticsearch query: {}", query);
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            return parseEscalationTickets(response);
         } catch (Exception e) {
             log.error("Failed to execute search query on index '{}'", INDEX_NAME, e);
             return Collections.emptyList();
@@ -176,33 +214,33 @@ public class ElasticSearchClient {
     private EscalationTicket convertToEscalationTicket(Map<String, Object> source, String documentId) {
         try {
             log.debug("Converting Elasticsearch source: {}", source.keySet());
-            
+
             // Extract Data object which contains the main ticket information
             Map<String, Object> data = (Map<String, Object>) source.get("Data");
             if (data == null) {
                 log.warn("No Data object found in Elasticsearch source: {}", source.keySet());
                 return null;
             }
-            
+
             log.debug("Data object keys: {}", data.keySet());
-            
+
             // Extract incident data (nested within Data)
             Map<String, Object> incident = (Map<String, Object>) data.get("incident");
             if (incident == null) {
                 log.warn("No incident found in Data: {}", data.keySet());
                 return null;
             }
-            
+
             log.debug("Incident object keys: {}", incident.keySet());
-            
+
             // Extract SLA information from the correct location (directly in Data)
             Object slaRemaining = data.get("slaRemaining");
             Object totalSlaRemaining = data.get("totalSlaRemaining");
             Object stateSla = data.get("stateSla");
-            
-            log.debug("SLA fields - slaRemaining: {}, totalSlaRemaining: {}, stateSla: {}", 
+
+            log.debug("SLA fields - slaRemaining: {}, totalSlaRemaining: {}, stateSla: {}",
                 slaRemaining, totalSlaRemaining, stateSla);
-            
+
             // Calculate SLA breach time if slaRemaining is negative
             Long slaBreachTime = null;
             if (slaRemaining instanceof Number && ((Number) slaRemaining).doubleValue() < 0) {
@@ -212,27 +250,27 @@ public class ElasticSearchClient {
             // Extract additional fields for complete ticket information
             Map<String, Object> auditDetails = (Map<String, Object>) incident.get("auditDetails");
             Long createdTime = auditDetails != null ? getLongValue(auditDetails, "createdTime") : null;
-            
+
             // Extract vendor information
             String mappedVendorName = extractVendorName(data);
-            
-            // Extract priority from incident
-            String priority = (String) incident.get("priority");
-            
+
+            // Extract priority from business service (since priority field doesn't exist in index)
+            String priority = extractPriorityFromBusinessService(data);
+
             // Extract comments from incident
             String comments = (String) incident.get("comments");
-            
+
             // Determine SLA compliance status
             boolean slaComplianceCurrentStatus = slaRemaining != null && getLongValue(slaRemaining) > 0;
             boolean slaComplianceOverallTicket = totalSlaRemaining != null && getLongValue(totalSlaRemaining) > 0;
-            
-            // Format SLA durations
-            String definedSlaDurationCurrentStatus = formatSlaDuration(stateSla);
-            String definedOverallSlaDuration = formatSlaDuration(totalSlaRemaining);
-            
+
+            String definedSlaDurationCurrentStatus = stateSla != null ? stateSla.toString() : "Not Defined";
+            Object definedTotalSla = data.get("definedTotalSla");
+            String definedOverallSlaDuration = definedTotalSla != null ? definedTotalSla.toString() : "Not Defined";
+
             // Determine if solar system is working based on system functional status
             boolean isSolarSystemWorking = "FUNCTIONAL".equals(data.get("systemFunctional"));
-            
+
             EscalationTicket ticket = EscalationTicket.builder()
                     .id(documentId)  // Use document ID from hit metadata
                     .incidentId((String) incident.get("incidentId"))
@@ -263,11 +301,11 @@ public class ElasticSearchClient {
                     .comments(comments)
                     .ticketFiledDate(createdTime)
                     .build();
-                    
-            log.debug("Created EscalationTicket: id={}, tenantId={}, incidentId={}, applicationStatus={}, district={}, block={}", 
-                ticket.getId(), ticket.getTenantId(), ticket.getIncidentId(), 
+
+            log.debug("Created EscalationTicket: id={}, tenantId={}, incidentId={}, applicationStatus={}, district={}, block={}",
+                ticket.getId(), ticket.getTenantId(), ticket.getIncidentId(),
                 ticket.getApplicationStatus(), ticket.getDistrict(), ticket.getBlock());
-                
+
             return ticket;
         } catch (Exception e) {
             log.error("Error converting Elasticsearch source to EscalationTicket", e);
@@ -287,17 +325,17 @@ public class ElasticSearchClient {
                 return parseEscalationList(escalationsData);
             }
         }
-        
+
         // If not found in incident, try directly in Data object
         List<Map<String, Object>> escalationsData = (List<Map<String, Object>>) data.get("escalations");
         if (escalationsData != null && !escalationsData.isEmpty()) {
             return parseEscalationList(escalationsData);
         }
-        
+
         // No escalations found
         return new ArrayList<>();
     }
-    
+
     /**
      * Parse a list of escalation data into EscalationInfo objects
      */
@@ -343,7 +381,7 @@ public class ElasticSearchClient {
         }
         return null;
     }
-    
+
     /**
      * Extract vendor name from data
      */
@@ -353,37 +391,40 @@ public class ElasticSearchClient {
         if (vendorName != null && !vendorName.isEmpty()) {
             return vendorName;
         }
-        
+
         // Try to get vendor name from mappedVendorUserName field
         String vendorUserName = (String) data.get("mappedVendorUserName");
         if (vendorUserName != null && !vendorUserName.isEmpty()) {
             return vendorUserName;
         }
-        
+
         return "Not Assigned";
     }
-    
+
     /**
-     * Format SLA duration in milliseconds to human readable format
+     * Extract priority from business service name
+     * Business service format: "Incident_High", "Incident_Low", "Incident_Medium"
+     * Priority is the part after the underscore
      */
-    private String formatSlaDuration(Object slaDuration) {
-        if (slaDuration == null) {
-            return "Not Defined";
-        }
-        
-        Long durationMs = getLongValue(slaDuration);
-        if (durationMs == null || durationMs <= 0) {
-            return "Not Defined";
-        }
-        
-        // Convert to hours and minutes
-        long hours = durationMs / (1000 * 60 * 60);
-        long minutes = (durationMs % (1000 * 60 * 60)) / (1000 * 60);
-        
-        if (hours > 0) {
-            return hours + "h " + minutes + "m";
-        } else {
-            return minutes + "m";
+    private String extractPriorityFromBusinessService(Map<String, Object> data) {
+        try {
+            Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
+            if (currentProcessInstance == null) {
+                return "Medium"; // Default fallback
+            }
+
+            Object businessServiceObj = currentProcessInstance.get("businessService");
+            if (businessServiceObj instanceof String businessService && businessService.contains("_")) {
+                String[] parts = businessService.split("_", 2);
+                if (parts.length > 1) {
+                    return parts[1]; // Return part after underscore (High, Low, Medium)
+                }
+            }
+
+            return "Medium"; // Default fallback
+        } catch (Exception e) {
+            log.warn("Error extracting priority from business service: {}", e.getMessage());
+            return "Medium"; // Default fallback
         }
     }
 

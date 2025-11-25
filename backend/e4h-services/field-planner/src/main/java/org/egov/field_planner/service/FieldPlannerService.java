@@ -48,7 +48,7 @@ public class FieldPlannerService {
     private final List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators;
     private final FieldPlannerConfiguration fieldPlannerConfiguration;
     private final MDMSUtils mdmsUtils;
-    private final ServiceRequestClient serviceRequestRepository;
+    private final ServiceRequestRepository serviceRequestRepository;
 
     private final FieldPlannerFacilityService facilityService;
 
@@ -60,7 +60,7 @@ public class FieldPlannerService {
     public FieldPlannerService(
             FieldPlannerRepository fieldPlannerRepository, List<Validator<FieldPlanFacilityBulkRequest, FieldPlanFacility>> validators, FieldPlannerFacilityService facilityService,
             FieldPlannerValidator fieldPlannerValidator, FieldPlannerEnrichment fieldPlannerEnrichment, FieldPlannerConfiguration fieldPlannerConfiguration,
-            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestClient serviceRequestRepository) {
+            Producer producer, MDMSUtils mdmsUtils, FieldPlannerServiceUtil fieldPlanServiceUtil, ServiceRequestRepository serviceRequestRepository) {
             this.fieldPlannerValidator = fieldPlannerValidator;
             this.producer = producer;
             this.fieldPlannerConfiguration = fieldPlannerConfiguration;
@@ -364,12 +364,6 @@ public class FieldPlannerService {
             if (isCascadingFieldPlanDateUpdate) {
                 handleUpdateFieldPlan(request, fieldPlan, fielPlanFromDB);
             }
-            /*
-             * Handle cases for normal update flow
-             */
-            else {
-//                handleNormalUpdate(request, fieldPlan, fieldPlanFromDB);
-            }
         }
     }
 
@@ -420,7 +414,62 @@ public class FieldPlannerService {
         // If status equals to scheduled, so dont update the fieldplan name
         if(StringUtils.equals(fieldPlan.getStatus(), "SCHEDULED")){
             try {
-                validateFieldPlanSubmission(request, fieldPlan);
+                // Check if INSTALLATION_REVIEWER and INSTALLATION_SPOC is assigned and if at least one facility is linked to the fieldplan
+                if (fieldPlan == null) {
+                    log.error("Field Plan is mandatory");
+                    throw new CustomException("FIELDPLAN", "Field Plan is mandatory");
+                }
+                if (fieldPlan.getId() == null) {
+                    log.error("FieldPlan ID is mandatory");
+                    throw new CustomException("FIELDPLAN", "FieldPlan ID");
+                }
+
+                List<ActivityAssignment> activityAssignmentList = getFieldPlanActivityAssignment(request, fieldPlan);
+                if(activityAssignmentList==null || activityAssignmentList.isEmpty()){
+                    log.error("Activity Assignment is empty for the fieldplan");
+                    throw new CustomException("FIELDPLAN", "Activity Assignment is empty for the fieldplan");
+                }
+                if(!hasSpocAndReviewer(activityAssignmentList)){
+                    throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and INSTALLATION_SPOC need to be assigned for the fieldplan");
+                }
+
+                sendActivityAssignmentEmail(request, activityAssignmentList);
+
+                SearchResponse<FieldPlanFacility> fieldPlanFacilitySearchResponse = getFieldPlanFacilities(request, fieldPlan);
+                if(fieldPlanFacilitySearchResponse== null || fieldPlanFacilitySearchResponse.getResponse().isEmpty() || fieldPlanFacilitySearchResponse.getTotalCount()==0){
+                    log.error("No facility is linked to the fieldplan");
+                    throw new CustomException("FIELDPLAN", "No facility is linked to the fieldplan");
+                }
+                // Call facility activity create with bulk facility activity
+                List<FieldPlanFacility> fieldPlanFacilities = fieldPlanFacilitySearchResponse.getResponse();
+                if (fieldPlanFacilities != null && !fieldPlanFacilities.isEmpty()){
+                    List<ActivityFacility> activityFacilities = new ArrayList();
+
+                    // On groupe par role.code et on récupère la liste des ids
+                    Map<String, List<String>> roleToIds = activityAssignmentList.stream()
+                            .filter(item -> item.getRole() != null)
+                            .collect(Collectors.groupingBy(
+                                    item -> (String) ((Map<String, Object>) item.getRole()).get("code"),
+                                    Collectors.mapping(item -> (String) item.getAssignedTo(), Collectors.toList())
+                            ));
+                    for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
+                        ActivityFacility activityFacility = ActivityFacility.builder()
+                                .tenantId("in")
+                                .fieldPlanId(fieldPlanFacility.getFieldPlanId())
+                                .facilityId(fieldPlanFacility.getFacilityId())
+                                .activityId((String)fieldPlan.getActivities().get(0).get("code"))
+                                .scheduledAt(fieldPlan.getStartDate())
+                                .activatedAt(fieldPlan.getStartDate())
+                                .reviewerUser(roleToIds.get("INSTALLATION_REVIEWER"))
+                                .spocUser(roleToIds.get("INSTALLATION_SPOC"))
+                                .build();
+
+                        activityFacilities.add(activityFacility);
+                    }
+
+                    createFacilityActivity(request.getRequestInfo(), activityFacilities);
+
+                }
             } catch (Exception e) {
                 e.printStackTrace();
                 throw new RuntimeException(e);
@@ -490,44 +539,40 @@ public class FieldPlannerService {
                 .orElse(null);
     }
 
-    // Check if INSTALLATION_REVIEWER and INSTALLATION_SPOC is assigned and if at least one facility is linked to the fieldplan
-    private void validateFieldPlanSubmission(FieldPlanRequest request, FieldPlan fieldPlan) throws Exception {
-        if (fieldPlan == null) {
-            log.error("Field Plan is mandatory");
-            throw new CustomException("FIELDPLAN", "Field Plan is mandatory");
-        }
-        if (fieldPlan.getId() == null) {
-            log.error("FieldPlan ID is mandatory");
-            throw new CustomException("FIELDPLAN", "FieldPlan ID");
-        }
-
-        List<ActivityAssignment> activityAssignmentList = getFieldPlanActivityAssignment(request, fieldPlan);
-        if(activityAssignmentList==null || activityAssignmentList.isEmpty()){
-            log.error("Activity Assignment is empty for the fieldplan");
-            throw new CustomException("FIELDPLAN", "Activity Assignment is empty for the fieldplan");
-        }
-        if(!hasSpocAndReviewer(activityAssignmentList)){
-            throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and INSTALLATION_SPOC need to be assigned for the fieldplan");
-        }
-
-        SearchResponse<FieldPlanFacility> fieldPlanFacilitySearchResponse = getFieldPlanFacilities(request, fieldPlan);
-        if(fieldPlanFacilitySearchResponse== null || fieldPlanFacilitySearchResponse.getResponse().isEmpty() || fieldPlanFacilitySearchResponse.getTotalCount()==0){
-            log.error("No facility is linked to the fieldplan");
-            throw new CustomException("FIELDPLAN", "No facility is linked to the fieldplan");
-        }
-    }
-
     public List<ActivityAssignment> getFieldPlanActivityAssignment(FieldPlanRequest request, FieldPlan fieldPlan) {
         String fieldPlanId = fieldPlan.getId();
         ActivityAssignmentSearchCriteria criteria = ActivityAssignmentSearchCriteria.builder().fieldPlanId(List.of(fieldPlanId)).tenantId(fieldPlan.getTenantId()).build();
         ActivityAssignmentSearchRequest assignmentSearchRequest = ActivityAssignmentSearchRequest.builder().criteria(criteria).requestInfo(request.getRequestInfo()).build();
         String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFieldPlanActivitySearchUrl()+ "?tenantId="+fieldPlan.getTenantId()+"&offset=0&limit=100";
-        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), assignmentSearchRequest, Map.class);
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), assignmentSearchRequest);
         ActivityAssignmentResponse activityAssignmentList = mapper.convertValue(response, ActivityAssignmentResponse.class);
         if(activityAssignmentList != null && activityAssignmentList.getActivityAssignment() !=null){
             return activityAssignmentList.getActivityAssignment();
         }
         return null;
+    }
+
+    public List<ActivityAssignment> updateFieldPlanActivityAssignment(FieldPlanRequest request, List<ActivityAssignment> activityAssignmentList) {
+        ActivityAssignmentBulkRequest activityAssignmentBulkRequest = ActivityAssignmentBulkRequest.builder()
+                .requestInfo(request.getRequestInfo())
+                .activityAssignments(activityAssignmentList)
+                .build();
+        String tenantId = activityAssignmentList.get(0).getTenantId();
+        String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFieldPlanActivityUpdateUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), activityAssignmentBulkRequest);
+        ActivityAssignmentResponse assignmentResponse = mapper.convertValue(response, ActivityAssignmentResponse.class);
+        if(assignmentResponse != null && assignmentResponse.getActivityAssignment() !=null){
+            return assignmentResponse.getActivityAssignment();
+        }
+        return null;
+    }
+
+    public void createFacilityActivity(RequestInfo requestInfo, List<ActivityFacility> activityFacilities) {
+        ActivityFacilityBulkRequest request = ActivityFacilityBulkRequest.builder().activityFacilities(activityFacilities).requestInfo(requestInfo).build();
+        String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFacilityActivityCreateUrl();
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        ActivityFacilityResponse activityFacilityResponse = mapper.convertValue(response, ActivityFacilityResponse.class);
+        log.info("All facility activities are added");
     }
 
     public boolean hasSpocAndReviewer(List<ActivityAssignment> activityAssignmentList) {
@@ -764,6 +809,43 @@ public class FieldPlannerService {
         }
 
         return facilityIds;
+    }
+
+    private void sendActivityAssignmentEmail(FieldPlanRequest request, List<ActivityAssignment> activityAssignmentList){
+        for (ActivityAssignment activityAssignment : activityAssignmentList) {
+            log.info("processing {} valid entities", activityAssignment);
+            if(activityAssignment.getAssignedTo() !=null && !activityAssignment.getAssignedTo().isEmpty() && !activityAssignment.getIsEmailSent()){
+                Employee employee =  getUserById(request, activityAssignment.getAssignedTo());
+                List<FieldPlan> fieldPlans = searchFieldPlan(
+                        getSearchFieldPlanRequest(request.getFieldPlans(), request.getRequestInfo()),
+                        fieldPlannerConfiguration.getMaxLimit(), fieldPlannerConfiguration.getDefaultOffset(),
+                        request.getFieldPlans().get(0).getTenantId(), false, null, null, null);
+                if(employee != null && fieldPlans != null && !fieldPlans.isEmpty()){
+                    FieldPlan existingFieldPlan = fieldPlans.get(0);
+                    String emailId = employee.getUser().getEmailId();
+                    String username = employee.getUser().getUserName();
+                    String subject = fieldPlannerConfiguration.getActivityEmailSubject();
+                    String body = fieldPlanServiceUtil.replaceActivityAssignmentEmailBody((String)activityAssignment.getRole().get("name"), existingFieldPlan.getName(),
+                            username,fieldPlannerConfiguration.getDefaultUserPassword(),fieldPlannerConfiguration.getActivityEmailBody());
+                    fieldPlanServiceUtil.sendEmailViaKafka(emailId, subject, body, "in");
+                    activityAssignment.setIsEmailSent(true);
+                }
+            }
+        }
+
+        updateFieldPlanActivityAssignment(request, activityAssignmentList);
+    }
+
+    public Employee getUserById(Object request, String userId) {
+
+        String url = fieldPlannerConfiguration.getHrmsHost() + fieldPlannerConfiguration.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
+        }
+        return employeeResponse.getEmployees().get(0);
     }
 
 }

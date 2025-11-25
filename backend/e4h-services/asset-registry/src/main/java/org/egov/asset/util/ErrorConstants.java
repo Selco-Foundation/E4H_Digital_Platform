@@ -37,7 +37,9 @@ public class ErrorConstants {
     public static final String ASSET_TYPE_ID_VALIDATION_MSG = "Provided assetTypeId does not matches with the mdms data.";
 
     public static final String ASSET_FACILITY_ID_VALIDATION_CODE = "ERR_ASSET_FACILITY_ID_VALIDATION";
+    public static final String ASSET_ACTIVITY_FACILITY_ID_VALIDATION_CODE = "ERR_ASSET_ACTIVITY_FACILITY_ID_VALIDATION";
     public static final String ASSET_FACILITY_ID_VALIDATION_MSG = "Provided facilityId does not exist for given tenantId.";
+    public static final String ASSET_ACTIVITY_FACILITY_ID_VALIDATION_MSG = "Provided activity facilityId does not exist for given tenantId.";
 
     public static final String ASSET_DUPLICATE_VALIDATION_CODE = "ERR_ASSET_DUPLICATE_VALIDATION";
     public static final String ASSET_DUPLICATE_VALIDATION_MSG = "Provided assetTypeId, serialNumber, brandId and modelNumber already exist.";

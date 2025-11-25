@@ -39,6 +39,7 @@ from app.utils.convertor import request_info_from_json, create_vendor_request, c
     get_staff_search_payload, create_incident_data_update_payload, \
     get_incident_data_update_request_info
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
@@ -51,12 +52,14 @@ router = APIRouter()
 logger = AppLogger().get_logger()
 
 from dotenv import load_dotenv
+from collections import defaultdict
 
 load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
 org_service_url = os.getenv("VENDOR_SERVICE_URL")
 project_service_url = os.getenv("PROJECT_SERVICE_URL")
 fieldPlan_service_url = os.getenv("FIELDPLAN_SERVICE_URL")
+fieldPlan_activity_service_url = os.getenv("FIELDPLAN_ACTIVITY_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 hrms_service_url = os.getenv("HRMS_SERVICE_URL")
 im_services_url = os.getenv("IM_SERVICES_URL")
@@ -2277,51 +2280,119 @@ async def create_fielplan_facilities(
             df['Field Plan Linking Status'] = ''
 
         fieldplan_client = FieldPlanServiceClient(fieldPlan_service_url)
+        fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
 
-        # iterate all rows — handle existing facility ids (linking) and new rows (create -> link)
-        for index, row in df.iterrows():
+        # Fetch fieldplan-linked facilities if fieldplan_id is provided
+        fieldplan_linked_facility_ids = set()
+        if fieldplan_id:
             try:
-                # normalize facility id and include flag
-                facility_id_val = row.get(facility_id_col, None)
-                facility_id = None
-                if pd.notna(facility_id_val) and str(facility_id_val).strip():
-                    facility_id = str(facility_id_val).strip()
+                fieldplan_facilities_response = fieldplan_client.search_fieldplan_facility(request_info, fieldplan_id)
+                fieldplan_facilities = fieldplan_facilities_response.get("FieldPlanFacilities", [])
+                fieldplan_linked_facility_ids = {pf.get("facilityId") for pf in fieldplan_facilities if
+                                                 pf.get("facilityId")}
+                logger.info(
+                    f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
 
-                include_val = ''
-                if include_col:
-                    include_val = str(row.get(include_col, "")).strip().lower()
-                else:
-                    include_val = str(row.get("Included in Field Plan (Mandatory)", "")).strip().lower()
+                # Get FieldPlan status
+                fieldplan_response = fieldplan_client.search_fieldPlan(request_info, fieldplan_id)
+                fieldplan_data = fieldplan_response.get("FieldPlans", [])
 
-                should_link = include_val == "yes"
+                fieldplan_assignment_response = fieldplan_activity_client.search_fieldplan_activity_assignment(request_info, fieldplan_id)
+                fieldplan_assignment_data = fieldplan_assignment_response.get("ActivitiesAssignments", [])
+                role_to_ids = defaultdict(list)
 
-                # ---------- CASE A: existing facility_id present -> skip creation, attempt linking if requested ----------
-                if facility_id:
-                    # df.at[index, 'Facility Creation Status'] = "Already Exists"
-                    # attempt linking if requested
-                    if should_link:
-                        try:
-                            project_resp = fieldplan_client.create_fieldPlan_facility(
-                                request_info=request_info,
-                                fieldPlan_id=fieldplan_id,
-                                facility_id=facility_id
-                            )
-                            if project_resp.status_code in (200, 201, 202):
-                                df.at[index, 'Field Plan Linking Status'] = "Linked"
+                for item in fieldplan_assignment_data:
+                    role = item.get("role")
+                    if role:
+                        code = role.get("code")
+                        if code:
+                            role_to_ids[code].append(item.get("assignedTo"))
+
+                # iterate all rows — handle existing facility ids (linking) and new rows (create -> link)
+                for index, row in df.iterrows():
+                    try:
+                        # normalize facility id and include flag
+                        facility_id_val = row.get(facility_id_col, None)
+                        facility_id = None
+                        if pd.notna(facility_id_val) and str(facility_id_val).strip():
+                            facility_id = str(facility_id_val).strip()
+
+                        include_val = ''
+                        if include_col:
+                            include_val = str(row.get(include_col, "")).strip().lower()
+                        else:
+                            include_val = str(row.get("Included in Field Plan (Mandatory)", "")).strip().lower()
+
+                        should_link = include_val == "yes"
+
+                        # ---------- CASE A: existing facility_id present -> skip creation, attempt linking if requested ----------
+                        if facility_id:
+                            # df.at[index, 'Facility Creation Status'] = "Already Exists"
+                            # attempt linking if requested
+                            if facility_id in fieldplan_linked_facility_ids:
+                                if should_link:
+                                    # already linked → skip API
+                                    df.at[index, 'Field Plan Linking Status'] = "Already Linked"
+                                else:
+                                    # linked but Excel says No → unlink
+                                    try:
+                                        fieldPlan_facility_data = next(
+                                            (pf for pf in fieldplan_facilities if pf.get("facilityId") == facility_id),
+                                            None)
+                                        fieldplan_client.unlink_fieldplan_facility(
+                                            request_info=request_info,
+                                            fieldplan_id=fieldplan_id,
+                                            facility_id=facility_id,
+                                            fieldplan_facility_data=fieldPlan_facility_data
+                                        )
+
+                                        facilities_activity_response = fieldplan_activity_client.search_facility_activity(
+                                            request_info, fieldplan_id, facility_id)
+                                        facilities_activity = facilities_activity_response.get("FacilityActivities",[])
+                                        facility_activity_ids = list({fa.get("activityFacility").get("id") for fa in facilities_activity if fa.get("activityFacility").get("id")})
+                                        fieldplan_activity_client.delete_facility_activity(request_info=request_info, facility_activity_id=facility_activity_ids)
+
+                                        df.at[index, 'Field Plan Linking Status'] = "Unlinked"
+                                        fieldplan_linked_facility_ids.remove(facility_id)
+                                    except Exception as e:
+                                        df.at[index, 'Field Plan Linking Status'] = f"Exception during unlink: {str(e)}"
                             else:
-                                df.at[index, 'Field Plan Linking Status'] = f"Failed: {project_resp.status_code} {project_resp.text}"
-                        except Exception as e:
-                            df.at[index, 'Field Plan Linking Status'] = f"Exception: {str(e)}"
-                    else:
-                        df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
+                                if should_link:
+                                    try:
+                                        fieldplan_resp = fieldplan_client.create_fieldPlan_facility(
+                                            request_info=request_info,
+                                            fieldPlan_id=fieldplan_id,
+                                            facility_id=facility_id
+                                        )
 
-                    # continue to next row
-                    continue
+                                        if fieldplan_data:
+                                            fieldplan = fieldplan_data[0]
+                                            if(fieldplan.get("status")=='SCHEDULED'):
+                                                facility_activity_resp = fieldplan_activity_client.create_facility_activity(request_info=request_info,
+                                                                                                                fieldPlan=fieldplan, roleToIds= role_to_ids, facility_id=facility_id)
+                                                print(f"Facility Activity Created successfully: {facility_activity_resp}")
+                                        if fieldplan_resp.status_code in (200, 201, 202):
+                                            df.at[index, 'Field Plan Linking Status'] = "Linked"
+                                        else:
+                                            df.at[
+                                                index, 'Field Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
+                                    except Exception as e:
+                                        print(e)
+                                        df.at[index, 'Field Plan Linking Status'] = f"Exception: {str(e)}"
+                                else:
+                                    df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
+
+                                # continue to next row
+                                continue
+
+                    except Exception as e:
+                        # any unexpected error per row
+                        df.at[index, 'Field Plan Linking Status'] = "Not Attempted"
+                        continue
 
             except Exception as e:
-                # any unexpected error per row
-                df.at[index, 'Field Plan Linking Status'] = "Not Attempted"
-                continue
+                logger.error(f"Error fetching fieldplan facilities: {e}")
+                # Continue without fieldplan facility data if there's an error
 
         # ---------- write results back into workbook preserving formatting ----------
         # Ensure headers exist in sheet (without wiping template)

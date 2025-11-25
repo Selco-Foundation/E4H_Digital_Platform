@@ -1,0 +1,1 @@
+ALTER TABLE public.facility_activities ADD isdeleted boolean NULL DEFAULT false;

@@ -2,17 +2,18 @@ package org.egov.activity.web.controllers;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import org.egov.activity.config.ActivityConfiguration;
+import org.egov.activity.service.ActivityFacilityUsersService;
+import org.egov.activity.service.ActivityService;
+import org.egov.activity.service.FacilityWorkflowService;
+import org.egov.activity.web.models.*;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.models.core.URLParams;
 import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
-import org.egov.activity.config.ActivityConfiguration;
-import org.egov.activity.service.*;
-import org.egov.activity.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,7 +21,10 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -31,15 +35,17 @@ public class ActivityApiController {
 
     private final HttpServletRequest httpServletRequest;
     private final ActivityService activityService;
+    private final ActivityFacilityUsersService facilityUsersService;
     private final FacilityWorkflowService facilityWorkflowService;
 
     @Autowired
     public ActivityApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
                                  Producer producer,
                                  ActivityConfiguration fieldPlannerConfiguration,
-                                 ActivityService activityService, FacilityWorkflowService facilityWorkflowService) {
+                                 ActivityService activityService, ActivityFacilityUsersService facilityUsersService, FacilityWorkflowService facilityWorkflowService) {
         this.httpServletRequest = httpServletRequest;
         this.activityService = activityService;
+        this.facilityUsersService = facilityUsersService;
         this.facilityWorkflowService = facilityWorkflowService;
     }
 
@@ -56,17 +62,30 @@ public class ActivityApiController {
     }
 
     @RequestMapping(value = "/_update", method = RequestMethod.POST)
-    public ResponseEntity<ActivityFacilityResponse> updateActivityAssignment(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
-        ActivityFacilityBulkRequest enrichedFieldPlanRequest = activityService.updateActivityFacitlity(request);
+    public ResponseEntity<ActivityFacilityResponse> updateActivityFacility(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+        ActivityFacilityBulkRequest enrichedFieldPlanRequest = activityService.updateActivityFacility(request);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         ActivityFacilityResponse activityFacilityResponse = ActivityFacilityResponse.builder().responseInfo(responseInfo).activityFacilities(enrichedFieldPlanRequest.getActivityFacilities()).build();
         return new ResponseEntity<ActivityFacilityResponse>(activityFacilityResponse, HttpStatus.OK);
     }
 
+    @RequestMapping(value = "/_delete", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityResponse> deleteActivityFacility(@ApiParam(value = "Delete activity Facility.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+
+        List<ActivityFacility> activityFacilities = activityService.delete(request);
+        ActivityFacilityResponse response = ActivityFacilityResponse.builder()
+                .activityFacilities(activityFacilities)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
     public ResponseEntity<FacilityStatusResponse> searchActivityFacility(
-            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody ActivityFacilitySearchRequest request,
+            @ApiParam(value = "Details for the Activity Facility.", required = true) @Valid @RequestBody ActivityFacilitySearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
         List<ActivityFacility> activityFacilityList = activityService.searchActivityFacility(
@@ -237,5 +256,43 @@ public class ActivityApiController {
             // Partial success/fail
             return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(response);
         }
+    }
+
+    @RequestMapping(value = "/staff/v1/_create", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityUserResponse> facilityUsersV1CreatePost(@ApiParam(value = "Capture linkage of Activity Facility and staff user.", required = true) @Valid @RequestBody ActivityFacilityUserBulkRequest request) throws Exception {
+
+        List<ActivityFacilityUser> staff = facilityUsersService.createActivityFacilityUsers(request);
+        ActivityFacilityUserResponse response = ActivityFacilityUserResponse.builder()
+                .activityFacilityUser(staff)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/staff/v1/_update", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityUserResponse> facilityUsersV1UpdatePost(@ApiParam(value = "Capture linkage of Project and staff user.", required = true) @Valid @RequestBody ActivityFacilityUserBulkRequest request) {
+
+        List<ActivityFacilityUser> activityFacilityUsers = facilityUsersService.update(request);
+        ActivityFacilityUserResponse response = ActivityFacilityUserResponse.builder()
+                .activityFacilityUser(activityFacilityUsers)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/staff/v1/_delete", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityUserResponse> facilityUsersV1DeletePost(@ApiParam(value = "Capture linkage of Project and staff user.", required = true) @Valid @RequestBody ActivityFacilityUserBulkRequest request) {
+
+        List<ActivityFacilityUser> activityFacilityUsers = facilityUsersService.delete(request);
+        ActivityFacilityUserResponse response = ActivityFacilityUserResponse.builder()
+                .activityFacilityUser(activityFacilityUsers)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 }

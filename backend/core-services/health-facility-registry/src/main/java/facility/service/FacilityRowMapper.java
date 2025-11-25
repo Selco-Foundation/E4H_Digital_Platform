@@ -41,6 +41,7 @@ public class FacilityRowMapper {
         facility.setWfStatus(rs.getString("wf_status"));
         facility.setIsActive(rs.getBoolean("is_active"));
         facility.setFacilityRegion(rs.getString("facility_region"));
+        facility.setIsOnmReady(rs.getBoolean("is_onm_ready"));
 
         String addressId = rs.getString("addressid");
 
