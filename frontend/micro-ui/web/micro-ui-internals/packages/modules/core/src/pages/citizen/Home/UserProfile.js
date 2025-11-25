@@ -69,10 +69,15 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   const [errors, setErrors] = React.useState({});
   const isMobile = window.Digit.Utils.browser.isMobile();
   const analyticsOnceRef = React.useRef(false);
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
 
   if (!userInfo?.uuid) {
     return <Redirect to={`${window.contextPath}/employee/user/login`} />;
   }
+
+  useEffect(() => {
+    setCity((jurisdictionCurrentBoundary?.type !== "facility" || jurisdictionCurrentBoundary?.codes?.length > 1) ? t("CORE_COMMON_ALL") : t(`Boundary_${jurisdictionCurrentBoundary?.codes?.[0]}`))
+  }, []);
 
   const getUserInfo = async () => {
     const uuid = userInfo?.uuid;
