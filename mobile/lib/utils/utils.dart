@@ -157,6 +157,11 @@ enum WORKFLOW_STATUS_FIELD_SUPERVISOR {
   PENDING_APPROVAL_FLAGGED_FOR_QC
 }
 
+enum WORKFLOW_STATUS_AMC_FIELD_STAFF {
+  SCHEDULED,
+  DRAFT,
+}
+
 enum WORKFLOW_ACTIONS {
   CREATE_AND_SAVE_DRAFT,
   SUBMIT_REPORT_A,
@@ -439,6 +444,34 @@ Map<String, dynamic> subsetForPage(
     }
   }
   return out;
+}
+
+Map<String, dynamic> extractKVFromRawDoc(Map<String, dynamic> raw) {
+  final acc = <String, dynamic>{};
+  dynamic root = raw;
+  if (root is Map && root['data'] is Map) {
+    root = root['data'];
+    if (root is Map && root['data'] is Map) {
+      root = root['data'];
+    }
+  }
+
+  void visit(dynamic node) {
+    if (node is Map) {
+      final fn = node['fieldName'];
+      if (fn is String && fn.isNotEmpty && node.containsKey('value')) {
+        acc[fn] = node['value'];
+      }
+      for (final v in node.values) {
+        visit(v);
+      }
+    } else if (node is List) {
+      for (final v in node) visit(v);
+    }
+  }
+
+  visit(root);
+  return acc;
 }
 
 String prettyLabel(String s) {

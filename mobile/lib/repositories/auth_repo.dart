@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/services.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
@@ -17,11 +16,6 @@ class AuthRepository {
   AuthRepository();
   Future<ResponseModel> validateLogin(LoginModel body) async {
     final formData = body.toJson();
-
-    if (envConfig.variables.envType == EnvType.dev) {
-      if (body.username == '1234567893' && body.password == 'Beehyv@123')
-        return _loadLocalAuth();
-    }
 
     final authClient = Dio();
     authClient.options.baseUrl = envConfig.variables.baseUrl;
@@ -139,19 +133,6 @@ class AuthRepository {
       return RoleActionsWrapperModel.fromJson(json.decode(response.toString()));
     } catch (_) {
       rethrow;
-    }
-  }
-
-  Future<ResponseModel> _loadLocalAuth() async {
-    try {
-      final jsonString =
-          await rootBundle.loadString('assets/mocks/mockLoginAMC.json');
-      final jsonResponse = json.decode(jsonString);
-      final responseBody = ResponseModel.fromJson(jsonResponse);
-
-      return responseBody;
-    } catch (e) {
-      throw Exception('Failed to load mock projects: $e');
     }
   }
 }

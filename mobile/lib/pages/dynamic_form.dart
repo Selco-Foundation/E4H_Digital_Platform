@@ -17,7 +17,7 @@ import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../repositories/app_init_repo.dart';
-import '../repositories/bom_repo.dart';
+import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -252,7 +252,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
         bomName: schemaKey,
       );
 
-      final kvFromThisPage = BomRepository().extractKVFromRawDoc(withValues);
+      final kvFromThisPage = extractKVFromRawDoc(withValues);
       final filtered = Map<String, dynamic>.from(kvFromThisPage)
         ..removeWhere((k, v) => v is String && v.trim().isEmpty);
 

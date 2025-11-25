@@ -120,8 +120,8 @@ class _LoginPageState extends State<LoginPage> {
                                         role.code ==
                                         'INSTALLATION_REPORT_PART_B_EDITOR') ??
                                 false;
-                            final hasAMCRole = userRequest?.roles
-                                    .any((role) => role.code == 'AMC_USER') ??
+                            final hasAMCRole = userRequest?.roles.any(
+                                    (role) => role.code == 'AMC_FIELD_STAFF') ??
                                 false;
                             if (hasAMCRole) {
                               context

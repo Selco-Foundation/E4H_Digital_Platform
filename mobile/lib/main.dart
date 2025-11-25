@@ -12,6 +12,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
 
+import '../blocs/scheduled_visit/scheduled_visit.dart';
 import 'blocs/activity_facility/activity_facility.dart';
 import 'blocs/activity_facility_bom/activity_facility_bom.dart';
 import 'blocs/app_init/app_init.dart';
@@ -89,10 +90,8 @@ class _MainAppState extends State<MainApp> {
                   AppInitialization()..add(const InitEvent.onLaunch()),
             ),
             BlocProvider(
-              create: (context) {
-                return AuthBloc()..add(const AuthEvent.attemptLoad());
-              },
-            ),
+                create: (context) =>
+                    AuthBloc()..add(const AuthEvent.attemptLoad())),
             BlocProvider(create: (context) => UserOtpBloc()),
             BlocProvider<ActivityFacilityBloc>(
                 create: (context) => ActivityFacilityBloc(widget.isar)),
@@ -123,6 +122,7 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(
                 create: (context) => ActivityFacilityBomBloc(widget.isar)),
             BlocProvider(create: (context) => RejectionBloc(widget.isar)),
+            BlocProvider(create: (context) => ScheduledVisitBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) {

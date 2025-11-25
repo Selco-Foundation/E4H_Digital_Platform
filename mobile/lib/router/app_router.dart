@@ -1,6 +1,7 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
+import '../model/scheduled_visit/scheduled_visit.dart';
 import '../pages/add_new_asset.dart';
 import '../pages/amc_draft.dart';
 import '../pages/amc_dynamic_form.dart';

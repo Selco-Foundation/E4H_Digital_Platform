@@ -36,8 +36,9 @@ abstract class _$AppRouter extends RootStackRouter {
           pageName: args.pageName,
           schemaName: args.schemaName,
           uniqueIdentifier: args.uniqueIdentifier,
-          projectId: args.projectId,
+          scheduledVisitId: args.scheduledVisitId,
           origin: args.origin,
+          initialFormValues: args.initialFormValues,
         ),
       );
     },
@@ -326,8 +327,9 @@ class AmcDynamicFormRoute extends PageRouteInfo<AmcDynamicFormRouteArgs> {
     required String pageName,
     String? schemaName,
     String? uniqueIdentifier,
-    required String projectId,
+    required String scheduledVisitId,
     required FormOrigin origin,
+    Map<String, dynamic>? initialFormValues,
     List<PageRouteInfo>? children,
   }) : super(
           AmcDynamicFormRoute.name,
@@ -336,8 +338,9 @@ class AmcDynamicFormRoute extends PageRouteInfo<AmcDynamicFormRouteArgs> {
             pageName: pageName,
             schemaName: schemaName,
             uniqueIdentifier: uniqueIdentifier,
-            projectId: projectId,
+            scheduledVisitId: scheduledVisitId,
             origin: origin,
+            initialFormValues: initialFormValues,
           ),
           rawPathParams: {'pageName': pageName},
           initialChildren: children,
@@ -355,8 +358,9 @@ class AmcDynamicFormRouteArgs {
     required this.pageName,
     this.schemaName,
     this.uniqueIdentifier,
-    required this.projectId,
+    required this.scheduledVisitId,
     required this.origin,
+    this.initialFormValues,
   });
 
   final Key? key;
@@ -367,13 +371,15 @@ class AmcDynamicFormRouteArgs {
 
   final String? uniqueIdentifier;
 
-  final String projectId;
+  final String scheduledVisitId;
 
   final FormOrigin origin;
 
+  final Map<String, dynamic>? initialFormValues;
+
   @override
   String toString() {
-    return 'AmcDynamicFormRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, projectId: $projectId, origin: $origin}';
+    return 'AmcDynamicFormRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, scheduledVisitId: $scheduledVisitId, origin: $origin, initialFormValues: $initialFormValues}';
   }
 }
 

@@ -1,5 +1,7 @@
+import 'package:digit_ui_components/theme/ComponentTheme/digit_tab_bar_theme.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
+import 'package:digit_ui_components/widgets/atoms/digit_tab.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 
@@ -17,6 +19,15 @@ class AmcDraftPage extends StatefulWidget {
 }
 
 class _AmcDraftPageState extends State<AmcDraftPage> {
+  final tabs = ['Pending Approval', 'Pending Otp Approval'];
+  int _selectedTabIndex = 0;
+
+  void _onTabChanged(int index) {
+    setState(() {
+      _selectedTabIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -41,9 +52,26 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Submitted Reports',
+                  'Pending Approval',
                   style: textTheme.headingXl.copyWith(
                     color: theme.colorTheme.primary.primary2,
+                  ),
+                ),
+                const SizedBox(height: spacer4),
+                SizedBox(
+                  height: spacer12 + spacer1,
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return DigitTabBar(
+                        tabs: tabs,
+                        initialIndex: _selectedTabIndex,
+                        onTabSelected: (index) => _onTabChanged(index),
+                        tabBarThemeData:
+                            DigitTabBarThemeData.defaultTheme(context).copyWith(
+                                tabWidth: constraints.maxWidth / tabs.length,
+                                padding: EdgeInsets.zero),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(height: spacer4),
@@ -63,7 +91,7 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                             pageName: "AMC_Report",
                             uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
                             schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                            projectId: "123456789",
+                            scheduledVisitId: "123456789",
                             origin: FormOrigin.submitted));
                       },
                       title: "Sirsa PHC",

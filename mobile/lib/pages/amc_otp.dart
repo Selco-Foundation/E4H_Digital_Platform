@@ -47,7 +47,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
               footer: FooterButton(
                 isDisabled: !form.valid,
                 showSuffixIcon: false,
-                text: context.translate(i18.common.coreCommonNext),
+                text: context.translate(i18.common.coreCommonSubmit),
                 onPress: () {
                   form.markAllAsTouched();
                   if (!form.valid) return;

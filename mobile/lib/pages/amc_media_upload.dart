@@ -91,7 +91,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
         footer: FooterButton(
           // isDisabled: false,
           showSuffixIcon: false,
-          text: context.translate(i18.common.coreCommonNext),
+          text: context.translate(i18.common.coreCommonSubmit),
           onPress: () async {
             context.router.push(const AmcOtpRoute());
           },

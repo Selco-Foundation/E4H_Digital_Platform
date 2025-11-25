@@ -11,14 +11,13 @@ import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import 'package:selco/blocs/scheduled_visit/scheduled_visit.dart';
 
-import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/activity_facility_bom/activity_facility_bom.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
-import '../repositories/activity_facility_repo.dart';
 import '../repositories/app_init_repo.dart';
-import '../repositories/bom_repo.dart';
+import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -28,15 +27,17 @@ class AmcDynamicFormPage extends StatefulWidget {
   final String pageName;
   final String? schemaName;
   final String? uniqueIdentifier;
-  final String projectId;
+  final String scheduledVisitId;
   final FormOrigin origin;
+  final Map<String, dynamic>? initialFormValues;
   const AmcDynamicFormPage({
     super.key,
     @PathParam() required this.pageName,
     this.schemaName,
     this.uniqueIdentifier,
-    required this.projectId,
+    required this.scheduledVisitId,
     required this.origin,
+    this.initialFormValues,
   });
 
   @override
@@ -50,15 +51,9 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   String? _lastProjectId;
   Map<String, dynamic> _projectInitialKV = const {};
   int _formSeed = 0;
-  static const String _initialUserType = 'SUPERVISOR';
 
   Future<void> _loadInitialKVForProject() async {
-    final isar = context.read<ActivityFacilityBloc>().isar;
-    final kv = await BomRepository().getProjectBomKV(
-      isar: isar,
-      projectId: widget.projectId,
-      userType: _initialUserType,
-    );
+    final kv = widget.initialFormValues;
     if (!mounted) return;
     setState(() {
       _projectInitialKV = kv ?? const {};
@@ -176,13 +171,13 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
         await _loadInitialKVForProject();
         if (!mounted) return;
         setState(() {
-          _lastProjectId = widget.projectId;
+          _lastProjectId = widget.scheduledVisitId;
         });
       });
       return;
     }
 
-    if (_lastProjectId != widget.projectId) {
+    if (_lastProjectId != widget.scheduledVisitId) {
       final formsBloc = context.read<FormsBloc>();
       final currentKey = currentSchemaKey(
           state: formsBloc.state,
@@ -196,7 +191,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
         await _loadInitialKVForProject();
         if (!mounted) return;
         setState(() {
-          _lastProjectId = widget.projectId;
+          _lastProjectId = widget.scheduledVisitId;
         });
       });
     }
@@ -207,8 +202,8 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
     required String schemaKey,
   }) async {
     final formsBloc = context.read<FormsBloc>();
-    final projectBloc = context.read<ActivityFacilityBloc>();
-    final projectId = widget.projectId;
+    final projectBloc = context.read<ScheduledVisitBloc>();
+    final projectId = widget.scheduledVisitId;
 
     final Map<String, dynamic> flatValues = {};
     schema.pages.forEach((_, pageSchema) {
@@ -227,26 +222,27 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
       final isar = projectBloc.isar;
       final assignUserUuid = await SecureStore().getSelectedIndividual();
 
-      await BomRepository().saveLocal(
+      await AmcDynamicFormRepository().saveLocal(
         isar: isar,
-        activityFacilityId: projectId,
+        scheduledVisitId: projectId,
         schemaKey: schemaKey,
         rawDocWithValues: withValues,
         facilityId: null,
         assignUserUuid: assignUserUuid,
-        bomName: schemaKey,
+        formName: schemaKey,
       );
 
-      final kvFromThisPage = BomRepository().extractKVFromRawDoc(withValues);
+      final kvFromThisPage = extractKVFromRawDoc(withValues);
       final filtered = Map<String, dynamic>.from(kvFromThisPage)
         ..removeWhere((k, v) => v is String && v.trim().isEmpty);
 
-      final existingAllKV = await BomRepository().getProjectBomKV(
-            isar: isar,
-            projectId: projectId,
-            userType: USER_TYPES.SUPERVISOR.name,
-          ) ??
-          <String, dynamic>{};
+      final existingAllKV =
+          await AmcDynamicFormRepository().getScheduledVisitFormKV(
+                isar: isar,
+                scheduledVisitId: projectId,
+                userType: USER_TYPES.AMC.name,
+              ) ??
+              <String, dynamic>{};
 
       bool changed = false;
       filtered.forEach((k, v) {
@@ -262,19 +258,12 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
         }
       });
 
-      await BomRepository().mergeKvForEntryKey(
+      await AmcDynamicFormRepository().mergeKvForEntryKey(
         isar: isar,
-        projectId: projectId,
-        userType: USER_TYPES.SUPERVISOR.name,
+        scheduledVisitId: projectId,
+        userType: USER_TYPES.AMC.name,
         kvUpdate: filtered,
       );
-
-      if (changed) {
-        await PrefilledActivityFacilityRepository(isar).addOrTouch(
-          activityFacilityId: projectId,
-          userType: USER_TYPES.SUPERVISOR.name,
-        );
-      }
     }
 
     formsBloc.add(FormsEvent.clearForm(schemaKey: schemaKey));
@@ -339,7 +328,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
 
             return ReactiveFormBuilder(
               key: ValueKey(
-                  '${widget.projectId}::$currentKey::$pageIndex::$_formSeed'),
+                  '${widget.scheduledVisitId}::$currentKey::$pageIndex::$_formSeed'),
               form: () {
                 final controls = JsonForms.getFormControls(pageSchema,
                     defaultValues: const {});
@@ -513,7 +502,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
                             } else {
                               context.router.push(DynamicFormsRoute(
                                 pageName: next,
-                                projectId: widget.projectId,
+                                projectId: widget.scheduledVisitId,
                                 schemaName: currentKey,
                                 origin: widget.origin,
                               ));
