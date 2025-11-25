@@ -9,7 +9,7 @@ const Inbox = () => {
   const { t } = useTranslation();
   let tenantId = Digit.ULBService.getCurrentTenantId();
   const stateTenantId = Digit.ULBService.getStateId();
-  const { uuid } = Digit.UserService.getUser().info;
+  const { userName } = Digit.UserService.getUser().info;
   const [totalRecords, setTotalRecords] = useState(0);
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
   const { nearing } = Digit.Hooks.useQueryParams();
@@ -31,7 +31,7 @@ const Inbox = () => {
       }
     })() || {
       filters: {
-        wfFilters: { assignee: [{ code: isCodePresent(userRoles, "COMPLAINT_RESOLVER") ? uuid : "" }] },
+        wfFilters: { assignee: [{ code: isCodePresent(userRoles, "COMPLAINT_RESOLVER") ? userName : "" }] },
       },
       search: "",
       sort: {},
