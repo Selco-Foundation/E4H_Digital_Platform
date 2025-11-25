@@ -180,48 +180,48 @@ public class AlertRepository {
     }
 
     /**
-     * Gets ALL alerts from alert_history that don't have tickets
+     * Gets ALL alerts from active_alerts table that don't have tickets
      * Used when trigger endpoint is called to process existing alerts without syncing from servers
-     * Returns all alerts without tickets (no DISTINCT to get all 5 alerts)
+     * Returns all alerts without tickets
      */
     public List<Alert> getAllAlertsFromHistoryWithoutTickets() {
         try {
-            // First, let's check how many total alerts exist in the table
-            String totalCountSql = "SELECT COUNT(*) FROM alert_history";
+            // First, let's check how many total alerts exist in active_alerts table
+            String totalCountSql = "SELECT COUNT(*) FROM active_alerts";
             Integer totalInTable = jdbcTemplate.queryForObject(totalCountSql, Integer.class);
-            log.info("Total alerts in alert_history table: {}", totalInTable);
+            log.info("Total alerts in active_alerts table: {}", totalInTable);
             
             // Check how many have tickets
-            String withTicketsSql = "SELECT COUNT(*) FROM alert_history WHERE ticket_id IS NOT NULL AND ticket_id != ''";
+            String withTicketsSql = "SELECT COUNT(*) FROM active_alerts WHERE ticket_id IS NOT NULL AND ticket_id != ''";
             Integer withTickets = jdbcTemplate.queryForObject(withTicketsSql, Integer.class);
-            log.info("Alerts in alert_history with tickets: {}", withTickets);
+            log.info("Alerts in active_alerts with tickets: {}", withTickets);
             
             // Check how many don't have tickets
-            String countSql = "SELECT COUNT(*) FROM alert_history WHERE (ticket_id IS NULL OR ticket_id = '')";
+            String countSql = "SELECT COUNT(*) FROM active_alerts WHERE (ticket_id IS NULL OR ticket_id = '')";
             Integer totalCount = jdbcTemplate.queryForObject(countSql, Integer.class);
-            log.info("Total alerts in alert_history without tickets: {}", totalCount);
+            log.info("Total alerts in active_alerts without tickets: {}", totalCount);
             
-            // Get all alerts without tickets - removed DISTINCT ON to get all alerts
-            String sql = "SELECT alert_id as id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
-                    "detected_at, resolved_at, NULL::timestamp as last_suppressed_at, ticket_id, " +
+            // Get all alerts from active_alerts without tickets
+            String sql = "SELECT id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
+                    "detected_at, resolved_at, last_suppressed_at, ticket_id, " +
                     "COALESCE(metadata::text, '') as metadata " +
-                    "FROM alert_history " +
+                    "FROM active_alerts " +
                     "WHERE (ticket_id IS NULL OR ticket_id = '') " +
                     "ORDER BY detected_at DESC";
 
             List<Alert> alerts = jdbcTemplate.query(sql, new AlertRowMapper());
-            log.info("Retrieved {} alerts from alert_history without tickets", alerts.size());
+            log.info("Retrieved {} alerts from active_alerts without tickets", alerts.size());
             
             // Log details of each alert for debugging
             if (alerts.isEmpty()) {
-                log.warn("No alerts retrieved! This might indicate a query issue or data mismatch.");
+                log.warn("No alerts retrieved from active_alerts! This might indicate a query issue or data mismatch.");
                 // Try a simpler query to see if we can get any data
-                String simpleSql = "SELECT * FROM alert_history LIMIT 5";
+                String simpleSql = "SELECT * FROM active_alerts LIMIT 5";
                 List<Map<String, Object>> rawData = jdbcTemplate.queryForList(simpleSql);
-                log.info("Sample raw data from alert_history (first 5 rows): {}", rawData);
+                log.info("Sample raw data from active_alerts (first 5 rows): {}", rawData);
             } else {
                 for (Alert alert : alerts) {
-                    log.info("Alert from history - ID: {}, Facility: {}, Type: {}, SubType: {}, TicketID: {}", 
+                    log.info("Alert from active_alerts - ID: {}, Facility: {}, Type: {}, SubType: {}, TicketID: {}", 
                             alert.getId(), alert.getFacilityId(), alert.getAlertType(), 
                             alert.getAlertSubType(), alert.getTicketId());
                 }
@@ -229,7 +229,7 @@ public class AlertRepository {
             
             return alerts;
         } catch (Exception e) {
-            log.error("Error retrieving alerts from alert_history", e);
+            log.error("Error retrieving alerts from active_alerts", e);
             return new java.util.ArrayList<>();
         }
     }
