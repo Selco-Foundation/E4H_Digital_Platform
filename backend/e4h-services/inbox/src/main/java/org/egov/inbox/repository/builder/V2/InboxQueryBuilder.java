@@ -538,7 +538,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 Map<String, Object> innerWildcardClause = (Map<String, Object>) wildcardClause.get("wildcard");
 
                 if (key.equals("tenantId")) {
-                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item + ".*");
+                    innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), item);
                 } else {
                     try {
                         ObjectNode root = objectMapper.createObjectNode();
@@ -564,7 +564,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             Map<String, Object> innerWildcardClause = (Map<String, Object>) wildcardClause.get("wildcard");
 
             if (key.equals("tenantId")) {
-                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), value + ".*");
+                innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), value);
             } else {
                 innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), "*" + value + "*");
             }
