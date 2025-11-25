@@ -102,7 +102,7 @@ public class PayloadGenerator {
     private String mapAlertSubTypeToIncidentSubType(Alert.AlertSubType alertSubType, Alert.AlertType alertType) {
         switch (alertSubType) {
             case LOW_GENERATION:
-                return "Low Generation";
+                return "LowGeneration";
             case SHUTDOWN:
                 return "ShutdownInverter";
             case HIGH_VOLTAGE:
@@ -110,7 +110,7 @@ public class PayloadGenerator {
             case BURNT_DISCONNECTED:
                 return "Overcharge";
             case DEEP_DISCHARGING:
-                return "Overcharge";
+                return "DeepDischarge";
             case OVERCHARGING:
                 return "Overcharge";
             case VOLTAGE_VARIATION_LOW:
@@ -123,192 +123,14 @@ public class PayloadGenerator {
     }
 
     /**
-     * Builds comments for the ticket explaining what caused the trigger
+     * Builds comments for the ticket - just includes metadata from active_alerts
      */
     private String buildComments(Alert alert, FacilityDetails facilityDetails) {
-        StringBuilder comments = new StringBuilder();
-        
-        // Explain what caused the trigger based on alert type
-        switch (alert.getAlertType()) {
-            case PANEL:
-                if (alert.getAlertSubType() == Alert.AlertSubType.LOW_GENERATION) {
-                    comments.append("Panel Low Generation Alert:\n");
-                    comments.append("Solar panel energy consumption has been less than 10% of total consumption ");
-                    comments.append("(Solar + Grid) for 7 consecutive days.\n\n");
-                    comments.append("This indicates that the solar panels are not generating sufficient power, ");
-                    comments.append("requiring the facility to rely primarily on grid power.\n\n");
-                }
-                break;
-            case INVERTER:
-                if (alert.getAlertSubType() == Alert.AlertSubType.SHUTDOWN) {
-                    comments.append("Inverter Shutdown Alert:\n");
-                    comments.append("No signal or communication with RMS device detected for more than 2 consecutive days.\n\n");
-                    comments.append("This indicates the inverter device may be offline, disconnected, or experiencing ");
-                    comments.append("communication issues with the monitoring system.\n\n");
-                } else if (alert.getAlertSubType() == Alert.AlertSubType.HIGH_VOLTAGE) {
-                    comments.append("Inverter High Voltage Alert:\n");
-                    comments.append("UPS/PCU voltage detected above 250V in single-phase AC system.\n\n");
-                    comments.append("This indicates the inverter is experiencing high voltage conditions which can ");
-                    comments.append("damage connected equipment and pose safety risks. Immediate attention is required.\n\n");
-                    
-                    // Extract voltage from metadata if available
-                    if (alert.getMetadata() != null && alert.getMetadata().contains("\"voltage\"")) {
-                        try {
-                            // Simple extraction - voltage value should be in metadata
-                            int voltageStart = alert.getMetadata().indexOf("\"voltage\":") + 10;
-                            int voltageEnd = alert.getMetadata().indexOf(",", voltageStart);
-                            if (voltageEnd == -1) voltageEnd = alert.getMetadata().indexOf("}", voltageStart);
-                            if (voltageEnd > voltageStart) {
-                                String voltageStr = alert.getMetadata().substring(voltageStart, voltageEnd).trim();
-                                comments.append("Detected Voltage: ").append(voltageStr).append("V\n");
-                                comments.append("Threshold: 250V\n");
-                            }
-                        } catch (Exception e) {
-                            // Ignore parsing errors
-                        }
-                    }
-                }
-                break;
-            case BATTERY:
-                if (alert.getAlertSubType() == Alert.AlertSubType.BURNT_DISCONNECTED) {
-                    comments.append("Battery Burnt/Disconnected Alert:\n");
-                    comments.append("Battery voltage detected as 0V, indicating the battery may be burnt, ");
-                    comments.append("disconnected, or completely discharged.\n\n");
-                    comments.append("This condition requires immediate attention as the battery is not providing ");
-                    comments.append("any power backup, leaving the facility dependent solely on grid power.\n\n");
-                    
-                    // Extract voltage from metadata if available
-                    if (alert.getMetadata() != null && alert.getMetadata().contains("\"batteryVoltage\"")) {
-                        try {
-                            int voltageStart = alert.getMetadata().indexOf("\"batteryVoltage\":") + 17;
-                            int voltageEnd = alert.getMetadata().indexOf(",", voltageStart);
-                            if (voltageEnd == -1) voltageEnd = alert.getMetadata().indexOf("}", voltageStart);
-                            if (voltageEnd > voltageStart) {
-                                String voltageStr = alert.getMetadata().substring(voltageStart, voltageEnd).trim();
-                                comments.append("Detected Battery Voltage: ").append(voltageStr).append("V\n");
-                            }
-                        } catch (Exception e) {
-                            // Ignore parsing errors
-                        }
-                    }
-                } else if (alert.getAlertSubType() == Alert.AlertSubType.DEEP_DISCHARGING || 
-                          alert.getAlertSubType() == Alert.AlertSubType.OVERCHARGING) {
-                    comments.append("Battery Deep Discharging/Overcharging Alert:\n");
-                    comments.append("Abnormal battery charging vs discharging pattern detected over 2-3 days.\n\n");
-                    
-                    if (alert.getAlertSubType() == Alert.AlertSubType.DEEP_DISCHARGING) {
-                        comments.append("The battery is experiencing deep discharging, where it is being ");
-                        comments.append("discharged more than it is being charged. This can lead to battery ");
-                        comments.append("degradation and reduced lifespan.\n\n");
-                    } else {
-                        comments.append("The battery is experiencing overcharging, where it is being charged ");
-                        comments.append("excessively. This can cause battery damage, overheating, and safety risks.\n\n");
-                    }
-                    
-                    // Extract battery health info from metadata
-                    if (alert.getMetadata() != null) {
-                        try {
-                            if (alert.getMetadata().contains("\"batteryCharging\"")) {
-                                int chargingStart = alert.getMetadata().indexOf("\"batteryCharging\":") + 18;
-                                int chargingEnd = alert.getMetadata().indexOf(",", chargingStart);
-                                if (chargingEnd == -1) chargingEnd = alert.getMetadata().indexOf("}", chargingStart);
-                                if (chargingEnd > chargingStart) {
-                                    String chargingStr = alert.getMetadata().substring(chargingStart, chargingEnd).trim();
-                                    comments.append("Battery Charging: ").append(chargingStr).append(" kWh\n");
-                                }
-                            }
-                            
-                            if (alert.getMetadata().contains("\"batteryDischarging\"")) {
-                                int dischargingStart = alert.getMetadata().indexOf("\"batteryDischarging\":") + 21;
-                                int dischargingEnd = alert.getMetadata().indexOf(",", dischargingStart);
-                                if (dischargingEnd == -1) dischargingEnd = alert.getMetadata().indexOf("}", dischargingStart);
-                                if (dischargingEnd > dischargingStart) {
-                                    String dischargingStr = alert.getMetadata().substring(dischargingStart, dischargingEnd).trim();
-                                    comments.append("Battery Discharging: ").append(dischargingStr).append(" kWh\n");
-                                }
-                            }
-                            
-                            if (alert.getMetadata().contains("\"batteryHealthInfo\"")) {
-                                int infoStart = alert.getMetadata().indexOf("\"batteryHealthInfo\":\"") + 20;
-                                int infoEnd = alert.getMetadata().indexOf("\"", infoStart);
-                                if (infoEnd > infoStart) {
-                                    String infoStr = alert.getMetadata().substring(infoStart, infoEnd);
-                                    comments.append("Abnormality Type: ").append(infoStr).append("\n");
-                                }
-                            }
-                        } catch (Exception e) {
-                            // Ignore parsing errors
-                        }
-                    }
-                }
-                break;
-            case GRID:
-                if (alert.getAlertSubType() == Alert.AlertSubType.VOLTAGE_VARIATION_LOW) {
-                    comments.append("Grid Low Voltage Alert:\n");
-                    comments.append("Grid meter voltage detected below 200V.\n\n");
-                    comments.append("Low grid voltage can cause equipment malfunction, reduced efficiency, ");
-                    comments.append("and potential damage to electrical devices. This condition requires ");
-                    comments.append("immediate attention to ensure proper power supply to the facility.\n\n");
-                    
-                    // Extract voltage from metadata if available
-                    if (alert.getMetadata() != null) {
-                        try {
-                            if (alert.getMetadata().contains("\"minVoltage\"")) {
-                                int voltageStart = alert.getMetadata().indexOf("\"minVoltage\":") + 13;
-                                int voltageEnd = alert.getMetadata().indexOf(",", voltageStart);
-                                if (voltageEnd == -1) voltageEnd = alert.getMetadata().indexOf("}", voltageStart);
-                                if (voltageEnd > voltageStart) {
-                                    String voltageStr = alert.getMetadata().substring(voltageStart, voltageEnd).trim();
-                                    comments.append("Detected Grid Voltage: ").append(voltageStr).append("V\n");
-                                    comments.append("Threshold: 200V\n");
-                                }
-                            }
-                        } catch (Exception e) {
-                            // Ignore parsing errors
-                        }
-                    }
-                } else if (alert.getAlertSubType() == Alert.AlertSubType.VOLTAGE_VARIATION_HIGH) {
-                    comments.append("Grid High Voltage Alert:\n");
-                    comments.append("Grid meter voltage detected above 250V.\n\n");
-                    comments.append("High grid voltage can cause equipment damage, overheating, and safety risks. ");
-                    comments.append("This condition requires immediate attention to prevent damage to electrical ");
-                    comments.append("devices and ensure safe operation of the facility.\n\n");
-                    
-                    // Extract voltage from metadata if available
-                    if (alert.getMetadata() != null) {
-                        try {
-                            if (alert.getMetadata().contains("\"maxVoltage\"")) {
-                                int voltageStart = alert.getMetadata().indexOf("\"maxVoltage\":") + 13;
-                                int voltageEnd = alert.getMetadata().indexOf(",", voltageStart);
-                                if (voltageEnd == -1) voltageEnd = alert.getMetadata().indexOf("}", voltageStart);
-                                if (voltageEnd > voltageStart) {
-                                    String voltageStr = alert.getMetadata().substring(voltageStart, voltageEnd).trim();
-                                    comments.append("Detected Grid Voltage: ").append(voltageStr).append("V\n");
-                                    comments.append("Threshold: 250V\n");
-                                }
-                            }
-                        } catch (Exception e) {
-                            // Ignore parsing errors
-                        }
-                    }
-                }
-                break;
-        }
-        
-        // Add facility and detection info
-        comments.append("Facility ID: ").append(alert.getFacilityId()).append("\n");
-        if (alert.getHfrId() != null && !alert.getHfrId().isEmpty()) {
-            comments.append("HFR ID: ").append(alert.getHfrId()).append("\n");
-        }
-        comments.append("Alert Detected at: ").append(alert.getDetectedAt()).append("\n");
-        
-        // Add detailed metadata if available
+        // Simply return the metadata from active_alerts table
         if (alert.getMetadata() != null && !alert.getMetadata().isEmpty()) {
-            comments.append("\nTechnical Details:\n");
-            comments.append(alert.getMetadata());
+            return alert.getMetadata();
         }
-        
-        return comments.toString();
+        return "No metadata available";
     }
 
     /**
