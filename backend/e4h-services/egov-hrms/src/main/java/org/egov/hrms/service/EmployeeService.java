@@ -207,7 +207,7 @@ public class EmployeeService {
 			}
 		}
 
-		String stateLevelTenantId = centralInstanceUtil.getStateLevelTenant(criteria.getTenantId());
+		String stateLevelTenantId = criteria.getTenantId();
 		if(userChecked)
 			criteria.setTenantId(null);
 
@@ -218,12 +218,12 @@ public class EmployeeService {
 		if(!CollectionUtils.isEmpty(uuids)){
             Map<String, Object> UserSearchCriteria = new HashMap<>();
             UserSearchCriteria.put(HRMSConstants.HRMS_USER_SEARCH_CRITERA_UUID,uuids);
-            if(mapOfUsers.isEmpty()){
             UserResponse userResponse = userService.getUser(requestInfo, UserSearchCriteria);
 			if(!CollectionUtils.isEmpty(userResponse.getUser())) {
-				mapOfUsers = userResponse.getUser().stream()
+				// Merge with existing mapOfUsers instead of replacing it
+				Map<String, User> fetchedUsers = userResponse.getUser().stream()
 						.collect(Collectors.toMap(User :: getUuid, Function.identity()));
-            }
+				mapOfUsers.putAll(fetchedUsers);
             }
             for(Employee employee: employees){
                 employee.setUser(mapOfUsers.get(employee.getUuid()));
