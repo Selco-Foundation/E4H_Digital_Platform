@@ -159,6 +159,12 @@ public class EmployeeQueryBuilder {
 					criteria.getBoundaryCodes(), 
 					null  // hierarchyType - defaults to ADMIN if null
 			);
+
+			for(String boundaryCode : criteria.getBoundaryCodes()) {
+				if(!hierarchicalBoundaries.contains(boundaryCode)) {
+					hierarchicalBoundaries.add(boundaryCode);
+				}
+			}
 			builder.append(" and jurisdiction.boundary IN (").append(createQuery(hierarchicalBoundaries)).append(")");
 			addToPreparedStatement(preparedStmtList, hierarchicalBoundaries);
 		}
