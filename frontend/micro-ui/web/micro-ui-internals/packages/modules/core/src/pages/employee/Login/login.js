@@ -127,6 +127,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
             type: "state",
           }
         }
+        Digit.SessionStorage.set("Jurisdiction.StateBoundaries", jurisdictionBoundaries?.state);
         Digit.SessionStorage.set("Jurisdiction.Boundaries", boundaryCodes);
         Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", boundaryCodes);
       } catch (err) {
