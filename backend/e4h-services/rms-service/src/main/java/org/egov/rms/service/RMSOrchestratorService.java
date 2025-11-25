@@ -43,23 +43,27 @@ public class RMSOrchestratorService {
             // Create system RequestInfo
             RequestInfo requestInfo = createSystemRequestInfo();
             
-            // Collect inverter data (no signal) and apply rules
-            processInverterNoSignalAlerts(requestInfo);
+            // Get ALL alerts from alert_history that don't have tickets
+            List<Alert> allAlerts = alertRepository.getAllAlertsFromHistoryWithoutTickets();
+            log.info("Found {} total alerts from history without tickets", allAlerts.size());
             
-            // Collect inverter data (high voltage) and apply rules
-            processInverterHighVoltageAlerts(requestInfo);
-            
-            // Collect panel data (low generation) and apply rules
-            processPanelAlerts(requestInfo);
-            
-            // Collect battery data (voltage = 0) and apply rules
-            processBatteryAlerts(requestInfo);
-            
-            // Collect battery data (deep discharge/overcharge) and apply rules
-            processBatteryDeepDischargeAlerts(requestInfo);
-            
-            // Collect grid data (voltage variation) and apply rules
-            processGridAlerts(requestInfo);
+            if (allAlerts.isEmpty()) {
+                log.info("No alerts found in history without tickets. Processing by type for backward compatibility...");
+                // Fallback to processing by type for backward compatibility
+                processInverterNoSignalAlerts(requestInfo);
+                processInverterHighVoltageAlerts(requestInfo);
+                processPanelAlerts(requestInfo);
+                processBatteryAlerts(requestInfo);
+                processBatteryDeepDischargeAlerts(requestInfo);
+                processGridAlerts(requestInfo);
+            } else {
+                // Process all alerts together
+                log.info("Processing {} alerts from history", allAlerts.size());
+                // Apply deduplication to prevent duplicate tickets
+                List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(allAlerts);
+                log.info("After deduplication: {} unique alerts to process", uniqueAlerts.size());
+                createTickets(uniqueAlerts, requestInfo, "All Alerts from History");
+            }
             
             log.info("Completed RMS workflow execution");
         } catch (Exception e) {
@@ -224,14 +228,23 @@ public class RMSOrchestratorService {
         
         for (Alert alert : alertsToProcess) {
             try {
-                // Check if alert already has a ticket - skip to prevent duplicates
+                // Double-check if alert already has a ticket - skip to prevent duplicates
+                // (This should already be filtered by deduplication, but adding as safety check)
+                if (alert.getTicketId() != null && !alert.getTicketId().isEmpty()) {
+                    log.info("Skipping alert {} - already has ticket_id: {}", alert.getId(), alert.getTicketId());
+                    skippedCount++;
+                    continue;
+                }
+                
                 if (alertRepository.hasExistingTicket(alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType())) {
-                    log.debug("Skipping alert {} - ticket already exists for facility: {}, type: {}, subType: {}", 
+                    log.info("Skipping alert {} - ticket already exists in active_alerts for facility: {}, type: {}, subType: {}", 
                             alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                     skippedCount++;
                     continue;
                 }
                 
+                log.info("Creating ticket for alert: {} (facility: {}, type: {}, subType: {})", 
+                        alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                 IMServiceRequest ticketRequest = payloadGenerator.generateTicketPayload(alert, requestInfo);
                 
                 if (ticketRequest != null) {

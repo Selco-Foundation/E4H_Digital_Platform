@@ -179,6 +179,23 @@ public class AlertRepository {
     }
 
     /**
+     * Gets ALL alerts from alert_history that don't have tickets
+     * Used when trigger endpoint is called to process existing alerts without syncing from servers
+     * Returns the most recent alert for each unique facility_id, alert_type, alert_sub_type combination
+     */
+    public List<Alert> getAllAlertsFromHistoryWithoutTickets() {
+        String sql = "SELECT DISTINCT ON (facility_id, alert_type, alert_sub_type) " +
+                "alert_id as id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
+                "detected_at, resolved_at, NULL::timestamp as last_suppressed_at, ticket_id, " +
+                "COALESCE(metadata::text, '') as metadata " +
+                "FROM alert_history " +
+                "WHERE (ticket_id IS NULL OR ticket_id = '') " +
+                "ORDER BY facility_id, alert_type, alert_sub_type, detected_at DESC";
+
+        return jdbcTemplate.query(sql, new AlertRowMapper());
+    }
+
+    /**
      * RowMapper for Alert
      */
     private static class AlertRowMapper implements RowMapper<Alert> {

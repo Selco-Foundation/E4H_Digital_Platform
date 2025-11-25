@@ -21,19 +21,26 @@ public class DeduplicationManager {
     /**
      * Filters alerts to remove duplicates based on active alerts table and suppression window
      * Also checks if tickets already exist to prevent duplicate ticket creation
+     * For alerts from history, we trust the query filter and only check if alert itself has ticket_id
      */
     public List<Alert> deduplicateAlerts(List<Alert> alerts) {
         log.info("Deduplicating {} alerts", alerts.size());
         List<Alert> uniqueAlerts = new ArrayList<>();
 
         for (Alert alert : alerts) {
-            // Check if alert already has a ticket - skip to prevent duplicates
+            // First check if the alert itself already has a ticket_id set (shouldn't happen from our query, but double-check)
+            if (alert.getTicketId() != null && !alert.getTicketId().isEmpty()) {
+                log.debug("Skipping alert {} - already has ticket_id: {}", alert.getId(), alert.getTicketId());
+                continue;
+            }
+
+            // Check if alert already has a ticket in active_alerts table - skip to prevent duplicates
             if (alertRepository.hasExistingTicket(
                     alert.getFacilityId(),
                     alert.getAlertType(),
                     alert.getAlertSubType())) {
-                log.debug("Skipping alert - ticket already exists for facility: {}, type: {}, subType: {}",
-                        alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
+                log.info("Skipping alert {} - ticket already exists in active_alerts for facility: {}, type: {}, subType: {}",
+                        alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                 continue;
             }
 
@@ -67,6 +74,7 @@ public class DeduplicationManager {
 
             // Alert is new or suppression window has passed
             uniqueAlerts.add(alert);
+            // Save alert to active_alerts table if it doesn't exist
             alertRepository.saveAlert(alert);
         }
 
