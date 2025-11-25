@@ -14,8 +14,8 @@ export const Complaint = {
     const defaultData = {
       incident: {
         tenantId: tenantId,
-        district: district?.code,
-        block: block?.code,
+        district: district?.name,
+        block: block?.name,
         incidentType: complaintType?.key,
         incidentSubtype: subType?.key,
         systemFunctional: systemFunctionality?.key,

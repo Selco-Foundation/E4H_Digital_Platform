@@ -336,8 +336,14 @@ export const CreateComplaint = ({ parentUrl }) => {
       complaintType,
       subType,
       systemFunctionality,
-      district,
-      block,
+      district : {
+        ...district,
+        name: t(`Boundary_${district.code}`, { lng: "en_IN" })
+      },
+      block : {
+        ...block,
+        name: t(`Boundary_${block.code}`, { lng: "en_IN" })
+      },
       healthcentre,
       uploadedFile,
       tenantId,
