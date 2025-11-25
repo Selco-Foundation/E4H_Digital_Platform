@@ -11,6 +11,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -181,18 +182,56 @@ public class AlertRepository {
     /**
      * Gets ALL alerts from alert_history that don't have tickets
      * Used when trigger endpoint is called to process existing alerts without syncing from servers
-     * Returns the most recent alert for each unique facility_id, alert_type, alert_sub_type combination
+     * Returns all alerts without tickets (no DISTINCT to get all 5 alerts)
      */
     public List<Alert> getAllAlertsFromHistoryWithoutTickets() {
-        String sql = "SELECT DISTINCT ON (facility_id, alert_type, alert_sub_type) " +
-                "alert_id as id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
-                "detected_at, resolved_at, NULL::timestamp as last_suppressed_at, ticket_id, " +
-                "COALESCE(metadata::text, '') as metadata " +
-                "FROM alert_history " +
-                "WHERE (ticket_id IS NULL OR ticket_id = '') " +
-                "ORDER BY facility_id, alert_type, alert_sub_type, detected_at DESC";
+        try {
+            // First, let's check how many total alerts exist in the table
+            String totalCountSql = "SELECT COUNT(*) FROM alert_history";
+            Integer totalInTable = jdbcTemplate.queryForObject(totalCountSql, Integer.class);
+            log.info("Total alerts in alert_history table: {}", totalInTable);
+            
+            // Check how many have tickets
+            String withTicketsSql = "SELECT COUNT(*) FROM alert_history WHERE ticket_id IS NOT NULL AND ticket_id != ''";
+            Integer withTickets = jdbcTemplate.queryForObject(withTicketsSql, Integer.class);
+            log.info("Alerts in alert_history with tickets: {}", withTickets);
+            
+            // Check how many don't have tickets
+            String countSql = "SELECT COUNT(*) FROM alert_history WHERE (ticket_id IS NULL OR ticket_id = '')";
+            Integer totalCount = jdbcTemplate.queryForObject(countSql, Integer.class);
+            log.info("Total alerts in alert_history without tickets: {}", totalCount);
+            
+            // Get all alerts without tickets - removed DISTINCT ON to get all alerts
+            String sql = "SELECT alert_id as id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
+                    "detected_at, resolved_at, NULL::timestamp as last_suppressed_at, ticket_id, " +
+                    "COALESCE(metadata::text, '') as metadata " +
+                    "FROM alert_history " +
+                    "WHERE (ticket_id IS NULL OR ticket_id = '') " +
+                    "ORDER BY detected_at DESC";
 
-        return jdbcTemplate.query(sql, new AlertRowMapper());
+            List<Alert> alerts = jdbcTemplate.query(sql, new AlertRowMapper());
+            log.info("Retrieved {} alerts from alert_history without tickets", alerts.size());
+            
+            // Log details of each alert for debugging
+            if (alerts.isEmpty()) {
+                log.warn("No alerts retrieved! This might indicate a query issue or data mismatch.");
+                // Try a simpler query to see if we can get any data
+                String simpleSql = "SELECT * FROM alert_history LIMIT 5";
+                List<Map<String, Object>> rawData = jdbcTemplate.queryForList(simpleSql);
+                log.info("Sample raw data from alert_history (first 5 rows): {}", rawData);
+            } else {
+                for (Alert alert : alerts) {
+                    log.info("Alert from history - ID: {}, Facility: {}, Type: {}, SubType: {}, TicketID: {}", 
+                            alert.getId(), alert.getFacilityId(), alert.getAlertType(), 
+                            alert.getAlertSubType(), alert.getTicketId());
+                }
+            }
+            
+            return alerts;
+        } catch (Exception e) {
+            log.error("Error retrieving alerts from alert_history", e);
+            return new java.util.ArrayList<>();
+        }
     }
 
     /**
