@@ -49,11 +49,13 @@ public class MDMSUtils {
         ModuleDetail activitiesMDMSModuleDetail = getActivitiesModuleRequestData();
         ModuleDetail stateInfoModuleDetail = getStateModuleRequestData();
         ModuleDetail tenantModuleDetail = getTenantModuleRequestData();
+        ModuleDetail amcThresholdDetail = getAMCThresholdsModuleRequestData();
 
         List<ModuleDetail> moduleDetails = new LinkedList<>();
         moduleDetails.add(activitiesMDMSModuleDetail);
         moduleDetails.add(stateInfoModuleDetail);
         moduleDetails.add(tenantModuleDetail);
+        moduleDetails.add(amcThresholdDetail);
 
         MdmsCriteria mdmsCriteria = MdmsCriteria.builder().moduleDetails(moduleDetails).tenantId(tenantId)
                 .build();
@@ -106,5 +108,23 @@ public class MDMSUtils {
 
         return tenantModuleDetail;
     }
+
+    private ModuleDetail getAMCThresholdsModuleRequestData() {
+        List<MasterDetail> amcThresholdsMasterDetails = new ArrayList<>();
+
+        MasterDetail amcThresholdsMasterDetail = MasterDetail.builder()
+                .name(MDMS_AMC_THRESHOLD_MODULE_NAME)
+                .filter(FILTER_CODE)
+                .build();
+        amcThresholdsMasterDetails.add(amcThresholdsMasterDetail);
+
+        ModuleDetail amcThresholdsModuleDetail = ModuleDetail.builder()
+                .masterDetails(amcThresholdsMasterDetails)
+                .moduleName(MDMS_AMC_MODULE_NAME)
+                .build();
+
+        return amcThresholdsModuleDetail;
+    }
+
 
 }

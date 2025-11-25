@@ -16,7 +16,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -98,5 +97,19 @@ public class ScheduledVisitController {
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         ScheduledVisitResponse visitResponse = ScheduledVisitResponse.builder().responseInfo(responseInfo).scheduledVisits(scheduledVisits).totalCount(count).build();
         return new ResponseEntity<ScheduledVisitResponse>(visitResponse, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/_update", method = RequestMethod.POST)
+    public ResponseEntity<ScheduledVisitResponse> updateScheduledVisits(
+            @ApiParam(value = "Details for the updated scheduled visits.", required = true) 
+            @Valid @RequestBody ScheduledVisitRequest request) {
+        log.info("Received request to update scheduled visits");
+        ScheduledVisitRequest enrichedScheduledVisitRequest = scheduledVisitService.updateScheduledVisit(request);
+        ScheduledVisitResponse response = ScheduledVisitResponse.builder()
+                .scheduledVisits(enrichedScheduledVisitRequest.getScheduledVisits())
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(enrichedScheduledVisitRequest.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 }

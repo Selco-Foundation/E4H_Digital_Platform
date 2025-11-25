@@ -7,6 +7,7 @@ import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.ScheduledVisitRepository;
 import org.egov.amc.service.enrichment.ScheduledVisitEnrichment;
 import org.egov.amc.util.AmcConfigurationServiceUtil;
+import org.egov.amc.util.MDMSUtils;
 import org.egov.amc.validator.ScheduledVisitValidator;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
@@ -24,6 +25,8 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
 
+import static org.egov.amc.util.AmcConstants.*;
+
 @Service
 @Slf4j
 public class ScheduledVisitService {
@@ -38,6 +41,7 @@ public class ScheduledVisitService {
     private final AmcConfigurationService amcConfigurationService;
     private final VisitWorkflowService workflowService;
     private final JdbcTemplate jdbcTemplate;
+    private final MDMSUtils mdmsUtils;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -46,7 +50,7 @@ public class ScheduledVisitService {
     @Autowired
     public ScheduledVisitService(
             ScheduledVisitRepository scheduledVisitsRepository, ScheduledVisitValidator scheduledVisitsValidator, ServiceRequestRepository requestRepository, ScheduledVisitEnrichment scheduledVisitsEnrichment, AMCServiceConfiguration scheduledVisitsConfiguration,
-            Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate) {
+            Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils) {
             this.scheduledVisitsValidator = scheduledVisitsValidator;
         this.requestRepository = requestRepository;
         this.producer = producer;
@@ -57,6 +61,7 @@ public class ScheduledVisitService {
         this.amcConfigurationService = amcConfigurationService;
         this.workflowService = workflowService;
         this.jdbcTemplate = jdbcTemplate;
+        this.mdmsUtils = mdmsUtils;
     }
 
     public ScheduledVisitRequest createScheduledVisit(ScheduledVisitRequest request) {
@@ -317,9 +322,13 @@ public class ScheduledVisitService {
              */
             amcConfigurationServiceUtil.mergeScheduledVisitAdditionalDetails(amcConfiguration, amcConfigurationFromDB);
 
+            // Check if visit needs to be scheduled based on notice period
+            checkAndScheduleVisitIfNeeded(amcConfigurationFromDB, request.getRequestInfo());
+
             handleUpdateScheduledVisit(request, amcConfiguration, amcConfigurationFromDB);
         }
     }
+
 
     private void handleUpdateScheduledVisit(ScheduledVisitRequest request, ScheduledVisit scheduledVisits, ScheduledVisit scheduledVisitsFromDB) {
         /*
@@ -376,6 +385,141 @@ public class ScheduledVisitService {
                 .filter(p -> scheduledVisitsId.equals(String.valueOf(p.getId())))
                 .findFirst()
                 .orElse(null);
+    }
+
+    /**
+     * Check if visit is nearing scheduled date and apply SCHEDULE action if needed
+     * This checks MDMS for notice period (amc.AMCThresholds.amc_visit_notice_period_in_days)
+     * and applies workflow action if scheduled_date < current_date + notice_period
+     */
+    private void checkAndScheduleVisitIfNeeded(ScheduledVisit visit, RequestInfo requestInfo) {
+        // Only process DRAFT visits
+        if (visit.getStatus() == null || !visit.getStatus().equals("DRAFT")) {
+            return;
+        }
+
+        try {
+            // Fetch notice period from MDMS
+            AmcConfigurationRequest mdmsRequest = AmcConfigurationRequest.builder()
+                    .requestInfo(requestInfo)
+                    .amcConfigurations(new ArrayList<>())
+                    .build();
+            Object mdmsData = mdmsUtils.mDMSCall(mdmsRequest, visit.getTenantId());
+            Integer noticePeriod = parseNoticePeriodFromMDMS(mdmsData, visit.getTenantId());
+            
+            if (noticePeriod == null) {
+                log.warn("Could not fetch notice period from MDMS for tenant: {}. Skipping auto-schedule check.", visit.getTenantId());
+                return;
+            }
+
+            // Calculate threshold date: current_date + notice_period
+            long currentTimeMillis = System.currentTimeMillis();
+            LocalDate currentDate = Instant.ofEpochMilli(currentTimeMillis)
+                    .atZone(ZoneId.systemDefault())
+                    .toLocalDate();
+            LocalDate thresholdDate = currentDate.plusDays(noticePeriod);
+            long thresholdDateMillis = thresholdDate.atStartOfDay(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli();
+
+            // Check if scheduled_date < threshold_date
+            if (visit.getScheduledDate() != null && visit.getScheduledDate() < thresholdDateMillis) {
+                log.info("Visit {} is nearing scheduled date (scheduled: {}, threshold: {}). Applying SCHEDULE action.", 
+                        visit.getId(), visit.getScheduledDate(), thresholdDateMillis);
+                
+                // Apply SCHEDULE workflow action
+                Workflow workflow = Workflow.builder()
+                        .action("SCHEDULE")
+                        .comments("Automatically scheduled by daily cron job - visit nearing scheduled date")
+                        .build();
+                
+                VisitReportSubmissionRequest workflowRequest = VisitReportSubmissionRequest.builder()
+                        .requestInfo(requestInfo)
+                        .visitId(visit.getId())
+                        .workflow(workflow)
+                        .build();
+                
+                try {
+                    updateVisitWorkflow(workflowRequest);
+                    log.info("Successfully applied SCHEDULE action on visit: {}", visit.getId());
+                } catch (Exception e) {
+                    log.error("Error applying SCHEDULE workflow action on visit: {}", visit.getId(), e);
+                    // Don't throw - continue with the update
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error checking if visit needs scheduling: {}", visit.getId(), e);
+            // Don't throw - continue with the update
+        }
+    }
+
+    /**
+     * Parse MDMS response to extract notice period from AMCThresholds
+     */
+    private Integer parseNoticePeriodFromMDMS(Object mdmsData, String tenantId) {
+        if (mdmsData == null) {
+            log.warn("MDMS response is null for tenant: {}", tenantId);
+            return null;
+        }
+
+        try {
+            LinkedHashMap<String, Object> responseMap = (LinkedHashMap<String, Object>) mdmsData;
+            LinkedHashMap<String, Object> mdmsRes = (LinkedHashMap<String, Object>) responseMap.get("MdmsRes");
+
+            if (mdmsRes == null) {
+                log.warn("MdmsRes not found in MDMS response for tenant: {}", tenantId);
+                return null;
+            }
+
+            LinkedHashMap<String, Object> amcModule = (LinkedHashMap<String, Object>) mdmsRes.get(MDMS_AMC_MODULE_NAME);
+
+            if (amcModule == null) {
+                log.warn("AMC module not found in MDMS response for tenant: {}", tenantId);
+                return null;
+            }
+            List<LinkedHashMap<String, Object>> thresholds = (List<LinkedHashMap<String, Object>>) amcModule.get(MDMS_AMC_THRESHOLD_MODULE_NAME);
+
+            if (thresholds == null || thresholds.isEmpty()) {
+                log.warn("AMCThresholds not found in MDMS response for tenant: {}", tenantId);
+                return null;
+            }
+
+            // Find the first active threshold (status == "active")
+            LinkedHashMap<String, Object> activeThreshold = null;
+            for (LinkedHashMap<String, Object> threshold : thresholds) {
+                Object status = threshold.get("status");
+                if ("active".equals(status)) {
+                    activeThreshold = threshold;
+                    break;
+                }
+            }
+
+            if (activeThreshold == null) {
+                log.warn("No active AMCThresholds found in MDMS response for tenant: {}", tenantId);
+                return null;
+            }
+
+            Object noticePeriodObj = activeThreshold.get("amc_visit_notice_period_in_days");
+
+            if (noticePeriodObj == null) {
+                log.warn("amc_visit_notice_period_in_days not found in AMCThresholds for tenant: {}", tenantId);
+                return null;
+            }
+
+            Integer noticePeriod = null;
+            if (noticePeriodObj instanceof Integer) {
+                noticePeriod = (Integer) noticePeriodObj;
+            } else if (noticePeriodObj instanceof Number) {
+                noticePeriod = ((Number) noticePeriodObj).intValue();
+            }
+
+            log.info("Fetched notice period from MDMS for tenant {}: {} days", tenantId, noticePeriod);
+            return noticePeriod;
+
+        } catch (Exception e) {
+            log.error("Error parsing AMCThresholds from MDMS response for tenant: {}", tenantId, e);
+            return null;
+        }
     }
 
     public List<ProcessInstance> getProcessInstanceById(String businessId, String tenantId, RequestInfo requestInfo) {
