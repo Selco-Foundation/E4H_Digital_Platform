@@ -24,9 +24,10 @@ public class MappingScheduler {
     /**
      * Scheduled job to sync Center ID to HFR ID mappings (runs weekly on Sunday at 2 AM)
      * Uses the dedicated RMS mapping API which is updated weekly
+     * COMMENTED OUT: Cron job disabled for this build
      */
-    @Scheduled(cron = "${rms.mapping.sync.cron:0 0 2 * * 0}", zone = "Asia/Kolkata")
-    @ConditionalOnProperty(value = "rms.mapping.sync.enabled", havingValue = "true", matchIfMissing = true)
+    // @Scheduled(cron = "${rms.mapping.sync.cron:0 0 2 * * 0}", zone = "Asia/Kolkata")
+    // @ConditionalOnProperty(value = "rms.mapping.sync.enabled", havingValue = "true", matchIfMissing = true)
     public void syncMappings() {
         log.info("Starting scheduled Center ID to HFR ID mapping sync from RMS API");
         try {
@@ -50,9 +51,10 @@ public class MappingScheduler {
 
     /**
      * Scheduled job to validate mappings (runs weekly on Sunday at 3 AM)
+     * COMMENTED OUT: Cron job disabled for this build
      */
-    @Scheduled(cron = "${rms.mapping.validation.cron:0 0 3 * * 0}", zone = "Asia/Kolkata")
-    @ConditionalOnProperty(value = "rms.mapping.sync.enabled", havingValue = "true", matchIfMissing = true)
+    // @Scheduled(cron = "${rms.mapping.validation.cron:0 0 3 * * 0}", zone = "Asia/Kolkata")
+    // @ConditionalOnProperty(value = "rms.mapping.sync.enabled", havingValue = "true", matchIfMissing = true)
     public void validateMappings() {
         log.info("Starting scheduled mapping validation");
         try {

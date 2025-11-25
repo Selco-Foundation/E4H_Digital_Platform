@@ -121,11 +121,61 @@ public class AlertRepository {
     }
 
     /**
+     * Checks if an alert already has a ticket created
+     * Returns true if a ticket exists for the given facility, alert type, and sub-type
+     */
+    public boolean hasExistingTicket(String facilityId, Alert.AlertType alertType, Alert.AlertSubType alertSubType) {
+        String sql = "SELECT COUNT(*) FROM active_alerts " +
+                "WHERE facility_id = ? AND alert_type = ? AND alert_sub_type = ? " +
+                "AND ticket_id IS NOT NULL AND ticket_id != ''";
+
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class,
+                facilityId, alertType.name(), alertSubType.name());
+
+        return count != null && count > 0;
+    }
+
+    /**
      * Gets all active alerts
      */
     public List<Alert> getAllActiveAlerts() {
         String sql = "SELECT * FROM active_alerts WHERE status = 'ACTIVE' OR status = 'TICKET_CREATED'";
         return jdbcTemplate.query(sql, new AlertRowMapper());
+    }
+
+    /**
+     * Gets alerts from alert_history that don't have tickets, filtered by alert type and sub-type
+     * Used when trigger endpoint is called to process existing alerts without syncing from servers
+     * Returns the most recent alert for each unique facility_id, alert_type, alert_sub_type combination
+     */
+    public List<Alert> getAlertsFromHistoryWithoutTickets(Alert.AlertType alertType, Alert.AlertSubType alertSubType) {
+        String sql = "SELECT DISTINCT ON (facility_id, alert_type, alert_sub_type) " +
+                "alert_id as id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
+                "detected_at, resolved_at, NULL::timestamp as last_suppressed_at, ticket_id, " +
+                "COALESCE(metadata::text, '') as metadata " +
+                "FROM alert_history " +
+                "WHERE alert_type = ? AND alert_sub_type = ? " +
+                "AND (ticket_id IS NULL OR ticket_id = '') " +
+                "ORDER BY facility_id, alert_type, alert_sub_type, detected_at DESC";
+
+        return jdbcTemplate.query(sql, new AlertRowMapper(), alertType.name(), alertSubType.name());
+    }
+
+    /**
+     * Gets all alerts from alert_history that don't have tickets, filtered by alert type
+     * Used when trigger endpoint is called to process existing alerts without syncing from servers
+     */
+    public List<Alert> getAlertsFromHistoryWithoutTicketsByType(Alert.AlertType alertType) {
+        String sql = "SELECT DISTINCT ON (facility_id, alert_type, alert_sub_type) " +
+                "alert_id as id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
+                "detected_at, resolved_at, NULL::timestamp as last_suppressed_at, ticket_id, " +
+                "COALESCE(metadata::text, '') as metadata " +
+                "FROM alert_history " +
+                "WHERE alert_type = ? " +
+                "AND (ticket_id IS NULL OR ticket_id = '') " +
+                "ORDER BY facility_id, alert_type, alert_sub_type, detected_at DESC";
+
+        return jdbcTemplate.query(sql, new AlertRowMapper(), alertType.name());
     }
 
     /**

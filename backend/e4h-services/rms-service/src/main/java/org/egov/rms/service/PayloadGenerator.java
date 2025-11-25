@@ -45,13 +45,13 @@ public class PayloadGenerator {
 
             // Build incident payload
             IMServiceRequest.Incident incident = IMServiceRequest.Incident.builder()
-                    .incidentType("PANEL")
-                    .incidentSubType("OtherPanel")
-                    .tenantId("pg.dummy")
-                    .district("RAICHUR") // TODO: Extract from mapping or facility data
-                    .block("Raichur") // TODO: Extract from mapping or facility data
-                    .phcType("pg.dummy")
-                    .phcSubType("Primary Health Centre") // TODO: Extract from facility type
+                    .incidentType(incidentType)
+                    .incidentSubType(incidentSubType)
+                    .tenantId("pg.bagalkot")
+                    .district("BAGALKOTE") // TODO: Extract from mapping or facility data
+                    .block("BAGALKOT") // TODO: Extract from mapping or facility data
+                    .phcType("pg.bagalkot")
+                    .phcSubType("Urban Primary Health Center") // TODO: Extract from facility type
                     .comments(buildComments(alert, null))
                     .systemFunctional("FUNCTIONAL")
                     .source("RMS")
@@ -102,21 +102,21 @@ public class PayloadGenerator {
     private String mapAlertSubTypeToIncidentSubType(Alert.AlertSubType alertSubType, Alert.AlertType alertType) {
         switch (alertSubType) {
             case LOW_GENERATION:
-                return "Low Generation (RMS data)";
+                return "Low Generation";
             case SHUTDOWN:
                 return "ShutdownInverter";
             case HIGH_VOLTAGE:
                 return "VoltageInverter";
             case BURNT_DISCONNECTED:
-                return "BurntorDamaged";
+                return "Overcharge";
             case DEEP_DISCHARGING:
-                return "DeepDischarge";
+                return "Overcharge";
             case OVERCHARGING:
-                return "DeepDischarge";
+                return "Overcharge";
             case VOLTAGE_VARIATION_LOW:
-                return "VoltageInverter";
+                return "LowVoltage";
             case VOLTAGE_VARIATION_HIGH:
-                return "highvoltage";
+                return "HighVoltage";
             default:
                 return "RMS Data Alert";
         }

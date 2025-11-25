@@ -9,6 +9,7 @@ import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.Alert;
 import org.egov.rms.model.IMServiceRequest;
 import org.egov.rms.model.RMSFacilityData;
+import org.egov.rms.repository.AlertRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ public class RMSOrchestratorService {
     private final PayloadGenerator payloadGenerator;
     private final SauraEmitraConnector sauraEmitraConnector;
     private final RMSConfiguration config;
+    private final AlertRepository alertRepository;
 
     /**
      * Executes the complete RMS workflow: collect data, apply rules, deduplicate, generate tickets
@@ -71,8 +73,13 @@ public class RMSOrchestratorService {
     private void processPanelAlerts(RequestInfo requestInfo) {
         log.info("Processing panel-level alerts");
         try {
-            List<RMSFacilityData> facilities = dataCollectorService.collectPanelData();
-            List<Alert> alerts = ruleEngineService.applyPanelRules(facilities);
+            // Sync data from RMS servers - COMMENTED OUT: sync disabled for trigger endpoint
+            // List<RMSFacilityData> facilities = dataCollectorService.collectPanelData();
+            // Instead, get alerts from alert_history that don't have tickets
+            List<Alert> alerts = alertRepository.getAlertsFromHistoryWithoutTickets(
+                    Alert.AlertType.PANEL, Alert.AlertSubType.LOW_GENERATION);
+            log.info("Found {} panel alerts from history without tickets", alerts.size());
+            // Apply deduplication to prevent duplicate tickets
             List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
             createTickets(uniqueAlerts, requestInfo, "Panel Low Generation");
         } catch (Exception e) {
@@ -86,10 +93,15 @@ public class RMSOrchestratorService {
     private void processInverterNoSignalAlerts(RequestInfo requestInfo) {
         log.info("Processing inverter no-signal alerts");
         try {
-            List<RMSFacilityData> facilities = dataCollectorService.collectInverterNoSignalData();
-            List<Alert> alerts = ruleEngineService.applyInverterRules(facilities, true);
-//            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
-            createTickets(alerts, requestInfo, "Inverter No Signal");
+            // Sync data from RMS servers - COMMENTED OUT: sync disabled for trigger endpoint
+            // List<RMSFacilityData> facilities = dataCollectorService.collectInverterNoSignalData();
+            // Instead, get alerts from alert_history that don't have tickets
+            List<Alert> alerts = alertRepository.getAlertsFromHistoryWithoutTickets(
+                    Alert.AlertType.INVERTER, Alert.AlertSubType.SHUTDOWN);
+            log.info("Found {} inverter no-signal alerts from history without tickets", alerts.size());
+            // Apply deduplication to prevent duplicate tickets
+            List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
+            createTickets(uniqueAlerts, requestInfo, "Inverter No Signal");
         } catch (Exception e) {
             log.error("Error processing inverter no-signal alerts", e);
         }
@@ -101,8 +113,13 @@ public class RMSOrchestratorService {
     private void processInverterHighVoltageAlerts(RequestInfo requestInfo) {
         log.info("Processing inverter high voltage alerts");
         try {
-            List<RMSFacilityData> facilities = dataCollectorService.collectInverterHighVoltageData();
-            List<Alert> alerts = ruleEngineService.applyInverterRules(facilities, false);
+            // Sync data from RMS servers - COMMENTED OUT: sync disabled for trigger endpoint
+            // List<RMSFacilityData> facilities = dataCollectorService.collectInverterHighVoltageData();
+            // Instead, get alerts from alert_history that don't have tickets
+            List<Alert> alerts = alertRepository.getAlertsFromHistoryWithoutTickets(
+                    Alert.AlertType.INVERTER, Alert.AlertSubType.HIGH_VOLTAGE);
+            log.info("Found {} inverter high voltage alerts from history without tickets", alerts.size());
+            // Apply deduplication to prevent duplicate tickets
             List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
             createTickets(uniqueAlerts, requestInfo, "Inverter High Voltage");
         } catch (Exception e) {
@@ -116,8 +133,13 @@ public class RMSOrchestratorService {
     private void processBatteryAlerts(RequestInfo requestInfo) {
         log.info("Processing battery alerts (voltage = 0)");
         try {
-            List<RMSFacilityData> facilities = dataCollectorService.collectBatteryVoltageZeroData();
-            List<Alert> alerts = ruleEngineService.applyBatteryRules(facilities);
+            // Sync data from RMS servers - COMMENTED OUT: sync disabled for trigger endpoint
+            // List<RMSFacilityData> facilities = dataCollectorService.collectBatteryVoltageZeroData();
+            // Instead, get alerts from alert_history that don't have tickets
+            List<Alert> alerts = alertRepository.getAlertsFromHistoryWithoutTickets(
+                    Alert.AlertType.BATTERY, Alert.AlertSubType.BURNT_DISCONNECTED);
+            log.info("Found {} battery alerts from history without tickets", alerts.size());
+            // Apply deduplication to prevent duplicate tickets
             List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
             createTickets(uniqueAlerts, requestInfo, "Battery Voltage Zero");
         } catch (Exception e) {
@@ -131,8 +153,18 @@ public class RMSOrchestratorService {
     private void processBatteryDeepDischargeAlerts(RequestInfo requestInfo) {
         log.info("Processing battery deep discharge/overcharge alerts");
         try {
-            List<RMSFacilityData> facilities = dataCollectorService.collectBatteryDeepDischargeData();
-            List<Alert> alerts = ruleEngineService.applyBatteryDeepDischargeRules(facilities);
+            // Sync data from RMS servers - COMMENTED OUT: sync disabled for trigger endpoint
+            // List<RMSFacilityData> facilities = dataCollectorService.collectBatteryDeepDischargeData();
+            // Instead, get alerts from alert_history that don't have tickets (both deep discharge and overcharge)
+            List<Alert> deepDischargeAlerts = alertRepository.getAlertsFromHistoryWithoutTickets(
+                    Alert.AlertType.BATTERY, Alert.AlertSubType.DEEP_DISCHARGING);
+            List<Alert> overchargeAlerts = alertRepository.getAlertsFromHistoryWithoutTickets(
+                    Alert.AlertType.BATTERY, Alert.AlertSubType.OVERCHARGING);
+            List<Alert> alerts = new ArrayList<>();
+            alerts.addAll(deepDischargeAlerts);
+            alerts.addAll(overchargeAlerts);
+            log.info("Found {} battery deep discharge/overcharge alerts from history without tickets", alerts.size());
+            // Apply deduplication to prevent duplicate tickets
             List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
             createTickets(uniqueAlerts, requestInfo, "Battery Deep Discharge");
         } catch (Exception e) {
@@ -146,8 +178,18 @@ public class RMSOrchestratorService {
     private void processGridAlerts(RequestInfo requestInfo) {
         log.info("Processing grid alerts");
         try {
-            List<RMSFacilityData> facilities = dataCollectorService.collectGridVoltageData();
-            List<Alert> alerts = ruleEngineService.applyGridRules(facilities);
+            // Sync data from RMS servers - COMMENTED OUT: sync disabled for trigger endpoint
+            // List<RMSFacilityData> facilities = dataCollectorService.collectGridVoltageData();
+            // Instead, get alerts from alert_history that don't have tickets (both low and high voltage)
+            List<Alert> lowVoltageAlerts = alertRepository.getAlertsFromHistoryWithoutTickets(
+                    Alert.AlertType.GRID, Alert.AlertSubType.VOLTAGE_VARIATION_LOW);
+            List<Alert> highVoltageAlerts = alertRepository.getAlertsFromHistoryWithoutTickets(
+                    Alert.AlertType.GRID, Alert.AlertSubType.VOLTAGE_VARIATION_HIGH);
+            List<Alert> alerts = new ArrayList<>();
+            alerts.addAll(lowVoltageAlerts);
+            alerts.addAll(highVoltageAlerts);
+            log.info("Found {} grid alerts from history without tickets", alerts.size());
+            // Apply deduplication to prevent duplicate tickets
             List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
             createTickets(uniqueAlerts, requestInfo, "Grid Voltage Variation");
         } catch (Exception e) {
@@ -159,6 +201,7 @@ public class RMSOrchestratorService {
      * Creates tickets for alerts
      * Limits the number of tickets created per trigger if testing limit is configured
      * Each trigger independently creates up to the configured limit
+     * Skips alerts that already have tickets to prevent duplicates
      */
     private void createTickets(List<Alert> alerts, RequestInfo requestInfo, String triggerName) {
         log.info("Creating tickets for {} alerts (trigger: {})", alerts.size(), triggerName);
@@ -177,9 +220,18 @@ public class RMSOrchestratorService {
         
         int successCount = 0;
         int failureCount = 0;
+        int skippedCount = 0;
         
         for (Alert alert : alertsToProcess) {
             try {
+                // Check if alert already has a ticket - skip to prevent duplicates
+                if (alertRepository.hasExistingTicket(alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType())) {
+                    log.debug("Skipping alert {} - ticket already exists for facility: {}, type: {}, subType: {}", 
+                            alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
+                    skippedCount++;
+                    continue;
+                }
+                
                 IMServiceRequest ticketRequest = payloadGenerator.generateTicketPayload(alert, requestInfo);
                 
                 if (ticketRequest != null) {
@@ -199,8 +251,8 @@ public class RMSOrchestratorService {
             }
         }
         
-        log.info("Ticket creation completed for '{}' trigger: {} succeeded, {} failed (processed {} out of {} alerts)", 
-                triggerName, successCount, failureCount, alertsToProcess.size(), alerts.size());
+        log.info("Ticket creation completed for '{}' trigger: {} succeeded, {} failed, {} skipped (processed {} out of {} alerts)", 
+                triggerName, successCount, failureCount, skippedCount, alertsToProcess.size(), alerts.size());
     }
 
     /**

@@ -17,9 +17,10 @@ public class RMSScheduler {
 
     /**
      * Scheduled job to collect data and apply rules every 15 minutes
+     * COMMENTED OUT: Cron job disabled for this build
      */
-    @Scheduled(cron = "${rms.scheduler.rule.engine.cron:0 */15 * * * *}", zone = "Asia/Kolkata")
-    @ConditionalOnProperty(value = "rms.scheduler.rule.engine.enabled", havingValue = "true", matchIfMissing = true)
+    // @Scheduled(cron = "${rms.scheduler.rule.engine.cron:0 */15 * * * *}", zone = "Asia/Kolkata")
+    // @ConditionalOnProperty(value = "rms.scheduler.rule.engine.enabled", havingValue = "true", matchIfMissing = true)
     public void executeRuleEngine() {
         log.info("Starting scheduled rule engine execution");
         try {
@@ -32,9 +33,10 @@ public class RMSScheduler {
 
     /**
      * Scheduled job for daily solar data analysis (runs at 1 AM)
+     * COMMENTED OUT: Cron job disabled for this build
      */
-    @Scheduled(cron = "${rms.scheduler.solar.daily.cron:0 0 1 * * *}", zone = "Asia/Kolkata")
-    @ConditionalOnProperty(value = "rms.scheduler.solar.daily.enabled", havingValue = "true", matchIfMissing = true)
+    // @Scheduled(cron = "${rms.scheduler.solar.daily.cron:0 0 1 * * *}", zone = "Asia/Kolkata")
+    // @ConditionalOnProperty(value = "rms.scheduler.solar.daily.enabled", havingValue = "true", matchIfMissing = true)
     public void executeSolarDailyAnalysis() {
         log.info("Starting scheduled daily solar analysis");
         try {

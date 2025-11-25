@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableScheduling
+// @EnableScheduling - COMMENTED OUT: Cron jobs disabled for this build
 public class RMSApplication {
 
     public static void main(String[] args) {
