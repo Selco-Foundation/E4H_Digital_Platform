@@ -133,6 +133,12 @@ public class IMQueryBuilder {
             preparedStmtList.add(criteria.getDistrict().toLowerCase());
         }
 
+        if (criteria.getBoundaryCode() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" LOWER(ser.boundarycode) = ? ");
+            preparedStmtList.add(criteria.getBoundaryCode().toLowerCase());
+        }
+
         if (criteria.getBlock() != null) {
             addClauseIfRequired(preparedStmtList, builder);
             builder.append(" LOWER(ser.block) = ? ");
