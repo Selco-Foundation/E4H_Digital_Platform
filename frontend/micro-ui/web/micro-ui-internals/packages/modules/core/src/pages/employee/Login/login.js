@@ -87,6 +87,10 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         console.error("Login report failed", err);
       }
 
+      let boundaryCodes = {
+        codes: ["-"],
+        type: "country"
+      };
       try {
         const hrmsResponse = await Digit.HRMSService.search("in", null, { codes: user.info.userName });
         const hrmsUser = hrmsResponse?.Employees?.[0];
@@ -102,7 +106,6 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
             }
           }
         }
-        let boundaryCodes = {};
         if (jurisdictionBoundaries?.facility?.length) {
           boundaryCodes = {
             codes: jurisdictionBoundaries.facility,
@@ -127,6 +130,8 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         Digit.SessionStorage.set("Jurisdiction.Boundaries", boundaryCodes);
         Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", boundaryCodes);
       } catch (err) {
+        Digit.SessionStorage.set("Jurisdiction.Boundaries", boundaryCodes);
+        Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", boundaryCodes);
         console.error("Failed to fetch HRMS User", err);
       }
 
