@@ -20,7 +20,7 @@ const ChangeCity = (prop) => {
   }
   const history = useHistory();
   const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionBoundaries?.codes?.join(","))
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionBoundaries?.codes || [])
   const { t } = prop;
 
   const handleChangeCity = (city) => {

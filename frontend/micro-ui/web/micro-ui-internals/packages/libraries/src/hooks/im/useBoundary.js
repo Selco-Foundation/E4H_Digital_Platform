@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "react-query";
 
 const fetchBoundaries = async (codes) => {
-  const params = {
+  const queryFilter = {
     tenantId : "in",
     includeChildren : true,
     includeParents : true,
@@ -9,7 +9,7 @@ const fetchBoundaries = async (codes) => {
     codes: codes,
   }
 
-  const boundaryResponse = await Digit.BoundaryService.fetchBoundaryRelations(params);
+  const boundaryResponse = await Digit.BoundaryService.fetchBoundaryRelations(queryFilter);
 
   const extractBoundaries = (boundaries) => {
     const compiledBoundaries = {};

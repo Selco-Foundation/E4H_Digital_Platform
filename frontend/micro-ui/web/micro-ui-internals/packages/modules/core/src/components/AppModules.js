@@ -19,7 +19,7 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
   const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
   const dispatch = useDispatch();
 
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionBoundaries?.codes?.join(","));
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionBoundaries?.codes || []);
   const { data: boundaryLanguageData } = Digit.Hooks.pgr.useMDMS(stateCode, "common-masters", ["BoundaryLanguage"]);
 
   useEffect(() => {

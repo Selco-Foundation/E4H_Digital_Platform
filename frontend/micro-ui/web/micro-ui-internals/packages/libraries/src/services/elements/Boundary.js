@@ -2,10 +2,13 @@ import { Request } from "../atoms/Utils/Request";
 
 export const BoundaryService = {
 
-  fetchBoundaryRelations : async (params) => {
-    const endpoint = "/boundary-service/boundary-relationships/_search";
+  fetchBoundaryRelations : async (queryFilter) => {
+    const endpoint = "/boundary-service/boundary-relationships/v2/_search";
     const headers = {
       "Content-Type" : "application/json"
+    }
+    const data = {
+      "BoundaryRelationship": queryFilter,
     }
 
     return await Request({
@@ -13,7 +16,7 @@ export const BoundaryService = {
       userService : true,
       method : "POST",
       auth : true,
-      params : params,
+      data : data,
       headers : headers,
     });
   },

@@ -53,7 +53,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
 
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes?.join(","));
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes || []);
 
   useEffect(() => {
     setSelectBoundaryCode(jurisdictionCurrentBoundary?.codes?.join(","));
