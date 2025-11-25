@@ -228,6 +228,21 @@ public class EmployeeService {
             for(Employee employee: employees){
                 employee.setUser(mapOfUsers.get(employee.getUuid()));
             }
+            
+            // Filter employees to ensure they have the requested roles
+            if(!CollectionUtils.isEmpty(criteria.getRoles()) && !CollectionUtils.isEmpty(employees)) {
+                List<String> requestedRoleCodes = criteria.getRoles();
+                employees = employees.stream()
+                    .filter(employee -> {
+                        if(employee.getUser() == null || CollectionUtils.isEmpty(employee.getUser().getRoles())) {
+                            return false;
+                        }
+                        // Check if employee's user has any of the requested roles
+                        return employee.getUser().getRoles().stream()
+                            .anyMatch(role -> requestedRoleCodes.contains(role.getCode()));
+                    })
+                    .collect(Collectors.toList());
+            }
 		}
 		return EmployeeResponse.builder().responseInfo(factory.createResponseInfoFromRequestInfo(requestInfo, true))
 				.employees(employees).build();
