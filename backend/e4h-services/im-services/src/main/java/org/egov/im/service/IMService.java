@@ -74,8 +74,7 @@ public class IMService {
         enrichmentService.enrichCreateRequest(request);
         RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
                 .tenantId(request.getIncident().getTenantId())
-                .district(request.getIncident().getDistrict())
-                .block(request.getIncident().getBlock())
+                .boundaryCode(request.getIncident().getBoundaryCode())
                 .applicationStatus(Set.of(
                         "PENDINGFORASSIGNMENT",
                         "PENDINGRESOLUTION",
@@ -86,8 +85,6 @@ public class IMService {
                 ))
                 .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
                 .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
-                .phcType(new HashSet<>(Collections.singletonList(request.getIncident().getPhcType())))
-                .phcSubType(new HashSet<>(Collections.singletonList(request.getIncident().getPhcSubType())))
                 .build();
         List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
         if (incidentWrappers!=null && !incidentWrappers.isEmpty())
