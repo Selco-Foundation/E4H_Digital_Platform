@@ -8,7 +8,11 @@ import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:selco/blocs/selected_amc_origin/selected_amc_origin.dart';
+import 'package:selco/blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
+import 'package:selco/utils/utils.dart';
 
+import '../blocs/cache_amc_media_upload/cache_amc_media_upload.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -25,6 +29,9 @@ class AmcMediaUploadPage extends StatefulWidget {
 }
 
 class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
+  String? _currentScheduledVisitId;
+  FormOrigin? origin;
+  String userType = USER_TYPES.AMC.name;
   List<PlatformFile> _selectedImages = [];
   bool _isImagesInitLoading = false;
   double? _latitude;
@@ -45,6 +52,23 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
           _longitude = st.longitude;
         });
       }
+    });
+
+    context.read<SelectedAmcOriginBloc>().state.whenOrNull(
+        selected: (originAmc) {
+      origin = originAmc;
+    });
+
+    context.read<SelectedScheduledVisitBloc>().state.whenOrNull(
+        selected: (visit) {
+      _currentScheduledVisitId = visit.id;
+
+      context.read<CacheAmcMediaUploadBloc>().add(
+            CacheAmcMediaUploadEvent.get(
+              _currentScheduledVisitId!,
+              userType,
+            ),
+          );
     });
   }
 
@@ -93,7 +117,14 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
           showSuffixIcon: false,
           text: context.translate(i18.common.coreCommonSubmit),
           onPress: () async {
-            context.router.push(const AmcOtpRoute());
+            switch (origin) {
+              case FormOrigin.overallSummary:
+              case FormOrigin.submitForApproval:
+                context.router.push(const AmcOtpRoute());
+                break;
+              default:
+                context.router.push(const AmcHomeRoute());
+            }
           },
         ),
         children: [

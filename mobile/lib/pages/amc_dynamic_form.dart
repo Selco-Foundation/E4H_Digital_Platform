@@ -11,9 +11,10 @@ import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import 'package:selco/blocs/scheduled_visit/scheduled_visit.dart';
 
 import '../blocs/activity_facility_bom/activity_facility_bom.dart';
+import '../blocs/scheduled_visit/scheduled_visit.dart';
+import '../blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
 import '../repositories/app_init_repo.dart';
@@ -56,7 +57,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
     final kv = widget.initialFormValues;
     if (!mounted) return;
     setState(() {
-      _projectInitialKV = kv ?? const {};
+      _projectInitialKV = kv ?? const {"faults_observed": "YES"};
       _formSeed++;
     });
   }
@@ -145,6 +146,10 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   }
 
   void _popUntilThenRefreshOrigin(BuildContext context, FormOrigin origin) {
+    context
+        .read<SelectedAmcOriginBloc>()
+        .add(SelectedAmcOriginEvent.select(origin));
+
     final root = context.router.root;
 
     const PageRouteInfo targetRoute = AmcMediaUploadRoute();

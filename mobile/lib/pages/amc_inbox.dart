@@ -26,6 +26,7 @@ import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import 'amc_select_facility.dart';
 
 @RoutePage()
 class AmcInboxPage extends StatefulWidget {
@@ -203,18 +204,49 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                       ],
                     ),
                     const SizedBox(height: spacer4),
-                    BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
-                      builder: (context, projectState) {
-                        return projectState.maybeWhen(
-                          initial: () => _loadingIndicator(),
-                          loading: () => _loadingIndicator(),
-                          fetched: (projectsList) =>
-                              _buildList(projectsList, userState),
-                          searchResults: (list) => _buildList(list, userState),
-                          orElse: () => const SizedBox.shrink(),
-                        );
-                      },
-                    ),
+                    // BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
+                    //   builder: (context, projectState) {
+                    //     return projectState.maybeWhen(
+                    //       initial: () => _loadingIndicator(),
+                    //       loading: () => _loadingIndicator(),
+                    //       fetched: (projectsList) =>
+                    //           _buildList(projectsList, userState),
+                    //       searchResults: (list) => _buildList(list, userState),
+                    //       orElse: () => const SizedBox.shrink(),
+                    //     );
+                    //   },
+                    // ),
+                    if (_selectedTabIndex == 0)
+                      AMCInstallationReportCard(
+                        label: "View",
+                        title: 'Dharnal PHC',
+                        status: 'Rejected',
+                        dateAssigned: DateTime.now(),
+                        onPress: () {
+                          context.router.push(AmcDynamicFormRoute(
+                              pageName: "AMC_Report",
+                              uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
+                              schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                              scheduledVisitId: '12345678',
+                              origin: FormOrigin.submitForApproval));
+                        },
+                      ),
+                    const SizedBox(height: spacer4),
+                    if (_selectedTabIndex == 1)
+                      InboxReportCard(
+                        onPress: () {
+                          context.router.push(AmcDynamicFormRoute(
+                              pageName: "AMC_Report",
+                              uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
+                              schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                              scheduledVisitId: "123456789",
+                              origin: FormOrigin.submitted));
+                        },
+                        title: "Sirsa PHC",
+                        dateAssigned: DateTime.now(),
+                        status: 'Approved',
+                        isAmc: true,
+                      ),
                     const SizedBox(height: spacer5),
                   ],
                 ),

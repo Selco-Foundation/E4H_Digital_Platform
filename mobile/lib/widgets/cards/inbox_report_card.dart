@@ -14,6 +14,7 @@ class InboxReportCard extends StatelessWidget {
   final DateTime dateAssigned;
   final Function() onPress;
   final bool? isAmc;
+  final bool? isOtp;
 
   const InboxReportCard({
     super.key,
@@ -22,6 +23,7 @@ class InboxReportCard extends StatelessWidget {
     required this.dateAssigned,
     required this.onPress,
     this.isAmc = false,
+    this.isOtp = false,
   });
 
   @override
@@ -91,7 +93,11 @@ class InboxReportCard extends StatelessWidget {
           const SizedBox(height: spacer4),
           DigitButton(
               mainAxisSize: MainAxisSize.max,
-              label: !(isAmc!) ? 'View Summary' : 'View Report',
+              label: !(isAmc!)
+                  ? 'View Summary'
+                  : isOtp!
+                      ? 'Submit For Approval'
+                      : 'View Report',
               onPressed: onPress,
               type: DigitButtonType.secondary,
               size: DigitButtonSize.large),

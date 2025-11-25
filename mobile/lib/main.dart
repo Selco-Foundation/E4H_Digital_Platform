@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
+import 'package:selco/blocs/cache_amc_media_upload/cache_amc_media_upload.dart';
 
 import '../blocs/scheduled_visit/scheduled_visit.dart';
 import 'blocs/activity_facility/activity_facility.dart';
@@ -123,6 +124,8 @@ class _MainAppState extends State<MainApp> {
                 create: (context) => ActivityFacilityBomBloc(widget.isar)),
             BlocProvider(create: (context) => RejectionBloc(widget.isar)),
             BlocProvider(create: (context) => ScheduledVisitBloc(widget.isar)),
+            BlocProvider(
+                create: (context) => CacheAmcMediaUploadBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) {

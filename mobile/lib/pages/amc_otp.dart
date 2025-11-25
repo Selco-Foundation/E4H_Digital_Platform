@@ -22,7 +22,7 @@ class AmcOtpPage extends StatefulWidget {
 }
 
 class _AmcOtpPageState extends State<AmcOtpPage> {
-  static const _otp = "";
+  static const _otp = "otp";
   final TextEditingController otpController = TextEditingController();
   bool next = false;
   final FocusNode pinFocusNode = FocusNode();
@@ -44,17 +44,38 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
             body: ScrollableContent(
               enableFixedDigitButton: true,
               backgroundColor: theme.colorTheme.generic.background,
-              footer: FooterButton(
-                isDisabled: !form.valid,
-                showSuffixIcon: false,
-                text: context.translate(i18.common.coreCommonSubmit),
-                onPress: () {
-                  form.markAllAsTouched();
-                  if (!form.valid) return;
+              // footer: FooterButton(
+              //   isDisabled: !form.valid,
+              //   showSuffixIcon: false,
+              //   text: context.translate(i18.common.coreCommonSubmit),
+              //   onPress: () {
+              //     form.markAllAsTouched();
+              //     if (!form.valid) return;
+              //
+              //     FocusManager.instance.primaryFocus?.unfocus();
+              //     // context.read<UserOtpBloc>().add(UserOtpEvent.storeOtp(
+              //     //     otp: (form.control(_otp).value as String).trim()));
+              //   },
+              // ),
+              footer: ReactiveFormConsumer(
+                builder: (context, form, child) {
+                  return FooterButton(
+                    isDisabled: !form.valid,
+                    showSuffixIcon: false,
+                    text: context.translate(i18.common.coreCommonSubmit),
+                    onPress: () {
+                      form.markAllAsTouched();
+                      if (!form.valid) return;
 
-                  FocusManager.instance.primaryFocus?.unfocus();
-                  // context.read<UserOtpBloc>().add(UserOtpEvent.storeOtp(
-                  //     otp: (form.control(_otp).value as String).trim()));
+                      FocusManager.instance.primaryFocus?.unfocus();
+                      context.router.push(const AmcHomeRoute());
+                      // context.read<UserOtpBloc>().add(
+                      //   UserOtpEvent.storeOtp(
+                      //     otp: (form.control(_otp).value as String).trim(),
+                      //   ),
+                      // );
+                    },
+                  );
                 },
               ),
               children: [
@@ -80,7 +101,8 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                           ],
                           errorMessage: field.errorText,
                           onChanged: (input) {
-                            form.control(_otp).value = input;
+                            // form.control(_otp).value = input;
+                            field.didChange(input);
                           },
                         ),
                       ),

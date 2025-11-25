@@ -17,7 +17,6 @@ import 'package:intl/intl.dart';
 import 'package:selco/utils/utils.dart';
 
 import '../blocs/scheduled_visit/scheduled_visit.dart';
-import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -42,45 +41,125 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
         status: WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name));
   }
 
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    return BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
+      builder: (context, state) {
+        return Scaffold(
+          body: ScrollableContent(
+            backgroundColor: theme.colorTheme.generic.background,
+            children: [
+              const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: spacer4, vertical: spacer2),
+                    child: _buildSearchAndSortControls(textTheme, theme),
+                  ),
+                  const SizedBox(height: spacer2),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: spacer4, vertical: spacer2),
+                    child: AMCInstallationReportCard(
+                      label: "Resume",
+                      title: 'Dharnal PHC',
+                      status: 'Scheduled',
+                      dateAssigned: DateTime.now(),
+                      onPress: () {
+                        context.router.push(AmcDynamicFormRoute(
+                            pageName: "AMC_Report",
+                            uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
+                            schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                            scheduledVisitId: '12345678',
+                            origin: FormOrigin.overallSummary));
+                      },
+                    ),
+                  )
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // @override
   // Widget build(BuildContext context) {
   //   final theme = Theme.of(context);
   //   final textTheme = theme.digitTextTheme(context);
   //
+  //   final isar = context.read<ScheduledVisitBloc>().isar;
+  //   const schemaKey = 'SELCO.AMC_SCHEDULED_MAINTENANCE';
+  //
   //   return BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
   //     builder: (context, state) {
-  //       return Scaffold(
-  //         body: ScrollableContent(
-  //           backgroundColor: theme.colorTheme.generic.background,
-  //           children: [
-  //             const BackNavigationHelpHeaderWidget(
-  //               showBackNavigation: true,
-  //               showHelp: false,
-  //             ),
-  //             Column(
-  //               children: [
-  //                 Padding(
-  //                   padding: const EdgeInsets.symmetric(
-  //                       horizontal: spacer4, vertical: spacer2),
-  //                   child: _buildSearchAndSortControls(textTheme, theme),
-  //                 ),
-  //                 const SizedBox(height: spacer2),
-  //                 //_buildProjectList(projectList),
-  //                 state.maybeWhen(
+  //       return NotificationListener<ScrollNotification>(
+  //         onNotification: (notification) {
+  //           if (notification is ScrollUpdateNotification) {
+  //             final max = notification.metrics.maxScrollExtent;
+  //             final current = notification.metrics.pixels;
+  //
+  //             if (current > max - 200) {
+  //               final bloc = context.read<ScheduledVisitBloc>();
+  //               bloc.state.maybeWhen(
+  //                 loaded:
+  //                     (items, hasMore, totalCount, fromCache, isLoadingMore) {
+  //                   if (hasMore && !isLoadingMore) {
+  //                     bloc.add(
+  //                       ScheduledVisitEvent.loadMore(
+  //                         status:
+  //                             WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name,
+  //                       ),
+  //                     );
+  //                   }
+  //                 },
+  //                 orElse: () {},
+  //               );
+  //             }
+  //           }
+  //           return false; // let scroll events continue bubbling
+  //         },
+  //         child: Scaffold(
+  //           body: ScrollableContent(
+  //             backgroundColor: theme.colorTheme.generic.background,
+  //             children: [
+  //               const BackNavigationHelpHeaderWidget(
+  //                 showBackNavigation: true,
+  //                 showHelp: false,
+  //               ),
+  //               Column(
+  //                 children: [
+  //                   Padding(
+  //                     padding: const EdgeInsets.symmetric(
+  //                       horizontal: spacer4,
+  //                       vertical: spacer2,
+  //                     ),
+  //                     child: _buildSearchAndSortControls(textTheme, theme),
+  //                   ),
+  //                   const SizedBox(height: spacer2),
+  //                   state.maybeWhen(
   //                     loading: () => const Center(
-  //                           child: Padding(
-  //                             padding: EdgeInsets.only(top: spacer8),
-  //                             child: CircularProgressIndicator(),
-  //                           ),
-  //                         ),
+  //                       child: Padding(
+  //                         padding: EdgeInsets.only(top: spacer8),
+  //                         child: CircularProgressIndicator(),
+  //                       ),
+  //                     ),
   //                     failure: (msg) => Padding(
-  //                           padding: const EdgeInsets.all(spacer2),
-  //                           child: Text(
-  //                             'Failed to load scheduled visits',
-  //                             style: textTheme.bodyS.copyWith(
-  //                                 color: theme.colorTheme.alert.error),
-  //                           ),
-  //                         ),
+  //                       padding: const EdgeInsets.all(spacer2),
+  //                       child: Text(
+  //                         'Failed to load scheduled visits',
+  //                         style: textTheme.bodyS
+  //                             .copyWith(color: theme.colorTheme.alert.error),
+  //                       ),
+  //                     ),
   //                     loaded: (items, hasMore, totalCount, fromCache,
   //                         isLoadingMore) {
   //                       if (items.isEmpty) {
@@ -89,242 +168,111 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
   //                           child: Text(
   //                             'No scheduled visits found.',
   //                             style: textTheme.bodyS.copyWith(
-  //                                 color: theme.colorTheme.text.secondary),
+  //                               color: theme.colorTheme.text.secondary,
+  //                             ),
   //                           ),
   //                         );
   //                       }
   //
-  //                       return ListView.separated(
-  //                           controller: _scrollController,
-  //                           shrinkWrap: true,
-  //                           physics: const AlwaysScrollableScrollPhysics(),
-  //                           itemCount: items.length + (hasMore ? 1 : 0),
-  //                           separatorBuilder: (_, __) => const DigitDivider(
-  //                                 dividerType: DividerType.small,
-  //                               ),
-  //                           itemBuilder: (ctx, index) {
-  //                             if (index >= items.length) {
-  //                               // loader row when loading next page
-  //                               return const Padding(
-  //                                 padding: EdgeInsets.symmetric(
-  //                                   vertical: spacer2,
+  //                       return Padding(
+  //                         padding: const EdgeInsets.symmetric(
+  //                           horizontal: spacer4,
+  //                           vertical: spacer2,
+  //                         ),
+  //                         child: Column(
+  //                           children: [
+  //                             for (int index = 0;
+  //                                 index < items.length;
+  //                                 index++) ...[
+  //                               FutureBuilder(
+  //                                   future: AmcDynamicFormRepository()
+  //                                       .resolveFormActionLabel(
+  //                                     isar: isar,
+  //                                     scheduledVisitId: items[index].id ?? '',
+  //                                     schemaKey: schemaKey,
+  //                                     origin: FormOrigin.overallSummary,
+  //                                   ),
+  //                                   builder: (context, snapshot) {
+  //                                     final label = snapshot.data ?? 'Start';
+  //                                     return AMCInstallationReportCard(
+  //                                         label: label,
+  //                                         title: items[index]
+  //                                                 .facility
+  //                                                 ?.facilityName ??
+  //                                             '',
+  //                                         status: items[index].status,
+  //                                         dateAssigned:
+  //                                             items[index].scheduledDate ??
+  //                                                 DateTime.now(),
+  //                                         onPress: () async {
+  //                                           final scheduledVisit = items[index];
+  //
+  //                                           context
+  //                                               .read<
+  //                                                   SelectedScheduledVisitBloc>()
+  //                                               .add(SelectedScheduledVisitEvent
+  //                                                   .select(scheduledVisit));
+  //
+  //                                           final userType =
+  //                                               USER_TYPES.AMC.name;
+  //
+  //                                           final formRepo =
+  //                                               AmcDynamicFormRepository();
+  //                                           final initialValues = await formRepo
+  //                                               .getInitialFormValues(
+  //                                             isar: isar,
+  //                                             scheduledVisitId:
+  //                                                 scheduledVisit.id!,
+  //                                             responsesFromModel: scheduledVisit
+  //                                                 .visitReport?.responses,
+  //                                             userType: userType,
+  //                                           );
+  //
+  //                                           context.router.push(
+  //                                             AmcDynamicFormRoute(
+  //                                               pageName: 'AMC_Report',
+  //                                               uniqueIdentifier:
+  //                                                   'AMC.SCHEDULED_MAINTENANCE',
+  //                                               schemaName: schemaKey,
+  //                                               scheduledVisitId:
+  //                                                   items[index].id ?? '',
+  //                                               origin:
+  //                                                   FormOrigin.overallSummary,
+  //                                               initialFormValues:
+  //                                                   initialValues,
+  //                                             ),
+  //                                           );
+  //                                         });
+  //                                   }),
+  //                               const SizedBox(height: spacer2),
+  //                               if (index != items.length - 1)
+  //                                 const DigitDivider(
+  //                                   dividerType: DividerType.small,
   //                                 ),
+  //                             ],
+  //                             if (isLoadingMore)
+  //                               const Padding(
+  //                                 padding:
+  //                                     EdgeInsets.symmetric(vertical: spacer2),
   //                                 child: Center(
   //                                   child: CircularProgressIndicator(),
   //                                 ),
-  //                               );
-  //                             }
-  //
-  //                             return Padding(
-  //                               padding: const EdgeInsets.symmetric(
-  //                                   horizontal: spacer4, vertical: spacer2),
-  //                               child: AMCInstallationReportCard(
-  //                                 title:
-  //                                     items[index].facility?.facilityName ?? '',
-  //                                 status: items[index].status ?? '',
-  //                                 dateAssigned: items[index].scheduledDate ??
-  //                                     DateTime.now(),
-  //                                 onPress: () {
-  //                                   context.router.push(AmcDynamicFormRoute(
-  //                                       pageName: "AMC_Report",
-  //                                       uniqueIdentifier:
-  //                                           "AMC.SCHEDULED_MAINTENANCE",
-  //                                       schemaName:
-  //                                           "SELCO.AMC_SCHEDULED_MAINTENANCE",
-  //                                       projectId: items[index].id ?? '',
-  //                                       origin: FormOrigin.overallSummary));
-  //                                 },
-  //                                 fraction: 1,
   //                               ),
-  //                             );
-  //                           });
+  //                           ],
+  //                         ),
+  //                       );
   //                     },
-  //                     orElse: () => const SizedBox.shrink()),
-  //               ],
-  //             ),
-  //           ],
+  //                     orElse: () => const SizedBox.shrink(),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ],
+  //           ),
   //         ),
   //       );
   //     },
   //   );
   // }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final textTheme = theme.digitTextTheme(context);
-
-    final isar = context.read<ScheduledVisitBloc>().isar;
-    const schemaKey = 'SELCO.AMC_SCHEDULED_MAINTENANCE';
-
-    return BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
-      builder: (context, state) {
-        return NotificationListener<ScrollNotification>(
-          onNotification: (notification) {
-            if (notification is ScrollUpdateNotification) {
-              final max = notification.metrics.maxScrollExtent;
-              final current = notification.metrics.pixels;
-
-              if (current > max - 200) {
-                final bloc = context.read<ScheduledVisitBloc>();
-                bloc.state.maybeWhen(
-                  loaded:
-                      (items, hasMore, totalCount, fromCache, isLoadingMore) {
-                    if (hasMore && !isLoadingMore) {
-                      bloc.add(
-                        ScheduledVisitEvent.loadMore(
-                          status:
-                              WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name,
-                        ),
-                      );
-                    }
-                  },
-                  orElse: () {},
-                );
-              }
-            }
-            return false; // let scroll events continue bubbling
-          },
-          child: Scaffold(
-            body: ScrollableContent(
-              backgroundColor: theme.colorTheme.generic.background,
-              children: [
-                const BackNavigationHelpHeaderWidget(
-                  showBackNavigation: true,
-                  showHelp: false,
-                ),
-                Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: spacer4,
-                        vertical: spacer2,
-                      ),
-                      child: _buildSearchAndSortControls(textTheme, theme),
-                    ),
-                    const SizedBox(height: spacer2),
-                    state.maybeWhen(
-                      loading: () => const Center(
-                        child: Padding(
-                          padding: EdgeInsets.only(top: spacer8),
-                          child: CircularProgressIndicator(),
-                        ),
-                      ),
-                      failure: (msg) => Padding(
-                        padding: const EdgeInsets.all(spacer2),
-                        child: Text(
-                          'Failed to load scheduled visits',
-                          style: textTheme.bodyS
-                              .copyWith(color: theme.colorTheme.alert.error),
-                        ),
-                      ),
-                      loaded: (items, hasMore, totalCount, fromCache,
-                          isLoadingMore) {
-                        if (items.isEmpty) {
-                          return Padding(
-                            padding: const EdgeInsets.all(spacer4),
-                            child: Text(
-                              'No scheduled visits found.',
-                              style: textTheme.bodyS.copyWith(
-                                color: theme.colorTheme.text.secondary,
-                              ),
-                            ),
-                          );
-                        }
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: spacer4,
-                            vertical: spacer2,
-                          ),
-                          child: Column(
-                            children: [
-                              for (int index = 0;
-                                  index < items.length;
-                                  index++) ...[
-                                FutureBuilder(
-                                    future: AmcDynamicFormRepository()
-                                        .resolveFormActionLabel(
-                                      isar: isar,
-                                      scheduledVisitId: items[index].id ?? '',
-                                      schemaKey: schemaKey,
-                                      origin: FormOrigin.overallSummary,
-                                    ),
-                                    builder: (context, snapshot) {
-                                      final label = snapshot.data ?? 'Start';
-                                      return AMCInstallationReportCard(
-                                          label: label,
-                                          title: items[index]
-                                                  .facility
-                                                  ?.facilityName ??
-                                              '',
-                                          status: items[index].status,
-                                          dateAssigned:
-                                              items[index].scheduledDate ??
-                                                  DateTime.now(),
-                                          onPress: () async {
-                                            final scheduledVisit = items[index];
-                                            final userType = USER_TYPES
-                                                .AMC.name; // or derive
-
-                                            // Get initial values:
-                                            final formRepo =
-                                                AmcDynamicFormRepository();
-                                            final initialValues = await formRepo
-                                                .getInitialFormValues(
-                                              isar: isar,
-                                              scheduledVisitId:
-                                                  scheduledVisit.id!,
-                                              responsesFromModel: scheduledVisit
-                                                  .visitReport?.responses,
-                                              userType: userType,
-                                            );
-
-                                            context.router.push(
-                                              AmcDynamicFormRoute(
-                                                pageName: 'AMC_Report',
-                                                uniqueIdentifier:
-                                                    'AMC.SCHEDULED_MAINTENANCE',
-                                                schemaName: schemaKey,
-                                                scheduledVisitId:
-                                                    items[index].id ?? '',
-                                                origin:
-                                                    FormOrigin.overallSummary,
-                                                initialFormValues:
-                                                    initialValues,
-                                              ),
-                                            );
-                                          });
-                                    }),
-                                const SizedBox(height: spacer2),
-                                if (index != items.length - 1)
-                                  const DigitDivider(
-                                    dividerType: DividerType.small,
-                                  ),
-                              ],
-                              if (isLoadingMore)
-                                const Padding(
-                                  padding:
-                                      EdgeInsets.symmetric(vertical: spacer2),
-                                  child: Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                      orElse: () => const SizedBox.shrink(),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
 
   Widget _buildSearchAndSortControls(
       DigitTextTheme textTheme, ThemeData theme) {

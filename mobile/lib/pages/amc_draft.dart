@@ -77,28 +77,31 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                 const SizedBox(height: spacer4),
                 Column(
                   children: [
-                    InboxReportCard(
-                      onPress: () => context.router.push(const AmcOtpRoute()),
-                      title: "Nakodar PHC",
-                      dateAssigned: DateTime.now(),
-                      status: 'Pending Otp Approval',
-                      isAmc: true,
-                    ),
+                    if (_selectedTabIndex == 1)
+                      InboxReportCard(
+                        onPress: () => context.router.push(const AmcOtpRoute()),
+                        title: "Nakodar PHC",
+                        dateAssigned: DateTime.now(),
+                        status: 'Pending Otp Approval',
+                        isAmc: true,
+                        isOtp: true,
+                      ),
                     const SizedBox(height: spacer4),
-                    InboxReportCard(
-                      onPress: () {
-                        context.router.push(AmcDynamicFormRoute(
-                            pageName: "AMC_Report",
-                            uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                            schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                            scheduledVisitId: "123456789",
-                            origin: FormOrigin.submitted));
-                      },
-                      title: "Sirsa PHC",
-                      dateAssigned: DateTime.now(),
-                      status: 'Pending Approval',
-                      isAmc: true,
-                    ),
+                    if (_selectedTabIndex == 0)
+                      InboxReportCard(
+                        onPress: () {
+                          context.router.push(AmcDynamicFormRoute(
+                              pageName: "AMC_Report",
+                              uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
+                              schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                              scheduledVisitId: "123456789",
+                              origin: FormOrigin.submitted));
+                        },
+                        title: "Sirsa PHC",
+                        dateAssigned: DateTime.now(),
+                        status: 'Pending Approval',
+                        isAmc: true,
+                      ),
                   ],
                 )
               ],
