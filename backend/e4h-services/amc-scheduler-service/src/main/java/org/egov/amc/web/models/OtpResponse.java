@@ -13,12 +13,6 @@ import org.egov.common.contract.response.ResponseInfo;
 public class OtpResponse {
     private ResponseInfo responseInfo;
     private Otp otp;
-
-    public OtpResponse(Token token) {
-        if (token != null) {
-            otp = new Otp(token);
-        }
-    }
 }
 
 

@@ -101,7 +101,8 @@ public class ScheduledVisitController {
     }
 
     @RequestMapping(value = "/_resend_otp", method = RequestMethod.POST)
-    public OtpResponse resendOTP(@ApiParam(value = "Capture details of scheduled visit.", required = true) @Valid @RequestBody ResendOTPRequest request) {
-        return scheduledVisitService.resendOTP(request);
+    public ResponseEntity<OtpResponse> resendOTP(@ApiParam(value = "Capture details of scheduled visit.", required = true) @Valid @RequestBody ResendOTPRequest request) {
+        OtpResponse otpResponse = scheduledVisitService.resendOTP(request);
+        return new ResponseEntity<OtpResponse>(otpResponse, HttpStatus.OK);
     }
 }
