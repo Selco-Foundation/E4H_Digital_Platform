@@ -8,7 +8,7 @@ let pgrQuery = {};
 let wfQuery = {};
 
 const Filter = (props) => {
-  let { userName } = Digit.UserService.getUser().info;
+  const { userName } = Digit.UserService.getUser().info;
   const { searchParams } = props;
   const { t } = useTranslation();
   const [districtMenu, setDistrictMenu] = useState([]);
@@ -156,7 +156,12 @@ const isCodePresent = (array, codeToCheck) =>{
     }
 
   }, [pgrfilters, boundaryData, t]);
-  
+
+  useEffect(() => {
+    const code = selectAssigned.code === "ASSIGNED_TO_ME" ? userName : "";
+    setWfFilters(prevFilters => ({ ...prevFilters, assignee: [{ code: code }] }));
+  }, [selectAssigned]);
+
   const tenantId = Digit.ULBService.getCurrentTenantId();
   // let localities = Digit.Hooks.pgr.useLocalities({ city: tenantId });
   const { data: localities } = Digit.Hooks.useBoundaryLocalities(tenantId, "admin", {}, t);
@@ -176,8 +181,6 @@ const isCodePresent = (array, codeToCheck) =>{
 
   const onRadioChange = (value) => {
     setSelectedAssigned(value);
-    userName = value.code === "ASSIGNED_TO_ME" ? userName : "";
-    setWfFilters({ ...wfFilters, assignee: [{ code: userName }] });
   };
 
   useEffect(() => {
@@ -298,7 +301,9 @@ const isCodePresent = (array, codeToCheck) =>{
     setWfFilters(wfRest);
     pgrQuery = {};
     wfQuery = {};
-    setSelectedAssigned("");
+    setSelectedAssigned(
+      (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
+    );
   }
 
   const handleFilterSubmit = () => {
