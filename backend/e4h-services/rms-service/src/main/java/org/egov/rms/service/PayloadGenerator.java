@@ -90,7 +90,7 @@ public class PayloadGenerator {
             case BATTERY:
                 return "Battery";
             case GRID:
-                return "Cables";
+                return "Grid";
             default:
                 return "GIPB";
         }

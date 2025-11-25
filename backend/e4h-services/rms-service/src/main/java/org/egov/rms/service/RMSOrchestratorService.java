@@ -206,20 +206,24 @@ public class RMSOrchestratorService {
      * Limits the number of tickets created per trigger if testing limit is configured
      * Each trigger independently creates up to the configured limit
      * Skips alerts that already have tickets to prevent duplicates
+     * NOTE: Testing limit is NOT applied for "All Alerts from History" trigger to process all alerts
      */
     private void createTickets(List<Alert> alerts, RequestInfo requestInfo, String triggerName) {
         log.info("Creating tickets for {} alerts (trigger: {})", alerts.size(), triggerName);
         
         // Apply testing limit if configured (for testing purposes)
-        // Each trigger independently creates up to the configured limit
+        // Skip limit for "All Alerts from History" trigger to process all alerts
         List<Alert> alertsToProcess = alerts;
-        if (config.getMaxTicketsPerTrigger() != null && config.getMaxTicketsPerTrigger() > 0) {
+        if (!"All Alerts from History".equals(triggerName) && 
+            config.getMaxTicketsPerTrigger() != null && config.getMaxTicketsPerTrigger() > 0) {
             int limit = config.getMaxTicketsPerTrigger();
             if (alerts.size() > limit) {
                 alertsToProcess = alerts.subList(0, limit);
                 log.info("Testing mode: Limiting ticket creation for '{}' trigger to {} tickets (out of {} total alerts)", 
                         triggerName, limit, alerts.size());
             }
+        } else if ("All Alerts from History".equals(triggerName)) {
+            log.info("Processing all {} alerts from active_alerts (testing limit disabled for this trigger)", alerts.size());
         }
         
         int successCount = 0;
