@@ -120,7 +120,7 @@ public class EmployeeRepository {
 	private List<String> fetchEmployeesforJurisdiction(EmployeeSearchCriteria criteria, RequestInfo requestInfo, String stateLevelTenantId) {
 		List<String> employeesIds = new ArrayList<>();
 		List <Object> preparedStmtList = new ArrayList<>();
-		String query = queryBuilder.getJurisdictionSearchQuery(criteria, preparedStmtList, requestInfo);
+		String query = queryBuilder.getJurisdictionSearchQuery(criteria, preparedStmtList, requestInfo, stateLevelTenantId);
 
 		try {
 			query = centralInstanceUtil.replaceSchemaPlaceholder(query, stateLevelTenantId);
