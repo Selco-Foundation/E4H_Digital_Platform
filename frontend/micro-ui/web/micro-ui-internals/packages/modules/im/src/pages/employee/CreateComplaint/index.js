@@ -620,9 +620,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={5}
                 disabled={disbaledUpload}
-                ulb={
-                  selectBoundaryCode !== stateBoundaryCode ? selectBoundaryCode : healthcentre?.code
-                }
+                ulb={Digit.SessionStorage.get("Employee.tenantId")}
                 acceptFiles={".png, .jpg, .jpeg, image/*"}
                 multiple={true}
                 specificFileConstraint={specificFileConstraint[1]}
@@ -648,9 +646,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={2}
                 disabled={disbaledUpload}
-                ulb={
-                  Digit.SessionStorage.get("Employee.tenantId") !== stateBoundaryCode ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
-                }
+                ulb={Digit.SessionStorage.get("Employee.tenantId")}
                 acceptFiles={".mp4, .avi, .mov, .wmv, video/*"}
                 multiple={false}
                 specificFileConstraint={specificFileConstraint[0]}
