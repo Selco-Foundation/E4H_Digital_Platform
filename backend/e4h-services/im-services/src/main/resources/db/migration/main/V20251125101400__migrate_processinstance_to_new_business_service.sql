@@ -6,7 +6,7 @@ select * from (
 	on ewbv.uuid = ewsv.businessserviceid
 	where ewbv.tenantid = 'in'
 	and ewbv.businessservice in ('Incident', 'Incident_Medium', 'Incident_High', 'Incident_Low')
-) a full join (
+) a join (
 	select ewbv.businessservice, ewbv.tenantid, state, ewsv.uuid as old_state_uuid from
 	eg_wf_businessservice_v2 ewbv
 	join eg_wf_state_v2 ewsv
