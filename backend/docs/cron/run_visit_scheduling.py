@@ -8,8 +8,7 @@ import uuid
 tenant_ids = sys.argv[1:] if len(sys.argv) > 1 else []
 
 # Service host - will be overridden by environment variable or default
-SERVICE_HOST = "http://localhost:8096"
-LOCAL_SERVICE_HOST = "http://localhost:8095"
+SERVICE_HOST = "http://amc-service.core-dev:8080/"
 
 # Override with environment variable if set
 import os
@@ -64,7 +63,10 @@ def search_draft_visits(tenant_id, request_info):
         response = requests.post(search_url, headers=headers, json=search_request, timeout=60)
         if response.status_code == 200:
             data = response.json()
-            visits = data.get("scheduledVisits", [])
+            visits = data.get("ScheduledVisits", [])
+            total_count = data.get("TotalCount", 0)
+            if total_count > 0 and len(visits) == 0:
+                print(f"⚠️  Warning: TotalCount={total_count} but no visits found in response. Response keys: {list(data.keys())}")
             return visits
         else:
             print(f"⚠️  Search returned status {response.status_code}: {response.text[:200]}")
