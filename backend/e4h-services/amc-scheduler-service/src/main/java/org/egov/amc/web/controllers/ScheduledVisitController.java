@@ -46,7 +46,7 @@ public class ScheduledVisitController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
-    @RequestMapping(value = "/visit/_generate", method = RequestMethod.POST)
+    @RequestMapping(value = "/configuration/_generate", method = RequestMethod.POST)
     public ResponseEntity<ScheduledVisitResponse> generateVisits(@Validated @RequestBody VisitGenerationRequest request
     ) {
         log.info("Received request to generate visits for configuration: {}", request);
@@ -98,5 +98,11 @@ public class ScheduledVisitController {
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         ScheduledVisitResponse visitResponse = ScheduledVisitResponse.builder().responseInfo(responseInfo).scheduledVisits(scheduledVisits).totalCount(count).build();
         return new ResponseEntity<ScheduledVisitResponse>(visitResponse, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/_resend_otp", method = RequestMethod.POST)
+    public ResponseEntity<OtpResponse> resendOTP(@ApiParam(value = "Capture details of scheduled visit.", required = true) @Valid @RequestBody ResendOTPRequest request) {
+        OtpResponse otpResponse = scheduledVisitService.resendOTP(request);
+        return new ResponseEntity<OtpResponse>(otpResponse, HttpStatus.OK);
     }
 }
