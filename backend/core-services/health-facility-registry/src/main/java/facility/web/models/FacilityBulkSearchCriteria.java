@@ -18,8 +18,11 @@ public class FacilityBulkSearchCriteria {
     private List<String> hfrIds;
     private List<String> ninIds;
     private List<String> boundaryCodes;
+    @Builder.Default
     private Boolean sendNonPaginatedResponse = false;
+    @Builder.Default
     private Integer limit = 10;
+    @Builder.Default
     private Integer offset = 0;
     private Boolean isOnmReady;
 }
