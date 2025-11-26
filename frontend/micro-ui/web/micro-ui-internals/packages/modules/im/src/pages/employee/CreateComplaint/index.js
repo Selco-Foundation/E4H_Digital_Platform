@@ -220,7 +220,7 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   useEffect(() => {
     const isAnyUploading = isImageUploading || isVideoUploading;
-    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthcentre?.code && district?.code && block.code && !isAnyUploading) {
+    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthcentre?.code && district?.code && block?.code && !isAnyUploading) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
@@ -743,6 +743,8 @@ export const CreateComplaint = ({ parentUrl }) => {
                   fontSize: "16px",
                   textAlign: "center",
                   marginBottom: "5px",
+                  maxHeight: "250px",
+                  overflow: "auto",
                 }}
               >
                 <span>
