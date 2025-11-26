@@ -32,24 +32,24 @@ import java.util.List;
 public class AmcConfigurationController {
     private final ObjectMapper objectMapper;
 
-    private final AMCServiceConfiguration fieldPlannerConfiguration;
+    private final AMCServiceConfiguration amcConfigurationnerConfiguration;
 
     private final AmcConfigurationService amcConfigurationService;
 
     @Autowired
-    public AmcConfigurationController(ObjectMapper objectMapper, AMCServiceConfiguration fieldPlannerConfiguration, AmcConfigurationService amcConfigurationService) {
+    public AmcConfigurationController(ObjectMapper objectMapper, AMCServiceConfiguration amcConfigurationnerConfiguration, AmcConfigurationService amcConfigurationService) {
         this.objectMapper = objectMapper;
-        this.fieldPlannerConfiguration = fieldPlannerConfiguration;
+        this.amcConfigurationnerConfiguration = amcConfigurationnerConfiguration;
         this.amcConfigurationService = amcConfigurationService;
     }
 
     @RequestMapping(value = "/_create", method = RequestMethod.POST)
     public ResponseEntity<AmcConfigurationResponse> createAmcConfiguration(@ApiParam(value = "Capture details of benificiary type.", required = true) @Valid @RequestBody AmcConfigurationRequest request) {
-        AmcConfigurationRequest enrichedFieldPlanRequest = amcConfigurationService.createAmcConfiguration(request);
+        AmcConfigurationRequest enrichedamcConfigurationRequest = amcConfigurationService.createAmcConfiguration(request);
         AmcConfigurationResponse response = AmcConfigurationResponse.builder()
-                .amcConfigurations(enrichedFieldPlanRequest.getAmcConfigurations())
+                .amcConfigurations(enrichedamcConfigurationRequest.getAmcConfigurations())
                 .responseInfo(ResponseInfoFactory
-                        .createResponseInfo(enrichedFieldPlanRequest.getRequestInfo(), true))
+                        .createResponseInfo(enrichedamcConfigurationRequest.getRequestInfo(), true))
                 .build();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
@@ -59,16 +59,16 @@ public class AmcConfigurationController {
         AmcConfigurationRequest enrichedAmcConfigurationRequest = amcConfigurationService.updateAmcConfiguration(request);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
-        AmcConfigurationResponse fieldPlanResponse = AmcConfigurationResponse.builder().responseInfo(responseInfo).amcConfigurations(enrichedAmcConfigurationRequest.getAmcConfigurations()).build();
-        return new ResponseEntity<AmcConfigurationResponse>(fieldPlanResponse, HttpStatus.OK);
+        AmcConfigurationResponse amcConfigurationResponse = AmcConfigurationResponse.builder().responseInfo(responseInfo).amcConfigurations(enrichedAmcConfigurationRequest.getAmcConfigurations()).build();
+        return new ResponseEntity<AmcConfigurationResponse>(amcConfigurationResponse, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
     public ResponseEntity<AmcConfigurationResponse> searchAmcConfiguration(
-            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody AmcConfigurationSearchRequest request,
+            @ApiParam(value = "Details for the amcConfiguration.", required = true) @Valid @RequestBody AmcConfigurationSearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
-        List<AmcConfiguration> fieldPlans = amcConfigurationService.searchAmcConfiguration(
+        List<AmcConfiguration> amcConfigurations = amcConfigurationService.searchAmcConfiguration(
                 request,
                 urlParams.getLimit(),
                 urlParams.getOffset(),
@@ -78,7 +78,7 @@ public class AmcConfigurationController {
         );
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         Integer count = amcConfigurationService.countAllAmcConfiguration(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
-        AmcConfigurationResponse fieldPlanResponse = AmcConfigurationResponse.builder().responseInfo(responseInfo).amcConfigurations(fieldPlans).totalCount(count).build();
-        return new ResponseEntity<AmcConfigurationResponse>(fieldPlanResponse, HttpStatus.OK);
+        AmcConfigurationResponse amcConfigurationResponse = AmcConfigurationResponse.builder().responseInfo(responseInfo).amcConfigurations(amcConfigurations).totalCount(count).build();
+        return new ResponseEntity<AmcConfigurationResponse>(amcConfigurationResponse, HttpStatus.OK);
     }
 }

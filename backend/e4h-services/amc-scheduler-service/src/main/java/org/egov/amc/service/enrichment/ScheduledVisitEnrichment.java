@@ -36,7 +36,7 @@ public class ScheduledVisitEnrichment {
 
     }
 
-    /* Enrich FieldPlan with id and audit details */
+    /* Enrich ScheduledVisit with id and audit details */
     private void enrichScheduledVisitRequestOnCreate(ScheduledVisit scheduledVisit, RequestInfo requestInfo) {
         scheduledVisit.setId(UUID.randomUUID().toString());
         log.info("AMC configs id set to " + scheduledVisit.getId());
