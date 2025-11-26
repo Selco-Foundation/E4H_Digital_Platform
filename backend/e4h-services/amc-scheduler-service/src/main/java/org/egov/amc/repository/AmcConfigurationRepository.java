@@ -51,10 +51,10 @@ public class AmcConfigurationRepository extends GenericRepository<AmcConfigurati
         URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
 
         String query = queryBuilder.getAmcConfigurationSearchQuery(criteria, urlParams, preparedStmtList);
-        List<AmcConfiguration> fieldPlanList = jdbcTemplate.query(query, amcConfigurationRowMapper, preparedStmtList.toArray());
+        List<AmcConfiguration> amcConfigurationList = jdbcTemplate.query(query, amcConfigurationRowMapper, preparedStmtList.toArray());
 
-        log.info("Fetched project list based on given search criteria");
-        return fieldPlanList;
+        log.info("Fetched amc configuration list based on given search criteria");
+        return amcConfigurationList;
     }
 
     public Integer getAmcConfigurationCount(AmcConfigurationSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {

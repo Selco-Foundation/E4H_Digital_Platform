@@ -29,11 +29,11 @@ public class AmcConfigurationServiceUtil {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private final AMCServiceConfiguration fieldPlannerConfiguration;
+    private final AMCServiceConfiguration amcConfigurationnerConfiguration;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    public AmcConfigurationServiceUtil(AMCServiceConfiguration fieldPlannerConfiguration, KafkaTemplate<String, Object> kafkaTemplate) {
-        this.fieldPlannerConfiguration = fieldPlannerConfiguration;
+    public AmcConfigurationServiceUtil(AMCServiceConfiguration amcConfigurationnerConfiguration, KafkaTemplate<String, Object> kafkaTemplate) {
+        this.amcConfigurationnerConfiguration = amcConfigurationnerConfiguration;
         this.kafkaTemplate = kafkaTemplate;
     }
 
@@ -100,10 +100,10 @@ public class AmcConfigurationServiceUtil {
         return visits;
     }
 
-    public void mergeAdditionalDetails(AmcConfiguration fieldPlan, AmcConfiguration fieldPlanFromDb) {
-        JsonNode json = jsonMerge(objectMapper.valueToTree(fieldPlanFromDb.getAdditionalDetails()),
-                objectMapper.valueToTree(fieldPlan.getAdditionalDetails()));
-        fieldPlan.setAdditionalDetails(objectMapper.convertValue(json, Map.class));
+    public void mergeAdditionalDetails(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDb) {
+        JsonNode json = jsonMerge(objectMapper.valueToTree(amcConfigurationFromDb.getAdditionalDetails()),
+                objectMapper.valueToTree(amcConfiguration.getAdditionalDetails()));
+        amcConfiguration.setAdditionalDetails(objectMapper.convertValue(json, Map.class));
     }
 
     public void mergeAssetAmcAdditionalDetails(AssetAmc assetAmc, AssetAmc assetAmcFromDb) {
