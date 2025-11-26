@@ -37,15 +37,15 @@ public class AssetAmcValidator {
 
     public static final String START_DATE_SHOULD_BE_LESS_THAN_END_DATE = "Start date should be less than end date";
     public static final String IS_NOT_PRESENT_IN_MDMS = " is not present in MDMS";
-    public static final String TENANT_ID_IS_MANDATORY_IN_FIELDPLAN_REQUEST_BODY = "Tenant ID is mandatory in AssetAmc request body";
+    public static final String TENANT_ID_IS_MANDATORY_IN_ASSETAMC_REQUEST_BODY = "Tenant ID is mandatory in AssetAmc request body";
     public static final String ASSET_TYPES_IS_MANDATORY_IN_AMC_CONFIG_REQUEST_BODY = "Assets Types are mandatory in Amc Configuration request body";
-    public static final String DOES_NOT_EXISTS_FOR_THE_FIELDPLAN = " that you are trying to update does not exists for the AssetAmc ";
+    public static final String DOES_NOT_EXISTS_FOR_THE_ASSETAMC = " that you are trying to update does not exists for the AssetAmc ";
     @Autowired
     MDMSUtils mdmsUtils;
 
     @Autowired
     AMCServiceConfiguration config;
-    private final AmcConfigurationServiceUtil fieldPlanServiceUtil;
+    private final AmcConfigurationServiceUtil assetAmcServiceUtil;
 
     private final AmcConfigurationService amcConfigurationService;
 
@@ -53,10 +53,10 @@ public class AssetAmcValidator {
     @Qualifier("objectMapper")
     ObjectMapper mapper;
 
-    public AssetAmcValidator(ServiceRequestClient serviceRequestRepository, ServiceRequestRepository requestRepository, AmcConfigurationServiceUtil fieldPlanServiceUtil, AmcConfigurationService amcConfigurationService){
+    public AssetAmcValidator(ServiceRequestClient serviceRequestRepository, ServiceRequestRepository requestRepository, AmcConfigurationServiceUtil assetAmcServiceUtil, AmcConfigurationService amcConfigurationService){
         this.serviceRequestRepository = serviceRequestRepository;
         this.requestRepository = requestRepository;
-        this.fieldPlanServiceUtil = fieldPlanServiceUtil;
+        this.assetAmcServiceUtil = assetAmcServiceUtil;
         this.amcConfigurationService = amcConfigurationService;
     }
 
@@ -78,7 +78,7 @@ public class AssetAmcValidator {
 
         if (request.getAssetAmcs() == null || request.getAssetAmcs().size() == 0) {
             log.error("Field Plans list is empty. Field Plans is mandatory");
-            throw new CustomException("FIELDPLAN", "Field Plans are mandatory");
+            throw new CustomException("ASSETAMC", "Field Plans are mandatory");
         }
 
         for (AssetAmc assetAmc : request.getAssetAmcs()) {
@@ -119,7 +119,7 @@ public class AssetAmcValidator {
             }
 
             if (StringUtils.isBlank(assetAmc.getTenantId())) {
-                log.error(TENANT_ID_IS_MANDATORY_IN_FIELDPLAN_REQUEST_BODY);
+                log.error(TENANT_ID_IS_MANDATORY_IN_ASSETAMC_REQUEST_BODY);
                 errorMap.put("TENANT_ID", "Tenant ID is mandatory");
             }
             if ((assetAmc.getAmcStartDate() != null && assetAmc.getAmcEndDate() != null && assetAmc.getAmcEndDate() != 0) && (assetAmc.getAmcStartDate().compareTo(assetAmc.getAmcEndDate()) > 0)) {
@@ -271,7 +271,7 @@ public class AssetAmcValidator {
 
     /* Validates Search Project Request body */
     private void validateSearchAssetAmc(AssetAmcSearchCriteria assetAmc, String tenantId) {
-//        checkAssetAmcsIfEmpty(fieldPlans);
+//        checkAssetAmcsIfEmpty(assetAmcs);
         doNullAndEmptyChecks(tenantId, assetAmc);
 //
         if ((assetAmc.getStartDateFrom() != null && assetAmc.getStartDateFrom() != null && assetAmc.getStartDateTo() != 0) && (assetAmc.getEndDateTo().compareTo(assetAmc.getEndDateTo()) > 0)) {
@@ -285,20 +285,20 @@ public class AssetAmcValidator {
         }
     }
 
-//    private static void checkAssetAmcsIfEmpty(List<AssetAmc> fieldPlans) {
-//        if (fieldPlans == null || fieldPlans.size() == 0) {
-//            log.error("Fieldplan list is empty. AssetAmcs is mandatory");
-//            throw new CustomException("Fieldplan", "AssetAmcs are mandatory");
+//    private static void checkAssetAmcsIfEmpty(List<AssetAmc> assetAmcs) {
+//        if (assetAmcs == null || assetAmcs.size() == 0) {
+//            log.error("AssetAmc list is empty. AssetAmcs is mandatory");
+//            throw new CustomException("AssetAmc", "AssetAmcs are mandatory");
 //        }
 //    }
 
     private static void doNullAndEmptyChecks(String tenantId, AssetAmcSearchCriteria assetAmc) {
         if (assetAmc == null) {
             log.error("assetAmc is mandatory in AssetAmcs");
-            throw new CustomException("FIELDPLAN", "AssetAmc is mandatory");
+            throw new CustomException("ASSETAMC", "AssetAmc is mandatory");
         }
         if (StringUtils.isBlank(assetAmc.getTenantId())) {
-            log.error(TENANT_ID_IS_MANDATORY_IN_FIELDPLAN_REQUEST_BODY);
+            log.error(TENANT_ID_IS_MANDATORY_IN_ASSETAMC_REQUEST_BODY);
             throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
         }
         if ((assetAmc.getIds()==null || assetAmc.getIds().isEmpty()) && (assetAmc.getAssetIds()==null || assetAmc.getAssetIds().isEmpty())
@@ -317,19 +317,19 @@ public class AssetAmcValidator {
 
     /* Validates if all AssetAmcs have same tenant Id */
     private void validateMultipleTenantIds(AssetAmcRequest request) {
-        List<AssetAmc> fieldPlans = request.getAssetAmcs();
-        String firstTenantId = fieldPlans.get(0).getTenantId();
-        if (fieldPlans.stream().anyMatch(p -> !p.getTenantId().equals(firstTenantId))) {
-            log.error("All fieldplans in AssetAmc request must have same tenant Id");
-            throw new CustomException("MULTIPLE_TENANTS", "All fieldplans must have same tenant Id. Please create new request for different tentant id");
+        List<AssetAmc> assetAmcs = request.getAssetAmcs();
+        String firstTenantId = assetAmcs.get(0).getTenantId();
+        if (assetAmcs.stream().anyMatch(p -> !p.getTenantId().equals(firstTenantId))) {
+            log.error("All assetAmcs in AssetAmc request must have same tenant Id");
+            throw new CustomException("MULTIPLE_TENANTS", "All assetAmcs must have same tenant Id. Please create new request for different tentant id");
         }
     }
 
     /* Validates projects data in update request against projects data fetched from database */
     public void validateUpdateAgainstDB(List<AssetAmc> assetAmcsFromRequest, List<AssetAmc> assetAmcsFromDB) {
         if (CollectionUtils.isEmpty(assetAmcsFromDB)) {
-            log.error("The fieldplan records that you are trying to update does not exists in the system");
-            throw new CustomException("INVALID_FIELDPLAN_MODIFY", "The records that you are trying to update does not exists in the system");
+            log.error("The assetAmc records that you are trying to update does not exists in the system");
+            throw new CustomException("INVALID_ASSETAMC_MODIFY", "The records that you are trying to update does not exists in the system");
         }
         Long currentTimestamp = Instant.now().toEpochMilli();
         // Calculate the timestamp for midnight (12:00 AM) of the next date, plus 24 hours, in UTC
@@ -343,23 +343,23 @@ public class AssetAmcValidator {
 
         Long nextDateTimestampUTC = nextDateInstantUTC.toEpochMilli();
         for (AssetAmc assetAmc : assetAmcsFromRequest) {
-            AssetAmc fieldPlanFromDB = assetAmcsFromDB.stream().filter(p -> p.getId().equals(assetAmc.getId())).findFirst().orElse(null);
+            AssetAmc assetAmcFromDB = assetAmcsFromDB.stream().filter(p -> p.getId().equals(assetAmc.getId())).findFirst().orElse(null);
 
-            if (fieldPlanFromDB == null) {
-                log.error("The fieldplan id " + assetAmc.getId() + " that you are trying to update does not exists for the fieldplan");
-                throw new CustomException("INVALID_FIELDPLAN_MODIFY", "The fieldplan id " + assetAmc.getId() + " that you are trying to update does not exists for the fieldplan");
+            if (assetAmcFromDB == null) {
+                log.error("The assetAmc id " + assetAmc.getId() + " that you are trying to update does not exists for the assetAmc");
+                throw new CustomException("INVALID_ASSETAMC_MODIFY", "The assetAmc id " + assetAmc.getId() + " that you are trying to update does not exists for the assetAmc");
             }
 
-            validateStartDateAndEndDateAgainstDB(assetAmc, fieldPlanFromDB, currentTimestamp, nextDateTimestampUTC);
+            validateStartDateAndEndDateAgainstDB(assetAmc, assetAmcFromDB, currentTimestamp, nextDateTimestampUTC);
 
 //            validateUpdateAddressAgainstDB(project, projectFromDB);
         }
     }
 
-    private void validateStartDateAndEndDateAgainstDB(AssetAmc assetAmc, AssetAmc fieldPlanFromDB, Long currentTimestamp, Long nextDateTimestampUTC) {
+    private void validateStartDateAndEndDateAgainstDB(AssetAmc assetAmc, AssetAmc assetAmcFromDB, Long currentTimestamp, Long nextDateTimestampUTC) {
         String errorMessage = "";
-        // Check if the fieldplan start date is not null and whether it's different from the one in the database
-        errorMessage = getErrorMessage(assetAmc, fieldPlanFromDB, currentTimestamp, nextDateTimestampUTC, errorMessage);
+        // Check if the assetAmc start date is not null and whether it's different from the one in the database
+        errorMessage = getErrorMessage(assetAmc, assetAmcFromDB, currentTimestamp, nextDateTimestampUTC, errorMessage);
         // If there's an error message, log it and throw a CustomException
         if (!errorMessage.trim().isEmpty()) {
             log.error(errorMessage);
@@ -370,7 +370,7 @@ public class AssetAmcValidator {
         // Check if the project end date is not null and whether it's different from the one in the database
         if (assetAmc.getAmcEndDate() != null) {
             // Check if the project end date is before the current timestamp or within 24 hours from the next date's midnight
-            if (assetAmc.getAmcEndDate().compareTo(fieldPlanFromDB.getAmcEndDate()) < 0) {
+            if (assetAmc.getAmcEndDate().compareTo(assetAmcFromDB.getAmcEndDate()) < 0) {
                 if (assetAmc.getAmcEndDate().compareTo(currentTimestamp) < 0) {
                     errorMessage = "The asset_amc end date cannot be updated as it has already ended. The asset_amc end date cannot be decreased to a past date.";
                 } else if (assetAmc.getAmcEndDate().compareTo(nextDateTimestampUTC) < 0) {
@@ -387,15 +387,15 @@ public class AssetAmcValidator {
         }
     }
 
-    private static String getErrorMessage(AssetAmc assetAmc, AssetAmc fieldPlanFromDB, Long currentTimestamp, Long nextDateTimestampUTC, String errorMessage) {
+    private static String getErrorMessage(AssetAmc assetAmc, AssetAmc assetAmcFromDB, Long currentTimestamp, Long nextDateTimestampUTC, String errorMessage) {
         if (assetAmc.getAmcStartDate() != null) {
             // Check if the project start date is different from the one in the database
-            if (assetAmc.getAmcStartDate().compareTo(fieldPlanFromDB.getAmcStartDate()) != 0) {
+            if (assetAmc.getAmcStartDate().compareTo(assetAmcFromDB.getAmcStartDate()) != 0) {
                 // Check if the project start date is before the current timestamp or within 24 hours from the next date's midnight
-                if (fieldPlanFromDB.getAmcStartDate().compareTo(currentTimestamp) < 0) {
-                    errorMessage = "The fieldplan start date cannot be updated as the fieldplan has already started.";
+                if (assetAmcFromDB.getAmcStartDate().compareTo(currentTimestamp) < 0) {
+                    errorMessage = "The assetAmc start date cannot be updated as the assetAmc has already started.";
                 } else if (assetAmc.getAmcStartDate().compareTo(nextDateTimestampUTC) < 0) {
-                    errorMessage = "The fieldplan start date cannot be updated as it should be at least 24 hours in advance from the current time and start after the next day onwards.";
+                    errorMessage = "The assetAmc start date cannot be updated as it should be at least 24 hours in advance from the current time and start after the next day onwards.";
                 }
             }
         } else {

@@ -28,7 +28,7 @@ public class AmcConfigurationEnrichment {
 
     private final Producer producer;
 
-    private final AMCServiceConfiguration fieldPlannerConfiguration;
+    private final AMCServiceConfiguration amcConfigurationnerConfiguration;
 
     private final IdGenService idGenService;
 
@@ -42,7 +42,7 @@ public class AmcConfigurationEnrichment {
 
     }
 
-    /* Enrich FieldPlan with id and audit details */
+    /* Enrich amcConfiguration with id and audit details */
     private void enrichAmcConfigurationRequestOnCreate(AmcConfiguration amcConfiguration, RequestInfo requestInfo) {
         amcConfiguration.setId(UUID.randomUUID().toString());
         log.info("AMC configs id set to " + amcConfiguration.getId());
