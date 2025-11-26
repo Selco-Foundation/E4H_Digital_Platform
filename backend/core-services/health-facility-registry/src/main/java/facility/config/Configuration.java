@@ -5,6 +5,8 @@ import org.egov.tracer.config.TracerConfiguration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Import;
 
+import java.util.List;
+
 @org.springframework.context.annotation.Configuration
 @Data
 @Import({TracerConfiguration.class})
@@ -81,4 +83,9 @@ public class Configuration {
     //SMSNotification
     @Value("${egov.sms.notification.topic}")
     private String smsNotificationTopic;
+
+
+    //Facility Search
+    @Value("${onm-non-ready.allowed.roles}")
+    private List<String> onmNonReadyAllowedRoles;
 }
