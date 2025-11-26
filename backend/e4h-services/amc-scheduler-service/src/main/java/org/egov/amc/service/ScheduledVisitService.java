@@ -276,7 +276,7 @@ public class ScheduledVisitService {
         /*
          * Search for asset_amc based on asset_amc IDs provided in the request
          */
-        List<ScheduledVisit> amcConfigurationsFromDB = searchScheduledVisit(
+        List<ScheduledVisit> scheduleVisitFromDB = searchScheduledVisit(
                 getSearchScheduledVisitRequest(request.getScheduledVisits(), request.getRequestInfo()),
                 amcServiceConfiguration.getMaxLimit(), amcServiceConfiguration.getDefaultOffset(),
                 request.getScheduledVisits().get(0).getTenantId(), false, null);
@@ -285,13 +285,13 @@ public class ScheduledVisitService {
         /*
          * Validate the update asset_amc request against the asset_amcs fetched from the database
          */
-        scheduledVisitsValidator.validateUpdateAgainstDB(request.getScheduledVisits(), amcConfigurationsFromDB);
+        scheduledVisitsValidator.validateUpdateAgainstDB(request.getScheduledVisits(), scheduleVisitFromDB);
 
         /*
          * Process each scheduledVisits in the update request
          */
-        for (ScheduledVisit amcConfiguration : request.getScheduledVisits()) {
-            processScheduledVisitUpdate(request, amcConfiguration, amcConfigurationsFromDB);
+        for (ScheduledVisit scheduledVisit : request.getScheduledVisits()) {
+            processScheduledVisitUpdate(request, scheduledVisit, scheduleVisitFromDB);
         }
 
         return request;
@@ -331,9 +331,9 @@ public class ScheduledVisitService {
     }
 
     /* Construct ScheduledVisit Request object for search which contains asset_amc id and tenantId */
-    private ScheduledVisitSearchRequest getSearchScheduledVisitRequest(List<ScheduledVisit> amcConfigurations, RequestInfo requestInfo) {
-        List<String> scheduledVisitsIds = amcConfigurations.stream().map(ScheduledVisit::getId).toList();
-        ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder().ids(scheduledVisitsIds).tenantId(amcConfigurations.get(0).getTenantId()).build();
+    private ScheduledVisitSearchRequest getSearchScheduledVisitRequest(List<ScheduledVisit> scheduleVisit, RequestInfo requestInfo) {
+        List<String> scheduledVisitsIds = scheduleVisit.stream().map(ScheduledVisit::getId).toList();
+        ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder().ids(scheduledVisitsIds).tenantId(scheduleVisit.get(0).getTenantId()).build();
         return ScheduledVisitSearchRequest.builder()
                 .RequestInfo(requestInfo)
                 .searchCriteria(criteria)
@@ -346,27 +346,27 @@ public class ScheduledVisitService {
         return amcConfigurationList;
     }
 
-    private void processScheduledVisitUpdate(ScheduledVisitRequest request, ScheduledVisit amcConfiguration, List<ScheduledVisit> amcConfigurationsFromDB) {
+    private void processScheduledVisitUpdate(ScheduledVisitRequest request, ScheduledVisit visit, List<ScheduledVisit> scheduleVisitFromDB) {
         /*
          * Convert asset_amc ID to string for comparison
          */
-        String scheduledVisitsId = String.valueOf(amcConfiguration.getId());
+        String scheduledVisitsId = String.valueOf(visit.getId());
 
         /*
          * Find the scheduledVisits from the database that matches the current scheduledVisits ID
          */
-        ScheduledVisit amcConfigurationFromDB = findScheduledVisitById(scheduledVisitsId, amcConfigurationsFromDB);
+        ScheduledVisit scheduledVisit = findScheduledVisitById(scheduledVisitsId, scheduleVisitFromDB);
 
-        if (amcConfigurationFromDB != null) {
+        if (scheduledVisit != null) {
             /*
              * Merge additional details of the scheduledVisits from the request and scheduledVisits from DB
              */
-            amcConfigurationServiceUtil.mergeScheduledVisitAdditionalDetails(amcConfiguration, amcConfigurationFromDB);
+            amcConfigurationServiceUtil.mergeScheduledVisitAdditionalDetails(visit, scheduledVisit);
 
             // Check if visit needs to be scheduled based on notice period
-            checkAndScheduleVisitIfNeeded(amcConfigurationFromDB, request.getRequestInfo());
+            checkAndScheduleVisitIfNeeded(visit, request.getRequestInfo());
 
-            handleUpdateScheduledVisit(request, amcConfiguration, amcConfigurationFromDB);
+            handleUpdateScheduledVisit(request, visit, scheduledVisit);
         }
     }
 
@@ -418,11 +418,11 @@ public class ScheduledVisitService {
         // Note: We allow startDate, endDate, vendorId, geographyDetails, activities and auditDetails to be different
     }
 
-    private ScheduledVisit findScheduledVisitById(String scheduledVisitsId, List<ScheduledVisit> amcConfigurationsFromDB) {
+    private ScheduledVisit findScheduledVisitById(String scheduledVisitsId, List<ScheduledVisit> scheduleVisitFromDB) {
         /*
          * Find and return the scheduledVisits with the matching ID from the list of asset_amc fetched from the database
          */
-        return amcConfigurationsFromDB.stream()
+        return scheduleVisitFromDB.stream()
                 .filter(p -> scheduledVisitsId.equals(String.valueOf(p.getId())))
                 .findFirst()
                 .orElse(null);
@@ -492,7 +492,6 @@ public class ScheduledVisitService {
             }
         } catch (Exception e) {
             log.error("Error checking if visit needs scheduling: {}", visit.getId(), e);
-            // Don't throw - continue with the update
         }
     }
 
