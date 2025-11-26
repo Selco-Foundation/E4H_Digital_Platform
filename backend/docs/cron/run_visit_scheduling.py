@@ -8,7 +8,7 @@ import uuid
 tenant_ids = sys.argv[1:] if len(sys.argv) > 1 else []
 
 # Service host - will be overridden by environment variable or default
-SERVICE_HOST = "http://amc-service.core-dev:8080/"
+SERVICE_HOST = "http://amc-service.core-dev:8080"
 
 # Override with environment variable if set
 import os

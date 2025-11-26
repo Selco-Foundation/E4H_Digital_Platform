@@ -28,6 +28,7 @@ public class MDMSUtils {
 
     public static final String FILTER_CODE = "$.*.code";
     public static final String FILTER_ACTIVE_TRUE = "$.[?(@.active==true)]";
+    public static final String FILTER_STATUS_ACTIVE = "$.[?(@.status=='active')]";
     private final ServiceRequestClient serviceRequestRepository;
     private final AMCServiceConfiguration config;
 
@@ -114,7 +115,7 @@ public class MDMSUtils {
 
         MasterDetail amcThresholdsMasterDetail = MasterDetail.builder()
                 .name(MDMS_AMC_THRESHOLD_MODULE_NAME)
-                .filter(FILTER_CODE)
+                .filter(FILTER_STATUS_ACTIVE)
                 .build();
         amcThresholdsMasterDetails.add(amcThresholdsMasterDetail);
 

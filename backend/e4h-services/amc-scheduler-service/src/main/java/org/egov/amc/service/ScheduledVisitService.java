@@ -427,24 +427,26 @@ public class ScheduledVisitService {
                 log.info("Visit {} is nearing scheduled date (scheduled: {}, threshold: {}). Applying SCHEDULE action.", 
                         visit.getId(), visit.getScheduledDate(), thresholdDateMillis);
                 
-                // Apply SCHEDULE workflow action
-                Workflow workflow = Workflow.builder()
-                        .action("SCHEDULE")
-                        .comments("Automatically scheduled by daily cron job - visit nearing scheduled date")
-                        .build();
-                
-                VisitReportSubmissionRequest workflowRequest = VisitReportSubmissionRequest.builder()
-                        .requestInfo(requestInfo)
-                        .visitId(visit.getId())
-                        .workflow(workflow)
-                        .build();
-                
                 try {
-                    updateVisitWorkflow(workflowRequest);
-                    log.info("Successfully applied SCHEDULE action on visit: {}", visit.getId());
+                    // This updates the workflow state and returns the new ProcessInstance
+                    ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
+                            visit,
+                            "SCHEDULE",
+                            null,
+                            requestInfo,
+                            "Automatically scheduled by daily cron job - visit nearing scheduled date"
+                    );
+                    
+                    // Update the visit status directly from the workflow response
+                    if (updatedWorkflow != null && updatedWorkflow.getState() != null) {
+                        visit.setStatus(updatedWorkflow.getState().getState());
+                        log.info("Successfully applied SCHEDULE action on visit: {}. New status: {}", 
+                                visit.getId(), visit.getStatus());
+                    } else {
+                        log.warn("Workflow transition succeeded but returned null state for visit: {}", visit.getId());
+                    }
                 } catch (Exception e) {
                     log.error("Error applying SCHEDULE workflow action on visit: {}", visit.getId(), e);
-                    // Don't throw - continue with the update
                 }
             }
         } catch (Exception e) {
