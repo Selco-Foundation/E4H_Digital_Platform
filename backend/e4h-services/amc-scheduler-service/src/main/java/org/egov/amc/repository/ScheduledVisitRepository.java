@@ -51,10 +51,10 @@ public class ScheduledVisitRepository extends GenericRepository<ScheduledVisit> 
         URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
 
         String query = queryBuilder.getScheduledVisitSearchQuery(criteria, urlParams, preparedStmtList);
-        List<ScheduledVisit> fieldPlanList = jdbcTemplate.query(query, scheduledVisitRowMapper, preparedStmtList.toArray());
+        List<ScheduledVisit> scheduledVisitList = jdbcTemplate.query(query, scheduledVisitRowMapper, preparedStmtList.toArray());
 
         log.info("Fetched project list based on given search criteria");
-        return fieldPlanList;
+        return scheduledVisitList;
     }
 
     public Integer getScheduledVisitCount(ScheduledVisitSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {

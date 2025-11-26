@@ -34,23 +34,23 @@ public class AmcConfigurationValidator {
 
     public static final String START_DATE_SHOULD_BE_LESS_THAN_END_DATE = "Start date should be less than end date";
     public static final String IS_NOT_PRESENT_IN_MDMS = " is not present in MDMS";
-    public static final String TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY = "Tenant ID is mandatory in FieldPlan request body";
+    public static final String TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY = "Tenant ID is mandatory in AmcConfiguration request body";
     public static final String ASSET_TYPES_IS_MANDATORY_IN_AMC_CONFIG_REQUEST_BODY = "Assets Types are mandatory in Amc Configuration request body";
-    public static final String DOES_NOT_EXISTS_FOR_THE_AmcConfiguration = " that you are trying to update does not exists for the FieldPlan ";
+    public static final String DOES_NOT_EXISTS_FOR_THE_AmcConfiguration = " that you are trying to update does not exists for the AmcConfiguration ";
     @Autowired
     MDMSUtils mdmsUtils;
 
     @Autowired
     AMCServiceConfiguration config;
-    private final AmcConfigurationServiceUtil fieldPlanServiceUtil;
+    private final AmcConfigurationServiceUtil amcConfigurationServiceUtil;
     @Autowired
     @Qualifier("objectMapper")
     ObjectMapper mapper;
 
-    public AmcConfigurationValidator(ServiceRequestClient serviceRequestRepository, ServiceRequestRepository requestRepository, AmcConfigurationServiceUtil fieldPlanServiceUtil){
+    public AmcConfigurationValidator(ServiceRequestClient serviceRequestRepository, ServiceRequestRepository requestRepository, AmcConfigurationServiceUtil amcConfigurationServiceUtil){
         this.serviceRequestRepository = serviceRequestRepository;
         this.requestRepository = requestRepository;
-        this.fieldPlanServiceUtil = fieldPlanServiceUtil;
+        this.amcConfigurationServiceUtil = amcConfigurationServiceUtil;
     }
 
     public void validateCreateAmcConfigurationRequest(AmcConfigurationRequest request) {
@@ -59,7 +59,7 @@ public class AmcConfigurationValidator {
 
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
-        //Verify if FieldPlan request and mandatory fields are present
+        //Verify if AmcConfiguration request and mandatory fields are present
         validateAmcConfigurationRequest(request);
 
         if (!errorMap.isEmpty())
@@ -76,19 +76,19 @@ public class AmcConfigurationValidator {
 
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             if (amcConfiguration == null) {
-                log.error("FieldPlan is mandatory in AmcConfiguration");
-                throw new CustomException("FieldPlan", "FieldPlan is mandatory");
+                log.error("AmcConfiguration is mandatory in AmcConfiguration");
+                throw new CustomException("AmcConfiguration", "AmcConfiguration is mandatory");
             }
 
             if (amcConfiguration.getProjectId() == null || amcConfiguration.getProjectId().isEmpty()) {
                 log.error("Project ID is mandatory in AmcConfiguration");
-                throw new CustomException("FieldPlan", "Project ID is mandatory");
+                throw new CustomException("AmcConfiguration", "Project ID is mandatory");
             }
             // Get existing amcConfiguration with projectID from amcConfiguration service
             Project existingProject = getProjectById(request, amcConfiguration);
             if (existingProject == null) {
                 log.error("Project ID do not exist");
-                throw new CustomException("FieldPlan", "Project ID do not exist");
+                throw new CustomException("AmcConfiguration", "Project ID do not exist");
             }
 
             if (amcConfiguration.getVendorId() == null || amcConfiguration.getVendorId().isEmpty()) {
@@ -123,7 +123,7 @@ public class AmcConfigurationValidator {
             }
 
             // Check if amcConfiguration dates are within amcConfiguration dates
-//            isFieldPlanWithinProject(existingProject, amcConfiguration, errorMap);
+//            isAmcConfigurationWithinProject(existingProject, amcConfiguration, errorMap);
 
             if (StringUtils.isBlank(amcConfiguration.getTenantId())) {
                 log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
@@ -219,10 +219,10 @@ public class AmcConfigurationValidator {
         return null;
     }
 
-    public void isFieldPlanWithinProject(Project project, AmcConfiguration amcConfiguration, Map<String, String> errorMap) {
+    public void isAmcConfigurationWithinProject(Project project, AmcConfiguration amcConfiguration, Map<String, String> errorMap) {
         if (project == null || amcConfiguration == null) {
             log.error("Project or AMC configuration is null");
-            errorMap.put("AMC Configuration", "Project or FieldPlan is null");
+            errorMap.put("AMC Configuration", "Project or AmcConfiguration is null");
         }
 
         Long projectStart = project.getStartDate();
@@ -236,7 +236,7 @@ public class AmcConfigurationValidator {
         }
         if (amcConfigStart == null || amcConfigEnd == null) {
             log.error("AMC Configuration dates are not mandatory");
-            errorMap.put("AMC Configuration", "FieldPlan dates are not mandatory");
+            errorMap.put("AMC Configuration", "AmcConfiguration dates are not mandatory");
         }
 
         if (amcConfigStart < projectStart) {
@@ -250,7 +250,7 @@ public class AmcConfigurationValidator {
     }
 
     /* Validates Update Project request body */
-    public void validateUpdateFieldPlanRequest(AmcConfigurationRequest request) {
+    public void validateUpdateAmcConfigurationRequest(AmcConfigurationRequest request) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
@@ -261,7 +261,7 @@ public class AmcConfigurationValidator {
         //Verify if project request have multiple tenant Ids
         validateMultipleTenantIds(request);
 
-        //Verify if FieldPlan id is present
+        //Verify if AmcConfiguration id is present
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             if (StringUtils.isBlank(amcConfiguration.getId())) {
                 log.error("AMC_Id is mandatory");
@@ -275,7 +275,7 @@ public class AmcConfigurationValidator {
     }
 
 
-    /* Validates search FieldPlan request body and parameters*/
+    /* Validates search AmcConfiguration request body and parameters*/
     public void validateSearchAmcConfigurationRequest(AmcConfigurationSearchRequest request, Integer limit, Integer offset, String tenantId) {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
@@ -314,7 +314,7 @@ public class AmcConfigurationValidator {
 
     /* Validates Search Project Request body */
     private void validateSearchAmcConfiguration(AmcConfigurationSearchCriteria amcConfiguration, String tenantId) {
-//        checkAmcConfigurationIfEmpty(fieldPlans);
+//        checkAmcConfigurationIfEmpty(amcConfigurations);
         doNullAndEmptyChecks(tenantId, amcConfiguration);
 //
         if ((amcConfiguration.getConfigurationStartDate() != null && amcConfiguration.getConfigurationStartDate() != null && amcConfiguration.getConfigurationEndDate() != 0) && (amcConfiguration.getConfigurationEndDate().compareTo(amcConfiguration.getConfigurationEndDate()) > 0)) {
@@ -328,17 +328,17 @@ public class AmcConfigurationValidator {
         }
     }
 
-//    private static void checkAmcConfigurationIfEmpty(List<FieldPlan> fieldPlans) {
-//        if (fieldPlans == null || fieldPlans.size() == 0) {
-//            log.error("Fieldplan list is empty. AmcConfiguration is mandatory");
-//            throw new CustomException("Fieldplan", "AmcConfiguration are mandatory");
+//    private static void checkAmcConfigurationIfEmpty(List<AmcConfiguration> amcConfigurations) {
+//        if (amcConfigurations == null || amcConfigurations.size() == 0) {
+//            log.error("amcConfiguration list is empty. AmcConfiguration is mandatory");
+//            throw new CustomException("amcConfiguration", "AmcConfiguration are mandatory");
 //        }
 //    }
 
     private static void doNullAndEmptyChecks(String tenantId, AmcConfigurationSearchCriteria amcConfiguration) {
         if (amcConfiguration == null) {
             log.error("amcConfiguration is mandatory in AmcConfiguration");
-            throw new CustomException("AmcConfiguration", "FieldPlan is mandatory");
+            throw new CustomException("AmcConfiguration", "AmcConfiguration is mandatory");
         }
         if (StringUtils.isBlank(amcConfiguration.getTenantId())) {
             log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
@@ -349,7 +349,7 @@ public class AmcConfigurationValidator {
                 && (amcConfiguration.getFacilityIds()==null || amcConfiguration.getFacilityIds().isEmpty()) && (amcConfiguration.getAssignedUsers()==null || amcConfiguration.getAssignedUsers().isEmpty())
                 && (amcConfiguration.getConfigurationStartDate() == null || amcConfiguration.getConfigurationStartDate() == 0)
                 && (amcConfiguration.getConfigurationEndDate() == null || amcConfiguration.getConfigurationEndDate() == 0)) {
-            log.error("Any one amcConfiguration search field is required for FieldPlan Search");
+            log.error("Any one amcConfiguration search field is required for AmcConfiguration Search");
             throw new CustomException("AMC_CONFIGURATION_SEARCH_FIELDS", "Any one amc configuration search field is required");
         }
 
@@ -361,10 +361,10 @@ public class AmcConfigurationValidator {
 
     /* Validates if all AmcConfiguration have same tenant Id */
     private void validateMultipleTenantIds(AmcConfigurationRequest request) {
-        List<AmcConfiguration> fieldPlans = request.getAmcConfigurations();
-        String firstTenantId = fieldPlans.get(0).getTenantId();
-        if (fieldPlans.stream().anyMatch(p -> !p.getTenantId().equals(firstTenantId))) {
-            log.error("All amcConfigurations in FieldPlan request must have same tenant Id");
+        List<AmcConfiguration> amcConfigurations = request.getAmcConfigurations();
+        String firstTenantId = amcConfigurations.get(0).getTenantId();
+        if (amcConfigurations.stream().anyMatch(p -> !p.getTenantId().equals(firstTenantId))) {
+            log.error("All amcConfigurations in AmcConfiguration request must have same tenant Id");
             throw new CustomException("MULTIPLE_TENANTS", "All amcConfigurations must have same tenant Id. Please create new request for different tentant id");
         }
     }
@@ -387,23 +387,23 @@ public class AmcConfigurationValidator {
 
         Long nextDateTimestampUTC = nextDateInstantUTC.toEpochMilli();
         for (AmcConfiguration amcConfiguration : amcConfigurationsFromRequest) {
-            AmcConfiguration fieldPlanFromDB = amcConfigurationsFromDB.stream().filter(p -> p.getId().equals(amcConfiguration.getId())).findFirst().orElse(null);
+            AmcConfiguration amcConfigurationFromDB = amcConfigurationsFromDB.stream().filter(p -> p.getId().equals(amcConfiguration.getId())).findFirst().orElse(null);
 
-            if (fieldPlanFromDB == null) {
+            if (amcConfigurationFromDB == null) {
                 log.error("The amcConfiguration id " + amcConfiguration.getId() + " that you are trying to update does not exists for the amcConfiguration");
                 throw new CustomException("INVALID_AmcConfiguration_MODIFY", "The amcConfiguration id " + amcConfiguration.getId() + " that you are trying to update does not exists for the amcConfiguration");
             }
 
-            validateStartDateAndEndDateAgainstDB(amcConfiguration, fieldPlanFromDB, currentTimestamp, nextDateTimestampUTC);
+            validateStartDateAndEndDateAgainstDB(amcConfiguration, amcConfigurationFromDB, currentTimestamp, nextDateTimestampUTC);
 
 //            validateUpdateAddressAgainstDB(project, projectFromDB);
         }
     }
 
-    private void validateStartDateAndEndDateAgainstDB(AmcConfiguration amcConfiguration, AmcConfiguration fieldPlanFromDB, Long currentTimestamp, Long nextDateTimestampUTC) {
+    private void validateStartDateAndEndDateAgainstDB(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB, Long currentTimestamp, Long nextDateTimestampUTC) {
         String errorMessage = "";
         // Check if the amcConfiguration start date is not null and whether it's different from the one in the database
-        errorMessage = getErrorMessage(amcConfiguration, fieldPlanFromDB, currentTimestamp, nextDateTimestampUTC, errorMessage);
+        errorMessage = getErrorMessage(amcConfiguration, amcConfigurationFromDB, currentTimestamp, nextDateTimestampUTC, errorMessage);
         // If there's an error message, log it and throw a CustomException
         if (!errorMessage.trim().isEmpty()) {
             log.error(errorMessage);
@@ -414,7 +414,7 @@ public class AmcConfigurationValidator {
         // Check if the project end date is not null and whether it's different from the one in the database
         if (amcConfiguration.getConfigurationEndDate() != null) {
             // Check if the project end date is before the current timestamp or within 24 hours from the next date's midnight
-            if (amcConfiguration.getConfigurationEndDate().compareTo(fieldPlanFromDB.getConfigurationEndDate()) < 0) {
+            if (amcConfiguration.getConfigurationEndDate().compareTo(amcConfigurationFromDB.getConfigurationEndDate()) < 0) {
                 if (amcConfiguration.getConfigurationEndDate().compareTo(currentTimestamp) < 0) {
                     errorMessage = "The amc configuration end date cannot be updated as it has already ended. The amc configuration end date cannot be decreased to a past date.";
                 } else if (amcConfiguration.getConfigurationEndDate().compareTo(nextDateTimestampUTC) < 0) {
@@ -431,12 +431,12 @@ public class AmcConfigurationValidator {
         }
     }
 
-    private static String getErrorMessage(AmcConfiguration amcConfiguration, AmcConfiguration fieldPlanFromDB, Long currentTimestamp, Long nextDateTimestampUTC, String errorMessage) {
+    private static String getErrorMessage(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB, Long currentTimestamp, Long nextDateTimestampUTC, String errorMessage) {
         if (amcConfiguration.getConfigurationStartDate() != null) {
             // Check if the project start date is different from the one in the database
-            if (amcConfiguration.getConfigurationStartDate().compareTo(fieldPlanFromDB.getConfigurationStartDate()) != 0) {
+            if (amcConfiguration.getConfigurationStartDate().compareTo(amcConfigurationFromDB.getConfigurationStartDate()) != 0) {
                 // Check if the project start date is before the current timestamp or within 24 hours from the next date's midnight
-                if (fieldPlanFromDB.getConfigurationStartDate().compareTo(currentTimestamp) < 0) {
+                if (amcConfigurationFromDB.getConfigurationStartDate().compareTo(currentTimestamp) < 0) {
                     errorMessage = "The amcConfiguration start date cannot be updated as the amcConfiguration has already started.";
                 } else if (amcConfiguration.getConfigurationStartDate().compareTo(nextDateTimestampUTC) < 0) {
                     errorMessage = "The amcConfiguration start date cannot be updated as it should be at least 24 hours in advance from the current time and start after the next day onwards.";
