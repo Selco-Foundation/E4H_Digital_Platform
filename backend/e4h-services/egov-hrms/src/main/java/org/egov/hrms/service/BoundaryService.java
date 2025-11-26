@@ -63,7 +63,6 @@ public class BoundaryService {
             uri.append(propertiesManager.getBoundaryServiceHost())
                .append(propertiesManager.getBoundarySearchEndpoint())
                .append("?tenantId=").append(tenantId)
-               .append("&hierarchyType=").append(actualHierarchyType)
                .append("&includeParents=true")
                .append("&includeChildren=false");
             
