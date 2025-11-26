@@ -105,7 +105,10 @@ public class AmcSchedulerService {
             searchRequest.put("searchCriteria", searchCriteria);
 
             StringBuilder url = new StringBuilder(activityConfiguration.getAmcSchedulerHost())
-                    .append(activityConfiguration.getAmcConfigurationSearchUrl());
+                    .append(activityConfiguration.getAmcConfigurationSearchUrl())
+                    .append("?tenantId=").append(tenantId)
+                    .append("&limit=").append(activityConfiguration.getMaxLimit())
+                    .append("&offset=").append(activityConfiguration.getDefaultOffset());
 
             Object response = serviceRequest.fetchResult(url, searchRequest);
 
@@ -292,3 +295,4 @@ public class AmcSchedulerService {
         return assetTypeIds;
     }
 }
+
