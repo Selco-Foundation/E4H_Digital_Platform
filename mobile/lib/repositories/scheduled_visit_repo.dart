@@ -4,6 +4,7 @@ import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_scheduled_visit.dart';
 import '../data/remote_client.dart';
+import '../model/document/document.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../utils/envConfig.dart';
 
@@ -55,6 +56,65 @@ class ScheduledVisitRemoteRepository {
     } on DioError catch (err) {
       AppLogger.instance
           .info('ScheduledVisitRemoteRepository.search error: $err');
+      rethrow;
+    }
+  }
+
+  Future<void> updateVisitWorkflow({
+    required String visitId,
+    required String schemaCode,
+    required int version,
+    required Map<String, dynamic> responses,
+    List<Document>? workflowDocuments,
+    List<Document>? visitDocuments,
+  }) async {
+    const path = 'asset-amc/v1/visit/workflow/_update';
+
+    try {
+      final body = {
+        'visitId': visitId,
+        'workflow': {
+          'action': 'SUBMIT_VISIT_REPORT',
+          'comment': 'Submit Visit Report Action',
+          if (workflowDocuments != null) ...{
+            'documents':
+                workflowDocuments.map((d) => d.toJsonForWorkflow()).toList(),
+          },
+          'additionalDetails': <String, dynamic>{},
+        },
+        'visitReport': {
+          'schemaCode': schemaCode,
+          'version': version,
+          'otpReference': null,
+          'responses': responses,
+          if (visitDocuments != null) ...{
+            'documents':
+                visitDocuments.map((d) => d.toJsonForWorkflow()).toList(),
+          },
+          'additionalDetails': <String, dynamic>{},
+        },
+      };
+
+      final resp = await dio.post(
+        path,
+        queryParameters: {
+          'tenantId': envConfig.variables.tenantId,
+        },
+        data: body,
+      );
+
+      AppLogger.instance.info(
+        'ScheduledVisitRemoteRepository.updateVisitWorkflow status=${resp.statusCode}',
+      );
+    } on DioError catch (e) {
+      AppLogger.instance.info(
+        'ScheduledVisitRemoteRepository.updateVisitWorkflow DioError=$e',
+      );
+      rethrow;
+    } catch (e) {
+      AppLogger.instance.info(
+        'ScheduledVisitRemoteRepository.updateVisitWorkflow error=$e',
+      );
       rethrow;
     }
   }
