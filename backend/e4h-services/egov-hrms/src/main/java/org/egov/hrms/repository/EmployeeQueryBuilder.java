@@ -144,19 +144,19 @@ public class EmployeeQueryBuilder {
 
 	}
 
-	public String getJurisdictionSearchQuery(EmployeeSearchCriteria criteria, List<Object> preparedStmtList, RequestInfo requestInfo) {
+	public String getJurisdictionSearchQuery(EmployeeSearchCriteria criteria, List<Object> preparedStmtList, RequestInfo requestInfo, String tenantId) {
 		StringBuilder builder = new StringBuilder(EmployeeQueries.HRMS_GET_JURISDICTION);
-		addWhereClauseJurisdiction(criteria, builder, preparedStmtList, requestInfo);
+		addWhereClauseJurisdiction(criteria, builder, preparedStmtList, requestInfo, tenantId);
 		return builder.toString();
 	}
 
-	private void addWhereClauseJurisdiction(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList, RequestInfo requestInfo) {
+	private void addWhereClauseJurisdiction(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList, RequestInfo requestInfo, String tenantId) {
 		if(!CollectionUtils.isEmpty(criteria.getBoundaryCodes())){
 			// Fetch hierarchical boundary codes from boundary service (all ancestor boundaries)
 			List<String> hierarchicalBoundaries = boundaryService.getAncestorBoundaries(
 					requestInfo, 
-					criteria.getTenantId(), 
-					criteria.getBoundaryCodes(), 
+					tenantId,
+					criteria.getBoundaryCodes(),
 					null  // hierarchyType - defaults to ADMIN if null
 			);
 
