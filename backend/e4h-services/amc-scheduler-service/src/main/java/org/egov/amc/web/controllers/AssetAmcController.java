@@ -51,13 +51,13 @@ public class AssetAmcController {
         AssetAmcRequest enrichedAssetAmcRequest = assetAmcService.updateAssetAmc(request);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
-        AssetAmcResponse fieldPlanResponse = AssetAmcResponse.builder().responseInfo(responseInfo).assetAmcs(enrichedAssetAmcRequest.getAssetAmcs()).build();
-        return new ResponseEntity<AssetAmcResponse>(fieldPlanResponse, HttpStatus.OK);
+        AssetAmcResponse assetAmcResponse = AssetAmcResponse.builder().responseInfo(responseInfo).assetAmcs(enrichedAssetAmcRequest.getAssetAmcs()).build();
+        return new ResponseEntity<AssetAmcResponse>(assetAmcResponse, HttpStatus.OK);
     }
 
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
     public ResponseEntity<AssetAmcResponse> searchAssetAmc(
-            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody AssetAmcSearchRequest request,
+            @ApiParam(value = "Details for the assetAmc.", required = true) @Valid @RequestBody AssetAmcSearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
         List<AssetAmc> assetAMC = assetAmcService.searchAssetAmc(
@@ -70,7 +70,7 @@ public class AssetAmcController {
         );
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         Integer count = assetAmcService.countAllAssetAmcs(request, urlParams.getTenantId(), urlParams.getLastChangedSince(), urlParams.getIncludeDeleted());
-        AssetAmcResponse fieldPlanResponse = AssetAmcResponse.builder().responseInfo(responseInfo).assetAmcs(assetAMC).totalCount(count).build();
-        return new ResponseEntity<AssetAmcResponse>(fieldPlanResponse, HttpStatus.OK);
+        AssetAmcResponse assetAmcResponse = AssetAmcResponse.builder().responseInfo(responseInfo).assetAmcs(assetAMC).totalCount(count).build();
+        return new ResponseEntity<AssetAmcResponse>(assetAmcResponse, HttpStatus.OK);
     }
 }
