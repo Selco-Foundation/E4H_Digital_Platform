@@ -230,13 +230,11 @@ public class AmcSchedulerService {
 
                 Map<String, Object> visitRequest = new HashMap<>();
                 visitRequest.put("RequestInfo", requestInfo);
+                visitRequest.put("configurationId", configId);
                 visitRequest.put("generationStartDate", installationDate);
 
                 StringBuilder url = new StringBuilder(activityConfiguration.getAmcSchedulerHost())
-                        .append(activityConfiguration.getAmcVisitGenerateUrl())
-                        .append("/")
-                        .append(configId)
-                        .append("/visit/_generate");
+                        .append(activityConfiguration.getAmcVisitGenerateUrl());
 
                 Object response = serviceRequest.fetchResult(url, visitRequest);
 
