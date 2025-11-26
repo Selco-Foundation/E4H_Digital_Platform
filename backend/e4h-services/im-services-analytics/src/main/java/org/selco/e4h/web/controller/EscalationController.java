@@ -148,7 +148,6 @@ public class EscalationController {
             
             // Group escalation recipients by email ID to send one email per recipient
             Map<String, List<EscalationRecipient>> recipientsByEmail = new HashMap<>();
-            
             for (EscalationRecipient recipient : escalationRecipients) {
                 if (recipient.getActive() == null || !recipient.getActive()) {
                     log.info("Skipping inactive escalation recipient: {}", recipient.getId());
@@ -162,7 +161,8 @@ public class EscalationController {
                 if ("state".equals(recipient.getBoundaryLevel())) {
                     // For state-level recipients, get users from all active tenants
                     for (String tenantId : activeTenantIds) {
-                        users.addAll(userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes));
+                        String state = activeTenantIdsName.get(tenantId);
+                        users.addAll(userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes));
                     }
                 } else if ("country".equals(recipient.getBoundaryLevel())) {
                     // For country-level recipients, get users from 'in' tenant
@@ -203,7 +203,7 @@ public class EscalationController {
                                                     List<EscalationRecipient> recipients, 
                                                     List<String> activeTenantIds) {
         Set<String> relevantTenantIds = new HashSet<>();
-        
+        Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
         for (EscalationRecipient recipient : recipients) {
             if (recipient.getActive() == null || !recipient.getActive()) {
                 continue;
@@ -214,7 +214,8 @@ public class EscalationController {
             if ("state".equals(recipient.getBoundaryLevel())) {
                 // For state-level recipients, check each tenant individually and track tenant ID
                 for (String tenantId : activeTenantIds) {
-                    List<User> tenantUsers = userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes);
+                    String state = activeTenantIdsName.get(tenantId);
+                    List<User> tenantUsers = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes);
                     for (User user : tenantUsers) {
                         if (emailId.equals(user.getEmailId())) {
                             relevantTenantIds.add(tenantId);
@@ -480,6 +481,7 @@ public class EscalationController {
                     try {
                         processStateLevelEscalation(requestInfo, escalationRecipient, recipientRole, tenantId, escalationType);
                     } catch (Exception e) {
+//                        e.printStackTrace();
                         log.error("Error processing state level escalation for tenant: {}", tenantId, e);
                         escalationStatusService.publishFailureStatus(escalationType, escalationId, tenantId, recipientRoleName, e.getMessage());
                     }
@@ -507,10 +509,12 @@ public class EscalationController {
                                            RecipientRole recipientRole, String tenantId, String escalationType) {
         String escalationId = escalationRecipient.getId().toString();
         String recipientRoleName = recipientRole.getRole();
-        
+        String state = activeTenantIdsName.get(tenantId); // Get BoundaryCode from tenantId: For tenantId pg, state = India_Karnataka
+//        if (state==null || !state.trim().isEmpty())
+
         // Step 3a: Query users for role
         List<String> roleCodes = List.of(recipientRole.getRole());
-        List<User> users = userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes);
+        List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes);
         
         if (users.isEmpty()) {
             log.warn("No users found for role: {} in tenant: {}", recipientRole.getRole(), tenantId);
@@ -858,11 +862,12 @@ public class EscalationController {
         try {
             // Search for users with this email ID across all active tenants
             List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
-            
+            Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
             for (String tenantId : activeTenantIds) {
                 // Search for users with any role in this tenant
+                String state = activeTenantIdsName.get(tenantId);
                 List<String> allRoles = Arrays.asList("CENTRAL_POC", "STATE_POC", "VENDOR", "ADMIN");
-                List<User> users = userService.searchUsersByRoleAndTenant(requestInfo, tenantId, allRoles);
+                List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, allRoles);
                 
                 for (User user : users) {
                     if (emailId.equals(user.getEmailId())) {
