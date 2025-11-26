@@ -164,6 +164,7 @@ public class EscalationMasterDataService {
         }
     }
 
+    // Allow to get boundary for each state base
     public Map<String, String> getActiveTenantIdsName(RequestInfo requestInfo) {
         try {
             log.info("Fetching active tenant IDs from MDMS");

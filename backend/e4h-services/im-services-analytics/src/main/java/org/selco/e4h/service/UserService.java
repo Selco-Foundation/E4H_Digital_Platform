@@ -4,8 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.tracer.model.CustomException;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.repository.ServiceRequestRepository;
+import org.selco.e4h.web.models.Employee;
+import org.selco.e4h.web.models.EmployeeResponse;
+import org.selco.e4h.web.models.SLARequest;
 import org.selco.e4h.web.models.User;
 import org.springframework.stereotype.Service;
 
@@ -77,6 +81,25 @@ public class UserService {
             log.error("Error searching users for tenant: {} with roles: {}", tenantId, roleCodes, e);
             return new ArrayList<>();
         }
+    }
+
+    public List<User> searchUsersByRoleAndBoundaryCode(RequestInfo requestInfo, String boundaryCode, List<String> roleCodes) {
+        SLARequest request = SLARequest.builder()
+                .requestInfo(requestInfo)
+                .build();
+        String roles = String.join(",", roleCodes);
+        String url = consumerConfiguration.getHrmsHost() + consumerConfiguration.getHrmsSearchUrl()+ "?limit=1000&roles="+roles+"&offset=0&boundaryCodes="+boundaryCode;
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+
+        EmployeeResponse employeeResponse = objectMapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with boundary code: " + boundaryCode);
+        }
+
+        return employeeResponse.getEmployees()
+                .stream()
+                .map(Employee::getUser)
+                .toList();
     }
     
     /**
