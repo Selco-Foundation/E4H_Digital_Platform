@@ -65,11 +65,11 @@ public class AmcConfigurationService {
         /*
          * Validate the update amcConfiguration request
          */
-        amcConfigurationValidator.validateUpdateFieldPlanRequest(request);
-        log.info("Update fieldplan request validated");
+        amcConfigurationValidator.validateUpdateAmcConfigurationRequest(request);
+        log.info("Update amcConfiguration request validated");
 
         /*
-         * Search for fieldplan based on fieldplan IDs provided in the request
+         * Search for amcConfiguration based on amcConfiguration IDs provided in the request
          */
         List<AmcConfiguration> amcConfigurationsFromDB = searchAmcConfiguration(
                 getSearchAmcConfigurationRequest(request.getAmcConfigurations(), request.getRequestInfo()),
@@ -78,7 +78,7 @@ public class AmcConfigurationService {
         log.info("Fetched amcConfiguration for update request");
 
         /*
-         * Validate the update fieldplan request against the fieldplans fetched from the database
+         * Validate the update amcConfiguration request against the amcConfigurations fetched from the database
          */
         amcConfigurationValidator.validateUpdateAgainstDB(request.getAmcConfigurations(), amcConfigurationsFromDB);
 
@@ -86,7 +86,7 @@ public class AmcConfigurationService {
          * Process each amcConfiguration in the update request
          */
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
-            processFieldPlanUpdate(request, amcConfiguration, amcConfigurationsFromDB);
+            processamcConfigurationUpdate(request, amcConfiguration, amcConfigurationsFromDB);
         }
 
         return request;
@@ -96,7 +96,7 @@ public class AmcConfigurationService {
         return amcConfigurationRepository.getAmcConfigurationCount(request, tenantId, lastChangedSince, includeDeleted);
     }
 
-    /* Construct AmcConfiguration Request object for search which contains fieldplan id and tenantId */
+    /* Construct AmcConfiguration Request object for search which contains amcConfiguration id and tenantId */
     private AmcConfigurationSearchRequest getSearchAmcConfigurationRequest(List<AmcConfiguration> amcConfigurations, RequestInfo requestInfo) {
         List<String> amcConfigurationIds = amcConfigurations.stream().map(AmcConfiguration::getId).toList();
         AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder().ids(amcConfigurationIds).tenantId(amcConfigurations.get(0).getTenantId()).build();
@@ -112,9 +112,9 @@ public class AmcConfigurationService {
         return amcConfigurationList;
     }
 
-    private void processFieldPlanUpdate(AmcConfigurationRequest request, AmcConfiguration amcConfiguration, List<AmcConfiguration> amcConfigurationsFromDB) {
+    private void processamcConfigurationUpdate(AmcConfigurationRequest request, AmcConfiguration amcConfiguration, List<AmcConfiguration> amcConfigurationsFromDB) {
         /*
-         * Convert fieldplan ID to string for comparison
+         * Convert amcConfiguration ID to string for comparison
          */
         String amcConfigurationId = String.valueOf(amcConfiguration.getId());
 
@@ -129,11 +129,11 @@ public class AmcConfigurationService {
              */
             amcConfigurationServiceUtil.mergeAdditionalDetails(amcConfiguration, amcConfigurationFromDB);
 
-            handleUpdateFieldPlan(request, amcConfiguration, amcConfigurationFromDB);
+            handleUpdateamcConfiguration(request, amcConfiguration, amcConfigurationFromDB);
         }
     }
 
-    private void handleUpdateFieldPlan(AmcConfigurationRequest request, AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB) {
+    private void handleUpdateamcConfiguration(AmcConfigurationRequest request, AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB) {
         /*
          * Save original values of start date, end date, and additional details
          */
@@ -234,7 +234,7 @@ public class AmcConfigurationService {
 
     private AmcConfiguration findAmcConfigurationById(String amcConfigurationId, List<AmcConfiguration> amcConfigurationsFromDB) {
         /*
-         * Find and return the amcConfiguration with the matching ID from the list of fieldplan fetched from the database
+         * Find and return the amcConfiguration with the matching ID from the list of amcConfiguration fetched from the database
          */
         return amcConfigurationsFromDB.stream()
                 .filter(p -> amcConfigurationId.equals(String.valueOf(p.getId())))

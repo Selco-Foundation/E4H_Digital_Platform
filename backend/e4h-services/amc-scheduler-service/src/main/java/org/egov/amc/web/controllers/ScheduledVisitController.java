@@ -16,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +46,7 @@ public class ScheduledVisitController {
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 
-    @RequestMapping(value = "/visit/_generate", method = RequestMethod.POST)
+    @RequestMapping(value = "/configuration/_generate", method = RequestMethod.POST)
     public ResponseEntity<ScheduledVisitResponse> generateVisits(@Validated @RequestBody VisitGenerationRequest request
     ) {
         log.info("Received request to generate visits for configuration: {}", request);
@@ -99,9 +100,15 @@ public class ScheduledVisitController {
         return new ResponseEntity<ScheduledVisitResponse>(visitResponse, HttpStatus.OK);
     }
 
+    @RequestMapping(value = "/_resend_otp", method = RequestMethod.POST)
+    public ResponseEntity<OtpResponse> resendOTP(@ApiParam(value = "Capture details of scheduled visit.", required = true) @Valid @RequestBody ResendOTPRequest request) {
+        OtpResponse otpResponse = scheduledVisitService.resendOTP(request);
+        return new ResponseEntity<OtpResponse>(otpResponse, HttpStatus.OK);
+    }
+
     @RequestMapping(value = "/_update", method = RequestMethod.POST)
     public ResponseEntity<ScheduledVisitResponse> updateScheduledVisits(
-            @ApiParam(value = "Details for the updated scheduled visits.", required = true) 
+            @ApiParam(value = "Details for the updated scheduled visits.", required = true)
             @Valid @RequestBody ScheduledVisitRequest request) {
         log.info("Received request to update scheduled visits");
         ScheduledVisitRequest enrichedScheduledVisitRequest = scheduledVisitService.updateScheduledVisit(request);

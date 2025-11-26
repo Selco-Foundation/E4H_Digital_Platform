@@ -15,9 +15,6 @@ public class AMCServiceConfiguration {
     @Value("${egov.product.host}")
     private String productHost;
 
-    @Value("${fieldplan.facility.idgen.id.format}")
-    private String fieldPlanFacilityIdFormat;
-
     @Value("${egov.household.host}")
     private String householdServiceHost;
 
@@ -35,6 +32,16 @@ public class AMCServiceConfiguration {
 
     @Value("${egov.asset.search.url}")
     private String assetServiceSearchUrl;
+
+    @Value("${egov.otp.host}")
+    private String otpServiceHost;
+
+    @Value("${egov.otp.create.url}")
+    private String otpServiceCreateUrl;
+
+    @Value("${egov.otp.validate.url}")
+    private String otpServiceValidateUrl;
+
 
     @Value("${egov.facility.host}")
     private String facilityServiceHost;

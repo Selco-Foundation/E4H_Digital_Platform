@@ -12,6 +12,7 @@ import org.egov.amc.validator.ScheduledVisitValidator;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.models.user.OtpValidationRequest;
 import org.egov.common.producer.Producer;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.Array;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -109,11 +111,6 @@ public class ScheduledVisitService {
         List<ScheduledVisit> scheduledVisitList = new ArrayList<>();
         int i =1;
         for (Long visitDate : generateAmcVisits){
-//            List<ScheduledVisitAssignment> assignments = new ArrayList<>();
-//            for (AmcConfigurationAssignment amcConfigurationAssignment : amcConfiguration.getAssignments()){
-//                ScheduledVisitAssignment scheduledVisitAssignment = ScheduledVisitAssignment.builder().assignedUser(amcConfigurationAssignment.getAssignedUser()).build();
-//                assignments.add(scheduledVisitAssignment);
-//            }
             List<ScheduledVisitAssignment> assignments = amcConfiguration.getAssignments().stream()
                             .map(a -> ScheduledVisitAssignment.builder()
                                     .assignedUser(a.getAssignedUser())
@@ -142,7 +139,28 @@ public class ScheduledVisitService {
                 .build();
     }
 
+    public OtpResponse resendOTP(ResendOTPRequest request) {
+        if(request.getRequestInfo()==null || request.getRequestInfo().getUserInfo() ==null || request.getRequestInfo().getUserInfo().getUuid().isEmpty())
+            throw new CustomException("GENERATE_TOKEN", "User ID is not found in requestInfo");
+
+        Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+        if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
+            OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), request.getRequestInfo().getUserInfo().getTenantId());
+            if (otpResponse !=null && otpResponse.getOtp()!=null){
+                log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                return  otpResponse;
+            }
+            else
+                throw new CustomException("GENERATE_TOKEN", "Error occured while generating OTP");
+        }
+        else
+            throw new CustomException("GENERATE_TOKEN", "User in requestInfo not found");
+    }
+
     public List<ScheduledVisit> updateVisitWorkflow(VisitReportSubmissionRequest request) throws Exception {
+        if(request.getRequestInfo()==null || request.getRequestInfo().getUserInfo() ==null || request.getRequestInfo().getUserInfo().getUuid().isEmpty())
+            throw new CustomException("UPDATE_WORKFLOW", "User ID is not found in requestInfo");
+
         // 1. Fetch the existing visit
         ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder().ids(List.of(request.getVisitId())).tenantId(request.getRequestInfo().getUserInfo().getTenantId()).build();
         ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder().RequestInfo(request.getRequestInfo()).searchCriteria(criteria).build();
@@ -176,7 +194,38 @@ public class ScheduledVisitService {
         // 3. Inject workflow status into activity facility
         existingVisit.setStatus(updatedWorkflow.getState().getState());
 
-        // 4. Create a new Visit Instance instance with enriched additionalDetails
+        try {
+            // Step 4: After successful workflow transition, if action is SUBMIT_VISIT_REPORT
+            if ("SUBMIT_VISIT_REPORT".equalsIgnoreCase(request.getWorkflow().getAction())) {
+                // We need to update visit report on existing visit
+                existingVisit.setVisitReport(request.getVisitReport());
+                // We need to send OTP to AMC_FIELD_STAFF
+                Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+                if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
+                    OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
+                    if (otpResponse !=null && otpResponse.getOtp()!=null){
+                        log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                        existingVisit.getVisitReport().setOtpReference(otpResponse.getOtp().getOtp());
+                    }
+                }
+            }
+
+            if ("SUBMIT_OTP".equalsIgnoreCase(request.getWorkflow().getAction())) {
+                // We need to validate OTP to AMC_FIELD_STAFF
+                Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+                if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
+                    OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
+                    if (otpResponse !=null && otpResponse.getOtp()!=null){
+                        log.info("OTP {} validated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                        // We need to update visit report on existing visit after validation
+                        existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
+                    }
+                }
+            }
+        }
+        catch (Exception e){}
+
+        // 5. Create a new Visit Instance instance with enriched additionalDetails
         ScheduledVisit updatedScheduledVisit = ScheduledVisit.builder()
                 .id(existingVisit.getId())
                 .tenantId(existingVisit.getTenantId())
@@ -191,23 +240,14 @@ public class ScheduledVisitService {
                 .assignments(existingVisit.getAssignments())
                 .build();
 
-        // 5. Create Schedule visit request wrapper
+        // 6. Create Schedule visit request wrapper
         ScheduledVisitRequest enrichedRequest = ScheduledVisitRequest.builder()
                 .requestInfo(request.getRequestInfo())
                 .scheduledVisits(List.of(updatedScheduledVisit))
                 .build();
 
-        // 6. Perform enriched update using standard handler
+        // 7. Perform enriched update using standard handler
         handleUpdateScheduledVisit(enrichedRequest, updatedScheduledVisit, existingVisit);
-
-        // Step 7: After successful workflow transition, if action is APPROVED_BY_QC_SPOC
-//        if ("APPROVE".equalsIgnoreCase(request.getWorkflow().getAction())) {
-//            // once facility is fetched we need to fetch assets for that facility
-//            String activityFacilityId = existingActivityFacitlity.getId();
-//            if (activityFacilityId != null) {
-//                updateAssetsForFacility(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
-//            }
-//        }
 
         return List.of(updatedScheduledVisit);
     }
@@ -215,6 +255,7 @@ public class ScheduledVisitService {
     private void handleTransactions(VisitReportSubmissionRequest request, ProcessInstance updatedWorkflow) {
         Transaction transaction = new Transaction();
         transaction.setProcessInstanceId(updatedWorkflow.getId());
+        transaction.setVisitReport(request.getVisitReport());
         String userUUID = request.getRequestInfo().getUserInfo().getUuid();
         transaction.setVisitId(request.getVisitId());
         transaction.setAuditDetails(amcConfigurationServiceUtil.getAuditDetails(userUUID, null, true));
@@ -271,7 +312,7 @@ public class ScheduledVisitService {
             transaction.setVisitId(rs.getString("visit_id"));
             transaction.setProcessInstanceId(rs.getString("process_instance_id"));
             try {
-                transaction.setVisitReport(mapper.readValue(rs.getString("sv_visit_report"), VisitReport.class));
+                transaction.setVisitReport(mapper.readValue(rs.getString("visit_report"), VisitReport.class));
             } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
@@ -373,7 +414,7 @@ public class ScheduledVisitService {
         return Objects.equals(scheduledVisitsFromDB.getId(), scheduledVisits.getId()) &&
                 Objects.equals(scheduledVisitsFromDB.getTenantId(), scheduledVisits.getTenantId()) &&
                 Objects.equals(scheduledVisitsFromDB.getAmcConfigurationId(), scheduledVisits.getAmcConfigurationId()) &&
-                Objects.equals(scheduledVisitsFromDB.getFacility(), scheduledVisits.getFacility());
+                Objects.equals(scheduledVisitsFromDB.getFacilityId(), scheduledVisits.getFacilityId());
         // Note: We allow startDate, endDate, vendorId, geographyDetails, activities and auditDetails to be different
     }
 
@@ -528,16 +569,57 @@ public class ScheduledVisitService {
         return workflowService.getProcessInstanceById(businessId, tenantId, requestInfo);
     }
 
-//    public Employee getUserById(Object request, String userId) {
-//
-//        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
-//        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
-//
-//        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
-//        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
-//            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
-//        }
-//        return employeeResponse.getEmployees().get(0);
-//    }
+    public OtpResponse createOTP(String identity, String tenantId) {
+        String url = amcServiceConfiguration.getOtpServiceHost() + amcServiceConfiguration.getOtpServiceCreateUrl();
+        Otp otp = Otp.builder()
+                .tenantId(tenantId)
+                .identity(identity)
+                .build();
+        OtpRequest request = OtpRequest.builder()
+                .otp(otp)
+                .build();
+        Object response = requestRepository.fetchResult(new StringBuilder(url), request);
+        OtpResponse otpResponse = mapper.convertValue(response,OtpResponse.class);
+        if(otpResponse == null){
+            throw new CustomException(
+                    "ERROR_OTP_GENERATION",
+                    "Error occured while creating OTP"
+            );
+        }
+        return otpResponse;
+    }
+
+    public OtpResponse validateOTP(String identity, String tenantId, String otpCode) {
+        String url = amcServiceConfiguration.getOtpServiceHost() + amcServiceConfiguration.getOtpServiceValidateUrl();
+        Otp otp = Otp.builder()
+                .tenantId(tenantId)
+                .identity(identity)
+                .otp(otpCode)
+                .build();
+        OtpValidateRequest request = OtpValidateRequest.builder()
+                .otp(otp)
+                .build();
+        Object response = requestRepository.fetchResult(new StringBuilder(url), request);
+        OtpResponse otpResponse = mapper.convertValue(response,OtpResponse.class);
+        if(otpResponse == null){
+            throw new CustomException(
+                    "ERROR_OTP_GENERATION",
+                    "Error occured while creating OTP"
+            );
+        }
+        return otpResponse;
+    }
+
+    public Employee getUserById(Object request, String userId) {
+
+        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
+        Object response = requestRepository.fetchResult(new StringBuilder(url), request);
+
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
+        }
+        return employeeResponse.getEmployees().get(0);
+    }
 
 }
