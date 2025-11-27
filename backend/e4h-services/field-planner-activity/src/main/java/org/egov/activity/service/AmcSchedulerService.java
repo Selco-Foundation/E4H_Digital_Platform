@@ -114,7 +114,7 @@ public class AmcSchedulerService {
 
             if (response instanceof Map) {
                 Map<String, Object> responseMap = (Map<String, Object>) response;
-                Object amcConfigurations = responseMap.get("amcConfigurations");
+                Object amcConfigurations = responseMap.get("AmcConfigurations");
                 if (amcConfigurations instanceof List) {
                     return (List<Map<String, Object>>) amcConfigurations;
                 }
@@ -155,8 +155,13 @@ public class AmcSchedulerService {
             // Filter installed assets that match this configuration's asset types
             List<Asset> matchingAssets = new ArrayList<>();
             for (Asset asset : installedAssets) {
-                if (configAssetTypes.contains(asset.getAssetTypeID())) {
+                String assetTypeId = asset.getAssetTypeID();
+                if (configAssetTypes.contains(assetTypeId)) {
                     matchingAssets.add(asset);
+                    log.debug("Asset {} (type: {}) matches configuration {}", asset.getAssetId(), assetTypeId, configId);
+                } else {
+                    log.debug("Asset {} (type: {}) does not match configuration {} (required types: {})", 
+                            asset.getAssetId(), assetTypeId, configId, configAssetTypes);
                 }
             }
 
@@ -190,7 +195,7 @@ public class AmcSchedulerService {
             try {
                 Map<String, Object> createRequest = new HashMap<>();
                 createRequest.put("RequestInfo", requestInfo);
-                createRequest.put("assetAmcs", assetAmcsToCreate);
+                createRequest.put("AssetAmcs", assetAmcsToCreate); // Match the API field name
 
                 StringBuilder url = new StringBuilder(activityConfiguration.getAmcSchedulerHost())
                         .append(activityConfiguration.getAmcAssetCreateUrl());
@@ -276,14 +281,7 @@ public class AmcSchedulerService {
             }
 
             for (Map<String, Object> assetType : assetTypes) {
-                Object assetTypeId = assetType.get("assetTypeID");
-                if (assetTypeId == null) {
-                    assetTypeId = assetType.get("assetTypeId");
-                }
-                if (assetTypeId == null) {
-                    assetTypeId = assetType.get("id");
-                }
-
+                Object assetTypeId = assetType.get("code");
                 if (assetTypeId != null) {
                     assetTypeIds.add(assetTypeId.toString());
                 }
