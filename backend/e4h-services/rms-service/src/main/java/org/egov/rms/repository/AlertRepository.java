@@ -124,6 +124,7 @@ public class AlertRepository {
     /**
      * Checks if an alert already has a ticket created
      * Returns true if a ticket exists for the given facility, alert type, and sub-type
+     * This method only checks active_alerts table - use hasOpenTicket() for status check
      */
     public boolean hasExistingTicket(String facilityId, Alert.AlertType alertType, Alert.AlertSubType alertSubType) {
         String sql = "SELECT COUNT(*) FROM active_alerts " +
@@ -134,6 +135,98 @@ public class AlertRepository {
                 facilityId, alertType.name(), alertSubType.name());
 
         return count != null && count > 0;
+    }
+
+    /**
+     * Checks if there's an open ticket in eg_incident_v2 for the given facility, alert type, and sub-type
+     * Returns true if there's an open ticket, false if ticket is closed or doesn't exist
+     * 
+     * Open statuses: PENDINGFORASSIGNMENT, PENDING_ASSIGNMENT_SPARE_PART_NEEDED, 
+     *                PENDING_ASSIGNMENT_OUT_OF_WARRANTY, PENDING_RESOLUTION_SPARE_PART_NEEDED,
+     *                PENDING_RESOLUTION_OUT_OF_WARRANTY, PENDINGRESOLUTION
+     * Closed statuses: RESOLVED, CLOSEDAFTERRESOLUTION, REJECTED, CLOSEDAFTERREJECTION
+     */
+    public boolean hasOpenTicket(String facilityId, Alert.AlertType alertType, Alert.AlertSubType alertSubType) {
+        try {
+            // First, get the ticket_id from active_alerts
+            String getTicketIdSql = "SELECT ticket_id FROM active_alerts " +
+                    "WHERE facility_id = ? AND alert_type = ? AND alert_sub_type = ? " +
+                    "AND ticket_id IS NOT NULL AND ticket_id != '' " +
+                    "LIMIT 1";
+
+            List<String> ticketIds = jdbcTemplate.queryForList(getTicketIdSql, String.class,
+                    facilityId, alertType.name(), alertSubType.name());
+
+            if (ticketIds == null || ticketIds.isEmpty()) {
+                log.debug("No ticket_id found in active_alerts for facility: {}, type: {}, subType: {}",
+                        facilityId, alertType, alertSubType);
+                return false;
+            }
+
+            String ticketId = ticketIds.get(0);
+            log.debug("Found ticket_id {} in active_alerts, checking status in eg_incident_v2", ticketId);
+
+            // Check if ticket exists and is open in eg_incident_v2
+            // Map alert type/subtype to incident type/subtype (this might need adjustment based on your mapping)
+            String checkStatusSql = "SELECT applicationstatus FROM eg_incident_v2 " +
+                    "WHERE incidentid = ? " +
+                    "LIMIT 1";
+
+            List<String> statuses = jdbcTemplate.queryForList(checkStatusSql, String.class, ticketId);
+
+            if (statuses == null || statuses.isEmpty()) {
+                log.debug("Ticket {} not found in eg_incident_v2 - allowing new ticket creation", ticketId);
+                return false; // Ticket doesn't exist in incident table, allow creation
+            }
+
+            String applicationStatus = statuses.get(0);
+            
+            // Define open and closed statuses
+            String[] openStatuses = {
+                "PENDINGFORASSIGNMENT",
+                "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
+                "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
+                "PENDING_RESOLUTION_SPARE_PART_NEEDED",
+                "PENDING_RESOLUTION_OUT_OF_WARRANTY",
+                "PENDINGRESOLUTION"
+            };
+
+            String[] closedStatuses = {
+                "RESOLVED",
+                "CLOSEDAFTERRESOLUTION",
+                "REJECTED",
+                "CLOSEDAFTERREJECTION"
+            };
+
+            // Check if status is open
+            for (String openStatus : openStatuses) {
+                if (openStatus.equalsIgnoreCase(applicationStatus)) {
+                    log.info("Ticket {} has open status: {} - preventing duplicate ticket creation", 
+                            ticketId, applicationStatus);
+                    return true;
+                }
+            }
+
+            // Check if status is closed
+            for (String closedStatus : closedStatuses) {
+                if (closedStatus.equalsIgnoreCase(applicationStatus)) {
+                    log.info("Ticket {} has closed status: {} - allowing new ticket creation", 
+                            ticketId, applicationStatus);
+                    return false; // Ticket is closed, allow new ticket
+                }
+            }
+
+            // If status is neither open nor closed (unknown status), treat as open to be safe
+            log.warn("Ticket {} has unknown status: {} - treating as open to prevent duplicates", 
+                    ticketId, applicationStatus);
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error checking ticket status in eg_incident_v2 for facility: {}, type: {}, subType: {}", 
+                    facilityId, alertType, alertSubType, e);
+            // On error, default to checking active_alerts only (fallback behavior)
+            return hasExistingTicket(facilityId, alertType, alertSubType);
+        }
     }
 
     /**

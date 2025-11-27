@@ -34,12 +34,14 @@ public class DeduplicationManager {
                 continue;
             }
 
-            // Check if alert already has a ticket in active_alerts table - skip to prevent duplicates
-            if (alertRepository.hasExistingTicket(
+            // Check if alert already has an open ticket in eg_incident_v2 table
+            // This checks both active_alerts and eg_incident_v2 to see if ticket is still open
+            // If ticket is closed, we allow creating a new ticket
+            if (alertRepository.hasOpenTicket(
                     alert.getFacilityId(),
                     alert.getAlertType(),
                     alert.getAlertSubType())) {
-                log.info("Skipping alert {} - ticket already exists in active_alerts for facility: {}, type: {}, subType: {}",
+                log.info("Skipping alert {} - open ticket already exists in eg_incident_v2 for facility: {}, type: {}, subType: {}",
                         alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                 continue;
             }

@@ -245,8 +245,10 @@ public class RMSOrchestratorService {
                     continue;
                 }
                 
-                if (alertRepository.hasExistingTicket(alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType())) {
-                    log.info("Skipping alert {} - ticket already exists in active_alerts for facility: {}, type: {}, subType: {}", 
+                // Check if there's an open ticket in eg_incident_v2
+                // If ticket is closed, we allow creating a new ticket
+                if (alertRepository.hasOpenTicket(alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType())) {
+                    log.info("Skipping alert {} - open ticket already exists in eg_incident_v2 for facility: {}, type: {}, subType: {}", 
                             alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                     skippedCount++;
                     continue;
