@@ -20,6 +20,8 @@ import java.util.*;
 @Slf4j
 public class AmcSchedulerService {
 
+    private static final String REQUEST_INFO = "RequestInfo";
+
     private final ActivityConfiguration activityConfiguration;
     private final ServiceRequestRepository serviceRequest;
     private final ObjectMapper objectMapper;
@@ -53,7 +55,7 @@ public class AmcSchedulerService {
             RequestInfo requestInfo) {
 
         log.info("==================== Processing Installation Completion Side Effects ====================");
-        log.info("Project: {}, Facility: {}, Assets Count: {}", projectId, facilityId, installedAssets.size());
+        log.info("Project: {}, Facility: {}, Assets Count: {}, TenantId: {}", projectId, facilityId, installedAssets.size(), tenantId);
 
         try {
             // Step 1: Fetch AMC configurations for the project
@@ -95,7 +97,7 @@ public class AmcSchedulerService {
 
         try {
             Map<String, Object> searchRequest = new HashMap<>();
-            searchRequest.put("RequestInfo", requestInfo);
+            searchRequest.put(REQUEST_INFO, requestInfo);
 
             Map<String, Object> searchCriteria = new HashMap<>();
             searchCriteria.put("tenantId", tenantId);
@@ -194,7 +196,7 @@ public class AmcSchedulerService {
         if (!assetAmcsToCreate.isEmpty()) {
             try {
                 Map<String, Object> createRequest = new HashMap<>();
-                createRequest.put("RequestInfo", requestInfo);
+                createRequest.put(REQUEST_INFO, requestInfo);
                 createRequest.put("AssetAmcs", assetAmcsToCreate); // Match the API field name
 
                 StringBuilder url = new StringBuilder(activityConfiguration.getAmcSchedulerHost())
@@ -232,7 +234,7 @@ public class AmcSchedulerService {
                         configId, entry.getValue().size());
 
                 Map<String, Object> visitRequest = new HashMap<>();
-                visitRequest.put("RequestInfo", requestInfo);
+                visitRequest.put(REQUEST_INFO, requestInfo);
                 visitRequest.put("configurationId", configId);
                 visitRequest.put("generationStartDate", installationDate);
 
