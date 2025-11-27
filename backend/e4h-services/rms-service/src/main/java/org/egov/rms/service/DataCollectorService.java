@@ -220,15 +220,22 @@ public class DataCollectorService {
             // Call centerDatas/get API - this has a different response structure
             RMSApiResponseV2 response = callCenterDatasApi(config.getCenterDatasEndpoint(), request);
             
-            if (response != null && response.getData() != null) {
+            if (response == null) {
+                log.warn("No response received from centerDatas/get API");
+                return allFacilities;
+            }
+            
+            log.debug("API response received - centerData size: {}, data size: {}", 
+                    response.getCenterData() != null ? response.getCenterData().size() : 0,
+                    response.getData() != null ? response.getData().size() : 0);
+            
+            if (response.getData() != null) {
                 List<RMSFacilityData> facilities = response.getData();
                 
-                // Calculate cutoff time: 2 days ago from now
-                Instant cutoffTime = Instant.now().minus(config.getInverterNoSignalDays(), ChronoUnit.DAYS);
+                log.info("API returned {} inactive facilities (API already filters for inactive status)", facilities.size());
                 
-                log.debug("Filtering facilities with last_sync_time before: {}", cutoffTime);
-                
-                // Filter facilities with no signal for more than configured days
+                // API already filters for inactive devices, so we trust the API response
+                // No additional filtering by lastSyncTime needed - API handles the filtering
                 for (RMSFacilityData facility : facilities) {
                     // Map centerDatas/get API fields to standard fields for consistency
                     if (facility.getCenterId() != null && facility.getFacilityId() == null) {
@@ -237,23 +244,22 @@ public class DataCollectorService {
                     if (facility.getCenterName() != null && facility.getFacilityName() == null) {
                         facility.setFacilityName(facility.getCenterName());
                     }
-                    // Map HFRID to hfrId for consistency
-//                    if (facility.getHfrid() != null && !facility.getHfrid().isEmpty()) {
-//                        facility.setHfrId(facility.getHfrid());
-//                    }
-                    
-                    // Check if last_sync_time is before cutoff (2 days ago)
-                    if (facility.getLastSyncTime() != null && 
-                        facility.getLastSyncTime().isBefore(cutoffTime)) {
-                        allFacilities.add(facility);
-                        log.debug("Found facility with no signal: centerId={}, facilityName={}, lastSyncTime={}, hfrId={}", 
-                                facility.getCenterId(), facility.getFacilityName(), 
-                                facility.getLastSyncTime(), facility.getHfrId());
+                    // Map HFRID to hfrId for consistency (handle "Not Available" case)
+                    if (facility.getHfrid() != null && !facility.getHfrid().isEmpty() && 
+                        !facility.getHfrid().equalsIgnoreCase("Not Available") &&
+                        !facility.getHfrid().equalsIgnoreCase("Not available")) {
+                        facility.setHfrId(facility.getHfrid().trim());
                     }
+                    
+                    // Add all facilities returned by API (API already filtered for inactive devices)
+                    allFacilities.add(facility);
+                    log.debug("Added facility with no signal: centerId={}, facilityName={}, lastSyncTime={}, hfrId={}", 
+                            facility.getCenterId(), facility.getFacilityName(), 
+                            facility.getLastSyncTime(), facility.getHfrId());
                 }
                 
-                log.info("Found {} facilities with no signal for more than {} days (out of {} total)", 
-                        allFacilities.size(), config.getInverterNoSignalDays(), facilities.size());
+                log.info("Processing {} facilities from API (no additional filtering - API handles inactive status)", 
+                        allFacilities.size());
             } else {
                 log.warn("No data received from centerDatas/get API");
             }
@@ -1048,15 +1054,52 @@ public class DataCollectorService {
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                     RMSApiResponseV2 tmp = response.getBody();
                     List<RMSFacilityData> listFacility = new ArrayList<>();
-                    for (CenterData centerData : tmp.getCenterData()){
-                        RMSFacilityData data = RMSFacilityData.builder()
-                                .centerId(centerData.getCenterId())
-                                .centerName(centerData.getCenterName())
-                                .hfrId(centerData.getHfrid())
-                                .lastSyncTime(Instant.parse(centerData.getLastSyncTime()))
-                                .build();
-                        listFacility.add(data);
+                    
+                    if (tmp.getCenterData() != null && !tmp.getCenterData().isEmpty()) {
+                        log.debug("Parsing {} centerDatas from API response", tmp.getCenterData().size());
+                        for (CenterData centerData : tmp.getCenterData()){
+                            try {
+                                // Parse lastSyncTime safely
+                                Instant lastSyncTime = null;
+                                if (centerData.getLastSyncTime() != null && !centerData.getLastSyncTime().isEmpty()) {
+                                    try {
+                                        lastSyncTime = Instant.parse(centerData.getLastSyncTime());
+                                    } catch (Exception e) {
+                                        log.warn("Failed to parse lastSyncTime for center {}: {}", 
+                                                centerData.getCenterId(), centerData.getLastSyncTime());
+                                    }
+                                }
+                                
+                                // Map HFRID to hfrId (handle "Not Available" case)
+                                String hfrId = null;
+                                if (centerData.getHfrid() != null && !centerData.getHfrid().isEmpty() && 
+                                    !centerData.getHfrid().equalsIgnoreCase("Not Available") &&
+                                    !centerData.getHfrid().equalsIgnoreCase("Not available")) {
+                                    hfrId = centerData.getHfrid().trim();
+                                }
+                                
+                                RMSFacilityData data = RMSFacilityData.builder()
+                                        .centerId(centerData.getCenterId())
+                                        .centerName(centerData.getCenterName())
+                                        .facilityId(centerData.getCenterId()) // Set facilityId same as centerId
+                                        .facilityName(centerData.getCenterName()) // Set facilityName same as centerName
+                                        .hfrId(hfrId)
+                                        .hfrid(centerData.getHfrid()) // Keep original HFRID field too
+                                        .lastSyncTime(lastSyncTime)
+                                        .deviceName(centerData.getDeviceName())
+                                        .statusOfDevice(centerData.getStatusOfDevice())
+                                        .build();
+                                listFacility.add(data);
+                            } catch (Exception e) {
+                                log.warn("Error parsing centerData for center {}: {}", 
+                                        centerData.getCenterId(), e.getMessage());
+                            }
+                        }
+                        log.info("Successfully parsed {} facilities from centerDatas API", listFacility.size());
+                    } else {
+                        log.warn("centerDatas array is null or empty in API response");
                     }
+                    
                     tmp.setData(listFacility);
                     return tmp;
                 }

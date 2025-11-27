@@ -93,16 +93,21 @@ public class RMSOrchestratorService {
 
     /**
      * Processes inverter no-signal alerts
+     * NOTE: For this trigger, we enable data collection from API since API already filters for inactive devices
+     * No additional rule engine filtering needed - API handles the filtering
      */
     private void processInverterNoSignalAlerts(RequestInfo requestInfo) {
         log.info("Processing inverter no-signal alerts");
         try {
-            // Sync data from RMS servers - COMMENTED OUT: sync disabled for trigger endpoint
-            // List<RMSFacilityData> facilities = dataCollectorService.collectInverterNoSignalData();
-            // Instead, get alerts from alert_history that don't have tickets
-            List<Alert> alerts = alertRepository.getAlertsFromHistoryWithoutTickets(
-                    Alert.AlertType.INVERTER, Alert.AlertSubType.SHUTDOWN);
-            log.info("Found {} inverter no-signal alerts from history without tickets", alerts.size());
+            // Enable data collection from RMS servers for this trigger
+            // API already filters for inactive devices, so we collect and create alerts directly
+            List<RMSFacilityData> facilities = dataCollectorService.collectInverterNoSignalData();
+            log.info("Collected {} facilities with no signal from RMS API", facilities.size());
+            
+            // Apply rule engine to create alerts (rule engine just creates alerts for all facilities since API already filtered)
+            List<Alert> alerts = ruleEngineService.applyInverterRules(facilities, true);
+            log.info("Generated {} inverter no-signal alerts", alerts.size());
+            
             // Apply deduplication to prevent duplicate tickets
             List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(alerts);
             createTickets(uniqueAlerts, requestInfo, "Inverter No Signal");
