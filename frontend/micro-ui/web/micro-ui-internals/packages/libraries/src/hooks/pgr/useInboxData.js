@@ -72,10 +72,8 @@ const useInboxData = (searchParams) => {
   const fetchInboxData = () => {
     const currentUser = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info;
     const currentUserUuid = currentUser?.uuid;
-    const currentBoundaryCodes = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary")?.codes?.join(",") || "";
-    const stateBoundaryCodes = Digit.SessionStorage.get("Jurisdiction.StateBoundaries")?.join(",") || "";
 
-    const combinedRes = combineResponses(filteredData.items, currentUserUuid, currentBoundaryCodes, stateBoundaryCodes, currentUser, t);
+    const combinedRes = combineResponses(filteredData.items, currentUserUuid, currentUser, t);
 
     return {
       combinedRes,
@@ -96,7 +94,7 @@ const filterData = (data) => {
   return { total: totalItems, items: filteredItems, statusArray: statusArray };
 };
 
-const combineResponses = (items, currentUserUuid, currentBoundaryCodes, stateBoundaryCodes, currentUser, t) => {
+const combineResponses = (items, currentUserUuid, currentUser, t) => {
   const closedStates = ["RESOLVED", "CLOSEDAFTERRESOLUTION", "REJECTED", "CLOSEDAFTERREJECTION"];
   const roleStatusMapping = {
     PENDINGFORASSIGNMENT: "COMPLAINT_ASSESSOR",
@@ -105,6 +103,7 @@ const combineResponses = (items, currentUserUuid, currentBoundaryCodes, stateBou
   };
 
   const currentUserRoles = currentUser?.roles?.map((r) => r.code) || [];
+  const isHcrUser = currentUserRoles.every(role => (role === "EMPLOYEE" || role === "COMPLAINANT"));
 
   return items.map(({ businessObject, ProcessInstance }) => {
     const incident = businessObject?.incident || {};
@@ -115,7 +114,7 @@ const combineResponses = (items, currentUserUuid, currentBoundaryCodes, stateBou
 
     if (closedStates.includes(incident.applicationStatus)) {
       slaValue = "-";
-    } else if (incident.boundaryCode === currentBoundaryCodes && currentBoundaryCodes !== stateBoundaryCodes) {
+    } else if (isHcrUser) {
       const totalSla = businessObject?.totalSlaRemaining;
       slaValue = totalSla < 0 ? t("SLA_OVERDUE") : Math.ceil(totalSla / (8 * 60 * 60 * 1000));
     } else if (assigneeUuid && currentUserUuid === assigneeUuid) {
