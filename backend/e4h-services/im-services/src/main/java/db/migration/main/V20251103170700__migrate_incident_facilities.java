@@ -22,6 +22,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -44,6 +45,8 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
         m.put("mh", "Maharashtra");
         TENANT_TO_STATE = Collections.unmodifiableMap(m);
     }
+
+    private static final int[] RETRY_DELAYS_SECONDS = {1, 7, 15, 25, 30};
 
     @Override
     public boolean canExecuteInTransaction() {
@@ -364,7 +367,10 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-            ResponseEntity<String> response = restTemplate.exchange(mdmsUrl, HttpMethod.POST, entity, String.class);
+            ResponseEntity<String> response = executeWithRetry(
+                    () -> restTemplate.exchange(mdmsUrl, HttpMethod.POST, entity, String.class),
+                    "fetch MDMS data for tenant '" + tenantId + "' module '" + moduleName + "'"
+            );
 
             if (!response.getStatusCode().is2xxSuccessful()) {
                 log.error(
@@ -444,7 +450,10 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> httpEntity = new HttpEntity<>(objectMapper.writeValueAsString(request), headers);
 
-            ResponseEntity<String> response = restTemplate.postForEntity(facilityUrl, httpEntity, String.class);
+            ResponseEntity<String> response = executeWithRetry(
+                    () -> restTemplate.postForEntity(facilityUrl, httpEntity, String.class),
+                    "create facility with tenant ID '" + facilityTenantId + "' and name '" + facilityName + "'"
+            );
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 // Parse response and update facility mapping
@@ -612,7 +621,10 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
 
             HttpEntity<String> httpEntity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
 
-            ResponseEntity<String> response = restTemplate.postForEntity(url, httpEntity, String.class);
+            ResponseEntity<String> response = executeWithRetry(
+                    () -> restTemplate.postForEntity(url, httpEntity, String.class),
+                    "fetch POC from HRMS for facility tenant ID '" + facilityTenantId + "'"
+            );
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 JsonNode root = objectMapper.readTree(response.getBody());
@@ -757,6 +769,52 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
 
         log.info("RestTemplate created with timeouts: 30s connect, 30s connection request, 60s read");
         return new RestTemplate(factory);
+    }
+
+    /**
+     * Executes a supplier function with retry logic.
+     * Retries with delays: 1, 7, 15, 25, 30 seconds if the first attempt fails.
+     *
+     * @param supplier The function to execute
+     * @param operationName Name of the operation for logging purposes
+     * @return The result from the supplier
+     * @throws Exception If all retry attempts fail
+     */
+    private <T> T executeWithRetry(Supplier<T> supplier, String operationName) throws Exception {
+        Exception lastException = null;
+        
+        // First attempt (no delay)
+        try {
+            return supplier.get();
+        } catch (Exception e) {
+            lastException = e;
+            log.warn("Initial attempt to {} was unsuccessful. Error: {}. Will retry with exponential backoff.", operationName, e.getMessage());
+        }
+        
+        // Retry with delays: 1, 7, 15, 25, 30 seconds
+        int attemptNumber = 1;
+        for (int delay : RETRY_DELAYS_SECONDS) {
+            try {
+                Thread.sleep(delay * 1000L);
+                log.info("Retrying {} (attempt {}) after waiting {} seconds...", operationName, attemptNumber + 1, delay);
+                return supplier.get();
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new Exception("Retry operation was interrupted for " + operationName + " during attempt " + (attemptNumber + 1), ie);
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("Retry attempt {} for {} failed after {} seconds. Error: {}. Will continue with next retry.", 
+                        attemptNumber + 1, operationName, delay, e.getMessage());
+                attemptNumber++;
+            }
+        }
+        
+        // All attempts failed
+        int totalDelaySeconds = Arrays.stream(RETRY_DELAYS_SECONDS).sum();
+        log.error("All retry attempts exhausted for {}. Operation failed after {} total retry attempts (total wait time: {} seconds). Last error: {}", 
+                operationName, RETRY_DELAYS_SECONDS.length + 1, totalDelaySeconds, lastException != null ? lastException.getMessage() : "Unknown");
+        throw new Exception(String.format("Failed to complete %s after %d attempts (total wait time: %d seconds)", 
+                operationName, RETRY_DELAYS_SECONDS.length + 1, totalDelaySeconds), lastException);
     }
 
     // Helper class to track facility mappings
