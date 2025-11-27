@@ -145,8 +145,6 @@ public class AmcSchedulerService {
 
         for (Map<String, Object> config : amcConfigurations) {
             String configId = (String) config.get("id");
-
-            // Get asset types from configuration
             List<String> configAssetTypes = extractAssetTypes(config.get("assetTypes"));
 
             if (configAssetTypes.isEmpty()) {
@@ -154,65 +152,86 @@ public class AmcSchedulerService {
                 continue;
             }
 
-            // Filter installed assets that match this configuration's asset types
-            List<Asset> matchingAssets = new ArrayList<>();
-            for (Asset asset : installedAssets) {
-                String assetTypeId = asset.getAssetTypeID();
-                if (configAssetTypes.contains(assetTypeId)) {
-                    matchingAssets.add(asset);
-                    log.debug("Asset {} (type: {}) matches configuration {}", asset.getAssetId(), assetTypeId, configId);
-                } else {
-                    log.debug("Asset {} (type: {}) does not match configuration {} (required types: {})", 
-                            asset.getAssetId(), assetTypeId, configId, configAssetTypes);
-                }
-            }
-
+            List<Asset> matchingAssets = findMatchingAssets(installedAssets, configAssetTypes, configId);
             if (matchingAssets.isEmpty()) {
                 log.info("No matching assets found for configuration: {}", configId);
                 continue;
             }
 
             log.info("Found {} matching assets for configuration: {}", matchingAssets.size(), configId);
-
-            // Create Asset AMC for each matching asset
-            List<String> assetIds = new ArrayList<>();
-            for (Asset asset : matchingAssets) {
-                Map<String, Object> assetAmc = new HashMap<>();
-                assetAmc.put("tenantId", tenantId);
-                assetAmc.put("assetId", asset.getAssetId());
-                assetAmc.put("amcConfigurationId", configId);
-                assetAmc.put("amcStartDate", installationDate);
-                assetAmc.put("status", "ACTIVE");
-                assetAmc.put("isLegacyAsset", false);
-
-                assetAmcsToCreate.add(assetAmc);
-                assetIds.add(asset.getAssetId());
-            }
-
+            List<String> assetIds = createAssetAmcRecords(matchingAssets, configId, tenantId, 
+                    installationDate, assetAmcsToCreate);
             configToAssetMap.put(configId, assetIds);
         }
 
-        // Bulk create Asset AMCs
-        if (!assetAmcsToCreate.isEmpty()) {
-            try {
-                Map<String, Object> createRequest = new HashMap<>();
-                createRequest.put(REQUEST_INFO, requestInfo);
-                createRequest.put("AssetAmcs", assetAmcsToCreate); // Match the API field name
+        bulkCreateAssetAmcs(assetAmcsToCreate, requestInfo);
+        return configToAssetMap;
+    }
 
-                StringBuilder url = new StringBuilder(activityConfiguration.getAmcSchedulerHost())
-                        .append(activityConfiguration.getAmcAssetCreateUrl());
-
-                serviceRequest.fetchResult(url, createRequest);
-                log.info("Successfully created {} Asset AMCs", assetAmcsToCreate.size());
-
-            } catch (Exception e) {
-                log.error("Error creating Asset AMCs: {}", e.getMessage(), e);
-                throw new CustomException("ASSET_AMC_CREATION_ERROR",
-                        "Failed to create Asset AMCs: " + e.getMessage());
+    /**
+     * Find assets that match the configuration's asset types
+     */
+    private List<Asset> findMatchingAssets(List<Asset> installedAssets, 
+            List<String> configAssetTypes, String configId) {
+        List<Asset> matchingAssets = new ArrayList<>();
+        for (Asset asset : installedAssets) {
+            String assetTypeId = asset.getAssetTypeID();
+            if (configAssetTypes.contains(assetTypeId)) {
+                matchingAssets.add(asset);
+                log.debug("Asset {} (type: {}) matches configuration {}", asset.getAssetId(), assetTypeId, configId);
+            } else {
+                log.debug("Asset {} (type: {}) does not match configuration {} (required types: {})", 
+                        asset.getAssetId(), assetTypeId, configId, configAssetTypes);
             }
         }
+        return matchingAssets;
+    }
 
-        return configToAssetMap;
+    /**
+     * Create Asset AMC records for matching assets
+     */
+    private List<String> createAssetAmcRecords(List<Asset> matchingAssets, String configId, 
+            String tenantId, Long installationDate, List<Map<String, Object>> assetAmcsToCreate) {
+        List<String> assetIds = new ArrayList<>();
+        for (Asset asset : matchingAssets) {
+            Map<String, Object> assetAmc = new HashMap<>();
+            assetAmc.put("tenantId", tenantId);
+            assetAmc.put("assetId", asset.getAssetId());
+            assetAmc.put("amcConfigurationId", configId);
+            assetAmc.put("amcStartDate", installationDate);
+            assetAmc.put("status", "ACTIVE");
+            assetAmc.put("isLegacyAsset", false);
+
+            assetAmcsToCreate.add(assetAmc);
+            assetIds.add(asset.getAssetId());
+        }
+        return assetIds;
+    }
+
+    /**
+     * Bulk create Asset AMCs via API
+     */
+    private void bulkCreateAssetAmcs(List<Map<String, Object>> assetAmcsToCreate, RequestInfo requestInfo) {
+        if (assetAmcsToCreate.isEmpty()) {
+            return;
+        }
+
+        try {
+            Map<String, Object> createRequest = new HashMap<>();
+            createRequest.put(REQUEST_INFO, requestInfo);
+            createRequest.put("AssetAmcs", assetAmcsToCreate);
+
+            StringBuilder url = new StringBuilder(activityConfiguration.getAmcSchedulerHost())
+                    .append(activityConfiguration.getAmcAssetCreateUrl());
+
+            serviceRequest.fetchResult(url, createRequest);
+            log.info("Successfully created {} Asset AMCs", assetAmcsToCreate.size());
+
+        } catch (Exception e) {
+            log.error("Error creating Asset AMCs: {}", e.getMessage(), e);
+            throw new CustomException("ASSET_AMC_CREATION_ERROR",
+                    "Failed to create Asset AMCs: " + e.getMessage());
+        }
     }
 
     /**
