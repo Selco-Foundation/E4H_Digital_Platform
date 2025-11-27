@@ -113,6 +113,7 @@ public class ScheduledVisitService {
         for (Long visitDate : generateAmcVisits){
             List<ScheduledVisitAssignment> assignments = amcConfiguration.getAssignments().stream()
                             .map(a -> ScheduledVisitAssignment.builder()
+                                    .tenantId(amcConfiguration.getTenantId())
                                     .assignedUser(a.getAssignedUser())
                                     .build())
                             .toList();
