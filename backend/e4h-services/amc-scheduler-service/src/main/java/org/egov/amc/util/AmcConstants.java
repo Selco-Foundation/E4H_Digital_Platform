@@ -6,6 +6,8 @@ public class AmcConstants {
     public static final String MASTER_TENANTS = "tenants";
     public static final String MDMS_TENANT_MODULE_NAME = "tenant";
     public static final String MDMS_COMMON_MASTERS_MODULE_NAME = "common-masters";
+    public static final String MDMS_AMC_MODULE_NAME = "amc";
+    public static final String MDMS_AMC_THRESHOLD_MODULE_NAME = "AMCThresholds";
     public static final String MDMS_HCM_ATTENDANCE_MODULE_NAME = "HCM-ATTENDANCE";
     public static final String MASTER_STATE_INFO = "StateInfo";
     public static final String MASTER_ACTIVITIES = "Activities";

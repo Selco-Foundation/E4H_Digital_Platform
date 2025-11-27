@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS public.visit_transaction (
     last_modified_time BIGINT,
     CONSTRAINT fk_visit_transaction FOREIGN KEY (visit_id)
     REFERENCES public.scheduled_visits(id)
-    ON DELETE SET NULL;
+    ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_visit_transaction_visit_id
     ON visit_transaction(visit_id);

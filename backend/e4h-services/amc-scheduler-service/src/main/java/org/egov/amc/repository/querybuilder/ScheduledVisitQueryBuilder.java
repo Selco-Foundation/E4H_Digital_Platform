@@ -46,8 +46,7 @@ public class ScheduledVisitQueryBuilder {
             "    ) AS assignments " +
             " " +
             "FROM scheduled_visits sv LEFT JOIN amc_configuration ac ON sv.amc_configuration_id = ac.id LEFT JOIN facility f ON sv.facility_id = f.id LEFT JOIN scheduled_visit_assignments sva ON sv.id = sva.scheduled_visit_id ";
-    private static final String SCHEDULED_VISIT_COUNT_QUERY = "SELECT COUNT(*) FROM scheduled_visits sv LEFT JOIN amc_configuration ac ON sv.amc_configuration_id = ac.id LEFT JOIN facility f ON sv.facility_id = f.id " +
-            "LEFT JOIN scheduled_visit_assignments sva ON sv.id = sva.scheduled_visit_id ";
+    private static final String SCHEDULED_VISIT_COUNT_QUERY = "SELECT COUNT(*) FROM scheduled_visits sv LEFT JOIN amc_configuration ac ON sv.amc_configuration_id = ac.id LEFT JOIN facility f ON sv.facility_id = f.id ";
 
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (ORDER BY sv_last_modified_time DESC , sv_visit_id) offset_ FROM " +
@@ -91,7 +90,7 @@ public class ScheduledVisitQueryBuilder {
     }
 
     public String getScheduledVisitSearchQuery(ScheduledVisitSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
-        //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
+        //This uses a ternary operator to choose between SCHEDULED_VISIT_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         String query = criteria.isCountQuery() ? SCHEDULED_VISIT_COUNT_QUERY : FETCH_SCHEDULED_VISIT_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
 
