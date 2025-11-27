@@ -1,5 +1,6 @@
 package facility.service;
 
+import facility.config.Configuration;
 import facility.repository.FacilityRepository;
 import facility.util.IdgenUtil;
 import facility.util.QueryBuilderResult;
@@ -27,6 +28,7 @@ public class FacilityService {
     private final BoundaryValidator boundaryValidator;
     private final FacilityQueryDao facilityQueryDao;
     private final BoundaryService boundaryService;
+    private final Configuration configs;
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -36,7 +38,8 @@ public class FacilityService {
             FacilityMdmsValidator facilityMdmsValidator,
             BoundaryValidator boundaryValidator,
             FacilityQueryDao facilityQueryDao,
-            BoundaryService boundaryService
+            BoundaryService boundaryService,
+            Configuration configs
     ) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
@@ -46,6 +49,7 @@ public class FacilityService {
         this.boundaryValidator = boundaryValidator;
         this.facilityQueryDao = facilityQueryDao;
         this.boundaryService = boundaryService;
+        this.configs = configs;
     }
 
     /**
@@ -279,6 +283,31 @@ public class FacilityService {
         return jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
     }
 
+    /**
+     * Searches for facilities using filters like multiple tenantIds, names, hfrIds, ninIds, boundaries, etc.
+     * Supports pagination using limit and offset.
+     *
+     * @return List of facilities matching the filter
+     */
+    public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request) {
+        QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
+                request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
+        );
+
+        StringBuilder query = new StringBuilder("SELECT * FROM facility");
+        query.append(result.getWhereClause());
+
+        List<Object> allParams = new ArrayList<>(result.getParams());
+        if (!Boolean.TRUE.equals(request.getFacilityBulkSearchCriteria().getSendNonPaginatedResponse())) {
+            query.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+            allParams.add(request.getFacilityBulkSearchCriteria().getLimit());
+            allParams.add(request.getFacilityBulkSearchCriteria().getOffset());
+        }
+
+        log.info("Bulk Search Query: {}", query);
+        log.info("Bulk Search Params: {}", allParams);
+        return jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
+    }
 
 
     /**
@@ -309,6 +338,13 @@ public class FacilityService {
         return jdbcTemplate.queryForObject(query, result.getParams().toArray(), Integer.class);
     }
 
+    public int countFacilitiesForBulkSearch(FacilityBulkSearchRequest request) {
+        QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
+                request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
+        );
+        String query = "SELECT COUNT(*) FROM facility" + result.getWhereClause();
+        return jdbcTemplate.queryForObject(query, result.getParams().toArray(), Integer.class);
+    }
 
 
 }
