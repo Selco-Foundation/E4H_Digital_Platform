@@ -52,8 +52,11 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [selectBoundaryCode, setSelectBoundaryCode] = useState("");
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
+  const [facilityBoundaries, setFacilityBoundaries] = useState([]);
+  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
 
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes || []);
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
 
   useEffect(() => {
     setSelectBoundaryCode(jurisdictionCurrentBoundary?.codes?.join(","));
@@ -61,9 +64,24 @@ export const CreateComplaint = ({ parentUrl }) => {
       setStateBoundaryCode(boundaryData.states?.map((state) => state?.code)?.join(","));
       setDistrictMenu(boundaryData.districts);
       setBlockOptions(boundaryData.blocks);
-      setFacilityOptions(boundaryData.facilities);
+      setFacilityBoundaries(boundaryData.facilities);
+      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code));
     }
   }, [boundaryData, t]);
+
+  useEffect(() => {
+    if (facilityBoundaries?.length && facilityData?.facilities?.length) {
+      const facilityBoundaryCodeToParentMap = new Map();
+      for (let facilityBoundary of facilityBoundaries) {
+        facilityBoundaryCodeToParentMap.set(facilityBoundary.code, facilityBoundary.parentCode);
+      }
+      setFacilityOptions(facilityData?.facilities?.map((facility) => ({
+        code: facility.boundaryCode,
+        id: facility.facilityId,
+        parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
+      })));
+    }
+  }, [facilityBoundaries, facilityData]);
 
   useEffect(() => {
     setSortedDistrictMenu(

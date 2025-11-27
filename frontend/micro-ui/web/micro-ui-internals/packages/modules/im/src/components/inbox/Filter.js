@@ -14,6 +14,9 @@ const Filter = (props) => {
   const [districtMenu, setDistrictMenu] = useState([]);
   const [blockMenu, setBlockMenu] = useState([]);
   const [facilityMenu, setFacilityMenu] = useState([]);
+  const [facilityOptions, setFacilityOptions] = useState([]);
+  const [facilityBoundaries, setFacilityBoundaries] = useState([]);
+  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
 
   const assignedToOptions = useMemo(
@@ -28,6 +31,28 @@ const Filter = (props) => {
 
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {};
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes || []);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+
+  useEffect(() => {
+    if (boundaryData) {
+      setFacilityBoundaries(boundaryData.facilities);
+      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code));
+    }
+  }, [boundaryData]);
+
+  useEffect(() => {
+    if (facilityBoundaries?.length && facilityData?.facilities?.length) {
+      const facilityBoundaryCodeToParentMap = new Map();
+      for (let facilityBoundary of facilityBoundaries) {
+        facilityBoundaryCodeToParentMap.set(facilityBoundary.code, facilityBoundary.parentCode);
+      }
+      setFacilityOptions(facilityData?.facilities?.map((facility) => ({
+        code: facility.boundaryCode,
+        id: facility.facilityId,
+        parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
+      })));
+    }
+  }, [facilityBoundaries, facilityData]);
 
   const state = Digit.ULBService.getStateId();
   const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["SystemFunctionality"]);
@@ -143,7 +168,7 @@ const isCodePresent = (array, codeToCheck) =>{
 
     const selectedBlock = pgrfilters.block?.[0];
     if (selectedBlock && boundaryData) {
-      const newFacilityMenu = boundaryData.facilities
+      const newFacilityMenu = facilityOptions
         .filter((facility) => facility?.parentCode === selectedBlock.code)
         .map((facility) => ({
           code: facility?.code,
@@ -155,7 +180,7 @@ const isCodePresent = (array, codeToCheck) =>{
       setFacilityMenu(newFacilityMenu);
     }
 
-  }, [pgrfilters, boundaryData, t]);
+  }, [pgrfilters, boundaryData, facilityOptions, t]);
 
   useEffect(() => {
     const code = selectAssigned.code === "ASSIGNED_TO_ME" ? userName : "";

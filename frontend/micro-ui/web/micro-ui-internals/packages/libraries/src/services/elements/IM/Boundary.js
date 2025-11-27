@@ -1,4 +1,4 @@
-import { Request } from "../atoms/Utils/Request";
+import { Request } from "../../atoms/Utils/Request";
 
 export const BoundaryService = {
 

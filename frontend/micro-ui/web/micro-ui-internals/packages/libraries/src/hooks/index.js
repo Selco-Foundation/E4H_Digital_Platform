@@ -91,6 +91,7 @@ import useGetHowItWorksJSON from "./useHowItWorksJSON";
 import { usePrivacyContext } from "./usePrivacyContext";
 import useStaticData from "./useStaticData";
 import useBoundary from "./im/useBoundary";
+import useFacility from "./im/useFacility";
 
 
 
@@ -160,7 +161,8 @@ const survey = {
 };
 
 const im = {
-  useBoundary
+  useBoundary,
+  useFacility,
 }
 
 const Hooks = {
