@@ -244,12 +244,8 @@ public class DataCollectorService {
                     if (facility.getCenterName() != null && facility.getFacilityName() == null) {
                         facility.setFacilityName(facility.getCenterName());
                     }
-                    // Map HFRID to hfrId for consistency (handle "Not Available" case)
-                    if (facility.getHfrid() != null && !facility.getHfrid().isEmpty() && 
-                        !facility.getHfrid().equalsIgnoreCase("Not Available") &&
-                        !facility.getHfrid().equalsIgnoreCase("Not available")) {
-                        facility.setHfrId(facility.getHfrid().trim());
-                    }
+                    // Note: HFRID to hfrId mapping is already handled in callCenterDatasApi method
+                    // when building RMSFacilityData from CenterData
                     
                     // Add all facilities returned by API (API already filtered for inactive devices)
                     allFacilities.add(facility);
