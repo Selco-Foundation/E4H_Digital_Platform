@@ -105,4 +105,18 @@ public class ScheduledVisitController {
         OtpResponse otpResponse = scheduledVisitService.resendOTP(request);
         return new ResponseEntity<OtpResponse>(otpResponse, HttpStatus.OK);
     }
+
+    @RequestMapping(value = "/_update", method = RequestMethod.POST)
+    public ResponseEntity<ScheduledVisitResponse> updateScheduledVisits(
+            @ApiParam(value = "Details for the updated scheduled visits.", required = true)
+            @Valid @RequestBody ScheduledVisitRequest request) {
+        log.info("Received request to update scheduled visits");
+        ScheduledVisitRequest enrichedScheduledVisitRequest = scheduledVisitService.updateScheduledVisit(request);
+        ScheduledVisitResponse response = ScheduledVisitResponse.builder()
+                .scheduledVisits(enrichedScheduledVisitRequest.getScheduledVisits())
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(enrichedScheduledVisitRequest.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
 }
