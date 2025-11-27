@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: visit-scheduling
+  namespace: default  # Change to your namespace
+spec:
+  # Schedule: Daily at 9:00 AM IST (09:00)
+  # Cron format: minute hour day month day-of-week
+  # timeZone: "Asia/Kolkata" handles IST conversion automatically
+  schedule: "0 9 * * *"  # 09:00 IST, every day
+  timeZone: "Asia/Kolkata"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: visit-scheduling
+            image: visit-scheduling-cron:latest  # Your Docker image
+            imagePullPolicy: IfNotPresent
+            env:
+            - name: AMC_SCHEDULER_SERVICE_HOST
+              value: "http://amc-scheduler-service.core-dev:8095"  # Adjust based on your service name and namespace
+            # Optional: Pass tenant IDs as arguments if you want to process specific tenants
+            # args: ["in", "ka.karnataka"]
+          restartPolicy: OnFailure
+
