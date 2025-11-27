@@ -186,4 +186,16 @@ public class ActivityConfiguration {
 
     @Value("${email.activity.assignment.body}")
     private String activityEmailBody;
+
+    @Value("${egov.amc.scheduler.host}")
+    private String amcSchedulerHost;
+
+    @Value("${egov.amc.scheduler.asset.create.url}")
+    private String amcAssetCreateUrl;
+
+    @Value("${egov.amc.scheduler.configuration.search.url}")
+    private String amcConfigurationSearchUrl;
+
+    @Value("${egov.amc.scheduler.visit.generate.url}")
+    private String amcVisitGenerateUrl;
 }

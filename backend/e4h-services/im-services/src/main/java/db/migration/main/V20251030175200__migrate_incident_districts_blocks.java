@@ -27,6 +27,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -47,6 +48,8 @@ public class V20251030175200__migrate_incident_districts_blocks extends BaseJava
         m.put("mh", "Maharashtra");
         TENANT_TO_STATE = Collections.unmodifiableMap(m);
     }
+
+    private static final int[] RETRY_DELAYS_SECONDS = {1, 7, 15, 25, 30};
 
     @Override
     public void migrate(Context context) throws Exception {
@@ -244,7 +247,12 @@ public class V20251030175200__migrate_incident_districts_blocks extends BaseJava
                 HttpHeaders headers = new HttpHeaders();
                 headers.setContentType(MediaType.APPLICATION_JSON);
                 HttpEntity<String> httpEntity = new HttpEntity<>(objectMapper.writeValueAsString(req), headers);
-                ResponseEntity<String> response = restTemplate.postForEntity(url, httpEntity, String.class);
+
+                ResponseEntity<String> response = executeWithRetry(
+                        () -> restTemplate.postForEntity(url, httpEntity, String.class),
+                        "create boundary for tenant '" + tenantId + "' with code '" + code + "'"
+                );
+
                 log.info("Boundary create attempted tenant={} code={} status={}", tenantId, code, response.getStatusCode());
                 if (migrationLogger != null) {
                     migrationLogger.println("[BOUNDARY][SUCCESS] tenant=" + tenantId + " code=" + code + " status=" + response.getStatusCode());
@@ -300,7 +308,12 @@ public class V20251030175200__migrate_incident_districts_blocks extends BaseJava
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> httpEntity = new HttpEntity<>(objectMapper.writeValueAsString(req), headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(url, httpEntity, String.class);
+
+            ResponseEntity<String> response = executeWithRetry(
+                    () -> restTemplate.postForEntity(url, httpEntity, String.class),
+                    "create boundary relationship for code '" + code + "' with parent '" + parentCode + "'"
+            );
+
             log.info("Boundary relationship created/attempted for code={} -> parent={} tenant={} status={}", code, parentCode, tenantId, response.getStatusCode());
             if (migrationLogger != null) {
                 migrationLogger.println("[RELATIONSHIP][SUCCESS] tenant=" + tenantId + " code=" + code
@@ -367,7 +380,12 @@ public class V20251030175200__migrate_incident_districts_blocks extends BaseJava
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> httpEntity = new HttpEntity<>(objectMapper.writeValueAsString(body), headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(url, httpEntity, String.class);
+
+            ResponseEntity<String> response = executeWithRetry(
+                    () -> restTemplate.postForEntity(url, httpEntity, String.class),
+                    "fetch data from MDMS service at " + url
+            );
+
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 return objectMapper.createObjectNode();
             }
@@ -420,6 +438,52 @@ public class V20251030175200__migrate_incident_districts_blocks extends BaseJava
         FileWriter fileWriter = new FileWriter(logFilePath, true);
         log.info("📝 Migration log file created: {}", absolutePath);
         return new PrintWriter(fileWriter, true);
+    }
+
+    /**
+     * Executes a supplier function with retry logic.
+     * Retries with delays: 1, 7, 15, 25, 30 seconds if the first attempt fails.
+     *
+     * @param supplier The function to execute
+     * @param operationName Name of the operation for logging purposes
+     * @return The result from the supplier
+     * @throws Exception If all retry attempts fail
+     */
+    private static <T> T executeWithRetry(Supplier<T> supplier, String operationName) throws Exception {
+        Exception lastException = null;
+        
+        // First attempt (no delay)
+        try {
+            return supplier.get();
+        } catch (Exception e) {
+            lastException = e;
+            log.warn("Initial attempt to {} was unsuccessful. Error: {}. Will retry with exponential backoff.", operationName, e.getMessage());
+        }
+        
+        // Retry with delays: 1, 7, 15, 25, 30 seconds
+        int attemptNumber = 1;
+        for (int delay : RETRY_DELAYS_SECONDS) {
+            try {
+                Thread.sleep(delay * 1000L);
+                log.info("Retrying {} (attempt {}) after waiting {} seconds...", operationName, attemptNumber + 1, delay);
+                return supplier.get();
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new Exception("Retry operation was interrupted for " + operationName + " during attempt " + (attemptNumber + 1), ie);
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("Retry attempt {} for {} failed after {} seconds. Error: {}. Will continue with next retry.", 
+                        attemptNumber + 1, operationName, delay, e.getMessage());
+                attemptNumber++;
+            }
+        }
+        
+        // All attempts failed
+        int totalDelaySeconds = Arrays.stream(RETRY_DELAYS_SECONDS).sum();
+        log.error("All retry attempts exhausted for {}. Operation failed after {} total retry attempts (total wait time: {} seconds). Last error: {}", 
+                operationName, RETRY_DELAYS_SECONDS.length + 1, totalDelaySeconds, lastException != null ? lastException.getMessage() : "Unknown");
+        throw new Exception(String.format("Failed to complete %s after %d attempts (total wait time: %d seconds)", 
+                operationName, RETRY_DELAYS_SECONDS.length + 1, totalDelaySeconds), lastException);
     }
 
     private static final class MigrationStats {
