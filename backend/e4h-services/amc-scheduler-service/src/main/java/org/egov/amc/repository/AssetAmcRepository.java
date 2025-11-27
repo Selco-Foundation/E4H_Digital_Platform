@@ -44,17 +44,17 @@ public class AssetAmcRepository extends GenericRepository<AssetAmc> {
     }
 
     public List<AssetAmc> getAssetAmc(AssetAmcSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
-        //Fetch FieldPlans based on search criteria
+        //Fetch assetAmc based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         AssetAmcSearchCriteria criteria = request.getSearchCriteria();
         criteria.setCountQuery(false);
         URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
 
         String query = queryBuilder.getAssetAmcSearchQuery(criteria, urlParams, preparedStmtList);
-        List<AssetAmc> fieldPlanList = jdbcTemplate.query(query, assetAmcRowMapper, preparedStmtList.toArray());
+        List<AssetAmc> assetAmcList = jdbcTemplate.query(query, assetAmcRowMapper, preparedStmtList.toArray());
 
         log.info("Fetched project list based on given search criteria");
-        return fieldPlanList;
+        return assetAmcList;
     }
 
     public Integer getAssetAmcCount(AssetAmcSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {

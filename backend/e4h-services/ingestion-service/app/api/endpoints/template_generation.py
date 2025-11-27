@@ -7,6 +7,8 @@ from PIL import ImageDraw, Image, ImageFont
 from fastapi import APIRouter, Form, HTTPException, Depends, Body
 from fastapi.responses import FileResponse
 from fastapi import BackgroundTasks
+from openpyxl.reader.excel import load_workbook
+from openpyxl.styles import Protection, PatternFill
 from openpyxl.utils import get_column_letter
 
 from app.core.logging import AppLogger
@@ -14,8 +16,10 @@ from app.decorators.rbac_validator import get_authorized_request_info
 from app.ingest.facility_template_service import FacilityTemplateService
 from app.ingest.project_service import ProjectService
 from app.schemas.boundary import Boundary, flatten_boundaries
+from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
 from app.utils.convertor import request_info_from_json
-from app.utils.excel_utils import add_dropdowns_to_excel
+from app.utils.excel_utils import add_dropdowns_to_excel, autofit_columns, lock_prefilled_rows_in_excel, \
+    lock_excel_columns
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
@@ -35,6 +39,8 @@ project_service_url = os.getenv("PROJECT_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 fieldPlan_service_url = os.getenv("FIELDPLAN_SERVICE_URL")
 fieldPlan_activity_service_url = os.getenv("FIELDPLAN_ACTIVITY_SERVICE_URL")
+amc_scheduler_service_url = os.getenv("AMC_SCHEDULER_SERVICE_URL")
+DEFAULT_AMC_ASSET_TYPES = ["INVERTER", "PANEL", "BATTERY"]
 DB_CONFIG = {
     "host": os.getenv("DB_HOST"),
     "port": int(os.getenv("DB_PORT", 5432)),
@@ -664,3 +670,285 @@ async def get_facility_QR_for_autologin(
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@router.post('/amcConfigurationTemplate',
+            summary='Generate AMC configuration ingestion template',
+            response_description="Returns Excel template with facility asset metadata for AMC configurations")
+async def get_amc_configuration_template(
+        background_tasks: BackgroundTasks,
+        payload: dict = Body(..., description="Payload containing RequestInfo, boundary_data")
+):
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
+
+    boundary_data = payload.get("boundary_data", {})
+    project_id = payload.get("project_id")  # Optional: used to check for existing AMC configurations
+
+    if not boundary_data:
+        raise HTTPException(status_code=400, detail="boundary_data is required")
+
+    if not facility_service_url:
+        raise HTTPException(status_code=500, detail="Facility service is not configured")
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_filename = f"amc_configuration_template_{timestamp}.xlsx"
+    output_file_path = create_temp_file(suffix=".xlsx")
+
+    sheet_name = "amc-configurations"
+    columns = [
+        "Facility Id",
+        "NIN/HFR ID",
+        "BoundaryCode",
+        "Health Facility Name",
+        "Vendor",
+        "AMC-Frequency",
+        "AMC-Duration"
+    ]
+
+    try:
+        # Flatten boundaries from boundary_data
+        boundary_list: List[Boundary] = flatten_boundaries(boundary_data)
+
+        # Fetch facilities by boundary codes
+        facility_client = FacilityServiceClient(facility_service_url)
+        all_facilities = []
+
+        for boundary in boundary_list:
+            try:
+                results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
+                facilities = results.get('facilities', [])
+                all_facilities.extend(facilities)
+            except Exception as e:
+                logger.error(f"Error fetching boundary facilities for {boundary.code}: {e}")
+
+
+        logger.info(f"Total facilities in AMC template: {len(all_facilities)}")
+
+        # Fetch approved vendors for dropdown
+        facility_service = FacilityTemplateService()
+        vendor_data = facility_service.get_all_vendor_codes(request_info)
+        vendor_names = [v.get("Vendor Name", "") for v in vendor_data if v.get("Vendor Name")]
+
+        # Initialize AMC scheduler client to check for existing configurations
+        amc_client = None
+        if amc_scheduler_service_url and project_id:
+            amc_client = AMCSchedulerServiceClient(amc_scheduler_service_url)
+
+        # Create rows for AMC configuration template - one row per facility
+        # Asset types ["INVERTER","PANEL","BATTERY"] will be used as default for each configuration during processing
+        rows = []
+        rows_with_existing_amc = []  # Track row indices that have existing AMC configurations
+
+        def convert_frequency_to_display(frequency_months):
+            """Convert frequency in months to display format"""
+            if frequency_months == 6:
+                return "Every 6 Months"
+            elif frequency_months == 12:
+                return "Every 1 Year"
+            return ""
+
+        def convert_duration_to_display(duration_months):
+            """Convert duration in months to display format"""
+            if duration_months == 12:
+                return "1 Year"
+            elif duration_months == 36:
+                return "3 Years"
+            elif duration_months == 60:
+                return "5 Years"
+            return ""
+
+        for idx, facility in enumerate(all_facilities):
+            facility_details = facility.get("facility_details", {}) or {}
+            nin_id = facility_details.get("nin_id", "")
+            hfr_id = facility_details.get("hfr_id", "")
+            # Use NIN ID if available, otherwise HFR ID, otherwise empty
+            nin_hfr_id = nin_id if nin_id else (hfr_id if hfr_id else "")
+            facility_name = facility.get("facility_name", "")
+            boundary_code = facility.get("boundary_code") or facility.get("boundaryCode", "")
+            facility_id = facility.get("facility_id", "")
+
+            # Initialize row with empty values
+            vendor_value = ""
+            frequency_value = ""
+            duration_value = ""
+            has_existing_amc = False
+
+            # Check for existing AMC configuration if project_id and facility_id are available
+            if amc_client and project_id and facility_id:
+                try:
+                    existing_configs = amc_client.search_amc_configurations(
+                        request_info,
+                        facility_id=facility_id,
+                        project_id=project_id
+                    )
+                    # Check if any configurations exist
+                    configs = existing_configs.get("AmcConfigurations", [])
+                    if configs:
+                        # Use the first configuration found
+                        existing_config = configs[0]
+                        vendor_value = existing_config.get("vendor", "")
+                        frequency_months = existing_config.get("frequency")
+                        duration_months = existing_config.get("duration")
+
+                        if vendor_value:
+                            frequency_value = convert_frequency_to_display(frequency_months)
+                            duration_value = convert_duration_to_display(duration_months)
+                            has_existing_amc = True
+                            rows_with_existing_amc.append(idx)
+                            logger.info(f"Found existing AMC config for facility {facility_id}: vendor={vendor_value}, frequency={frequency_value}, duration={duration_value}")
+                except Exception as e:
+                    logger.warning(f"Error checking existing AMC config for facility {facility_id}: {e}")
+                    # Continue without existing config data
+
+            # Create one row per facility (asset types are handled internally during processing)
+            rows.append({
+                "Facility Id": facility_id,
+                "NIN/HFR ID": nin_hfr_id,
+                "BoundaryCode": boundary_code,
+                "Health Facility Name": facility_name,
+                "Vendor": vendor_value,
+                "AMC-Frequency": frequency_value,
+                "AMC-Duration": duration_value
+            })
+
+        # Create DataFrame and write to Excel
+        df = pd.DataFrame(rows, columns=columns)
+        with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
+
+            # Add Boundary Data Sheet
+            boundary_records = []
+            for boundary in boundary_list:
+                boundary_records.append({
+                    "Country": boundary.get("country", ""),
+                    "State": boundary.get("state", ""),
+                    "District": boundary.get("district", ""),
+                    "Block": boundary.get("block", ""),
+                    "BoundaryCode": boundary.get("code", "")
+                })
+            if not boundary_records:
+                boundary_records.append({
+                    "Country": "",
+                    "State": "",
+                    "District": "",
+                    "Block": "",
+                    "BoundaryCode": ""
+                })
+
+            df_boundary = pd.DataFrame(boundary_records)
+            df_boundary.to_excel(writer, index=False, sheet_name="BoundaryCodes")
+
+        # Lock the boundary sheet
+        lock_excel_columns(
+            file_path=output_file_path,
+            sheet_name="BoundaryCodes",
+            column_headers_to_unlock=[]
+        )
+
+        # Add dropdowns for vendor, amc-frequency, and amc-duration
+        dropdowns_map = {}
+
+        # Vendor dropdown with approved vendor names
+        if vendor_names:
+            dropdowns_map["Vendor"] = vendor_names
+
+        # AMC Frequency dropdown
+        dropdowns_map["AMC-Frequency"] = ["Every 6 Months", "Every 1 Year"]
+
+        # AMC Duration dropdown
+        dropdowns_map["AMC-Duration"] = ["1 Year", "3 Years", "5 Years"]
+
+        allow_blank_map = {
+            "Vendor": True,
+            "AMC-Frequency": True,
+            "AMC-Duration": True
+        }
+
+        add_dropdowns_to_excel(
+            file_path=output_file_path,
+            sheet_name=sheet_name,
+            dropdowns=dropdowns_map,
+            allow_blank_map=allow_blank_map,
+            max_extra_rows=500
+        )
+
+        # Lock prefilled rows except editable columns
+        # BoundaryCode is pre-filled and should be locked
+        lock_prefilled_rows_in_excel(
+            file_path=output_file_path,
+            sheet_name=sheet_name,
+            editable_columns=["Vendor", "AMC-Frequency", "AMC-Duration"],
+            total_rows=len(rows),
+            total_columns=len(columns),
+            always_locked_columns=["BoundaryCode"],
+            extra_append_rows=500
+        )
+
+        # Lock Vendor, AMC-Frequency, and AMC-Duration for rows with existing AMC configurations
+        if rows_with_existing_amc:
+            wb = load_workbook(output_file_path)
+            ws = wb[sheet_name]
+            grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+
+            # Find column indices for Vendor, AMC-Frequency, and AMC-Duration
+            header_row = [cell.value for cell in ws[1]]
+            vendor_col_idx = None
+            frequency_col_idx = None
+            duration_col_idx = None
+
+            for idx, header in enumerate(header_row, start=1):
+                if header == "Vendor":
+                    vendor_col_idx = idx
+                elif header == "AMC-Frequency":
+                    frequency_col_idx = idx
+                elif header == "AMC-Duration":
+                    duration_col_idx = idx
+
+            # Lock cells for rows with existing AMC configurations
+            # Note: rows_with_existing_amc contains 0-based indices, Excel rows are 1-based
+            # Header is row 1, so data starts at row 2
+            for row_idx_0based in rows_with_existing_amc:
+                excel_row = row_idx_0based + 2  # +2 because header is row 1, and 0-based to 1-based
+
+                if vendor_col_idx:
+                    cell = ws.cell(row=excel_row, column=vendor_col_idx)
+                    cell.protection = Protection(locked=True)
+                    cell.fill = grey_fill
+
+                if frequency_col_idx:
+                    cell = ws.cell(row=excel_row, column=frequency_col_idx)
+                    cell.protection = Protection(locked=True)
+                    cell.fill = grey_fill
+
+                if duration_col_idx:
+                    cell = ws.cell(row=excel_row, column=duration_col_idx)
+                    cell.protection = Protection(locked=True)
+                    cell.fill = grey_fill
+
+            # Re-enable sheet protection
+            ws.protection.sheet = True
+            ws.protection.enable()
+            wb.save(output_file_path)
+            logger.info(f"Locked AMC fields for {len(rows_with_existing_amc)} rows with existing AMC configurations")
+
+        # Autofit columns
+        autofit_columns(
+            file_path=output_file_path,
+            sheet_name=sheet_name
+        )
+        autofit_columns(
+            file_path=output_file_path,
+            sheet_name="BoundaryCodes"
+        )
+
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except HTTPException:
+        cleanup_temp_file(output_file_path)
+        raise
+    except Exception as e:
+        logger.error(f"Unhandled error in get_amc_configuration_template: {e}")
+        cleanup_temp_file(output_file_path)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
