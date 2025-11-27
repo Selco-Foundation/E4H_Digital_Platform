@@ -850,8 +850,8 @@ public class ActivityService {
                 return;
             }
 
-            // Get installation date (use completedAt if available, otherwise current time)
-            Long installationDate = activityFacility.getCompletedAt();
+            // Get installation date
+            Long installationDate = activityFacility.getAuditDetails().getLastModifiedTime();
             if (installationDate == null) {
                 installationDate = System.currentTimeMillis();
             }
