@@ -54,6 +54,8 @@ public class EmployeeSearchCriteria {
 	
 	public List<String> boundaryCodes;
 
+	public Boolean searchOnlyInBoundary;
+
 	public Integer offset;
 	
 	public Integer limit;

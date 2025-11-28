@@ -1,5 +1,6 @@
 package org.egov.hrms.repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -152,21 +153,33 @@ public class EmployeeQueryBuilder {
 
 	private void addWhereClauseJurisdiction(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList, RequestInfo requestInfo, String tenantId) {
 		if(!CollectionUtils.isEmpty(criteria.getBoundaryCodes())){
-			// Fetch hierarchical boundary codes from boundary service (all ancestor boundaries)
-			List<String> hierarchicalBoundaries = boundaryService.getAncestorBoundaries(
-					requestInfo, 
-					tenantId,
-					criteria.getBoundaryCodes(),
-					null  // hierarchyType - defaults to ADMIN if null
-			);
+			List<String> boundariesToSearch;
+			
+			// If searchOnlyInBoundary is true, use only the specified boundary codes
+			// Otherwise, fetch all ancestor boundaries (default behavior)
+			if(Boolean.TRUE.equals(criteria.getSearchOnlyInBoundary())) {
+				// Search only in the specified boundary codes, exclude ancestor boundaries
+				boundariesToSearch = criteria.getBoundaryCodes();
+			} else {
+				// Fetch hierarchical boundary codes from boundary service (all ancestor boundaries)
+				List<String> hierarchicalBoundaries = boundaryService.getAncestorBoundaries(
+						requestInfo, 
+						tenantId,
+						criteria.getBoundaryCodes(),
+						null  // hierarchyType - defaults to ADMIN if null
+				);
 
-			for(String boundaryCode : criteria.getBoundaryCodes()) {
-				if(!hierarchicalBoundaries.contains(boundaryCode)) {
-					hierarchicalBoundaries.add(boundaryCode);
+				boundariesToSearch = new ArrayList<>(hierarchicalBoundaries);
+				// Ensure original boundary codes are included
+				for(String boundaryCode : criteria.getBoundaryCodes()) {
+					if(!boundariesToSearch.contains(boundaryCode)) {
+						boundariesToSearch.add(boundaryCode);
+					}
 				}
 			}
-			builder.append(" and jurisdiction.boundary IN (").append(createQuery(hierarchicalBoundaries)).append(")");
-			addToPreparedStatement(preparedStmtList, hierarchicalBoundaries);
+			
+			builder.append(" and jurisdiction.boundary IN (").append(createQuery(boundariesToSearch)).append(")");
+			addToPreparedStatement(preparedStmtList, boundariesToSearch);
 		}
 		// Only consider active jurisdictions
 		builder.append(" and jurisdiction.isactive = ?");
