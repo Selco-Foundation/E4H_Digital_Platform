@@ -430,10 +430,12 @@ public class EnrichmentService {
                     }
                 } else {
                     log.warn("No facility found for boundaryCode: {}", boundaryCode);
+                    throw new CustomException("FACILITY_NOT_FOUND", "Cannot find facility");
                 }
             }
         } catch (Exception e) {
             log.error("Error enriching facility details for boundaryCode: {}", boundaryCode, e);
+            throw new CustomException("FACILITY_NOT_FOUND", "Cannot find facility");
         }
     }
 
