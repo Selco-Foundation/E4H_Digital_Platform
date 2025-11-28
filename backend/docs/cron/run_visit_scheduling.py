@@ -1,12 +1,11 @@
 import requests
 import json
-import sys
 import time
 import uuid
 import os
 
-# Get tenant IDs from command-line arguments
-tenant_ids = sys.argv[1:] if len(sys.argv) > 1 else []
+# Tenant ID is fixed to 'in'
+tenant_id = "in"
 
 # Service host - will be overridden by environment variable or default
 SERVICE_HOST = "http://amc-service.core-dev:8080"
@@ -29,14 +28,14 @@ base_request_info = {
         "msgId": None,  # Will be set to UUID
         "authToken": "cronjob-token",
         "userInfo": {
-            "id": 19974,
-            "uuid": "32348ff1-491b-427e-b98e-bab6b2dfd8f5",
-            "userName": "1234567894",
-            "name": "Babs AMC",
-            "mobileNumber": "9909994199",
-            "emailId": "babs.r@beehyv.com",
+            "id": None,
+            "uuid": None,  # Will be set to UUID
+            "userName": "CRONJOB_VISIT_SCHEDULING",
+            "name": "Cron Job - Visit Scheduling",
+            "mobileNumber": "0000000000",
+            "emailId": "cronjob@e4h.com",
             "locale": "en_IN",
-            "type": "EMPLOYEE",
+            "type": "SYSTEM",
             "roles": [],
             "active": True,
             "tenantId": ""  # to be filled per tenant
@@ -54,54 +53,50 @@ role_templates = [
     {"name": "AMC Reviewer", "code": "AMC_REVIEWER", "tenantId": ""}
 ]
 
-# Process tenants
-if not tenant_ids:
-    tenant_ids = ["in"]  # Default tenant
+# Process tenant
+print(f"Processing tenant ID: {tenant_id}")
 
-for tenant_id in tenant_ids:
-    print("Processing tenant ID: {tenant_id}")
-    
-    # Deep copy to avoid modifying shared data
-    request_info = json.loads(json.dumps(base_request_info))
-    request_info["RequestInfo"]["ts"] = int(time.time() * 1000)
-    request_info["RequestInfo"]["msgId"] = str(uuid.uuid4())
-    request_info["RequestInfo"]["userInfo"]["tenantId"] = tenant_id
-    request_info["RequestInfo"]["userInfo"]["roles"] = [
-        {**role, "tenantId": tenant_id} for role in role_templates
-    ]
-    
-    # Step 1: Search for all DRAFT visits
-    print("Searching for DRAFT visits...")
-    search_url = f'{SERVICE_HOST}/asset-amc/v1/visit/_search?tenantId={tenant_id}&limit=1000&offset=0'
-    search_request = {
-        "RequestInfo": request_info["RequestInfo"],
-        "searchCriteria": {
-            "tenantId": tenant_id,
-            "statuses": ["DRAFT"]
-        }
+# Deep copy to avoid modifying shared data
+request_info = json.loads(json.dumps(base_request_info))
+request_info["RequestInfo"]["ts"] = int(time.time() * 1000)
+request_info["RequestInfo"]["msgId"] = str(uuid.uuid4())
+request_info["RequestInfo"]["userInfo"]["uuid"] = str(uuid.uuid4())
+request_info["RequestInfo"]["userInfo"]["tenantId"] = tenant_id
+request_info["RequestInfo"]["userInfo"]["roles"] = [
+    {**role, "tenantId": tenant_id} for role in role_templates
+]
+
+# Step 1: Search for all DRAFT visits
+print("Searching for DRAFT visits...")
+search_url = f'{SERVICE_HOST}/asset-amc/v1/visit/_search?tenantId={tenant_id}&limit=1000&offset=0'
+search_request = {
+    "RequestInfo": request_info["RequestInfo"],
+    "searchCriteria": {
+        "tenantId": tenant_id,
+        "statuses": ["DRAFT"]
     }
-    
-    try:
-        response = requests.post(search_url, headers=headers, json=search_request, timeout=60)
-        if response.status_code == 200:
-            data = response.json()
-            visits = data.get("ScheduledVisits", [])
-            total_count = data.get("TotalCount", 0)
-            if total_count > 0 and len(visits) == 0:
-                print("Warning: TotalCount={total_count} but no visits found in response. Response keys: {list(data.keys())}")
-        else:
-            print("Search returned status {response.status_code}: {response.text[:200]}")
-            visits = []
-    except Exception as e:
-        print("Error searching visits: {e}")
+}
+
+try:
+    response = requests.post(search_url, headers=headers, json=search_request, timeout=60)
+    if response.status_code == 200:
+        data = response.json()
+        visits = data.get("ScheduledVisits", [])
+        total_count = data.get("TotalCount", 0)
+        if total_count > 0 and len(visits) == 0:
+            print(f"Warning: TotalCount={total_count} but no visits found in response. Response keys: {list(data.keys())}")
+    else:
+        print(f"Search returned status {response.status_code}: {response.text[:200]}")
         visits = []
-    
-    print("Found {len(visits)} DRAFT visits")
-    
-    if len(visits) == 0:
-        print("No DRAFT visits found for tenant {tenant_id}")
-        continue
-    
+except Exception as e:
+    print(f"Error searching visits: {e}")
+    visits = []
+
+print(f"Found {len(visits)} DRAFT visits")
+
+if len(visits) == 0:
+    print(f"No DRAFT visits found for tenant {tenant_id}")
+else:
     # Step 2: Call /_update for each visit
     print("Updating visits (service will check notice period and apply SCHEDULE if needed)...")
     update_url = f'{SERVICE_HOST}/asset-amc/v1/visit/_update'
@@ -130,12 +125,12 @@ for tenant_id in tenant_ids:
             response = requests.post(update_url, headers=headers, json=update_request, timeout=30)
             if response.status_code == 202:  # ACCEPTED
                 success_count += 1
-                print("Processed visit: {visit_id}")
+                print(f"Processed visit: {visit_id}")
             else:
-                print("Failed to process visit: {visit_id} - Status: {response.status_code}")
+                print(f"Failed to process visit: {visit_id} - Status: {response.status_code}")
         except Exception as e:
-            print("Error updating visit {visit_id}: {e}")
+            print(f"Error updating visit {visit_id}: {e}")
     
-    print("Completed processing tenant {tenant_id}: {success_count}/{len(visits)} visits processed")
+    print(f"Completed processing tenant {tenant_id}: {success_count}/{len(visits)} visits processed")
 
 print("Visit scheduling cron job completed")
