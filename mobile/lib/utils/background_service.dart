@@ -890,8 +890,7 @@ Future<void> _performScheduleVisitSubmission({
   final pdfFileStoreId = await amcFormRepo.generateFormPdf(
       isar: isar, scheduledVisitId: scheduledVisitId, userType: userType);
 
-  if (pdfFileStoreId == null ||
-      (pdfFileStoreId is String && pdfFileStoreId.isEmpty)) {
+  if (pdfFileStoreId == null || pdfFileStoreId.isEmpty) {
     throw Exception('Failed to generate AMC PDF');
   }
 

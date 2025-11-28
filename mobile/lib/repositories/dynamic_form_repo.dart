@@ -642,14 +642,9 @@ class AmcDynamicFormRepository {
         throw Exception("Generate Form PDF failed: ${response.statusCode}");
       }
 
-      String? filestoreId;
-      final data = response.data;
-      if (data is Map<String, dynamic>) {
-        filestoreId = data["filestoreId"] as String?;
-      } else if (data is String && data.trim().isNotEmpty) {
-        final parsed = jsonDecode(data) as Map<String, dynamic>;
-        filestoreId = parsed["filestoreId"] as String?;
-      }
+      String? filestoreId = _extractFilestoreId(response.data);
+
+      print("$filestoreId filestore");
 
       if (filestoreId == null || filestoreId.isEmpty) {
         throw Exception("filestoreId missing in response");
@@ -660,6 +655,38 @@ class AmcDynamicFormRepository {
       AppLogger.instance.info("error $e");
       throw Exception("Failed to generate BOM PDF filestoreId");
     }
+  }
+
+  String? _extractFilestoreId(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      // New shape: filestoreIds: ["id1", ...]
+      final ids = data["filestoreIds"];
+      if (ids is List && ids.isNotEmpty) {
+        final first = ids.first;
+        if (first is String) return first;
+      }
+
+      // Old shape: filestoreId: "id1"
+      final single = data["filestoreId"];
+      if (single is String && single.isNotEmpty) {
+        return single;
+      }
+
+      return null;
+    }
+
+    if (data is List && data.isNotEmpty) {
+      // If backend now returns an array at top-level, use first element
+      return _extractFilestoreId(data.first);
+    }
+
+    if (data is String && data.trim().isNotEmpty) {
+      // If Dio gives you a raw JSON string
+      final parsed = jsonDecode(data);
+      return _extractFilestoreId(parsed);
+    }
+
+    return null;
   }
 
   Future<void> mergeKvForEntryKey({

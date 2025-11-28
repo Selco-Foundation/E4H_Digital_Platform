@@ -43,7 +43,6 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
   double? _latitude;
   double? _longitude;
   StreamSubscription<LocationState>? _locSub;
-  bool _shouldSubmitAfterCacheSave = false;
 
   @override
   void initState() {
@@ -103,7 +102,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
     }
   }
 
-  Future<void> _populateFormCacheOrSubmittedDocuments({
+  Future<void> _populateFromCacheOrSubmittedDocuments({
     List<CacheAmcMediaUpload> cacheEntries = const [],
   }) async {
     setState(() {
@@ -187,139 +186,146 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return BlocListener<CacheAmcMediaUploadBloc, CacheAmcMediaUploadState>(
-      listener: (context, state) {
-        state.maybeWhen(
-          loaded: (entries) {
-            if (_shouldSubmitAfterCacheSave) {
-              _shouldSubmitAfterCacheSave = false;
-
-              if (_currentScheduledVisitId != null) {
-                context.read<ScheduleVisitSubmitBloc>().add(
-                      ScheduleVisitSubmitEvent.submit(
-                        scheduledVisitId: _currentScheduledVisitId!,
-                        userType: userType,
-                      ),
-                    );
-              }
-            } else {
-              _populateFormCacheOrSubmittedDocuments(cacheEntries: entries);
-            }
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<CacheAmcMediaUploadBloc, CacheAmcMediaUploadState>(
+          listener: (context, state) {
+            state.maybeWhen(
+              loaded: (entries) {
+                _populateFromCacheOrSubmittedDocuments(cacheEntries: entries);
+              },
+              notFound: () => _populateFromCacheOrSubmittedDocuments(),
+              orElse: () {},
+            );
           },
-          //   _populateFormCacheOrSubmittedDocuments(cacheEntries: entries),
-          notFound: () => _populateFormCacheOrSubmittedDocuments(),
-          orElse: () {},
-        );
-      },
-      child: Scaffold(
-        body: ScrollableContent(
-          enableFixedDigitButton: true,
-          backgroundColor: theme.colorTheme.generic.background,
-          header: const BackNavigationHelpHeaderWidget(
-            showBackNavigation: true,
-            showHelp: false,
-          ),
-          footer: FooterButton(
-            // isDisabled: false,
-            showSuffixIcon: false,
-            text: context.translate(i18.common.coreCommonSubmit),
-            onPress: () async {
-              switch (origin) {
-                case FormOrigin.overallSummary:
-                case FormOrigin.submitForApproval:
-                  if (_currentScheduledVisitId == null) return;
-                  _shouldSubmitAfterCacheSave = true;
-                  context.read<CacheAmcMediaUploadBloc>().add(
-                      CacheAmcMediaUploadEvent.deleteAll(
-                          _currentScheduledVisitId!, userType));
-                  await context
-                      .read<CacheAmcMediaUploadBloc>()
-                      .stream
-                      .firstWhere((state) => state.maybeWhen(
-                            deleted: () => true,
-                            error: (_) => true,
-                            orElse: () => false,
-                          ));
-                  for (final file in _selectedImages) {
-                    final copied = await copyFileToLocalDir(File(file.path!));
-                    final entry = CacheAmcMediaUpload(
-                      scheduledVisitId: _currentScheduledVisitId!,
-                      itemNumber: file.name,
-                      itemType: 'image',
-                      userType: userType,
-                      filePath: copied,
-                      longitude: _longitude.toString(),
-                      latitude: _latitude.toString(),
-                    );
-                    context
-                        .read<CacheAmcMediaUploadBloc>()
-                        .add(CacheAmcMediaUploadEvent.add(entry));
-
-                    /// retrigger for Trigger a fresh load so that the listener above knows this was a "commit & submit" flow.
-                    context.read<CacheAmcMediaUploadBloc>().add(
-                          CacheAmcMediaUploadEvent.get(
-                            _currentScheduledVisitId!,
-                            userType,
-                          ),
-                        );
-                  }
-                  context.router.push(const AmcOtpRoute());
-                  break;
-                default:
-                  context.router.push(const AmcHomeRoute());
-              }
-            },
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  vertical: spacer2, horizontal: spacer4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: spacer4),
-                  DigitCard(children: [
-                    Text(
-                      'Images',
-                      style: textTheme.headingXl
-                          .copyWith(color: theme.colorTheme.primary.primary2),
-                    ),
-                    const SizedBox(height: spacer2),
-                    FileUploadWidget(
-                      allowedExtensions: const [
-                        "jpg",
-                        'jpeg',
-                        "png",
-                        'JPG',
-                        'JPEG',
-                        'PNG'
-                      ],
-                      label: 'Upload Images',
-                      allowMultiples: true,
-                      showPreview: true,
-                      initialFiles: _selectedImages,
-                      onFilesSelected: (files) {
-                        setState(() {
-                          _selectedImages = files;
-                        });
-                        _ensureLocationLoaded().then((ok) {
-                          if (!ok) {
-                            context.showSnackBar(const SnackBar(
-                                content: Text('Could not fetch location')));
-                          }
-                        });
-                        return <PlatformFile, String?>{};
-                      },
-                    ),
-                    if (_isImagesInitLoading)
-                      const Center(child: CircularProgressIndicator())
-                  ]),
-                  const SizedBox(height: spacer4),
-                ],
-              ),
-            ),
-          ],
         ),
+        BlocListener<ScheduleVisitSubmitBloc, ScheduleVisitSubmitState>(
+          listener: (context, state) {
+            state.maybeWhen(
+              success: () => context.router.push(const AmcOtpRoute()),
+              failure: (error) {
+                context.showSnackBar(SnackBar(content: Text("$error")));
+              },
+              orElse: () {},
+            );
+          },
+        ),
+      ],
+      child: BlocBuilder<ScheduleVisitSubmitBloc, ScheduleVisitSubmitState>(
+        builder: (context, scheduleState) {
+          return Scaffold(
+            body: ScrollableContent(
+              enableFixedDigitButton: true,
+              backgroundColor: theme.colorTheme.generic.background,
+              header: const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              footer: FooterButton(
+                isDisabled: scheduleState.maybeWhen(
+                  loading: () => true,
+                  orElse: () => false,
+                ),
+                showSuffixIcon: false,
+                text: scheduleState.maybeWhen(
+                  loading: () => "Loading...",
+                  orElse: () => context.translate(i18.common.coreCommonSubmit),
+                ),
+                onPress: () async {
+                  switch (origin) {
+                    case FormOrigin.overallSummary:
+                    case FormOrigin.submitForApproval:
+                      if (_currentScheduledVisitId == null) return;
+                      context.read<CacheAmcMediaUploadBloc>().add(
+                          CacheAmcMediaUploadEvent.deleteAll(
+                              _currentScheduledVisitId!, userType));
+                      await context
+                          .read<CacheAmcMediaUploadBloc>()
+                          .stream
+                          .firstWhere((state) => state.maybeWhen(
+                                deleted: () => true,
+                                error: (_) => true,
+                                orElse: () => false,
+                              ));
+                      for (final file in _selectedImages) {
+                        final copied =
+                            await copyFileToLocalDir(File(file.path!));
+                        final entry = CacheAmcMediaUpload(
+                          scheduledVisitId: _currentScheduledVisitId!,
+                          itemNumber: file.name,
+                          itemType: 'image',
+                          userType: userType,
+                          filePath: copied,
+                          longitude: _longitude.toString(),
+                          latitude: _latitude.toString(),
+                        );
+                        context
+                            .read<CacheAmcMediaUploadBloc>()
+                            .add(CacheAmcMediaUploadEvent.add(entry));
+                      }
+
+                      context.read<ScheduleVisitSubmitBloc>().add(
+                          ScheduleVisitSubmitEvent.submit(
+                              scheduledVisitId: _currentScheduledVisitId!,
+                              userType: userType));
+                      break;
+                    default:
+                      context.router.push(const AmcHomeRoute());
+                  }
+                },
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: spacer2, horizontal: spacer4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: spacer4),
+                      DigitCard(children: [
+                        Text(
+                          'Images',
+                          style: textTheme.headingXl.copyWith(
+                              color: theme.colorTheme.primary.primary2),
+                        ),
+                        const SizedBox(height: spacer2),
+                        FileUploadWidget(
+                          allowedExtensions: const [
+                            "jpg",
+                            'jpeg',
+                            "png",
+                            'JPG',
+                            'JPEG',
+                            'PNG'
+                          ],
+                          label: 'Upload Images',
+                          allowMultiples: true,
+                          showPreview: true,
+                          initialFiles: _selectedImages,
+                          onFilesSelected: (files) {
+                            setState(() {
+                              _selectedImages = files;
+                            });
+                            _ensureLocationLoaded().then((ok) {
+                              if (!ok) {
+                                context.showSnackBar(const SnackBar(
+                                    content: Text('Could not fetch location')));
+                              }
+                            });
+                            return <PlatformFile, String?>{};
+                          },
+                        ),
+                        if (_isImagesInitLoading)
+                          const Center(child: CircularProgressIndicator())
+                      ]),
+                      const SizedBox(height: spacer4),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

@@ -74,11 +74,11 @@ class ScheduleVisitSubmitBloc
       );
     } catch (e, st) {
       AppLogger.instance.error(
-        title:
-            '[ScheduleVisitSubmitBloc] enqueueScheduleVisitSubmission failed',
-        message: e.toString(),
-        stackTrace: st,
-      );
+          title:
+              '[ScheduleVisitSubmitBloc] enqueueScheduleVisitSubmission failed',
+          message: e.toString(),
+          stackTrace: st);
+      await BackgroundServiceController.I.stopNow();
       emit(
         const ScheduleVisitSubmitState.failure(
           'Failed to submit visit. Please try again.',
@@ -91,6 +91,7 @@ class ScheduleVisitSubmitBloc
     _BgDone event,
     Emitter<ScheduleVisitSubmitState> emit,
   ) async {
+    await BackgroundServiceController.I.stopNow();
     emit(const ScheduleVisitSubmitState.success());
   }
 
@@ -98,10 +99,10 @@ class ScheduleVisitSubmitBloc
     _BgError event,
     Emitter<ScheduleVisitSubmitState> emit,
   ) async {
+    await BackgroundServiceController.I.stopNow();
     emit(
       ScheduleVisitSubmitState.failure(
-        event.message ?? 'Failed to submit visit.',
-      ),
+          event.message ?? 'Failed to submit visit.'),
     );
   }
 }

@@ -8,7 +8,6 @@ import 'package:selco/blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/report_type/report_type.dart';
-import '../blocs/scheduled_visit_submission/scheduled_visit_submission.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../blocs/specification/specification.dart';
@@ -31,7 +30,6 @@ class AuthenticatedScreenWrapper extends StatelessWidget {
             BlocProvider(create: (context) => SelectedActivityFacilityBloc()),
             BlocProvider(create: (context) => SelectedScheduledVisitBloc()),
             BlocProvider(create: (context) => SelectedAmcOriginBloc()),
-            BlocProvider(create: (context) => ScheduleVisitSubmitBloc()),
             BlocProvider(
                 create: (context) =>
                     DigitScannerBloc(const DigitScannerState())),

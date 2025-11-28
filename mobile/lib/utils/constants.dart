@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:selco/data/nosql/cache_activity_facility_bom_values.dart';
 import 'package:selco/data/nosql/cache_amc_doc.dart';
 import 'package:selco/data/nosql/cache_amc_installation_form.dart';
+import 'package:selco/data/nosql/cache_amc_media_upload.dart';
 import 'package:selco/data/nosql/cache_prefilled_scheduled_visit.dart';
 import 'package:selco/data/nosql/cache_schedule_visit_form_values.dart';
 import 'package:selco/data/nosql/cache_scheduled_visit.dart';
@@ -68,6 +69,7 @@ class Constants {
           CacheSubmissionJobSchema,
           CacheScheduledVisitSchema,
           CacheAmcDocSchema,
+          CacheAmcMediaUploadSchema,
           CacheScheduleVisitFormValuesSchema,
           CachePrefilledScheduledVisitSchema,
           CacheAmcInstallationFormSchema,

@@ -35,6 +35,7 @@ import 'blocs/cache_sync_record/cache_sync_record.dart';
 import 'blocs/localization/app_localization.dart';
 import 'blocs/localization/localization.dart';
 import 'blocs/overall_asset_summary/overall_asset_summary.dart';
+import 'blocs/scheduled_visit_submission/scheduled_visit_submission.dart';
 import 'blocs/user_type/user_type.dart';
 import 'data/app_shared_preferences.dart';
 import 'data/nosql/localization.dart';
@@ -125,6 +126,8 @@ class _MainAppState extends State<MainApp> {
                 create: (context) => ActivityFacilityBomBloc(widget.isar)),
             BlocProvider(create: (context) => RejectionBloc(widget.isar)),
             BlocProvider(create: (context) => ScheduledVisitBloc(widget.isar)),
+            BlocProvider(
+                lazy: true, create: (context) => ScheduleVisitSubmitBloc()),
             BlocProvider(
                 create: (context) => CacheAmcMediaUploadBloc(widget.isar)),
             BlocProvider(create: (context) => AmcOtpBloc(widget.isar)),
