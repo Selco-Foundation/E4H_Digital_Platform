@@ -2,9 +2,9 @@ name: "CodeQL Security Analysis - E4H Platform"
 
 on:
   push:
-    branches: [ "main", "staging", "develop" ]
+    branches: [ "develop", "main", "staging" ]
   pull_request:
-    branches: [ "main", "staging", "develop" ]
+    branches: [ "develop", "main", "staging" ]
   schedule:
     # Run at 2:30 AM UTC every Monday
     - cron: '30 2 * * 1'
@@ -12,11 +12,20 @@ on:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
+    # Runner size impacts CodeQL analysis time. To learn more, please see:
+    #   - https://gh.io/recommended-hardware-resources-for-running-codeql
+    #   - https://gh.io/supported-runners-and-hardware-resources
+    #   - https://gh.io/using-larger-runners (GitHub.com only)
     runs-on: ubuntu-latest
     timeout-minutes: ${{ (matrix.language == 'java-kotlin' && 360) || 120 }}
     permissions:
+      # required for all workflows
       security-events: write
+
+      # required to fetch internal or private CodeQL packs
       packages: read
+
+      # only required for workflows in private repositories
       actions: read
       contents: read
 
@@ -24,12 +33,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - language: java-kotlin
-            build-mode: manual
-          - language: javascript-typescript
-            build-mode: none
-          - language: python
-            build-mode: none
+        - language: actions
+          build-mode: none
+        - language: java-kotlin
+          build-mode: manual
+        - language: javascript-typescript
+          build-mode: none
+        - language: python
+          build-mode: none
+        # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
+        # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
+        # Use 'javascript-typescript' to analyze code written in JavaScript, TypeScript or both
+        # To learn more about CodeQL's advanced setup for code scanning, see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning
 
     steps:
     - name: Checkout repository
@@ -58,14 +73,20 @@ jobs:
         node-version: '18'
         cache: 'npm'
 
+    # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
+      uses: github/codeql-action/init@v4
       with:
         languages: ${{ matrix.language }}
         build-mode: ${{ matrix.build-mode }}
-        # Focus on E4H_Digital_Platform directory
+        # If you wish to specify custom queries, you can do so here or in a config file.
+        # By default, queries listed here will override any specified in a config file.
+        # Prefix the list here with "+" to use these queries and those in the config file.
+        # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
         queries: security-extended,security-and-quality
 
+    # ℹ️ Command-line programs to run using the OS shell.
+    # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
     # Manual build for E4H Java backend services
     # Note: Most services use Java 17, but some legacy services use Java 8:
     #   - egov-workflow-v2, inbox, egov-notification-sms, egov-idgen
@@ -138,7 +159,7 @@ jobs:
         fi
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
+      uses: github/codeql-action/analyze@v4
       with:
         category: "/language:${{matrix.language}}"
 
