@@ -16,16 +16,16 @@ import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/report_type/report_type.dart';
-import '../blocs/selected_activity_facility/selected_activity_facility.dart';
+import '../blocs/scheduled_visit/scheduled_visit.dart';
 import '../blocs/user_type/user_type.dart';
-import '../model/activity_facility_workflow/activity_facility_workflow.dart';
+import '../model/scheduled_visit/scheduled_visit.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/progress_indicator/loading_indicator.dart';
 import 'amc_select_facility.dart';
 
 @RoutePage()
@@ -46,48 +46,28 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<InboxTypeBloc>().add(const InboxTypeEvent.typeSelected(1));
+      _fetchProjects(_selectedTabIndex);
     });
   }
 
-  void _fetchProjects(UserTypeState userState, int tabIndex) {
+  List<String> _statusesForTab(int tabIndex) {
+    if (tabIndex == 0) {
+      return [WORKFLOW_STATUS_AMC_FIELD_STAFF.REJECTED.name];
+    } else {
+      return [WORKFLOW_STATUS_AMC_FIELD_STAFF.APPROVED.name];
+    }
+  }
+
+  void _fetchProjects(int tabIndex) {
     context
         .read<ReportTypeBloc>()
         .add(const ReportTypeEvent.typeSelected("inbox"));
-    List<String> workflowStatuses = [];
-    if (tabIndex == 0) {
-      workflowStatuses = [
-        WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_FIELD_SUPERVISOR.name,
-        WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name
-      ];
-    } else if (tabIndex == 1) {
-      workflowStatuses = [
-        WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_SUPERVISOR.name,
-        WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_QC_SPOC.name,
-        WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_SUPERVISOR.name,
-        WORKFLOW_STATUS_FIELD_STAFF.PENDING_APPROVAL_FLAGGED_FOR_QC.name,
-      ];
-    }
 
-    if (_searchQuery.isNotEmpty) {
-      context.read<ActivityFacilityBloc>().add(
-            ActivityFacilityEvent.fetchActivityFacilityBySearch(
-              query: _searchQuery,
-              workflowStatuses: workflowStatuses,
-            ),
-          );
-    } else if (_sortDirection != null) {
-      context.read<ActivityFacilityBloc>().add(
-            ActivityFacilityEvent.fetchActivityFacilitySorted(
-              workflowStatuses: workflowStatuses,
-              sortDirection: _sortDirection!,
-            ),
-          );
-    } else {
-      context.read<ActivityFacilityBloc>().add(
-            ActivityFacilityEvent.fetchActivityFacilityByWorkflow(
-                workflowStatuses: workflowStatuses),
-          );
-    }
+    final statuses = _statusesForTab(tabIndex);
+
+    context
+        .read<ScheduledVisitBloc>()
+        .add(ScheduledVisitEvent.loadInitial(statuses: statuses));
   }
 
   void _onTabChanged(int index, UserTypeState userState) {
@@ -98,7 +78,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
     });
 
     context.read<InboxTypeBloc>().add(InboxTypeEvent.typeSelected(index + 1));
-    _fetchProjects(userState, index);
+    _fetchProjects(index);
   }
 
   @override
@@ -110,214 +90,239 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
       builder: (context, userState) {
         final tabs = ['Rejected', 'Approved'];
 
-        return Scaffold(
-          body: ScrollableContent(
-            backgroundColor: theme.colorTheme.generic.background,
-            header: const BackNavigationHelpHeaderWidget(
-              showBackNavigation: true,
-              showHelp: false,
-            ),
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: spacer2, horizontal: spacer4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Inbox',
-                          style: textTheme.headingXl.copyWith(
-                              color: theme.colorTheme.primary.primary2),
+        return NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification) {
+              final max = notification.metrics.maxScrollExtent;
+              final current = notification.metrics.pixels;
+
+              if (current > max - 200) {
+                final bloc = context.read<ScheduledVisitBloc>();
+                bloc.state.maybeWhen(
+                  loaded:
+                      (items, hasMore, totalCount, fromCache, isLoadingMore) {
+                    if (hasMore && !isLoadingMore) {
+                      bloc.add(
+                        ScheduledVisitEvent.loadMore(
+                          statuses: _statusesForTab(_selectedTabIndex),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: spacer4),
-                    SizedBox(
-                      height: spacer12 + spacer1,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return DigitTabBar(
-                            tabs: tabs,
-                            initialIndex: _selectedTabIndex,
-                            onTabSelected: (index) =>
-                                _onTabChanged(index, userState),
-                            tabBarThemeData:
-                                DigitTabBarThemeData.defaultTheme(context)
-                                    .copyWith(
-                                        tabWidth:
-                                            constraints.maxWidth / tabs.length,
-                                        padding: EdgeInsets.zero),
+                      );
+                    }
+                  },
+                  orElse: () {},
+                );
+              }
+            }
+            return false;
+          },
+          child: Scaffold(
+            body: ScrollableContent(
+              backgroundColor: theme.colorTheme.generic.background,
+              header: const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: spacer2, horizontal: spacer4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Inbox',
+                            style: textTheme.headingXl.copyWith(
+                                color: theme.colorTheme.primary.primary2),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: spacer4),
+                      SizedBox(
+                        height: spacer12 + spacer1,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return DigitTabBar(
+                              tabs: tabs,
+                              initialIndex: _selectedTabIndex,
+                              onTabSelected: (index) =>
+                                  _onTabChanged(index, userState),
+                              tabBarThemeData:
+                                  DigitTabBarThemeData.defaultTheme(context)
+                                      .copyWith(
+                                          tabWidth: constraints.maxWidth /
+                                              tabs.length,
+                                          padding: EdgeInsets.zero),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: spacer4),
+                      DigitCard(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DigitSearchFormInput(
+                                  innerLabel: "Search Health Facility",
+                                  suffixIcon: Icons.search,
+                                  onChange: (text) {
+                                    setState(() {
+                                      _searchQuery = text;
+                                      _sortDirection = null;
+                                    });
+                                    _fetchProjects(_selectedTabIndex);
+                                  },
+                                  iconColor: const Light().primary2,
+                                  enableBorder: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(spacer1),
+                                    borderSide: BorderSide(
+                                        color: theme.colorTheme.text.secondary),
+                                  ),
+                                  focusBorder: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(spacer1),
+                                    borderSide: BorderSide(
+                                        color: theme.colorTheme.text.secondary),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () =>
+                                    _showSortPopup(textTheme, theme, userState),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.import_export,
+                                      color: theme.colorTheme.primary.primary1,
+                                      size: spacer8,
+                                    ),
+                                    Text("Sort",
+                                        style: textTheme.headingS.copyWith(
+                                            color: theme
+                                                .colorTheme.primary.primary1))
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: spacer4),
+                      // if (_selectedTabIndex == 0)
+                      //   AMCInstallationReportCard(
+                      //     label: "View",
+                      //     title: 'Dharnal PHC',
+                      //     status: 'Rejected',
+                      //     dateAssigned: DateTime.now(),
+                      //     onPress: () {
+                      //       context.router.push(AmcDynamicFormRoute(
+                      //           pageName: "AMC_Report",
+                      //           uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
+                      //           schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                      //           scheduledVisitId: '12345678',
+                      //           origin: FormOrigin.submitForApproval));
+                      //     },
+                      //   ),
+                      // const SizedBox(height: spacer4),
+                      // if (_selectedTabIndex == 1)
+                      //   InboxReportCard(
+                      //     onPress: () {
+                      //       context.router.push(AmcDynamicFormRoute(
+                      //           pageName: "AMC_Report",
+                      //           uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
+                      //           schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                      //           scheduledVisitId: "123456789",
+                      //           origin: FormOrigin.submitted));
+                      //     },
+                      //     title: "Sirsa PHC",
+                      //     dateAssigned: DateTime.now(),
+                      //     status: 'Approved',
+                      //     isAmc: true,
+                      //   ),
+                      BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
+                        builder: (context, visitState) {
+                          return visitState.maybeWhen(
+                            initial: () => loadingIndicator(),
+                            loading: () => loadingIndicator(),
+                            failure: (message) => Center(
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: spacer4),
+                                child: Text(message),
+                              ),
+                            ),
+                            loaded: (items, hasMore, totalCount, fromCache,
+                                isLoadingMore) {
+                              return _buildVisitList(items);
+                            },
+                            orElse: () => const SizedBox.shrink(),
                           );
                         },
                       ),
-                    ),
-                    const SizedBox(height: spacer4),
-                    DigitCard(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DigitSearchFormInput(
-                                innerLabel: "Search Health Facility",
-                                suffixIcon: Icons.search,
-                                onChange: (text) {
-                                  setState(() {
-                                    _searchQuery = text;
-                                    _sortDirection = null;
-                                  });
-                                  _fetchProjects(userState, _selectedTabIndex);
-                                },
-                                iconColor: const Light().primary2,
-                                enableBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(spacer1),
-                                  borderSide: BorderSide(
-                                      color: theme.colorTheme.text.secondary),
-                                ),
-                                focusBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(spacer1),
-                                  borderSide: BorderSide(
-                                      color: theme.colorTheme.text.secondary),
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () =>
-                                  _showSortPopup(textTheme, theme, userState),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.import_export,
-                                    color: theme.colorTheme.primary.primary1,
-                                    size: spacer8,
-                                  ),
-                                  Text("Sort",
-                                      style: textTheme.headingS.copyWith(
-                                          color: theme
-                                              .colorTheme.primary.primary1))
-                                ],
-                              ),
-                            ),
-                          ],
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: spacer4),
-                    // BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
-                    //   builder: (context, projectState) {
-                    //     return projectState.maybeWhen(
-                    //       initial: () => _loadingIndicator(),
-                    //       loading: () => _loadingIndicator(),
-                    //       fetched: (projectsList) =>
-                    //           _buildList(projectsList, userState),
-                    //       searchResults: (list) => _buildList(list, userState),
-                    //       orElse: () => const SizedBox.shrink(),
-                    //     );
-                    //   },
-                    // ),
-                    if (_selectedTabIndex == 0)
-                      AMCInstallationReportCard(
-                        label: "View",
-                        title: 'Dharnal PHC',
-                        status: 'Rejected',
-                        dateAssigned: DateTime.now(),
-                        onPress: () {
-                          context.router.push(AmcDynamicFormRoute(
-                              pageName: "AMC_Report",
-                              uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                              schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                              scheduledVisitId: '12345678',
-                              origin: FormOrigin.submitForApproval));
-                        },
-                      ),
-                    const SizedBox(height: spacer4),
-                    if (_selectedTabIndex == 1)
-                      InboxReportCard(
-                        onPress: () {
-                          context.router.push(AmcDynamicFormRoute(
-                              pageName: "AMC_Report",
-                              uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                              schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                              scheduledVisitId: "123456789",
-                              origin: FormOrigin.submitted));
-                        },
-                        title: "Sirsa PHC",
-                        dateAssigned: DateTime.now(),
-                        status: 'Approved',
-                        isAmc: true,
-                      ),
-                    const SizedBox(height: spacer5),
-                  ],
+                      const SizedBox(height: spacer5),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _loadingIndicator() => const Center(
-        child: Center(
-          child: Padding(
-            padding: EdgeInsets.only(top: spacer8),
-            child: CircularProgressIndicator(),
-          ),
-        ),
-      );
-
-  Widget _buildList(
-      List<ActivityFacilityWorkflow> projectsList, UserTypeState userState) {
-    if (projectsList.isEmpty) {
+  Widget _buildVisitList(List<ScheduledVisit> items) {
+    if (items.isEmpty) {
       return const Center(
-        child: Text('No Projects to display'),
+        child: Text('No AMC visits to display'),
       );
     }
+
     return Column(
       children: [
-        for (final project in projectsList)
+        for (final visit in items)
           Column(
             children: [
-              BlocBuilder<InboxTypeBloc, InboxTypeState>(
-                builder: (context, inboxState) {
-                  return inboxState.when(
-                    submitted: () => const SizedBox.shrink(),
-                    rejected: () => InboxReportCard(
-                      isAmc: true,
-                      title: project.activityFacility.facility?.facilityName ??
-                          '---',
-                      status: project.status ?? '---',
-                      dateAssigned:
-                          project.workflow?.auditDetails?.lastModifiedTime ??
-                              DateTime.now(),
-                      onPress: () {
-                        context.read<SelectedActivityFacilityBloc>().add(
-                              SelectedActivityFacilityEvent.select(project),
-                            );
-                        context.router.push(SubmitForApprovalRoute(
-                            refresh: DateTime.now().millisecondsSinceEpoch));
-                      },
-                    ),
-                    approved: () => InboxReportCard(
-                        isAmc: true,
-                        onPress: () {
-                          context.read<SelectedActivityFacilityBloc>().add(
-                                SelectedActivityFacilityEvent.select(project),
-                              );
-                          context.router.push(InboxAssetSummaryRoute(
-                              refresh: DateTime.now().millisecondsSinceEpoch));
-                        },
-                        title:
-                            project.activityFacility.facility?.facilityName ??
-                                '---',
-                        dateAssigned:
-                            project.workflow?.auditDetails?.lastModifiedTime ??
-                                DateTime.now(),
-                        status: project.status ?? '---'),
-                  );
-                },
-              ),
+              if (_selectedTabIndex == 0)
+                AMCInstallationReportCard(
+                  label: "View",
+                  title: visit.facility?.facilityName ?? '',
+                  status: visit.status ?? '---',
+                  dateAssigned: visit.scheduledDate ?? DateTime.now(),
+                  onPress: () {
+                    context.router.push(
+                      AmcDynamicFormRoute(
+                        pageName: "AMC_Report",
+                        uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
+                        schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                        // NOTE: assuming ScheduledVisit has an `id` field.
+                        scheduledVisitId: visit.id ?? '',
+                        origin: FormOrigin.submitForApproval,
+                      ),
+                    );
+                  },
+                )
+              else
+                InboxReportCard(
+                  onPress: () {
+                    context.router.push(
+                      AmcDynamicFormRoute(
+                        pageName: "AMC_Report",
+                        uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
+                        schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                        // Same assumption as above.
+                        scheduledVisitId: visit.id ?? '',
+                        origin: FormOrigin.submitted,
+                      ),
+                    );
+                  },
+                  title: visit.facility?.facilityName ?? '',
+                  dateAssigned: visit.scheduledDate ?? DateTime.now(),
+                  status: visit.status ?? '---',
+                  isAmc: true,
+                ),
               const SizedBox(height: spacer5),
             ],
           ),
@@ -358,7 +363,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                         _searchQuery = '';
                       });
                       Navigator.of(ctx).pop();
-                      _fetchProjects(userState, _selectedTabIndex);
+                      _fetchProjects(_selectedTabIndex);
                     },
                   ),
                 ),
@@ -371,7 +376,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                     isDisabled: _sortDirection == null,
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      _fetchProjects(userState, _selectedTabIndex);
+                      _fetchProjects(_selectedTabIndex);
                     },
                   ),
                 ),
