@@ -98,8 +98,7 @@ class ScheduledVisit with _$ScheduledVisit {
     String? status,
     ScheduledVisitReport? visitReport,
     @WorkflowFlexConverter() Workflow? workflow,
-    @Default(<Map<String, dynamic>>[])
-    List<Map<String, dynamic>> processInstances,
+    @Default(<Workflow>[]) List<Workflow> processInstances,
     List<Transaction>? transactions,
     @Default(<ScheduledVisitAssignment>[])
     List<ScheduledVisitAssignment> assignments,

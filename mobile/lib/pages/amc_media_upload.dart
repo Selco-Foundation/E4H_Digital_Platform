@@ -213,6 +213,11 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
       ],
       child: BlocBuilder<ScheduleVisitSubmitBloc, ScheduleVisitSubmitState>(
         builder: (context, scheduleState) {
+          String footerText = context.translate(i18.common.coreCommonSubmit);
+          if (origin != FormOrigin.overallSummary &&
+              origin != FormOrigin.submitForApproval) {
+            footerText = "Back to Home";
+          }
           return Scaffold(
             body: ScrollableContent(
               enableFixedDigitButton: true,
@@ -229,7 +234,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                 showSuffixIcon: false,
                 text: scheduleState.maybeWhen(
                   loading: () => "Loading...",
-                  orElse: () => context.translate(i18.common.coreCommonSubmit),
+                  orElse: () => footerText,
                 ),
                 onPress: () async {
                   switch (origin) {

@@ -151,9 +151,9 @@ _$ScheduledVisitImpl _$$ScheduledVisitImplFromJson(Map<String, dynamic> json) =>
               json['visitReport'] as Map<String, dynamic>),
       workflow: const WorkflowFlexConverter().fromJson(json['workflow']),
       processInstances: (json['processInstances'] as List<dynamic>?)
-              ?.map((e) => e as Map<String, dynamic>)
+              ?.map((e) => Workflow.fromJson(e as Map<String, dynamic>))
               .toList() ??
-          const <Map<String, dynamic>>[],
+          const <Workflow>[],
       transactions: (json['transactions'] as List<dynamic>?)
           ?.map((e) => Transaction.fromJson(e as Map<String, dynamic>))
           .toList(),

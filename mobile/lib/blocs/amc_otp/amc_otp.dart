@@ -64,9 +64,11 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
                 longitude: cachedForm.longitude));
 
         workflowDocuments = [doc];
-      } else if (event.scheduledVisit?.workflow?.documents != null &&
-          event.scheduledVisit!.workflow!.documents!.isNotEmpty) {
-        workflowDocuments = event.scheduledVisit!.workflow!.documents!;
+      } else if (event.scheduledVisit?.processInstances.first.documents !=
+              null &&
+          event.scheduledVisit!.processInstances.first.documents!.isNotEmpty) {
+        workflowDocuments =
+            event.scheduledVisit!.processInstances.first.documents;
       }
 
       await scheduledVisitRepo.updateVisitWorkflow(

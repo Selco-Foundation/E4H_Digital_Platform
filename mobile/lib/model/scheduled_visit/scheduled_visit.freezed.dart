@@ -1217,8 +1217,7 @@ mixin _$ScheduledVisit {
   ScheduledVisitReport? get visitReport => throw _privateConstructorUsedError;
   @WorkflowFlexConverter()
   Workflow? get workflow => throw _privateConstructorUsedError;
-  List<Map<String, dynamic>> get processInstances =>
-      throw _privateConstructorUsedError;
+  List<Workflow> get processInstances => throw _privateConstructorUsedError;
   List<Transaction>? get transactions => throw _privateConstructorUsedError;
   List<ScheduledVisitAssignment> get assignments =>
       throw _privateConstructorUsedError;
@@ -1251,7 +1250,7 @@ abstract class $ScheduledVisitCopyWith<$Res> {
       String? status,
       ScheduledVisitReport? visitReport,
       @WorkflowFlexConverter() Workflow? workflow,
-      List<Map<String, dynamic>> processInstances,
+      List<Workflow> processInstances,
       List<Transaction>? transactions,
       List<ScheduledVisitAssignment> assignments,
       Map<String, dynamic>? additionalDetails,
@@ -1345,7 +1344,7 @@ class _$ScheduledVisitCopyWithImpl<$Res, $Val extends ScheduledVisit>
       processInstances: null == processInstances
           ? _value.processInstances
           : processInstances // ignore: cast_nullable_to_non_nullable
-              as List<Map<String, dynamic>>,
+              as List<Workflow>,
       transactions: freezed == transactions
           ? _value.transactions
           : transactions // ignore: cast_nullable_to_non_nullable
@@ -1423,7 +1422,7 @@ abstract class _$$ScheduledVisitImplCopyWith<$Res>
       String? status,
       ScheduledVisitReport? visitReport,
       @WorkflowFlexConverter() Workflow? workflow,
-      List<Map<String, dynamic>> processInstances,
+      List<Workflow> processInstances,
       List<Transaction>? transactions,
       List<ScheduledVisitAssignment> assignments,
       Map<String, dynamic>? additionalDetails,
@@ -1518,7 +1517,7 @@ class __$$ScheduledVisitImplCopyWithImpl<$Res>
       processInstances: null == processInstances
           ? _value._processInstances
           : processInstances // ignore: cast_nullable_to_non_nullable
-              as List<Map<String, dynamic>>,
+              as List<Workflow>,
       transactions: freezed == transactions
           ? _value._transactions
           : transactions // ignore: cast_nullable_to_non_nullable
@@ -1555,8 +1554,7 @@ class _$ScheduledVisitImpl implements _ScheduledVisit {
       this.status,
       this.visitReport,
       @WorkflowFlexConverter() this.workflow,
-      final List<Map<String, dynamic>> processInstances =
-          const <Map<String, dynamic>>[],
+      final List<Workflow> processInstances = const <Workflow>[],
       final List<Transaction>? transactions,
       final List<ScheduledVisitAssignment> assignments =
           const <ScheduledVisitAssignment>[],
@@ -1598,10 +1596,10 @@ class _$ScheduledVisitImpl implements _ScheduledVisit {
   @override
   @WorkflowFlexConverter()
   final Workflow? workflow;
-  final List<Map<String, dynamic>> _processInstances;
+  final List<Workflow> _processInstances;
   @override
   @JsonKey()
-  List<Map<String, dynamic>> get processInstances {
+  List<Workflow> get processInstances {
     if (_processInstances is EqualUnmodifiableListView)
       return _processInstances;
     // ignore: implicit_dynamic_type
@@ -1736,7 +1734,7 @@ abstract class _ScheduledVisit implements ScheduledVisit {
       final String? status,
       final ScheduledVisitReport? visitReport,
       @WorkflowFlexConverter() final Workflow? workflow,
-      final List<Map<String, dynamic>> processInstances,
+      final List<Workflow> processInstances,
       final List<Transaction>? transactions,
       final List<ScheduledVisitAssignment> assignments,
       final Map<String, dynamic>? additionalDetails,
@@ -1774,7 +1772,7 @@ abstract class _ScheduledVisit implements ScheduledVisit {
   @WorkflowFlexConverter()
   Workflow? get workflow;
   @override
-  List<Map<String, dynamic>> get processInstances;
+  List<Workflow> get processInstances;
   @override
   List<Transaction>? get transactions;
   @override
