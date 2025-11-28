@@ -129,13 +129,12 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           }
         }
 
-        Digit.SessionStorage.set("Jurisdiction.Boundaries", boundaryCodes);
-        Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", boundaryCodes);
       } catch (err) {
-        Digit.SessionStorage.set("Jurisdiction.Boundaries", boundaryCodes);
-        Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", boundaryCodes);
         console.error("Failed to fetch HRMS User", err);
+        throw err;
       }
+      Digit.SessionStorage.set("Jurisdiction.Boundaries", boundaryCodes);
+      Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", boundaryCodes);
 
       const fromParam = new URLSearchParams(location.search).get("from");
       if (fromParam) {
