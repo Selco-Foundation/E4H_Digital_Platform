@@ -1,0 +1,144 @@
+name: "CodeQL Security Analysis - E4H Platform"
+
+on:
+  push:
+    branches: [ "main", "staging", "develop" ]
+  pull_request:
+    branches: [ "main", "staging", "develop" ]
+  schedule:
+    # Run at 2:30 AM UTC every Monday
+    - cron: '30 2 * * 1'
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ (matrix.language == 'java-kotlin' && 360) || 120 }}
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: java-kotlin
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+          - language: python
+            build-mode: none
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17 for Java (Primary) and JDK 8 (Legacy Services)
+      if: matrix.language == 'java-kotlin'
+      uses: actions/setup-java@v4
+      with:
+        # Using Java 17 as primary - it can compile and analyze Java 8 code
+        # Java 8 services: egov-workflow-v2, inbox, egov-notification-sms, egov-idgen
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Set up Python
+      if: matrix.language == 'python'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+
+    - name: Set up Node.js
+      if: matrix.language == 'javascript-typescript'
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        # Focus on E4H_Digital_Platform directory
+        queries: security-extended,security-and-quality
+
+    # Manual build for E4H Java backend services
+    # Note: Most services use Java 17, but some legacy services use Java 8:
+    #   - egov-workflow-v2, inbox, egov-notification-sms, egov-idgen
+    # Java 17 compiler can compile Java 8 code, so using Java 17 for all builds
+    - name: Build E4H Backend Services
+      if: matrix.language == 'java-kotlin'
+      working-directory: E4H_Digital_Platform
+      run: |
+        echo "Building E4H Backend Services with Java 17..."
+        echo "Java version: $(java -version 2>&1 | head -n 1)"
+        
+        # Build core-services (mix of Java 17 and Java 8)
+        if [ -d "backend/core-services" ]; then
+          echo "=== Building E4H core-services ==="
+          cd backend/core-services
+          for service_dir in */; do
+            if [ -f "$service_dir/pom.xml" ]; then
+              echo "Building $service_dir"
+              cd "$service_dir"
+              # Java 17 can compile Java 8 projects
+              mvn clean install -DskipTests -Dmaven.javadoc.skip=true -Dmaven.compiler.release=8 || echo "Build failed for $service_dir, continuing..."
+              cd ..
+            fi
+          done
+          cd ../..
+        fi
+        
+        # Build e4h-services (mostly Java 17, inbox uses Java 8)
+        if [ -d "backend/e4h-services" ]; then
+          echo "=== Building E4H e4h-services ==="
+          cd backend/e4h-services
+          for service_dir in */; do
+            if [ -f "$service_dir/pom.xml" ]; then
+              echo "Building $service_dir"
+              cd "$service_dir"
+              mvn clean install -DskipTests -Dmaven.javadoc.skip=true || echo "Build failed for $service_dir, continuing..."
+              cd ..
+            fi
+          done
+          cd ../..
+        fi
+
+    - name: Install JavaScript Dependencies
+      if: matrix.language == 'javascript-typescript'
+      working-directory: E4H_Digital_Platform/frontend
+      run: |
+        # Install dependencies for installation-ui
+        if [ -d "installation-ui" ] && [ -f "installation-ui/package.json" ]; then
+          echo "Installing dependencies for installation-ui..."
+          cd installation-ui
+          npm install || echo "npm install failed for installation-ui"
+          cd ..
+        fi
+        
+        # Install dependencies for micro-ui
+        if [ -d "micro-ui/web" ] && [ -f "micro-ui/web/package.json" ]; then
+          echo "Installing dependencies for micro-ui..."
+          cd micro-ui/web
+          npm install || echo "npm install failed for micro-ui"
+          cd ../..
+        fi
+
+    - name: Install Python Dependencies
+      if: matrix.language == 'python'
+      working-directory: E4H_Digital_Platform/backend
+      run: |
+        # Install Python dependencies if requirements.txt exists
+        if [ -f "e4h-services/requirements.txt" ]; then
+          pip install -r e4h-services/requirements.txt || echo "pip install failed"
+        fi
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+
