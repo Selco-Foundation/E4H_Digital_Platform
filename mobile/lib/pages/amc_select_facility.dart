@@ -40,58 +40,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
     super.initState();
 
     context.read<ScheduledVisitBloc>().add(ScheduledVisitEvent.loadInitial(
-        status: WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name));
+          statuses: [WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name],
+        ));
   }
-
-  // @override
-  // Widget build(BuildContext context) {
-  //   final theme = Theme.of(context);
-  //   final textTheme = theme.digitTextTheme(context);
-  //
-  //   return BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
-  //     builder: (context, state) {
-  //       return Scaffold(
-  //         body: ScrollableContent(
-  //           backgroundColor: theme.colorTheme.generic.background,
-  //           children: [
-  //             const BackNavigationHelpHeaderWidget(
-  //               showBackNavigation: true,
-  //               showHelp: false,
-  //             ),
-  //             Column(
-  //               children: [
-  //                 Padding(
-  //                   padding: const EdgeInsets.symmetric(
-  //                       horizontal: spacer4, vertical: spacer2),
-  //                   child: _buildSearchAndSortControls(textTheme, theme),
-  //                 ),
-  //                 const SizedBox(height: spacer2),
-  //                 Padding(
-  //                   padding: const EdgeInsets.symmetric(
-  //                       horizontal: spacer4, vertical: spacer2),
-  //                   child: AMCInstallationReportCard(
-  //                     label: "Resume",
-  //                     title: 'Dharnal PHC',
-  //                     status: 'Scheduled',
-  //                     dateAssigned: DateTime.now(),
-  //                     onPress: () {
-  //                       context.router.push(AmcDynamicFormRoute(
-  //                           pageName: "AMC_Report",
-  //                           uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-  //                           schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-  //                           scheduledVisitId: '12345678',
-  //                           origin: FormOrigin.overallSummary));
-  //                     },
-  //                   ),
-  //                 )
-  //               ],
-  //             ),
-  //           ],
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -117,8 +68,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                     if (hasMore && !isLoadingMore) {
                       bloc.add(
                         ScheduledVisitEvent.loadMore(
-                          status:
-                              WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name,
+                          statuses: [
+                            WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name
+                          ],
                         ),
                       );
                     }

@@ -29,7 +29,7 @@ class ScheduledVisitBloc
     emit(const ScheduledVisitState.loading());
     try {
       final result = await repository.fetchByWorkflowStatus(
-        status: event.status,
+        statuses: event.statuses,
         limit: _pageSize,
         offset: 0,
       );
@@ -60,7 +60,7 @@ class ScheduledVisitBloc
 
     try {
       final result = await repository.fetchByWorkflowStatus(
-        status: event.status,
+        statuses: event.statuses,
         limit: _pageSize,
         offset: offset,
       );
@@ -88,7 +88,7 @@ class ScheduledVisitBloc
     Emitter<ScheduledVisitState> emit,
   ) async {
     add(ScheduledVisitEvent.loadInitial(
-      status: event.status,
+      statuses: event.statuses,
     ));
   }
 }
@@ -96,15 +96,15 @@ class ScheduledVisitBloc
 @freezed
 class ScheduledVisitEvent with _$ScheduledVisitEvent {
   const factory ScheduledVisitEvent.loadInitial({
-    required String status,
+    required List<String> statuses,
   }) = _LoadInitial;
 
   const factory ScheduledVisitEvent.loadMore({
-    required String status,
+    required List<String> statuses,
   }) = _LoadMore;
 
   const factory ScheduledVisitEvent.refresh({
-    required String status,
+    required List<String> statuses,
   }) = _Refresh;
 }
 

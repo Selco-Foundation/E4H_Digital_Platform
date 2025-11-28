@@ -16,6 +16,7 @@ import 'package:selco/blocs/cache_amc_media_upload/cache_amc_media_upload.dart';
 import '../blocs/scheduled_visit/scheduled_visit.dart';
 import 'blocs/activity_facility/activity_facility.dart';
 import 'blocs/activity_facility_bom/activity_facility_bom.dart';
+import 'blocs/amc_otp/amc_otp.dart';
 import 'blocs/app_init/app_init.dart';
 import 'blocs/asset_rejection/asset_rejection.dart';
 import 'blocs/asset_submission/asset_submission.dart';
@@ -126,6 +127,7 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(create: (context) => ScheduledVisitBloc(widget.isar)),
             BlocProvider(
                 create: (context) => CacheAmcMediaUploadBloc(widget.isar)),
+            BlocProvider(create: (context) => AmcOtpBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) {

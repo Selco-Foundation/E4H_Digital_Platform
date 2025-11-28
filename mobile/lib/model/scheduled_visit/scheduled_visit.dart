@@ -164,7 +164,7 @@ class ScheduledVisitSearchCriteria with _$ScheduledVisitSearchCriteria {
     String? tenantId,
     String? facilityId,
     String? amcConfigurationId,
-    String? status,
+    @Default(<String>[]) List<String> statuses,
     int? visitNumber,
     @EpochDateTimeConverter() DateTime? scheduledFrom,
     @EpochDateTimeConverter() DateTime? scheduledTo,
@@ -179,7 +179,7 @@ class ScheduledVisitSearchCriteria with _$ScheduledVisitSearchCriteria {
     if (amcConfigurationId != null) {
       out['amcConfigurationId'] = amcConfigurationId;
     }
-    if (status != null) out['statuses'] = status;
+    if (statuses.isNotEmpty) out['statuses'] = statuses;
     if (visitNumber != null) out['visitNumber'] = visitNumber;
     if (scheduledFrom != null) {
       out['scheduledFrom'] = scheduledFrom!.millisecondsSinceEpoch;

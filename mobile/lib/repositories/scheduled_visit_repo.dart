@@ -1,7 +1,10 @@
 import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/utils/utils.dart';
 
+import '../data/nosql/cache_amc_installation_form.dart';
+import '../data/nosql/cache_prefilled_scheduled_visit.dart';
 import '../data/nosql/cache_scheduled_visit.dart';
 import '../data/remote_client.dart';
 import '../model/document/document.dart';
@@ -33,6 +36,7 @@ class ScheduledVisitRemoteRepository {
   }) async {
     try {
       const searchPath = 'asset-amc/v1/visit/_search';
+      print('Criteria: ${criteria.toApiMap()}');
       final response = await dio.post(
         searchPath,
         queryParameters: {
@@ -43,9 +47,9 @@ class ScheduledVisitRemoteRepository {
         data: {
           'searchCriteria': {
             'tenantId': envConfig.variables.tenantId,
-            // ...criteria.toApiMap(),
-            //'statuses': ['DRAFT']
-            "ids": ["540ed531-5f5a-413f-bd28-b99d2b2eab82"]
+            ...criteria.toApiMap(),
+            //'statuses': ['DRAFT'],
+            // "ids": ["540ed531-5f5a-413f-bd28-b99d2b2eab82"]
           },
         },
       );
@@ -64,7 +68,9 @@ class ScheduledVisitRemoteRepository {
     required String visitId,
     required String schemaCode,
     required int version,
-    required Map<String, dynamic> responses,
+    String? otp,
+    String? status,
+    Map<String, dynamic>? responses,
     List<Document>? workflowDocuments,
     List<Document>? visitDocuments,
   }) async {
@@ -74,7 +80,7 @@ class ScheduledVisitRemoteRepository {
       final body = {
         'visitId': visitId,
         'workflow': {
-          'action': 'SUBMIT_VISIT_REPORT',
+          'action': status ?? 'SUBMIT_VISIT_REPORT',
           'comment': 'Submit Visit Report Action',
           if (workflowDocuments != null) ...{
             'documents':
@@ -85,8 +91,10 @@ class ScheduledVisitRemoteRepository {
         'visitReport': {
           'schemaCode': schemaCode,
           'version': version,
-          'otpReference': null,
-          'responses': responses,
+          'otpReference': otp,
+          if (responses != null) ...{
+            'responses': responses,
+          },
           if (visitDocuments != null) ...{
             'documents':
                 visitDocuments.map((d) => d.toJsonForWorkflow()).toList(),
@@ -95,13 +103,7 @@ class ScheduledVisitRemoteRepository {
         },
       };
 
-      final resp = await dio.post(
-        path,
-        queryParameters: {
-          'tenantId': envConfig.variables.tenantId,
-        },
-        data: body,
-      );
+      final resp = await dio.post(path, data: body);
 
       AppLogger.instance.info(
         'ScheduledVisitRemoteRepository.updateVisitWorkflow status=${resp.statusCode}',
@@ -114,6 +116,28 @@ class ScheduledVisitRemoteRepository {
     } catch (e) {
       AppLogger.instance.info(
         'ScheduledVisitRemoteRepository.updateVisitWorkflow error=$e',
+      );
+      rethrow;
+    }
+  }
+
+  Future<void> resendVisitOtp() async {
+    const path = 'asset-amc/v1/visit/_resend_otp';
+
+    try {
+      final resp = await dio.post(path, data: <String, dynamic>{});
+
+      AppLogger.instance.info(
+        'ScheduledVisitRemoteRepository.resendVisitOtp status=${resp.statusCode}',
+      );
+    } on DioError catch (e) {
+      AppLogger.instance.info(
+        'ScheduledVisitRemoteRepository.resendVisitOtp DioError=$e',
+      );
+      rethrow;
+    } catch (e) {
+      AppLogger.instance.info(
+        'ScheduledVisitRemoteRepository.resendVisitOtp error=$e',
       );
       rethrow;
     }
@@ -138,13 +162,13 @@ class ScheduledVisitRepository {
   ///   - If offset > 0, append to cache.
   /// - If remote fails, read from cache and paginate in memory.
   Future<PaginatedScheduledVisits> fetchByWorkflowStatus({
-    required String status,
+    required List<String> statuses,
     int limit = defaultPageSize,
     int offset = 0,
   }) async {
     final criteria = ScheduledVisitSearchCriteria(
       tenantId: envConfig.variables.tenantId,
-      status: status,
+      statuses: statuses,
     );
 
     try {
@@ -154,12 +178,29 @@ class ScheduledVisitRepository {
         offset: offset,
       );
 
-      final items = remoteResp.scheduledVisits;
+      var items = remoteResp.scheduledVisits;
+
+      final prefilledRepo = PrefilledScheduledVisitRepository(_isar);
+      final prefilledIds = await prefilledRepo.getPrefilledVisitIds();
+      List<ScheduledVisit> cachedPrefilled = <ScheduledVisit>[];
+      if (statuses.contains(
+              WORKFLOW_STATUS_AMC_FIELD_STAFF.PENDING_OTP_APPROVAL.name) &&
+          prefilledIds.isNotEmpty) {
+        cachedPrefilled =
+            await prefilledRepo.getPrefilledVisitsFromCache(prefilledIds);
+      }
+
+      items = prefilledRepo.filterByPrefilledRules(
+        remoteVisits: items,
+        statuses: statuses,
+        prefilledVisitIds: prefilledIds,
+        cachedPrefilledVisits: cachedPrefilled,
+      );
 
       if (offset == 0) {
-        await _replaceCache(status, items);
+        await _replaceCache(statuses, items);
       } else {
-        await _appendCache(status, items);
+        await _appendCache(items);
       }
 
       return PaginatedScheduledVisits(
@@ -174,11 +215,11 @@ class ScheduledVisitRepository {
       AppLogger.instance.debug(st.toString());
 
       final cachedItems = await _readCache(
-        status: status,
+        statuses: statuses,
         limit: limit,
         offset: offset,
       );
-      final total = await _countCache(status);
+      final total = await _countCache(statuses);
 
       return PaginatedScheduledVisits(
         items: cachedItems,
@@ -189,18 +230,20 @@ class ScheduledVisitRepository {
   }
 
   Future<void> _replaceCache(
-    String status,
+    List<String> statuses,
     List<ScheduledVisit> visits,
   ) async {
     final col = _isar.cacheScheduledVisits;
     await _isar.writeTxn(() async {
-      // Clear everything for this facility
-      final existing = await col.where().statusEqualTo(status).findAll();
-      for (final row in existing) {
-        await col.delete(row.id);
+      // 1. Delete EVERYTHING in cache for these statuses
+      for (final status in statuses) {
+        final toDelete = await col.where().statusEqualTo(status).findAll();
+        for (final row in toDelete) {
+          await col.delete(row.id);
+        }
       }
 
-      // Insert new list
+      // 2. Insert new list (even if visits is empty, the delete above already wiped)
       for (final v in visits) {
         if ((v.id ?? '').isEmpty) continue;
         await col.put(CacheScheduledVisit.fromModel(v));
@@ -209,7 +252,6 @@ class ScheduledVisitRepository {
   }
 
   Future<void> _appendCache(
-    String status,
     List<ScheduledVisit> visits,
   ) async {
     if (visits.isEmpty) return;
@@ -223,12 +265,17 @@ class ScheduledVisitRepository {
   }
 
   Future<List<ScheduledVisit>> _readCache({
-    required String status,
+    required List<String> statuses,
     required int limit,
     required int offset,
   }) async {
     final col = _isar.cacheScheduledVisits;
-    final all = await col.where().statusEqualTo(status).findAll();
+    final all = <CacheScheduledVisit>[];
+
+    for (final status in statuses) {
+      final matches = await col.where().statusEqualTo(status).findAll();
+      all.addAll(matches);
+    }
 
     // Sort in memory by scheduledDate DESC for deterministic order
     all.sort(
@@ -239,8 +286,216 @@ class ScheduledVisitRepository {
     return slice.map((c) => c.toModel()).toList();
   }
 
-  Future<int> _countCache(String status) async {
+  Future<int> _countCache(List<String> statuses) async {
     final col = _isar.cacheScheduledVisits;
-    return await col.where().statusEqualTo(status).count();
+    var total = 0;
+    for (final status in statuses) {
+      total += await col.where().statusEqualTo(status).count();
+    }
+    return total;
+  }
+
+  Future<void> upsertCacheAmcInstallationForm(
+    Isar isar,
+    CacheAmcInstallationForm entry,
+  ) async {
+    await isar.writeTxn(() async {
+      // Find existing record for this scheduledVisitId + userType
+      final existing = await isar.cacheAmcInstallationForms
+          .where()
+          .scheduledVisitIdEqualTo(entry.scheduledVisitId)
+          .filter()
+          .userTypeEqualTo(entry.userType)
+          .findFirst();
+
+      if (existing != null) {
+        existing.filePath = entry.filePath;
+        existing.latitude = entry.latitude;
+        existing.longitude = entry.longitude;
+        existing.updatedAt = DateTime.now();
+
+        await isar.cacheAmcInstallationForms.put(existing);
+      } else {
+        await isar.cacheAmcInstallationForms.put(entry);
+      }
+    });
+  }
+
+  Future<void> deleteInstallationForm(
+      {required String scheduledVisitId}) async {
+    final col = _isar.cacheAmcInstallationForms;
+    final row =
+        await col.where().scheduledVisitIdEqualTo(scheduledVisitId).findFirst();
+    if (row != null) {
+      await _isar.writeTxn(() async {
+        await col.delete(row.id);
+      });
+    }
+  }
+
+  Future<CacheAmcInstallationForm?> getCacheAmcInstallationForm({
+    required String scheduledVisitId,
+    required String userType,
+  }) async {
+    return _isar.cacheAmcInstallationForms
+        .where()
+        .scheduledVisitIdEqualTo(scheduledVisitId)
+        .filter()
+        .userTypeEqualTo(userType)
+        .findFirst();
+  }
+}
+
+class PrefilledScheduledVisitRepository {
+  final Isar _isar;
+  PrefilledScheduledVisitRepository(this._isar);
+
+  Future<CachePrefilledScheduledVisit> addOrTouch({
+    required String scheduledVisitId,
+    required String userType,
+  }) async {
+    final col = _isar.cachePrefilledScheduledVisits;
+    final existing = await col
+        .where()
+        .scheduledVisitIdUserTypeEqualTo(scheduledVisitId, userType)
+        .findFirst();
+
+    final now = DateTime.now();
+    return _isar.writeTxn(() async {
+      if (existing != null) {
+        existing.updatedAt = now;
+        await col.put(existing);
+        return existing;
+      } else {
+        final row = CachePrefilledScheduledVisit(
+            scheduledVisitId: scheduledVisitId, userType: userType)
+          ..createdAt = now
+          ..updatedAt = now;
+        await col.put(row);
+        return row;
+      }
+    });
+  }
+
+  Future<bool> exists({
+    required String scheduledVisitId,
+    required String userType,
+  }) async {
+    final col = _isar.cachePrefilledScheduledVisits;
+    final row = await col
+        .where()
+        .scheduledVisitIdUserTypeEqualTo(scheduledVisitId, userType)
+        .findFirst();
+    return row != null;
+  }
+
+  Future<void> delete({
+    required String scheduledVisitId,
+    required String userType,
+  }) async {
+    final col = _isar.cachePrefilledScheduledVisits;
+    final row = await col
+        .where()
+        .scheduledVisitIdUserTypeEqualTo(scheduledVisitId, userType)
+        .findFirst();
+    if (row != null) {
+      await _isar.writeTxn(() async {
+        await col.delete(row.id);
+      });
+    }
+  }
+
+  Future<Set<String>> getPrefilledVisitIds() async {
+    final col = _isar.cachePrefilledScheduledVisits;
+    final all = await col.where().findAll();
+
+    final ids = <String>{};
+    for (final row in all) {
+      if ((row.scheduledVisitId ?? '').isEmpty) continue;
+      ids.add(row.scheduledVisitId);
+    }
+    return ids;
+  }
+
+  Future<List<ScheduledVisit>> getPrefilledVisitsFromCache(
+    Set<String> prefilledIds,
+  ) async {
+    if (prefilledIds.isEmpty) return <ScheduledVisit>[];
+
+    final col = _isar.cacheScheduledVisits;
+    final result = <ScheduledVisit>[];
+
+    for (final id in prefilledIds) {
+      final row = await col.where().scheduledVisitIdEqualTo(id).findFirst();
+      if (row != null) {
+        result.add(row.toModel());
+      }
+    }
+    return result;
+  }
+
+  List<ScheduledVisit> filterByPrefilledRules({
+    required List<ScheduledVisit> remoteVisits,
+    required List<String> statuses,
+    required Set<String> prefilledVisitIds,
+    required List<ScheduledVisit> cachedPrefilledVisits,
+  }) {
+    final hasScheduled =
+        statuses.contains(WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name);
+    final hasPendingOtp = statuses
+        .contains(WORKFLOW_STATUS_AMC_FIELD_STAFF.PENDING_OTP_APPROVAL.name);
+
+    // Start from what remote returned (assume already sorted as you want)
+    var result = remoteVisits;
+
+    // 1️⃣ For SCHEDULED: exclude visits that are already prefilled
+    if (hasScheduled && prefilledVisitIds.isNotEmpty) {
+      result = result.where((v) {
+        final id = v.id ?? '';
+        if (id.isEmpty) return false;
+
+        final isPrefilled = prefilledVisitIds.contains(id);
+
+        // Drop SCHEDULED + prefilled
+        if (v.status == WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name &&
+            isPrefilled) {
+          return false;
+        }
+        return true;
+      }).toList();
+    }
+
+    // 2️⃣ For PENDING_OTP_APPROVAL:
+    //     prepend cached visits whose id is prefilled and not already in result
+    if (hasPendingOtp && cachedPrefilledVisits.isNotEmpty) {
+      final existingIds = <String>{};
+      for (final v in result) {
+        final id = v.id;
+        if (id != null) {
+          existingIds.add(id);
+        }
+      }
+
+      final newFromCache = <ScheduledVisit>[];
+      for (final v in cachedPrefilledVisits) {
+        final id = v.id;
+        if (id == null) continue;
+        if (!prefilledVisitIds.contains(id)) continue;
+        if (existingIds.contains(id)) continue;
+        newFromCache.add(v);
+      }
+
+      // optional: order the new ones among themselves by scheduledDate desc
+      newFromCache.sort((a, b) {
+        final ad = a.scheduledDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bd = b.scheduledDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bd.compareTo(ad);
+      });
+
+      // 👇 put new cached ones on top, keep remote order intact
+      result = [...newFromCache, ...result];
+    }
+
+    return result;
   }
 }

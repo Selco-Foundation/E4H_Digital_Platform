@@ -16,26 +16,26 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$ScheduledVisitEvent {
-  String get status => throw _privateConstructorUsedError;
+  List<String> get statuses => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String status) loadInitial,
-    required TResult Function(String status) loadMore,
-    required TResult Function(String status) refresh,
+    required TResult Function(List<String> statuses) loadInitial,
+    required TResult Function(List<String> statuses) loadMore,
+    required TResult Function(List<String> statuses) refresh,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String status)? loadInitial,
-    TResult? Function(String status)? loadMore,
-    TResult? Function(String status)? refresh,
+    TResult? Function(List<String> statuses)? loadInitial,
+    TResult? Function(List<String> statuses)? loadMore,
+    TResult? Function(List<String> statuses)? refresh,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String status)? loadInitial,
-    TResult Function(String status)? loadMore,
-    TResult Function(String status)? refresh,
+    TResult Function(List<String> statuses)? loadInitial,
+    TResult Function(List<String> statuses)? loadMore,
+    TResult Function(List<String> statuses)? refresh,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -73,7 +73,7 @@ abstract class $ScheduledVisitEventCopyWith<$Res> {
           ScheduledVisitEvent value, $Res Function(ScheduledVisitEvent) then) =
       _$ScheduledVisitEventCopyWithImpl<$Res, ScheduledVisitEvent>;
   @useResult
-  $Res call({String status});
+  $Res call({List<String> statuses});
 }
 
 /// @nodoc
@@ -89,13 +89,13 @@ class _$ScheduledVisitEventCopyWithImpl<$Res, $Val extends ScheduledVisitEvent>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? status = null,
+    Object? statuses = null,
   }) {
     return _then(_value.copyWith(
-      status: null == status
-          ? _value.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as String,
+      statuses: null == statuses
+          ? _value.statuses
+          : statuses // ignore: cast_nullable_to_non_nullable
+              as List<String>,
     ) as $Val);
   }
 }
@@ -108,7 +108,7 @@ abstract class _$$LoadInitialImplCopyWith<$Res>
       __$$LoadInitialImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String status});
+  $Res call({List<String> statuses});
 }
 
 /// @nodoc
@@ -122,13 +122,13 @@ class __$$LoadInitialImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? status = null,
+    Object? statuses = null,
   }) {
     return _then(_$LoadInitialImpl(
-      status: null == status
-          ? _value.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as String,
+      statuses: null == statuses
+          ? _value._statuses
+          : statuses // ignore: cast_nullable_to_non_nullable
+              as List<String>,
     ));
   }
 }
@@ -136,14 +136,20 @@ class __$$LoadInitialImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$LoadInitialImpl implements _LoadInitial {
-  const _$LoadInitialImpl({required this.status});
+  const _$LoadInitialImpl({required final List<String> statuses})
+      : _statuses = statuses;
 
+  final List<String> _statuses;
   @override
-  final String status;
+  List<String> get statuses {
+    if (_statuses is EqualUnmodifiableListView) return _statuses;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_statuses);
+  }
 
   @override
   String toString() {
-    return 'ScheduledVisitEvent.loadInitial(status: $status)';
+    return 'ScheduledVisitEvent.loadInitial(statuses: $statuses)';
   }
 
   @override
@@ -151,11 +157,12 @@ class _$LoadInitialImpl implements _LoadInitial {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$LoadInitialImpl &&
-            (identical(other.status, status) || other.status == status));
+            const DeepCollectionEquality().equals(other._statuses, _statuses));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, status);
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(_statuses));
 
   @JsonKey(ignore: true)
   @override
@@ -166,33 +173,33 @@ class _$LoadInitialImpl implements _LoadInitial {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String status) loadInitial,
-    required TResult Function(String status) loadMore,
-    required TResult Function(String status) refresh,
+    required TResult Function(List<String> statuses) loadInitial,
+    required TResult Function(List<String> statuses) loadMore,
+    required TResult Function(List<String> statuses) refresh,
   }) {
-    return loadInitial(status);
+    return loadInitial(statuses);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String status)? loadInitial,
-    TResult? Function(String status)? loadMore,
-    TResult? Function(String status)? refresh,
+    TResult? Function(List<String> statuses)? loadInitial,
+    TResult? Function(List<String> statuses)? loadMore,
+    TResult? Function(List<String> statuses)? refresh,
   }) {
-    return loadInitial?.call(status);
+    return loadInitial?.call(statuses);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String status)? loadInitial,
-    TResult Function(String status)? loadMore,
-    TResult Function(String status)? refresh,
+    TResult Function(List<String> statuses)? loadInitial,
+    TResult Function(List<String> statuses)? loadMore,
+    TResult Function(List<String> statuses)? refresh,
     required TResult orElse(),
   }) {
     if (loadInitial != null) {
-      return loadInitial(status);
+      return loadInitial(statuses);
     }
     return orElse();
   }
@@ -233,11 +240,11 @@ class _$LoadInitialImpl implements _LoadInitial {
 }
 
 abstract class _LoadInitial implements ScheduledVisitEvent {
-  const factory _LoadInitial({required final String status}) =
+  const factory _LoadInitial({required final List<String> statuses}) =
       _$LoadInitialImpl;
 
   @override
-  String get status;
+  List<String> get statuses;
   @override
   @JsonKey(ignore: true)
   _$$LoadInitialImplCopyWith<_$LoadInitialImpl> get copyWith =>
@@ -252,7 +259,7 @@ abstract class _$$LoadMoreImplCopyWith<$Res>
       __$$LoadMoreImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String status});
+  $Res call({List<String> statuses});
 }
 
 /// @nodoc
@@ -266,13 +273,13 @@ class __$$LoadMoreImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? status = null,
+    Object? statuses = null,
   }) {
     return _then(_$LoadMoreImpl(
-      status: null == status
-          ? _value.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as String,
+      statuses: null == statuses
+          ? _value._statuses
+          : statuses // ignore: cast_nullable_to_non_nullable
+              as List<String>,
     ));
   }
 }
@@ -280,14 +287,20 @@ class __$$LoadMoreImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$LoadMoreImpl implements _LoadMore {
-  const _$LoadMoreImpl({required this.status});
+  const _$LoadMoreImpl({required final List<String> statuses})
+      : _statuses = statuses;
 
+  final List<String> _statuses;
   @override
-  final String status;
+  List<String> get statuses {
+    if (_statuses is EqualUnmodifiableListView) return _statuses;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_statuses);
+  }
 
   @override
   String toString() {
-    return 'ScheduledVisitEvent.loadMore(status: $status)';
+    return 'ScheduledVisitEvent.loadMore(statuses: $statuses)';
   }
 
   @override
@@ -295,11 +308,12 @@ class _$LoadMoreImpl implements _LoadMore {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$LoadMoreImpl &&
-            (identical(other.status, status) || other.status == status));
+            const DeepCollectionEquality().equals(other._statuses, _statuses));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, status);
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(_statuses));
 
   @JsonKey(ignore: true)
   @override
@@ -310,33 +324,33 @@ class _$LoadMoreImpl implements _LoadMore {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String status) loadInitial,
-    required TResult Function(String status) loadMore,
-    required TResult Function(String status) refresh,
+    required TResult Function(List<String> statuses) loadInitial,
+    required TResult Function(List<String> statuses) loadMore,
+    required TResult Function(List<String> statuses) refresh,
   }) {
-    return loadMore(status);
+    return loadMore(statuses);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String status)? loadInitial,
-    TResult? Function(String status)? loadMore,
-    TResult? Function(String status)? refresh,
+    TResult? Function(List<String> statuses)? loadInitial,
+    TResult? Function(List<String> statuses)? loadMore,
+    TResult? Function(List<String> statuses)? refresh,
   }) {
-    return loadMore?.call(status);
+    return loadMore?.call(statuses);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String status)? loadInitial,
-    TResult Function(String status)? loadMore,
-    TResult Function(String status)? refresh,
+    TResult Function(List<String> statuses)? loadInitial,
+    TResult Function(List<String> statuses)? loadMore,
+    TResult Function(List<String> statuses)? refresh,
     required TResult orElse(),
   }) {
     if (loadMore != null) {
-      return loadMore(status);
+      return loadMore(statuses);
     }
     return orElse();
   }
@@ -377,10 +391,11 @@ class _$LoadMoreImpl implements _LoadMore {
 }
 
 abstract class _LoadMore implements ScheduledVisitEvent {
-  const factory _LoadMore({required final String status}) = _$LoadMoreImpl;
+  const factory _LoadMore({required final List<String> statuses}) =
+      _$LoadMoreImpl;
 
   @override
-  String get status;
+  List<String> get statuses;
   @override
   @JsonKey(ignore: true)
   _$$LoadMoreImplCopyWith<_$LoadMoreImpl> get copyWith =>
@@ -395,7 +410,7 @@ abstract class _$$RefreshImplCopyWith<$Res>
       __$$RefreshImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call({String status});
+  $Res call({List<String> statuses});
 }
 
 /// @nodoc
@@ -409,13 +424,13 @@ class __$$RefreshImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? status = null,
+    Object? statuses = null,
   }) {
     return _then(_$RefreshImpl(
-      status: null == status
-          ? _value.status
-          : status // ignore: cast_nullable_to_non_nullable
-              as String,
+      statuses: null == statuses
+          ? _value._statuses
+          : statuses // ignore: cast_nullable_to_non_nullable
+              as List<String>,
     ));
   }
 }
@@ -423,14 +438,20 @@ class __$$RefreshImplCopyWithImpl<$Res>
 /// @nodoc
 
 class _$RefreshImpl implements _Refresh {
-  const _$RefreshImpl({required this.status});
+  const _$RefreshImpl({required final List<String> statuses})
+      : _statuses = statuses;
 
+  final List<String> _statuses;
   @override
-  final String status;
+  List<String> get statuses {
+    if (_statuses is EqualUnmodifiableListView) return _statuses;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_statuses);
+  }
 
   @override
   String toString() {
-    return 'ScheduledVisitEvent.refresh(status: $status)';
+    return 'ScheduledVisitEvent.refresh(statuses: $statuses)';
   }
 
   @override
@@ -438,11 +459,12 @@ class _$RefreshImpl implements _Refresh {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$RefreshImpl &&
-            (identical(other.status, status) || other.status == status));
+            const DeepCollectionEquality().equals(other._statuses, _statuses));
   }
 
   @override
-  int get hashCode => Object.hash(runtimeType, status);
+  int get hashCode =>
+      Object.hash(runtimeType, const DeepCollectionEquality().hash(_statuses));
 
   @JsonKey(ignore: true)
   @override
@@ -453,33 +475,33 @@ class _$RefreshImpl implements _Refresh {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function(String status) loadInitial,
-    required TResult Function(String status) loadMore,
-    required TResult Function(String status) refresh,
+    required TResult Function(List<String> statuses) loadInitial,
+    required TResult Function(List<String> statuses) loadMore,
+    required TResult Function(List<String> statuses) refresh,
   }) {
-    return refresh(status);
+    return refresh(statuses);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function(String status)? loadInitial,
-    TResult? Function(String status)? loadMore,
-    TResult? Function(String status)? refresh,
+    TResult? Function(List<String> statuses)? loadInitial,
+    TResult? Function(List<String> statuses)? loadMore,
+    TResult? Function(List<String> statuses)? refresh,
   }) {
-    return refresh?.call(status);
+    return refresh?.call(statuses);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function(String status)? loadInitial,
-    TResult Function(String status)? loadMore,
-    TResult Function(String status)? refresh,
+    TResult Function(List<String> statuses)? loadInitial,
+    TResult Function(List<String> statuses)? loadMore,
+    TResult Function(List<String> statuses)? refresh,
     required TResult orElse(),
   }) {
     if (refresh != null) {
-      return refresh(status);
+      return refresh(statuses);
     }
     return orElse();
   }
@@ -520,10 +542,11 @@ class _$RefreshImpl implements _Refresh {
 }
 
 abstract class _Refresh implements ScheduledVisitEvent {
-  const factory _Refresh({required final String status}) = _$RefreshImpl;
+  const factory _Refresh({required final List<String> statuses}) =
+      _$RefreshImpl;
 
   @override
-  String get status;
+  List<String> get statuses;
   @override
   @JsonKey(ignore: true)
   _$$RefreshImplCopyWith<_$RefreshImpl> get copyWith =>

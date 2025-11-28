@@ -6,8 +6,12 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import 'package:selco/model/scheduled_visit/scheduled_visit.dart';
 
+import '../blocs/amc_otp/amc_otp.dart';
+import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -26,10 +30,25 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
   final TextEditingController otpController = TextEditingController();
   bool next = false;
   final FocusNode pinFocusNode = FocusNode();
+  String? _currentScheduledVisitId;
+  ScheduledVisit? scheduledVisit;
 
   @override
   void initState() {
     super.initState();
+
+    context.read<SelectedScheduledVisitBloc>().state.whenOrNull(
+        selected: (visit) {
+      _currentScheduledVisitId = visit.id;
+      scheduledVisit = visit;
+    });
+  }
+
+  @override
+  void dispose() {
+    otpController.dispose();
+    pinFocusNode.dispose();
+    super.dispose();
   }
 
   @override
@@ -37,93 +56,133 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return ReactiveFormBuilder(
-        form: buildForm,
-        builder: (context, form, child) {
-          return Scaffold(
-            body: ScrollableContent(
-              enableFixedDigitButton: true,
-              backgroundColor: theme.colorTheme.generic.background,
-              // footer: FooterButton(
-              //   isDisabled: !form.valid,
-              //   showSuffixIcon: false,
-              //   text: context.translate(i18.common.coreCommonSubmit),
-              //   onPress: () {
-              //     form.markAllAsTouched();
-              //     if (!form.valid) return;
-              //
-              //     FocusManager.instance.primaryFocus?.unfocus();
-              //     // context.read<UserOtpBloc>().add(UserOtpEvent.storeOtp(
-              //     //     otp: (form.control(_otp).value as String).trim()));
-              //   },
-              // ),
-              footer: ReactiveFormConsumer(
-                builder: (context, form, child) {
-                  return FooterButton(
-                    isDisabled: !form.valid,
-                    showSuffixIcon: false,
-                    text: context.translate(i18.common.coreCommonSubmit),
-                    onPress: () {
-                      form.markAllAsTouched();
-                      if (!form.valid) return;
+    final otpState = context.watch<AmcOtpBloc>().state;
+    final isSubmitLoading = otpState.maybeWhen(
+      submitLoading: () => true,
+      orElse: () => false,
+    );
 
-                      FocusManager.instance.primaryFocus?.unfocus();
-                      context.router.push(const AmcHomeRoute());
-                      // context.read<UserOtpBloc>().add(
-                      //   UserOtpEvent.storeOtp(
-                      //     otp: (form.control(_otp).value as String).trim(),
-                      //   ),
-                      // );
-                    },
-                  );
-                },
-              ),
-              children: [
-                DigitCard(
-                  margin: const EdgeInsets.all(spacer2),
-                  children: [
-                    const SizedBox(height: spacer6),
-                    SizedBox(
-                      width: context.width,
-                      child: ReactiveWrapperField(
-                        formControlName: _otp,
-                        validationMessages: {
-                          "required": (control) {
-                            return context.translate(
-                              '${i18.login.otpPlaceholder}_IS_REQUIRED',
-                            );
+    final isResendLoading = otpState.maybeWhen(
+      resendLoading: () => true,
+      orElse: () => false,
+    );
+
+    return BlocListener<AmcOtpBloc, AmcOtpState>(
+      listener: (ctx, state) {
+        state.maybeWhen(
+          resendSuccess: () {
+            ctx.showSnackBar(
+              const SnackBar(content: Text('OTP resent successfully')),
+            );
+          },
+          submitSuccess: () {
+            ctx.showSnackBar(
+              const SnackBar(content: Text('OTP verified successfully')),
+            );
+            ctx.router.push(const AmcHomeRoute());
+          },
+          failure: (msg) {
+            ctx.showSnackBar(
+              SnackBar(content: Text(msg)),
+            );
+          },
+          orElse: () {},
+        );
+      },
+      child: ReactiveFormBuilder(
+          form: buildForm,
+          builder: (context, form, child) {
+            return Scaffold(
+              body: ScrollableContent(
+                enableFixedDigitButton: true,
+                backgroundColor: theme.colorTheme.generic.background,
+                footer: ReactiveFormConsumer(
+                  builder: (context, form, child) {
+                    final isFormValid = form.valid;
+                    final isDisabled = !isFormValid ||
+                        isSubmitLoading ||
+                        isResendLoading ||
+                        _currentScheduledVisitId == null;
+                    return FooterButton(
+                      isDisabled: isDisabled,
+                      showSuffixIcon: false,
+                      text: isResendLoading
+                          ? 'Resending...'
+                          : context.translate(i18.common.coreCommonSubmit),
+                      onPress: () {
+                        form.markAllAsTouched();
+                        if (!form.valid || _currentScheduledVisitId == null)
+                          return;
+
+                        FocusManager.instance.primaryFocus?.unfocus();
+
+                        final otp = (form.control(_otp).value as String).trim();
+                        context.read<AmcOtpBloc>().add(AmcOtpEvent.submit(
+                            visitId: _currentScheduledVisitId!,
+                            schemaCode: "12345678",
+                            version: 1,
+                            otp: otp,
+                            scheduledVisit: scheduledVisit));
+                      },
+                    );
+                  },
+                ),
+                children: [
+                  DigitCard(
+                    margin: const EdgeInsets.all(spacer2),
+                    children: [
+                      const SizedBox(height: spacer6),
+                      SizedBox(
+                        width: context.width,
+                        child: ReactiveWrapperField(
+                          formControlName: _otp,
+                          validationMessages: {
+                            "required": (control) {
+                              return context.translate(
+                                '${i18.login.otpPlaceholder}_IS_REQUIRED',
+                              );
+                            },
                           },
-                        },
-                        builder: (field) => DigitOTPInput(
-                          label: "Enter OTP",
-                          inputFormatter: [
-                            FilteringTextInputFormatter.digitsOnly
-                          ],
-                          errorMessage: field.errorText,
-                          onChanged: (input) {
-                            // form.control(_otp).value = input;
-                            field.didChange(input);
-                          },
+                          builder: (field) => DigitOTPInput(
+                            label: "Enter OTP",
+                            inputFormatter: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            errorMessage: field.errorText,
+                            onChanged: (input) {
+                              // form.control(_otp).value = input;
+                              field.didChange(input);
+                            },
+                          ),
                         ),
                       ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          textAlign: TextAlign.end,
-                          "Resend OTP",
-                          style: textTheme.linkM
-                              .copyWith(color: theme.colorTheme.alert.error),
-                        ),
-                      ],
-                    ),
-                  ],
-                )
-              ],
-            ),
-          );
-        });
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          GestureDetector(
+                            onTap: isResendLoading
+                                ? () {}
+                                : () {
+                                    context
+                                        .read<AmcOtpBloc>()
+                                        .add(const AmcOtpEvent.resend());
+                                  },
+                            child: Text(
+                              textAlign: TextAlign.end,
+                              isResendLoading ? 'Resending...' : 'Resend OTP',
+                              style: textTheme.linkM.copyWith(
+                                  color: theme.colorTheme.alert.error),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            );
+          }),
+    );
   }
 
   FormGroup buildForm() => fb.group(<String, Object>{
