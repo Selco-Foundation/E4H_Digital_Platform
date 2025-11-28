@@ -6,8 +6,9 @@ on:
   pull_request:
     branches: [ "develop", "main", "staging" ]
   schedule:
-    # Run at 2:30 AM UTC every Monday
+    # Run at 2:30 AM UTC every Monday (analyzes all languages)
     - cron: '30 2 * * 1'
+  workflow_dispatch:  # Allows manual trigger from GitHub UI
 
 jobs:
   analyze:
@@ -49,9 +50,74 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for better analysis
+
+    # Check if this language should be analyzed
+    # For PRs: only analyze if relevant files were changed
+    # For push/schedule: always analyze all languages
+    - name: Check if language should be analyzed
+      id: check_files
+      run: |
+        SHOULD_RUN="true"
+        
+        # For pull requests, check if relevant files were changed
+        if [ "${{ github.event_name }}" == "pull_request" ]; then
+          echo "This is a PR - checking for changed files of type: ${{ matrix.language }}"
+          
+          # Get list of changed files
+          git fetch origin ${{ github.base_ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          
+          if [ "${{ matrix.language }}" == "actions" ]; then
+            if echo "$CHANGED_FILES" | grep -E '\.(yml|yaml)$' | grep -q '.github/workflows/'; then
+              SHOULD_RUN="true"
+              echo "Found changed workflow files"
+            else
+              SHOULD_RUN="false"
+              echo "No workflow files changed in this PR"
+            fi
+          elif [ "${{ matrix.language }}" == "java-kotlin" ]; then
+            if echo "$CHANGED_FILES" | grep -qE '\.(java|kt)$'; then
+              SHOULD_RUN="true"
+              echo "Found changed Java/Kotlin files"
+            else
+              SHOULD_RUN="false"
+              echo "No Java/Kotlin files changed in this PR"
+            fi
+          elif [ "${{ matrix.language }}" == "javascript-typescript" ]; then
+            if echo "$CHANGED_FILES" | grep -qE '\.(js|jsx|ts|tsx)$'; then
+              SHOULD_RUN="true"
+              echo "Found changed JavaScript/TypeScript files"
+            else
+              SHOULD_RUN="false"
+              echo "No JavaScript/TypeScript files changed in this PR"
+            fi
+          elif [ "${{ matrix.language }}" == "python" ]; then
+            if echo "$CHANGED_FILES" | grep -qE '\.py$'; then
+              SHOULD_RUN="true"
+              echo "Found changed Python files"
+            else
+              SHOULD_RUN="false"
+              echo "No Python files changed in this PR"
+            fi
+          fi
+        else
+          echo "Not a PR (push/schedule/manual) - analyzing all languages"
+          SHOULD_RUN="true"
+        fi
+        
+        echo "should_run=$SHOULD_RUN" >> $GITHUB_OUTPUT
+
+    - name: Skip analysis message
+      if: steps.check_files.outputs.should_run == 'false'
+      run: |
+        echo "✅ Skipping ${{ matrix.language }} analysis - no relevant files changed in this PR"
+        echo "This is expected behavior - not all PRs will change all languages."
+        echo "Job completes successfully without running CodeQL for this language."
 
     - name: Set up JDK 17 for Java (Primary) and JDK 8 (Legacy Services)
-      if: matrix.language == 'java-kotlin'
+      if: matrix.language == 'java-kotlin' && steps.check_files.outputs.should_run == 'true'
       uses: actions/setup-java@v4
       with:
         # Using Java 17 as primary - it can compile and analyze Java 8 code
@@ -61,13 +127,13 @@ jobs:
         cache: maven
 
     - name: Set up Python
-      if: matrix.language == 'python'
+      if: matrix.language == 'python' && steps.check_files.outputs.should_run == 'true'
       uses: actions/setup-python@v5
       with:
         python-version: '3.x'
 
     - name: Set up Node.js
-      if: matrix.language == 'javascript-typescript'
+      if: matrix.language == 'javascript-typescript' && steps.check_files.outputs.should_run == 'true'
       uses: actions/setup-node@v4
       with:
         node-version: '18'
@@ -75,6 +141,7 @@ jobs:
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
+      if: steps.check_files.outputs.should_run == 'true'
       uses: github/codeql-action/init@v4
       with:
         languages: ${{ matrix.language }}
@@ -92,7 +159,7 @@ jobs:
     #   - egov-workflow-v2, inbox, egov-notification-sms, egov-idgen
     # Java 17 compiler can compile Java 8 code, so using Java 17 for all builds
     - name: Build E4H Backend Services
-      if: matrix.language == 'java-kotlin'
+      if: matrix.language == 'java-kotlin' && steps.check_files.outputs.should_run == 'true'
       working-directory: E4H_Digital_Platform
       run: |
         echo "Building E4H Backend Services with Java 17..."
@@ -130,7 +197,7 @@ jobs:
         fi
 
     - name: Install JavaScript Dependencies
-      if: matrix.language == 'javascript-typescript'
+      if: matrix.language == 'javascript-typescript' && steps.check_files.outputs.should_run == 'true'
       working-directory: E4H_Digital_Platform/frontend
       run: |
         # Install dependencies for installation-ui
@@ -150,7 +217,7 @@ jobs:
         fi
 
     - name: Install Python Dependencies
-      if: matrix.language == 'python'
+      if: matrix.language == 'python' && steps.check_files.outputs.should_run == 'true'
       working-directory: E4H_Digital_Platform/backend
       run: |
         # Install Python dependencies if requirements.txt exists
@@ -159,6 +226,7 @@ jobs:
         fi
 
     - name: Perform CodeQL Analysis
+      if: steps.check_files.outputs.should_run == 'true'
       uses: github/codeql-action/analyze@v4
       with:
         category: "/language:${{matrix.language}}"
