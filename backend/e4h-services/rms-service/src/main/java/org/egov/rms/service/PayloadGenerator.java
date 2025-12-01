@@ -153,8 +153,9 @@ public class PayloadGenerator {
                 Map<String, Object> metadataMap = objectMapper.readValue(alert.getMetadata(), Map.class);
                 
                 // Add facility name if available
-                if (metadataMap.containsKey("facilityName")) {
-                    comments.append("Facility Name: ").append(metadataMap.get("facilityName")).append("\n");
+                Object facilityNameObj = metadataMap.get("facilityName");
+                if (facilityNameObj != null && !isBooleanFalse(facilityNameObj)) {
+                    comments.append("Facility Name: ").append(safeToString(facilityNameObj)).append("\n");
                 }
                 
                 // Format metadata based on alert type
@@ -182,6 +183,26 @@ public class PayloadGenerator {
         }
         
         return comments.toString();
+    }
+
+    /**
+     * Safely converts an object to string, filtering out boolean false and null values
+     */
+    private String safeToString(Object value) {
+        if (value == null) {
+            return "N/A";
+        }
+        if (value instanceof Boolean && !((Boolean) value)) {
+            return ""; // Skip boolean false values
+        }
+        return value.toString();
+    }
+
+    /**
+     * Checks if an object is a boolean false value
+     */
+    private boolean isBooleanFalse(Object value) {
+        return value instanceof Boolean && !((Boolean) value);
     }
 
     /**
@@ -233,15 +254,18 @@ public class PayloadGenerator {
      */
     private void formatPanelMetadata(StringBuilder comments, Map<String, Object> metadata, Alert.AlertSubType subType) {
         if (subType == Alert.AlertSubType.LOW_GENERATION) {
-            if (metadata.containsKey("solarPercent")) {
-                comments.append("Solar Generation Percentage: ").append(metadata.get("solarPercent")).append("%\n");
+            Object solarPercent = metadata.get("solarPercent");
+            if (solarPercent != null && !isBooleanFalse(solarPercent)) {
+                comments.append("Solar Generation Percentage: ").append(safeToString(solarPercent)).append("%\n");
                 comments.append("Issue: Solar panel energy consumption is below 10% of total consumption.\n");
             }
-            if (metadata.containsKey("solarConsumption")) {
-                comments.append("Solar Consumption: ").append(metadata.get("solarConsumption")).append(" kWh\n");
+            Object solarConsumption = metadata.get("solarConsumption");
+            if (solarConsumption != null && !isBooleanFalse(solarConsumption)) {
+                comments.append("Solar Consumption: ").append(safeToString(solarConsumption)).append(" kWh\n");
             }
-            if (metadata.containsKey("gridConsumption")) {
-                comments.append("Grid Consumption: ").append(metadata.get("gridConsumption")).append(" kWh\n");
+            Object gridConsumption = metadata.get("gridConsumption");
+            if (gridConsumption != null && !isBooleanFalse(gridConsumption)) {
+                comments.append("Grid Consumption: ").append(safeToString(gridConsumption)).append(" kWh\n");
             }
         }
     }
@@ -254,8 +278,9 @@ public class PayloadGenerator {
             comments.append("Issue: No signal or communication detected from RMS device for more than 2 consecutive days.\n");
             comments.append("Status: Device appears to be offline or experiencing communication issues.\n");
         } else if (subType == Alert.AlertSubType.HIGH_VOLTAGE) {
-            if (metadata.containsKey("voltage")) {
-                comments.append("Detected Voltage: ").append(metadata.get("voltage")).append("V\n");
+            Object voltage = metadata.get("voltage");
+            if (voltage != null && !isBooleanFalse(voltage)) {
+                comments.append("Detected Voltage: ").append(safeToString(voltage)).append("V\n");
                 comments.append("Threshold: 250V\n");
                 comments.append("Issue: UPS/PCU voltage is above safe operating threshold.\n");
             }
@@ -267,19 +292,23 @@ public class PayloadGenerator {
      */
     private void formatBatteryMetadata(StringBuilder comments, Map<String, Object> metadata, Alert.AlertSubType subType) {
         if (subType == Alert.AlertSubType.BURNT_DISCONNECTED) {
-            if (metadata.containsKey("batteryVoltage")) {
-                comments.append("Battery Voltage: ").append(metadata.get("batteryVoltage")).append("V\n");
+            Object batteryVoltage = metadata.get("batteryVoltage");
+            if (batteryVoltage != null && !isBooleanFalse(batteryVoltage)) {
+                comments.append("Battery Voltage: ").append(safeToString(batteryVoltage)).append("V\n");
                 comments.append("Issue: Battery voltage detected as 0V - battery may be burnt, disconnected, or completely discharged.\n");
             }
         } else if (subType == Alert.AlertSubType.DEEP_DISCHARGING || subType == Alert.AlertSubType.OVERCHARGING) {
-            if (metadata.containsKey("batteryCharging")) {
-                comments.append("Battery Charging: ").append(metadata.get("batteryCharging")).append(" kWh\n");
+            Object batteryCharging = metadata.get("batteryCharging");
+            if (batteryCharging != null && !isBooleanFalse(batteryCharging)) {
+                comments.append("Battery Charging: ").append(safeToString(batteryCharging)).append(" kWh\n");
             }
-            if (metadata.containsKey("batteryDischarging")) {
-                comments.append("Battery Discharging: ").append(metadata.get("batteryDischarging")).append(" kWh\n");
+            Object batteryDischarging = metadata.get("batteryDischarging");
+            if (batteryDischarging != null && !isBooleanFalse(batteryDischarging)) {
+                comments.append("Battery Discharging: ").append(safeToString(batteryDischarging)).append(" kWh\n");
             }
-            if (metadata.containsKey("batteryHealthInfo")) {
-                comments.append("Battery Health Status: ").append(metadata.get("batteryHealthInfo")).append("\n");
+            Object batteryHealthInfo = metadata.get("batteryHealthInfo");
+            if (batteryHealthInfo != null && !isBooleanFalse(batteryHealthInfo)) {
+                comments.append("Battery Health Status: ").append(safeToString(batteryHealthInfo)).append("\n");
             }
             if (subType == Alert.AlertSubType.DEEP_DISCHARGING) {
                 comments.append("Issue: Battery is being discharged more than it is being charged, leading to degradation.\n");
@@ -294,14 +323,16 @@ public class PayloadGenerator {
      */
     private void formatGridMetadata(StringBuilder comments, Map<String, Object> metadata, Alert.AlertSubType subType) {
         if (subType == Alert.AlertSubType.VOLTAGE_VARIATION_LOW) {
-            if (metadata.containsKey("minVoltage")) {
-                comments.append("Detected Grid Voltage: ").append(metadata.get("minVoltage")).append("V\n");
+            Object minVoltage = metadata.get("minVoltage");
+            if (minVoltage != null && !isBooleanFalse(minVoltage)) {
+                comments.append("Detected Grid Voltage: ").append(safeToString(minVoltage)).append("V\n");
                 comments.append("Threshold: 200V\n");
                 comments.append("Issue: Grid voltage is below safe operating threshold.\n");
             }
         } else if (subType == Alert.AlertSubType.VOLTAGE_VARIATION_HIGH) {
-            if (metadata.containsKey("maxVoltage")) {
-                comments.append("Detected Grid Voltage: ").append(metadata.get("maxVoltage")).append("V\n");
+            Object maxVoltage = metadata.get("maxVoltage");
+            if (maxVoltage != null && !isBooleanFalse(maxVoltage)) {
+                comments.append("Detected Grid Voltage: ").append(safeToString(maxVoltage)).append("V\n");
                 comments.append("Threshold: 250V\n");
                 comments.append("Issue: Grid voltage is above safe operating threshold.\n");
             }
