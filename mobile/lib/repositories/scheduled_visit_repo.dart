@@ -128,7 +128,7 @@ class ScheduledVisitRemoteRepository {
       final resp = await dio.post(path, data: <String, dynamic>{});
 
       AppLogger.instance.info(
-        'ScheduledVisitRemoteRepository.resendVisitOtp status=${resp.statusCode}',
+        'ScheduledVisitRemoteRepository.resendVisitOtp status=${resp.statusCode} ${resp.data}',
       );
     } on DioError catch (e) {
       AppLogger.instance.info(

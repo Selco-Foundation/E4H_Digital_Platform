@@ -198,7 +198,17 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
             children: [
               if (_selectedTabIndex == 1)
                 InboxReportCard(
-                    onPress: () => context.router.push(const AmcOtpRoute()),
+                    onPress: () => visit.status !=
+                            WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name
+                        ? context.router.push(const AmcOtpRoute())
+                        : context.router.push(
+                            AmcDynamicFormRoute(
+                                pageName: "AMC_Report",
+                                uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
+                                schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                                scheduledVisitId: visit.id ?? '',
+                                origin: FormOrigin.overallSummary),
+                          ),
                     title: visit.facility?.facilityName ?? '',
                     dateAssigned: visit.scheduledDate ?? DateTime.now(),
                     status: visit.status ?? '---',
