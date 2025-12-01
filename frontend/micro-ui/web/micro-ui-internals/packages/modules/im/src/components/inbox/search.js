@@ -7,26 +7,6 @@ export const isCodePresent = (array, codeToCheck) => {
 };
 const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
   const [complaintNo, setComplaintNo] = useState(searchParams?.search?.applicationNumber || "");
-  const stateTenantId = Digit.ULBService.getStateId();
-  let healthcareTenant = Digit.SessionStorage.get("Tenants").filter((item) => item.code !== stateTenantId);
-  const [phcType, setPhcType] = useState();
-
-  const state = Digit.ULBService.getStateId();
-  const { isMdmsLoading, data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block"]);
-  const { data: phcMenu } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
-  const phcMenus =
-    Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId
-      ? Digit.SessionStorage.get("Tenants")
-      : Digit.SessionStorage.get("Employee.tenantId") == stateTenantId
-      ? isCodePresent(Digit.SessionStorage.get("User")?.info?.roles, "COMPLAINT_RESOLVER")
-        ? healthcareTenant
-        : Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !== stateTenantId)
-      : Digit.SessionStorage.get("IM_TENANTS").filter((item) => item.code !== stateTenantId);
-  let sortedPhcMenu = [];
-  if (phcMenus.length > 0) {
-    sortedPhcMenu = phcMenus.sort((a, b) => a.name.localeCompare(b.name));
-  }
-  const [mobileNo, setMobileNo] = useState(searchParams?.search?.mobileNumber || "");
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
   const bottomPosition = window.innerHeight - viewportHeight;
   const { register, errors, handleSubmit, reset } = useForm();
@@ -34,11 +14,7 @@ const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
 
   const onSubmitInput = (data) => {
     if (!Object.keys(errors).filter((i) => errors[i]).length) {
-      if (data.serviceRequestId !== "" && phcType?.code !== "") {
-        onSearch({ applicationNumber: data.serviceRequestId, phcType: phcType?.code });
-      } else if (data.code !== "") {
-        onSearch({ phcType: phcType?.code });
-      } else if (data.serviceRequestId !== "") {
+      if (data.serviceRequestId !== "") {
         onSearch({ applicationNumber: data.serviceRequestId });
       } else {
         onSearch({});
@@ -54,7 +30,6 @@ const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
     reset();
     onSearch({});
     setComplaintNo("");
-    setPhcType("");
   }
 
   const clearAll = () => {
@@ -68,16 +43,6 @@ const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
   function setComplaint(e) {
     setComplaintNo(e.target.value);
   }
-  useEffect(() => {
-    if (Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Tenants") : Digit.SessionStorage.get("IM_TENANTS")) {
-      let empTenant = Digit.SessionStorage.get("Employee.tenantId");
-      let filtered = Digit.SessionStorage.get("IM_TENANTS").filter((abc) => abc.code == empTenant);
-
-      if (filtered?.[0].code !== stateTenantId) {
-        setPhcTypeFunction(filtered?.[0]);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -99,13 +64,6 @@ const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
       }
     };
   }, []);
-
-  function setPhcTypeFunction(value) {
-    setPhcType(value);
-  }
-  function setMobile(e) {
-    setMobileNo(e.target.value);
-  }
 
   return (
     <form onSubmit={handleSubmit(onSubmitInput)} style={{ marginLeft: "24px" }}>
@@ -142,7 +100,7 @@ const SearchComplaint = ({ onSearch, type, onClose, searchParams }) => {
                     submit={true}
                     disabled={Object.keys(errors).filter((i) => errors[i]).length}
                   />
-                  <span className="clear-search" style={{ color: "#7a2829", marginLeft: "15px", marginTop: "10px", marginLeft: "50px" }}>
+                  <span className="clear-search" style={{ color: "#7a2829", marginTop: "10px", marginLeft: "50px" }}>
                     {clearAll()}
                   </span>
                 </div>

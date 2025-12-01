@@ -87,6 +87,55 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         console.error("Login report failed", err);
       }
 
+      let boundaryCodes = {
+        codes: ["-"],
+        type: "country"
+      };
+      const hrmsResponse = await Digit.HRMSService.search("in", null, { codes: user.info.userName });
+      const hrmsUser = hrmsResponse?.Employees?.[0];
+      if (!hrmsUser) {
+        throw new Error("Could not find HRMS employee");
+      }
+      if (!hrmsUser.jurisdictions || !Array.isArray(hrmsUser.jurisdictions)) {
+        throw new Error("Could not find HRMS employee Jurisdictions");
+      }
+      Digit.SessionStorage.set("HRMS.User", hrmsUser);
+
+      let jurisdictionBoundaries = {};
+      for (let jurisdiction of hrmsUser?.jurisdictions) {
+        if (jurisdiction?.boundaryType) {
+          const key = jurisdiction.boundaryType.toLowerCase();
+          jurisdictionBoundaries = {
+            ...jurisdictionBoundaries,
+            [key]: [...(jurisdictionBoundaries[key] || []), jurisdiction.boundary],
+          }
+        }
+      }
+
+      if (jurisdictionBoundaries?.state?.length) {
+        boundaryCodes = {
+          codes: jurisdictionBoundaries.state,
+          type: "state",
+        }
+      } else if (jurisdictionBoundaries?.district?.length) {
+        boundaryCodes = {
+          codes: jurisdictionBoundaries.district,
+          type: "district",
+        }
+      } else if (jurisdictionBoundaries?.block?.length) {
+        boundaryCodes = {
+          codes: jurisdictionBoundaries.block,
+          type: "block",
+        }
+      } else if (jurisdictionBoundaries?.facility?.length) {
+        boundaryCodes = {
+          codes: jurisdictionBoundaries.facility,
+          type: "facility",
+        }
+      }
+      Digit.SessionStorage.set("Jurisdiction.Boundaries", boundaryCodes);
+      Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", boundaryCodes);
+
       const fromParam = new URLSearchParams(location.search).get("from");
       if (fromParam) {
         redirectPath = decodeURIComponent(fromParam) || `/${window.contextPath}/employee`;
@@ -108,23 +157,17 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   }, [user, history, location.search]);
 
   const onLogin = async (data) => {
-    if (!data.city) {
-      alert(t("ES_SELECT_HEALTH_CARE"));
-      return;
-    }
     setDisable(true);
-
     const requestData = {
       ...data,
       userType: "EMPLOYEE",
+      tenantId: "in",
     };
-    requestData.tenantId = data.city.code;
     delete requestData.city;
     try {
       const { UserRequest: info, ...tokens } = await Digit.UserService.authenticate(requestData);
       Digit.SessionStorage.set("Employee.tenantId", info?.tenantId);
       setUser({ info, ...tokens });
-
 
       try {
         const tenantIdForLabel = info?.tenantId || requestData.tenantId;
@@ -150,27 +193,17 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
   };
 
   useEffect(() => {
-    if (cities && cities.length > 0) {
-      const queryParams = new URLSearchParams(window.location.search);
-      const username = queryParams.get("username");
-      const password = queryParams.get("passwd");
-      const tenantId = queryParams.get("tenantid");
+    const queryParams = new URLSearchParams(window.location.search);
+    const username = queryParams.get("username");
+    const password = queryParams.get("passwd");
 
-      if (username && password && tenantId) {
-        const city = cities.find((city) => city.code === tenantId);
-        if (city) {
-          onLogin({
-            username,
-            password,
-            city,
-          });
-        } else {
-          setShowToast("CORE_COMMON_INVALID_LOGIN_CREDENTIALS");
-          setTimeout(closeToast, 5000);
-        }
-      }
+    if (username && password) {
+      onLogin({
+        username,
+        password,
+      });
     }
-  }, [cities]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const closeToast = () => {
     setShowToast(null);
@@ -190,6 +223,9 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           type: userId.type,
           populators: {
             name: userId.name,
+            style: {
+              marginBottom: "5px"
+            },
           },
           isMandatory: true,
         },
@@ -198,30 +234,12 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           type: password.type,
           populators: {
             name: password.name,
+            style: {
+              marginBottom: "25px"
+            },
           },
           isMandatory: true,
-        },
-        {
-          label: t(city.label),
-          type: city.type,
-          populators: {
-            name: city.name,
-            customProps: {},
-            component: (props, customProps) => (
-              <Dropdown
-                option={sortedCities}
-                className="login-city-dd"
-                optionKey="i18nKey"
-                select={(d) => {
-                  props.onChange(d);
-                }}
-                t={t}
-                {...customProps}
-              />
-            ),
-          },
-          isMandatory: true,
-        },
+        }
       ],
     },
   ];
@@ -244,7 +262,6 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
           label={propsConfig.texts.submitButtonLabel}
           secondaryActionLabel={propsConfig.texts.secondaryButtonLabel}
           onSecondayActionClick={onForgotPassword}
-          heading={propsConfig.texts.header}
           headingStyle={{ textAlign: "center" }}
           cardStyle={isMobile ? { margin: "auto", minWidth: "300px" } : { margin: "auto", minWidth: "400px" }}
           className="loginFormStyleEmployee"
