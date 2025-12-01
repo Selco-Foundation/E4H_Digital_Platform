@@ -112,7 +112,7 @@ const DesktopInbox = ({
       {
         Header: t("CS_COMPLAINT_PHC_TYPE"),
         Cell: ({ row }) => {
-          return GetCell(t(`TENANT_TENANTS_${row.original["tenantId"].toUpperCase().replace(".","_")}`));
+          return GetCell(t(row.original["facility"]));
         },
       },
       {
