@@ -207,11 +207,22 @@ public class ScheduledVisitService {
                     log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
                     existingVisit.getVisitReport().setOtpReference(otpResponse.getOtp().getOtp());
                 }
+                else {
+                    log.warn("OTP generation returned null response for visit: {}", existingVisit.getId());
+                }
             }
+            else
+                log.warn("Cannot send OTP - employee or mobile number not found for user ID: {}", request.getRequestInfo().getUserInfo().getUuid());
         }
 
         if ("SUBMIT_OTP".equalsIgnoreCase(request.getWorkflow().getAction())) {
             // We need to validate OTP to AMC_FIELD_STAFF
+            if (request.getVisitReport() == null || request.getVisitReport().getOtpReference() == null) {
+                throw new CustomException("INVALID_OTP_REQUEST", "Visit report with OTP reference is required for SUBMIT_OTP action");
+            }
+             if (existingVisit.getVisitReport() == null) {
+                 throw new CustomException("INVALID_VISIT_STATE", "Visit report not found on existing visit");
+             }
             Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
             if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
                 OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
