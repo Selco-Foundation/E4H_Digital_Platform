@@ -156,31 +156,6 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                                 continue;
                             }
 
-                            String hfrOrNinIdCode = getField(cityNode, "code");
-                            if (hfrOrNinIdCode == null || hfrOrNinIdCode.isEmpty()) {
-                                logSkippedFacility(
-                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                        "HFR/NIN ID code not found in city data (city.code is null or empty)", null
-                                );
-                                skippedCount++;
-                                continue;
-                            }
-
-                            // Extract and validate HFR/NIN ID
-                            String[] hfrOrNinIdCodeSeparated = hfrOrNinIdCode.split("-");
-                            String extractedHfrOrNinId = hfrOrNinIdCodeSeparated.length > 0
-                                    ? hfrOrNinIdCodeSeparated[hfrOrNinIdCodeSeparated.length - 1]
-                                    : null;
-
-                            if (extractedHfrOrNinId == null || extractedHfrOrNinId.isEmpty()) {
-                                logSkippedFacility(
-                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                        "Unable to extract HFR/NIN ID from code: " + hfrOrNinIdCode, null
-                                );
-                                skippedCount++;
-                                continue;
-                            }
-
                             String districtCode = getField(cityNode, "districtCode");
                             String blockCode = getField(cityNode, "blockCode");
 
@@ -207,14 +182,24 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                             }
 
                             // Fetch POC name from HRMS
-                            String pocName = fetchPocNameFromHrms(
+                            Map<String, String> hcrDetails = fetchHCRDetailsFromHRMS(
                                     restTemplate, objectMapper, hrmsHost + hrmsSearchEndpoint,
                                     facilityTenantId, authToken
                             );
 
+                            String extractedHfrOrNinId = hcrDetails.get("hcrUserName");
+                            if (extractedHfrOrNinId == null || extractedHfrOrNinId.isEmpty()) {
+                                logSkippedFacility(
+                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                        "Unable to extract HFR/NIN ID from HRMS Call", null
+                                );
+                                skippedCount++;
+                                continue;
+                            }
+
                             // Build facility object
                             Map<String, Object> facility = buildFacilityObject(
-                                    tenant, stateName, districtName, blockName, pocName, facilityTenantId,
+                                    tenant, stateName, districtName, blockName, hcrDetails.get("hcrName"), facilityTenantId,
                                     extractedHfrOrNinId, facilityMappings
                             );
 
@@ -600,11 +585,12 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
         return requestInfo;
     }
 
-    private String fetchPocNameFromHrms(
+    private Map<String, String> fetchHCRDetailsFromHRMS(
             RestTemplate restTemplate, ObjectMapper objectMapper,
             String hrmsUrl, String facilityTenantId, String authToken
     ) {
 
+        Map<String, String> hcrDetails = new HashMap<>();
         try {
             Map<String, Object> requestBody = Map.of(
                     "RequestInfo", buildRequestInfo(authToken, "egov.hrms")
@@ -633,20 +619,27 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                 if (employees != null && employees.isArray() && !employees.isEmpty()) {
                     JsonNode firstEmployee = employees.get(0);
                     JsonNode user = firstEmployee.get("user");
-                    if (user != null && user.has("name")) {
-                        String pocName = user.get("name").asText();
-                        log.debug("Found POC name: {} for facility: {}", pocName, facilityTenantId);
-                        return pocName;
+                    if (user != null) {
+                        if (user.has("name")) {
+                            String hcrName = user.get("name").asText();
+                            log.debug("Found HCR name (POC Name): {} for facility: {}", hcrName, facilityTenantId);
+                            hcrDetails.put("hcrName", hcrName);
+                        }
+                        if (user.has("userName")) {
+                            String hcrUserName = user.get("userName").asText();
+                            log.debug("Found HCR username (HFR/NIN ID): {} for facility: {}", hcrUserName, facilityTenantId);
+                            hcrDetails.put("hcrUserName", hcrUserName);
+                        }
                     }
                 }
             }
 
             log.warn("No employee with COMPLAINANT role found for facility: {}", facilityTenantId);
-            return null;
+            return hcrDetails;
 
         } catch (Exception e) {
             log.error("Error fetching POC from HRMS for facility: {}", facilityTenantId, e);
-            return null;
+            return hcrDetails;
         }
     }
 
