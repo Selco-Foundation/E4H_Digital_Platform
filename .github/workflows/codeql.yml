@@ -138,6 +138,7 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: frontend/micro-ui/web/yarn.lock
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
