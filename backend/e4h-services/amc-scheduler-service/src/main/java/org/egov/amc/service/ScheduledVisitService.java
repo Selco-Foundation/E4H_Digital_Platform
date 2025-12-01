@@ -68,9 +68,22 @@ public class ScheduledVisitService {
 
     public ScheduledVisitRequest createScheduledVisit(ScheduledVisitRequest request) {
         scheduledVisitsValidator.validateCreateScheduledVisitRequest(request);
-        for (ScheduledVisit amcConfiguration : request.getScheduledVisits()) {
-            scheduledVisitsEnrichment.enrichScheduledVisitOnCreate(amcConfiguration, request.getRequestInfo());
-            log.info("Enriched with AMC Ids and AuditDetails {}", amcConfiguration);
+        for (ScheduledVisit scheduledVisit : request.getScheduledVisits()) {
+            ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder()
+                    .tenantId(scheduledVisit.getTenantId())
+                    .amcConfigurationIds(List.of())
+                    .visitNumbers(List.of(scheduledVisit.getVisitNumber()))
+                    .build();
+            ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
+                    .RequestInfo(request.getRequestInfo())
+                    .searchCriteria(searchCriteria)
+                    .build();
+            List<ScheduledVisit> scheduledVisits = searchScheduledVisit(searchRequest, 100, 0, scheduledVisit.getTenantId(), null, null);
+            if (scheduledVisits !=null && !scheduledVisits.isEmpty()){
+                throw new CustomException("CREATE_VISIT_ERROR", "A visit number: "+ scheduledVisit.getVisitNumber()+" already exist for configuration "+scheduledVisit.getAmcConfigurationId());
+            }
+            scheduledVisitsEnrichment.enrichScheduledVisitOnCreate(scheduledVisit, request.getRequestInfo());
+            log.info("Enriched with AMC Ids and AuditDetails {}", scheduledVisit);
             log.info("Pushed to kafka");
         }
         producer.push(amcServiceConfiguration.getSaveScheduledVisitTopic(), request);
