@@ -244,7 +244,6 @@ jobs:
         if [ -d "installation-ui" ] && [ -f "installation-ui/package.json" ]; then
           echo "Installing dependencies for installation-ui..."
           cd installation-ui
-          pwd
           npm install
           cd ..
         fi
