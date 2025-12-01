@@ -109,7 +109,7 @@ public class IdGenerationService {
     private List generateIdFromIdRequest(IdRequest idRequest, RequestInfo requestInfo) throws Exception {
 
         List<String> generatedId = new LinkedList<>();
-        boolean autoCreateNewSeqFlag = false;
+        boolean autoCreateNewSeqFlag = true;
         if (!StringUtils.isEmpty(idRequest.getIdName()))
         {
             // If IDName is specified then check if it is defined in MDMS
