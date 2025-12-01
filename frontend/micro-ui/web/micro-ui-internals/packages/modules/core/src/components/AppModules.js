@@ -24,8 +24,10 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
 
   useEffect(() => {
     const initData = Digit.SessionStorage.get("initData");
+    if (!initData || !Array.isArray(initData.languages)) return;
+
     if (boundaryData && boundaryLanguageData) {
-      const stateCodes = boundaryData.states?.map((state) => state.code);
+      const stateCodes = (boundaryData.states || []).map((state) => state.code);
       const boundaryLanguages = boundaryLanguageData["common-masters"]?.["BoundaryLanguage"] || [];
       const existingLanguageValues = initData.languages?.map(language => language?.value) || [];
       const filteredBoundaryLanguages = boundaryLanguages

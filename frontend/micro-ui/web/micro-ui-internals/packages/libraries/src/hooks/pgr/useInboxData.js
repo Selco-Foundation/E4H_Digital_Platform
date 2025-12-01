@@ -133,7 +133,7 @@ const combineResponses = (items, currentUserUuid, currentUser, t) => {
       incidentType: incident.incidentType,
       incidentSubType: incident.incidentSubType,
       phcType: incident.phcType,
-      facility: `Boundary_${incident.boundary.facilityCode}`,
+      facility: incident.boundary?.facilityCode ? `Boundary_${incident.boundary.facilityCode}` : "-",
       status: incident.applicationStatus,
       taskOwner: assignee?.name || "-",
       sla: `${slaValue}`,

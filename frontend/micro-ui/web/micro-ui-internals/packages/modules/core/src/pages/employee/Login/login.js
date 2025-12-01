@@ -91,47 +91,47 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         codes: ["-"],
         type: "country"
       };
-      try {
-        const hrmsResponse = await Digit.HRMSService.search("in", null, { codes: user.info.userName });
-        const hrmsUser = hrmsResponse?.Employees?.[0];
-        Digit.SessionStorage.set("HRMS.User", hrmsResponse?.Employees?.[0]);
+      const hrmsResponse = await Digit.HRMSService.search("in", null, { codes: user.info.userName });
+      const hrmsUser = hrmsResponse?.Employees?.[0];
+      if (!hrmsUser) {
+        throw new Error("Could not find HRMS employee");
+      }
+      if (!hrmsUser.jurisdictions || !Array.isArray(hrmsUser.jurisdictions)) {
+        throw new Error("Could not find HRMS employee Jurisdictions");
+      }
+      Digit.SessionStorage.set("HRMS.User", hrmsUser);
 
-        let jurisdictionBoundaries = {};
-        for (let jurisdiction of hrmsUser?.jurisdictions) {
-          if (jurisdiction?.boundaryType) {
-            const key = jurisdiction.boundaryType.toLowerCase();
-            jurisdictionBoundaries = {
-              ...jurisdictionBoundaries,
-              [key]: [...(jurisdictionBoundaries[key] || []), jurisdiction.boundary],
-            }
+      let jurisdictionBoundaries = {};
+      for (let jurisdiction of hrmsUser?.jurisdictions) {
+        if (jurisdiction?.boundaryType) {
+          const key = jurisdiction.boundaryType.toLowerCase();
+          jurisdictionBoundaries = {
+            ...jurisdictionBoundaries,
+            [key]: [...(jurisdictionBoundaries[key] || []), jurisdiction.boundary],
           }
         }
+      }
 
-        if (jurisdictionBoundaries?.state?.length) {
-          boundaryCodes = {
-            codes: jurisdictionBoundaries.state,
-            type: "state",
-          }
-        } else if (jurisdictionBoundaries?.district?.length) {
-          boundaryCodes = {
-            codes: jurisdictionBoundaries.district,
-            type: "district",
-          }
-        } else if (jurisdictionBoundaries?.block?.length) {
-          boundaryCodes = {
-            codes: jurisdictionBoundaries.block,
-            type: "block",
-          }
-        } else if (jurisdictionBoundaries?.facility?.length) {
-          boundaryCodes = {
-            codes: jurisdictionBoundaries.facility,
-            type: "facility",
-          }
+      if (jurisdictionBoundaries?.state?.length) {
+        boundaryCodes = {
+          codes: jurisdictionBoundaries.state,
+          type: "state",
         }
-
-      } catch (err) {
-        console.error("Failed to fetch HRMS User", err);
-        throw err;
+      } else if (jurisdictionBoundaries?.district?.length) {
+        boundaryCodes = {
+          codes: jurisdictionBoundaries.district,
+          type: "district",
+        }
+      } else if (jurisdictionBoundaries?.block?.length) {
+        boundaryCodes = {
+          codes: jurisdictionBoundaries.block,
+          type: "block",
+        }
+      } else if (jurisdictionBoundaries?.facility?.length) {
+        boundaryCodes = {
+          codes: jurisdictionBoundaries.facility,
+          type: "facility",
+        }
       }
       Digit.SessionStorage.set("Jurisdiction.Boundaries", boundaryCodes);
       Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", boundaryCodes);

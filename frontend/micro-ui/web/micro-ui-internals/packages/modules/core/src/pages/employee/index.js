@@ -38,6 +38,7 @@ const EmployeeApp = ({
   const bgImageUrl = window?.globalConfigs?.getConfig("BG_IMAGE");
   const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
   const user = Digit.UserService.getUser();
+  const isInboxRoute = location.pathname.includes("/im/inbox");
 
   useEffect(() => {
     Digit.UserService.setType("employee");
@@ -122,7 +123,7 @@ const EmployeeApp = ({
 
               <div
                 style={
-                  window.location.href.includes("/im/inbox")
+                  isInboxRoute
                     ? { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "15px", marginTop: "10px" }
                     : { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "58px", marginTop: "-26px" }
                 }
@@ -146,7 +147,7 @@ const EmployeeApp = ({
               <div
                 className="employee-home-footer"
                 style={
-                  window.location.href.includes("/im/inbox")
+                  isInboxRoute
                     ? { padding: "0px", height: "auto", marginBottom: "30px" }
                     : { padding: "0px", height: "auto", marginBottom: "73px", marginTop: "-43px" }
                 }

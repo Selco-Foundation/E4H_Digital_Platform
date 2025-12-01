@@ -72,7 +72,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
 
   if (!userInfo?.uuid) {
-    return <Redirect to={`${window.contextPath}/employee/user/login`} />;
+    return <Redirect to={`${window?.contextPath}/employee/user/login`} />;
   }
 
   useEffect(() => {

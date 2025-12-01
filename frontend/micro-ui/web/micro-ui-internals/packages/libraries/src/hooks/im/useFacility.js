@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "react-query";
 
 const fetchFacilities = async (boundaryCodes) => {
   const queryFilter = {
-    tenantId : ["in"],
+    tenantId : [Digit.ULBService.getCurrentTenantId()],
     boundaryCodes: boundaryCodes,
     isOnmReady: true,
     sendNonPaginatedResponse: true,

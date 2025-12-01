@@ -55,7 +55,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
 
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes);
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes || ["-"]);
   const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
 
   useEffect(() => {
