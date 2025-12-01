@@ -360,8 +360,8 @@ public class PayloadGenerator {
      */
     private IMServiceRequest.User buildReporter(RequestInfo requestInfo) {
         return IMServiceRequest.User.builder()
-                .uuid("5be9900a-370f-4cc0-adf8-3e06c741bcf7")
-                .tenantId("in")
+                .uuid("d2a12218-c71b-4aa3-b7e4-a811c522ef0c")
+                .tenantId("pg")
                 .build();
     }
 }
