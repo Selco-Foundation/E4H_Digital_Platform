@@ -159,8 +159,8 @@ public class PayloadGenerator {
                 }
                 
                 // Format metadata based on alert type
-                switch (alert.getAlertType()) {
-                    case PANEL:
+        switch (alert.getAlertType()) {
+            case PANEL:
                         formatPanelMetadata(comments, metadataMap, alert.getAlertSubType());
                         break;
                     case INVERTER:
@@ -174,7 +174,7 @@ public class PayloadGenerator {
                         break;
                 }
                 
-            } catch (Exception e) {
+                        } catch (Exception e) {
                 log.warn("Error parsing metadata JSON, using raw metadata: {}", e.getMessage());
                 comments.append("Raw Metadata: ").append(alert.getMetadata()).append("\n");
             }

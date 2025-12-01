@@ -273,9 +273,9 @@ public class AlertRepository {
     }
 
     /**
-     * Gets ALL alerts from active_alerts table that don't have tickets
+     * Gets ALL alerts from active_alerts table
      * Used when trigger endpoint is called to process existing alerts without syncing from servers
-     * Returns all alerts without tickets
+     * Returns all alerts (including those with closed tickets) - deduplication will filter out open tickets
      */
     public List<Alert> getAllAlertsFromHistoryWithoutTickets() {
         try {
@@ -289,21 +289,16 @@ public class AlertRepository {
             Integer withTickets = jdbcTemplate.queryForObject(withTicketsSql, Integer.class);
             log.info("Alerts in active_alerts with tickets: {}", withTickets);
             
-            // Check how many don't have tickets
-            String countSql = "SELECT COUNT(*) FROM active_alerts WHERE (ticket_id IS NULL OR ticket_id = '')";
-            Integer totalCount = jdbcTemplate.queryForObject(countSql, Integer.class);
-            log.info("Total alerts in active_alerts without tickets: {}", totalCount);
-            
-            // Get all alerts from active_alerts without tickets
+            // Get ALL alerts from active_alerts (including those with closed tickets)
+            // The deduplication logic will check if tickets are open/closed and filter accordingly
             String sql = "SELECT id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
                     "detected_at, resolved_at, last_suppressed_at, ticket_id, " +
                     "COALESCE(metadata::text, '') as metadata " +
                     "FROM active_alerts " +
-                    "WHERE (ticket_id IS NULL OR ticket_id = '') " +
                     "ORDER BY detected_at DESC";
 
             List<Alert> alerts = jdbcTemplate.query(sql, new AlertRowMapper());
-            log.info("Retrieved {} alerts from active_alerts without tickets", alerts.size());
+            log.info("Retrieved {} alerts from active_alerts (including alerts with closed tickets)", alerts.size());
             
             // Log details of each alert for debugging
             if (alerts.isEmpty()) {

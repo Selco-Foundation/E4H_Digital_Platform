@@ -28,15 +28,10 @@ public class DeduplicationManager {
         List<Alert> uniqueAlerts = new ArrayList<>();
 
         for (Alert alert : alerts) {
-            // First check if the alert itself already has a ticket_id set (shouldn't happen from our query, but double-check)
-            if (alert.getTicketId() != null && !alert.getTicketId().isEmpty()) {
-                log.debug("Skipping alert {} - already has ticket_id: {}", alert.getId(), alert.getTicketId());
-                continue;
-            }
-
             // Check if alert already has an open ticket in eg_incident_v2 table
             // This checks both active_alerts and eg_incident_v2 to see if ticket is still open
-            // If ticket is closed, we allow creating a new ticket
+            // If ticket is closed or doesn't exist, we allow creating a new ticket
+            // Note: We don't skip alerts with ticket_id set because they might have closed tickets
             if (alertRepository.hasOpenTicket(
                     alert.getFacilityId(),
                     alert.getAlertType(),
@@ -44,6 +39,12 @@ public class DeduplicationManager {
                 log.info("Skipping alert {} - open ticket already exists in eg_incident_v2 for facility: {}, type: {}, subType: {}",
                         alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                 continue;
+            }
+            
+            // If alert has a ticket_id but ticket is closed, log that we're processing it
+            if (alert.getTicketId() != null && !alert.getTicketId().isEmpty()) {
+                log.info("Alert {} has closed ticket {} - will create new ticket for facility: {}, type: {}, subType: {}",
+                        alert.getId(), alert.getTicketId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
             }
 
             // Check if alert already exists and is active

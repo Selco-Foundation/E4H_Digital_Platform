@@ -237,21 +237,20 @@ public class RMSOrchestratorService {
         
         for (Alert alert : alertsToProcess) {
             try {
-                // Double-check if alert already has a ticket - skip to prevent duplicates
-                // (This should already be filtered by deduplication, but adding as safety check)
-                if (alert.getTicketId() != null && !alert.getTicketId().isEmpty()) {
-                    log.info("Skipping alert {} - already has ticket_id: {}", alert.getId(), alert.getTicketId());
-                    skippedCount++;
-                    continue;
-                }
-                
                 // Check if there's an open ticket in eg_incident_v2
-                // If ticket is closed, we allow creating a new ticket
+                // If ticket is closed or doesn't exist, we allow creating a new ticket
+                // Note: We don't skip alerts with ticket_id set because they might have closed tickets
                 if (alertRepository.hasOpenTicket(alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType())) {
                     log.info("Skipping alert {} - open ticket already exists in eg_incident_v2 for facility: {}, type: {}, subType: {}", 
                             alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                     skippedCount++;
                     continue;
+                }
+                
+                // If alert has a ticket_id but ticket is closed, log that we're creating a new ticket
+                if (alert.getTicketId() != null && !alert.getTicketId().isEmpty()) {
+                    log.info("Alert {} has closed ticket {} - creating new ticket for facility: {}, type: {}, subType: {}", 
+                            alert.getId(), alert.getTicketId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                 }
                 
                 log.info("Creating ticket for alert: {} (facility: {}, type: {}, subType: {})", 
