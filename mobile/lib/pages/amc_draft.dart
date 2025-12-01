@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/scheduled_visit/scheduled_visit.dart';
+import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
@@ -198,17 +199,22 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
             children: [
               if (_selectedTabIndex == 1)
                 InboxReportCard(
-                    onPress: () => visit.status !=
-                            WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name
-                        ? context.router.push(const AmcOtpRoute())
-                        : context.router.push(
-                            AmcDynamicFormRoute(
-                                pageName: "AMC_Report",
-                                uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                                schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                                scheduledVisitId: visit.id ?? '',
-                                origin: FormOrigin.overallSummary),
-                          ),
+                    onPress: () {
+                      context
+                          .read<SelectedScheduledVisitBloc>()
+                          .add(SelectedScheduledVisitEvent.select(visit));
+                      visit.status !=
+                              WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name
+                          ? context.router.push(const AmcOtpRoute())
+                          : context.router.push(
+                              AmcDynamicFormRoute(
+                                  pageName: "AMC_Report",
+                                  uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
+                                  schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                                  scheduledVisitId: visit.id ?? '',
+                                  origin: FormOrigin.overallSummary),
+                            );
+                    },
                     title: visit.facility?.facilityName ?? '',
                     dateAssigned: visit.scheduledDate ?? DateTime.now(),
                     status: visit.status ?? '---',
@@ -217,6 +223,9 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
               else
                 InboxReportCard(
                   onPress: () {
+                    context
+                        .read<SelectedScheduledVisitBloc>()
+                        .add(SelectedScheduledVisitEvent.select(visit));
                     context.router.push(
                       AmcDynamicFormRoute(
                           pageName: "AMC_Report",

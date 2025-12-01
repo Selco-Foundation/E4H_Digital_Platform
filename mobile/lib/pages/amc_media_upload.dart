@@ -24,6 +24,8 @@ import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/customized_digit_widget/file_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/summary/existing_or_loader.dart';
+import '../widgets/summary/summary.dart';
 
 @RoutePage()
 class AmcMediaUploadPage extends StatefulWidget {
@@ -42,6 +44,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
   bool _isImagesInitLoading = false;
   double? _latitude;
   double? _longitude;
+  List<ExistingReport>? existingImageReports;
   StreamSubscription<LocationState>? _locSub;
 
   @override
@@ -110,10 +113,6 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
     });
 
     final List<PlatformFile> images = [];
-
-    // --------------------------------------------------
-    // 1) Try cache first if we were given entries
-    // --------------------------------------------------
     if (cacheEntries.isNotEmpty) {
       final futures = cacheEntries.map((e) async {
         final file = await getCachedFile(e.filePath);
@@ -135,10 +134,6 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
         images.add(pf);
       }
     } else {
-      // ------------------------------------------------
-      // 2) No cache → use ScheduledVisit.visitReport.documents
-      // ------------------------------------------------
-
       final visitReport = scheduledVisit?.visitReport;
       final docs = visitReport?.documents ?? const [];
 
@@ -178,6 +173,17 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
     setState(() {
       _selectedImages = images;
       _isImagesInitLoading = false;
+      existingImageReports = _selectedImages
+          .where((f) => f.path != null && f.path!.isNotEmpty)
+          .map((f) {
+        final path = f.path!;
+        return ExistingReport(
+          isarId: null,
+          filePath: path,
+          fileName: basename(path),
+          fileType: inferFileType(path),
+        );
+      }).toList();
     });
   }
 
@@ -185,6 +191,9 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
+
+    final bool isReadOnlyMedia = origin != FormOrigin.overallSummary &&
+        origin != FormOrigin.submitForApproval;
 
     return MultiBlocListener(
       listeners: [
@@ -288,38 +297,50 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                     children: [
                       const SizedBox(height: spacer4),
                       DigitCard(children: [
+                        SizedBox(width: context.width),
                         Text(
                           'Images',
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
                         const SizedBox(height: spacer2),
-                        FileUploadWidget(
-                          allowedExtensions: const [
-                            "jpg",
-                            'jpeg',
-                            "png",
-                            'JPG',
-                            'JPEG',
-                            'PNG'
-                          ],
-                          label: 'Upload Images',
-                          allowMultiples: true,
-                          showPreview: true,
-                          initialFiles: _selectedImages,
-                          onFilesSelected: (files) {
-                            setState(() {
-                              _selectedImages = files;
-                            });
-                            _ensureLocationLoaded().then((ok) {
-                              if (!ok) {
-                                context.showSnackBar(const SnackBar(
-                                    content: Text('Could not fetch location')));
-                              }
-                            });
-                            return <PlatformFile, String?>{};
-                          },
-                        ),
+                        if (isReadOnlyMedia &&
+                            existingImageReports != null &&
+                            _isImagesInitLoading == false)
+                          ExistingFilesOrLoader(
+                            existingReports: existingImageReports,
+                            workflowDocuments:
+                                scheduledVisit?.visitReport?.documents ?? [],
+                            readOnly: true,
+                          ),
+                        if (!isReadOnlyMedia)
+                          FileUploadWidget(
+                            allowedExtensions: const [
+                              "jpg",
+                              'jpeg',
+                              "png",
+                              'JPG',
+                              'JPEG',
+                              'PNG'
+                            ],
+                            label: 'Upload Images',
+                            allowMultiples: true,
+                            showPreview: true,
+                            initialFiles: _selectedImages,
+                            onFilesSelected: (files) {
+                              setState(() {
+                                _selectedImages = files;
+                              });
+                              _ensureLocationLoaded().then((ok) {
+                                if (!ok) {
+                                  context.showSnackBar(const SnackBar(
+                                      content:
+                                          Text('Could not fetch location')));
+                                }
+                              });
+                              return <PlatformFile, String?>{};
+                            },
+                          ),
                         if (_isImagesInitLoading)
                           const Center(child: CircularProgressIndicator())
                       ]),

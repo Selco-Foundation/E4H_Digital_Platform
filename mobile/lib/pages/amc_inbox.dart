@@ -19,6 +19,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/inbox_type/inbox_type.dart';
 import '../blocs/report_type/report_type.dart';
 import '../blocs/scheduled_visit/scheduled_visit.dart';
+import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../blocs/user_type/user_type.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../router/app_router.dart';
@@ -292,6 +293,9 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                   status: visit.status ?? '---',
                   dateAssigned: visit.scheduledDate ?? DateTime.now(),
                   onPress: () {
+                    context
+                        .read<SelectedScheduledVisitBloc>()
+                        .add(SelectedScheduledVisitEvent.select(visit));
                     context.router.push(
                       AmcDynamicFormRoute(
                         pageName: "AMC_Report",
@@ -307,6 +311,9 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
               else
                 InboxReportCard(
                   onPress: () {
+                    context
+                        .read<SelectedScheduledVisitBloc>()
+                        .add(SelectedScheduledVisitEvent.select(visit));
                     context.router.push(
                       AmcDynamicFormRoute(
                         pageName: "AMC_Report",
