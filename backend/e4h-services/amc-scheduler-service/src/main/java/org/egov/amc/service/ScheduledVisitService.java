@@ -71,7 +71,7 @@ public class ScheduledVisitService {
         for (ScheduledVisit scheduledVisit : request.getScheduledVisits()) {
             ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder()
                     .tenantId(scheduledVisit.getTenantId())
-                    .amcConfigurationIds(List.of())
+                    .amcConfigurationIds(List.of(scheduledVisit.getAmcConfigurationId()))
                     .visitNumbers(List.of(scheduledVisit.getVisitNumber()))
                     .build();
             ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
