@@ -2,6 +2,7 @@ package org.egov.im.validator;
 
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IMRepository;
@@ -11,7 +12,6 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
 import java.util.*;
 
@@ -48,6 +48,7 @@ public class ServiceRequestValidator {
         //validateSource(request.getService().getSource());
         validateMDMS(request, mdmsData);
         //validateDepartment(request, mdmsData);
+        validateBoundary(request, errorMap);
         if(!errorMap.isEmpty())
             throw new CustomException(errorMap);
     }
@@ -133,6 +134,11 @@ public class ServiceRequestValidator {
 
     }
 
+    private void validateBoundary(IncidentRequest incidentRequest, Map<String, String> errorMap) {
+        if (StringUtils.isEmpty(incidentRequest.getIncident().getBoundaryCode())) {
+            errorMap.put("BOUNDARY_CODE_MISSING", "Boundary code not provided to enrich facility details");
+        }
+    }
 
     /**
      *
