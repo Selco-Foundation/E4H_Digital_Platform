@@ -27,6 +27,9 @@ public class BomSearchCriteria {
     @JsonProperty("facilityIds")
     private @Valid List<String> facilityId = null;
 
+    @JsonProperty("activityFacilityIds")
+    private @Valid List<String> activityFacilityId = null;
+
     @JsonProperty("statuses")
     private @Valid List<String> name = null;
 

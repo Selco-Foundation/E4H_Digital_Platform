@@ -2,6 +2,8 @@ package digit.repository.impl;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import digit.config.ApplicationProperties;
 import digit.kafka.Producer;
 import digit.repository.BoundaryRepository;
@@ -15,6 +17,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.RestTemplate;
 
+import java.sql.PreparedStatement;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -49,12 +52,45 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
 
     /**
      * This method implements boundary entity repository interface. In this implementation
-     * it pushes the request to kafka for persister to pick it up and perform insert.
+     * it directly inserts boundary entities into the database using batch operation.
      * @param boundaryRequest
      */
     @Override
     public void create(BoundaryRequest boundaryRequest) {
-        producer.push(applicationProperties.getCreateBoundaryTopic() , boundaryRequest);
+        log.info("Creating boundary entities directly in database");
+        
+        String insertQuery = "INSERT INTO boundary (id, tenantId, code, geometry, additionalDetails, " +
+                "createdBy, lastModifiedBy, createdTime, lastModifiedTime) " +
+                "VALUES (?, ?, ?, ?::jsonb, ?::jsonb, ?, ?, ?, ?)";
+        
+        try {
+            jdbcTemplate.batchUpdate(
+                    insertQuery, boundaryRequest.getBoundary(),
+                    boundaryRequest.getBoundary().size(),
+                    (PreparedStatement ps, Boundary boundary) -> {
+                        try {
+                            int index = 1;
+                            ps.setString(index++, boundary.getId());
+                            ps.setString(index++, boundary.getTenantId());
+                            ps.setString(index++, boundary.getCode());
+                            ps.setString(index++, jsonNodeToString(boundary.getGeometry()));
+                            ps.setString(index++, jsonNodeToString(boundary.getAdditionalDetails()));
+                            ps.setString(index++, boundary.getAuditDetails().getCreatedBy());
+                            ps.setString(index++, boundary.getAuditDetails().getLastModifiedBy());
+                            ps.setLong(index++, boundary.getAuditDetails().getCreatedTime());
+                            ps.setLong(index, boundary.getAuditDetails().getLastModifiedTime());
+                        } catch (Exception e) {
+                            log.error("Error setting parameters for boundary insert: {}", e.getMessage(), e);
+                            throw new RuntimeException("Error preparing boundary insert statement", e);
+                        }
+                    }
+            );
+            
+            log.info("Successfully created {} boundary entities", boundaryRequest.getBoundary().size());
+        } catch (Exception e) {
+            log.error("Error creating boundary entities: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to create boundary entities", e);
+        }
     }
 
     /**
@@ -103,5 +139,21 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
 
     }
 
+    /**
+     * Helper method to convert JsonNode to String for JSONB database fields
+     * @param jsonNode
+     * @return JSON string representation or null if jsonNode is null
+     */
+    private String jsonNodeToString(JsonNode jsonNode) {
+        if (jsonNode == null) {
+            return null;
+        }
+        try {
+            return mapper.writeValueAsString(jsonNode);
+        } catch (JsonProcessingException e) {
+            log.error("Error converting JsonNode to String: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to convert JsonNode to String", e);
+        }
+    }
 
 }

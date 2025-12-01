@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static org.egov.activity.util.ActivityConstants.DOT;
+import static org.egov.activity.util.ActivityConstants.PROJECT_MANAGER;
 
 @Component
 @Slf4j
@@ -34,7 +35,7 @@ public class ActivityQueryBuilder {
             "from facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id";
 
     private static final String STATUS_COUNT_QUERY = "SELECT status, COUNT(*) AS occurrences " +
-            "FROM facility_activities fa where fa.status is not null ";
+            "FROM facility_activities fa where fa.status is not null AND fa.isdeleted = false ";
     private static final String ACTIVITY_COUNT_QUERY = "SELECT COUNT(*) FROM facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id";
 
     private final String paginationWrapper = "SELECT * FROM " +
@@ -69,17 +70,30 @@ public class ActivityQueryBuilder {
         }
     }
 
-    public String getActivityFacilitySearchQuery(ActivityFacilitySearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
+    public String getActivityFacilitySearchQuery(ActivityFacilitySearchRequest request, URLParams urlParams, List<Object> preparedStmtList) {
         //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
+        ActivityFacilitySearchCriteria criteria = request.getCriteria();
         String query = criteria.isCountQuery() ? ACTIVITY_COUNT_QUERY : FETCH_ACTIVITY_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
 
+        // Get user info
+        var userInfo = request.getRequestInfo().getUserInfo();
+        String userUuid = userInfo.getUuid();
+        boolean isProjectManager = false;
+        if (userInfo.getRoles() != null) {
+            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
+        }
+
+        if (!isProjectManager) {
+            queryBuilder.append(" JOIN activity_facility_users fu ON fu.activityfacilityid = fa.id ");
+        }
+
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
 
-        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);
+        extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder, userUuid, isProjectManager);
 
-        //Add clause if includeDeleted is true in request parameter
-//        addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
+        // Add clause if includeDeleted is true in request parameter
+        addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
 
         if (criteria.isCountQuery()) {
             return queryBuilder.toString();
@@ -89,7 +103,7 @@ public class ActivityQueryBuilder {
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
     }
 
-    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityFacilitySearchCriteria activityFacility, StringBuilder queryBuilder) {
+    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityFacilitySearchCriteria activityFacility, StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
 
         if (!CollectionUtils.isEmpty(activityFacility.getIds())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
@@ -138,6 +152,13 @@ public class ActivityQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fac.boundary_code IN (").append(createQuery(activityFacility.getBoundaryCodes())).append(")");
             preparedStmtList.addAll(activityFacility.getBoundaryCodes());
+        }
+
+        // Check if not project manager role
+        if (!isProjectManager && StringUtils.isNotBlank(userUuid)) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" fu.userid = ? ");
+            preparedStmtList.add(userUuid);
         }
 
         if (lastChangedSince != null && lastChangedSince != 0) {
@@ -208,7 +229,7 @@ public class ActivityQueryBuilder {
         ActivityFacilitySearchCriteria criteria = activityFacilities.getCriteria();
         criteria.setCountQuery(true);
         URLParams urlParams = URLParams.builder().tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
-        return getActivityFacilitySearchQuery(criteria, urlParams, preparedStatement);
+        return getActivityFacilitySearchQuery(activityFacilities, urlParams, preparedStatement);
     }
 
     private String createQuery(Collection<String> ids) {

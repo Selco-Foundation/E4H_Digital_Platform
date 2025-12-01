@@ -134,17 +134,21 @@ public class WeeklyReportEmailService {
         if (reportData.getFunctionalArrow() != null) {
             variables.put("FUNC_ARROW", reportData.getFunctionalArrow().getArrow());
             variables.put("FUNC_ARROW_CLASS", reportData.getFunctionalArrow().getArrowClass());
+            variables.put("FUNC_ARROW_STYLE", arrowStyle(reportData.getFunctionalArrow().getArrowClass()));
         } else {
             variables.put("FUNC_ARROW", "");
             variables.put("FUNC_ARROW_CLASS", "");
+            variables.put("FUNC_ARROW_STYLE", "");
         }
         
         if (reportData.getNonFunctionalArrow() != null) {
             variables.put("NONFUNC_ARROW", reportData.getNonFunctionalArrow().getArrow());
             variables.put("NONFUNC_ARROW_CLASS", reportData.getNonFunctionalArrow().getArrowClass());
+            variables.put("NONFUNC_ARROW_STYLE", arrowStyle(reportData.getNonFunctionalArrow().getArrowClass()));
         } else {
             variables.put("NONFUNC_ARROW", "");
             variables.put("NONFUNC_ARROW_CLASS", "");
+            variables.put("NONFUNC_ARROW_STYLE", "");
         }
         
         // Age bucket totals
@@ -170,18 +174,17 @@ public class WeeklyReportEmailService {
         variables.put("SELCO_LOGO", commonUtility.loadLogoAsBase64("selcofoundation.png"));
         variables.put("SAURA_LOGO", commonUtility.loadLogoAsBase64("SauraEmitra.png"));
         
-        // URLs - only show download button if there's data
-        boolean hasData = hasAnyData(reportData);
-        log.info("Download URL for weekly report: {}, hasData: {}", downloadUrl, hasData);
+        // URLs - show download button when a valid URL is present
+        log.info("Download URL for weekly report: {}", downloadUrl);
         
-        // Generate download button HTML conditionally
+        // Generate download button HTML
         String downloadButtonHtml = "";
-        if (hasData && downloadUrl != null && !downloadUrl.equals("#")) {
+        if (downloadUrl != null && !downloadUrl.isEmpty() && !downloadUrl.equals("#")) {
             downloadButtonHtml = "<table role=\"presentation\" class=\"cta-outer\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\" style=\"margin-top:18px;\">" +
                 "<tr><td align=\"center\">" +
                 "<table role=\"presentation\" class=\"cta-inner\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\">" +
-                "<tr><td class=\"cta-cell\" align=\"center\">" +
-                "<a class=\"cta-link\" href=\"" + downloadUrl + "\" target=\"_blank\">Download HF's Open Ticket Details</a>" +
+                "<tr><td class=\"cta-cell\" align=\"center\" style=\"border-radius:30px;background:#6b21a8;\">" +
+                "<a class=\"cta-link\" href=\"" + downloadUrl + "\" target=\"_blank\" style=\"display:block;padding:16px 24px;font-size:16px;font-weight:700;line-height:16px;color:#ffffff;text-decoration:none;\">Download HF's Open Ticket Details</a>" +
                 "</td></tr></table></td></tr></table>";
         }
         
@@ -189,6 +192,17 @@ public class WeeklyReportEmailService {
         variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl(tenantId));
         
         return variables;
+    }
+
+    private String arrowStyle(String arrowClass) {
+        if (arrowClass == null) return "";
+        if ("up".equalsIgnoreCase(arrowClass)) {
+            return "color:#16a34a;"; // green
+        }
+        if ("down".equalsIgnoreCase(arrowClass)) {
+            return "color:#dc2626;"; // red
+        }
+        return "";
     }
     
     /**

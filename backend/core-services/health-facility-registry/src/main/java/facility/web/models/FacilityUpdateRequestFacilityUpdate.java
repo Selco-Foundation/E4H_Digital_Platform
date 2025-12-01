@@ -70,4 +70,8 @@ public class FacilityUpdateRequestFacilityUpdate {
 
     @JsonProperty("facility_details")
     private HealthFacilityDetails facilityDetails = null;
+
+    @Schema(name = "isOnmReady", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @JsonProperty("isOnmReady")
+    private Boolean isOnmReady;
 }

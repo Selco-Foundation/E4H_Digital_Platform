@@ -51,6 +51,10 @@ public class EmployeeSearchCriteria {
 	public String tenantId;
 	
 	public String phone;
+	
+	public List<String> boundaryCodes;
+
+	public Boolean searchOnlyInBoundary;
 
 	public Integer offset;
 	
@@ -62,7 +66,8 @@ public class EmployeeSearchCriteria {
 				&& CollectionUtils.isEmpty(criteria.getIds()) && CollectionUtils.isEmpty(criteria.getEmployeestatuses())
 				&& CollectionUtils.isEmpty(criteria.getEmployeetypes()) && CollectionUtils.isEmpty(criteria.getUuids())
 				&& CollectionUtils.isEmpty(criteria.getPositions()) && StringUtils.isEmpty(criteria.getTenantId())
-				&& CollectionUtils.isEmpty(criteria.getRoles()) && null == criteria.getAsOnDate()) {
+				&& CollectionUtils.isEmpty(criteria.getRoles()) && null == criteria.getAsOnDate()
+				&& CollectionUtils.isEmpty(criteria.getBoundaryCodes())) {
 			return true;
 		}else {
 			return false;

@@ -43,10 +43,15 @@ public class IMService {
 
     private LocalizationService localizationService;
 
+    private BoundaryService boundaryService;
+
     @Autowired
-    public IMService(EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
-                      ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
-                      IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils, LocalizationService localizationService) {
+    public IMService(
+            EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
+            ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
+            IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils,
+            LocalizationService localizationService, BoundaryService boundaryService
+    ) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
         this.workflowService = workflowService;
@@ -58,6 +63,7 @@ public class IMService {
         this.mdmsUtils = mdmsUtils;
         this.imUtils = imUtils;
         this.localizationService = localizationService;
+        this.boundaryService = boundaryService;
     }
 
 
@@ -71,11 +77,13 @@ public class IMService {
         String tenantId = request.getIncident().getTenantId();
         Object mdmsData = mdmsUtils.mDMSCall(request);
         validator.validateCreate(request, mdmsData);
-        enrichmentService.enrichCreateRequest(request);
+        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
+                request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
+        );
+        enrichmentService.enrichCreateRequest(request, boundary);
         RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
                 .tenantId(request.getIncident().getTenantId())
-                .district(request.getIncident().getDistrict())
-                .block(request.getIncident().getBlock())
+                .boundaryCode(request.getIncident().getBoundaryCode())
                 .applicationStatus(Set.of(
                         "PENDINGFORASSIGNMENT",
                         "PENDINGRESOLUTION",
@@ -86,8 +94,6 @@ public class IMService {
                 ))
                 .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
                 .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
-                .phcType(new HashSet<>(Collections.singletonList(request.getIncident().getPhcType())))
-                .phcSubType(new HashSet<>(Collections.singletonList(request.getIncident().getPhcSubType())))
                 .build();
         List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
         if (incidentWrappers!=null && !incidentWrappers.isEmpty())
@@ -104,7 +110,7 @@ public class IMService {
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
         producer.push(tenantId,config.getCreateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
-        enrichmentService.enrichFieldsForIndexing(wrapper);
+        enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
@@ -181,7 +187,10 @@ public class IMService {
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
-        enrichmentService.enrichFieldsForIndexing(wrapper);
+        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
+                request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
+        );
+        enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
         imUtils.updateBusinessService(wrapper,mdmsData);
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);

@@ -126,6 +126,7 @@ public class V1ApiController {
                 .assetId(criteria.getAssetID())
                 .wfStatus(criteria.getWfStatus())
                 .facilityID(criteria.getFacilityID())
+                .activityFacilityID(criteria.getActivityFacilityID())
                 .serialNumber(criteria.getSerialNumber())
                 .modelNumber(criteria.getModelNumber())
                 .brandID(criteria.getBrandID())
