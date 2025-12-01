@@ -128,39 +128,74 @@ public class PayloadGenerator {
     private String buildComments(Alert alert, FacilityDetails facilityDetails) {
         StringBuilder comments = new StringBuilder();
         
-        // Add alert type and subtype information
-        comments.append("RMS Alert Details:\n");
-        comments.append("==================\n\n");
-        comments.append("Alert Type: ").append(formatAlertType(alert.getAlertType())).append("\n");
-        comments.append("Alert Sub-Type: ").append(formatAlertSubType(alert.getAlertSubType())).append("\n\n");
+        // Add alert type and subtype information - using explicit string concatenation
+        String alertTypeStr = formatAlertType(alert.getAlertType());
+        String alertSubTypeStr = formatAlertSubType(alert.getAlertSubType());
+        
+        comments.append("RMS Alert Details");
+        comments.append("\n");
+        comments.append("==================");
+        comments.append("\n");
+        comments.append("\n");
+        comments.append("Alert Type");
+        comments.append(": ");
+        comments.append(alertTypeStr);
+        comments.append("\n");
+        comments.append("Alert Sub-Type");
+        comments.append(": ");
+        comments.append(alertSubTypeStr);
+        comments.append("\n");
+        comments.append("\n");
         
         // Add facility information
-        comments.append("Facility Information:\n");
-        comments.append("---------------------\n");
-        comments.append("Facility ID: ").append(alert.getFacilityId() != null ? alert.getFacilityId() : "N/A").append("\n");
+        comments.append("Facility Information");
+        comments.append("\n");
+        comments.append("---------------------");
+        comments.append("\n");
+        String facilityId = alert.getFacilityId() != null ? alert.getFacilityId() : "N/A";
+        comments.append("Facility ID");
+        comments.append(": ");
+        comments.append(facilityId);
+        comments.append("\n");
+        
         if (alert.getHfrId() != null && !alert.getHfrId().isEmpty()) {
-            comments.append("HFR ID: ").append(alert.getHfrId()).append("\n");
+            comments.append("HFR ID");
+            comments.append(": ");
+            comments.append(alert.getHfrId());
+            comments.append("\n");
         }
-        comments.append("Alert Detected At: ").append(alert.getDetectedAt() != null ? alert.getDetectedAt().toString() : "N/A").append("\n\n");
+        
+        String detectedAt = alert.getDetectedAt() != null ? alert.getDetectedAt().toString() : "N/A";
+        comments.append("Alert Detected At");
+        comments.append(": ");
+        comments.append(detectedAt);
+        comments.append("\n");
+        comments.append("\n");
         
         // Parse and format metadata
         if (alert.getMetadata() != null && !alert.getMetadata().isEmpty()) {
-            comments.append("Technical Details:\n");
-            comments.append("------------------\n");
+            comments.append("Technical Details");
+            comments.append("\n");
+            comments.append("------------------");
+            comments.append("\n");
             
             try {
-                // Parse JSON metadata
+                // Parse JSON metadata - filter out boolean false values
                 Map<String, Object> metadataMap = objectMapper.readValue(alert.getMetadata(), Map.class);
                 
                 // Add facility name if available
                 Object facilityNameObj = metadataMap.get("facilityName");
                 if (facilityNameObj != null && !isBooleanFalse(facilityNameObj)) {
-                    comments.append("Facility Name: ").append(safeToString(facilityNameObj)).append("\n");
+                    String facilityName = safeToString(facilityNameObj);
+                    comments.append("Facility Name");
+                    comments.append(": ");
+                    comments.append(facilityName);
+                    comments.append("\n");
                 }
                 
                 // Format metadata based on alert type
-        switch (alert.getAlertType()) {
-            case PANEL:
+                switch (alert.getAlertType()) {
+                    case PANEL:
                         formatPanelMetadata(comments, metadataMap, alert.getAlertSubType());
                         break;
                     case INVERTER:
@@ -174,15 +209,21 @@ public class PayloadGenerator {
                         break;
                 }
                 
-                        } catch (Exception e) {
+            } catch (Exception e) {
                 log.warn("Error parsing metadata JSON, using raw metadata: {}", e.getMessage());
-                comments.append("Raw Metadata: ").append(alert.getMetadata()).append("\n");
+                comments.append("Raw Metadata");
+                comments.append(": ");
+                comments.append(alert.getMetadata());
+                comments.append("\n");
             }
         } else {
-            comments.append("No additional metadata available.\n");
+            comments.append("No additional metadata available.");
+            comments.append("\n");
         }
         
-        return comments.toString();
+        String result = comments.toString();
+        log.debug("Generated comment for alert {}: {}", alert.getId(), result);
+        return result;
     }
 
     /**
@@ -256,16 +297,34 @@ public class PayloadGenerator {
         if (subType == Alert.AlertSubType.LOW_GENERATION) {
             Object solarPercent = metadata.get("solarPercent");
             if (solarPercent != null && !isBooleanFalse(solarPercent)) {
-                comments.append("Solar Generation Percentage: ").append(safeToString(solarPercent)).append("%\n");
-                comments.append("Issue: Solar panel energy consumption is below 10% of total consumption.\n");
+                String percentStr = safeToString(solarPercent);
+                comments.append("Solar Generation Percentage");
+                comments.append(": ");
+                comments.append(percentStr);
+                comments.append("%");
+                comments.append("\n");
+                comments.append("Issue");
+                comments.append(": ");
+                comments.append("Solar panel energy consumption is below 10% of total consumption.");
+                comments.append("\n");
             }
             Object solarConsumption = metadata.get("solarConsumption");
             if (solarConsumption != null && !isBooleanFalse(solarConsumption)) {
-                comments.append("Solar Consumption: ").append(safeToString(solarConsumption)).append(" kWh\n");
+                String consumptionStr = safeToString(solarConsumption);
+                comments.append("Solar Consumption");
+                comments.append(": ");
+                comments.append(consumptionStr);
+                comments.append(" kWh");
+                comments.append("\n");
             }
             Object gridConsumption = metadata.get("gridConsumption");
             if (gridConsumption != null && !isBooleanFalse(gridConsumption)) {
-                comments.append("Grid Consumption: ").append(safeToString(gridConsumption)).append(" kWh\n");
+                String consumptionStr = safeToString(gridConsumption);
+                comments.append("Grid Consumption");
+                comments.append(": ");
+                comments.append(consumptionStr);
+                comments.append(" kWh");
+                comments.append("\n");
             }
         }
     }
@@ -275,14 +334,31 @@ public class PayloadGenerator {
      */
     private void formatInverterMetadata(StringBuilder comments, Map<String, Object> metadata, Alert.AlertSubType subType) {
         if (subType == Alert.AlertSubType.SHUTDOWN) {
-            comments.append("Issue: No signal or communication detected from RMS device for more than 2 consecutive days.\n");
-            comments.append("Status: Device appears to be offline or experiencing communication issues.\n");
+            comments.append("Issue");
+            comments.append(": ");
+            comments.append("No signal or communication detected from RMS device for more than 2 consecutive days.");
+            comments.append("\n");
+            comments.append("Status");
+            comments.append(": ");
+            comments.append("Device appears to be offline or experiencing communication issues.");
+            comments.append("\n");
         } else if (subType == Alert.AlertSubType.HIGH_VOLTAGE) {
             Object voltage = metadata.get("voltage");
             if (voltage != null && !isBooleanFalse(voltage)) {
-                comments.append("Detected Voltage: ").append(safeToString(voltage)).append("V\n");
-                comments.append("Threshold: 250V\n");
-                comments.append("Issue: UPS/PCU voltage is above safe operating threshold.\n");
+                String voltageStr = safeToString(voltage);
+                comments.append("Detected Voltage");
+                comments.append(": ");
+                comments.append(voltageStr);
+                comments.append("V");
+                comments.append("\n");
+                comments.append("Threshold");
+                comments.append(": ");
+                comments.append("250V");
+                comments.append("\n");
+                comments.append("Issue");
+                comments.append(": ");
+                comments.append("UPS/PCU voltage is above safe operating threshold.");
+                comments.append("\n");
             }
         }
     }
@@ -294,26 +370,54 @@ public class PayloadGenerator {
         if (subType == Alert.AlertSubType.BURNT_DISCONNECTED) {
             Object batteryVoltage = metadata.get("batteryVoltage");
             if (batteryVoltage != null && !isBooleanFalse(batteryVoltage)) {
-                comments.append("Battery Voltage: ").append(safeToString(batteryVoltage)).append("V\n");
-                comments.append("Issue: Battery voltage detected as 0V - battery may be burnt, disconnected, or completely discharged.\n");
+                String voltageStr = safeToString(batteryVoltage);
+                comments.append("Battery Voltage");
+                comments.append(": ");
+                comments.append(voltageStr);
+                comments.append("V");
+                comments.append("\n");
+                comments.append("Issue");
+                comments.append(": ");
+                comments.append("Battery voltage detected as 0V - battery may be burnt, disconnected, or completely discharged.");
+                comments.append("\n");
             }
         } else if (subType == Alert.AlertSubType.DEEP_DISCHARGING || subType == Alert.AlertSubType.OVERCHARGING) {
             Object batteryCharging = metadata.get("batteryCharging");
             if (batteryCharging != null && !isBooleanFalse(batteryCharging)) {
-                comments.append("Battery Charging: ").append(safeToString(batteryCharging)).append(" kWh\n");
+                String chargingStr = safeToString(batteryCharging);
+                comments.append("Battery Charging");
+                comments.append(": ");
+                comments.append(chargingStr);
+                comments.append(" kWh");
+                comments.append("\n");
             }
             Object batteryDischarging = metadata.get("batteryDischarging");
             if (batteryDischarging != null && !isBooleanFalse(batteryDischarging)) {
-                comments.append("Battery Discharging: ").append(safeToString(batteryDischarging)).append(" kWh\n");
+                String dischargingStr = safeToString(batteryDischarging);
+                comments.append("Battery Discharging");
+                comments.append(": ");
+                comments.append(dischargingStr);
+                comments.append(" kWh");
+                comments.append("\n");
             }
             Object batteryHealthInfo = metadata.get("batteryHealthInfo");
             if (batteryHealthInfo != null && !isBooleanFalse(batteryHealthInfo)) {
-                comments.append("Battery Health Status: ").append(safeToString(batteryHealthInfo)).append("\n");
+                String healthStr = safeToString(batteryHealthInfo);
+                comments.append("Battery Health Status");
+                comments.append(": ");
+                comments.append(healthStr);
+                comments.append("\n");
             }
             if (subType == Alert.AlertSubType.DEEP_DISCHARGING) {
-                comments.append("Issue: Battery is being discharged more than it is being charged, leading to degradation.\n");
+                comments.append("Issue");
+                comments.append(": ");
+                comments.append("Battery is being discharged more than it is being charged, leading to degradation.");
+                comments.append("\n");
             } else {
-                comments.append("Issue: Battery is being overcharged, which can cause damage and safety risks.\n");
+                comments.append("Issue");
+                comments.append(": ");
+                comments.append("Battery is being overcharged, which can cause damage and safety risks.");
+                comments.append("\n");
             }
         }
     }
@@ -325,16 +429,38 @@ public class PayloadGenerator {
         if (subType == Alert.AlertSubType.VOLTAGE_VARIATION_LOW) {
             Object minVoltage = metadata.get("minVoltage");
             if (minVoltage != null && !isBooleanFalse(minVoltage)) {
-                comments.append("Detected Grid Voltage: ").append(safeToString(minVoltage)).append("V\n");
-                comments.append("Threshold: 200V\n");
-                comments.append("Issue: Grid voltage is below safe operating threshold.\n");
+                String voltageStr = safeToString(minVoltage);
+                comments.append("Detected Grid Voltage");
+                comments.append(": ");
+                comments.append(voltageStr);
+                comments.append("V");
+                comments.append("\n");
+                comments.append("Threshold");
+                comments.append(": ");
+                comments.append("200V");
+                comments.append("\n");
+                comments.append("Issue");
+                comments.append(": ");
+                comments.append("Grid voltage is below safe operating threshold.");
+                comments.append("\n");
             }
         } else if (subType == Alert.AlertSubType.VOLTAGE_VARIATION_HIGH) {
             Object maxVoltage = metadata.get("maxVoltage");
             if (maxVoltage != null && !isBooleanFalse(maxVoltage)) {
-                comments.append("Detected Grid Voltage: ").append(safeToString(maxVoltage)).append("V\n");
-                comments.append("Threshold: 250V\n");
-                comments.append("Issue: Grid voltage is above safe operating threshold.\n");
+                String voltageStr = safeToString(maxVoltage);
+                comments.append("Detected Grid Voltage");
+                comments.append(": ");
+                comments.append(voltageStr);
+                comments.append("V");
+                comments.append("\n");
+                comments.append("Threshold");
+                comments.append(": ");
+                comments.append("250V");
+                comments.append("\n");
+                comments.append("Issue");
+                comments.append(": ");
+                comments.append("Grid voltage is above safe operating threshold.");
+                comments.append("\n");
             }
         }
     }
