@@ -182,7 +182,7 @@ public class ScheduledVisitService {
                     request.getWorkflow().getComments()
             );
         } catch (Exception e) {
-            e.printStackTrace();
+//            e.printStackTrace();
             log.error(e.getMessage());
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
                     "Failed to transition workflow for facility: " + request.getVisitId());
@@ -195,36 +195,33 @@ public class ScheduledVisitService {
         // 3. Inject workflow status into activity facility
         existingVisit.setStatus(updatedWorkflow.getState().getState());
 
-        try {
-            // Step 4: After successful workflow transition, if action is SUBMIT_VISIT_REPORT
-            if ("SUBMIT_VISIT_REPORT".equalsIgnoreCase(request.getWorkflow().getAction())) {
-                // We need to update visit report on existing visit
-                existingVisit.setVisitReport(request.getVisitReport());
-                // We need to send OTP to AMC_FIELD_STAFF
-                Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
-                if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
-                    OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
-                    if (otpResponse !=null && otpResponse.getOtp()!=null){
-                        log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
-                        existingVisit.getVisitReport().setOtpReference(otpResponse.getOtp().getOtp());
-                    }
-                }
-            }
-
-            if ("SUBMIT_OTP".equalsIgnoreCase(request.getWorkflow().getAction())) {
-                // We need to validate OTP to AMC_FIELD_STAFF
-                Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
-                if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
-                    OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
-                    if (otpResponse !=null && otpResponse.getOtp()!=null){
-                        log.info("OTP {} validated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
-                        // We need to update visit report on existing visit after validation
-                        existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
-                    }
+        // Step 4: After successful workflow transition, if action is SUBMIT_VISIT_REPORT
+        if ("SUBMIT_VISIT_REPORT".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            // We need to update visit report on existing visit
+            existingVisit.setVisitReport(request.getVisitReport());
+            // We need to send OTP to AMC_FIELD_STAFF
+            Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+            if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
+                OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
+                if (otpResponse !=null && otpResponse.getOtp()!=null){
+                    log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                    existingVisit.getVisitReport().setOtpReference(otpResponse.getOtp().getOtp());
                 }
             }
         }
-        catch (Exception e){}
+
+        if ("SUBMIT_OTP".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            // We need to validate OTP to AMC_FIELD_STAFF
+            Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+            if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
+                OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
+                if (otpResponse !=null && otpResponse.getOtp()!=null){
+                    log.info("OTP {} validated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                    // We need to update visit report on existing visit after validation
+                    existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
+                }
+            }
+        }
 
         // 5. Create a new Visit Instance instance with enriched additionalDetails
         ScheduledVisit updatedScheduledVisit = ScheduledVisit.builder()
@@ -604,7 +601,7 @@ public class ScheduledVisitService {
         if(otpResponse == null){
             throw new CustomException(
                     "ERROR_OTP_GENERATION",
-                    "Error occured while creating OTP"
+                    "OTP validation unsuccessful"
             );
         }
         return otpResponse;
