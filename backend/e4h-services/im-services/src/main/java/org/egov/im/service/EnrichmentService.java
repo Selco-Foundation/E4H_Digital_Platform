@@ -1,10 +1,14 @@
 package org.egov.im.service;
 
+import com.jayway.jsonpath.JsonPath;
+import org.apache.commons.lang.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IdGenRepository;
 import org.egov.im.repository.ServiceRequestRepository;
+import org.egov.im.util.HRMSUtil;
 import org.egov.im.util.IMUtils;
+import org.egov.im.util.MDMSUtils;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.Idgen.IdResponse;
 import org.egov.tracer.model.CustomException;
@@ -23,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.USERTYPE_CITIZEN;
@@ -33,6 +38,10 @@ public class EnrichmentService {
 
 
     private IMUtils utils;
+
+    private final HRMSUtil hrmsUtil;
+
+    private MDMSUtils mdmsUtils;
 
     private IdGenRepository idGenRepository;
 
@@ -51,8 +60,14 @@ public class EnrichmentService {
     private RestTemplate restTemplate;
 
     @Autowired
-    public EnrichmentService(IMUtils utils, IdGenRepository idGenRepository, IMConfiguration config, UserService userService, LocalizationService localizationService, NotificationService notificationService, @Lazy WorkflowService workflowService, SLAService slaService, RestTemplate restTemplate) {
+    public EnrichmentService(
+            IMUtils utils, HRMSUtil hrmsUtil, MDMSUtils mdmsUtils, IdGenRepository idGenRepository,
+            IMConfiguration config, UserService userService, LocalizationService localizationService,
+            NotificationService notificationService, @Lazy WorkflowService workflowService,
+            SLAService slaService, RestTemplate restTemplate) {
         this.utils = utils;
+        this.hrmsUtil = hrmsUtil;
+        this.mdmsUtils = mdmsUtils;
         this.idGenRepository = idGenRepository;
         this.config = config;
         this.userService = userService;
@@ -67,9 +82,10 @@ public class EnrichmentService {
     /**
      * Enriches the create request with auditDetails. uuids and custom ids from idGen service
      *
-     * @param serviceRequest The create request
+     * @param incidentRequest The create request
+     * @param boundary The boundary object
      */
-    public void enrichCreateRequest(IncidentRequest incidentRequest) {
+    public void enrichCreateRequest(IncidentRequest incidentRequest, Boundary boundary) {
         log.info("EnrichmentService::Enriching create request");
 
         RequestInfo requestInfo = incidentRequest.getRequestInfo();
@@ -85,10 +101,16 @@ public class EnrichmentService {
 
         userService.callUserService(incidentRequest);
 
-        if (incident.getReporterTenant().equalsIgnoreCase(incident.getTenantId().split("\\.")[0]))
-            incident.setReporterType("CRM");
-        else
-            incident.setReporterType("HCR");
+        if (StringUtils.isEmpty(incident.getReporterType())) {
+            List<org.egov.common.contract.request.Role> userRoles = Optional.ofNullable(requestInfo.getUserInfo())
+                    .map(org.egov.common.contract.request.User::getRoles)
+                    .orElse(new ArrayList<>());
+            if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("COMPLAINT_ASSESSOR"))) {
+                incident.setReporterType("CRM");
+            } else {
+                incident.setReporterType("HCR");
+            }
+        }
 
         AuditDetails auditDetails = utils.getAuditDetails(requestInfo.getUserInfo().getUuid(), incident, true);
 
@@ -101,22 +123,91 @@ public class EnrichmentService {
             });
         }
 
-        List<String> customIds = getIdList(requestInfo, tenantId, config.getServiceRequestIdGenName(), config.getServiceRequestIdGenFormat(), 1);
-
-        incident.setIncidentId(customIds.get(0));
-
         // Enrich facilityId from facility registry using boundaryCode from request (only if not already set)
-        if (incident.getFacilityId() == null && incident.getBoundaryCode() != null) {
-            enrichFacilityDetailsFromBoundaryCode(incidentRequest);
-        }
+        enrichFacilityDetailsFromBoundaryCode(incidentRequest);
 
+        List<String> customIds = getIdList(
+                requestInfo, tenantId, "", getIdGenIncidentIdFormat(incidentRequest, boundary), 1
+        );
+        incident.setIncidentId(customIds.get(0));
     }
 
+    private String getIdGenIncidentIdFormat(IncidentRequest incidentRequest, Boundary boundary) {
+        Incident incident = incidentRequest.getIncident();
+        RequestInfo requestInfo = incidentRequest.getRequestInfo();
+
+        String idGenIncidentIdFormat = config.getServiceRequestIdGenFormat();
+
+        StringBuilder hcrUserSearchUri = hrmsUtil.getHRMSURI(null, incident.getTenantId(), "COMPLAINANT", incident.getBoundaryCode());
+        hcrUserSearchUri.append("&searchOnlyInBoundary=");
+        hcrUserSearchUri.append(true);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("RequestInfo", requestInfo);
+
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
+                hcrUserSearchUri.toString(),
+                HttpMethod.POST,
+                requestEntity,
+                new ParameterizedTypeReference<>() {}
+        );
+        Map<String, Object> responseMap = responseEntity.getBody();
+        String hcrUser = Optional.ofNullable(safeJsonPathRead(responseMap, "$.Employees[0].code"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElseThrow(() -> new CustomException("HCR_NOT_FOUND", "HCR not found for given boundary"));
+
+        Object mdmsResponse = mdmsUtils.fetchMDMSData(requestInfo, incident.getTenantId(), "common-masters", List.of("StateInfo"), null);
+        if (boundary == null) {
+            throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + incident.getBoundaryCode());
+        }
+        List<?> stateInfoList = Optional.ofNullable(safeJsonPathRead(mdmsResponse, "$.MdmsRes.common-masters.StateInfo"))
+                .filter(List.class::isInstance)
+                .map(List.class::cast)
+                .orElseThrow(() -> new CustomException("STATE_INFO_MISSING", "Cannot fetch StateInfo for tenant " + incident.getTenantId()));
+        String stateCode = stateInfoList.stream()
+                .map(Map.class::cast)
+                .filter(item -> boundary.getStateCode().equals(item.get("boundaryCode")))
+                .map(item -> item.get("code"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .findFirst()
+                .orElseThrow(() -> new CustomException("STATE_CODE_NOT_FOUND", "State code not found for boundary " + boundary.getStateCode()));
+
+        Map<String, String> values = Map.of(
+                "STATE_CODE", stateCode,
+                "HCR_USERNAME", hcrUser,
+                "FACILITY_ID", incident.getFacilityId().replace("/", "_")
+        );
+
+        for (Map.Entry<String, String> entry : values.entrySet()) {
+            idGenIncidentIdFormat = idGenIncidentIdFormat.replaceAll(
+                    "\\[" + entry.getKey() + "]",
+                    Matcher.quoteReplacement(entry.getValue())
+            );
+        }
+
+        return idGenIncidentIdFormat;
+    }
+
+    private Object safeJsonPathRead(Object json, String path) {
+        try {
+            return JsonPath.read(json, path);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     /**
      * Enriches the update request (updates the lastModifiedTime in auditDetails0
      *
-     * @param serviceRequest The update request
+     * @param incidentRequest The update request
      */
     public void enrichUpdateRequest(IncidentRequest incidentRequest) {
         log.info("EnrichmentService::Enriching incident update request");
@@ -170,7 +261,7 @@ public class EnrichmentService {
 
     }
 
-    public void enrichFieldsForIndexing(IncidentRequestWrapper wrapper) {
+    public void enrichFieldsForIndexing(IncidentRequestWrapper wrapper, Boundary boundary) {
         log.info("EnrichmentService::Enriching incident fields for indexing");
         IncidentRequest incidentRequest = wrapper.getIncidentRequest();
 
@@ -226,8 +317,7 @@ public class EnrichmentService {
         }
 
         // Enrich boundary object for indexing only (not persisted to database)
-        if (incidentRequest.getIncident().getBoundaryCode() != null) {
-            Boundary boundary = enrichBoundaryFromBoundaryCode(incidentRequest);
+        if (boundary != null) {
             indexView.setBoundary(boundary);
         }
 
@@ -278,127 +368,6 @@ public class EnrichmentService {
     }
 
     /**
-     * Enriches boundary object from boundary service using boundaryCode from incident request
-     * @param incidentRequest The incident request containing boundaryCode
-     */
-    private Boundary enrichBoundaryFromBoundaryCode(IncidentRequest incidentRequest) {
-        Incident incident = incidentRequest.getIncident();
-        RequestInfo requestInfo = incidentRequest.getRequestInfo();
-        String boundaryCode = incident.getBoundaryCode();
-        String tenantId = incident.getTenantId();
-
-        if (boundaryCode == null || boundaryCode.isEmpty()) {
-            log.debug("No boundaryCode provided in incident request, skipping boundary enrichment");
-            return null;
-        }
-
-        try {
-            String url = UriComponentsBuilder.fromHttpUrl(config.getBoundaryHost() + config.getBoundarySearchPath())
-                    .queryParam("tenantId", tenantId != null ? tenantId.split("\\.")[0] : "")
-                    .queryParam("codes", boundaryCode)
-                    .queryParam("includeParents", "true")
-                    .queryParam("boundaryType", "Facility")
-                    .toUriString();
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("RequestInfo", requestInfo);
-
-            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
-
-            ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    requestEntity,
-                    new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
-
-            Map<String, Object> responseMap = responseEntity.getBody();
-
-            if (responseMap != null) {
-                List<Map<String, Object>> boundaryRelationships = (List<Map<String, Object>>) responseMap.get("TenantBoundary");
-
-                if (boundaryRelationships != null && !boundaryRelationships.isEmpty()) {
-                    // Get the first tenant boundary entry
-                    Map<String, Object> tenantBoundary = boundaryRelationships.get(0);
-                    List<Map<String, Object>> boundaries = (List<Map<String, Object>>) tenantBoundary.get("boundary");
-
-                    if (boundaries != null && !boundaries.isEmpty()) {
-                        // Build boundary hierarchy
-                        Boundary boundary = buildBoundaryHierarchy(boundaries);
-                        
-                        if (boundary != null) {
-                            log.debug("Enriched boundary for indexing for boundaryCode: {}", boundaryCode);
-                            return boundary;
-                        }
-                    } else {
-                        log.warn("No boundaries found in response for boundaryCode: {}", boundaryCode);
-                    }
-                } else {
-                    log.warn("No boundary relationships found for boundaryCode: {}", boundaryCode);
-                }
-            }
-        } catch (Exception e) {
-            log.error("Error enriching boundary details for boundaryCode: {}", boundaryCode, e);
-        }
-        
-        return null;
-    }
-
-    /**
-     * Builds boundary hierarchy from boundary service response
-     * @param boundaries List of boundary objects from boundary service
-     * @return Boundary object with hierarchy codes
-     */
-    private Boundary buildBoundaryHierarchy(List<Map<String, Object>> boundaries) {
-        Boundary boundary = new Boundary();
-        
-        for (Map<String, Object> boundaryItem : boundaries) {
-            String code = (String) boundaryItem.get("code");
-            String boundaryType = (String) boundaryItem.get("boundaryType");
-            
-            if (code != null && boundaryType != null) {
-                switch (boundaryType.toLowerCase()) {
-                    case "country":
-                        boundary.setCountryCode(code);
-                        break;
-                    case "state":
-                        boundary.setStateCode(code);
-                        break;
-                    case "district":
-                        boundary.setDistrictCode(code);
-                        break;
-                    case "block":
-                        boundary.setBlockCode(code);
-                        break;
-                    case "facility":
-                        boundary.setFacilityCode(code);
-                        break;
-                    default:
-                        log.debug("Unknown boundaryType: {}", boundaryType);
-                }
-            }
-            
-            // Recursively process children if present
-            List<Map<String, Object>> children = (List<Map<String, Object>>) boundaryItem.get("children");
-            if (children != null && !children.isEmpty()) {
-                Boundary childBoundary = buildBoundaryHierarchy(children);
-                // Merge child boundary codes into parent
-                if (childBoundary.getCountryCode() != null) boundary.setCountryCode(childBoundary.getCountryCode());
-                if (childBoundary.getStateCode() != null) boundary.setStateCode(childBoundary.getStateCode());
-                if (childBoundary.getDistrictCode() != null) boundary.setDistrictCode(childBoundary.getDistrictCode());
-                if (childBoundary.getBlockCode() != null) boundary.setBlockCode(childBoundary.getBlockCode());
-                if (childBoundary.getFacilityCode() != null) boundary.setFacilityCode(childBoundary.getFacilityCode());
-            }
-        }
-        
-        return boundary;
-    }
-
-    /**
      * Enriches facilityId from facility registry search API using boundaryCode from incident request
      * @param incidentRequest The incident request containing boundaryCode
      */
@@ -408,8 +377,8 @@ public class EnrichmentService {
         String tenantId = incident.getTenantId();
 
         if (boundaryCode == null || boundaryCode.isEmpty()) {
-            log.debug("No boundaryCode provided in incident request, skipping facility enrichment");
-            return;
+            log.error("No boundaryCode provided in incident request, skipping facility enrichment");
+            throw new CustomException("BOUNDARY_CODE_MISSING", "Boundary code not provided to enrich facility details");
         }
 
         try {
@@ -456,14 +425,17 @@ public class EnrichmentService {
                         log.debug("Enriched facilityId: {}, phcType: {}, phcSubType: {} for boundaryCode: {}", 
                                 facilityId, tenantId, facilityType, boundaryCode);
                     } else {
-                        log.warn("Facility found but facility_id is null for boundaryCode: {}", boundaryCode);
+                        log.error("Facility found but facility_id is null for boundaryCode: {}", boundaryCode);
+                        throw new CustomException("FACILITY_NOT_FOUND", "Cannot find facility");
                     }
                 } else {
                     log.warn("No facility found for boundaryCode: {}", boundaryCode);
+                    throw new CustomException("FACILITY_NOT_FOUND", "Cannot find facility");
                 }
             }
         } catch (Exception e) {
             log.error("Error enriching facility details for boundaryCode: {}", boundaryCode, e);
+            throw new CustomException("FACILITY_NOT_FOUND", "Cannot find facility");
         }
     }
 
