@@ -23,6 +23,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.Array;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -372,7 +373,7 @@ public class ActivityService {
                 .status(existingActivityFacitlity.getStatus())
                 .assignedUser(existingActivityFacitlity.getAssignedUser())
                 .activatedAt(existingActivityFacitlity.getActivatedAt())
-                .completedAt(existingActivityFacitlity.getCompletedAt())
+                .completedAt(System.currentTimeMillis())
                 .scheduledAt(existingActivityFacitlity.getScheduledAt())
                 .build();
 
