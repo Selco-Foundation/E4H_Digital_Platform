@@ -70,10 +70,18 @@ public class EnrichmentService {
 
         userService.callUserService(incidentRequest);
 
-        if (incident.getReporterTenant().equalsIgnoreCase(incident.getTenantId().split("\\.")[0]))
-            incident.setReporterType("CRM");
-        else
-            incident.setReporterType("HCR");
+        if (StringUtils.isEmpty(incident.getReporterType())) {
+            List<org.egov.common.contract.request.Role> userRoles = Optional.ofNullable(requestInfo.getUserInfo())
+                    .map(org.egov.common.contract.request.User::getRoles)
+                    .orElse(new ArrayList<>());
+            if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("RMS"))) {
+                incident.setReporterType("RMS");
+            } else if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("COMPLAINT_ASSESSOR"))) {
+                incident.setReporterType("CRM");
+            } else {
+                incident.setReporterType("HCR");
+            }
+        }
 
         AuditDetails auditDetails = utils.getAuditDetails(requestInfo.getUserInfo().getUuid(), incident, true);
 
