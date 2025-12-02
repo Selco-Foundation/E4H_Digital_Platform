@@ -14,7 +14,7 @@ export const filterFunctions = {
       applicationNumber, mobileNumber, limit,
       offset, sortBy, sortOrder, total,
       applicationStatus, services, incidentType,
-      phcType, assignee, nearingSLA, district, block, isSystemFunctional
+      facility, assignee, nearingSLA, district, block, isSystemFunctional
     } = filtersArg || {};
 
     if (filtersArg?.IncidentWrappers) {
@@ -64,12 +64,12 @@ export const filterFunctions = {
       searchFilters.systemFunctional = convertIsSystemFunctional;
     }
 
-    if(phcType){
-      let convertPhcType=[phcType];
-      if(phcType.includes(",")){
-        convertPhcType=phcType.split(',');
+    if(facility){
+      let convertFacility=[facility];
+      if(facility.includes(",")){
+        convertFacility=facility.split(',');
       }
-      searchFilters.phcType=convertPhcType;
+      searchFilters.facility=convertFacility;
     }
     
     if (filtersArg?.uuid && filtersArg?.uuid.code === "ASSIGNED_TO_ME") {
