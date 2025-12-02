@@ -89,6 +89,7 @@ public class UserService {
                 .build();
         String roles = String.join(",", roleCodes);
         String url = consumerConfiguration.getHrmsHost() + consumerConfiguration.getHrmsSearchUrl()+ "?tenantId=in&limit=1000&roles="+roles+"&offset=0&boundaryCodes="+boundaryCode;
+        log.info("Request URL for user search {}", url);
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
         log.info("Response received from user search {}", response);
         EmployeeResponse employeeResponse = objectMapper.convertValue(response, EmployeeResponse.class);
