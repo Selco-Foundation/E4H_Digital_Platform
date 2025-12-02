@@ -261,7 +261,7 @@ public class EscalationController {
                 try {
                     // Generate weekly report data for this tenant
                     String state = activeTenantIdsName.get(tenantId);
-                    if (state==null || !state.trim().isEmpty())
+                    if (state==null || state.trim().isEmpty())
                         continue;
 
                     WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(state, requestInfo);
