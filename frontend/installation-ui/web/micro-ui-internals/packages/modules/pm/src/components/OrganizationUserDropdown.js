@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import useOrganizationUser from "../../hooks/useOrganizationUser";
-import CustomDropdown from "../Custom/CustomDropdown";
+import useOrganizationUser from "../hooks/useOrganizationUser";
+import CustomDropdown from "./Custom/CustomDropdown";
 
 const OrganizationUserDropdown = ({ t, organizationIds = [], selected, onSelect, style = {} }) => {
 

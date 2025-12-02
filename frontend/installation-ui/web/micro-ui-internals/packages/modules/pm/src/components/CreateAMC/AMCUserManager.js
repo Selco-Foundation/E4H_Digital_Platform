@@ -7,13 +7,13 @@ import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import OrganizationUserDropdown from "../OrganizationUserDropdown";
 import CustomDropdown from "../Custom/CustomDropdown";
 
-const ActivityDetails = ({
+const AMCUserManager = ({
   data = {},
   setValue,
   props
 }) => {
 
-  const { t, name, fieldPlanStartDate, fieldPlanEndDate, onActivityDataSave, activityData, organizationData } = props;
+  const { t, name, activityData, organizationData } = props;
   const [activityAssignmentData, setActivityAssignmentData] = useState(data[name] || []);
   const [organizationOptions, setOrganizationOptions] = useState([]);
 
@@ -36,8 +36,6 @@ const ActivityDetails = ({
         users: [
           ...dataEntry.users,
           {
-            startDate: { value: "", error: "", },
-            endDate: { value: "", error: "", },
             poNumber: { value: "", error: "", },
             organization: { value: null, error: "", },
             role: { value: null, error: "", },
@@ -69,8 +67,6 @@ const ActivityDetails = ({
       if (modifiedUsers.filter((userEntry) => !userEntry.deleteAssignment).length === 0) {
         modifiedUsers.push(
           {
-            startDate: { value: "", error: "", },
-            endDate: { value: "", error: "", },
             poNumber: { value: "", error: "", },
             organization: { value: null, error: "", },
             role: { value: null, error: "", },
@@ -161,23 +157,23 @@ const ActivityDetails = ({
         }}
         onClick={() => addUserEntry(activity)}
       >
-          <span
-            style={{
-              width: "12px",
-              height: "12px",
-              borderRadius: "2px",
-              background: "#C84C0E",
-              color: "white",
-              fontSize: "10px",
-              fontWeight: "bold",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center"
-            }}
-          >
-            +
-          </span>
+        <span
+          style={{
+            width: "12px",
+            height: "12px",
+            borderRadius: "2px",
+            background: "#C84C0E",
+            color: "white",
+            fontSize: "10px",
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center"
+          }}
+        >
+          +
+        </span>
         <span
           style={{
             fontSize: "13px",
@@ -189,38 +185,6 @@ const ActivityDetails = ({
             {t("PM_ACTION_ADD_ROLE")}
           </span>
       </button>
-    </div>
-  )
-
-  const UserDateInput = (activity, index, fieldName, fieldValue, isLast, minimum, maximum) => (
-    <div
-      key={index}
-      style={{
-        padding: "21px 20px 6px 20px",
-        borderBottom: isLast ? "none" : "1px solid #EEEEEE",
-      }}
-    >
-      <FormattedDateInput
-        value={fieldValue.value}
-        onChange={(e) => handleUserDataChange(activity, index, fieldName, e.target.value)}
-        min={minimum}
-        max={maximum}
-        className={"employee-card-input"}
-        style={{
-          minWidth: "190px",
-        }}
-      />
-      <span
-        style={{
-          fontSize: "14px",
-          color: "rgba(212, 53, 28)",
-          height: "14px",
-          marginTop: "1px",
-          display: "block"
-        }}
-      >
-        {fieldValue.error}
-      </span>
     </div>
   )
 
@@ -380,32 +344,6 @@ const ActivityDetails = ({
         ),
       },
       {
-        id: "startDate",
-        Header: () => GetHead("Start Date"),
-        Cell: ({ row }) => GetCell(
-          row.original["users"]?.map((userEntry, i, usersArray) => {
-            if (userEntry.deleteAssignment) return;
-            return UserDateInput(
-              row.original["activity"], i, "startDate", userEntry?.startDate,
-              usersArray.length - 1 === i, fieldPlanStartDate, userEntry?.endDate?.value || fieldPlanEndDate
-            )
-          })
-        ),
-      },
-      {
-        id: "endDate",
-        Header: () => GetHead("End Date"),
-        Cell: ({ row }) => GetCell(
-          row.original["users"]?.map((userEntry, i, usersArray) => {
-            if (userEntry.deleteAssignment) return;
-            return UserDateInput(
-              row.original["activity"], i, "endDate", userEntry?.endDate,
-              usersArray.length - 1 === i, userEntry?.startDate?.value || fieldPlanStartDate, fieldPlanEndDate
-            );
-          })
-        ),
-      },
-      {
         id: "poNumber",
         Header: () => GetHead("PO Number"),
         Cell: ({ row }) => GetCell(
@@ -462,7 +400,7 @@ const ActivityDetails = ({
         ),
       },
     ],
-    [organizationOptions, activityData, fieldPlanStartDate, fieldPlanEndDate]
+    [organizationOptions, activityData]
   );
 
   return (
@@ -484,25 +422,8 @@ const ActivityDetails = ({
         isPaginationRequired={false}
         styles={{minWidth: "300px", overflow: "auto"}}
       />
-      <div
-        style={{
-          padding: "20px 0px",
-          display: "flex",
-          justifyContent: "end",
-          gap: "10px",
-        }}
-      >
-        <SubmitBar
-          label={t("CORE_COMMON_SAVE")}
-          style={{
-            width: "220px",
-            maxWidth: "50%",
-          }}
-          onSubmit={() => onActivityDataSave(activityAssignmentData)}
-        />
-      </div>
     </div>
   );
 }
 
-export default ActivityDetails;
+export default AMCUserManager;

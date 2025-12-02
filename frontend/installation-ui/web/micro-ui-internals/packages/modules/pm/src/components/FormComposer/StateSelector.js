@@ -20,7 +20,7 @@ const StateSelector = ({
       setStateMenu(
         boundaryData.states?.map((state) => ({
           ...state,
-          name: t(`STATE_${state.code.toUpperCase()}`),
+          name: t(`Boundary_${state.code}`),
         }))
       );
     }

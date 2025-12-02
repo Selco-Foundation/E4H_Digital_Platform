@@ -214,7 +214,7 @@ const CreateFieldPlan = () => {
             .filter((state) => state.code === createdFieldPlan.geographyDetails.state)
             .map((state) => ({
               code: state?.code,
-              name: `STATE_${state?.code.toUpperCase()}`,
+              name: `Boundary_${state?.code}`,
             }))
             ?.[0],
 
@@ -618,7 +618,7 @@ const CreateFieldPlan = () => {
               selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? activityData?.filter((activity) => createdFieldPlan.activities.map((activity) => activity.code).includes(activity?.code)) : [],
               description: "PM_CREATE_FIELD_PLAN_LABEL_ACTIVITIES_DESC",
               t,
-              activityData,
+              activityData: activityData?.filter((activity) => activity?.code !== "AMC"),
             },
             route: "activities",
             nextRoute: "",

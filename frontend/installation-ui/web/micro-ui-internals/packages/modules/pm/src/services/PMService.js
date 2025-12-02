@@ -1,4 +1,77 @@
-import { IngestionService } from "./Ingestion";
+import {IngestionService} from "./Ingestion";
+
+const formatBoundaryData = (boundaryData, t) => {
+  const formatDistricts = (districts, blocks) => {
+    const formattedDistricts = [];
+
+    districts.forEach((district) => {
+      const formattedDistrict = {
+        boundaryCode: district.code,
+        type: "district",
+        name: t(`Boundary_${district.code}`),
+        children: [
+          ...blocks
+            .filter((block) => block.districtCode === district.code)
+            .map((block) => ({
+              boundaryCode: block.code,
+              type: "block",
+              name: t(`Boundary_${block.code}`),
+            }))
+        ]
+      }
+
+      formattedDistricts.push(formattedDistrict)
+    })
+
+    return formattedDistricts;
+  }
+
+  return {
+    boundaryCode: "India",
+    type: "country",
+    name: "India",
+    tenantId: "in",
+    children: [
+      {
+        boundaryCode: boundaryData.state.code,
+        type: "state",
+        name: t(`Boundary_${boundaryData.state.code}`),
+        children: [
+          ...formatDistricts(boundaryData.districts, boundaryData.blocks)
+        ]
+      }
+    ]
+  };
+}
+
+const formatActivityOrganizationUsers = (activityAssignments = []) => {
+  const formattedActivityOrganizationUsers = [];
+
+  activityAssignments.forEach((activityAssignment) => {
+    const activity = {
+      code: activityAssignment.activity.code,
+      name: activityAssignment.activity.name,
+    }
+    const organizationToUsersMap = new Map();
+    for (const userAssignment of activityAssignment.users) {
+      const vendorObject = organizationToUsersMap.get(userAssignment.organization.value.id) || {
+        vendorId: userAssignment.organization.value.id,
+        vendor: userAssignment.organization.value.name,
+        users: [],
+      };
+
+      vendorObject.users = [...vendorObject.users, userAssignment.email.value];
+      organizationToUsersMap.set(userAssignment.organization.value.id, vendorObject);
+    }
+
+    formattedActivityOrganizationUsers.push({
+      ...activity,
+      organizationUsers: [...organizationToUsersMap.values()],
+    })
+  })
+
+  return formattedActivityOrganizationUsers;
+}
 
 export const PMService = {
 
@@ -116,51 +189,8 @@ export const PMService = {
   },
 
   downloadFieldPlanFacilityDataTemplate: async (projectId, fieldPlanId, boundaryData, t) => {
-
-    const formatDistricts = (districts, blocks) => {
-      const formattedDistricts = [];
-
-      districts.forEach((district) => {
-        const formattedDistrict = {
-          boundaryCode: district.code,
-          type: "district",
-          name: t(`DISTRICT_${district.code.toUpperCase()}`),
-          children: [
-            ...blocks
-              .filter((block) => block.districtCode === district.code)
-              .map((block) => ({
-                boundaryCode: block.code,
-                type: "block",
-                name: t(`BLOCK_${block.code.toUpperCase()}`),
-              }))
-          ]
-        }
-
-        formattedDistricts.push(formattedDistrict)
-      })
-
-      return formattedDistricts;
-    }
-
-    const formattedBoundaryData = {
-      boundaryCode: "India",
-      type: "country",
-      name: "India",
-      tenantId: "in",
-      children: [
-        {
-          boundaryCode: boundaryData.state.code,
-          type: "state",
-          name: t(`STATE_${boundaryData.state.code.toUpperCase()}`),
-          children: [
-            ...formatDistricts(boundaryData.districts, boundaryData.blocks)
-          ]
-        }
-      ]
-    }
-
     return await IngestionService.downloadFieldPlanFacilityDataTemplate({
-      boundary_data: formattedBoundaryData,
+      boundary_data: formatBoundaryData(boundaryData, t),
       fieldplan_id: fieldPlanId,
       project_id: projectId,
     });
@@ -228,4 +258,100 @@ export const PMService = {
       throw error;
     }
   },
+
+  downloadAMCFacilityDataTemplate: async (projectId, amcFormData, t) => {
+
+    const boundaryData = amcFormData.geographyDetails;
+    const activityAssignments = amcFormData?.activityDetails?.activityUserAssignment;
+
+    const formattedActivityOrganizationUsers = formatActivityOrganizationUsers(activityAssignments);
+    const userInfoList = [];
+    for (const formattedActivityOrganizationUser of formattedActivityOrganizationUsers) {
+      userInfoList.push(formattedActivityOrganizationUser.organizationUsers.map((orgUser) => ({
+        ...orgUser,
+        activityCode: formattedActivityOrganizationUser.code,
+      })));
+    }
+
+    return await IngestionService.downloadAMCFacilityDataTemplate({
+      boundary_data: formatBoundaryData(boundaryData, t),
+      user_info_list: userInfoList,
+      project_id: projectId,
+    });
+  },
+
+  uploadAMCFacilityDataTemplate: async (file, projectId, amcFormData) => {
+    const formattedActivityOrganizationUsers = formatActivityOrganizationUsers(amcFormData.activityDetails.activityUserAssignment);
+    const userInfoList = [];
+    for (const formattedActivityOrganizationUser of formattedActivityOrganizationUsers) {
+      userInfoList.push(formattedActivityOrganizationUser.organizationUsers.map((orgUser) => ({
+        ...orgUser,
+        activityCode: formattedActivityOrganizationUser.code,
+      })));
+    }
+
+    const extractBlobFile = (response) => {
+      const disposition = response.headers["content-disposition"];
+      const filename = disposition?.split("filename=")[1]?.replace(/"/g, "");
+
+      const blobData = new Blob([response.data], {
+        type: response.headers["content-type"],
+      });
+
+      return {
+        name: filename,
+        data: blobData,
+      }
+    }
+
+    let validatedFile;
+
+    try {
+      const validationRequest = new FormData();
+      validationRequest.append("amc_file", file);
+      validationRequest.append("project_id", projectId);
+      validationRequest.append("user_info_list", userInfoList);
+      const validationResponse = await IngestionService.validateAMCFacilityData(validationRequest);
+
+      validatedFile = extractBlobFile(validationResponse);
+      const errorCount = parseInt(validationResponse.headers["x-error-count"] || "0", 10);
+      if (errorCount) {
+        return {
+          errorCode: "INVALID_DATA",
+          file: validatedFile,
+          errorCount: errorCount
+        };
+      }
+
+    } catch (error) {
+      console.error("Error validating facility data", error);
+
+      if (error?.response?.status === 400) {
+        return {
+          errorCode: "INVALID_TEMPLATE",
+        }
+      }
+
+      throw error;
+    }
+
+    try {
+      const uploadRequest = new FormData();
+      uploadRequest.append("amc_file", validatedFile.data);
+      uploadRequest.append("project_id", projectId);
+      uploadRequest.append("user_info_list", userInfoList);
+      const uploadResponse = await IngestionService.uploadAMCFacilityData(uploadRequest)
+
+      const uploadedFile = extractBlobFile(uploadResponse);
+      return {
+        file: uploadedFile,
+      };
+
+    } catch (error) {
+      console.error("Error uploading facility data", error);
+      throw error;
+    }
+  },
+
+
 }

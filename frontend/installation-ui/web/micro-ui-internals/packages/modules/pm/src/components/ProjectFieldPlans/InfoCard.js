@@ -89,7 +89,7 @@ const InfoCard = ({ t, project }) => {
           {PropertyCard(t("PM_PROJECT_INFO_PROJECT_DATES"), `${formatDate(startDate)} - ${formatDate(endDate)}`)}
         </div>
         <div style={{width: mobileView ? "100%" : "40%"}}>
-          {PropertyCard(t("PM_PROJECT_INFO_STATE"), t(`STATE_${geographyDetails.state.code.toUpperCase()}`))}
+          {PropertyCard(t("PM_PROJECT_INFO_STATE"), t(`Boundary_${geographyDetails.state.code}`))}
           {PropertyCard(
             t("PM_PROJECT_INFO_DISTRICTS"),
             <span style={{ color: "#C84C0E", textDecoration: "underline" }}>
