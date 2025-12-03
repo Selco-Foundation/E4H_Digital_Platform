@@ -54,8 +54,8 @@ public class ElasticSearchClient {
         return fetchTickets(OLD_INDEX_NAME, from, size,  closedTickets);
     }
 
-    public Map<String, Object> getHFByTenantId(String tenantId) {
-        return fetchTicketById(phcIndex, tenantId);
+    public Map<String, Object> getHFByBoundaryCode(String boundaryCode) {
+        return fetchTicketByBoundaryCode(phcIndex, boundaryCode);
     }
 
     public List<Map<String, Object>> getAllPHC(int from, int size) {
@@ -89,8 +89,8 @@ public class ElasticSearchClient {
         }
     }
 
-    private Map<String, Object> fetchTicketById(String indexName, String tenantId) {
-        String uri = getBaseUrl() + "/" + indexName + "/" + DOC_PATH + "/" + tenantId;
+    private Map<String, Object> fetchTicketByBoundaryCode(String indexName, String boundaryCode) {
+        String uri = getBaseUrl() + "/" + indexName + "/" + DOC_PATH + "/" + boundaryCode;
 
         HttpEntity<String> entity = new HttpEntity<>(updateService.buildHeaders());
 
@@ -102,11 +102,11 @@ public class ElasticSearchClient {
                     Map.class
             );
 
-            log.info("Fetched ticket audit for tenantId={} from index={}", tenantId, indexName);
+            log.info("Fetched ticket audit for boundaryCode={} from index={}", boundaryCode, indexName);
             return response.getBody() != null ? response.getBody() : Collections.emptyMap();
 
         } catch (Exception e) {
-            log.error("Failed to fetch ticket audit from index '{}' with tenantId '{}'", indexName, tenantId, e);
+            log.error("Failed to fetch ticket audit from index '{}' with tenantId '{}'", indexName, boundaryCode, e);
             return Collections.emptyMap();
         }
     }
