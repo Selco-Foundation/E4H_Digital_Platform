@@ -14,8 +14,8 @@ import java.util.Map;
 public class Workflow {
     @JsonProperty("action")
     private String action = null;
-    @JsonProperty("comments")
-    private String comments = null;
+    @JsonProperty("comment")
+    private String comment = null;
     @JsonProperty("documents")
     private @Valid List<Document> documents = null;
     @JsonProperty("assignes")
