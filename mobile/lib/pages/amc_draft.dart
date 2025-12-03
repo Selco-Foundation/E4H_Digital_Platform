@@ -211,7 +211,7 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                                   pageName: "AMC_Report",
                                   uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
                                   schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                                  scheduledVisitId: visit.id ?? '',
+                                  scheduledVisit: visit,
                                   origin: FormOrigin.overallSummary),
                             );
                     },
@@ -231,7 +231,7 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                           pageName: "AMC_Report",
                           uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
                           schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                          scheduledVisitId: visit.id ?? '',
+                          scheduledVisit: visit,
                           origin: FormOrigin.submitted),
                     );
                   },

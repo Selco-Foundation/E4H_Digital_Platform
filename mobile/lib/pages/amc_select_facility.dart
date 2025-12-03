@@ -167,33 +167,15 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                                 .add(SelectedScheduledVisitEvent
                                                     .select(scheduledVisit));
 
-                                            final userType =
-                                                USER_TYPES.AMC.name;
-
-                                            final formRepo =
-                                                AmcDynamicFormRepository();
-                                            final initialValues = await formRepo
-                                                .getInitialFormValues(
-                                              isar: isar,
-                                              scheduledVisitId:
-                                                  scheduledVisit.id!,
-                                              responsesFromModel: scheduledVisit
-                                                  .visitReport?.responses,
-                                              userType: userType,
-                                            );
-
                                             context.router.push(
                                               AmcDynamicFormRoute(
                                                 pageName: 'AMC_Report',
                                                 uniqueIdentifier:
                                                     'AMC.SCHEDULED_MAINTENANCE',
                                                 schemaName: schemaKey,
-                                                scheduledVisitId:
-                                                    items[index].id ?? '',
+                                                scheduledVisit: items[index],
                                                 origin:
                                                     FormOrigin.overallSummary,
-                                                initialFormValues:
-                                                    initialValues,
                                               ),
                                             );
                                           });

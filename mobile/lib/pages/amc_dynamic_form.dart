@@ -17,28 +17,32 @@ import '../blocs/scheduled_visit/scheduled_visit.dart';
 import '../blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/appconfig/mdmsRequest.dart';
+import '../model/scheduled_visit/scheduled_visit.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/navigation/amc_dynamic_form_navigator.dart';
 
 @RoutePage()
 class AmcDynamicFormPage extends StatefulWidget {
   final String pageName;
   final String? schemaName;
   final String? uniqueIdentifier;
-  final String scheduledVisitId;
+  // final String scheduledVisitId;
+  final ScheduledVisit scheduledVisit;
   final FormOrigin origin;
-  final Map<String, dynamic>? initialFormValues;
+  // final Map<String, dynamic>? initialFormValues;
   const AmcDynamicFormPage({
     super.key,
     @PathParam() required this.pageName,
     this.schemaName,
     this.uniqueIdentifier,
-    required this.scheduledVisitId,
+    // required this.scheduledVisitId,
+    required this.scheduledVisit,
     required this.origin,
-    this.initialFormValues,
+    // this.initialFormValues,
   });
 
   @override
@@ -54,7 +58,11 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   int _formSeed = 0;
 
   Future<void> _loadInitialKVForProject() async {
-    final kv = widget.initialFormValues;
+    final kv = await buildInitialAmcValues(
+        context: context,
+        scheduledVisit: widget.scheduledVisit,
+        origin: widget.origin);
+    // widget.initialFormValues
     if (!mounted) return;
     setState(() {
       _projectInitialKV = kv ?? const {"faults_observed": "YES"};
@@ -176,13 +184,13 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
         await _loadInitialKVForProject();
         if (!mounted) return;
         setState(() {
-          _lastProjectId = widget.scheduledVisitId;
+          _lastProjectId = widget.scheduledVisit.id;
         });
       });
       return;
     }
 
-    if (_lastProjectId != widget.scheduledVisitId) {
+    if (_lastProjectId != widget.scheduledVisit.id) {
       final formsBloc = context.read<FormsBloc>();
       final currentKey = currentSchemaKey(
           state: formsBloc.state,
@@ -196,7 +204,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
         await _loadInitialKVForProject();
         if (!mounted) return;
         setState(() {
-          _lastProjectId = widget.scheduledVisitId;
+          _lastProjectId = widget.scheduledVisit.id;
         });
       });
     }
@@ -208,7 +216,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   }) async {
     final formsBloc = context.read<FormsBloc>();
     final projectBloc = context.read<ScheduledVisitBloc>();
-    final projectId = widget.scheduledVisitId;
+    final projectId = widget.scheduledVisit.id!;
 
     final Map<String, dynamic> flatValues = {};
     schema.pages.forEach((_, pageSchema) {
@@ -333,7 +341,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
 
             return ReactiveFormBuilder(
               key: ValueKey(
-                  '${widget.scheduledVisitId}::$currentKey::$pageIndex::$_formSeed'),
+                  '${widget.scheduledVisit.id}::$currentKey::$pageIndex::$_formSeed'),
               form: () {
                 final controls = JsonForms.getFormControls(pageSchema,
                     defaultValues: const {});
@@ -507,7 +515,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
                             } else {
                               context.router.push(DynamicFormsRoute(
                                 pageName: next,
-                                projectId: widget.scheduledVisitId,
+                                projectId: widget.scheduledVisit.id!,
                                 schemaName: currentKey,
                                 origin: widget.origin,
                               ));

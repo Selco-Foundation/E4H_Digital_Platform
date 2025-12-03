@@ -212,37 +212,6 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                         ],
                       ),
                       const SizedBox(height: spacer4),
-                      // if (_selectedTabIndex == 0)
-                      //   AMCInstallationReportCard(
-                      //     label: "View",
-                      //     title: 'Dharnal PHC',
-                      //     status: 'Rejected',
-                      //     dateAssigned: DateTime.now(),
-                      //     onPress: () {
-                      //       context.router.push(AmcDynamicFormRoute(
-                      //           pageName: "AMC_Report",
-                      //           uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                      //           schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                      //           scheduledVisitId: '12345678',
-                      //           origin: FormOrigin.submitForApproval));
-                      //     },
-                      //   ),
-                      // const SizedBox(height: spacer4),
-                      // if (_selectedTabIndex == 1)
-                      //   InboxReportCard(
-                      //     onPress: () {
-                      //       context.router.push(AmcDynamicFormRoute(
-                      //           pageName: "AMC_Report",
-                      //           uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                      //           schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                      //           scheduledVisitId: "123456789",
-                      //           origin: FormOrigin.submitted));
-                      //     },
-                      //     title: "Sirsa PHC",
-                      //     dateAssigned: DateTime.now(),
-                      //     status: 'Approved',
-                      //     isAmc: true,
-                      //   ),
                       BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
                         builder: (context, visitState) {
                           return visitState.maybeWhen(
@@ -301,8 +270,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                         pageName: "AMC_Report",
                         uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
                         schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                        // NOTE: assuming ScheduledVisit has an `id` field.
-                        scheduledVisitId: visit.id ?? '',
+                        scheduledVisit: visit,
                         origin: FormOrigin.submitForApproval,
                       ),
                     );
@@ -319,8 +287,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                         pageName: "AMC_Report",
                         uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
                         schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                        // Same assumption as above.
-                        scheduledVisitId: visit.id ?? '',
+                        scheduledVisit: visit,
                         origin: FormOrigin.submitted,
                       ),
                     );
