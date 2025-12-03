@@ -60,6 +60,8 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                 String migrationId = rs.getString("migrationid");
                 String legacyId = rs.getString("legacyid");
                 Long filedDate = rs.getLong("fileddate");
+                String facilityId = rs.getString("facilityid");
+                String boundaryCode = rs.getString("boundarycode");
                 User u=new User();
                 u.setTenantId(reporterTenant);
                 u.setUuid(accountId);
@@ -88,6 +90,8 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                         .migrationId(migrationId)
                         .legacyId(legacyId)
                         .filedDate(filedDate)
+                        .facilityId(facilityId)
+                        .boundaryCode(boundaryCode)
                         .build();
 
                 JsonNode additionalDetails = getAdditionalDetail("ser_additionaldetails",rs);

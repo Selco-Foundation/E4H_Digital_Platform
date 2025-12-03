@@ -13,7 +13,7 @@ const GetSlaCell = (value) => {
 
 const MobileInbox = ({ data, onFilterChange, onSearch, isLoading, searchParams }) => {
   const { t } = useTranslation();
-  const localizedData = data?.combinedRes?.map(({ tenantId,phcType, incidentType, incidentId, incidentSubType, sla, status, taskOwner, potentialDuplicate }) => ({
+  const localizedData = data?.combinedRes?.map(({ tenantId, incidentType, incidentId, incidentSubType, sla, status, taskOwner, potentialDuplicate, facility }) => ({
     [t("CS_COMMON_TICKET_NO")]:
     (
       <div>
@@ -44,7 +44,7 @@ const MobileInbox = ({ data, onFilterChange, onSearch, isLoading, searchParams }
     [t("CS_TICKET_TYPE")]: t(`SERVICEDEFS.${incidentType.toUpperCase()}`),
     [t("CS_TICKET_SUB_TYPE")]: t(`SERVICEDEFS.${incidentSubType.toUpperCase()}`),
     [t("CS_TICKET_DETAILS_CURRENT_STATUS")]: t(`CS_COMMON_${status}`),
-    [t("CS_COMPLAINT_PHC_TYPE")]:t(`TENANT_TENANTS_${tenantId.toUpperCase().replace(".","_")}`),
+    [t("CS_COMPLAINT_PHC_TYPE")]:t(facility),
     [t("WF_INBOX_HEADER_CURRENT_OWNER")]: taskOwner,
     [t("WF_INBOX_HEADER_SLA_DAYS_REMAINING")]: sla,
     [t("TenantID")]:tenantId,

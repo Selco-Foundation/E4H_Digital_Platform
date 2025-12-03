@@ -19,6 +19,9 @@ public class IncidentStatusAgregation {
     @JsonProperty("tenantId")
     private String tenantId;
 
+    @JsonProperty("boundaryCode")
+    private String boundaryCode;
+
     @JsonProperty("totalTickets")
     private int totalOccurences;
 

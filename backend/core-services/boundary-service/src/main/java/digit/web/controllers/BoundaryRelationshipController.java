@@ -46,6 +46,20 @@ public class BoundaryRelationshipController {
     }
 
     /**
+     * Request handler for serving boundary relationships search request.
+     * @param boundaryRelationshipV2SearchRequest
+     * @return
+     */
+    @RequestMapping(value = "/v2/_search", method = RequestMethod.POST)
+    public ResponseEntity<BoundarySearchResponse> searchWithRequestBody(@Valid @RequestBody BoundaryRelationshipV2SearchRequest boundaryRelationshipV2SearchRequest) {
+        BoundarySearchResponse boundarySearchResponse = boundaryRelationshipService.getBoundaryRelationships(
+                boundaryRelationshipV2SearchRequest.getBoundaryRelationshipSearchCriteria(),
+                boundaryRelationshipV2SearchRequest.getRequestInfo()
+        );
+        return new ResponseEntity<>(boundarySearchResponse, HttpStatus.OK);
+    }
+
+    /**
      * Request handler for serving boundary relationships update request.
      * @param body
      * @return

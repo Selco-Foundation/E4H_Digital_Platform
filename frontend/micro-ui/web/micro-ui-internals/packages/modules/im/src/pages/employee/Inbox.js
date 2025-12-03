@@ -9,7 +9,7 @@ const Inbox = () => {
   const { t } = useTranslation();
   let tenantId = Digit.ULBService.getCurrentTenantId();
   const stateTenantId = Digit.ULBService.getStateId();
-  const { uuid } = Digit.UserService.getUser().info;
+  const { userName } = Digit.UserService.getUser().info;
   const [totalRecords, setTotalRecords] = useState(0);
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
   const { nearing } = Digit.Hooks.useQueryParams();
@@ -31,7 +31,7 @@ const Inbox = () => {
       }
     })() || {
       filters: {
-        wfFilters: { assignee: [{ code: isCodePresent(userRoles, "COMPLAINT_RESOLVER") ? uuid : "" }] },
+        wfFilters: { assignee: [{ code: isCodePresent(userRoles, "COMPLAINT_RESOLVER") ? userName : "" }] },
       },
       search: "",
       sort: {},
@@ -121,12 +121,12 @@ const Inbox = () => {
     const pq = filtersObj?.pgrQuery || {};
 
     const map = {
-      "pgrfilters.phcType": pf?.phcType,
+      "pgrfilters.facility": pf?.facility,
       "pgrfilters.healthCentre": pf?.healthCentre || pf?.healthCenter,
       "pgrfilters.centreCode": pf?.centreCode,
       "pgrfilters.tenantId": pf?.tenantId,
 
-      "pgrQuery.phcType": pq?.phcType,
+      "pgrQuery.facility": pq?.facility,
       "pgrQuery.healthCentre": pq?.healthCentre || pq?.healthCenter,
       "pgrQuery.centreCode": pq?.centreCode,
       "pgrQuery.tenantId": pq?.tenantId,
@@ -169,23 +169,6 @@ const Inbox = () => {
       search: `filter=${JSON.stringify(searchParams)}&pageSize=${pageSize}&pageOffset=${pageOffset}`,
     });
 
-    (async () => {
-      const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
-      const applicationStatus = searchParams?.filters?.pgrfilters?.applicationStatus?.map((e) => e.code).join(",");
-      if (searchParams?.filters?.pgrQuery?.phcType) {
-        tenantId = searchParams?.filters?.pgrQuery?.phcType;
-      } else if (
-        isCodePresent(userRoles, "COMPLAINT_RESOLVER") &&
-        (!searchParams?.filters?.pgrQuery || searchParams?.filters?.pgrfilters?.phcType?.length == 0) &&
-        Digit.SessionStorage.get("Employee.tenantId") == stateTenantId
-      ) {
-        const codes = Digit.SessionStorage.get("Tenants")
-          .filter((item) => item.code !== stateTenantId)
-          .map((item) => item.code)
-          .join(",");
-        tenantId = codes;
-      }
-    })();
   }, [searchParams, pageSize, pageOffset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -251,10 +234,6 @@ const Inbox = () => {
     setSearchParams({ ...searchParams, search: params });
   };
 
-  let tenant = "";
-  if (searchParams?.search?.phcType) {
-    tenant = searchParams?.search?.phcType;
-  }
   const isMobile = Digit.Utils.browser.isMobile();
   const allSearchParams = { ...searchParams, ...(nearing === "1" && { nearingSLA: true }) };
 

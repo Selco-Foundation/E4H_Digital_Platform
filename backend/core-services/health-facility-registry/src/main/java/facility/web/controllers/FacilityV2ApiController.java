@@ -117,6 +117,15 @@ public class FacilityV2ApiController {
     }
 
 
+    @PostMapping("/_bulk-search")
+    public ResponseEntity<FacilitySearchResponse> bulkSearchFacilities(
+            @RequestBody FacilityBulkSearchRequest searchRequest
+    ) {
+        List<Facility> facilities = facilityService.bulkSearchFacilities(searchRequest);
+        int totalCount = facilityService.countFacilitiesForBulkSearch(searchRequest);
+        return ResponseEntity.ok(new FacilitySearchResponse(facilities, totalCount));
+    }
+
 
 
 }
