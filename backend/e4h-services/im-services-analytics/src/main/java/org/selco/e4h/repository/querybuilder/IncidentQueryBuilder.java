@@ -43,22 +43,22 @@ public class IncidentQueryBuilder {
                     "  'PENDINGRESOLUTION' " +
                     ")";
 
-    public String getStatusIncidentOccurence(String tenantId, List<Object> preparedStmtList) {
+    public String getStatusIncidentOccurence(String boundaryCode, List<Object> preparedStmtList) {
         StringBuilder queryBuilder = new StringBuilder(STATUS_COUNT_QUERY);
-        if (tenantId != null && !tenantId.isEmpty()) {
-            queryBuilder.append(" WHERE tenantid =? ");
-            preparedStmtList.add(tenantId);
+        if (boundaryCode != null && !boundaryCode.isEmpty()) {
+            queryBuilder.append(" WHERE boundarycode =? ");
+            preparedStmtList.add(boundaryCode);
         }
-        queryBuilder.append("GROUP BY tenantid;");
+        queryBuilder.append("GROUP BY boundarycode;");
 
         return queryBuilder.toString();
     }
 
-    public String getStatusSystemFunctionalIncident(String tenantId, List<Object> preparedStmtList) {
+    public String getStatusSystemFunctionalIncident(String boundaryCode, List<Object> preparedStmtList) {
         StringBuilder queryBuilder = new StringBuilder(SYSTEM_FUNCTIONAL_STATUS);
-        if (tenantId != null && !tenantId.isEmpty()) {
-            queryBuilder.append(" AND tenantid =? ");
-            preparedStmtList.add(tenantId);
+        if (boundaryCode != null && !boundaryCode.isEmpty()) {
+            queryBuilder.append(" AND boundarycode =? ");
+            preparedStmtList.add(boundaryCode);
         }
 
         return queryBuilder.toString();

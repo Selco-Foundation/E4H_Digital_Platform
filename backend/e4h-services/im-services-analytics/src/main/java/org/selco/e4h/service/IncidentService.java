@@ -161,6 +161,7 @@ public class IncidentService {
                     String district = (String)data.get("district");
                     boolean isLive = (boolean)data.get("isLive");
                     String name = (String)data.get("name");
+                    String existBoundaryCode = (String)data.get("boundaryCode");
                     String phcType = (String)data.get("phcType");
                     String type = (String)data.get("type");
                     String tenantId = (String)data.get("tenantId");
@@ -173,6 +174,7 @@ public class IncidentService {
                     incidentStatusAgregation.setDistrict(district);
                     incidentStatusAgregation.setLive(isLive);
                     incidentStatusAgregation.setName(name);
+                    incidentStatusAgregation.setBoundaryCode(existBoundaryCode);
                     incidentStatusAgregation.setPhcType(phcType);
                     incidentStatusAgregation.setType(type);
                     incidentStatusAgregation.setTenantId(tenantId);

@@ -122,4 +122,12 @@ public class Incident   {
         @SafeHtml
         @JsonProperty("migrationId")
         private String migrationId = null;
+
+        @SafeHtml
+        @JsonProperty("facilityId")
+        private String facilityId = null;
+
+        @SafeHtml
+        @JsonProperty("boundaryCode")
+        private String boundaryCode = null;
 }
