@@ -12,7 +12,6 @@ import org.egov.amc.validator.ScheduledVisitValidator;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.models.user.OtpValidationRequest;
 import org.egov.common.producer.Producer;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -236,7 +235,7 @@ public class ScheduledVisitService {
                     request.getWorkflow().getAction(),
                     request.getWorkflow().getDocuments(),
                     request.getRequestInfo(),
-                    request.getWorkflow().getComments()
+                    request.getWorkflow().getComment()
             );
         } catch (Exception e) {
 //            e.printStackTrace();
