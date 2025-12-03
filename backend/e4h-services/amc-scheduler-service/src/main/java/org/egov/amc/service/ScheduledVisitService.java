@@ -122,6 +122,7 @@ public class ScheduledVisitService {
             throw new CustomException("GENERATE_VISIT_ERROR", "Cannot generate scheduled visit for this configuration");
 
         List<ScheduledVisit> scheduledVisitList = new ArrayList<>();
+        Long previousVisitDate = null;
         int i =1;
         for (Long visitDate : generateAmcVisits){
             List<ScheduledVisitAssignment> assignments = amcConfiguration.getAssignments().stream()
@@ -133,6 +134,8 @@ public class ScheduledVisitService {
             ScheduledVisit visit = ScheduledVisit.builder()
                     .tenantId(amcConfiguration.getTenantId())
                     .amcConfigurationId(amcConfiguration.getId())
+                    .projectId(amcConfiguration.getProjectId())
+                    .lastVisitDate(previousVisitDate)
                     .facilityId(amcConfiguration.getFacilityId())
                     .visitNumber(i)
                     .scheduledDate(visitDate)
@@ -141,6 +144,7 @@ public class ScheduledVisitService {
                     .build();
 
             scheduledVisitList.add(visit);
+            previousVisitDate = visitDate;
             i++;
         }
 
