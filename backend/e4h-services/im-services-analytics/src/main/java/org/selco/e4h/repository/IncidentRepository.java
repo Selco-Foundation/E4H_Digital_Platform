@@ -29,17 +29,17 @@ public class IncidentRepository {
         this.incidentSystemFunctionalRowMapper = incidentSystemFunctionalRowMapper;
     }
 
-    public List<IncidentStatusAgregation> getStatusIncidentsAgregation(String tenantId) {
+    public List<IncidentStatusAgregation> getStatusIncidentsAgregation(String boundaryCode) {
         List<Object> preparedStmtList = new ArrayList<>();
-        String query = queryBuilder.getStatusIncidentOccurence(tenantId, preparedStmtList);
+        String query = queryBuilder.getStatusIncidentOccurence(boundaryCode, preparedStmtList);
         List<IncidentStatusAgregation> statusAgregations = jdbcTemplate.query(query, incidentStatusRowMapper, preparedStmtList.toArray());
         log.info("Fetched incident status agregation list based on given tenant Id");
         return statusAgregations;
     }
 
-    public List<IncidentStatusAgregation> getStatusSystemFunctional(String tenantId) {
+    public List<IncidentStatusAgregation> getStatusSystemFunctional(String boundaryCode) {
         List<Object> preparedStmtList = new ArrayList<>();
-        String query = queryBuilder.getStatusSystemFunctionalIncident(tenantId, preparedStmtList);
+        String query = queryBuilder.getStatusSystemFunctionalIncident(boundaryCode, preparedStmtList);
         List<IncidentStatusAgregation> systemFunctionalList = jdbcTemplate.query(query, incidentSystemFunctionalRowMapper, preparedStmtList.toArray());
         log.info("Fetched system functional list based on given tenant Id");
         return systemFunctionalList;

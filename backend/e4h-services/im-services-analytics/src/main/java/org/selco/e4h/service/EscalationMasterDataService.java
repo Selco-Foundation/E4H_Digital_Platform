@@ -12,6 +12,7 @@ import org.selco.e4h.web.models.EscalationRecipient;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -160,6 +161,57 @@ public class EscalationMasterDataService {
         } catch (Exception e) {
             log.error("Error fetching tenants from MDMS", e);
             return new ArrayList<>();
+        }
+    }
+
+    // Allow to get boundary for each state base
+    public Map<String, String> getActiveTenantIdsName(RequestInfo requestInfo) {
+        try {
+            log.info("Fetching active tenant IDs from MDMS");
+            Map<String, Map<String, JSONArray>> mdmsData = mdmsUtil.fetchMdmsData(
+                    requestInfo,
+                    "in",
+                    TENANT_MODULE,
+                    List.of(TENANT_MASTER)
+            );
+
+            JSONArray tenants = mdmsData.get(TENANT_MODULE).get(TENANT_MASTER);
+            if (tenants != null && !tenants.isEmpty()) {
+                Map<String, String> map = new HashMap<>();
+
+                for (Object tenantObj : tenants) {
+                    try {
+                        Map<String, Object> tenant = (Map<String, Object>) tenantObj;
+
+                        // Extract tenant code (ID) from the tenant object
+                        String tenantId = (String) tenant.get("code");
+                        String tenantIdName = (String) tenant.get("name");
+                        if (tenantId != null && tenantIdName!=null && !tenantId.trim().isEmpty() && !tenantIdName.trim().isEmpty()) {
+                            // Only include state-level tenants (exclude 'in' which is country-level)
+                            if (!"in".equals(tenantId)) {
+                                map.put(tenantId, "India_"+tenantIdName);
+                                log.debug("Added tenant: {} with name {}", tenantId, tenantIdName);
+                            } else {
+                                log.debug("Skipping country-level tenant: {}", tenantId);
+                            }
+                        } else {
+                            log.warn("Tenant object missing 'code' field: {}", tenantObj);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Error processing tenant object: {}", tenantObj, e);
+                    }
+                }
+
+                log.info("Found {} active state-level tenants: {}", map.size(), map);
+                return map;
+            }
+
+            log.warn("No tenants found in MDMS");
+            return new HashMap<>();
+
+        } catch (Exception e) {
+            log.error("Error fetching tenants from MDMS", e);
+            return new HashMap<>();
         }
     }
     

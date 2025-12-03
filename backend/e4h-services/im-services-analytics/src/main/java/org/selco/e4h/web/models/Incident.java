@@ -83,4 +83,7 @@ public class Incident {
 
         @JsonProperty("migrationId")
         private String migrationId = null;
+
+        @JsonProperty("boundaryCode")
+        private String boundaryCode = null;
 }
