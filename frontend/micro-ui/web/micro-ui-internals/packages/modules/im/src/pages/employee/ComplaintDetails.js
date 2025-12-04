@@ -445,19 +445,7 @@ export const ComplaintDetails = (props) => {
     moduleCode: "Incident",
     role: "EMPLOYEE",
   });
-  let currentOwner = "";
-  let currentLoginUser = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.uuid;
-  if (
-    workflowDetails &&
-    workflowDetails?.data &&
-    workflowDetails?.data?.processInstances &&
-    workflowDetails?.data?.processInstances[0]?.assignes &&
-    workflowDetails?.data?.processInstances[0]?.assignes[0]
-  ) {
-    currentOwner = workflowDetails?.data?.processInstances[0]?.assignes[0]?.uuid;
-  } else {
-    currentOwner = currentLoginUser;
-  }
+  let currentLoginUser = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.userName;
 
   const [imagesToShowBelowComplaintDetails, setImagesToShowBelowComplaintDetails] = useState([]);
 
@@ -782,7 +770,7 @@ export const ComplaintDetails = (props) => {
               <StarRated rating={complaintDetails.workflow.rating} />
             </div>
           ) : (
-            currentLoginUser === workflowDetails?.data?.processInstances?.[workflowDetails.data.processInstances.length - 1]?.assigner?.uuid && (
+            currentLoginUser === workflowDetails?.data?.processInstances?.[workflowDetails.data.processInstances.length - 1]?.assigner?.userName && (
               <div>
                 <span className="link">
                   <Link to={`/${window.contextPath}/employee/im/complaint/feedback/${incidentId}/${tenantId}`}>Rate</Link>
