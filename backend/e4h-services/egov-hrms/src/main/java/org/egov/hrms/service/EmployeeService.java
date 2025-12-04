@@ -211,9 +211,24 @@ public class EmployeeService {
 		if(userChecked)
 			criteria.setTenantId(null);
 
+		// Early return: If both roles and boundaryCodes are provided, and no users found with those roles, return empty list
+		if(!CollectionUtils.isEmpty(criteria.getRoles()) && !CollectionUtils.isEmpty(criteria.getBoundaryCodes()) 
+				&& CollectionUtils.isEmpty(criteria.getUuids())) {
+			return EmployeeResponse.builder().responseInfo(factory.createResponseInfoFromRequestInfo(requestInfo, true))
+					.employees(new ArrayList<>()).build();
+		}
+
 		List <Employee> employees = new ArrayList<>();
         if(!((!CollectionUtils.isEmpty(criteria.getRoles()) || !CollectionUtils.isEmpty(criteria.getNames()) || !StringUtils.isEmpty(criteria.getPhone())) && CollectionUtils.isEmpty(criteria.getUuids())))
             employees = repository.fetchEmployees(criteria, requestInfo, stateLevelTenantId);
+        
+        // If both roles and boundaryCodes are provided, and no employees found in that boundary, return empty list
+        if(!CollectionUtils.isEmpty(criteria.getRoles()) && !CollectionUtils.isEmpty(criteria.getBoundaryCodes()) 
+        		&& CollectionUtils.isEmpty(employees)) {
+        	return EmployeeResponse.builder().responseInfo(factory.createResponseInfoFromRequestInfo(requestInfo, true))
+        			.employees(new ArrayList<>()).build();
+        }
+        
         List<String> uuids = employees.stream().map(Employee :: getUuid).collect(Collectors.toList());
 		if(!CollectionUtils.isEmpty(uuids)){
             Map<String, Object> UserSearchCriteria = new HashMap<>();
