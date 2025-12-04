@@ -48,9 +48,9 @@ public class IncidentService {
                 Object value = producerRecord.get("value");
                 IncidentRequest request = objectMapper.convertValue(value, IncidentRequest.class);
                 if (request!=null && request.getIncident()!=null){
-                    String tenantId = request.getIncident().getTenantId();
-                    List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(tenantId);
-                    List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(tenantId);
+                    String boundaryCode = request.getIncident().getBoundaryCode();
+                    List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(boundaryCode);
+                    List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
                     if(statusAgregations !=null && !statusAgregations.isEmpty()){
                         IncidentStatusAgregation incidentStatusAgregation = statusAgregations.get(0);
                         // true if at least one element is NON_FUNCTIONAL
@@ -59,8 +59,8 @@ public class IncidentService {
 
                         incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
                         incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
-                        Map<String, Object> tickets = esClient.getHFByTenantId(tenantId);
-                        log.info("List tickets from tenant id {} {}", tenantId, tickets.size());
+                        Map<String, Object> tickets = esClient.getHFByBoundaryCode(boundaryCode);
+                        log.info("List tickets from boundaryCode id {} {}", boundaryCode, tickets.size());
                         if(tickets!=null){
                             Map<String, Object> source = (Map<String, Object>)tickets.get("_source");
                             Map<String, Object> data = (Map<String, Object>)source.get("Data");
@@ -69,8 +69,10 @@ public class IncidentService {
                             String district = (String)data.get("district");
                             boolean isLive = (boolean)data.get("isLive");
                             String name = (String)data.get("name");
+                            String existBoundaryCode = (String)data.get("boundaryCode");
                             String phcType = (String)data.get("phcType");
                             String type = (String)data.get("type");
+                            String tenantId = (String)data.get("tenantId");
                             String tenantIdLocalized = (String)data.get("tenantId_localized");
                             List<Double> geoPoint = (List<Double>) data.get("geo-point");
 
@@ -81,6 +83,7 @@ public class IncidentService {
                             incidentStatusAgregation.setName(name);
                             incidentStatusAgregation.setPhcType(phcType);
                             incidentStatusAgregation.setType(type);
+                            incidentStatusAgregation.setBoundaryCode(existBoundaryCode);
                             incidentStatusAgregation.setTenantId(tenantId);
                             incidentStatusAgregation.setTenantIdLocalized(tenantIdLocalized);
                             incidentStatusAgregation.setGeoPoint(geoPoint);

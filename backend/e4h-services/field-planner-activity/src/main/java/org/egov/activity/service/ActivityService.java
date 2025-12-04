@@ -23,6 +23,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.Array;
+import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -48,13 +49,15 @@ public class ActivityService {
 
     private BoundaryUtil boundaryUtil;
 
+    private final AmcSchedulerService amcSchedulerService;
+
     @Qualifier("objectMapper")
     private final ObjectMapper mapper;
 
     @Autowired
     public ActivityService(
             ActivityFacilityRepository activityFacilityRepository, ActivityEnrichment activityEnrichment, ActivityConfiguration activityConfiguration, ActivityValidator activityValidator,
-            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil) {
+            Producer producer, FacilityWorkflowService workflowService, ActivityServiceUtil activityServiceUtil, ServiceRequestRepository serviceRequest, JdbcTemplate jdbcTemplate, ActivityFacilityUsersService facilityUsersService, @Qualifier("objectMapper") ObjectMapper mapper, ActivityAssignmentRepository activityAssignmentRepository, BoundaryUtil boundaryUtil, AmcSchedulerService amcSchedulerService) {
             this.producer = producer;
             this.activityConfiguration = activityConfiguration;
             this.activityFacilityRepository = activityFacilityRepository;
@@ -68,6 +71,7 @@ public class ActivityService {
             this.activityValidator = activityValidator;
             this.activityAssignmentRepository = activityAssignmentRepository;
             this.boundaryUtil = boundaryUtil;
+            this.amcSchedulerService = amcSchedulerService;
     }
 
     public List<Activity> createActivity(ActivityBulkRequest request) {
@@ -369,7 +373,7 @@ public class ActivityService {
                 .status(existingActivityFacitlity.getStatus())
                 .assignedUser(existingActivityFacitlity.getAssignedUser())
                 .activatedAt(existingActivityFacitlity.getActivatedAt())
-                .completedAt(existingActivityFacitlity.getCompletedAt())
+                .completedAt(System.currentTimeMillis())
                 .scheduledAt(existingActivityFacitlity.getScheduledAt())
                 .build();
 
@@ -388,6 +392,8 @@ public class ActivityService {
             String activityFacilityId = existingActivityFacitlity.getId();
             if (activityFacilityId != null) {
                 updateAssetsForFacility(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
+                // Step 8: Trigger installation completion side effects (Asset AMC creation and visit generation)
+                triggerInstallationCompletionSideEffects(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
             }
         }
 
@@ -794,5 +800,79 @@ public class ActivityService {
         }
     }
 
+    /**
+     * Trigger installation completion side effects:
+     * 1. Create Asset AMCs for installed assets from the project's AMC configuration
+     * 2. Generate all future visits for each configuration in DRAFT state
+     */
+    private void triggerInstallationCompletionSideEffects(ActivityFacility activityFacility, RequestInfo requestInfo, String activityFacilityId) {
+        try {
+            log.info("Triggering installation completion side effects for activity facility: {}", activityFacilityId);
+
+            // Get project ID from field plan
+            String projectId = null;
+            if (activityFacility.getFieldPlanId() != null) {
+                FieldPlan fieldPlan = activityValidator.getFieldPlanById(
+                        requestInfo,
+                        activityFacility.getFieldPlanId(),
+                        activityFacility.getTenantId());
+                if (fieldPlan != null) {
+                    projectId = fieldPlan.getProjectId();
+                }
+            }
+
+            if (projectId == null || projectId.isEmpty()) {
+                log.warn("Project ID not found for activity facility: {}. Skipping AMC side effects.", activityFacilityId);
+                return;
+            }
+
+            // Fetch installed assets for this facility
+            AssetSearchCriteria assetSearchCriteria = AssetSearchCriteria.builder()
+                    .activityFacilityID(activityFacilityId)
+                    .tenantId(activityFacility.getTenantId())
+                    .build();
+
+            AssetSearchRequest assetSearchRequest = AssetSearchRequest.builder()
+                    .requestInfo(requestInfo)
+                    .criteria(assetSearchCriteria)
+                    .build();
+
+            StringBuilder assetSearchUri = new StringBuilder(activityConfiguration.getAssetHost())
+                    .append(activityConfiguration.getAssetSearchUrl());
+
+            List<Asset> installedAssets = serviceRequest.fetchResult(
+                    assetSearchUri,
+                    assetSearchRequest,
+                    new TypeReference<>() {
+                    });
+
+            if (installedAssets == null || installedAssets.isEmpty()) {
+                log.info("No installed assets found for activity facility: {}. Skipping AMC side effects.", activityFacilityId);
+                return;
+            }
+
+            // Get installation date
+            Long installationDate = activityFacility.getAuditDetails().getLastModifiedTime();
+            if (installationDate == null) {
+                installationDate = System.currentTimeMillis();
+            }
+
+            // Call AMC scheduler service to process installation completion
+            amcSchedulerService.processInstallationCompletion(
+                    projectId,
+                    activityFacility.getFacilityId(),
+                    activityFacility.getTenantId(),
+                    installedAssets,
+                    installationDate,
+                    requestInfo
+            );
+
+            log.info("Successfully triggered installation completion side effects for activity facility: {}", activityFacilityId);
+
+        } catch (Exception e) {
+            log.error("Error triggering installation completion side effects for activity facility {}: {}",
+                    activityFacilityId, e.getMessage(), e);
+        }
+    }
 
 }

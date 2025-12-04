@@ -22,6 +22,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -44,6 +45,8 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
         m.put("mh", "Maharashtra");
         TENANT_TO_STATE = Collections.unmodifiableMap(m);
     }
+
+    private static final int[] RETRY_DELAYS_SECONDS = {1, 7, 15, 25, 30};
 
     @Override
     public boolean canExecuteInTransaction() {
@@ -153,31 +156,6 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                                 continue;
                             }
 
-                            String hfrOrNinIdCode = getField(cityNode, "code");
-                            if (hfrOrNinIdCode == null || hfrOrNinIdCode.isEmpty()) {
-                                logSkippedFacility(
-                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                        "HFR/NIN ID code not found in city data (city.code is null or empty)", null
-                                );
-                                skippedCount++;
-                                continue;
-                            }
-
-                            // Extract and validate HFR/NIN ID
-                            String[] hfrOrNinIdCodeSeparated = hfrOrNinIdCode.split("-");
-                            String extractedHfrOrNinId = hfrOrNinIdCodeSeparated.length > 0
-                                    ? hfrOrNinIdCodeSeparated[hfrOrNinIdCodeSeparated.length - 1]
-                                    : null;
-
-                            if (extractedHfrOrNinId == null || extractedHfrOrNinId.isEmpty()) {
-                                logSkippedFacility(
-                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
-                                        "Unable to extract HFR/NIN ID from code: " + hfrOrNinIdCode, null
-                                );
-                                skippedCount++;
-                                continue;
-                            }
-
                             String districtCode = getField(cityNode, "districtCode");
                             String blockCode = getField(cityNode, "blockCode");
 
@@ -204,14 +182,24 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                             }
 
                             // Fetch POC name from HRMS
-                            String pocName = fetchPocNameFromHrms(
+                            Map<String, String> hcrDetails = fetchHCRDetailsFromHRMS(
                                     restTemplate, objectMapper, hrmsHost + hrmsSearchEndpoint,
                                     facilityTenantId, authToken
                             );
 
+                            String extractedHfrOrNinId = hcrDetails.get("hcrUserName");
+                            if (extractedHfrOrNinId == null || extractedHfrOrNinId.isEmpty()) {
+                                logSkippedFacility(
+                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                        "Unable to extract HFR/NIN ID from HRMS Call", null
+                                );
+                                skippedCount++;
+                                continue;
+                            }
+
                             // Build facility object
                             Map<String, Object> facility = buildFacilityObject(
-                                    tenant, stateName, districtName, blockName, pocName, facilityTenantId,
+                                    tenant, stateName, districtName, blockName, hcrDetails.get("hcrName"), facilityTenantId,
                                     extractedHfrOrNinId, facilityMappings
                             );
 
@@ -364,7 +352,10 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-            ResponseEntity<String> response = restTemplate.exchange(mdmsUrl, HttpMethod.POST, entity, String.class);
+            ResponseEntity<String> response = executeWithRetry(
+                    () -> restTemplate.exchange(mdmsUrl, HttpMethod.POST, entity, String.class),
+                    "fetch MDMS data for tenant '" + tenantId + "' module '" + moduleName + "'"
+            );
 
             if (!response.getStatusCode().is2xxSuccessful()) {
                 log.error(
@@ -444,7 +435,10 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<String> httpEntity = new HttpEntity<>(objectMapper.writeValueAsString(request), headers);
 
-            ResponseEntity<String> response = restTemplate.postForEntity(facilityUrl, httpEntity, String.class);
+            ResponseEntity<String> response = executeWithRetry(
+                    () -> restTemplate.postForEntity(facilityUrl, httpEntity, String.class),
+                    "create facility with tenant ID '" + facilityTenantId + "' and name '" + facilityName + "'"
+            );
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 // Parse response and update facility mapping
@@ -591,11 +585,12 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
         return requestInfo;
     }
 
-    private String fetchPocNameFromHrms(
+    private Map<String, String> fetchHCRDetailsFromHRMS(
             RestTemplate restTemplate, ObjectMapper objectMapper,
             String hrmsUrl, String facilityTenantId, String authToken
     ) {
 
+        Map<String, String> hcrDetails = new HashMap<>();
         try {
             Map<String, Object> requestBody = Map.of(
                     "RequestInfo", buildRequestInfo(authToken, "egov.hrms")
@@ -612,7 +607,10 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
 
             HttpEntity<String> httpEntity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
 
-            ResponseEntity<String> response = restTemplate.postForEntity(url, httpEntity, String.class);
+            ResponseEntity<String> response = executeWithRetry(
+                    () -> restTemplate.postForEntity(url, httpEntity, String.class),
+                    "fetch POC from HRMS for facility tenant ID '" + facilityTenantId + "'"
+            );
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 JsonNode root = objectMapper.readTree(response.getBody());
@@ -621,20 +619,27 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                 if (employees != null && employees.isArray() && !employees.isEmpty()) {
                     JsonNode firstEmployee = employees.get(0);
                     JsonNode user = firstEmployee.get("user");
-                    if (user != null && user.has("name")) {
-                        String pocName = user.get("name").asText();
-                        log.debug("Found POC name: {} for facility: {}", pocName, facilityTenantId);
-                        return pocName;
+                    if (user != null) {
+                        if (user.has("name")) {
+                            String hcrName = user.get("name").asText();
+                            log.debug("Found HCR name (POC Name): {} for facility: {}", hcrName, facilityTenantId);
+                            hcrDetails.put("hcrName", hcrName);
+                        }
+                        if (user.has("userName")) {
+                            String hcrUserName = user.get("userName").asText();
+                            log.debug("Found HCR username (HFR/NIN ID): {} for facility: {}", hcrUserName, facilityTenantId);
+                            hcrDetails.put("hcrUserName", hcrUserName);
+                        }
                     }
                 }
             }
 
             log.warn("No employee with COMPLAINANT role found for facility: {}", facilityTenantId);
-            return null;
+            return hcrDetails;
 
         } catch (Exception e) {
             log.error("Error fetching POC from HRMS for facility: {}", facilityTenantId, e);
-            return null;
+            return hcrDetails;
         }
     }
 
@@ -757,6 +762,52 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
 
         log.info("RestTemplate created with timeouts: 30s connect, 30s connection request, 60s read");
         return new RestTemplate(factory);
+    }
+
+    /**
+     * Executes a supplier function with retry logic.
+     * Retries with delays: 1, 7, 15, 25, 30 seconds if the first attempt fails.
+     *
+     * @param supplier The function to execute
+     * @param operationName Name of the operation for logging purposes
+     * @return The result from the supplier
+     * @throws Exception If all retry attempts fail
+     */
+    private <T> T executeWithRetry(Supplier<T> supplier, String operationName) throws Exception {
+        Exception lastException = null;
+        
+        // First attempt (no delay)
+        try {
+            return supplier.get();
+        } catch (Exception e) {
+            lastException = e;
+            log.warn("Initial attempt to {} was unsuccessful. Error: {}. Will retry with exponential backoff.", operationName, e.getMessage());
+        }
+        
+        // Retry with delays: 1, 7, 15, 25, 30 seconds
+        int attemptNumber = 1;
+        for (int delay : RETRY_DELAYS_SECONDS) {
+            try {
+                Thread.sleep(delay * 1000L);
+                log.info("Retrying {} (attempt {}) after waiting {} seconds...", operationName, attemptNumber + 1, delay);
+                return supplier.get();
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new Exception("Retry operation was interrupted for " + operationName + " during attempt " + (attemptNumber + 1), ie);
+            } catch (Exception e) {
+                lastException = e;
+                log.warn("Retry attempt {} for {} failed after {} seconds. Error: {}. Will continue with next retry.", 
+                        attemptNumber + 1, operationName, delay, e.getMessage());
+                attemptNumber++;
+            }
+        }
+        
+        // All attempts failed
+        int totalDelaySeconds = Arrays.stream(RETRY_DELAYS_SECONDS).sum();
+        log.error("All retry attempts exhausted for {}. Operation failed after {} total retry attempts (total wait time: {} seconds). Last error: {}", 
+                operationName, RETRY_DELAYS_SECONDS.length + 1, totalDelaySeconds, lastException != null ? lastException.getMessage() : "Unknown");
+        throw new Exception(String.format("Failed to complete %s after %d attempts (total wait time: %d seconds)", 
+                operationName, RETRY_DELAYS_SECONDS.length + 1, totalDelaySeconds), lastException);
     }
 
     // Helper class to track facility mappings

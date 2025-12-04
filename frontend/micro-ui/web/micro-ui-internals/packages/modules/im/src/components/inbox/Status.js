@@ -19,24 +19,6 @@ const Status = ({ complaints, onAssignmentChange, pgrfilters, statusArray }) => 
 
   const { t } = useTranslation();
   let tenant = Digit.ULBService.getCurrentTenantId();
-  const stateTenantId = Digit.ULBService.getStateId();
-  const isCodePresent = (array, codeToCheck) =>{
-    return array.some(item => item.code === codeToCheck);
-  }
-  const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
-  if(pgrfilters?.phcType.length >0)
-  {
-     tenant = pgrfilters?.phcType.map((ulb)=> {return ulb.code}).join(",")
-    
-  }
-  else if (isCodePresent(userRoles, "COMPLAINT_RESOLVER") && (pgrfilters?.phcType.length ==0) && Digit.SessionStorage.get("Employee.tenantId") == stateTenantId)
-  {
-    const codes = Digit.SessionStorage.get("Tenants").filter(item => item.code !== stateTenantId)
-    .map(item => item.code)
-    .join(',');
-    tenant = codes
-
-  }
   const complaintsWithCountRaw = Digit.Hooks.pgr.useComplaintStatusCount(complaints,tenant);
   const complaintsWithCount = Array.isArray(complaintsWithCountRaw) ? complaintsWithCountRaw : [];
 

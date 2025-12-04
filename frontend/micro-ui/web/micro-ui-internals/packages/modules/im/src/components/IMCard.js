@@ -8,7 +8,7 @@ const IMCard = () => {
   const stateTenantId = Digit.ULBService.getStateId();
   const { t } = useTranslation();
   const [total, setTotal] = useState("-");
-  const { uuid } = Digit.UserService.getUser().info;
+  const { userName } = Digit.UserService.getUser().info;
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
 
   const isCodePresent = (array, codeToCheck) =>{
@@ -18,7 +18,7 @@ const IMCard = () => {
   const { data, isLoading, isFetching, isSuccess } = Digit.Hooks.useNewInboxGeneral({
     tenantId: Digit.ULBService.getCurrentTenantId(),
     ModuleCode: "Incident",
-    filters: { limit: 10, offset: 0, services: ["Incident"], ...(isCodePresent(userRoles, "COMPLAINT_RESOLVER") && { assignee: uuid }) },
+    filters: { limit: 10, offset: 0, services: ["Incident"], ...(isCodePresent(userRoles, "COMPLAINT_RESOLVER") && { assignee: userName }) },
     config: {
       select: (data) => {
         return {totalCount:data?.totalCount,nearingSlaCount:data?.nearingSlaCount, data:data} || "-";
