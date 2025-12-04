@@ -47,14 +47,14 @@ public class PayloadGenerator {
             IMServiceRequest.Incident incident = IMServiceRequest.Incident.builder()
                     .incidentType(incidentType)
                     .incidentSubType(incidentSubType)
-                    .tenantId("pg.bagalkot")
+                    .tenantId("in")
                     .district("BAGALKOTE") // TODO: Extract from mapping or facility data
                     .block("BAGALKOT") // TODO: Extract from mapping or facility data
-                    .phcType("pg.bagalkot")
-                    .phcSubType("Urban Primary Health Center") // TODO: Extract from facility type
                     .comments(buildComments(alert, null))
                     .systemFunctional("FUNCTIONAL")
+                    .boundaryCode("India_Karnataka_Bagalkote_Bagalkot_FAC/2025/5329")
                     .source("RMS")
+                    .reporterType("RMS")
                     .additionalDetail(buildAdditionalDetail(alert, null))
                     .reporter(buildReporter(requestInfo))
                     .build();
@@ -167,7 +167,15 @@ public class PayloadGenerator {
             comments.append("\n");
         }
         
-        return comments.toString();
+        // Strip the word "false" from the comment string and replace with blank space
+        String result = comments.toString();
+        result = result.replace("false", " ");
+        // Clean up multiple consecutive spaces (but preserve newlines)
+        result = result.replaceAll("[ \\t]+", " ");
+        // Clean up any space before colon
+        result = result.replace(" :", ":");
+        
+        return result;
     }
     
     /**

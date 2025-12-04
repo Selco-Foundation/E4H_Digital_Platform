@@ -63,6 +63,12 @@ public class IMServiceRequest {
         @JsonProperty("source")
         private String source;
 
+        @JsonProperty("reporterType")
+        private String reporterType;
+
+        @JsonProperty("boundaryCode")
+        private String boundaryCode;
+
         @JsonProperty("additionalDetail")
         private Map<String, Object> additionalDetail;
 
