@@ -292,8 +292,8 @@ public class PayloadGenerator {
      */
     private IMServiceRequest.User buildReporter(RequestInfo requestInfo) {
         return IMServiceRequest.User.builder()
-                .uuid("d2a12218-c71b-4aa3-b7e4-a811c522ef0c")
-                .tenantId("pg")
+                .uuid("fb022833-743d-43cb-adfa-312fbd13f438")
+                .tenantId("in")
                 .build();
     }
 }
