@@ -105,7 +105,9 @@ public class EnrichmentService {
             List<org.egov.common.contract.request.Role> userRoles = Optional.ofNullable(requestInfo.getUserInfo())
                     .map(org.egov.common.contract.request.User::getRoles)
                     .orElse(new ArrayList<>());
-            if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("COMPLAINT_ASSESSOR"))) {
+            if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("RMS"))) {
+                incident.setReporterType("RMS");
+            } else if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("COMPLAINT_ASSESSOR"))) {
                 incident.setReporterType("CRM");
             } else {
                 incident.setReporterType("HCR");
