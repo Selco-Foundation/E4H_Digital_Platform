@@ -130,52 +130,93 @@ public class PayloadGenerator {
         StringBuilder comments = new StringBuilder();
         
         // Parse and format metadata as plain text
-        if (alert.getMetadata() != null && !alert.getMetadata().isEmpty()) {
+        String metadataStr = alert.getMetadata();
+        if (metadataStr != null && !metadataStr.trim().isEmpty()) {
+            log.debug("Processing metadata for alert {}: {}", alert.getId(), metadataStr);
+            
             try {
                 // Parse JSON metadata
-                Map<String, Object> metadataMap = objectMapper.readValue(alert.getMetadata(), Map.class);
+                Map<String, Object> metadataMap = objectMapper.readValue(metadataStr, Map.class);
                 
-                // Iterate through all metadata fields and display as plain text
-                for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
-                    String key = entry.getKey();
-                    Object value = entry.getValue();
-                    
-                    // Skip null values and boolean false
-                    if (value == null || isBooleanFalse(value)) {
-                        continue;
+                log.debug("Parsed metadata map for alert {}: {} entries", alert.getId(), metadataMap.size());
+                
+                if (metadataMap == null || metadataMap.isEmpty()) {
+                    log.warn("Metadata map is empty for alert {}", alert.getId());
+                    comments.append("Metadata: ").append(metadataStr).append("\n");
+                } else {
+                    // Iterate through all metadata fields and display as plain text
+                    for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
+                        String key = entry.getKey();
+                        Object value = entry.getValue();
+                        
+                        // Skip only null values
+                        if (value == null) {
+                            log.debug("Skipping null value for key: {}", key);
+                            continue;
+                        }
+                        
+                        // Format key to readable text (convert camelCase to Title Case)
+                        String readableKey = formatKeyToReadable(key);
+                        String valueStr = convertValueToString(value);
+                        
+                        // Append as "Key: Value" on each line (include even if value is empty string)
+                        comments.append(readableKey);
+                        comments.append(": ");
+                        comments.append(valueStr);
+                        comments.append("\n");
                     }
-                    
-                    // Format key to readable text (convert camelCase to Title Case)
-                    String readableKey = formatKeyToReadable(key);
-                    String valueStr = safeToString(value);
-                    
-                    // Append as "Key: Value" on each line
-                    comments.append(readableKey);
-                    comments.append(": ");
-                    comments.append(valueStr);
-                    comments.append("\n");
                 }
                 
+                log.debug("Built comments for alert {}: {} characters", alert.getId(), comments.length());
+                
             } catch (Exception e) {
-                log.warn("Error parsing metadata JSON, using raw metadata: {}", e.getMessage());
+                log.error("Error parsing metadata JSON for alert {}: {}", alert.getId(), e.getMessage(), e);
+                // Fallback: use raw metadata
                 comments.append("Metadata: ");
-                comments.append(alert.getMetadata());
+                comments.append(metadataStr);
                 comments.append("\n");
             }
-                    } else {
+        } else {
+            log.warn("No metadata available for alert {}", alert.getId());
             comments.append("No metadata available");
             comments.append("\n");
         }
         
         // Strip the word "false" from the comment string and replace with blank space
         String result = comments.toString();
-        result = result.replace("false", " ");
+        if (result == null || result.trim().isEmpty()) {
+            log.warn("Comments are empty for alert {}, using fallback", alert.getId());
+            result = "No metadata available\n";
+        }
+        
+        // Replace the string "false" (case-insensitive) with a space
+        result = result.replaceAll("(?i)\\bfalse\\b", " ");
         // Clean up multiple consecutive spaces (but preserve newlines)
         result = result.replaceAll("[ \\t]+", " ");
         // Clean up any space before colon
         result = result.replace(" :", ":");
+        // Ensure space after colon (but not if it already has one)
+        result = result.replaceAll(":(?! )", ": ");
+        // Remove duplicate space after colon if created
+        result = result.replace(":  ", ": ");
         
+        log.debug("Final comments for alert {}: {} characters", alert.getId(), result.length());
         return result;
+    }
+    
+    /**
+     * Converts a value to string, handling all types including boolean false
+     */
+    private String convertValueToString(Object value) {
+        if (value == null) {
+            return "";
+        }
+        // For boolean false, return empty string (will still show the key)
+        if (value instanceof Boolean) {
+            return ((Boolean) value) ? "true" : "";
+        }
+        // For all other types, convert to string
+        return value.toString();
     }
     
     /**
