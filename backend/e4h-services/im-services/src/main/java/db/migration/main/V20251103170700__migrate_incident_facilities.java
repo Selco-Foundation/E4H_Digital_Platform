@@ -597,7 +597,7 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
             );
 
             // Build URL with query parameters
-            String url = String.format("%s?roles=COMPLAINANT&tenantId=%s", hrmsUrl, facilityTenantId);
+            String url = String.format("%s?isActive=true&roles=COMPLAINANT&tenantId=%s", hrmsUrl, facilityTenantId);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -612,6 +612,7 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                     "fetch POC from HRMS for facility tenant ID '" + facilityTenantId + "'"
             );
 
+            boolean foundEmployee = false;
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 JsonNode root = objectMapper.readTree(response.getBody());
                 JsonNode employees = root.get("Employees");
@@ -630,11 +631,15 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                             log.debug("Found HCR username (HFR/NIN ID): {} for facility: {}", hcrUserName, facilityTenantId);
                             hcrDetails.put("hcrUserName", hcrUserName);
                         }
+                        foundEmployee = true;
                     }
                 }
             }
 
-            log.warn("No employee with COMPLAINANT role found for facility: {}", facilityTenantId);
+            if (!foundEmployee) {
+                log.warn("No employee with COMPLAINANT role found for facility: {}", facilityTenantId);
+            }
+
             return hcrDetails;
 
         } catch (Exception e) {

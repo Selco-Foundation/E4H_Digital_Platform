@@ -105,7 +105,9 @@ public class EnrichmentService {
             List<org.egov.common.contract.request.Role> userRoles = Optional.ofNullable(requestInfo.getUserInfo())
                     .map(org.egov.common.contract.request.User::getRoles)
                     .orElse(new ArrayList<>());
-            if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("COMPLAINT_ASSESSOR"))) {
+            if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("RMS"))) {
+                incident.setReporterType("RMS");
+            } else if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("COMPLAINT_ASSESSOR"))) {
                 incident.setReporterType("CRM");
             } else {
                 incident.setReporterType("HCR");
@@ -265,9 +267,6 @@ public class EnrichmentService {
         log.info("EnrichmentService::Enriching incident fields for indexing");
         IncidentRequest incidentRequest = wrapper.getIncidentRequest();
 
-        // Enrich localized fields first (will populate IndexView inside the wrapper)
-        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
-
         // Ensure IndexView is initialized and reused (not replaced)
         IndexView indexView = wrapper.getIndexView();
         if (indexView == null) {
@@ -321,6 +320,8 @@ public class EnrichmentService {
             indexView.setBoundary(boundary);
         }
 
+        // Enrich localized fields first (will populate IndexView inside the wrapper)
+        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
     }
 
     /**
