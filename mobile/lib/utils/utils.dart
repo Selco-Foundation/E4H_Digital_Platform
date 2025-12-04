@@ -9,7 +9,9 @@ import 'package:digit_forms_engine/models/schema_object/schema_object.dart';
 import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/src/platform_file.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:isar/isar.dart';
@@ -19,12 +21,15 @@ import 'package:reactive_forms/reactive_forms.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
+import '../blocs/scheduled_visit/scheduled_visit.dart';
 import '../data/app_shared_preferences.dart';
 import '../data/nosql/cache_completion_report.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/document/document.dart';
+import '../model/scheduled_visit/scheduled_visit.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
+import '../repositories/dynamic_form_repo.dart';
 
 getSelectedLanguage(Initialized state, int index) {
   if (AppSharedPreferences().getSelectedLocale == null) {
@@ -649,6 +654,26 @@ Future<List<PlatformFile>> copyPickedFilesLocally(
     );
   }
   return copied;
+}
+
+Future<Map<String, dynamic>> buildInitialAmcValues({
+  required BuildContext context,
+  required ScheduledVisit scheduledVisit,
+  required FormOrigin origin,
+}) async {
+  final userType = USER_TYPES.AMC.name;
+
+  final isar = context.read<ScheduledVisitBloc>().isar;
+
+  final formRepo = AmcDynamicFormRepository();
+  final initialValues = await formRepo.getInitialFormValues(
+    isar: isar,
+    scheduledVisitId: scheduledVisit.id!,
+    responsesFromModel: scheduledVisit.visitReport?.responses,
+    userType: userType,
+  );
+
+  return initialValues ?? {"faults_observed": "YES"};
 }
 
 class DioErrorParser {

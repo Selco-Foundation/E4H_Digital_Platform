@@ -23,26 +23,21 @@ import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
-import '../widgets/navigation/amc_dynamic_form_navigator.dart';
 
 @RoutePage()
 class AmcDynamicFormPage extends StatefulWidget {
   final String pageName;
   final String? schemaName;
   final String? uniqueIdentifier;
-  // final String scheduledVisitId;
   final ScheduledVisit scheduledVisit;
   final FormOrigin origin;
-  // final Map<String, dynamic>? initialFormValues;
   const AmcDynamicFormPage({
     super.key,
     @PathParam() required this.pageName,
     this.schemaName,
     this.uniqueIdentifier,
-    // required this.scheduledVisitId,
     required this.scheduledVisit,
     required this.origin,
-    // this.initialFormValues,
   });
 
   @override
@@ -62,7 +57,6 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
         context: context,
         scheduledVisit: widget.scheduledVisit,
         origin: widget.origin);
-    // widget.initialFormValues
     if (!mounted) return;
     setState(() {
       _projectInitialKV = kv ?? const {"faults_observed": "YES"};

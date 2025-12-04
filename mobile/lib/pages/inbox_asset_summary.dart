@@ -410,68 +410,67 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                   ],
                                 ),
                                 const SizedBox(height: spacer4),
-                                if (userType == USER_TYPES.SUPERVISOR.name)
-                                  Column(
-                                    children: [
-                                      DigitCard(
-                                        children: [
-                                          Text(
-                                            'Installation Completion Report',
-                                            style: textTheme.headingM.copyWith(
-                                              color: theme
-                                                  .colorTheme.primary.primary2,
-                                            ),
+                                // if (userType == USER_TYPES.SUPERVISOR.name)
+                                Column(
+                                  children: [
+                                    DigitCard(
+                                      children: [
+                                        Text(
+                                          'Installation Completion Report',
+                                          style: textTheme.headingM.copyWith(
+                                            color: theme
+                                                .colorTheme.primary.primary2,
                                           ),
-                                          ...[
-                                            BlocBuilder<AppInitialization,
-                                                InitState>(
-                                              builder: (context, state) {
-                                                return state.maybeWhen(
-                                                  orElse: () =>
-                                                      const SizedBox.shrink(),
-                                                  initialized: (
-                                                    appConfig,
-                                                    assetCount,
-                                                    assetType,
-                                                    system,
-                                                    warranty,
-                                                    brand,
-                                                    solutionDesign,
-                                                    solutionDesignBom,
-                                                  ) {
-                                                    return Column(
-                                                      children: [
-                                                        if (_system != null)
-                                                          BomButtonsSection(
-                                                            key: PageStorageKey(
-                                                                'bom-buttons-${_currentProjectId!}'),
-                                                            solutionDesignBom:
-                                                                solutionDesignBom,
-                                                            systemCode:
-                                                                _system!,
-                                                            projectId:
-                                                                _currentProjectId!,
-                                                            origin: FormOrigin
-                                                                .inboxSummary,
-                                                          ),
-                                                      ],
-                                                    );
-                                                  },
-                                                );
-                                              },
-                                            )
-                                          ],
-                                          ExistingFilesOrLoader(
-                                            existingReports: _existingReports,
-                                            workflowDocuments:
-                                                workflow?.workflow?.documents ??
-                                                    [],
-                                            readOnly: true,
-                                          ),
+                                        ),
+                                        ...[
+                                          BlocBuilder<AppInitialization,
+                                              InitState>(
+                                            builder: (context, state) {
+                                              return state.maybeWhen(
+                                                orElse: () =>
+                                                    const SizedBox.shrink(),
+                                                initialized: (
+                                                  appConfig,
+                                                  assetCount,
+                                                  assetType,
+                                                  system,
+                                                  warranty,
+                                                  brand,
+                                                  solutionDesign,
+                                                  solutionDesignBom,
+                                                ) {
+                                                  return Column(
+                                                    children: [
+                                                      if (_system != null)
+                                                        BomButtonsSection(
+                                                          key: PageStorageKey(
+                                                              'bom-buttons-${_currentProjectId!}'),
+                                                          solutionDesignBom:
+                                                              solutionDesignBom,
+                                                          systemCode: _system!,
+                                                          projectId:
+                                                              _currentProjectId!,
+                                                          origin: FormOrigin
+                                                              .inboxSummary,
+                                                        ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          )
                                         ],
-                                      ),
-                                    ],
-                                  )
+                                        ExistingFilesOrLoader(
+                                          existingReports: _existingReports,
+                                          workflowDocuments:
+                                              workflow?.workflow?.documents ??
+                                                  [],
+                                          readOnly: true,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                )
                               ],
                             ),
                           ),

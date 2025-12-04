@@ -421,98 +421,93 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   ),
                   const SizedBox(height: spacer4),
                   const RejectedEditAssetSummary(),
-                  if (userType == USER_TYPES.SUPERVISOR.name) ...[
-                    const SizedBox(height: spacer4),
-                    DigitCard(
-                      children: [
-                        Text(
-                          'Installation Completion Report',
-                          style: textTheme.headingM.copyWith(
-                              color: theme.colorTheme.primary.primary2),
-                        ),
-                        ...[
-                          BlocBuilder<AppInitialization, InitState>(
-                            builder: (context, state) {
-                              return state.maybeWhen(
-                                orElse: () => const SizedBox.shrink(),
-                                initialized: (
-                                  appConfig,
-                                  assetCount,
-                                  assetType,
-                                  system,
-                                  warranty,
-                                  brand,
-                                  solutionDesign,
-                                  solutionDesignBom,
-                                ) {
-                                  return Column(
-                                    children: [
-                                      if (_system != null)
-                                        BomButtonsSection(
-                                          key: PageStorageKey(
-                                              'bom-buttons-$activityFacilityId'),
-                                          solutionDesignBom: solutionDesignBom,
-                                          systemCode: _system!,
-                                          projectId: activityFacilityId,
-                                          origin: FormOrigin.submitForApproval,
-                                        ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
-                          )
-                        ],
-                        Text(
-                          'Please scan and upload the installation completion report',
-                          style: textTheme.bodyS
-                              .copyWith(color: theme.colorTheme.text.secondary),
-                        ),
-                        FileUploadWidget(
-                          allowedExtensions: const [
-                            "pdf",
-                            "jpg",
-                            "jpeg",
-                            "png"
-                          ],
-                          showPreview: true,
-                          allowMultiples: true,
-                          label: 'Upload',
-                          onFilesSelected: (files) {
-                            if (files.isEmpty) {
-                              return <PlatformFile, String?>{};
-                            }
-                            _ensureLocationLoaded();
-                            _handleUploads(files);
-                            return <PlatformFile, String?>{};
+                  // if (userType == USER_TYPES.SUPERVISOR.name) ...[
+                  const SizedBox(height: spacer4),
+                  DigitCard(
+                    children: [
+                      Text(
+                        'Installation Completion Report',
+                        style: textTheme.headingM
+                            .copyWith(color: theme.colorTheme.primary.primary2),
+                      ),
+                      ...[
+                        BlocBuilder<AppInitialization, InitState>(
+                          builder: (context, state) {
+                            return state.maybeWhen(
+                              orElse: () => const SizedBox.shrink(),
+                              initialized: (
+                                appConfig,
+                                assetCount,
+                                assetType,
+                                system,
+                                warranty,
+                                brand,
+                                solutionDesign,
+                                solutionDesignBom,
+                              ) {
+                                return Column(
+                                  children: [
+                                    if (_system != null)
+                                      BomButtonsSection(
+                                        key: PageStorageKey(
+                                            'bom-buttons-$activityFacilityId'),
+                                        solutionDesignBom: solutionDesignBom,
+                                        systemCode: _system!,
+                                        projectId: activityFacilityId,
+                                        origin: FormOrigin.submitForApproval,
+                                      ),
+                                  ],
+                                );
+                              },
+                            );
                           },
-                        ),
-                        ExistingFilesOrLoader(
-                          existingReports: _existingReports,
-                          workflowDocuments: project?.workflow?.documents ?? [],
-                          readOnly: false,
-                          onRemove: (r) {
-                            setState(() {
-                              _existingReports?.remove(r);
-                            });
-                          },
-                        ),
-                        RejectionReasonsList(
-                          comments: context
-                                  .read<SelectedActivityFacilityBloc>()
-                                  .state
-                                  .whenOrNull(
-                                    selected: (wf) => wf.transactions
-                                        ?.expand(
-                                            (tx) => tx.comments ?? <Comment>[])
-                                        .toList(),
-                                  ) ??
-                              <Comment>[],
-                          excludeStandardTypes: true,
-                        ),
+                        )
                       ],
-                    ),
-                  ],
+                      Text(
+                        'Please scan and upload the installation completion report',
+                        style: textTheme.bodyS
+                            .copyWith(color: theme.colorTheme.text.secondary),
+                      ),
+                      FileUploadWidget(
+                        allowedExtensions: const ["pdf", "jpg", "jpeg", "png"],
+                        showPreview: true,
+                        allowMultiples: true,
+                        label: 'Upload',
+                        onFilesSelected: (files) {
+                          if (files.isEmpty) {
+                            return <PlatformFile, String?>{};
+                          }
+                          _ensureLocationLoaded();
+                          _handleUploads(files);
+                          return <PlatformFile, String?>{};
+                        },
+                      ),
+                      ExistingFilesOrLoader(
+                        existingReports: _existingReports,
+                        workflowDocuments: project?.workflow?.documents ?? [],
+                        readOnly: false,
+                        onRemove: (r) {
+                          setState(() {
+                            _existingReports?.remove(r);
+                          });
+                        },
+                      ),
+                      RejectionReasonsList(
+                        comments: context
+                                .read<SelectedActivityFacilityBloc>()
+                                .state
+                                .whenOrNull(
+                                  selected: (wf) => wf.transactions
+                                      ?.expand(
+                                          (tx) => tx.comments ?? <Comment>[])
+                                      .toList(),
+                                ) ??
+                            <Comment>[],
+                        excludeStandardTypes: true,
+                      ),
+                    ],
+                  ),
+                  // ],
                   const SizedBox(height: spacer4),
                   Text(
                     "Rejection List",
