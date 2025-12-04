@@ -265,9 +265,6 @@ public class EnrichmentService {
         log.info("EnrichmentService::Enriching incident fields for indexing");
         IncidentRequest incidentRequest = wrapper.getIncidentRequest();
 
-        // Enrich localized fields first (will populate IndexView inside the wrapper)
-        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
-
         // Ensure IndexView is initialized and reused (not replaced)
         IndexView indexView = wrapper.getIndexView();
         if (indexView == null) {
@@ -321,6 +318,8 @@ public class EnrichmentService {
             indexView.setBoundary(boundary);
         }
 
+        // Enrich localized fields first (will populate IndexView inside the wrapper)
+        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
     }
 
     /**
