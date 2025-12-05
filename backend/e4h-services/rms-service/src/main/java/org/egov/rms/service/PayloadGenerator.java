@@ -133,11 +133,35 @@ public class PayloadGenerator {
             return "No metadata available";
         }
         
-        // AGGRESSIVE: Remove "false" from the ENTIRE metadata string BEFORE parsing
-        // This ensures keys like "maxVoltagefalse" become "maxVoltage" in the JSON
-        String cleaned = removeFalse(metadataStr);
+        // ULTRA-AGGRESSIVE: Remove "false" from the ENTIRE metadata string BEFORE parsing
+        // Use regex to remove ALL occurrences of "false" (case-insensitive) from the raw string
+        // This MUST happen first, before any other processing
+        String cleaned = metadataStr;
+        
+        // Step 1: Remove "false" using regex (most comprehensive)
+        cleaned = cleaned.replaceAll("(?i)false", "");
+        
+        // Step 2: Remove "false" character by character (catches edge cases)
+        StringBuilder sb = new StringBuilder(cleaned);
+        for (int i = sb.length() - 5; i >= 0; i--) {
+            if (i + 5 <= sb.length()) {
+                String check = sb.substring(i, i + 5).toLowerCase();
+                if (check.equals("false")) {
+                    sb.delete(i, i + 5);
+                }
+            }
+        }
+        cleaned = sb.toString();
+        
+        // Step 3: Use our removeFalse method multiple times
+        cleaned = removeFalse(cleaned);
         cleaned = removeFalse(cleaned); // Second pass
         cleaned = removeFalse(cleaned); // Third pass
+        cleaned = removeFalse(cleaned); // Fourth pass
+        cleaned = removeFalse(cleaned); // Fifth pass
+        
+        // Step 4: Final regex pass
+        cleaned = cleaned.replaceAll("(?i)false", "");
         
         // Try to parse as JSON
         try {
@@ -147,9 +171,22 @@ public class PayloadGenerator {
             Map<String, Object> cleanedMap = new java.util.HashMap<>();
             for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
                 String originalKey = entry.getKey();
-                String cleanedKey = removeFalse(originalKey);
+                // Remove "false" from key using regex first, then our method
+                String cleanedKey = originalKey.replaceAll("(?i)false", "");
+                cleanedKey = removeFalse(cleanedKey);
                 cleanedKey = removeFalse(cleanedKey); // Second pass
+                cleanedKey = removeFalse(cleanedKey); // Third pass
+                
                 Object value = entry.getValue();
+                // Also clean the value if it's a string
+                if (value instanceof String) {
+                    String valueStr = (String) value;
+                    valueStr = valueStr.replaceAll("(?i)false", "");
+                    valueStr = removeFalse(valueStr);
+                    valueStr = removeFalse(valueStr);
+                    valueStr = removeFalse(valueStr);
+                    value = valueStr;
+                }
                 cleanedMap.put(cleanedKey, value);
             }
             
@@ -164,18 +201,28 @@ public class PayloadGenerator {
                 String valueStr = String.valueOf(value);
                 
                 // CRITICAL: Remove "false" from key BEFORE formatting (extra safety)
+                key = key.replaceAll("(?i)false", "");
                 key = removeFalse(key);
+                key = removeFalse(key); // Second pass
+                key = removeFalse(key); // Third pass
+                
+                valueStr = valueStr.replaceAll("(?i)false", "");
                 valueStr = removeFalse(valueStr);
+                valueStr = removeFalse(valueStr); // Second pass
+                valueStr = removeFalse(valueStr); // Third pass
                 
                 // Format key AFTER removing false
                 String formattedKey = formatKeyToReadable(key);
                 // Remove false again after formatting (in case formatting somehow added it)
+                formattedKey = formattedKey.replaceAll("(?i)false", "");
                 formattedKey = removeFalse(formattedKey);
-                valueStr = removeFalse(valueStr);
+                formattedKey = removeFalse(formattedKey); // Second pass
                 
                 // Build the line and remove false from the final string
                 String line = formattedKey + ": " + valueStr;
+                line = line.replaceAll("(?i)false", "");
                 line = removeFalse(line);
+                line = removeFalse(line); // Second pass
                 
                 if (!valueStr.trim().isEmpty() && !formattedKey.trim().isEmpty()) {
                     comments.append(line).append("\n");
@@ -183,10 +230,12 @@ public class PayloadGenerator {
             }
             
             String result = comments.toString();
-            // AGGRESSIVE: Remove false multiple times to catch all cases
+            // ULTRA-AGGRESSIVE: Remove false multiple times to catch all cases
+            result = result.replaceAll("(?i)false", "");
             result = removeFalse(result);
             result = removeFalse(result);  // Second pass
             result = removeFalse(result);  // Third pass
+            result = removeFalse(result);  // Fourth pass
             
             // Final check: manually scan and remove any remaining "false"
             StringBuilder finalResult = new StringBuilder();
@@ -202,7 +251,10 @@ public class PayloadGenerator {
                 finalResult.append(result.charAt(i));
             }
             
-            result = finalResult.toString().trim();
+            result = finalResult.toString();
+            // One more regex pass on final result
+            result = result.replaceAll("(?i)false", "");
+            result = result.trim();
             return result.isEmpty() ? "No metadata available" : result;
             
         } catch (Exception e) {
@@ -213,7 +265,7 @@ public class PayloadGenerator {
     
     /**
      * Removes all occurrences of "false" (case-insensitive) from a string
-     * Uses multiple methods to ensure complete removal
+     * Uses multiple methods to ensure complete removal, including regex
      */
     private String removeFalse(String str) {
         if (str == null) {
@@ -221,12 +273,17 @@ public class PayloadGenerator {
         }
         String result = str;
         
-        // Method 1: Simple replace for common cases
+        // Method 1: Use regex to remove "false" case-insensitively (most comprehensive)
+        result = result.replaceAll("(?i)false", "");
+        
+        // Method 2: Simple replace for common cases (backup)
         result = result.replace("false", "");
         result = result.replace("False", "");
         result = result.replace("FALSE", "");
+        result = result.replace("fAlSe", "");
+        result = result.replace("FaLsE", "");
         
-        // Method 2: Use indexOf in a loop for case-insensitive removal
+        // Method 3: Use indexOf in a loop for case-insensitive removal (backup)
         String lower = result.toLowerCase();
         int idx;
         while ((idx = lower.indexOf("false")) != -1) {
@@ -234,15 +291,20 @@ public class PayloadGenerator {
             lower = result.toLowerCase();
         }
         
-        // Method 3: Use StringBuilder for character-by-character removal
+        // Method 4: Use StringBuilder for character-by-character removal (backup)
         StringBuilder sb = new StringBuilder(result);
         for (int i = sb.length() - 5; i >= 0; i--) {
-            String substr = sb.substring(i, Math.min(i + 5, sb.length())).toLowerCase();
-            if (substr.equals("false")) {
-                sb.delete(i, i + 5);
+            if (i + 5 <= sb.length()) {
+                String substr = sb.substring(i, i + 5).toLowerCase();
+                if (substr.equals("false")) {
+                    sb.delete(i, i + 5);
+                }
             }
         }
         result = sb.toString();
+        
+        // Method 5: Final regex pass to catch any remaining variations
+        result = result.replaceAll("(?i)f[aA][lL][sS][eE]", "");
         
         return result;
     }
