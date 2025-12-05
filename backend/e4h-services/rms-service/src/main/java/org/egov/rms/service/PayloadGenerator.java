@@ -48,8 +48,8 @@ public class PayloadGenerator {
                     .incidentType(incidentType)
                     .incidentSubType(incidentSubType)
                     .tenantId("in")
-                    .district("BAGALKOTE") // TODO: Extract from mapping or facility data
-                    .block("BAGALKOT") // TODO: Extract from mapping or facility data
+                    .district("Bagalkote") // TODO: Extract from mapping or facility data
+                    .block("Bagalkot") // TODO: Extract from mapping or facility data
                     .comments(buildComments(alert, null))
                     .systemFunctional("FUNCTIONAL")
                     .boundaryCode("India_Karnataka_Bagalkote_Bagalkot_FAC/2025/5329")
