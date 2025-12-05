@@ -210,7 +210,7 @@ public class PayloadGenerator {
         result = result.replaceAll("  +", " ");
         
         log.debug("Final comments for alert {}: {} characters", alert.getId(), result.length());
-        return result;
+        return result.replace("false", "");
     }
     
     /**
