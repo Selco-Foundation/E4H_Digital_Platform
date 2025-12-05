@@ -195,7 +195,7 @@ const VisitTable = ({ t }) => {
       return (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "70%" }}>
           <div style={{ fontSize: "20px", fontWeight: "bold" }}>
-            {t("CS_NO_FACILITIES_FOUND")}
+            {t("CS_NO_VISITS_FOUND")}
           </div>
         </div>
       );
