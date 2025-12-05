@@ -47,6 +47,7 @@ public class PayloadGenerator {
             IMServiceRequest.Incident incident = IMServiceRequest.Incident.builder()
                     .incidentType(incidentType)
                     .incidentSubType(incidentSubType)
+                    .tenantId("in")
                     .district("Bagalkote") // TODO: Extract from mapping or facility data
                     .block("Bagalkot") // TODO: Extract from mapping or facility data
                     .comments(buildComments(alert, null))
