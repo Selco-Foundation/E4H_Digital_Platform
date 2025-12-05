@@ -291,11 +291,17 @@ public class AlertRepository {
             
             // Get ALL alerts from active_alerts (including those with closed tickets)
             // The deduplication logic will check if tickets are open/closed and filter accordingly
-            // Use jsonb_strip_nulls and proper JSONB to text conversion to avoid "false" issues
-            String sql = "SELECT id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
-                    "detected_at, resolved_at, last_suppressed_at, ticket_id, " +
-                    "COALESCE(jsonb_strip_nulls(COALESCE(metadata, '{}'::jsonb))::text, '{}') as metadata " +
-                    "FROM active_alerts " +
+            // Properly extract JSONB by filtering out boolean false values before converting to text
+            String sql = "SELECT " +
+                    "  id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
+                    "  detected_at, resolved_at, last_suppressed_at, ticket_id, " +
+                    "  COALESCE(" +
+                    "    (SELECT jsonb_object_agg(key, value)::text " +
+                    "     FROM jsonb_each(COALESCE(aa.metadata, '{}'::jsonb)) " +
+                    "     WHERE value IS NOT NULL AND (value::text != 'false' OR jsonb_typeof(value) != 'boolean')), " +
+                    "    '{}' " +
+                    "  ) as metadata " +
+                    "FROM active_alerts aa " +
                     "ORDER BY detected_at DESC";
 
             List<Alert> alerts = jdbcTemplate.query(sql, new AlertRowMapper());

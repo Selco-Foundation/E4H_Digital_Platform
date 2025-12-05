@@ -133,25 +133,13 @@ public class PayloadGenerator {
             return "No metadata available";
         }
         
-        // Step 1: Fix corrupted JSON patterns caused by JSONB::text conversion
-        // Pattern: "key"falsevalue should become "key":value
-        String fixedJson = metadataStr
-            .replaceAll("\"([^\"]+)\"false([^,\"\\}\\]]+)", "\"$1\":$2")  // Fix "key"falsevalue -> "key":value
-            .replaceAll("\"([^\"]+)\"false\"([^\"]+)\"", "\"$1\":\"$2\"")  // Fix "key"false"value" -> "key":"value"
-            .replaceAll("([0-9.]+),\"([^\"]+)\"false", "$1,\"$2\":")  // Fix number,"key"false
-            .replaceAll(",\"([^\"]+)\"false([^,\"\\}\\]]+)", ",\"$1\":$2")  // Fix ,"key"falsevalue
-            .replaceAll(":\\s*false", ":")  // Remove :false
-            .replaceAll(",\\s*false", ",")  // Remove ,false
-            .replaceAll("false\\s*,", ",")  // Remove false,
-            .replaceAll("false\\s*:", ":")  // Remove false:
-            .replaceAll("false\\s*}", "}")  // Remove false}
-            .replaceAll("false", "");  // Remove any remaining false
+        // CRITICAL: Remove ALL occurrences of "false" FIRST before any processing
+        String cleaned = metadataStr.replaceAll("(?i)false", "");
         
-        // Step 2: Try to parse the fixed JSON
+        // Try to parse as JSON first
         try {
-            Map<String, Object> metadataMap = objectMapper.readValue(fixedJson, Map.class);
+            Map<String, Object> metadataMap = objectMapper.readValue(cleaned, Map.class);
             
-            // Build formatted output with each field on a separate line
             StringBuilder comments = new StringBuilder();
             for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
                 Object value = entry.getValue();
@@ -159,48 +147,66 @@ public class PayloadGenerator {
                     continue;
                 }
                 
-                // Format key to readable text
                 String key = formatKeyToReadable(entry.getKey());
                 String valueStr = String.valueOf(value);
                 
-                // Skip if value is empty
-                if (valueStr.trim().isEmpty()) {
-                    continue;
+                if (!valueStr.trim().isEmpty()) {
+                    comments.append(key).append(": ").append(valueStr).append("\n");
                 }
-                
-                // Append as "Key: Value" on each line
-                comments.append(key).append(": ").append(valueStr).append("\n");
             }
             
             String result = comments.toString().trim();
+            // Final safety check - remove any "false" that might have been in values
+            result = result.replaceAll("(?i)false", "");
             return result.isEmpty() ? "No metadata available" : result;
             
         } catch (Exception e) {
-            // If parsing still fails, extract key-value pairs manually using regex
+            // JSON parsing failed - extract key-value pairs using regex from corrupted string
             StringBuilder comments = new StringBuilder();
             
-            // Extract patterns like "key":value or "key":"value"
-            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\"([^\"]+)\"\\s*:\\s*([^,\\}]+)");
-            java.util.regex.Matcher matcher = pattern.matcher(fixedJson);
+            // Pattern: Extract "key":value or "key":"value" (after removing false)
+            java.util.regex.Pattern pattern1 = java.util.regex.Pattern.compile("\"([^\"]+)\"\\s*:\\s*([^,\\}]+)");
+            java.util.regex.Matcher matcher1 = pattern1.matcher(cleaned);
             
-            while (matcher.find()) {
-                String key = matcher.group(1);
-                String value = matcher.group(2).trim();
+            java.util.Set<String> extractedKeys = new java.util.HashSet<>();
+            
+            while (matcher1.find()) {
+                String key = matcher1.group(1);
+                String value = matcher1.group(2).trim().replaceAll("^\"|\"$", "");
                 
-                // Remove quotes from value if present
-                value = value.replaceAll("^\"|\"$", "");
-                
-                // Skip if empty
-                if (value.isEmpty()) {
-                    continue;
+                if (!value.isEmpty() && !extractedKeys.contains(key)) {
+                    extractedKeys.add(key);
+                    String formattedKey = formatKeyToReadable(key);
+                    // Remove any "false" from the formatted key or value
+                    formattedKey = formattedKey.replaceAll("(?i)false", "");
+                    value = value.replaceAll("(?i)false", "");
+                    comments.append(formattedKey).append(": ").append(value).append("\n");
                 }
+            }
+            
+            // If no matches found, try to extract from the raw cleaned string
+            // Look for patterns like: word(s) followed by number or quoted string
+            if (comments.length() == 0) {
+                java.util.regex.Pattern pattern2 = java.util.regex.Pattern.compile("([A-Za-z][A-Za-z0-9\\s]+?)\\s+([0-9.]+|\"[^\"]+\"|\\w+)");
+                java.util.regex.Matcher matcher2 = pattern2.matcher(cleaned);
                 
-                // Format key and append
-                String formattedKey = formatKeyToReadable(key);
-                comments.append(formattedKey).append(": ").append(value).append("\n");
+                while (matcher2.find()) {
+                    String key = matcher2.group(1).trim();
+                    String value = matcher2.group(2).trim().replaceAll("^\"|\"$", "");
+                    
+                    if (!key.isEmpty() && !value.isEmpty()) {
+                        String formattedKey = formatKeyToReadable(key);
+                        formattedKey = formattedKey.replaceAll("(?i)false", "");
+                        value = value.replaceAll("(?i)false", "");
+                        comments.append(formattedKey).append(": ").append(value).append("\n");
+                    }
+                }
             }
             
             String result = comments.toString().trim();
+            // Final aggressive cleanup - remove ALL "false" occurrences
+            result = result.replaceAll("(?i)false", "");
+            
             return result.isEmpty() ? "No metadata available" : result;
         }
     }
