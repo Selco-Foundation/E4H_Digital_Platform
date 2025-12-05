@@ -129,36 +129,54 @@ public class PayloadGenerator {
     private String buildComments(Alert alert, FacilityDetails facilityDetails) {
         String metadataStr = alert.getMetadata();
         
-        if (metadataStr != null && !metadataStr.trim().isEmpty()) {
+        if (metadataStr != null && !metadataStr.trim().isEmpty() && !metadataStr.trim().equals("{}")) {
             try {
-                // Parse the JSON properly to handle JSONB conversion issues
+                // Parse the JSON properly
                 Map<String, Object> metadataMap = objectMapper.readValue(metadataStr, Map.class);
                 
-                // Remove any boolean false values and null values
-                metadataMap.entrySet().removeIf(entry -> 
-                    entry.getValue() == null || 
-                    (entry.getValue() instanceof Boolean && !((Boolean) entry.getValue()))
-                );
+                // Create a new clean map with only non-null, non-false values
+                Map<String, Object> cleanMap = new HashMap<>();
+                for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
+                    Object value = entry.getValue();
+                    // Skip null, boolean false, and string "false"
+                    if (value != null && 
+                        !(value instanceof Boolean && !((Boolean) value)) &&
+                        !"false".equalsIgnoreCase(String.valueOf(value))) {
+                        cleanMap.put(entry.getKey(), value);
+                    }
+                }
                 
-                // Convert back to clean JSON string using ObjectMapper (proper JSON formatting)
-                return objectMapper.writeValueAsString(metadataMap);
+                // Convert back to clean JSON string
+                String cleanJson = objectMapper.writeValueAsString(cleanMap);
+                
+                // Final safety check - remove any remaining "false" strings
+                cleanJson = cleanJson.replaceAll("(?i)\"false\"", "")
+                    .replaceAll("(?i):\\s*false", ":")
+                    .replaceAll("(?i),\\s*false", ",")
+                    .replaceAll("(?i)false\\s*,", "")
+                    .replaceAll("(?i)false", "");
+                
+                // Clean up malformed JSON patterns
+                cleanJson = cleanJson.replaceAll("\"\\s*\"", "\"")
+                    .replaceAll(",\\s*,", ",")
+                    .replaceAll(",\\s*}", "}")
+                    .replaceAll(",\\s*\\]", "]")
+                    .replaceAll("\\{\\s*,", "{")
+                    .replaceAll("\\[\\s*,", "[");
+                
+                return cleanJson;
             } catch (Exception e) {
-                // If parsing fails, try to clean the raw string
-                // Remove "false" and fix common JSONB conversion issues
+                // If parsing fails, aggressively clean the raw string
                 String cleaned = metadataStr
                     .replaceAll("(?i)false", "")
-                    .replaceAll(":\\s*\"false\"", ":")
-                    .replaceAll(",\\s*\"[^\"]*false[^\"]*\"\\s*:", ",")
-                    .replaceAll(",\\s*\"[^\"]*false[^\"]*\"", "")
-                    .replaceAll("\"[^\"]*false[^\"]*\"\\s*:", "")
-                    .replaceAll("\"[^\"]*false[^\"]*\"", "");
-                
-                // Clean up any double commas or trailing commas
-                cleaned = cleaned.replaceAll(",\\s*,", ",")
+                    .replaceAll("\"\\s*\"", "\"")
+                    .replaceAll(",\\s*,", ",")
                     .replaceAll(",\\s*}", "}")
-                    .replaceAll(",\\s*\\]", "]");
+                    .replaceAll(",\\s*\\]", "]")
+                    .replaceAll("\\{\\s*,", "{")
+                    .replaceAll("\\[\\s*,", "[");
                 
-                return cleaned;
+                return cleaned.isEmpty() ? "{}" : cleaned;
             }
         } else {
             return "No metadata available";

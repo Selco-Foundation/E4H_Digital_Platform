@@ -291,9 +291,10 @@ public class AlertRepository {
             
             // Get ALL alerts from active_alerts (including those with closed tickets)
             // The deduplication logic will check if tickets are open/closed and filter accordingly
+            // Use jsonb_strip_nulls and proper JSONB to text conversion to avoid "false" issues
             String sql = "SELECT id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
                     "detected_at, resolved_at, last_suppressed_at, ticket_id, " +
-                    "COALESCE(metadata::text, '') as metadata " +
+                    "COALESCE(jsonb_strip_nulls(COALESCE(metadata, '{}'::jsonb))::text, '{}') as metadata " +
                     "FROM active_alerts " +
                     "ORDER BY detected_at DESC";
 
