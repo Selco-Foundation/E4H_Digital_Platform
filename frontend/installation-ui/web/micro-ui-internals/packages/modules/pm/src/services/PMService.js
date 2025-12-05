@@ -267,7 +267,7 @@ export const PMService = {
     const formattedActivityOrganizationUsers = formatActivityOrganizationUsers(activityAssignments);
     const userInfoList = [];
     for (const formattedActivityOrganizationUser of formattedActivityOrganizationUsers) {
-      userInfoList.push(formattedActivityOrganizationUser.organizationUsers.map((orgUser) => ({
+      formattedActivityOrganizationUser.organizationUsers.forEach((orgUser) => userInfoList.push(({
         ...orgUser,
         activityCode: formattedActivityOrganizationUser.code,
       })));
@@ -284,7 +284,7 @@ export const PMService = {
     const formattedActivityOrganizationUsers = formatActivityOrganizationUsers(amcFormData.activityDetails.activityUserAssignment);
     const userInfoList = [];
     for (const formattedActivityOrganizationUser of formattedActivityOrganizationUsers) {
-      userInfoList.push(formattedActivityOrganizationUser.organizationUsers.map((orgUser) => ({
+      formattedActivityOrganizationUser.organizationUsers.forEach((orgUser) => userInfoList.push(({
         ...orgUser,
         activityCode: formattedActivityOrganizationUser.code,
       })));
@@ -310,7 +310,7 @@ export const PMService = {
       const validationRequest = new FormData();
       validationRequest.append("amc_file", file);
       validationRequest.append("project_id", projectId);
-      validationRequest.append("user_info_list", userInfoList);
+      validationRequest.append("user_info_list", JSON.stringify(userInfoList));
       const validationResponse = await IngestionService.validateAMCFacilityData(validationRequest);
 
       validatedFile = extractBlobFile(validationResponse);
@@ -339,7 +339,7 @@ export const PMService = {
       const uploadRequest = new FormData();
       uploadRequest.append("amc_file", validatedFile.data);
       uploadRequest.append("project_id", projectId);
-      uploadRequest.append("user_info_list", userInfoList);
+      uploadRequest.append("user_info_list", JSON.stringify(userInfoList));
       const uploadResponse = await IngestionService.uploadAMCFacilityData(uploadRequest)
 
       const uploadedFile = extractBlobFile(uploadResponse);
