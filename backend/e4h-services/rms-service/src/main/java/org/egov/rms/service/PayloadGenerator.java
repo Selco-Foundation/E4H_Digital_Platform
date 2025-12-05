@@ -149,9 +149,9 @@ public class PayloadGenerator {
                         String key = entry.getKey();
                         Object value = entry.getValue();
                         
-                        // Skip only null values
-                        if (value == null) {
-                            log.debug("Skipping null value for key: {}", key);
+                        // Skip null values and boolean false
+                        if (value == null || (value instanceof Boolean && !((Boolean) value))) {
+                            log.debug("Skipping null or false value for key: {}", key);
                             continue;
                         }
                         
@@ -159,7 +159,12 @@ public class PayloadGenerator {
                         String readableKey = formatKeyToReadable(key);
                         String valueStr = convertValueToString(value);
                         
-                        // Append as "Key: Value" on each line (include even if value is empty string)
+                        // Skip if value string is empty or contains only "false"
+                        if (valueStr == null || valueStr.trim().isEmpty() || valueStr.trim().equalsIgnoreCase("false")) {
+                            continue;
+                        }
+                        
+                        // Append as "Key: Value" on each line
                         comments.append(readableKey);
                         comments.append(": ");
                         comments.append(valueStr);
@@ -182,15 +187,15 @@ public class PayloadGenerator {
             comments.append("\n");
         }
         
-        // Strip the word "false" from the comment string and replace with blank space
+        // Strip ALL occurrences of "false" from the comment string and replace with blank space
         String result = comments.toString();
         if (result == null || result.trim().isEmpty()) {
             log.warn("Comments are empty for alert {}, using fallback", alert.getId());
             result = "No metadata available\n";
         }
         
-        // Replace the string "false" (case-insensitive) with a space
-        result = result.replaceAll("(?i)\\bfalse\\b", " ");
+        // Replace ALL occurrences of "false" (case-insensitive) with a space - no word boundaries
+        result = result.replaceAll("(?i)false", " ");
         // Clean up multiple consecutive spaces (but preserve newlines)
         result = result.replaceAll("[ \\t]+", " ");
         // Clean up any space before colon
@@ -199,6 +204,10 @@ public class PayloadGenerator {
         result = result.replaceAll(":(?! )", ": ");
         // Remove duplicate space after colon if created
         result = result.replace(":  ", ": ");
+        // Final cleanup: remove any remaining standalone "false" words
+        result = result.replaceAll("(?i)\\bfalse\\b", "");
+        // Clean up any double spaces that might have been created
+        result = result.replaceAll("  +", " ");
         
         log.debug("Final comments for alert {}: {} characters", alert.getId(), result.length());
         return result;
