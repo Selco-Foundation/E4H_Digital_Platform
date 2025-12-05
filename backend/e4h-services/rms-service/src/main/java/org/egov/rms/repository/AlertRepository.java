@@ -291,17 +291,22 @@ public class AlertRepository {
             
             // Get ALL alerts from active_alerts (including those with closed tickets)
             // The deduplication logic will check if tickets are open/closed and filter accordingly
-            // Properly extract JSONB by filtering out boolean false values before converting to text
-            String sql = "SELECT " +
+            // Properly extract JSONB: filter out null and boolean false, then convert to clean JSON text
+            String sql = "WITH cleaned_metadata AS (" +
+                    "  SELECT " +
+                    "    id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
+                    "    detected_at, resolved_at, last_suppressed_at, ticket_id, " +
+                    "    (SELECT jsonb_object_agg(key, value) " +
+                    "     FROM jsonb_each(COALESCE(metadata, '{}'::jsonb)) " +
+                    "     WHERE value IS NOT NULL " +
+                    "       AND NOT (jsonb_typeof(value) = 'boolean' AND value::text = 'false')) as clean_meta " +
+                    "  FROM active_alerts" +
+                    ") " +
+                    "SELECT " +
                     "  id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
                     "  detected_at, resolved_at, last_suppressed_at, ticket_id, " +
-                    "  COALESCE(" +
-                    "    (SELECT jsonb_object_agg(key, value)::text " +
-                    "     FROM jsonb_each(COALESCE(aa.metadata, '{}'::jsonb)) " +
-                    "     WHERE value IS NOT NULL AND (value::text != 'false' OR jsonb_typeof(value) != 'boolean')), " +
-                    "    '{}' " +
-                    "  ) as metadata " +
-                    "FROM active_alerts aa " +
+                    "  COALESCE(clean_meta::text, '{}') as metadata " +
+                    "FROM cleaned_metadata " +
                     "ORDER BY detected_at DESC";
 
             List<Alert> alerts = jdbcTemplate.query(sql, new AlertRowMapper());
