@@ -124,16 +124,30 @@ public class PayloadGenerator {
 
     /**
      * Builds simple comments for the ticket from metadata in active_alerts
-     * Just returns the raw metadata as-is, with "false" removed
+     * Parses JSON, removes boolean false values, and returns clean JSON string
      */
     private String buildComments(Alert alert, FacilityDetails facilityDetails) {
         String metadataStr = alert.getMetadata();
         
         if (metadataStr != null && !metadataStr.trim().isEmpty()) {
-            // Remove "false" from the raw metadata and return it
-            String cleaned = metadataStr.replaceAll("(?i)false", "");
-            log.debug("Returning raw metadata for alert {}: {} characters", alert.getId(), cleaned.length());
-            return cleaned;
+            try {
+                // Parse the JSON to clean it up
+                Map<String, Object> metadataMap = objectMapper.readValue(metadataStr, Map.class);
+                
+                // Remove any boolean false values from the map
+                metadataMap.entrySet().removeIf(entry -> entry.getValue() instanceof Boolean && !((Boolean) entry.getValue()));
+                
+                // Convert back to JSON string (this will be clean, properly formatted JSON)
+                String cleanJson = objectMapper.writeValueAsString(metadataMap);
+                
+                log.debug("Returning cleaned metadata JSON for alert {}: {}", alert.getId(), cleanJson);
+                return cleanJson;
+            } catch (Exception e) {
+                log.warn("Error parsing/cleaning metadata JSON for alert {}: {}. Using raw metadata with false removed.", 
+                        alert.getId(), e.getMessage());
+                // Fallback: remove "false" from raw string
+                return metadataStr.replaceAll("(?i)false", "");
+            }
         } else {
             log.warn("No metadata available for alert {}", alert.getId());
             return "No metadata available";
