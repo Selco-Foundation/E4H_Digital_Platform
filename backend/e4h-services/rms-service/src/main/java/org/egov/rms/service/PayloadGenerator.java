@@ -124,7 +124,7 @@ public class PayloadGenerator {
 
     /**
      * Builds simple comments for the ticket from metadata in active_alerts
-     * Formats metadata with each field on a separate line, handling corrupted JSONB conversion
+     * Formats metadata with each field on a separate line, aggressively removing "false"
      */
     private String buildComments(Alert alert, FacilityDetails facilityDetails) {
         String metadataStr = alert.getMetadata();
@@ -133,93 +133,218 @@ public class PayloadGenerator {
             return "No metadata available";
         }
         
-        // Step 1: Try direct string replacement using String.replace (not regex) - more reliable
-        String cleaned = metadataStr;
-        cleaned = cleaned.replace("false", "");
-        cleaned = cleaned.replace("False", "");
-        cleaned = cleaned.replace("FALSE", "");
+        // AGGRESSIVE: Remove "false" from the ENTIRE metadata string BEFORE parsing
+        // This ensures keys like "maxVoltagefalse" become "maxVoltage" in the JSON
+        String cleaned = removeFalse(metadataStr);
+        cleaned = removeFalse(cleaned); // Second pass
+        cleaned = removeFalse(cleaned); // Third pass
         
-        // Step 2: Try to parse as JSON
+        // Try to parse as JSON
         try {
             Map<String, Object> metadataMap = objectMapper.readValue(cleaned, Map.class);
             
-            StringBuilder comments = new StringBuilder();
+            // Build a new map with cleaned keys (remove "false" from all keys)
+            Map<String, Object> cleanedMap = new java.util.HashMap<>();
             for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
+                String originalKey = entry.getKey();
+                String cleanedKey = removeFalse(originalKey);
+                cleanedKey = removeFalse(cleanedKey); // Second pass
+                Object value = entry.getValue();
+                cleanedMap.put(cleanedKey, value);
+            }
+            
+            StringBuilder comments = new StringBuilder();
+            for (Map.Entry<String, Object> entry : cleanedMap.entrySet()) {
                 Object value = entry.getValue();
                 if (value == null) {
                     continue;
                 }
                 
-                String key = formatKeyToReadable(entry.getKey());
+                String key = entry.getKey();
                 String valueStr = String.valueOf(value);
                 
-                // Remove "false" from key and value using String.replace
-                key = key.replace("false", "").replace("False", "").replace("FALSE", "");
-                valueStr = valueStr.replace("false", "").replace("False", "").replace("FALSE", "");
+                // CRITICAL: Remove "false" from key BEFORE formatting (extra safety)
+                key = removeFalse(key);
+                valueStr = removeFalse(valueStr);
                 
-                if (!valueStr.trim().isEmpty() && !key.trim().isEmpty()) {
-                    comments.append(key).append(": ").append(valueStr).append("\n");
+                // Format key AFTER removing false
+                String formattedKey = formatKeyToReadable(key);
+                // Remove false again after formatting (in case formatting somehow added it)
+                formattedKey = removeFalse(formattedKey);
+                valueStr = removeFalse(valueStr);
+                
+                // Build the line and remove false from the final string
+                String line = formattedKey + ": " + valueStr;
+                line = removeFalse(line);
+                
+                if (!valueStr.trim().isEmpty() && !formattedKey.trim().isEmpty()) {
+                    comments.append(line).append("\n");
                 }
             }
             
-            String result = comments.toString().trim();
-            // Final cleanup using String.replace
-            result = result.replace("false", "").replace("False", "").replace("FALSE", "");
+            String result = comments.toString();
+            // AGGRESSIVE: Remove false multiple times to catch all cases
+            result = removeFalse(result);
+            result = removeFalse(result);  // Second pass
+            result = removeFalse(result);  // Third pass
+            
+            // Final check: manually scan and remove any remaining "false"
+            StringBuilder finalResult = new StringBuilder();
+            String lowerResult = result.toLowerCase();
+            for (int i = 0; i < result.length(); i++) {
+                if (i <= result.length() - 5) {
+                    String check = lowerResult.substring(i, i + 5);
+                    if (check.equals("false")) {
+                        i += 4; // Skip the "false" word
+                        continue;
+                    }
+                }
+                finalResult.append(result.charAt(i));
+            }
+            
+            result = finalResult.toString().trim();
             return result.isEmpty() ? "No metadata available" : result;
             
         } catch (Exception e) {
-            // JSON parsing failed - manually extract key-value pairs from corrupted string
-            StringBuilder comments = new StringBuilder();
-            
-            // Pattern 1: Extract "key":value or "key":"value"
-            java.util.regex.Pattern pattern1 = java.util.regex.Pattern.compile("\"([^\"]+)\"\\s*:?\\s*([^,\\}]+)");
-            java.util.regex.Matcher matcher1 = pattern1.matcher(cleaned);
-            
-            java.util.Set<String> seen = new java.util.HashSet<>();
-            
-            while (matcher1.find()) {
-                String key = matcher1.group(1);
-                String value = matcher1.group(2).trim().replaceAll("^\"|\"$", "");
-                
-                // Remove "false" using String.replace
-                key = key.replace("false", "").replace("False", "").replace("FALSE", "");
-                value = value.replace("false", "").replace("False", "").replace("FALSE", "");
-                
-                if (!value.isEmpty() && !key.isEmpty() && !seen.contains(key)) {
-                    seen.add(key);
-                    String formattedKey = formatKeyToReadable(key);
-                    formattedKey = formattedKey.replace("false", "").replace("False", "").replace("FALSE", "");
-                    comments.append(formattedKey).append(": ").append(value).append("\n");
-                }
-            }
-            
-            // Pattern 2: Extract key-value pairs from corrupted format like "Keyfalse Value"
-            // Match: word(s) followed by "false" (removed) followed by value
-            java.util.regex.Pattern pattern2 = java.util.regex.Pattern.compile("([A-Za-z][A-Za-z0-9\\s]+?)\\s+([0-9.]+|\"[^\"]+\"|[A-Za-z][A-Za-z0-9\\s]+)");
-            java.util.regex.Matcher matcher2 = pattern2.matcher(cleaned);
-            
-            while (matcher2.find()) {
-                String key = matcher2.group(1).trim();
-                String value = matcher2.group(2).trim().replaceAll("^\"|\"$", "");
-                
-                // Remove "false" using String.replace
-                key = key.replace("false", "").replace("False", "").replace("FALSE", "");
-                value = value.replace("false", "").replace("False", "").replace("FALSE", "");
-                
-                if (!key.isEmpty() && !value.isEmpty() && !seen.contains(key)) {
-                    seen.add(key);
-                    String formattedKey = formatKeyToReadable(key);
-                    formattedKey = formattedKey.replace("false", "").replace("False", "").replace("FALSE", "");
-                    comments.append(formattedKey).append(": ").append(value).append("\n");
-                }
-            }
-            
-            String result = comments.toString().trim();
-            // Final aggressive cleanup using String.replace (not regex)
-            result = result.replace("false", "").replace("False", "").replace("FALSE", "");
-            
-            return result.isEmpty() ? "No metadata available" : result;
+            // If JSON parsing fails, manually extract and format
+            return extractAndFormatMetadata(cleaned);
         }
+    }
+    
+    /**
+     * Removes all occurrences of "false" (case-insensitive) from a string
+     * Uses multiple methods to ensure complete removal
+     */
+    private String removeFalse(String str) {
+        if (str == null) {
+            return "";
+        }
+        String result = str;
+        
+        // Method 1: Simple replace for common cases
+        result = result.replace("false", "");
+        result = result.replace("False", "");
+        result = result.replace("FALSE", "");
+        
+        // Method 2: Use indexOf in a loop for case-insensitive removal
+        String lower = result.toLowerCase();
+        int idx;
+        while ((idx = lower.indexOf("false")) != -1) {
+            result = result.substring(0, idx) + result.substring(idx + 5);
+            lower = result.toLowerCase();
+        }
+        
+        // Method 3: Use StringBuilder for character-by-character removal
+        StringBuilder sb = new StringBuilder(result);
+        for (int i = sb.length() - 5; i >= 0; i--) {
+            String substr = sb.substring(i, Math.min(i + 5, sb.length())).toLowerCase();
+            if (substr.equals("false")) {
+                sb.delete(i, i + 5);
+            }
+        }
+        result = sb.toString();
+        
+        return result;
+    }
+    
+    /**
+     * Extracts and formats metadata from corrupted JSON string
+     */
+    private String extractAndFormatMetadata(String cleaned) {
+        // CRITICAL: Remove "false" from entire string BEFORE extracting keys
+        cleaned = removeFalse(cleaned);
+        cleaned = removeFalse(cleaned); // Second pass
+        cleaned = removeFalse(cleaned); // Third pass
+        
+        StringBuilder comments = new StringBuilder();
+        java.util.Set<String> seen = new java.util.HashSet<>();
+        
+        // Pattern: Extract "key":value or "key":"value"
+        java.util.regex.Pattern pattern1 = java.util.regex.Pattern.compile("\"([^\"]+)\"\\s*:?\\s*([^,\\}]+)");
+        java.util.regex.Matcher matcher1 = pattern1.matcher(cleaned);
+        
+        while (matcher1.find()) {
+            String key = matcher1.group(1);
+            String value = matcher1.group(2).trim().replaceAll("^\"|\"$", "");
+            
+            // CRITICAL: Remove "false" from key multiple times
+            key = removeFalse(key);
+            key = removeFalse(key); // Second pass
+            key = removeFalse(key); // Third pass
+            value = removeFalse(value);
+            value = removeFalse(value); // Second pass
+            value = removeFalse(value); // Third pass
+            
+            if (!value.isEmpty() && !key.isEmpty() && !seen.contains(key)) {
+                seen.add(key);
+                String formattedKey = formatKeyToReadable(key);
+                formattedKey = removeFalse(formattedKey);
+                formattedKey = removeFalse(formattedKey); // Second pass
+                value = removeFalse(value);
+                value = removeFalse(value); // Second pass
+                
+                // Build line and remove false from it
+                String line = formattedKey + ": " + value;
+                line = removeFalse(line);
+                line = removeFalse(line); // Second pass
+                comments.append(line).append("\n");
+            }
+        }
+        
+        // Pattern: Extract key-value from corrupted format
+        java.util.regex.Pattern pattern2 = java.util.regex.Pattern.compile("([A-Za-z][A-Za-z0-9\\s]+?)\\s+([0-9.]+|\"[^\"]+\"|[A-Za-z][A-Za-z0-9\\s]+)");
+        java.util.regex.Matcher matcher2 = pattern2.matcher(cleaned);
+        
+        while (matcher2.find()) {
+            String key = matcher2.group(1).trim();
+            String value = matcher2.group(2).trim().replaceAll("^\"|\"$", "");
+            
+            // CRITICAL: Remove "false" from key multiple times
+            key = removeFalse(key);
+            key = removeFalse(key); // Second pass
+            key = removeFalse(key); // Third pass
+            value = removeFalse(value);
+            value = removeFalse(value); // Second pass
+            value = removeFalse(value); // Third pass
+            
+            if (!key.isEmpty() && !value.isEmpty() && !seen.contains(key)) {
+                seen.add(key);
+                String formattedKey = formatKeyToReadable(key);
+                formattedKey = removeFalse(formattedKey);
+                formattedKey = removeFalse(formattedKey); // Second pass
+                value = removeFalse(value);
+                value = removeFalse(value); // Second pass
+                
+                // Build line and remove false from it
+                String line = formattedKey + ": " + value;
+                line = removeFalse(line);
+                line = removeFalse(line); // Second pass
+                comments.append(line).append("\n");
+            }
+        }
+        
+        String result = comments.toString();
+        // AGGRESSIVE: Multiple passes to remove false
+        result = removeFalse(result);
+        result = removeFalse(result);
+        result = removeFalse(result);
+        
+        // Final check: manually scan and remove any remaining "false"
+        StringBuilder finalResult = new StringBuilder();
+        String lowerResult = result.toLowerCase();
+        for (int i = 0; i < result.length(); i++) {
+            if (i <= result.length() - 5) {
+                String check = lowerResult.substring(i, i + 5);
+                if (check.equals("false")) {
+                    i += 4; // Skip the "false" word
+                    continue;
+                }
+            }
+            finalResult.append(result.charAt(i));
+        }
+        
+        result = finalResult.toString().trim();
+        return result.isEmpty() ? "No metadata available" : result;
     }
     
     /**
@@ -245,6 +370,9 @@ public class PayloadGenerator {
             return key;
         }
         
+        // CRITICAL: Remove "false" from key BEFORE processing
+        key = removeFalse(key);
+        
         // Replace underscores with spaces
         String result = key.replace("_", " ");
         
@@ -259,14 +387,21 @@ public class PayloadGenerator {
                 formatted.append(" ");
             }
             if (!words[i].isEmpty()) {
-                formatted.append(words[i].substring(0, 1).toUpperCase());
-                if (words[i].length() > 1) {
-                    formatted.append(words[i].substring(1));
+                // Remove "false" from each word before capitalizing
+                String word = removeFalse(words[i]);
+                if (!word.isEmpty()) {
+                    formatted.append(word.substring(0, 1).toUpperCase());
+                    if (word.length() > 1) {
+                        formatted.append(word.substring(1));
+                    }
                 }
             }
         }
         
-        return formatted.toString();
+        String finalResult = formatted.toString();
+        // Final removal of "false" from formatted result
+        finalResult = removeFalse(finalResult);
+        return finalResult;
     }
 
     /**
