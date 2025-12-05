@@ -250,7 +250,7 @@ const AMCUserManager = ({
     </div>
   )
 
-  const OrganizationUserDropDownInput = (organization, activity, index, fieldName, fieldValue, isLast) => (
+  const OrganizationUserDropDownInput = (organization, activity, index, fieldName, fieldValue, roleCode, isLast) => (
     <div
       key={index}
       style={{
@@ -261,6 +261,7 @@ const AMCUserManager = ({
       <OrganizationUserDropdown
         t={t}
         organizationIds={[organization?.value?.id || ""]}
+        roleCode={roleCode}
         selected={fieldValue.value}
         onSelect={(option) => handleUserDataChange(activity, index, fieldName, option)}
         style={{
@@ -382,7 +383,10 @@ const AMCUserManager = ({
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
-            return OrganizationUserDropDownInput(userEntry.organization, row.original["activity"], i, "email", userEntry?.email, usersArray.length - 1 === i);
+            return OrganizationUserDropDownInput(
+              userEntry.organization, row.original["activity"], i, "email", userEntry.email,
+              userEntry?.role?.value?.code,usersArray.length - 1 === i
+            );
           })
         ),
       },
