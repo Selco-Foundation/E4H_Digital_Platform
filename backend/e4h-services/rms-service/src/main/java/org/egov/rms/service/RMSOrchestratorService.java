@@ -327,7 +327,6 @@ public class RMSOrchestratorService {
                 .name("nikhil")
                 .mobileNumber("9901224634")
                 .emailId("crm@gmail.com")
-                .locale("en_IN")
                 .type("EMPLOYEE")
                 .active(true)
                 .tenantId("in")
