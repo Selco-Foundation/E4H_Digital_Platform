@@ -22,8 +22,8 @@ const InfoCard = ({ t, facilityDetails }) => {
       border: "1px solid #eee",
       minWidth: "900px"
     }}>
-      {InfoCardItem(t("CS_DISTRICT"), facilityDetails.district ? t(`DISTRICT_${facilityDetails.district.toUpperCase()}`) : "-")}
-      {InfoCardItem(t("CS_BLOCK"), facilityDetails.block ? t(`BLOCK_${facilityDetails.block.toUpperCase()}`) : "-")}
+      {InfoCardItem(t("CS_DISTRICT"), facilityDetails.district ? t(`Boundary_${facilityDetails.district}`) : "-")}
+      {InfoCardItem(t("CS_BLOCK"), facilityDetails.block ? t(`Boundary_${facilityDetails.block}`) : "-")}
       {InfoCardItem(t("CS_HEALTH_FACILITY_TYPE"), facilityDetails.facilityType ? facilityDetails.facilityType : "-")}
       {InfoCardItem(t("CS_STATUS"), facilityDetails.status ? t(`CS_${facilityDetails.status}`) : "-")}
     </div>
