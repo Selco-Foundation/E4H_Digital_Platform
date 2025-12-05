@@ -328,7 +328,6 @@ public class RMSOrchestratorService {
                 .mobileNumber("9901224634")
                 .emailId("crm@gmail.com")
                 .type("EMPLOYEE")
-                .active(true)
                 .tenantId("in")
                 .roles(roles)
                 .build();
