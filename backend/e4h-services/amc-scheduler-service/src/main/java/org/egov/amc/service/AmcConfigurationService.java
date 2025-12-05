@@ -3,10 +3,7 @@ package org.egov.amc.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.egov.amc.web.models.AmcConfiguration;
-import org.egov.amc.web.models.AmcConfigurationRequest;
-import org.egov.amc.web.models.AmcConfigurationSearchCriteria;
-import org.egov.amc.web.models.AmcConfigurationSearchRequest;
+import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.producer.Producer;
@@ -53,6 +50,11 @@ public class AmcConfigurationService {
     public AmcConfigurationRequest createAmcConfiguration(AmcConfigurationRequest request) {
         amcConfigurationValidator.validateCreateAmcConfigurationRequest(request);
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
+            // remove Duplicate Assignments
+            Set<String> seenUsers = new HashSet<>();
+            List<AmcConfigurationAssignment> assignments = amcConfiguration.getAssignments().stream().filter(a -> seenUsers.add(a.getAssignedUser()))
+                    .toList();
+            amcConfiguration.setAssignments(assignments);
             amcConfigurationEnrichment.enrichAmcConfigurationOnCreate(amcConfiguration, request.getRequestInfo());
             log.info("Enriched with AMC Ids and AuditDetails {}", amcConfiguration);
             log.info("Pushed to kafka");
