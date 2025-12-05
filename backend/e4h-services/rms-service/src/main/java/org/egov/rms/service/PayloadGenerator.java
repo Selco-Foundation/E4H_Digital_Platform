@@ -47,6 +47,7 @@ public class PayloadGenerator {
             IMServiceRequest.Incident incident = IMServiceRequest.Incident.builder()
                     .incidentType(incidentType)
                     .incidentSubType(incidentSubType)
+                    .requestInfo({"apiId":"Rainmaker","authToken":"fa70bd35-8036-4b35-a1b4-85e85c254b61","userInfo":{"id":14301,"uuid":"fb022833-743d-43cb-adfa-312fbd13f438","userName":"rms_user","name":"nikhil","mobileNumber":"9901224634","emailId":"crm@gmail.com","locale":"en_IN","type":"EMPLOYEE","roles":[{"name":"Complainant","code":"COMPLAINANT","tenantId":"in"},{"name":"Employee","code":"EMPLOYEE","tenantId":"in"},{"name":"Complaint Assessor","code":"COMPLAINT_ASSESSOR","tenantId":"in"},{"name":"Complaint facilitator 2","code":"COMPLAINT_FACILITATOR_2","tenantId":"in"},{"name":"Super User","code":"SUPERUSER","tenantId":"in"},{"name":"RMS","code":"RMS","tenantId":"in"}],"active":true,"tenantId":"in","permanentCity":"All"},"msgId":"1764924656583|en_IN","plainAccessRequest":{}}})
                     .tenantId("in")
                     .district("Bagalkote") // TODO: Extract from mapping or facility data
                     .block("Bagalkot") // TODO: Extract from mapping or facility data
