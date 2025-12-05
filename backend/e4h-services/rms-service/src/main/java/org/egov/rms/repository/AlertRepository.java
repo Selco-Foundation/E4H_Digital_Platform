@@ -291,32 +291,19 @@ public class AlertRepository {
             
             // Get ALL alerts from active_alerts (including those with closed tickets)
             // The deduplication logic will check if tickets are open/closed and filter accordingly
-            // Properly extract JSONB: filter out null, boolean false, and keys/values containing "false"
-            // Then rebuild JSONB with cleaned keys (removing "false" from key names) and clean the final text
-            String sql = "WITH cleaned_metadata AS (" +
-                    "  SELECT " +
-                    "    id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
-                    "    detected_at, resolved_at, last_suppressed_at, ticket_id, " +
-                    "    (SELECT jsonb_object_agg(" +
-                    "       REGEXP_REPLACE(key, '(?i)false', '', 'g'), " +
-                    "       CASE " +
-                    "         WHEN jsonb_typeof(value) = 'string' THEN " +
-                    "           to_jsonb(REGEXP_REPLACE(value::text, '(?i)false', '', 'g')) " +
-                    "         ELSE value " +
-                    "       END" +
-                    "     ) " +
-                    "     FROM jsonb_each(COALESCE(metadata, '{}'::jsonb)) " +
-                    "     WHERE value IS NOT NULL " +
-                    "       AND NOT (jsonb_typeof(value) = 'boolean' AND value::text = 'false') " +
-                    "       AND REGEXP_REPLACE(key, '(?i)false', '', 'g') != '' " +
-                    "       AND NOT (jsonb_typeof(value) = 'string' AND LOWER(value::text) LIKE '%false%')) as clean_meta " +
-                    "  FROM active_alerts" +
-                    ") " +
-                    "SELECT " +
+            // Extract JSONB cleanly: filter out null and boolean false values, then convert to text
+            // Using jsonb_object_agg to rebuild clean JSONB before converting to text
+            String sql = "SELECT " +
                     "  id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
                     "  detected_at, resolved_at, last_suppressed_at, ticket_id, " +
-                    "  COALESCE(REGEXP_REPLACE(jsonb_strip_nulls(clean_meta)::text, '(?i)false', '', 'g'), '{}') as metadata " +
-                    "FROM cleaned_metadata " +
+                    "  COALESCE(" +
+                    "    (SELECT jsonb_object_agg(key, value)::text " +
+                    "     FROM jsonb_each(COALESCE(metadata, '{}'::jsonb)) " +
+                    "     WHERE value IS NOT NULL " +
+                    "       AND NOT (jsonb_typeof(value) = 'boolean' AND value::jsonb = 'false'::jsonb)), " +
+                    "    '{}'" +
+                    "  ) as metadata " +
+                    "FROM active_alerts " +
                     "ORDER BY detected_at DESC";
 
             List<Alert> alerts = jdbcTemplate.query(sql, new AlertRowMapper());
