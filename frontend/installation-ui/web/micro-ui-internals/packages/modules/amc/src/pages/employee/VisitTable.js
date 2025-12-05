@@ -36,7 +36,7 @@ const VisitTable = ({ t }) => {
       projectId: [projectId]
     },
     facilityFilter: {
-      status: [],
+      status: ["PENDING_APPROVAL"],
     },
     facilitySearch: {
       name: ""
@@ -169,24 +169,12 @@ const VisitTable = ({ t }) => {
   //todo: fetch all possible statuses from backend??
   const statusesList = [
     {
-      name: t("CS_DRAFT"),
-      code: "DRAFT"
-    },
-    {
       name: t("CS_SCHEDULED"),
       code: "SCHEDULED"
     },
     {
-      name: t("CS_PENDING_OTP_APPROVAL"),
-      code: "PENDING_OTP_APPROVAL"
-    },
-    {
       name: t("CS_PENDING_APPROVAL"),
       code: "PENDING_APPROVAL"
-    },
-    {
-      name: t("CS_REJECTED"),
-      code: "REJECTED"
     },
     {
       name: t("CS_APPROVED"),

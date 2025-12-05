@@ -6,7 +6,7 @@ import CustomFilterIcon from "../Custom/CustomFilterIcon";
 const Filter = ({ t, onFilterChange, projectQueryFilter, statusesList }) => {
 
   const [currentFilter, setCurrentFilter] = useState(projectQueryFilter.facilityFilter || {
-    status: [],
+    status: ["PENDING_APPROVAL"],
   });
 
   useEffect(() => {
@@ -25,27 +25,33 @@ const Filter = ({ t, onFilterChange, projectQueryFilter, statusesList }) => {
   }, [currentFilter]);
 
   const handleStatusChange = (option, checked) => {
-    const statusesChanged = [option.code];
+    const statusesChanged = option.code === "SCHEDULED" ? ["SCHEDULED", "PENDING_OTP_APPROVAL", "REJECTED"] : [option.code];
     if (checked) {
       setCurrentFilter({
         ...currentFilter,
         status: [...currentFilter.status, ...statusesChanged]
       });
     } else {
-      setCurrentFilter({
-        ...currentFilter,
-        status: currentFilter.status.filter(status => !statusesChanged.includes(status))
-      });
+      const newStatuses = currentFilter.status.filter(status => !statusesChanged.includes(status));
+      if (newStatuses.length > 0) {
+        setCurrentFilter({
+          ...currentFilter,
+          status: newStatuses
+        });
+      }
     }
   }
 
   const onClearAll = () => {
     setCurrentFilter({
-      status: [],
+      status: ["PENDING_APPROVAL"],
     });
   }
 
   const checkStatusFilterPresence = (status) => {
+    if (status === "SCHEDULED") {
+      return currentFilter.status.some((status) => ["SCHEDULED", "PENDING_OTP_APPROVAL", "REJECTED"].includes(status));
+    }
     return currentFilter.status.includes(status);
   }
 
