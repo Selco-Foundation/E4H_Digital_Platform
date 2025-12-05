@@ -155,12 +155,23 @@ public class PayloadGenerator {
                             continue;
                         }
                         
+                        // Remove "false" from the key name itself (case-insensitive)
+                        String cleanedKey = key.replaceAll("(?i)false", "");
+                        
                         // Format key to readable text (convert camelCase to Title Case)
-                        String readableKey = formatKeyToReadable(key);
+                        String readableKey = formatKeyToReadable(cleanedKey);
                         String valueStr = convertValueToString(value);
                         
                         // Skip if value string is empty or contains only "false"
                         if (valueStr == null || valueStr.trim().isEmpty() || valueStr.trim().equalsIgnoreCase("false")) {
+                            continue;
+                        }
+                        
+                        // Also remove "false" from the value string
+                        valueStr = valueStr.replaceAll("(?i)false", "");
+                        
+                        // Skip if value is empty after removing false
+                        if (valueStr.trim().isEmpty()) {
                             continue;
                         }
                         
@@ -187,25 +198,25 @@ public class PayloadGenerator {
             comments.append("\n");
         }
         
-        // Strip ALL occurrences of "false" from the comment string and replace with blank space
+        // Strip ALL occurrences of "false" from the comment string
         String result = comments.toString();
         if (result == null || result.trim().isEmpty()) {
             log.warn("Comments are empty for alert {}, using fallback", alert.getId());
             result = "No metadata available\n";
         }
         
-        // Replace ALL occurrences of "false" (case-insensitive) with a space - no word boundaries
-        result = result.replaceAll("(?i)false", " ");
+        // Replace ALL occurrences of "false" (case-insensitive) - even as part of words
+        result = result.replaceAll("(?i)false", "");
         // Clean up multiple consecutive spaces (but preserve newlines)
         result = result.replaceAll("[ \\t]+", " ");
         // Clean up any space before colon
         result = result.replace(" :", ":");
-        // Ensure space after colon (but not if it already has one)
+        // Ensure space after colon
         result = result.replaceAll(":(?! )", ": ");
         // Remove duplicate space after colon if created
         result = result.replace(":  ", ": ");
-        // Final cleanup: remove any remaining standalone "false" words
-        result = result.replaceAll("(?i)\\bfalse\\b", "");
+        // Final cleanup: remove any remaining "false" (even partial)
+        result = result.replaceAll("(?i)false", "");
         // Clean up any double spaces that might have been created
         result = result.replaceAll("  +", " ");
         
