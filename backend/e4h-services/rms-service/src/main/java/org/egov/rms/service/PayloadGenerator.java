@@ -124,59 +124,63 @@ public class PayloadGenerator {
 
     /**
      * Builds simple comments for the ticket from metadata in active_alerts
-     * Properly handles JSONB conversion by parsing and rebuilding clean JSON
+     * Formats metadata with each field on a separate line, removing all "false" occurrences
      */
     private String buildComments(Alert alert, FacilityDetails facilityDetails) {
         String metadataStr = alert.getMetadata();
         
         if (metadataStr != null && !metadataStr.trim().isEmpty() && !metadataStr.trim().equals("{}")) {
             try {
-                // Parse the JSON properly
-                Map<String, Object> metadataMap = objectMapper.readValue(metadataStr, Map.class);
+                // First, aggressively remove all "false" from the raw string
+                String cleanedStr = metadataStr.replaceAll("(?i)false", "");
                 
-                // Create a new clean map with only non-null, non-false values
-                Map<String, Object> cleanMap = new HashMap<>();
+                // Parse the cleaned JSON
+                Map<String, Object> metadataMap = objectMapper.readValue(cleanedStr, Map.class);
+                
+                // Build formatted output with each field on a separate line
+                StringBuilder comments = new StringBuilder();
                 for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
                     Object value = entry.getValue();
-                    // Skip null, boolean false, and string "false"
-                    if (value != null && 
-                        !(value instanceof Boolean && !((Boolean) value)) &&
-                        !"false".equalsIgnoreCase(String.valueOf(value))) {
-                        cleanMap.put(entry.getKey(), value);
+                    // Skip null values
+                    if (value == null) {
+                        continue;
                     }
+                    
+                    // Format key to readable text
+                    String key = formatKeyToReadable(entry.getKey());
+                    String valueStr = String.valueOf(value);
+                    
+                    // Remove any remaining "false" from value
+                    valueStr = valueStr.replaceAll("(?i)false", "");
+                    
+                    // Skip if value is empty after cleaning
+                    if (valueStr.trim().isEmpty()) {
+                        continue;
+                    }
+                    
+                    // Append as "Key: Value" on each line
+                    comments.append(key).append(": ").append(valueStr).append("\n");
                 }
                 
-                // Convert back to clean JSON string
-                String cleanJson = objectMapper.writeValueAsString(cleanMap);
+                String result = comments.toString();
+                // Final pass to remove any remaining "false"
+                result = result.replaceAll("(?i)false", "");
                 
-                // Final safety check - remove any remaining "false" strings
-                cleanJson = cleanJson.replaceAll("(?i)\"false\"", "")
-                    .replaceAll("(?i):\\s*false", ":")
-                    .replaceAll("(?i),\\s*false", ",")
-                    .replaceAll("(?i)false\\s*,", "")
-                    .replaceAll("(?i)false", "");
-                
-                // Clean up malformed JSON patterns
-                cleanJson = cleanJson.replaceAll("\"\\s*\"", "\"")
-                    .replaceAll(",\\s*,", ",")
-                    .replaceAll(",\\s*}", "}")
-                    .replaceAll(",\\s*\\]", "]")
-                    .replaceAll("\\{\\s*,", "{")
-                    .replaceAll("\\[\\s*,", "[");
-                
-                return cleanJson;
+                return result.trim().isEmpty() ? "No metadata available" : result.trim();
             } catch (Exception e) {
-                // If parsing fails, aggressively clean the raw string
+                // If parsing fails, format the raw string by removing "false" and fixing structure
                 String cleaned = metadataStr
-                    .replaceAll("(?i)false", "")
-                    .replaceAll("\"\\s*\"", "\"")
-                    .replaceAll(",\\s*,", ",")
-                    .replaceAll(",\\s*}", "}")
-                    .replaceAll(",\\s*\\]", "]")
-                    .replaceAll("\\{\\s*,", "{")
-                    .replaceAll("\\[\\s*,", "[");
+                    .replaceAll("(?i)false", "")  // Remove all "false"
+                    .replaceAll("\"([^\"]+)\"\\s*([^:,\\}\\]]+)", "\"$1\": $2")  // Fix missing colons
+                    .replaceAll("([0-9.]+)\\s*,\\s*\"", "$1,\n\"")  // Add newlines before keys
+                    .replaceAll("\"([^\"]+)\"\\s*:", "$1:")  // Remove quotes from keys
+                    .replaceAll(":\\s*\"([^\"]+)\"", ": $1")  // Remove quotes from values
+                    .replaceAll(",\\s*", ",\n")  // Add newlines after commas
+                    .replaceAll("\\{", "")  // Remove opening brace
+                    .replaceAll("\\}", "")  // Remove closing brace
+                    .replaceAll("\"", "");  // Remove all remaining quotes
                 
-                return cleaned.isEmpty() ? "{}" : cleaned;
+                return cleaned.trim().isEmpty() ? "No metadata available" : cleaned.trim();
             }
         } else {
             return "No metadata available";
