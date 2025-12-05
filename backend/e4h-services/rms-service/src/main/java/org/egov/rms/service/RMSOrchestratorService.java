@@ -286,47 +286,59 @@ public class RMSOrchestratorService {
         Role role1 = Role.builder()
                 .name("Complainant")
                 .code("COMPLAINANT")
-                .tenantId("pg")
+                .tenantId("in")
                 .build();
         roles.add(role1);
         Role role2 = Role.builder()
                 .name("Employee")
                 .code("EMPLOYEE")
-                .tenantId("pg")
+                .tenantId("in")
                 .build();
         roles.add(role2);
         Role role3 = Role.builder()
                 .name("Complaint Assessor")
                 .code("COMPLAINT_ASSESSOR")
-                .tenantId("pg")
+                .tenantId("in")
                 .build();
         roles.add(role3);
         Role role4 = Role.builder()
                 .name("Complaint facilitator 2")
                 .code("COMPLAINT_FACILITATOR_2")
-                .tenantId("pg")
+                .tenantId("in")
                 .build();
         roles.add(role4);
         Role role5 = Role.builder()
                 .name("Super User")
                 .code("SUPERUSER")
-                .tenantId("pg")
+                .tenantId("in")
                 .build();
         roles.add(role5);
+        Role role6 = Role.builder()
+                .name("RMS")
+                .code("RMS")
+                .tenantId("in")
+                .build();
+        roles.add(role6);
+        
         User user = User.builder()
-                .id(95L)
-                .uuid(config.getSystemUserUuid())
-                .userName("7346864311")
+                .id(14301L)
+                .uuid("fb022833-743d-43cb-adfa-312fbd13f438")
+                .userName("rms_user")
                 .name("nikhil")
-                .type("EMPLOYEE")
-                .tenantId("pg")
+                .mobileNumber("9901224634")
                 .emailId("crm@gmail.com")
+                .locale("en_IN")
+                .type("EMPLOYEE")
+                .active(true)
+                .tenantId("in")
                 .roles(roles)
                 .build();
 
         return RequestInfo.builder()
-                .authToken("52e344c6-4649-48c5-a188-98b3dc0c7e93")
+                .apiId("Rainmaker")
+                .authToken("fa70bd35-8036-4b35-a1b4-85e85c254b61")
                 .userInfo(user)
+                .msgId("1764924656583|en_IN")
                 .build();
     }
 }
