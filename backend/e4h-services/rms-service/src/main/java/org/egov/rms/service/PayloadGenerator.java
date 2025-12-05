@@ -124,52 +124,43 @@ public class PayloadGenerator {
 
     /**
      * Builds simple comments for the ticket from metadata in active_alerts
-     * Parses JSON, removes boolean false values, and returns clean JSON string
+     * Properly handles JSONB conversion by parsing and rebuilding clean JSON
      */
     private String buildComments(Alert alert, FacilityDetails facilityDetails) {
         String metadataStr = alert.getMetadata();
         
-        log.info("RAW METADATA STRING from database for alert {}: [{}]", alert.getId(), metadataStr);
-        
         if (metadataStr != null && !metadataStr.trim().isEmpty()) {
             try {
-                // Parse the JSON to clean it up
+                // Parse the JSON properly to handle JSONB conversion issues
                 Map<String, Object> metadataMap = objectMapper.readValue(metadataStr, Map.class);
                 
-                log.info("PARSED METADATA MAP for alert {}: {}", alert.getId(), metadataMap);
+                // Remove any boolean false values and null values
+                metadataMap.entrySet().removeIf(entry -> 
+                    entry.getValue() == null || 
+                    (entry.getValue() instanceof Boolean && !((Boolean) entry.getValue()))
+                );
                 
-                // Remove any boolean false values from the map
-                metadataMap.entrySet().removeIf(entry -> {
-                    boolean isFalse = entry.getValue() instanceof Boolean && !((Boolean) entry.getValue());
-                    if (isFalse) {
-                        log.info("Removing boolean false entry: key={}", entry.getKey());
-                    }
-                    return isFalse;
-                });
-                
-                // Also remove any string values that are exactly "false"
-                metadataMap.entrySet().removeIf(entry -> "false".equalsIgnoreCase(String.valueOf(entry.getValue())));
-                
-                // Convert back to JSON string (this will be clean, properly formatted JSON)
-                String cleanJson = objectMapper.writeValueAsString(metadataMap);
-                
-                log.info("CLEANED METADATA JSON for alert {}: [{}]", alert.getId(), cleanJson);
-                
-                // One more pass to remove "false" just in case
-                cleanJson = cleanJson.replaceAll("(?i)false", "");
-                
-                log.info("FINAL METADATA after false removal for alert {}: [{}]", alert.getId(), cleanJson);
-                
-                return cleanJson;
+                // Convert back to clean JSON string using ObjectMapper (proper JSON formatting)
+                return objectMapper.writeValueAsString(metadataMap);
             } catch (Exception e) {
-                log.error("Error parsing/cleaning metadata JSON for alert {}: {}", alert.getId(), e.getMessage(), e);
-                // Fallback: remove "false" from raw string aggressively
-                String cleaned = metadataStr.replaceAll("(?i)false", "");
-                log.info("FALLBACK: Using raw metadata with false removed for alert {}: [{}]", alert.getId(), cleaned);
+                // If parsing fails, try to clean the raw string
+                // Remove "false" and fix common JSONB conversion issues
+                String cleaned = metadataStr
+                    .replaceAll("(?i)false", "")
+                    .replaceAll(":\\s*\"false\"", ":")
+                    .replaceAll(",\\s*\"[^\"]*false[^\"]*\"\\s*:", ",")
+                    .replaceAll(",\\s*\"[^\"]*false[^\"]*\"", "")
+                    .replaceAll("\"[^\"]*false[^\"]*\"\\s*:", "")
+                    .replaceAll("\"[^\"]*false[^\"]*\"", "");
+                
+                // Clean up any double commas or trailing commas
+                cleaned = cleaned.replaceAll(",\\s*,", ",")
+                    .replaceAll(",\\s*}", "}")
+                    .replaceAll(",\\s*\\]", "]");
+                
                 return cleaned;
             }
         } else {
-            log.warn("No metadata available for alert {}", alert.getId());
             return "No metadata available";
         }
     }
