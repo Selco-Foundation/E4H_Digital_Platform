@@ -301,9 +301,9 @@ public class AlertRepository {
                     "    (SELECT jsonb_object_agg(key, value) " +
                     "     FROM jsonb_each(COALESCE(metadata, '{}'::jsonb)) " +
                     "     WHERE value IS NOT NULL " +
-                    "       AND NOT (jsonb_typeof(value) = 'boolean' AND value::jsonb = 'false'::jsonb)), " +
+                    "       AND NOT (jsonb_typeof(value) = 'boolean' AND value = 'false'::jsonb)), " +
                     "    '{}'::jsonb" +
-                    "  ) as metadata " +
+                    "  ) AS metadata " +
                     "FROM active_alerts " +
                     "ORDER BY detected_at DESC";
 
