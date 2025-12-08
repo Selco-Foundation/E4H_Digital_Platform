@@ -166,8 +166,9 @@ public class EscalationMasterDataService {
 
     // Allow to get boundary for each state base
     public Map<String, String> getActiveTenantIdsName(RequestInfo requestInfo) {
+        log.info("Fetching active tenant IDs from MDMS");
+
         try {
-            log.info("Fetching active tenant IDs from MDMS");
             Map<String, Map<String, JSONArray>> mdmsData = mdmsUtil.fetchMdmsData(
                     requestInfo,
                     "in",
@@ -175,44 +176,61 @@ public class EscalationMasterDataService {
                     List.of(TENANT_MASTER)
             );
 
-            JSONArray tenants = mdmsData.get(TENANT_MODULE).get(TENANT_MASTER);
-            if (tenants != null && !tenants.isEmpty()) {
-                Map<String, String> map = new HashMap<>();
+            JSONArray tenants = mdmsData
+                    .getOrDefault(TENANT_MODULE, Map.of())
+                    .get(TENANT_MASTER);
 
-                for (Object tenantObj : tenants) {
-                    try {
-                        Map<String, Object> tenant = (Map<String, Object>) tenantObj;
-
-                        // Extract tenant code (ID) from the tenant object
-                        String tenantId = (String) tenant.get("code");
-                        String tenantIdName = (String) tenant.get("name");
-                        if (tenantId != null && tenantIdName!=null && !tenantId.trim().isEmpty() && !tenantIdName.trim().isEmpty()) {
-                            // Only include state-level tenants (exclude 'in' which is country-level)
-                            if (!tenantId.startsWith("in")) {
-                                map.put(tenantId, "India_"+tenantIdName);
-                                log.debug("Added tenant: {} with name {}", tenantId, tenantIdName);
-                            } else {
-                                log.debug("Skipping country-level tenant: {}", tenantId);
-                            }
-                        } else {
-                            log.warn("Tenant object missing 'code' field: {}", tenantObj);
-                        }
-                    } catch (Exception e) {
-                        log.warn("Error processing tenant object: {}", tenantObj, e);
-                    }
-                }
-
-                log.info("Found {} active state-level tenants: {}", map.size(), map);
-                return map;
+            if (tenants == null || tenants.isEmpty()) {
+                log.warn("No tenants found in MDMS");
+                return Map.of();
             }
 
-            log.warn("No tenants found in MDMS");
-            return new HashMap<>();
+            Map<String, String> tenantMap = new HashMap<>();
+
+            for (Object tenantObj : tenants) {
+                processTenant(tenantObj, tenantMap);
+            }
+
+            log.info("Found {} active state-level tenants: {}", tenantMap.size(), tenantMap);
+            return tenantMap;
 
         } catch (Exception e) {
             log.error("Error fetching tenants from MDMS", e);
-            return new HashMap<>();
+            return Map.of();
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void processTenant(Object tenantObj, Map<String, String> tenantMap) {
+        if (!(tenantObj instanceof Map)) {
+            log.warn("Invalid tenant object format: {}", tenantObj);
+            return;
+        }
+
+        Map<String, Object> tenant = (Map<String, Object>) tenantObj;
+        String tenantId = (String) tenant.get("code");
+        String tenantName = (String) tenant.get("name");
+
+        if (!isValidTenant(tenantId, tenantName)) {
+            log.warn("Tenant object missing required fields: {}", tenantObj);
+            return;
+        }
+
+        if (tenantId.startsWith("in")) {
+            log.debug("Skipping country-level tenant: {}", tenantId);
+            return;
+        }
+
+        tenantMap.put(tenantId, "India_" + tenantName);
+        log.debug("Added tenant: {} with name {}", tenantId, tenantName);
+    }
+
+    private boolean isValidTenant(String tenantId, String tenantName) {
+        return isNonEmpty(tenantId) && isNonEmpty(tenantName);
+    }
+
+    private boolean isNonEmpty(String value) {
+        return value != null && !value.trim().isEmpty();
     }
     
 }
