@@ -176,8 +176,9 @@ public class PayloadGenerator {
             return result.isEmpty() ? "No metadata available" : result;
             
         } catch (Exception e) {
+            log.error("Error parsing metadata JSON: {}", metadataStr, e);
             // If JSON parsing fails, manually extract and format
-            return extractAndFormatMetadata(cleaned);
+            return extractAndFormatMetadata(metadataStr);
         }
     }
     
