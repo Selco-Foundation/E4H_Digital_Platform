@@ -304,6 +304,15 @@ public class AlertRepository {
             // Log the SQL query being executed
             log.info("Executing SQL query to retrieve alerts: {}", sql);
             
+            // Add a direct query to check metadata from database
+            String checkMetadataSql = "SELECT id, metadata, metadata::text as metadata_text FROM active_alerts LIMIT 3";
+            List<Map<String, Object>> metadataCheck = jdbcTemplate.queryForList(checkMetadataSql);
+            log.info("=== DIRECT METADATA CHECK FROM DATABASE ===");
+            for (Map<String, Object> row : metadataCheck) {
+                log.info("Alert ID: {}, Metadata (raw): {}, Metadata (text): {}", 
+                        row.get("id"), row.get("metadata"), row.get("metadata_text"));
+            }
+            
             List<Alert> alerts = jdbcTemplate.query(sql, new AlertRowMapper());
             log.info("Retrieved {} alerts from active_alerts (including alerts with closed tickets)", alerts.size());
             
@@ -311,6 +320,9 @@ public class AlertRepository {
             for (int i = 0; i < Math.min(3, alerts.size()); i++) {
                 Alert alert = alerts.get(i);
                 log.info("Sample alert {} - ID: {}, Metadata: {}", i+1, alert.getId(), alert.getMetadata());
+                if (alert.getMetadata() == null || alert.getMetadata().equals("{}")) {
+                    log.error("ERROR: Alert {} has null or empty metadata after extraction!", alert.getId());
+                }
             }
             
             // Log details of each alert for debugging
@@ -350,40 +362,50 @@ public class AlertRepository {
                     metaObj != null ? metaObj.getClass().getName() : "null", 
                     metaObj);
             
+            String alertId = rs.getString("id");
+            
             if (metaObj instanceof PGobject) {
                 PGobject pgObj = (PGobject) metaObj;
-                // Extract directly from PGobject - this preserves the JSON structure
                 metadataJson = pgObj.getValue();
-                log.debug("Extracted from PGobject - type: {}, value length: {}", 
-                        pgObj.getType(), metadataJson != null ? metadataJson.length() : 0);
                 
-                // If the value is null or empty, set to empty JSON object
-                if (metadataJson == null || metadataJson.trim().isEmpty()) {
-                    metadataJson = "{}";
+                // CRITICAL LOGGING: Log exactly what we get from PGobject
+                log.info("=== METADATA EXTRACTION FOR ALERT {} ===", alertId);
+                log.info("PGobject type: {}", pgObj.getType());
+                log.info("PGobject value: {}", metadataJson);
+                log.info("PGobject value length: {}", metadataJson != null ? metadataJson.length() : 0);
+                log.info("PGobject value is null: {}", metadataJson == null);
+                log.info("PGobject value is empty: {}", metadataJson != null && metadataJson.trim().isEmpty());
+                log.info("PGobject value equals '{}': {}", metadataJson != null && metadataJson.trim().equals("{}"));
+                
+                // Only set to "{}" if it's actually empty, but log a warning
+                if (metadataJson == null || metadataJson.trim().isEmpty() || metadataJson.trim().equals("{}")) {
+                    log.error("ERROR: Metadata extracted as null/empty/{{}} for alert {} - this should not happen if data exists in DB!", alertId);
+                    // Keep what we got - don't change it
                 }
             } else if (metaObj != null) {
-                // Fallback: if not PGobject, try to get as string
                 metadataJson = metaObj.toString();
-                log.debug("Extracted from toString() - not PGobject, type: {}", metaObj.getClass().getName());
+                log.info("Extracted from toString() - not PGobject, type: {}, value: {}", 
+                        metaObj.getClass().getName(), metadataJson);
                 
-                // If result is null or empty, set to empty JSON object
-                if (metadataJson == null || metadataJson.trim().isEmpty()) {
-                    metadataJson = "{}";
+                if (metadataJson == null || metadataJson.trim().isEmpty() || metadataJson.trim().equals("{}")) {
+                    log.error("ERROR: Metadata from toString() is null/empty/{{}} for alert {}", alertId);
                 }
             } else {
-                // No metadata object, set to empty JSON
-                metadataJson = "{}";
+                log.error("ERROR: metaObj is NULL for alert {} - metadata column is null in database!", alertId);
+                metadataJson = null; // Set to null instead of "{}" so we can track it
             }
             
-            // Log the final metadata string that will be used (truncated for readability)
+            // Log the final metadata string that will be used
+            log.info("Final metadata JSON for alert {}: {}", alertId, metadataJson);
             if (metadataJson != null && !metadataJson.equals("{}")) {
                 String preview = metadataJson.length() > 200 ? metadataJson.substring(0, 200) + "..." : metadataJson;
-                log.info("Final metadata JSON for alert {} (length: {}): {}", 
-                        rs.getString("id"), metadataJson.length(), preview);
+                log.info("Metadata preview for alert {} (length: {}): {}", alertId, metadataJson.length(), preview);
                 // Check if "false" appears in the metadata
                 if (metadataJson.toLowerCase().contains("false")) {
-                    log.warn("WARNING: Metadata contains 'false' for alert {}: {}", rs.getString("id"), preview);
+                    log.warn("WARNING: Metadata contains 'false' for alert {}: {}", alertId, preview);
                 }
+            } else {
+                log.error("ERROR: Final metadata is null or '{}' for alert {}!", alertId);
             }
             
             return Alert.builder()

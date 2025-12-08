@@ -129,11 +129,20 @@ public class PayloadGenerator {
     private String buildComments(Alert alert, FacilityDetails facilityDetails) {
         String metadataStr = alert.getMetadata();
         
+        // Add detailed logging
+        log.info("=== BUILDING COMMENTS ===");
+        log.info("Alert ID: {}", alert.getId());
+        log.info("Metadata string: {}", metadataStr);
+        log.info("Metadata is null: {}", metadataStr == null);
+        log.info("Metadata is empty: {}", metadataStr != null && metadataStr.trim().isEmpty());
+        log.info("Metadata equals '{}': {}", metadataStr != null && metadataStr.trim().equals("{}"));
+        
         if (metadataStr == null || metadataStr.trim().isEmpty() || metadataStr.trim().equals("{}")) {
+            log.error("ERROR: Returning 'No metadata available' - metadataStr: '{}' for alert {}", metadataStr, alert.getId());
             return "No metadata available";
         }
         
-        log.debug("Raw metadata string: {}", metadataStr);
+        log.info("Raw metadata string (length: {}): {}", metadataStr.length(), metadataStr);
         
         // Parse JSON first (database structure is correct, so parse directly)
         try {
