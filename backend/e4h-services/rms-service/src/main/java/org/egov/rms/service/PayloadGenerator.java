@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -39,6 +40,10 @@ public class PayloadGenerator {
 //                return null;
 //            }
 
+            String comment = alert.getAdditionalDetails().entrySet().stream()
+                    .map(e -> e.getKey() + ": " + e.getValue().toString().replace("\"", ""))
+                    .collect(Collectors.joining("\n"));
+
             // Map alert type/subtype to IM service incident type/subtype
             String incidentType = mapAlertTypeToIncidentType(alert.getAlertType());
             String incidentSubType = mapAlertSubTypeToIncidentSubType(alert.getAlertSubType(), alert.getAlertType());
@@ -50,7 +55,7 @@ public class PayloadGenerator {
                     .tenantId("in")
                     .district("Bagalkote") // TODO: Extract from mapping or facility data
                     .block("Bagalkot") // TODO: Extract from mapping or facility data
-                    .comments(buildComments(alert, null))
+                    .comments(comment)
                     .systemFunctional("FUNCTIONAL")
                     .boundaryCode("India_Karnataka_Bagalkote_Bagalkot_FAC/2025/5329")
                     .source("RMS")

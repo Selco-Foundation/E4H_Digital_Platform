@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.Map;
 
 @Data
 @Builder
@@ -40,6 +41,9 @@ public class Alert {
 
     @JsonProperty("metadata")
     private String metadata; // JSON string for additional alert details
+
+    @JsonProperty("additionalDetails")
+    private Map<String, Object> additionalDetails = null;
 
     @JsonProperty("ticketId")
     private String ticketId; // IM service ticket ID if created

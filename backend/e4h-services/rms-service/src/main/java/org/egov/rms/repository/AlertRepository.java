@@ -1,5 +1,6 @@
 package org.egov.rms.repository;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.model.Alert;
 import org.postgresql.util.PGobject;
@@ -20,6 +21,8 @@ import java.util.Optional;
 public class AlertRepository {
 
     private final JdbcTemplate jdbcTemplate;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public AlertRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
@@ -297,7 +300,7 @@ public class AlertRepository {
             String sql = "SELECT " +
                     "  id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
                     "  detected_at, resolved_at, last_suppressed_at, ticket_id, " +
-                    "  COALESCE(metadata, '{}'::jsonb) AS metadata " +
+                    "  metadata " +
                     "FROM active_alerts " +
                     "ORDER BY detected_at DESC";
 
@@ -339,69 +342,78 @@ public class AlertRepository {
      * RowMapper for Alert
      * Uses PGobject to properly extract JSONB without corruption
      */
-    private static class AlertRowMapper implements RowMapper<Alert> {
+    private class AlertRowMapper implements RowMapper<Alert> {
+        private static final ObjectMapper objectMapper = new ObjectMapper();
         @Override
         public Alert mapRow(ResultSet rs, int rowNum) throws SQLException {
-            String metadataJson = null;
-            Object metaObj = rs.getObject("metadata");
-            
-            // Log the raw object type and value for debugging
-            log.debug("Raw metadata object type: {}, value: {}", 
-                    metaObj != null ? metaObj.getClass().getName() : "null", 
-                    metaObj);
-            
-            if (metaObj instanceof PGobject) {
-                PGobject pgObj = (PGobject) metaObj;
-                // Extract directly from PGobject - this preserves the JSON structure
-                metadataJson = pgObj.getValue();
-                log.debug("Extracted from PGobject - type: {}, value length: {}", 
-                        pgObj.getType(), metadataJson != null ? metadataJson.length() : 0);
-                
-                // If the value is null or empty, set to empty JSON object
-                if (metadataJson == null || metadataJson.trim().isEmpty()) {
-                    metadataJson = "{}";
-                }
-            } else if (metaObj != null) {
-                // Fallback: if not PGobject, try to get as string
-                metadataJson = metaObj.toString();
-                log.debug("Extracted from toString() - not PGobject, type: {}", metaObj.getClass().getName());
-                
-                // If result is null or empty, set to empty JSON object
-                if (metadataJson == null || metadataJson.trim().isEmpty()) {
-                    metadataJson = "{}";
-                }
-            } else {
-                // No metadata object, set to empty JSON
-                metadataJson = "{}";
+            try {
+//                String metadataJson = null;
+//                Object metaObj = rs.getObject("metadata");
+//
+//                // Log the raw object type and value for debugging
+//                log.debug("Raw metadata object type: {}, value: {}",
+//                        metaObj != null ? metaObj.getClass().getName() : "null",
+//                        metaObj);
+//
+//                if (metaObj instanceof PGobject) {
+//                    PGobject pgObj = (PGobject) metaObj;
+//                    // Extract directly from PGobject - this preserves the JSON structure
+//                    metadataJson = pgObj.getValue();
+//                    log.debug("Extracted from PGobject - type: {}, value length: {}",
+//                            pgObj.getType(), metadataJson != null ? metadataJson.length() : 0);
+//
+//                    // If the value is null or empty, set to empty JSON object
+//                    if (metadataJson == null || metadataJson.trim().isEmpty()) {
+//                        metadataJson = "{}";
+//                    }
+//                } else if (metaObj != null) {
+//                    // Fallback: if not PGobject, try to get as string
+//                    metadataJson = metaObj.toString();
+//                    log.debug("Extracted from toString() - not PGobject, type: {}", metaObj.getClass().getName());
+//
+//                    // If result is null or empty, set to empty JSON object
+//                    if (metadataJson == null || metadataJson.trim().isEmpty()) {
+//                        metadataJson = "{}";
+//                    }
+//                } else {
+//                    // No metadata object, set to empty JSON
+//                    metadataJson = "{}";
+//                }
+//
+////                 Log the final metadata string that will be used (truncated for readability)
+//                if (metadataJson != null && !metadataJson.equals("{}")) {
+//                    String preview = metadataJson.length() > 200 ? metadataJson.substring(0, 200) + "..." : metadataJson;
+//                    log.info("Final metadata JSON for alert {} (length: {}): {}",
+//                            rs.getString("id"), metadataJson.length(), preview);
+//                    // Check if "false" appears in the metadata
+//                    if (metadataJson.toLowerCase().contains("false")) {
+//                        log.warn("WARNING: Metadata contains 'false' for alert {}: {}", rs.getString("id"), preview);
+//                    }
+//                }
+
+                return Alert.builder()
+                        .id(rs.getString("id"))
+                        .facilityId(rs.getString("facility_id"))
+                        .hfrId(rs.getString("hfr_id"))
+                        .alertType(Alert.AlertType.valueOf(rs.getString("alert_type")))
+                        .alertSubType(Alert.AlertSubType.valueOf(rs.getString("alert_sub_type")))
+                        .status(Alert.AlertStatus.valueOf(rs.getString("status")))
+                        .detectedAt(rs.getTimestamp("detected_at") != null ?
+                                rs.getTimestamp("detected_at").toInstant() : null)
+                        .resolvedAt(rs.getTimestamp("resolved_at") != null ?
+                                rs.getTimestamp("resolved_at").toInstant() : null)
+                        .lastSuppressedAt(rs.getTimestamp("last_suppressed_at") != null ?
+                                rs.getTimestamp("last_suppressed_at").toInstant() : null)
+                        .ticketId(rs.getString("ticket_id"))
+//                        .metadata(metadataJson)
+                        .additionalDetails(rs.getString("metadata") == null
+                                ? null
+                                : objectMapper.readValue(rs.getString("metadata"), Map.class))
+                        .build();
             }
-            
-            // Log the final metadata string that will be used (truncated for readability)
-            if (metadataJson != null && !metadataJson.equals("{}")) {
-                String preview = metadataJson.length() > 200 ? metadataJson.substring(0, 200) + "..." : metadataJson;
-                log.info("Final metadata JSON for alert {} (length: {}): {}", 
-                        rs.getString("id"), metadataJson.length(), preview);
-                // Check if "false" appears in the metadata
-                if (metadataJson.toLowerCase().contains("false")) {
-                    log.warn("WARNING: Metadata contains 'false' for alert {}: {}", rs.getString("id"), preview);
-                }
+            catch (Exception e){
+                throw new RuntimeException(e);
             }
-            
-            return Alert.builder()
-                    .id(rs.getString("id"))
-                    .facilityId(rs.getString("facility_id"))
-                    .hfrId(rs.getString("hfr_id"))
-                    .alertType(Alert.AlertType.valueOf(rs.getString("alert_type")))
-                    .alertSubType(Alert.AlertSubType.valueOf(rs.getString("alert_sub_type")))
-                    .status(Alert.AlertStatus.valueOf(rs.getString("status")))
-                    .detectedAt(rs.getTimestamp("detected_at") != null ? 
-                            rs.getTimestamp("detected_at").toInstant() : null)
-                    .resolvedAt(rs.getTimestamp("resolved_at") != null ? 
-                            rs.getTimestamp("resolved_at").toInstant() : null)
-                    .lastSuppressedAt(rs.getTimestamp("last_suppressed_at") != null ? 
-                            rs.getTimestamp("last_suppressed_at").toInstant() : null)
-                    .ticketId(rs.getString("ticket_id"))
-                    .metadata(metadataJson)
-                    .build();
         }
     }
 }
