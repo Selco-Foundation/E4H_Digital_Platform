@@ -292,23 +292,26 @@ public class AlertRepository {
             
             // Get ALL alerts from active_alerts (including those with closed tickets)
             // The deduplication logic will check if tickets are open/closed and filter accordingly
-            // Extract JSONB cleanly: filter out null and boolean false values, return as JSONB (not text)
-            // Using jsonb_object_agg to rebuild clean JSONB - PGobject will handle conversion properly
+            // Extract JSONB DIRECTLY without any rebuilding - database has correct structure
+            // PGobject will handle the extraction cleanly without corruption
             String sql = "SELECT " +
                     "  id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
                     "  detected_at, resolved_at, last_suppressed_at, ticket_id, " +
-                    "  COALESCE(" +
-                    "    (SELECT jsonb_object_agg(key, value) " +
-                    "     FROM jsonb_each(COALESCE(metadata, '{}'::jsonb)) " +
-                    "     WHERE value IS NOT NULL " +
-                    "       AND NOT (jsonb_typeof(value) = 'boolean' AND value = 'false'::jsonb)), " +
-                    "    '{}'::jsonb" +
-                    "  ) AS metadata " +
+                    "  COALESCE(metadata, '{}'::jsonb) AS metadata " +
                     "FROM active_alerts " +
                     "ORDER BY detected_at DESC";
 
+            // Log the SQL query being executed
+            log.info("Executing SQL query to retrieve alerts: {}", sql);
+            
             List<Alert> alerts = jdbcTemplate.query(sql, new AlertRowMapper());
             log.info("Retrieved {} alerts from active_alerts (including alerts with closed tickets)", alerts.size());
+            
+            // Log metadata for first few alerts to debug
+            for (int i = 0; i < Math.min(3, alerts.size()); i++) {
+                Alert alert = alerts.get(i);
+                log.info("Sample alert {} - ID: {}, Metadata: {}", i+1, alert.getId(), alert.getMetadata());
+            }
             
             // Log details of each alert for debugging
             if (alerts.isEmpty()) {
@@ -342,10 +345,45 @@ public class AlertRepository {
             String metadataJson = null;
             Object metaObj = rs.getObject("metadata");
             
+            // Log the raw object type and value for debugging
+            log.debug("Raw metadata object type: {}, value: {}", 
+                    metaObj != null ? metaObj.getClass().getName() : "null", 
+                    metaObj);
+            
             if (metaObj instanceof PGobject) {
-                metadataJson = ((PGobject) metaObj).getValue();
+                PGobject pgObj = (PGobject) metaObj;
+                // Extract directly from PGobject - this preserves the JSON structure
+                metadataJson = pgObj.getValue();
+                log.debug("Extracted from PGobject - type: {}, value length: {}", 
+                        pgObj.getType(), metadataJson != null ? metadataJson.length() : 0);
+                
+                // If the value is null or empty, set to empty JSON object
+                if (metadataJson == null || metadataJson.trim().isEmpty()) {
+                    metadataJson = "{}";
+                }
             } else if (metaObj != null) {
+                // Fallback: if not PGobject, try to get as string
                 metadataJson = metaObj.toString();
+                log.debug("Extracted from toString() - not PGobject, type: {}", metaObj.getClass().getName());
+                
+                // If result is null or empty, set to empty JSON object
+                if (metadataJson == null || metadataJson.trim().isEmpty()) {
+                    metadataJson = "{}";
+                }
+            } else {
+                // No metadata object, set to empty JSON
+                metadataJson = "{}";
+            }
+            
+            // Log the final metadata string that will be used (truncated for readability)
+            if (metadataJson != null && !metadataJson.equals("{}")) {
+                String preview = metadataJson.length() > 200 ? metadataJson.substring(0, 200) + "..." : metadataJson;
+                log.info("Final metadata JSON for alert {} (length: {}): {}", 
+                        rs.getString("id"), metadataJson.length(), preview);
+                // Check if "false" appears in the metadata
+                if (metadataJson.toLowerCase().contains("false")) {
+                    log.warn("WARNING: Metadata contains 'false' for alert {}: {}", rs.getString("id"), preview);
+                }
             }
             
             return Alert.builder()
