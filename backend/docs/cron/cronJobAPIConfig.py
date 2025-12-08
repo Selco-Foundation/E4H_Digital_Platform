@@ -38,7 +38,6 @@ for tenant_id in tenant_ids:
             "authToken": "5eb3655f-31b1-4cd5-b8c2-4f9c033510d4"
         },
         "tenantId": tenant_id,
-        "userType": "SYSTEM",
         "userName": "CRONJOB",
         "pageSize": "1",
         "roleCodes": ["SYSTEM"]
