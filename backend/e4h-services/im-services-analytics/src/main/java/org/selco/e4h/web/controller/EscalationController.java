@@ -432,7 +432,7 @@ public class EscalationController {
             .build();
 
         return WeeklyReportData.builder()
-            .tenantId("consolidated")
+            .tenantId("in")
             .dateRange(firstReport.getDateRange())
             .weekStartDate(firstReport.getWeekStartDate())
             .weekEndDate(firstReport.getWeekEndDate())
@@ -516,7 +516,6 @@ public class EscalationController {
         String escalationId = escalationRecipient.getId().toString();
         String recipientRoleName = recipientRole.getRole();
         String state = activeTenantIdsName.get(tenantId); // Get BoundaryCode from tenantId: For tenantId pg, state = India_Karnataka
-//        if (state==null || !state.trim().isEmpty())
 
         // Step 3a: Query users for role
         List<String> roleCodes = List.of(recipientRole.getRole());
@@ -568,9 +567,11 @@ public class EscalationController {
             ticketsByLevel.put(item.getEscalationLevel(), filteredTickets);
             
             // Always generate CSV (with headers only if no tickets)
+            // Use state name in filename instead of tenantId
             String csvContent = csvGenerationService.generateEscalationCsv(filteredTickets);
-            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), tenantId);
-            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+            String stateName = commonUtility.getStateDisplayName(state);
+            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), stateName);
+            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
             
             if (csvFileStoreId != null) {
                 csvFileStoreIds.add(csvFileStoreId);
@@ -657,9 +658,11 @@ public class EscalationController {
             ticketsByLevel.put(item.getEscalationLevel(), filteredTickets);
             
             // Always generate CSV (with headers only if no tickets)
+            // All files are stored under tenantId "in"
+            // Use "AllStates" for country-level escalations
             String csvContent = csvGenerationService.generateEscalationCsv(filteredTickets);
-            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), "in");
-            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), "AllStates");
+            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
             
             if (csvFileStoreId != null) {
                 csvFileStoreIds.add(csvFileStoreId);
@@ -689,7 +692,7 @@ public class EscalationController {
             // Generate combined CSV for L1 section
             if (!l1Tickets.isEmpty()) {
                 String l1CsvContent = csvGenerationService.generateEscalationCsv(l1Tickets);
-                String l1CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_ONE", "in");
+                String l1CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_ONE", "AllStates");
                 String l1CsvFileStoreId = uploadCsvToFileStore(l1CsvContent, l1CsvFileName, "in", requestInfo);
                 
                 if (l1CsvFileStoreId != null) {
@@ -704,7 +707,7 @@ public class EscalationController {
                     // Add L2 file if it exists
                     if (ticketsByLevel.get("LEVEL_TWO") != null && !ticketsByLevel.get("LEVEL_TWO").isEmpty()) {
                         String l2CsvContent = csvGenerationService.generateEscalationCsv(ticketsByLevel.get("LEVEL_TWO"));
-                        String l2CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_TWO", "in");
+                        String l2CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_TWO", "AllStates");
                         String l2CsvFileStoreId = uploadCsvToFileStore(l2CsvContent, l2CsvFileName, "in", requestInfo);
                         
                         if (l2CsvFileStoreId != null) {
@@ -740,14 +743,15 @@ public class EscalationController {
     
     /**
      * Extract escalation level from CSV filename
-     * Example: "escalation_daily_LEVEL_ONE_in_20251010_045240.csv" -> "LEVEL_ONE"
+     * Example: "escalation_daily_LEVEL_ONE_karnataka_20251010_045240.csv" -> "LEVEL_ONE"
+     * Pattern: escalation_{type}_{LEVEL}_{stateName}_{timestamp}.csv
      */
     private String extractEscalationLevelFromFileName(String fileName) {
         if (fileName == null || fileName.isEmpty()) {
             return null;
         }
         
-        // Pattern: escalation_daily_LEVEL_ONE_in_20251010_045240.csv
+        // Pattern: escalation_daily_LEVEL_ONE_karnataka_20251010_045240.csv
         String[] parts = fileName.split("_");
         for (int i = 0; i < parts.length; i++) {
             if ("LEVEL".equals(parts[i]) && i + 1 < parts.length) {

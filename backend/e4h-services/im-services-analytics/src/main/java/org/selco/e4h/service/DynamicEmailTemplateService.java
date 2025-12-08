@@ -118,7 +118,8 @@ public class DynamicEmailTemplateService {
         variables.put("ESCALATION_SECTIONS", escalationSections);
         
         // Generate state-specific dashboard URL
-        variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl(tenantId));
+        // All states use the common dashboard URL since tenantId is "in" for all
+        variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl());
 
         // Role-specific intro line with resolved placeholders
         String introLine = generateIntroLine(
@@ -381,7 +382,7 @@ public class DynamicEmailTemplateService {
      * Get call to action text based on escalation level and role
      */
     private String getCallToAction(String level, String recipientRole, String tenantId) {
-        String sauraEmitraUrl = commonUtility.generateSauraEmitraUrl(tenantId);
+        String sauraEmitraUrl = commonUtility.generateSauraEmitraUrl();
 
         // Senior Program Manager (SPM)
         if (ROLE_SENIOR_PROGRAM_MANAGER.equals(recipientRole)) {

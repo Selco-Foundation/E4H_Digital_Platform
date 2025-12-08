@@ -39,20 +39,100 @@ public class CommonUtility {
             return "Unknown";
         }
         
-        switch (tenantId.toLowerCase()) {
-            case "pg": return "Karnataka";
-            case "sk": return "Sikkim";
-            case "mz": return "Mizoram";
-            case "or": return "Odisha";
-            case "as": return "Assam";
-            case "mn": return "Manipur";
-            case "nl": return "Nagaland";
-            case "gj": return "Gujarat";
-            case "mh": return "Maharashtra";
-            case "ml": return "Meghalaya";
-            case "in": return "India";
-            default: return tenantId.toUpperCase();
+        String normalizedId = tenantId.toLowerCase().trim();
+        
+        // Handle state codes with underscores (e.g., "INDIA_KARNATAKA" -> "Karnataka")
+        if (normalizedId.contains("_")) {
+            String[] parts = normalizedId.split("_");
+            if (parts.length > 1) {
+                // Extract the state part (last part after underscore)
+                String statePart = parts[parts.length - 1];
+                return getStateNameFromCode(statePart);
+            }
         }
+        
+        // Handle state codes with dots (e.g., "in.pg" -> "Karnataka")
+        if (normalizedId.contains(".")) {
+            String[] parts = normalizedId.split("\\.");
+            if (parts.length > 1) {
+                // Extract the state part (last part after dot)
+                String statePart = parts[parts.length - 1];
+                return getStateNameFromCode(statePart);
+            }
+        }
+        
+        // Direct state code lookup
+        return getStateNameFromCode(normalizedId);
+    }
+    
+    /**
+     * Get state name from state code
+     */
+    private String getStateNameFromCode(String stateCode) {
+        switch (stateCode) {
+            case "pg":
+            case "karnataka":
+                return "Karnataka";
+            case "sk":
+            case "sikkim":
+                return "Sikkim";
+            case "mz":
+            case "mizoram":
+                return "Mizoram";
+            case "or":
+            case "odisha":
+                return "Odisha";
+            case "as":
+            case "assam":
+                return "Assam";
+            case "mn":
+            case "manipur":
+                return "Manipur";
+            case "nl":
+            case "nagaland":
+                return "Nagaland";
+            case "gj":
+            case "gujarat":
+                return "Gujarat";
+            case "mh":
+            case "maharashtra":
+                return "Maharashtra";
+            case "ml":
+            case "meghalaya":
+                return "Meghalaya";
+            case "in":
+            case "india":
+                return "India";
+            default: 
+                // If it's already a readable state name, capitalize it properly
+                if (stateCode.length() > 0) {
+                    return capitalizeWords(stateCode);
+                }
+                return stateCode.toUpperCase();
+        }
+    }
+    
+    /**
+     * Capitalize words in a string (e.g., "karnataka" -> "Karnataka")
+     */
+    private String capitalizeWords(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        String[] words = str.split("\\s+|_");
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < words.length; i++) {
+            if (i > 0) {
+                result.append(" ");
+            }
+            if (!words[i].isEmpty()) {
+                result.append(words[i].substring(0, 1).toUpperCase());
+                if (words[i].length() > 1) {
+                    result.append(words[i].substring(1).toLowerCase());
+                }
+            }
+        }
+        return result.toString();
     }
 
     /**
@@ -112,43 +192,18 @@ public class CommonUtility {
     }
 
     /**
-     * Generate Saura eMitra URL for specific state
+     * Generate Saura eMitra URL
+     * Since all states now use tenantId "in", all states use the common login link
      */
-    public String generateSauraEmitraUrl(String tenantId) {
-        if (tenantId == null || "in".equals(tenantId)) {
-            return sauraEmitraBaseUrl + "/digit-ui";
-        }
-
-        switch (tenantId.toLowerCase()) {
-            case "pg":
-                return sauraEmitraBaseUrl + "/digit-ui"; // Karnataka
-            case "sk":
-                return sauraEmitraBaseUrl + "/sikkim";
-            case "mz":
-                return sauraEmitraBaseUrl + "/mizoram";
-            case "or":
-                return sauraEmitraBaseUrl + "/odisha";
-            case "as":
-                return sauraEmitraBaseUrl + "/assam";
-            case "mn":
-                return sauraEmitraBaseUrl + "/manipur";
-            case "nl":
-                return sauraEmitraBaseUrl + "/nagaland";
-            case "gj":
-                return sauraEmitraBaseUrl + "/gujarat";
-            case "mh":
-                return sauraEmitraBaseUrl + "/maharashtra";
-            case "ml":
-                return sauraEmitraBaseUrl + "/meghalaya";
-            default:
-                return sauraEmitraBaseUrl + "/digit-ui";
-        }
+    public String generateSauraEmitraUrl() {
+        return sauraEmitraBaseUrl + "/digit-ui";
     }
 
     /**
      * Generate state-specific dashboard URL
+     * Since all states now use tenantId "in", all states use the common dashboard URL
      */
-    public String generateStateDashboardUrl(String tenantId) {
+    public String generateStateDashboardUrl() {
         // Use the configured Kibana dashboard URL from application properties
         return kibanaDashboardUrl;
     }
