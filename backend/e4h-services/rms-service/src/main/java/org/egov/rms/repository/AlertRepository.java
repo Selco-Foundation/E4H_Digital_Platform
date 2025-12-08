@@ -2,6 +2,7 @@ package org.egov.rms.repository;
 
 import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.model.Alert;
+import org.postgresql.util.PGobject;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -291,17 +292,17 @@ public class AlertRepository {
             
             // Get ALL alerts from active_alerts (including those with closed tickets)
             // The deduplication logic will check if tickets are open/closed and filter accordingly
-            // Extract JSONB cleanly: filter out null and boolean false values, then convert to text
-            // Using jsonb_object_agg to rebuild clean JSONB before converting to text
+            // Extract JSONB cleanly: filter out null and boolean false values, return as JSONB (not text)
+            // Using jsonb_object_agg to rebuild clean JSONB - PGobject will handle conversion properly
             String sql = "SELECT " +
                     "  id, facility_id, hfr_id, alert_type, alert_sub_type, status, " +
                     "  detected_at, resolved_at, last_suppressed_at, ticket_id, " +
                     "  COALESCE(" +
-                    "    (SELECT jsonb_object_agg(key, value)::text " +
+                    "    (SELECT jsonb_object_agg(key, value) " +
                     "     FROM jsonb_each(COALESCE(metadata, '{}'::jsonb)) " +
                     "     WHERE value IS NOT NULL " +
                     "       AND NOT (jsonb_typeof(value) = 'boolean' AND value::jsonb = 'false'::jsonb)), " +
-                    "    '{}'" +
+                    "    '{}'::jsonb" +
                     "  ) as metadata " +
                     "FROM active_alerts " +
                     "ORDER BY detected_at DESC";
@@ -333,10 +334,20 @@ public class AlertRepository {
 
     /**
      * RowMapper for Alert
+     * Uses PGobject to properly extract JSONB without corruption
      */
     private static class AlertRowMapper implements RowMapper<Alert> {
         @Override
         public Alert mapRow(ResultSet rs, int rowNum) throws SQLException {
+            String metadataJson = null;
+            Object metaObj = rs.getObject("metadata");
+            
+            if (metaObj instanceof PGobject) {
+                metadataJson = ((PGobject) metaObj).getValue();
+            } else if (metaObj != null) {
+                metadataJson = metaObj.toString();
+            }
+            
             return Alert.builder()
                     .id(rs.getString("id"))
                     .facilityId(rs.getString("facility_id"))
@@ -351,7 +362,7 @@ public class AlertRepository {
                     .lastSuppressedAt(rs.getTimestamp("last_suppressed_at") != null ? 
                             rs.getTimestamp("last_suppressed_at").toInstant() : null)
                     .ticketId(rs.getString("ticket_id"))
-                    .metadata(rs.getString("metadata"))
+                    .metadata(metadataJson)
                     .build();
         }
     }
