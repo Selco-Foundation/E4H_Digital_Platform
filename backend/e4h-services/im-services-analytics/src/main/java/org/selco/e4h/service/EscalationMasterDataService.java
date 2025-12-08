@@ -137,7 +137,7 @@ public class EscalationMasterDataService {
                         String tenantId = (String) tenant.get("code");
                         if (tenantId != null && !tenantId.trim().isEmpty()) {
                             // Only include state-level tenants (exclude 'in' which is country-level)
-                            if (!"in".equals(tenantId)) {
+                            if (!tenantId.startsWith("in")) {
                                 activeTenantIds.add(tenantId);
                                 log.debug("Added tenant: {}", tenantId);
                             } else {
@@ -188,7 +188,7 @@ public class EscalationMasterDataService {
                         String tenantIdName = (String) tenant.get("name");
                         if (tenantId != null && tenantIdName!=null && !tenantId.trim().isEmpty() && !tenantIdName.trim().isEmpty()) {
                             // Only include state-level tenants (exclude 'in' which is country-level)
-                            if (!"in".equals(tenantId)) {
+                            if (!tenantId.startsWith("in")) {
                                 map.put(tenantId, "India_"+tenantIdName);
                                 log.debug("Added tenant: {} with name {}", tenantId, tenantIdName);
                             } else {
