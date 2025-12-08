@@ -39,8 +39,8 @@ export const amcConfig = {
           "properties": [
             { "field": "check_earthing", "label": "Earthing working properly" },
             { "field": "check_surge", "label": "Surge Protection working properly" },
-            { "field": "check_solar_array", "label": "Earthing Pits are safe and surroundings are cleaned" },
-            { "field": "check_general_condition", "label": "Cables & Connections found secure and no wear and tear observed" }
+            { "field": "check_earthing_pits", "label": "Earthing Pits are safe and surroundings are cleaned" },
+            { "field": "check_earthing_cables", "label": "Cables & Connections found secure and no wear and tear observed" }
           ]
         },
         {
@@ -57,20 +57,11 @@ export const amcConfig = {
 
     {
       "sectionName": "II. Performance and Preventive Maintenance",
+      "properties": [
+        { "field": "battery_bank_voltage", "label": "Battery Bank Voltage" },
+        { "field": "inverter_reading", "label": "Inverter display (Reading after measurement)" },
+      ],
       "children": [
-        {
-          "sectionName": "Battery Bank Voltage",
-          "properties": [
-            { "field": "battery_design_voltage", "label": "As per design" },
-            { "field": "battery_observed_voltage", "label": "Observed during visit" }
-          ]
-        },
-        {
-          "sectionName": "Inverter display",
-          "properties": [
-            { "field": "inverter_reading", "label": "(Reading after measurement)" }
-          ]
-        },
         {
           "sectionName": "Panel Voltage",
           "properties": [
@@ -88,36 +79,12 @@ export const amcConfig = {
       "sectionName": "III. Faults & Corrective Actions",
       "properties": [
         { "field": "faults_observed", "label": "Any Faults observed during visit" },
-        { "field": "immediate_fix_done", "label": "If Yes, Immediate fix done" },
-        { "field": "parts_repaired", "label": "If Yes, Any Parts repaired" },
-        { "field": "fault_rectification_status", "label": "Fault rectification status (If applicable - tick appropriately)" },
-        { "field": "scheduled_plan_date", "label": "If not/partially completed, mention the scheduled plan date (DD/MM/YYYY)" },
-        { "field": "any_parts_replaced", "label": "Any parts Replaced" },
+        { "field": "immediate_fix_done", "label": "If yes, was an immediate fix implemented?" },
+        { "field": "parts_repaired", "label": "If yes, were any parts repaired?" },
+        { "field": "informed_CRM", "label": "If yes, and further rectification is needed, did you inform the health staff or CRM to raise a ticket through Saura-eMitra?" },
 
-        { "field": "part1_index", "label": "Parts replaced at site – 1: No." },
-        { "field": "part1_component", "label": "Parts replaced at site – 1: Component" },
-        { "field": "part1_make", "label": "Parts replaced at site – 1: Make" },
-        { "field": "part1_serial", "label": "Parts replaced at site – 1: Serial No." },
-        { "field": "part1_qty", "label": "Parts replaced at site – 1: Quantity" },
-        { "field": "part1_remarks", "label": "Parts replaced at site – 1: Remarks" },
-
-        { "field": "part2_index", "label": "Parts replaced at site – 2: No." },
-        { "field": "part2_component", "label": "Parts replaced at site – 2: Component" },
-        { "field": "part2_make", "label": "Parts replaced at site – 2: Make" },
-        { "field": "part2_serial", "label": "Parts replaced at site – 2: Serial No." },
-        { "field": "part2_qty", "label": "Parts replaced at site – 2: Quantity" },
-        { "field": "part2_remarks", "label": "Parts replaced at site – 2: Remarks" },
-
-        { "field": "part3_index", "label": "Parts replaced at site – 3: No." },
-        { "field": "part3_component", "label": "Parts replaced at site – 3: Component" },
-        { "field": "part3_make", "label": "Parts replaced at site – 3: Make" },
-        { "field": "part3_serial", "label": "Parts replaced at site – 3: Serial No." },
-        { "field": "part3_qty", "label": "Parts replaced at site – 3: Quantity" },
-        { "field": "part3_remarks", "label": "Parts replaced at site – 3: Remarks" },
-
-        { "field": "additional_remarks", "label": "Additional remarks" },
         { "field": "service_person_remarks", "label": "Service Person (Remarks)" },
-        { "field": "end_user_remarks", "label": "End user (Remarks)" },
+        { "field": "health_staff_remarks", "label": "Health Staff (Remarks)" },
         { "field": "img1_taken", "label": "Clear Geo tagged image of the service person with health facility name board" }
       ]
     }
