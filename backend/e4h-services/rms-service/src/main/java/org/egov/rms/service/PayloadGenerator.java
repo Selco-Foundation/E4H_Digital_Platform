@@ -124,7 +124,7 @@ public class PayloadGenerator {
 
     /**
      * Builds simple comments for the ticket from metadata in active_alerts
-     * Formats metadata with each field on a separate line, aggressively removing "false"
+     * Formats metadata with each field on a separate line, filtering out boolean false values
      */
     private String buildComments(Alert alert, FacilityDetails facilityDetails) {
         String metadataStr = alert.getMetadata();
@@ -133,128 +133,46 @@ public class PayloadGenerator {
             return "No metadata available";
         }
         
-        // ULTRA-AGGRESSIVE: Remove "false" from the ENTIRE metadata string BEFORE parsing
-        // Use regex to remove ALL occurrences of "false" (case-insensitive) from the raw string
-        // This MUST happen first, before any other processing
-        String cleaned = metadataStr;
+        log.debug("Raw metadata string: {}", metadataStr);
         
-        // Step 1: Remove "false" using regex (most comprehensive)
-        cleaned = cleaned.replaceAll("(?i)false", "");
-        
-        // Step 2: Remove "false" character by character (catches edge cases)
-        StringBuilder sb = new StringBuilder(cleaned);
-        for (int i = sb.length() - 5; i >= 0; i--) {
-            if (i + 5 <= sb.length()) {
-                String check = sb.substring(i, i + 5).toLowerCase();
-                if (check.equals("false")) {
-                    sb.delete(i, i + 5);
-                }
-            }
-        }
-        cleaned = sb.toString();
-        
-        // Step 3: Use our removeFalse method multiple times
-        cleaned = removeFalse(cleaned);
-        cleaned = removeFalse(cleaned); // Second pass
-        cleaned = removeFalse(cleaned); // Third pass
-        cleaned = removeFalse(cleaned); // Fourth pass
-        cleaned = removeFalse(cleaned); // Fifth pass
-        
-        // Step 4: Final regex pass
-        cleaned = cleaned.replaceAll("(?i)false", "");
-        
-        // Try to parse as JSON
+        // Parse JSON first (database structure is correct, so parse directly)
         try {
-            Map<String, Object> metadataMap = objectMapper.readValue(cleaned, Map.class);
+            Map<String, Object> metadataMap = objectMapper.readValue(metadataStr, Map.class);
+            log.debug("Parsed metadata map: {}", metadataMap);
             
-            // Build a new map with cleaned keys (remove "false" from all keys)
-            Map<String, Object> cleanedMap = new java.util.HashMap<>();
-            for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
-                String originalKey = entry.getKey();
-                // Remove "false" from key using regex first, then our method
-                String cleanedKey = originalKey.replaceAll("(?i)false", "");
-                cleanedKey = removeFalse(cleanedKey);
-                cleanedKey = removeFalse(cleanedKey); // Second pass
-                cleanedKey = removeFalse(cleanedKey); // Third pass
-                
-                Object value = entry.getValue();
-                // Also clean the value if it's a string
-                if (value instanceof String) {
-                    String valueStr = (String) value;
-                    valueStr = valueStr.replaceAll("(?i)false", "");
-                    valueStr = removeFalse(valueStr);
-                    valueStr = removeFalse(valueStr);
-                    valueStr = removeFalse(valueStr);
-                    value = valueStr;
-                }
-                cleanedMap.put(cleanedKey, value);
-            }
-            
+            // Build comments, filtering out null and boolean false values
             StringBuilder comments = new StringBuilder();
-            for (Map.Entry<String, Object> entry : cleanedMap.entrySet()) {
+            for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
                 Object value = entry.getValue();
-                if (value == null) {
+                
+                // Skip null values and boolean false
+                if (value == null || (value instanceof Boolean && !((Boolean) value))) {
                     continue;
                 }
                 
                 String key = entry.getKey();
-                String valueStr = String.valueOf(value);
+                String valueStr;
                 
-                // CRITICAL: Remove "false" from key BEFORE formatting (extra safety)
-                key = key.replaceAll("(?i)false", "");
-                key = removeFalse(key);
-                key = removeFalse(key); // Second pass
-                key = removeFalse(key); // Third pass
-                
-                valueStr = valueStr.replaceAll("(?i)false", "");
-                valueStr = removeFalse(valueStr);
-                valueStr = removeFalse(valueStr); // Second pass
-                valueStr = removeFalse(valueStr); // Third pass
-                
-                // Format key AFTER removing false
-                String formattedKey = formatKeyToReadable(key);
-                // Remove false again after formatting (in case formatting somehow added it)
-                formattedKey = formattedKey.replaceAll("(?i)false", "");
-                formattedKey = removeFalse(formattedKey);
-                formattedKey = removeFalse(formattedKey); // Second pass
-                
-                // Build the line and remove false from the final string
-                String line = formattedKey + ": " + valueStr;
-                line = line.replaceAll("(?i)false", "");
-                line = removeFalse(line);
-                line = removeFalse(line); // Second pass
-                
-                if (!valueStr.trim().isEmpty() && !formattedKey.trim().isEmpty()) {
-                    comments.append(line).append("\n");
-                }
-            }
-            
-            String result = comments.toString();
-            // ULTRA-AGGRESSIVE: Remove false multiple times to catch all cases
-            result = result.replaceAll("(?i)false", "");
-            result = removeFalse(result);
-            result = removeFalse(result);  // Second pass
-            result = removeFalse(result);  // Third pass
-            result = removeFalse(result);  // Fourth pass
-            
-            // Final check: manually scan and remove any remaining "false"
-            StringBuilder finalResult = new StringBuilder();
-            String lowerResult = result.toLowerCase();
-            for (int i = 0; i < result.length(); i++) {
-                if (i <= result.length() - 5) {
-                    String check = lowerResult.substring(i, i + 5);
-                    if (check.equals("false")) {
-                        i += 4; // Skip the "false" word
-                        continue;
+                // Handle string values - remove escaped quotes if present
+                if (value instanceof String) {
+                    valueStr = (String) value;
+                    // Remove surrounding quotes if the string value itself contains quotes
+                    if (valueStr.startsWith("\"") && valueStr.endsWith("\"")) {
+                        valueStr = valueStr.substring(1, valueStr.length() - 1);
                     }
+                } else {
+                    valueStr = String.valueOf(value);
                 }
-                finalResult.append(result.charAt(i));
+                
+                // Format key to readable format
+                String formattedKey = formatKeyToReadable(key);
+                
+                // Build the line
+                String line = formattedKey + ": " + valueStr;
+                comments.append(line).append("\n");
             }
             
-            result = finalResult.toString();
-            // One more regex pass on final result
-            result = result.replaceAll("(?i)false", "");
-            result = result.trim();
+            String result = comments.toString().trim();
             return result.isEmpty() ? "No metadata available" : result;
             
         } catch (Exception e) {
