@@ -265,15 +265,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                     context
                         .read<SelectedScheduledVisitBloc>()
                         .add(SelectedScheduledVisitEvent.select(visit));
-                    context.router.push(
-                      AmcDynamicFormRoute(
-                        pageName: "AMC_Report",
-                        uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                        schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                        scheduledVisit: visit,
-                        origin: FormOrigin.submitForApproval,
-                      ),
-                    );
+                    context.router.push(const AmcRejctionReasonsRoute());
                   },
                 )
               else

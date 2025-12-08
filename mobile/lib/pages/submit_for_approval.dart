@@ -308,9 +308,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
           enableFixedDigitButton: true,
           backgroundColor: theme.colorTheme.generic.background,
           header: const BackNavigationHelpHeaderWidget(
-            showBackNavigation: true,
-            showHelp: false,
-          ),
+              showBackNavigation: true, showHelp: false),
           footer: BlocBuilder<SelectedActivityFacilityBloc,
               SelectedActivityFacilityState>(
             builder: (context, selProjectState) {
@@ -625,7 +623,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
       {bool isLast = false}) {
     final theme = Theme.of(ctx);
     final textTheme = theme.digitTextTheme(ctx);
-    final has = comments != null && comments.isNotEmpty;
+    final hasComments = comments != null && comments.isNotEmpty;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Stack(alignment: Alignment.center, children: [
@@ -639,7 +637,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
                 style: textTheme.headingS)),
         Center(child: Text('$count', style: textTheme.bodyL)),
       ]),
-      if (has) RejectionReasonsList(comments: comments),
+      if (hasComments) RejectionReasonsList(comments: comments),
       if (count > 0) ...[
         const SizedBox(height: spacer5),
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [

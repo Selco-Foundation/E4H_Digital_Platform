@@ -348,6 +348,28 @@ class BomRepository {
     }
   }
 
+  Future<String?> resolveBomUserType({
+    required Isar isar,
+    required String activityFacilityId,
+  }) async {
+    final candidates = [
+      USER_TYPES.SUPERVISOR.name,
+      USER_TYPES.FIELD_STAFF.name,
+    ];
+
+    for (final ut in candidates) {
+      final entryKey = '$activityFacilityId::$ut';
+      final rec = await isar.cacheActivityFacilityBomValues
+          .where()
+          .entryKeyEqualTo(entryKey)
+          .findFirst();
+
+      if (rec != null) return ut;
+    }
+
+    return null;
+  }
+
   Future<void> mergeKvForEntryKey({
     required Isar isar,
     required String projectId,

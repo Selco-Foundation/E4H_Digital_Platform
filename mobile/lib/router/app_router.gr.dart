@@ -65,6 +65,12 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AmcOtpPage(),
       );
     },
+    AmcRejctionReasonsRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcRejctionReasonsPage(),
+      );
+    },
     AmcReportHomeRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -124,6 +130,7 @@ abstract class _$AppRouter extends RootStackRouter {
           uniqueIdentifier: args.uniqueIdentifier,
           projectId: args.projectId,
           origin: args.origin,
+          userType: args.userType,
         ),
       );
     },
@@ -434,6 +441,20 @@ class AmcOtpRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [AmcRejctionReasonsPage]
+class AmcRejctionReasonsRoute extends PageRouteInfo<void> {
+  const AmcRejctionReasonsRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcRejctionReasonsRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcRejctionReasonsRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [AmcReportHomePage]
 class AmcReportHomeRoute extends PageRouteInfo<void> {
   const AmcReportHomeRoute({List<PageRouteInfo>? children})
@@ -555,6 +576,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
     String? uniqueIdentifier,
     required String projectId,
     required FormOrigin origin,
+    required String userType,
     List<PageRouteInfo>? children,
   }) : super(
           DynamicFormsRoute.name,
@@ -565,6 +587,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
             uniqueIdentifier: uniqueIdentifier,
             projectId: projectId,
             origin: origin,
+            userType: userType,
           ),
           rawPathParams: {'pageName': pageName},
           initialChildren: children,
@@ -584,6 +607,7 @@ class DynamicFormsRouteArgs {
     this.uniqueIdentifier,
     required this.projectId,
     required this.origin,
+    required this.userType,
   });
 
   final Key? key;
@@ -598,9 +622,11 @@ class DynamicFormsRouteArgs {
 
   final FormOrigin origin;
 
+  final String userType;
+
   @override
   String toString() {
-    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, projectId: $projectId, origin: $origin}';
+    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, projectId: $projectId, origin: $origin, userType: $userType}';
   }
 }
 

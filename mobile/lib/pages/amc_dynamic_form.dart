@@ -507,9 +507,9 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
                               context.read<FormsBloc>().add(
                                   FormsEvent.submit(schemaKey: currentKey));
                             } else {
-                              context.router.push(DynamicFormsRoute(
+                              context.router.push(AmcDynamicFormRoute(
                                 pageName: next,
-                                projectId: widget.scheduledVisit.id!,
+                                scheduledVisit: widget.scheduledVisit,
                                 schemaName: currentKey,
                                 origin: widget.origin,
                               ));

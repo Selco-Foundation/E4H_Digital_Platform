@@ -745,7 +745,10 @@ Future<void> _performSubmissionForActivityFacility({
       );
     }
 
-    if (userType == USER_TYPES.SUPERVISOR.name) {
+    final resolvedBomUserType = await BomRepository()
+        .resolveBomUserType(isar: isar, activityFacilityId: activityFacilityId);
+
+    if (resolvedBomUserType != null) {
       try {
         final bomFileStoreId = await BomRepository().generateBomPdf(
           isar: isar,
@@ -861,7 +864,6 @@ Future<void> _performScheduleVisitSubmission({
     '[BG] _performScheduleVisitSubmission started for visit=$scheduledVisitId userType=$userType',
   );
 
-  // 1. Get cached form values
   final form = await isar.cacheScheduleVisitFormValues
       .where()
       .scheduledVisitIdEqualTo(scheduledVisitId)
@@ -870,21 +872,10 @@ Future<void> _performScheduleVisitSubmission({
       .findFirst();
 
   if (form == null || form.dataJson.trim().isEmpty) {
-    throw Exception('FORM_NOT_FILLED');
+    throw Exception('Form not filled');
   }
 
-  // Responses = exactly what you used for PDF generation.
   final responses = jsonDecode(form.dataJson) as Map<String, dynamic>;
-
-  // schemaKey is something like "SELCO_DYNAMIC_FORM:AMCREPORT:1"
-  // We'll treat the whole key as schemaCode and the last segment as version.
-  // final parts = form.schemaKey.split(':');
-  // final versionStr = parts.isNotEmpty ? parts.last : '1';
-  // final version = int.tryParse(versionStr) ?? 1;
-  // final schemaCode = form.schemaKey;
-
-  // 2. Generate AMC PDF via your AmcDynamicFormRepository
-  // NOTE: tweak the call signature to match your actual repo.
   final amcFormRepo = AmcDynamicFormRepository();
 
   final pdfFileStoreId = await amcFormRepo.generateFormPdf(
@@ -894,7 +885,6 @@ Future<void> _performScheduleVisitSubmission({
     throw Exception('Failed to generate AMC PDF');
   }
 
-  // 3. Collect AMC media from cache_amc_media_upload
   final cachedMedia = await isar.cacheAmcMediaUploads
       .where()
       .scheduledVisitIdEqualTo(scheduledVisitId)
@@ -923,7 +913,6 @@ Future<void> _performScheduleVisitSubmission({
     );
   }
 
-  // 4. Workflow document = AMC installation PDF only
   final workflowDocuments = <Document>[];
 
   final String? mediaLat =
@@ -944,7 +933,6 @@ Future<void> _performScheduleVisitSubmission({
     ),
   );
 
-  // 5. Call the AMC visit workflow update API
   final remote = ScheduledVisitRemoteRepository();
   await remote.updateVisitWorkflow(
     visitId: scheduledVisitId,

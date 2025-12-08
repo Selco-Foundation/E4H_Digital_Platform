@@ -29,6 +29,7 @@ class DynamicFormsPage extends StatefulWidget {
   final String? uniqueIdentifier;
   final String projectId;
   final FormOrigin origin;
+  final String userType;
 
   const DynamicFormsPage({
     super.key,
@@ -37,6 +38,7 @@ class DynamicFormsPage extends StatefulWidget {
     this.uniqueIdentifier,
     required this.projectId,
     required this.origin,
+    required this.userType,
   });
 
   @override
@@ -531,6 +533,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                                 projectId: widget.projectId,
                                 schemaName: currentKey,
                                 origin: widget.origin,
+                                userType: widget.userType,
                               ));
                             }
                             return;

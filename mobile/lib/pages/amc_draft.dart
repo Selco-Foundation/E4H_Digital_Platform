@@ -24,14 +24,14 @@ class AmcDraftPage extends StatefulWidget {
 }
 
 class _AmcDraftPageState extends State<AmcDraftPage> {
-  final tabs = ['Pending Approval', 'Pending Otp Approval'];
+  final tabs = ['Pending Otp Approval', 'Pending Approval'];
   int _selectedTabIndex = 0;
 
   List<String> _statusesForTab(int tabIndex) {
     if (tabIndex == 0) {
-      return [WORKFLOW_STATUS_AMC_FIELD_STAFF.PENDING_APPROVAL.name];
-    } else {
       return [WORKFLOW_STATUS_AMC_FIELD_STAFF.PENDING_OTP_APPROVAL.name];
+    } else {
+      return [WORKFLOW_STATUS_AMC_FIELD_STAFF.PENDING_APPROVAL.name];
     }
   }
 
@@ -127,36 +127,6 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                     ),
                   ),
                   const SizedBox(height: spacer4),
-                  // Column(
-                  //   children: [
-                  //     if (_selectedTabIndex == 1)
-                  //       InboxReportCard(
-                  //         onPress: () =>
-                  //             context.router.push(const AmcOtpRoute()),
-                  //         title: "Nakodar PHC",
-                  //         dateAssigned: DateTime.now(),
-                  //         status: 'Pending Otp Approval',
-                  //         isAmc: true,
-                  //         isOtp: true,
-                  //       ),
-                  //     const SizedBox(height: spacer4),
-                  //     if (_selectedTabIndex == 0)
-                  //       InboxReportCard(
-                  //         onPress: () {
-                  //           context.router.push(AmcDynamicFormRoute(
-                  //               pageName: "AMC_Report",
-                  //               uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                  //               schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
-                  //               scheduledVisitId: "123456789",
-                  //               origin: FormOrigin.submitted));
-                  //         },
-                  //         title: "Sirsa PHC",
-                  //         dateAssigned: DateTime.now(),
-                  //         status: 'Pending Approval',
-                  //         isAmc: true,
-                  //       ),
-                  //   ],
-                  // )
                   BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
                     builder: (context, visitState) {
                       return visitState.maybeWhen(
@@ -197,7 +167,7 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
         for (final visit in items)
           Column(
             children: [
-              if (_selectedTabIndex == 1)
+              if (_selectedTabIndex == 0)
                 InboxReportCard(
                     onPress: () {
                       context

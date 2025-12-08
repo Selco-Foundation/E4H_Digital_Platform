@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/activity_facility/activity_facility.dart';
+import '../../blocs/user_type/user_type.dart';
 import '../../repositories/dynamic_form_repo.dart';
 import '../../router/app_router.dart';
 import '../../utils/utils.dart';
@@ -144,6 +145,13 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
     }
   }
 
+  String _resolveUserType() {
+    return context.read<UserTypeBloc>().state.maybeWhen(
+          supervisor: () => USER_TYPES.SUPERVISOR.name,
+          orElse: () => USER_TYPES.FIELD_STAFF.name,
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -163,12 +171,14 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
             mainAxisSize: MainAxisSize.max,
             label: '${m.actionWord} ${m.label}',
             onPressed: () async {
+              final userType = _resolveUserType();
               final result = await context.router.push(
                 DynamicFormsRoute(
                   pageName: m.pageName,
                   schemaName: m.schemaName,
                   projectId: widget.projectId,
                   origin: widget.origin,
+                  userType: userType,
                 ),
               );
               if (!mounted) return;

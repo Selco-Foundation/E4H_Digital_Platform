@@ -9,6 +9,7 @@ import '../pages/amc_home.dart';
 import '../pages/amc_inbox.dart';
 import '../pages/amc_media_upload.dart';
 import '../pages/amc_otp.dart';
+import '../pages/amc_rejection_reasons.dart';
 import '../pages/amc_report_home.dart';
 import '../pages/amc_select_facility.dart';
 import '../pages/asset_count.dart';
@@ -118,6 +119,9 @@ class AppRouter extends _$AppRouter {
           AutoRoute(page: AmcInboxRoute.page, path: Routes.amcInbox),
           AutoRoute(
               page: AmcMediaUploadRoute.page, path: Routes.amcMediaUpload),
+          AutoRoute(
+              page: AmcRejctionReasonsRoute.page,
+              path: Routes.amcRejectionReasons),
         ])
       ];
 }
