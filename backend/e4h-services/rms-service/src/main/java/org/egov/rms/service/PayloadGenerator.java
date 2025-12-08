@@ -133,46 +133,114 @@ public class PayloadGenerator {
             return "No metadata available";
         }
         
-        log.debug("Raw metadata string: {}", metadataStr);
+        // CRITICAL: Log the exact string we receive
+        log.info("=== METADATA EXTRACTION DEBUG ===");
+        log.info("Alert ID: {}", alert.getId());
+        log.info("Raw metadata string (length: {}): {}", metadataStr.length(), metadataStr);
+        log.info("Raw metadata bytes: {}", java.util.Arrays.toString(metadataStr.getBytes()));
+        
+        // Check for "false" in raw string
+        if (metadataStr.toLowerCase().contains("false")) {
+            log.error("ERROR: Raw metadata string contains 'false' at position: {}", 
+                    metadataStr.toLowerCase().indexOf("false"));
+            log.error("Substring around 'false': {}", 
+                    metadataStr.substring(Math.max(0, metadataStr.toLowerCase().indexOf("false") - 10),
+                            Math.min(metadataStr.length(), metadataStr.toLowerCase().indexOf("false") + 15)));
+        }
         
         // Parse JSON first (database structure is correct, so parse directly)
         try {
             Map<String, Object> metadataMap = objectMapper.readValue(metadataStr, Map.class);
-            log.debug("Parsed metadata map: {}", metadataMap);
+            log.info("Successfully parsed JSON. Map size: {}", metadataMap.size());
             
             // Build comments, filtering out null and boolean false values
             StringBuilder comments = new StringBuilder();
             for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
+                String originalKey = entry.getKey();
                 Object value = entry.getValue();
+                
+                log.info("Processing entry - Original Key: '{}' (length: {}), Value: '{}', Type: {}", 
+                        originalKey, originalKey.length(), value, value != null ? value.getClass().getName() : "null");
+                
+                // Check if key contains "false"
+                if (originalKey.toLowerCase().contains("false")) {
+                    log.error("ERROR: Key contains 'false': '{}'", originalKey);
+                }
                 
                 // Skip null values and boolean false
                 if (value == null || (value instanceof Boolean && !((Boolean) value))) {
+                    log.info("Skipping null/false value for key: {}", originalKey);
                     continue;
                 }
                 
-                String key = entry.getKey();
                 String valueStr;
                 
                 // Handle string values - remove escaped quotes if present
                 if (value instanceof String) {
                     valueStr = (String) value;
+                    log.info("Value is String: '{}'", valueStr);
+                    // Check if value contains "false"
+                    if (valueStr.toLowerCase().contains("false")) {
+                        log.error("ERROR: String value contains 'false': '{}'", valueStr);
+                    }
                     // Remove surrounding quotes if the string value itself contains quotes
                     if (valueStr.startsWith("\"") && valueStr.endsWith("\"")) {
                         valueStr = valueStr.substring(1, valueStr.length() - 1);
+                        log.info("Removed quotes, new value: '{}'", valueStr);
                     }
                 } else {
                     valueStr = String.valueOf(value);
+                    log.info("Value converted to String: '{}'", valueStr);
+                    if (valueStr.toLowerCase().contains("false")) {
+                        log.error("ERROR: Converted value contains 'false': '{}'", valueStr);
+                    }
                 }
                 
                 // Format key to readable format
-                String formattedKey = formatKeyToReadable(key);
+                String formattedKey = formatKeyToReadable(originalKey);
+                log.info("Formatted key: '{}' -> '{}'", originalKey, formattedKey);
+                
+                // Check if formatted key contains "false"
+                if (formattedKey.toLowerCase().contains("false")) {
+                    log.error("ERROR: Formatted key contains 'false': '{}'", formattedKey);
+                }
                 
                 // Build the line
                 String line = formattedKey + ": " + valueStr;
+                log.info("Built line: '{}'", line);
+                
+                // Check if line contains "false"
+                if (line.toLowerCase().contains("false")) {
+                    log.error("ERROR: Line contains 'false': '{}'", line);
+                }
+                
                 comments.append(line).append("\n");
             }
             
             String result = comments.toString().trim();
+            log.info("Final comments result (length: {}): '{}'", result.length(), result);
+            
+            // FINAL SAFETY NET: Remove "false" character by character from final result
+            if (result.toLowerCase().contains("false")) {
+                log.error("ERROR: Final result contains 'false' before cleanup: '{}'", result);
+                StringBuilder cleanedResult = new StringBuilder();
+                String lowerResult = result.toLowerCase();
+                for (int i = 0; i < result.length(); i++) {
+                    if (i <= result.length() - 5) {
+                        String check = lowerResult.substring(i, i + 5);
+                        if (check.equals("false")) {
+                            i += 4; // Skip the "false" word
+                            continue;
+                        }
+                    }
+                    cleanedResult.append(result.charAt(i));
+                }
+                result = cleanedResult.toString();
+                // One more regex pass
+                result = result.replaceAll("(?i)false", "");
+                log.info("After final cleanup: '{}'", result);
+            }
+            
             return result.isEmpty() ? "No metadata available" : result;
             
         } catch (Exception e) {
@@ -226,8 +294,8 @@ public class PayloadGenerator {
         result = result.replaceAll("(?i)f[aA][lL][sS][eE]", "");
         
         return result;
-    }
-    
+                    }
+                    
     /**
      * Extracts and formats metadata from corrupted JSON string
      */
@@ -288,8 +356,8 @@ public class PayloadGenerator {
                 line = removeFalse(line); // Second pass
                 line = line.replaceAll("(?i)false", ""); // Final regex pass
                 comments.append(line).append("\n");
-            }
-        }
+                                }
+                            }
         
         // Pattern: Extract key-value from corrupted format (like "Thresholdfalse 250")
         java.util.regex.Pattern pattern2 = java.util.regex.Pattern.compile("([A-Za-z][A-Za-z0-9\\s]*?)\\s+([0-9.]+|\"[^\"]+\"|[A-Za-z][A-Za-z0-9\\s]*)");
@@ -334,8 +402,8 @@ public class PayloadGenerator {
                 line = removeFalse(line); // Second pass
                 line = line.replaceAll("(?i)false", ""); // Final regex pass
                 comments.append(line).append("\n");
-            }
-        }
+                                }
+                            }
         
         String result = comments.toString();
         // ULTRA-AGGRESSIVE: Multiple passes to remove false
@@ -421,7 +489,7 @@ public class PayloadGenerator {
                     formatted.append(word.substring(0, 1).toUpperCase());
                     if (word.length() > 1) {
                         formatted.append(word.substring(1));
-                    }
+        }
                 }
             }
         }
