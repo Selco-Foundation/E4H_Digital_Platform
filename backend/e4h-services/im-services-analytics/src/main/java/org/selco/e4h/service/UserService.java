@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.tracer.model.CustomException;
 import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.repository.ServiceRequestRepository;
 import org.selco.e4h.web.models.Employee;
@@ -84,25 +83,35 @@ public class UserService {
     }
 
     public List<User> searchUsersByRoleAndBoundaryCode(RequestInfo requestInfo, String boundaryCode, List<String> roleCodes) {
-        SLARequest request = SLARequest.builder()
-                .requestInfo(requestInfo)
-                .build();
-        String roles = String.join(",", roleCodes);
-        String url = consumerConfiguration.getHrmsHost() + consumerConfiguration.getHrmsSearchUrl()+ "?tenantId=in&limit=1000&roles="+roles+"&offset=0&boundaryCodes="+boundaryCode;
-        log.info("Request URL for user search {}", url);
-        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
-        log.info("Response received from user search {}", response);
-        EmployeeResponse employeeResponse = objectMapper.convertValue(response, EmployeeResponse.class);
-        log.info("Response after mapping user search {}", employeeResponse);
-        log.info("Response after mapping user search Details {}", employeeResponse.getEmployees());
-        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
-            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with boundary code: " + boundaryCode);
-        }
+        try {
+            SLARequest request = SLARequest.builder()
+                    .requestInfo(requestInfo)
+                    .build();
+            String roles = String.join(",", roleCodes);
+            String url = consumerConfiguration.getHrmsHost() + consumerConfiguration.getHrmsSearchUrl()+ "?tenantId=in&limit=1000&roles="+roles+"&offset=0&boundaryCodes="+boundaryCode;
+            log.info("Request URL for user search {}", url);
+            Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+            log.info("Response received from user search {}", response);
+            EmployeeResponse employeeResponse = objectMapper.convertValue(response, EmployeeResponse.class);
+            log.info("Response after mapping user search {}", employeeResponse);
+            log.info("Response after mapping user search Details {}", employeeResponse.getEmployees());
+            
+            if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+                log.warn("No employees found for boundary code: {} with roles: {}", boundaryCode, roleCodes);
+                return new ArrayList<>();
+            }
 
-        return employeeResponse.getEmployees()
-                .stream()
-                .map(Employee::getUser)
-                .toList();
+            List<User> users = employeeResponse.getEmployees()
+                    .stream()
+                    .map(Employee::getUser)
+                    .toList();
+            
+            log.info("Found {} employees for boundary code: {} with roles: {}", users.size(), boundaryCode, roleCodes);
+            return users;
+        } catch (Exception e) {
+            log.error("Error searching employees for boundary code: {} with roles: {}", boundaryCode, roleCodes, e);
+            return new ArrayList<>();
+        }
     }
     
     /**
