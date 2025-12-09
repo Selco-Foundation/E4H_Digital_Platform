@@ -72,11 +72,19 @@ public class RuleEngineService {
      */
     private String buildInverterVoltageMetadata(RMSFacilityData facility, String facilityName) {
         try {
-            StringBuilder metadata = new StringBuilder();
-            metadata.append("{\"facilityName\":\"").append(
-                    facilityName != null ? facilityName : 
+            String name = facilityName != null ? facilityName : 
                     (facility.getFacilityName() != null ? facility.getFacilityName() : 
-                     (facility.getCenterName() != null ? facility.getCenterName() : ""))).append("\"");
+                     (facility.getCenterName() != null ? facility.getCenterName() : ""));
+            
+            // Escape facility name for JSON
+            String escapedName = name.replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t");
+            
+            StringBuilder metadata = new StringBuilder();
+            metadata.append("{\"facilityName\":\"").append(escapedName).append("\"");
             
             if (facility.getVoltage() != null) {
                 metadata.append(",\"voltage\":").append(facility.getVoltage());
@@ -98,10 +106,18 @@ public class RuleEngineService {
      */
     private String buildPanelMetadata(RMSFacilityData facility) {
         try {
+            String name = facility.getFacilityName() != null ? facility.getFacilityName() : 
+                    (facility.getCenterName() != null ? facility.getCenterName() : "");
+            
+            // Escape facility name for JSON
+            String escapedName = name.replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t");
+            
             StringBuilder metadata = new StringBuilder();
-            metadata.append("{\"facilityName\":\"").append(
-                    facility.getFacilityName() != null ? facility.getFacilityName() : 
-                    (facility.getCenterName() != null ? facility.getCenterName() : "")).append("\"");
+            metadata.append("{\"facilityName\":\"").append(escapedName).append("\"");
             
             if (facility.getSolarPercent() != null && !facility.getSolarPercent().isEmpty()) {
                 metadata.append(",\"solarPercent\":[");
@@ -313,14 +329,27 @@ public class RuleEngineService {
      */
     private String buildBatteryDeepDischargeMetadata(RMSFacilityData facility, String facilityName) {
         try {
-            StringBuilder metadata = new StringBuilder();
-            metadata.append("{\"facilityName\":\"").append(
-                    facilityName != null ? facilityName : 
+            String name = facilityName != null ? facilityName : 
                     (facility.getFacilityName() != null ? facility.getFacilityName() : 
-                     (facility.getCenterName() != null ? facility.getCenterName() : ""))).append("\"");
+                     (facility.getCenterName() != null ? facility.getCenterName() : ""));
+            
+            // Escape facility name for JSON
+            String escapedName = name.replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t");
+            
+            StringBuilder metadata = new StringBuilder();
+            metadata.append("{\"facilityName\":\"").append(escapedName).append("\"");
             
             if (facility.getBatteryHealthInfo() != null) {
-                metadata.append(",\"batteryHealthInfo\":\"").append(facility.getBatteryHealthInfo()).append("\"");
+                String escapedHealthInfo = facility.getBatteryHealthInfo().replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
+                        .replace("\t", "\\t");
+                metadata.append(",\"batteryHealthInfo\":\"").append(escapedHealthInfo).append("\"");
             }
             
             if (facility.getBatteryCharging() != null) {
@@ -344,11 +373,19 @@ public class RuleEngineService {
      */
     private String buildBatteryMetadata(RMSFacilityData facility, String facilityName) {
         try {
-            StringBuilder metadata = new StringBuilder();
-            metadata.append("{\"facilityName\":\"").append(
-                    facilityName != null ? facilityName : 
+            String name = facilityName != null ? facilityName : 
                     (facility.getFacilityName() != null ? facility.getFacilityName() : 
-                     (facility.getCenterName() != null ? facility.getCenterName() : ""))).append("\"");
+                     (facility.getCenterName() != null ? facility.getCenterName() : ""));
+            
+            // Escape facility name for JSON
+            String escapedName = name.replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t");
+            
+            StringBuilder metadata = new StringBuilder();
+            metadata.append("{\"facilityName\":\"").append(escapedName).append("\"");
             
             if (facility.getBatteryVoltage() != null) {
                 metadata.append(",\"batteryVoltage\":").append(facility.getBatteryVoltage());
@@ -427,11 +464,19 @@ public class RuleEngineService {
      */
     private String buildGridVoltageMetadata(RMSFacilityData facility, String facilityName, Double voltage, boolean isLow) {
         try {
-            StringBuilder metadata = new StringBuilder();
-            metadata.append("{\"facilityName\":\"").append(
-                    facilityName != null ? facilityName : 
+            String name = facilityName != null ? facilityName : 
                     (facility.getFacilityName() != null ? facility.getFacilityName() : 
-                     (facility.getCenterName() != null ? facility.getCenterName() : ""))).append("\"");
+                     (facility.getCenterName() != null ? facility.getCenterName() : ""));
+            
+            // Escape facility name for JSON
+            String escapedName = name.replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t");
+            
+            StringBuilder metadata = new StringBuilder();
+            metadata.append("{\"facilityName\":\"").append(escapedName).append("\"");
             
             if (voltage != null) {
                 if (isLow) {
@@ -459,10 +504,40 @@ public class RuleEngineService {
             String name = facilityName != null ? facilityName : 
                     (facility.getFacilityName() != null ? facility.getFacilityName() : 
                      (facility.getCenterName() != null ? facility.getCenterName() : ""));
+            
+            // Properly format the value for JSON
+            String jsonValue;
+            if (value == null) {
+                jsonValue = "null";
+            } else if (value instanceof String) {
+                // Escape quotes and special characters in string
+                String escaped = ((String) value).replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
+                        .replace("\t", "\\t");
+                jsonValue = "\"" + escaped + "\"";
+            } else if (value instanceof Instant) {
+                // Convert Instant to ISO-8601 string and quote it
+                jsonValue = "\"" + value.toString() + "\"";
+            } else if (value instanceof Number || value instanceof Boolean) {
+                // Numbers and booleans don't need quotes
+                jsonValue = value.toString();
+            } else {
+                // For other types, convert to string and quote it
+                jsonValue = "\"" + value.toString().replace("\\", "\\\\")
+                        .replace("\"", "\\\"") + "\"";
+            }
+            
+            // Escape facility name for JSON
+            String escapedName = name.replace("\\", "\\\\")
+                    .replace("\"", "\\\"")
+                    .replace("\n", "\\n")
+                    .replace("\r", "\\r")
+                    .replace("\t", "\\t");
+            
             return String.format("{\"facilityName\":\"%s\",\"%s\":%s}", 
-                    name,
-                    key, 
-                    value instanceof String ? "\"" + value + "\"" : value);
+                    escapedName, key, jsonValue);
         } catch (Exception e) {
             log.warn("Error building metadata for alert", e);
             return "{}";
