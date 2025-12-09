@@ -33,7 +33,7 @@ public class FacilityServiceClient {
             String url = config.getFacilityServiceBaseUrl() + config.getFacilityServiceSearchEndpoint();
             
             UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(url)
-                    .queryParam("tenantId", tenantId)
+                    .queryParam("tenant_id", "in")
                     .queryParam("hfrId", hfrId)
                     .queryParam("limit", 1)
                     .queryParam("offset", 0);
@@ -80,6 +80,7 @@ public class FacilityServiceClient {
 //                    .phcType((String) facility.get("phcType"))
 //                    .phcSubType((String) facility.get("phcSubType"))
                     .tenantId((String) facility.get("tenant_id"))
+                    .boundaryCode((String) facility.get("boundaryCode"))
                     .build();
         } catch (Exception e) {
             log.error("Error mapping facility details", e);
