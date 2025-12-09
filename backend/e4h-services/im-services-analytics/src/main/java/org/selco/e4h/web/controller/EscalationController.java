@@ -273,7 +273,15 @@ public class EscalationController {
 
             // Build ONE consolidated CSV across all mapped states and upload to tenant "in"
             try {
-                String consolidatedCsv = generateConsolidatedWeeklyCsv(relevantTenantIds, requestInfo);
+                // Convert tenantIds to state codes for filtering
+                Set<String> stateCodes = new HashSet<>();
+                for (String tenantId : relevantTenantIds) {
+                    String stateCode = activeTenantIdsName.get(tenantId);
+                    if (stateCode != null && !stateCode.trim().isEmpty()) {
+                        stateCodes.add(stateCode);
+                    }
+                }
+                String consolidatedCsv = generateConsolidatedWeeklyCsv(stateCodes, requestInfo);
                 String consolidatedFileName = generateCsvFileName();
                 String consolidatedFsId = uploadCsvToFileStore(consolidatedCsv, consolidatedFileName, "in", requestInfo);
                 if (consolidatedFsId != null) {
@@ -947,26 +955,32 @@ public class EscalationController {
      * Generate a single consolidated weekly CSV across all mapped state tenants.
      * The CSV includes both functional and non-functional facilities and is intended
      * to be uploaded under tenantId = "in".
+     * Uses boundary.stateCode to filter tickets since all tickets are now under tenantId "in".
      */
-    private String generateConsolidatedWeeklyCsv(Set<String> stateTenantIds, RequestInfo requestInfo) {
+    private String generateConsolidatedWeeklyCsv(Set<String> stateCodes, RequestInfo requestInfo) {
         StringBuilder csv = new StringBuilder();
         appendCsvHeader(csv);
 
         try {
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
-            log.info("Consolidated CSV: fetched {} tickets from ES", tickets.size());
+            log.info("Consolidated CSV: fetched {} tickets from ES, filtering by {} state codes", tickets.size(), stateCodes.size());
 
             Map<String, Map<String, Object>> facilityAgg = new LinkedHashMap<>();
+            int filteredCount = 0;
             for (Map<String, Object> ticket : tickets) {
                 Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
                 if (data == null) continue;
 
-                String tenantId = getStringValue(data, "tenantId");
-                if (!isInScope(tenantId, stateTenantIds)) continue;
+                // Extract state code from boundary instead of tenantId
+                String ticketStateCode = extractBoundaryStateCodeFromData(data);
+                if (ticketStateCode == null || !isStateCodeInScope(ticketStateCode, stateCodes)) {
+                    continue;
+                }
+                filteredCount++;
 
                 String facilityName = resolveFacilityName(data);
                 String ninOrHfr = getStringValue(data, "nin_hfr_id");
-                String stateRoot = rootTenant(tenantId);
+                // Use state code for state identification
                 String district = getStringValue(data, "district");
                 String block = getStringValue(data, "block");
                 String hfType = resolveHfType(data);
@@ -975,9 +989,11 @@ public class EscalationController {
                 boolean isClosed = isClosed(status);
                 boolean isFunctional = "FUNCTIONAL".equalsIgnoreCase(getStringValue(data, "systemFunctional"));
 
-                Map<String, Object> row = getOrCreateFacilityRow(facilityAgg, facilityName, ninOrHfr, stateRoot, district, block, hfType, vendor);
+                Map<String, Object> row = getOrCreateFacilityRow(facilityAgg, facilityName, ninOrHfr, ticketStateCode, district, block, hfType, vendor);
                 incrementCounts(row, isClosed, isFunctional);
             }
+            
+            log.info("Consolidated CSV: filtered to {} tickets matching state codes", filteredCount);
 
             facilityAgg.values().forEach(r -> appendCsvRow(csv, r));
 
@@ -992,16 +1008,34 @@ public class EscalationController {
         csv.append("\"Health Facility\",\"NIN OR HFR\",\"Solar Working\",\"State\",\"District\",\"Block\",\"Health Facility Type\",\"Mapped Vendor\",\"No of Ticket\",\"Open Ticket\",\"Closed Ticket\"\r\n");
     }
 
-    private boolean isInScope(String tenantId, Set<String> stateTenantIds) {
-        if (tenantId == null || tenantId.isEmpty()) return false;
-        for (String state : stateTenantIds) {
-            if (tenantId.equalsIgnoreCase(state) || tenantId.startsWith(state + ".")) return true;
+    /**
+     * Check if state code is in scope (matches or starts with any of the target state codes)
+     * Handles formats like "india_sikkim", "india_karnataka", etc.
+     */
+    private boolean isStateCodeInScope(String ticketStateCode, Set<String> targetStateCodes) {
+        if (ticketStateCode == null || ticketStateCode.isEmpty()) return false;
+        for (String targetStateCode : targetStateCodes) {
+            if (ticketStateCode.equalsIgnoreCase(targetStateCode) || 
+                ticketStateCode.startsWith(targetStateCode + ".") ||
+                targetStateCode.startsWith(ticketStateCode + ".")) {
+                return true;
+            }
         }
         return false;
     }
-
-    private String rootTenant(String tenantId) {
-        return tenantId.contains(".") ? tenantId.substring(0, tenantId.indexOf('.')) : tenantId;
+    
+    /**
+     * Extract state code from boundary in ticket data
+     * Returns null if boundary or stateCode is not found
+     */
+    private String extractBoundaryStateCodeFromData(Map<String, Object> data) {
+        Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+        if (incident == null) return null;
+        
+        Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
+        if (boundary == null) return null;
+        
+        return getStringValue(boundary, "stateCode");
     }
 
     private String resolveFacilityName(Map<String, Object> data) {
@@ -1044,14 +1078,16 @@ public class EscalationController {
     }
 
     private Map<String, Object> getOrCreateFacilityRow(Map<String, Map<String, Object>> agg,
-                                                       String facility, String nin, String stateRoot,
+                                                       String facility, String nin, String stateCode,
                                                        String district, String block, String type, String vendor) {
-        String key = facility + "|" + district + "|" + block + "|" + stateRoot;
+        // Use state code for facility key to uniquely identify facilities
+        String key = facility + "|" + district + "|" + block + "|" + stateCode;
         return agg.computeIfAbsent(key, k -> {
             Map<String, Object> m = new HashMap<>();
             m.put("facility", facility);
             m.put("nin", nin);
-            m.put("state", commonUtility.getStateDisplayName(stateRoot));
+            // Convert state code to display name (e.g., "india_sikkim" -> "Sikkim")
+            m.put("state", commonUtility.getStateDisplayName(stateCode));
             m.put("district", district);
             m.put("block", block);
             m.put("type", type);
