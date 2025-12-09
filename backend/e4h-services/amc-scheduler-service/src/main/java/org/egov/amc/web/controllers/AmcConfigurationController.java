@@ -30,16 +30,10 @@ import java.util.List;
 @RequestMapping("/v1/configuration")
 @Validated
 public class AmcConfigurationController {
-    private final ObjectMapper objectMapper;
-
-    private final AMCServiceConfiguration amcConfigurationnerConfiguration;
-
     private final AmcConfigurationService amcConfigurationService;
 
     @Autowired
-    public AmcConfigurationController(ObjectMapper objectMapper, AMCServiceConfiguration amcConfigurationnerConfiguration, AmcConfigurationService amcConfigurationService) {
-        this.objectMapper = objectMapper;
-        this.amcConfigurationnerConfiguration = amcConfigurationnerConfiguration;
+    public AmcConfigurationController(AmcConfigurationService amcConfigurationService) {
         this.amcConfigurationService = amcConfigurationService;
     }
 

@@ -13,6 +13,7 @@ public class ScheduledVisitSearchCriteria {
     private List<String> ids;
     private List<String> amcConfigurationIds;
     private List<String> facilityIds;
+    private List<String> projectsIds;
     private List<String> statuses;
     private Long scheduledDateFrom;
     private Long scheduledDateTo;
