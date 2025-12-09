@@ -31,14 +31,14 @@ const AMCReviewerActions = ({ t, revalidateData, setUpdatingWorkflow, aggregated
       revalidateData();
       setToast({
         key: "success",
-        message: t("QC_FACILITY_APPROVE_SUCCESS"),
+        message: t("AMC_VISIT_APPROVE_SUCCESS"),
       });
 
     } catch (error) {
       console.error("Error approving", error);
       setToast({
         key: "error",
-        message: t("QC_FACILITY_APPROVE_FAILURE"),
+        message: t("AMC_VISIT_APPROVE_FAILURE"),
       });
 
     } finally {
@@ -68,14 +68,14 @@ const AMCReviewerActions = ({ t, revalidateData, setUpdatingWorkflow, aggregated
       revalidateData();
       setToast({
         key: "success",
-        message: t("QC_FACILITY_REJECT_SUCCESS"),
+        message: t("AMC_VISIT_REJECT_SUCCESS"),
       });
 
     } catch (error) {
       console.error("Error rejecting", error);
       setToast({
         key: "error",
-        message: t("QC_FACILITY_REJECT_FAILURE"),
+        message: t("AMC_VISIT_REJECT_FAILURE"),
       });
 
     } finally {
