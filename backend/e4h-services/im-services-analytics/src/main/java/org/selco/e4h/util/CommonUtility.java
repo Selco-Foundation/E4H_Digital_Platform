@@ -291,10 +291,19 @@ public class CommonUtility {
         }
 
         boolean increase = change > 0;
+        boolean isUpArrow = increase;
         
-        // Determine arrow class based on whether change is good or bad
-        // For functional: increase (up), decrease (down)
-        // For non-functional: increase (down), decrease (up)
+        // Determine color based on whether change is good or bad
+        // Functional: increase = good (green), decrease = bad (red)
+        // Non-Functional: increase = bad (red), decrease = good (green)
+        String color;
+        if (isFunctional) {
+            color = increase ? "%2316a34a" : "%23dc2626"; // Green for increase, red for decrease
+        } else {
+            color = increase ? "%23dc2626" : "%2316a34a"; // Red for increase, green for decrease
+        }
+        
+        // Determine arrow class for CSS (up = good, down = bad)
         String arrowClass;
         if (isFunctional) {
             arrowClass = increase ? "up" : "down";
@@ -302,15 +311,12 @@ public class CommonUtility {
             arrowClass = increase ? "down" : "up";
         }
         
-        // Use green for "up" (good), red for "down" (bad)
-        String color = arrowClass.equals("up") ? "%2316a34a" : "%23dc2626"; // #16a34a (green) or #dc2626 (red)
-        
         // Create SVG data URIs with appropriate colors
         String upArrowSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='" + color + "' d='M6 2L2 8h8z'/%3E%3C/svg%3E";
         String downArrowSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='" + color + "' d='M6 10L2 4h8z'/%3E%3C/svg%3E";
         
-        // Generate arrow HTML based on direction
-        String arrow = increase ? 
+        // Generate arrow HTML based on actual direction (up if increase, down if decrease)
+        String arrow = isUpArrow ? 
             "<img src=\"" + upArrowSvg + "\" alt=\"↑\" style=\"vertical-align:middle;height:12px;width:12px;display:inline-block;\" />" :
             "<img src=\"" + downArrowSvg + "\" alt=\"↓\" style=\"vertical-align:middle;height:12px;width:12px;display:inline-block;\" />";
 

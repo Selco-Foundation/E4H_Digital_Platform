@@ -192,8 +192,9 @@ public class DynamicEmailTemplateService {
         section.append("  <tr><td class=\"sp-16\"></td></tr>\n");
         
         // Download button - always show if file store ID is available (even for zero counts)
+        // All files are uploaded to tenant "in", so use "in" for download URLs regardless of state tenant ID
         if (fileStoreId != null && !fileStoreId.isEmpty()) {
-            String downloadUrl = commonUtility.generateDownloadUrl(fileStoreId, tenantId, 
+            String downloadUrl = commonUtility.generateDownloadUrl(fileStoreId, "in", 
                 consumerConfiguration.getFileStoreBaseUrl(), consumerConfiguration.getFileStoreDownloadEndpoint());
             section.append("  <tr>\n");
             section.append("    <td align=\"center\">\n");
