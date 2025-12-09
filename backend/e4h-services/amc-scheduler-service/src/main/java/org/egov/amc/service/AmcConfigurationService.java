@@ -60,14 +60,16 @@ public class AmcConfigurationService {
             amcConfigurationEnrichment.enrichAmcConfigurationOnCreate(amcConfiguration, request.getRequestInfo());
 
             // Link the AMC_REVIEWER and AMC_STAFF to project
-            List<ProjectStaff> staffs = amcConfiguration.getAssignments().stream()
-                    .map(assignment -> ProjectStaff.builder()
-                            .tenantId(amcConfiguration.getTenantId())
-                            .projectId(amcConfiguration.getProjectId())
-                            .userId(assignment.getAssignedUser())
-                            .build())
-                    .collect(Collectors.toList());
-            amcConfigurationServiceUtil.createProjectStaff(request.getRequestInfo(), staffs);
+            if (amcConfiguration.getAssignments() != null && !amcConfiguration.getAssignments().isEmpty()) {
+                List<ProjectStaff> staffs = amcConfiguration.getAssignments().stream()
+                        .map(assignment -> ProjectStaff.builder()
+                                .tenantId(amcConfiguration.getTenantId())
+                                .projectId(amcConfiguration.getProjectId())
+                                .userId(assignment.getAssignedUser())
+                                .build())
+                        .collect(Collectors.toList());
+                amcConfigurationServiceUtil.createProjectStaff(request.getRequestInfo(), staffs);
+            }
             log.info("Enriched with AMC Ids and AuditDetails {}", amcConfiguration);
             log.info("Pushed to kafka");
         }

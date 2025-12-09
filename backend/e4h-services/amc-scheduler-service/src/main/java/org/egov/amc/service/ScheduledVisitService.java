@@ -78,7 +78,7 @@ public class ScheduledVisitService {
                     .RequestInfo(request.getRequestInfo())
                     .searchCriteria(searchCriteria)
                     .build();
-            List<ScheduledVisit> scheduledVisits = searchScheduledVisit(searchRequest, 100, 0, scheduledVisit.getTenantId(), null, null);
+            List<ScheduledVisit> scheduledVisits = searchScheduledVisit(searchRequest, 1, 0, scheduledVisit.getTenantId(), null, null);
             if (scheduledVisits !=null && !scheduledVisits.isEmpty()){
                 throw new CustomException("CREATE_VISIT_ERROR", "A visit number: "+ scheduledVisit.getVisitNumber()+" already exist for configuration "+scheduledVisit.getAmcConfigurationId());
             }

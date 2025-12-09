@@ -34,16 +34,10 @@ public class AmcConfigurationServiceUtil {
     private final ServiceRequestRepository serviceRequestRepository;
 
     private final AMCServiceConfiguration amcConfigurationnerConfiguration;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    @Autowired
-    @Qualifier("objectMapper")
-    ObjectMapper mapper;
-
-    public AmcConfigurationServiceUtil(ServiceRequestRepository serviceRequestRepository, AMCServiceConfiguration amcConfigurationnerConfiguration, KafkaTemplate<String, Object> kafkaTemplate) {
+    public AmcConfigurationServiceUtil(ServiceRequestRepository serviceRequestRepository, AMCServiceConfiguration amcConfigurationnerConfiguration) {
         this.serviceRequestRepository = serviceRequestRepository;
         this.amcConfigurationnerConfiguration = amcConfigurationnerConfiguration;
-        this.kafkaTemplate = kafkaTemplate;
     }
 
     public AuditDetails getAuditDetails(String by, AuditDetails auditDetails, Boolean isCreate) {
@@ -113,7 +107,7 @@ public class AmcConfigurationServiceUtil {
         ProjectStaffBulkRequest request  = ProjectStaffBulkRequest.builder().requestInfo(requestInfo).projectStaff(staffs).build();
         String url = amcConfigurationnerConfiguration.getProjectServiceHost() + amcConfigurationnerConfiguration.getProjectStaffCreateUrl();
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
-        ProjectStaffResponse projectResponse = mapper.convertValue(response, ProjectStaffResponse.class);
+        ProjectStaffResponse projectResponse = objectMapper.convertValue(response, ProjectStaffResponse.class);
         if(projectResponse != null && projectResponse.getProjectStaff() !=null){
             return projectResponse.getProjectStaff();
         }
