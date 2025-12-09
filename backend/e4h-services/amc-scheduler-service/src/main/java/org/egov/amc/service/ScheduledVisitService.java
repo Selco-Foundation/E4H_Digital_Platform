@@ -12,7 +12,6 @@ import org.egov.amc.validator.ScheduledVisitValidator;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.models.user.OtpValidationRequest;
 import org.egov.common.producer.Producer;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,9 +67,29 @@ public class ScheduledVisitService {
 
     public ScheduledVisitRequest createScheduledVisit(ScheduledVisitRequest request) {
         scheduledVisitsValidator.validateCreateScheduledVisitRequest(request);
-        for (ScheduledVisit amcConfiguration : request.getScheduledVisits()) {
-            scheduledVisitsEnrichment.enrichScheduledVisitOnCreate(amcConfiguration, request.getRequestInfo());
-            log.info("Enriched with AMC Ids and AuditDetails {}", amcConfiguration);
+        for (ScheduledVisit scheduledVisit : request.getScheduledVisits()) {
+            // Avoid creating two visits with same visit number
+            ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder()
+                    .tenantId(scheduledVisit.getTenantId())
+                    .amcConfigurationIds(List.of(scheduledVisit.getAmcConfigurationId()))
+                    .visitNumbers(List.of(scheduledVisit.getVisitNumber()))
+                    .build();
+            ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
+                    .RequestInfo(request.getRequestInfo())
+                    .searchCriteria(searchCriteria)
+                    .build();
+            List<ScheduledVisit> scheduledVisits = searchScheduledVisit(searchRequest, 1, 0, scheduledVisit.getTenantId(), null, null);
+            if (scheduledVisits !=null && !scheduledVisits.isEmpty()){
+                throw new CustomException("CREATE_VISIT_ERROR", "A visit number: "+ scheduledVisit.getVisitNumber()+" already exist for configuration "+scheduledVisit.getAmcConfigurationId());
+            }
+
+            // remove Duplicate Assignments
+            Set<String> seenUsers = new HashSet<>();
+            List<ScheduledVisitAssignment> assignments = scheduledVisit.getAssignments().stream().filter(a -> seenUsers.add(a.getAssignedUser()))
+                    .toList();
+            scheduledVisit.setAssignments(assignments);
+            scheduledVisitsEnrichment.enrichScheduledVisitOnCreate(scheduledVisit, request.getRequestInfo());
+            log.info("Enriched with AMC Ids and AuditDetails {}", scheduledVisit);
             log.info("Pushed to kafka");
         }
         producer.push(amcServiceConfiguration.getSaveScheduledVisitTopic(), request);
@@ -109,6 +128,7 @@ public class ScheduledVisitService {
             throw new CustomException("GENERATE_VISIT_ERROR", "Cannot generate scheduled visit for this configuration");
 
         List<ScheduledVisit> scheduledVisitList = new ArrayList<>();
+        Long previousVisitDate = null;
         int i =1;
         for (Long visitDate : generateAmcVisits){
             List<ScheduledVisitAssignment> assignments = amcConfiguration.getAssignments().stream()
@@ -120,6 +140,8 @@ public class ScheduledVisitService {
             ScheduledVisit visit = ScheduledVisit.builder()
                     .tenantId(amcConfiguration.getTenantId())
                     .amcConfigurationId(amcConfiguration.getId())
+                    .projectId(amcConfiguration.getProjectId())
+                    .lastVisitDate(previousVisitDate)
                     .facilityId(amcConfiguration.getFacilityId())
                     .visitNumber(i)
                     .scheduledDate(visitDate)
@@ -128,6 +150,7 @@ public class ScheduledVisitService {
                     .build();
 
             scheduledVisitList.add(visit);
+            previousVisitDate = visitDate;
             i++;
         }
 
@@ -219,7 +242,7 @@ public class ScheduledVisitService {
                     request.getWorkflow().getAction(),
                     request.getWorkflow().getDocuments(),
                     request.getRequestInfo(),
-                    request.getWorkflow().getComments()
+                    request.getWorkflow().getComment()
             );
         } catch (Exception e) {
 //            e.printStackTrace();

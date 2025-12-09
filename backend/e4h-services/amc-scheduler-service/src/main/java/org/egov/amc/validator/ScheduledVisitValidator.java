@@ -12,6 +12,7 @@ import org.egov.amc.util.MDMSUtils;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
+import org.egov.common.models.project.Project;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -86,6 +87,17 @@ public class ScheduledVisitValidator {
             if (scheduledVisit == null) {
                 log.error("ScheduledVisit is mandatory in ScheduledVisits");
                 throw new CustomException("ScheduledVisit", "ScheduledVisit is mandatory");
+            }
+
+            if (scheduledVisit.getProjectId() == null || scheduledVisit.getProjectId().isEmpty()) {
+                log.error("Project ID is mandatory in ScheduledVisit");
+                throw new CustomException("ScheduledVisit", "Project ID is mandatory");
+            }
+            // Get existing amcConfiguration with projectID from amcConfiguration service
+            Project existingProject = amcConfigurationValidator.getProjectById(request.getRequestInfo(), scheduledVisit.getProjectId(), scheduledVisit.getTenantId());
+            if (existingProject == null) {
+                log.error("Project ID do not exist");
+                throw new CustomException("ScheduledVisit", "Project ID do not exist");
             }
 
             if (scheduledVisit.getFacilityId() == null || scheduledVisit.getFacilityId().isEmpty()) {
@@ -268,9 +280,9 @@ public class ScheduledVisitValidator {
                 && (scheduledVisit.getScheduledDateFrom() == null || scheduledVisit.getScheduledDateFrom() == 0) && (scheduledVisit.getScheduledDateTo() == null || scheduledVisit.getScheduledDateTo() == 0)
                 && (scheduledVisit.getActualDateFrom() == null || scheduledVisit.getActualDateFrom() == 0) && (scheduledVisit.getActualDateTo() == null || scheduledVisit.getActualDateTo() == 0)
                 && (scheduledVisit.getVisitNumbers() == null || scheduledVisit.getVisitNumbers().isEmpty()) && (scheduledVisit.getAssignedUsers() == null || scheduledVisit.getAssignedUsers().isEmpty())
-                && (scheduledVisit.getIncludeExpired() == null)){
+                && (scheduledVisit.getIncludeExpired() == null) && (scheduledVisit.getProjectsIds()==null || scheduledVisit.getProjectsIds().isEmpty())){
             log.error("Any one scheduledVisit search field is required for ScheduledVisit Search");
-            throw new CustomException("ASSET_AMC_SEARCH_FIELDS", "Any one asset_amc search field is required");
+            throw new CustomException("SCHEDULED_VISIT_SEARCH_FIELDS", "Any one scheduledVisit search field is required for ScheduledVisit Search");
         }
 
         if (!scheduledVisit.getTenantId().equals(tenantId)) {
