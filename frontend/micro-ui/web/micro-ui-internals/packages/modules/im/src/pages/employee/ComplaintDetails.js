@@ -505,6 +505,7 @@ export const ComplaintDetails = (props) => {
             state: "PENDINGRESOLUTIONNEW",
             status: "PENDINGRESOLUTIONNEW",
           };
+          applyAction["wfComment"] = [];
 
           complaintTimelineData.push(complaintTimelineDataNew);
         }
@@ -864,7 +865,7 @@ export const ComplaintDetails = (props) => {
                   text={
                     Array.isArray(complaintDetails?.details[k])
                       ? complaintDetails?.details[k].map((val) => (typeof val === "object" ? t(val?.code) : t(val)))
-                      : t(complaintDetails?.details[k]) || "N/A"
+                      : t(complaintDetails?.details[k], { defaultValue: complaintDetails?.details[k] }) || "N/A"
                   }
                   last={arr.length - 1 === i}
                 />

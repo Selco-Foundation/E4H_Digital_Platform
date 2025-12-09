@@ -45,8 +45,8 @@ public class QueryBuilderUtil {
         }
 
         if (request.getBoundaryCode() != null && !request.getBoundaryCode().isBlank()) {
-            whereClause.append(" AND boundary_code = ?");
-            params.add(request.getBoundaryCode());
+            whereClause.append(" AND boundary_code ILIKE ?");
+            params.add(request.getBoundaryCode()+ "%");
         }
 
         if (request.getIsOnmReady() != null) {
@@ -87,8 +87,8 @@ public class QueryBuilderUtil {
         }
 
         if (!CollectionUtils.isEmpty(criteria.getBoundaryCodes())) {
-            whereClause.append(" AND boundary_code in ( ").append(createQuery(criteria.getBoundaryCodes().size())).append(" )");
-            params.addAll(criteria.getBoundaryCodes());
+            whereClause.append(" AND boundary_code ILIKE ANY ( ARRAY [ ").append(createQuery(criteria.getBoundaryCodes().size())).append(" ] )");
+            params.addAll(criteria.getBoundaryCodes().stream().map((boundaryCode) -> boundaryCode + "%").toList());
         }
 
         List<Role> currentUserRoles = Optional.ofNullable(requestInfo)
