@@ -30,11 +30,14 @@ public class RMSOrchestratorService {
 
     /**
      * Executes the complete RMS workflow: collect data, apply rules, deduplicate, generate tickets
-     * Currently supports 4 working endpoints:
-     * - Panel low generation - center_details/graph (WORKING)
-     * - Inverter no signal - centerDatas/get (WORKING)
-     * - Inverter high voltage - center_details/graph (WORKING)
-     * - Battery voltage = 0 - center_details/graph (WORKING)
+     * Always processes all alert types: collects fresh data, creates alerts, and generates tickets
+     * Supports all alert types:
+     * - Panel low generation - center_details/graph
+     * - Inverter no signal - centerDatas/get
+     * - Inverter high voltage - center_details/graph
+     * - Battery voltage = 0 - center_details/graph
+     * - Battery deep discharge/overcharge - center_details/graph
+     * - Grid voltage variation - center_details/graph
      */
     public void executeWorkflow() {
         log.info("Starting RMS workflow execution");
@@ -43,29 +46,18 @@ public class RMSOrchestratorService {
             // Create system RequestInfo
             RequestInfo requestInfo = createSystemRequestInfo();
             
-            // Get ALL alerts from alert_history that don't have tickets
-            List<Alert> allAlerts = alertRepository.getAllAlertsFromHistoryWithoutTickets();
-            log.info("Found {} total alerts from history without tickets", allAlerts.size());
+            // ALWAYS process all alert types - collect fresh data, create alerts, and generate tickets
+            log.info("Processing all alert types with fresh data collection");
             
-            if (allAlerts.isEmpty()) {
-                log.info("No alerts found in history without tickets. Processing by type for backward compatibility...");
-                // Fallback to processing by type for backward compatibility
-                processInverterNoSignalAlerts(requestInfo);
-                processInverterHighVoltageAlerts(requestInfo);
-                processPanelAlerts(requestInfo);
-                processBatteryAlerts(requestInfo);
-                processBatteryDeepDischargeAlerts(requestInfo);
-                processGridAlerts(requestInfo);
-            } else {
-                // Process all alerts together
-                log.info("Processing {} alerts from history", allAlerts.size());
-                // Apply deduplication to prevent duplicate tickets
-                List<Alert> uniqueAlerts = deduplicationManager.deduplicateAlerts(allAlerts);
-                log.info("After deduplication: {} unique alerts to process", uniqueAlerts.size());
-                createTickets(uniqueAlerts, requestInfo, "All Alerts from History");
-            }
+            // Process all alert types (each handles its own data collection, alert creation, and ticket generation)
+            processInverterNoSignalAlerts(requestInfo);
+            processInverterHighVoltageAlerts(requestInfo);
+            processPanelAlerts(requestInfo);
+            processBatteryAlerts(requestInfo);
+            processBatteryDeepDischargeAlerts(requestInfo);
+            processGridAlerts(requestInfo);
             
-            log.info("Completed RMS workflow execution");
+            log.info("Completed RMS workflow execution - all alert types processed");
         } catch (Exception e) {
             log.error("Error during RMS workflow execution", e);
         }

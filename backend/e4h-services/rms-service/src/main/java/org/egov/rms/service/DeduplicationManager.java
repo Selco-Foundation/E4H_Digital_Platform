@@ -78,7 +78,13 @@ public class DeduplicationManager {
             // Alert is new or suppression window has passed
             uniqueAlerts.add(alert);
             // Save alert to active_alerts table if it doesn't exist
-            alertRepository.saveAlert(alert);
+            try {
+                alertRepository.saveAlert(alert);
+                log.debug("Successfully saved alert {} to active_alerts", alert.getId());
+            } catch (Exception e) {
+                log.error("Failed to save alert {} to active_alerts: {}", alert.getId(), e.getMessage(), e);
+                // Continue processing other alerts even if one fails
+            }
         }
 
         log.info("After deduplication: {} unique alerts", uniqueAlerts.size());
