@@ -14,6 +14,7 @@ import java.util.Map;
 public class ScheduledVisit {
     private String id;
     private String tenantId;
+    private String projectId;
     private String amcConfigurationId;
     private AmcConfiguration amcConfiguration;
     private String facilityId;
@@ -21,6 +22,7 @@ public class ScheduledVisit {
     private Integer visitNumber;
     private Long scheduledDate;
     private Long actualVisitDate;
+    private Long lastVisitDate;
     private String status; // DRAFT, SCHEDULED, APPROVED, etc.
     private VisitReport visitReport;
     private Workflow workflow;

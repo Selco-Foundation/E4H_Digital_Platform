@@ -3,12 +3,10 @@ package org.egov.amc.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.egov.amc.web.models.AmcConfiguration;
-import org.egov.amc.web.models.AmcConfigurationRequest;
-import org.egov.amc.web.models.AmcConfigurationSearchCriteria;
-import org.egov.amc.web.models.AmcConfigurationSearchRequest;
+import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.models.project.ProjectStaff;
 import org.egov.common.producer.Producer;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.AmcConfigurationRepository;
@@ -21,6 +19,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -53,7 +52,24 @@ public class AmcConfigurationService {
     public AmcConfigurationRequest createAmcConfiguration(AmcConfigurationRequest request) {
         amcConfigurationValidator.validateCreateAmcConfigurationRequest(request);
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
+            // remove Duplicate Assignments if the same user is AMC_STAFF and AMC_REVIEWER
+            Set<String> seenUsers = new HashSet<>();
+            List<AmcConfigurationAssignment> assignments = amcConfiguration.getAssignments().stream().filter(a -> seenUsers.add(a.getAssignedUser()))
+                    .toList();
+            amcConfiguration.setAssignments(assignments);
             amcConfigurationEnrichment.enrichAmcConfigurationOnCreate(amcConfiguration, request.getRequestInfo());
+
+            // Link the AMC_REVIEWER and AMC_STAFF to project
+            if (amcConfiguration.getAssignments() != null && !amcConfiguration.getAssignments().isEmpty()) {
+                List<ProjectStaff> staffs = amcConfiguration.getAssignments().stream()
+                        .map(assignment -> ProjectStaff.builder()
+                                .tenantId(amcConfiguration.getTenantId())
+                                .projectId(amcConfiguration.getProjectId())
+                                .userId(assignment.getAssignedUser())
+                                .build())
+                        .collect(Collectors.toList());
+                amcConfigurationServiceUtil.createProjectStaff(request.getRequestInfo(), staffs);
+            }
             log.info("Enriched with AMC Ids and AuditDetails {}", amcConfiguration);
             log.info("Pushed to kafka");
         }

@@ -85,7 +85,7 @@ public class AmcConfigurationValidator {
                 throw new CustomException("AmcConfiguration", "Project ID is mandatory");
             }
             // Get existing amcConfiguration with projectID from amcConfiguration service
-            Project existingProject = getProjectById(request, amcConfiguration);
+            Project existingProject = getProjectById(request.getRequestInfo(), amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
             if (existingProject == null) {
                 log.error("Project ID do not exist");
                 throw new CustomException("AmcConfiguration", "Project ID do not exist");
@@ -194,11 +194,10 @@ public class AmcConfigurationValidator {
         }
     }
 
-    public Project getProjectById(AmcConfigurationRequest request, AmcConfiguration amcConfiguration) {
-        String projectId = amcConfiguration.getProjectId();
-        Project project = Project.builder().id(projectId).tenantId(amcConfiguration.getTenantId()).build();
-        ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(project)).build();
-        String url = config.getProjectServiceHost() + config.getProjectServiceSearchUrl()+ "?tenantId="+amcConfiguration.getTenantId()+"&offset=0&limit=100";
+    public Project getProjectById(RequestInfo requestInfo, String projectId, String tenantId) {
+        Project project = Project.builder().id(projectId).tenantId(tenantId).build();
+        ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(requestInfo).projects(List.of(project)).build();
+        String url = config.getProjectServiceHost() + config.getProjectServiceSearchUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), projectRequest, Map.class);
         ProjectResponse projectResponse = mapper.convertValue(response, ProjectResponse.class);
         if(projectResponse != null && projectResponse.getProject() !=null && projectResponse.getProject().size() > 0){
