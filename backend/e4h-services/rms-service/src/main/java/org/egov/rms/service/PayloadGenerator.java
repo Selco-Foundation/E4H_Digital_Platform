@@ -31,31 +31,36 @@ public class PayloadGenerator {
 
         try {
             // Fetch facility details
-//            FacilityDetails facilityDetails = facilityServiceClient.getFacilityByHfrId(
-//                    alert.getHfrId(), config.getDefaultTenantId());
-//
-//            if (facilityDetails == null) {
-//                log.warn("Facility not found for hfrId: {}", alert.getHfrId());
-//                return null;
-//            }
+            FacilityDetails facilityDetails = facilityServiceClient.getFacilityByHfrId(
+                    alert.getHfrId(), config.getDefaultTenantId());
+
+            if (facilityDetails == null) {
+                log.warn("Facility not found for hfrId: {}", alert.getHfrId());
+                return null;
+            }
 
             // Map alert type/subtype to IM service incident type/subtype
             String incidentType = mapAlertTypeToIncidentType(alert.getAlertType());
             String incidentSubType = mapAlertSubTypeToIncidentSubType(alert.getAlertSubType(), alert.getAlertType());
+
+            // Extract boundaryCode from facility details, fallback to hardcoded value if not available
+            String boundaryCode = facilityDetails.getBoundaryCode();
+            if (boundaryCode == null || boundaryCode.trim().isEmpty()) {
+                log.warn("BoundaryCode not found for facility hfrId: {}, using fallback", alert.getHfrId());
+                boundaryCode = "India_Karnataka_Bagalkote_Bagalkot_FAC/2025/5329";
+            }
 
             // Build incident payload
             IMServiceRequest.Incident incident = IMServiceRequest.Incident.builder()
                     .incidentType(incidentType)
                     .incidentSubType(incidentSubType)
                     .tenantId("in")
-                    .district("Bagalkote") // TODO: Extract from mapping or facility data
-                    .block("Bagalkot") // TODO: Extract from mapping or facility data
-                    .comments(buildComments(alert, null))
+                    .comments(buildComments(alert, facilityDetails))
                     .systemFunctional("FUNCTIONAL")
-                    .boundaryCode("India_Karnataka_Bagalkote_Bagalkot_FAC/2025/5329")
+                    .boundaryCode(boundaryCode)
                     .source("RMS")
                     .reporterType("RMS")
-                    .additionalDetail(buildAdditionalDetail(alert, null))
+                    .additionalDetail(buildAdditionalDetail(alert, facilityDetails))
                     .reporter(buildReporter(requestInfo))
                     .build();
 

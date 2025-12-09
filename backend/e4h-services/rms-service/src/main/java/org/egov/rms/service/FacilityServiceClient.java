@@ -80,6 +80,7 @@ public class FacilityServiceClient {
 //                    .phcType((String) facility.get("phcType"))
 //                    .phcSubType((String) facility.get("phcSubType"))
                     .tenantId((String) facility.get("tenant_id"))
+                    .boundaryCode((String) facility.get("boundaryCode"))
                     .build();
         } catch (Exception e) {
             log.error("Error mapping facility details", e);

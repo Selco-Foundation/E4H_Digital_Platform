@@ -38,5 +38,8 @@ public class FacilityDetails {
 
     @JsonProperty("tenantId")
     private String tenantId;
+
+    @JsonProperty("boundaryCode")
+    private String boundaryCode;
 }
 
