@@ -505,6 +505,7 @@ export const ComplaintDetails = (props) => {
             state: "PENDINGRESOLUTIONNEW",
             status: "PENDINGRESOLUTIONNEW",
           };
+          applyAction["wfComment"] = [];
 
           complaintTimelineData.push(complaintTimelineDataNew);
         }
