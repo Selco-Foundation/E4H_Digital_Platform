@@ -670,7 +670,7 @@
               {
                 "type": "string",
                 "format": "dropdown",
-                "label": "If yes, and further rectification is needed, did you inform the health staff or CRM to raise a ticket through Saura-eMitra?",
+                "label": "If yes, did you notify health staff or CRM to raise a ticket?",
                 "order": 32,
                 "value": "",
                 "hidden": false,
@@ -737,7 +737,7 @@
               {
                 "type": "boolean",
                 "format": "checkbox",
-                "label": "Clear Geo tagged image of the service person with health facility name board",
+                "label": "Please take a selfie in front of the name board of the health center",
                 "order": 35,
                 "value": false,
                 "hidden": false,

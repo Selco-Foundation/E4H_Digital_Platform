@@ -8,7 +8,6 @@ import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_checkbox.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/scrollable_content.dart';
-import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' show basename;
@@ -24,7 +23,7 @@ import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
-import '../widgets/customized_digit_widget/file_uploader.dart';
+import '../widgets/customized_digit_widget/image_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
@@ -42,7 +41,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
   ScheduledVisit? scheduledVisit;
   FormOrigin? origin;
   String userType = USER_TYPES.AMC.name;
-  List<PlatformFile> _selectedImages = [];
+  List<File> _selectedImages = [];
   bool _isImagesInitLoading = false;
   double? _latitude;
   double? _longitude;
@@ -119,23 +118,15 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
       _isImagesInitLoading = true;
     });
 
-    final List<PlatformFile> images = [];
+    final List<File> images = [];
     if (cacheEntries.isNotEmpty) {
       final futures = cacheEntries.map((e) async {
         final file = await getCachedFile(e.filePath);
         if (file == null) return null;
-
-        final size = await file.length();
-
-        return PlatformFile(
-          name: basename(file.path),
-          path: file.path,
-          size: size,
-        );
+        return File(file.path);
       }).toList();
 
       final results = await Future.wait(futures);
-
       for (final pf in results) {
         if (pf == null) continue;
         images.add(pf);
@@ -157,14 +148,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
       final futures = docs.map((e) async {
         final file = await getCachedFile(e.fileStore ?? '');
         if (file == null) return null;
-
-        final size = await file.length();
-
-        return PlatformFile(
-          name: basename(file.path),
-          path: file.path,
-          size: size,
-        );
+        return File(file.path);
       }).toList();
 
       final results = await Future.wait(futures);
@@ -337,7 +321,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                             await copyFileToLocalDir(File(file.path!));
                         final entry = CacheAmcMediaUpload(
                           scheduledVisitId: _currentScheduledVisitId!,
-                          itemNumber: file.name,
+                          itemNumber: file.path,
                           itemType: 'image',
                           userType: userType,
                           filePath: copied,
@@ -374,6 +358,11 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
+                        Text(
+                          'Please take a selfie in front of the name board of the health center',
+                          style: textTheme.headingS
+                              .copyWith(color: theme.colorTheme.text.primary),
+                        ),
                         const SizedBox(height: spacer2),
                         if (isReadOnlyMedia &&
                             existingImageReports != null &&
@@ -385,31 +374,22 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                             readOnly: true,
                           ),
                         if (!isReadOnlyMedia)
-                          FileUploadWidget(
-                            allowedExtensions: const [
-                              "jpg",
-                              'jpeg',
-                              "png",
-                              'JPG',
-                              'JPEG',
-                              'PNG'
-                            ],
-                            label: 'Upload Images',
+                          ImageUploader(
                             allowMultiples: true,
-                            showPreview: true,
-                            initialFiles: _selectedImages,
-                            onFilesSelected: (files) {
+                            initialImages: _selectedImages,
+                            onImagesSelected: (List<File> imageFiles) async {
                               setState(() {
-                                _selectedImages = files;
+                                _selectedImages = imageFiles;
                               });
-                              _ensureLocationLoaded().then((ok) {
-                                if (!ok) {
-                                  context.showSnackBar(const SnackBar(
+
+                              final ok = await _ensureLocationLoaded();
+                              if (!ok) {
+                                context.showSnackBar(
+                                  const SnackBar(
                                       content:
-                                          Text('Could not fetch location')));
-                                }
-                              });
-                              return <PlatformFile, String?>{};
+                                          Text('Could not fetch location')),
+                                );
+                              }
                             },
                           ),
                         if (_isImagesInitLoading)
@@ -419,7 +399,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                       if (origin == FormOrigin.submitForApproval)
                         DigitCard(
                           children: [
-                            // const SizedBox(height: spacer2),
+                            SizedBox(width: context.width),
                             Text(
                               "Rejection List",
                               style: textTheme.headingXl.copyWith(

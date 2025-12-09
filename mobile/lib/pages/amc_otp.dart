@@ -132,6 +132,13 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                     margin: const EdgeInsets.all(spacer2),
                     children: [
                       const SizedBox(height: spacer6),
+                      Center(
+                        child: Text(
+                          'Please ask for OTP from the HCR',
+                          style: textTheme.headingM.copyWith(
+                              color: theme.colorTheme.primary.primary2),
+                        ),
+                      ),
                       SizedBox(
                         width: context.width,
                         child: ReactiveWrapperField(
@@ -150,7 +157,6 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                             ],
                             errorMessage: field.errorText,
                             onChanged: (input) {
-                              // form.control(_otp).value = input;
                               field.didChange(input);
                             },
                           ),
