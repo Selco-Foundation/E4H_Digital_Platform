@@ -229,11 +229,6 @@ public class RMSOrchestratorService {
         
         for (Alert alert : alertsToProcess) {
             try {
-                int count = 0;
-                if (count > 10) {
-                    break;
-                }
-
                 // Check if there's an open ticket in eg_incident_v2
                 // If ticket is closed or doesn't exist, we allow creating a new ticket
                 // Note: We don't skip alerts with ticket_id set because they might have closed tickets
@@ -265,7 +260,6 @@ public class RMSOrchestratorService {
                     log.warn("Failed to generate ticket payload for alert: {}", alert.getId());
                     failureCount++;
                 }
-                count++;
             } catch (Exception e) {
                 log.error("Error creating ticket for alert: {}", alert.getId(), e);
                 failureCount++;
