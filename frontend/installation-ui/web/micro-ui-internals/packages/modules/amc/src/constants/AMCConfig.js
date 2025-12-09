@@ -81,11 +81,11 @@ export const amcConfig = {
         { "field": "faults_observed", "label": "Any Faults observed during visit" },
         { "field": "immediate_fix_done", "label": "If yes, was an immediate fix implemented?" },
         { "field": "parts_repaired", "label": "If yes, were any parts repaired?" },
-        { "field": "informed_CRM", "label": "If yes, and further rectification is needed, did you inform the health staff or CRM to raise a ticket through Saura-eMitra?" },
+        { "field": "informed_CRM", "label": "If yes, did you notify health staff or CRM to raise a ticket?" },
 
         { "field": "service_person_remarks", "label": "Service Person (Remarks)" },
         { "field": "health_staff_remarks", "label": "Health Staff (Remarks)" },
-        { "field": "img1_taken", "label": "Clear Geo tagged image of the service person with health facility name board" }
+        { "field": "img1_taken", "label": "Please take a selfie in front of the name board of the health center" }
       ]
     }
   ]
