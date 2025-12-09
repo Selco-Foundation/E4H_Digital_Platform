@@ -57,6 +57,8 @@ public class WeeklyReportService {
 //                String ticketTenantId = (String) data.get("tenantId");
                 Map<String, Object> incident = (Map<String, Object>) data.get("incident");
                 Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
+                if(boundary ==null)
+                    return false;
                 String ticketStateCode = (String) boundary.get("stateCode");
                 if (ticketStateCode == null) return false;
 

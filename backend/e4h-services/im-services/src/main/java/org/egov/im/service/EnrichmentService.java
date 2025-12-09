@@ -96,8 +96,7 @@ public class EnrichmentService {
         incident.setAccountId(incidentRequest.getIncident().getReporter().getUuid());
         incident.setReporterTenant(incidentRequest.getIncident().getReporter().getTenantId());
 
-        incident.setBlock(toCamelCase(incident.getBlock()));
-        incident.setDistrict(toCamelCase(incident.getDistrict()));
+        localizationService.enrichLocalizedDistrictAndBlockNames(incidentRequest, boundary);
 
         userService.callUserService(incidentRequest);
 
@@ -105,7 +104,9 @@ public class EnrichmentService {
             List<org.egov.common.contract.request.Role> userRoles = Optional.ofNullable(requestInfo.getUserInfo())
                     .map(org.egov.common.contract.request.User::getRoles)
                     .orElse(new ArrayList<>());
-            if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("COMPLAINT_ASSESSOR"))) {
+            if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("RMS"))) {
+                incident.setReporterType("RMS");
+            } else if (userRoles.stream().anyMatch(role -> role.getCode().equalsIgnoreCase("COMPLAINT_ASSESSOR"))) {
                 incident.setReporterType("CRM");
             } else {
                 incident.setReporterType("HCR");
@@ -164,9 +165,6 @@ public class EnrichmentService {
                 .orElseThrow(() -> new CustomException("HCR_NOT_FOUND", "HCR not found for given boundary"));
 
         Object mdmsResponse = mdmsUtils.fetchMDMSData(requestInfo, incident.getTenantId(), "common-masters", List.of("StateInfo"), null);
-        if (boundary == null) {
-            throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + incident.getBoundaryCode());
-        }
         List<?> stateInfoList = Optional.ofNullable(safeJsonPathRead(mdmsResponse, "$.MdmsRes.common-masters.StateInfo"))
                 .filter(List.class::isInstance)
                 .map(List.class::cast)
@@ -265,9 +263,6 @@ public class EnrichmentService {
         log.info("EnrichmentService::Enriching incident fields for indexing");
         IncidentRequest incidentRequest = wrapper.getIncidentRequest();
 
-        // Enrich localized fields first (will populate IndexView inside the wrapper)
-        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
-
         // Ensure IndexView is initialized and reused (not replaced)
         IndexView indexView = wrapper.getIndexView();
         if (indexView == null) {
@@ -321,6 +316,8 @@ public class EnrichmentService {
             indexView.setBoundary(boundary);
         }
 
+        // Enrich localized fields first (will populate IndexView inside the wrapper)
+        localizationService.enrichLocalizedFieldsForIndexing(wrapper);
     }
 
     /**

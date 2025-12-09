@@ -71,10 +71,16 @@ public class EmployeeRepository {
 			if (CollectionUtils.isEmpty(empUuids))
 				return employees;
 			else {
-				if(!CollectionUtils.isEmpty(criteria.getUuids()))
-					criteria.setUuids(criteria.getUuids().stream().filter(empUuids::contains).collect(Collectors.toList()));
-				else
+				if(!CollectionUtils.isEmpty(criteria.getUuids())) {
+					List<String> filteredUuids = criteria.getUuids().stream().filter(empUuids::contains).collect(Collectors.toList());
+					// If both roles and boundaryCodes are provided, and no employees match both criteria, return empty list
+					if(!CollectionUtils.isEmpty(criteria.getRoles()) && CollectionUtils.isEmpty(filteredUuids)) {
+						return employees;
+					}
+					criteria.setUuids(filteredUuids);
+				} else {
 					criteria.setUuids(empUuids);
+				}
 			}
 		}
 		

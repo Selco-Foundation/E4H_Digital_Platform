@@ -41,6 +41,10 @@ public class RequestSearchCriteria {
     private String mobileNumber;
 
     @SafeHtml
+    @JsonProperty("boundaryCode")
+    private String boundaryCode;
+
+    @SafeHtml
     @JsonProperty("systemFunctional")
     private String systemFunctional;
 
