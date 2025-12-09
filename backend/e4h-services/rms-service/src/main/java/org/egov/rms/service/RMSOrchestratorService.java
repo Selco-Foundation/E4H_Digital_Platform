@@ -216,7 +216,7 @@ public class RMSOrchestratorService {
             int limit = config.getMaxTicketsPerTrigger();
             if (alerts.size() > limit) {
                 alertsToProcess = alerts.subList(0, limit);
-                log.info("Testing mode: Limiting ticket creation for '{}' trigger to {} tickets (out of {} total alerts)",
+                log.info("Testing mode: Limiting ticket creation for '{}' trigger to {} tickets (out of {} total alerts)", 
                         triggerName, limit, alerts.size());
             }
         } else if ("All Alerts from History".equals(triggerName)) {
