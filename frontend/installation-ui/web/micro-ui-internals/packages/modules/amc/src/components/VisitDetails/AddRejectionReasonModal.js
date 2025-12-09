@@ -4,10 +4,10 @@ import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import CustomDropdown from "../Custom/CustomDropdown";
 
 const reasonOptions = [
-  { label: "Image Not Clear", code: "Image Not Clear" },
-  { label: "Incorrect Brand", code: "Incorrect Brand" },
-  { label: "Model Number Incorrect", code: "Model Number Incorrect" },
-  { label: "Serial Number Incorrect", code: "Serial Number Incorrect" }
+  { label: "Uploaded images are not clear", code: "Uploaded images are not clear" },
+  { label: "Battery/panel/inverter readings are not correct", code: "Battery/panel/inverter readings are not correct" },
+  { label: "Corrective actions are not satisfactory", code: "Corrective actions are not satisfactory" },
+  { label: "Remarks are not adequate", code: "Remarks are not adequate" }
 ];
 
 const AddRejectionReasonModal = ({ t, onClose, handleConfirmRejection }) => {
