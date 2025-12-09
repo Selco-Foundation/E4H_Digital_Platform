@@ -27,6 +27,9 @@ public class AMCServiceConfiguration {
     @Value("${egov.search.project.url}")
     private String projectServiceSearchUrl;
 
+    @Value("${egov.staff.project.create.url}")
+    private String projectStaffCreateUrl;
+
     @Value("${egov.asset.host}")
     private String assetServiceHost;
 

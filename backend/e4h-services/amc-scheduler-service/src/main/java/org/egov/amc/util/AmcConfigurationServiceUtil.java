@@ -4,13 +4,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.amc.service.ServiceRequestRepository;
 import org.egov.amc.web.models.AmcConfiguration;
 import org.egov.amc.web.models.AssetAmc;
 import org.egov.amc.web.models.ScheduledVisit;
 import org.egov.common.contract.models.AuditDetails;
-import org.egov.common.models.project.Project;
+import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.http.client.ServiceRequestClient;
+import org.egov.common.models.project.*;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -18,8 +22,6 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static java.util.Objects.isNull;
 
@@ -29,12 +31,13 @@ public class AmcConfigurationServiceUtil {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private final AMCServiceConfiguration amcConfigurationnerConfiguration;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final ServiceRequestRepository serviceRequestRepository;
 
-    public AmcConfigurationServiceUtil(AMCServiceConfiguration amcConfigurationnerConfiguration, KafkaTemplate<String, Object> kafkaTemplate) {
+    private final AMCServiceConfiguration amcConfigurationnerConfiguration;
+
+    public AmcConfigurationServiceUtil(ServiceRequestRepository serviceRequestRepository, AMCServiceConfiguration amcConfigurationnerConfiguration) {
+        this.serviceRequestRepository = serviceRequestRepository;
         this.amcConfigurationnerConfiguration = amcConfigurationnerConfiguration;
-        this.kafkaTemplate = kafkaTemplate;
     }
 
     public AuditDetails getAuditDetails(String by, AuditDetails auditDetails, Boolean isCreate) {
@@ -98,6 +101,17 @@ public class AmcConfigurationServiceUtil {
         }
 
         return visits;
+    }
+
+    public ProjectStaff createProjectStaff(RequestInfo requestInfo, List<ProjectStaff> staffs) {
+        ProjectStaffBulkRequest request  = ProjectStaffBulkRequest.builder().requestInfo(requestInfo).projectStaff(staffs).build();
+        String url = amcConfigurationnerConfiguration.getProjectServiceHost() + amcConfigurationnerConfiguration.getProjectStaffCreateUrl();
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        ProjectStaffResponse projectResponse = objectMapper.convertValue(response, ProjectStaffResponse.class);
+        if(projectResponse != null && projectResponse.getProjectStaff() !=null){
+            return projectResponse.getProjectStaff();
+        }
+        return null;
     }
 
     public void mergeAdditionalDetails(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDb) {
