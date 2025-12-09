@@ -4,10 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
-import org.egov.im.web.models.Incident;
-import org.egov.im.web.models.IncidentRequestWrapper;
-import org.egov.im.web.models.IndexView;
-import org.egov.im.web.models.LocalizationResponse;
+import org.egov.im.web.models.*;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -50,6 +47,21 @@ public class LocalizationService {
             log.error("Failed to fetch localization messages for codes: {}, error: {}", codes, e.getMessage(), e);
             return new LocalizationResponse(); // return empty response object to avoid NPE
         }
+    }
+
+    public void enrichLocalizedDistrictAndBlockNames(IncidentRequest incidentRequest, Boundary boundary) {
+        Incident incident = incidentRequest.getIncident();
+        String tenantId = incident.getTenantId();
+        String locale = "en_IN";
+
+        String districtCode = "Boundary_" + boundary.getDistrictCode();
+        String blockCode = "Boundary_" + boundary.getBlockCode();
+        String boundaryCodes = String.join(",", districtCode, blockCode);
+
+        LocalizationResponse boundaryResponse = getLocalizationMessages(incidentRequest.getRequestInfo(), tenantId, "rainmaker-in", locale, boundaryCodes);
+
+        incident.setDistrict(boundaryResponse.getMessageByCode(districtCode));
+        incident.setBlock(boundaryResponse.getMessageByCode(blockCode));
     }
 
     public void enrichLocalizedFieldsForIndexing(IncidentRequestWrapper wrapper) {
