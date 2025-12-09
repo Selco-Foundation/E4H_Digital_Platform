@@ -166,8 +166,8 @@ public class EscalationController {
                         users.addAll(userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes));
                     }
                 } else if ("country".equals(recipient.getBoundaryLevel())) {
-                    // For country-level recipients, get users from 'in' tenant
-                    users = userService.searchUsersByRoleInCountry(requestInfo, roleCodes);
+                    // For country-level recipients, get users with boundary "India" from 'in' tenant
+                    users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", roleCodes);
                 }
                 
                 for (User user : users) {
@@ -225,8 +225,8 @@ public class EscalationController {
                     }
                 }
             } else if ("country".equals(recipient.getBoundaryLevel())) {
-                // For country-level recipients, get users from 'in' tenant
-                List<User> users = userService.searchUsersByRoleInCountry(requestInfo, roleCodes);
+                // For country-level recipients, get users with boundary "India" from 'in' tenant
+                List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", roleCodes);
                 for (User user : users) {
                     if (emailId.equals(user.getEmailId())) {
                         // For country-level roles, include all active tenants
@@ -618,12 +618,12 @@ public class EscalationController {
         String escalationId = escalationRecipient.getId().toString();
         String recipientRoleName = recipientRole.getRole();
         
-        // Step 3b: Query users for role in 'in' tenant
+        // Step 3b: Query users for role with boundary "India" in 'in' tenant
         List<String> roleCodes = List.of(recipientRole.getRole());
-        List<User> users = userService.searchUsersByRoleInCountry(requestInfo, roleCodes);
+        List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", roleCodes);
         
         if (users.isEmpty()) {
-            log.warn("No users found for role: {} in 'in' tenant", recipientRole.getRole());
+            log.warn("No users found for role: {} with boundary India in 'in' tenant", recipientRole.getRole());
             escalationStatusService.publishSuccessStatus(escalationType, escalationId, "in", recipientRoleName);
             return;
         }
@@ -895,9 +895,9 @@ public class EscalationController {
                 }
             }
             
-            // Also check country-level tenant
+            // Also check country-level users with boundary "India"
             List<String> allRoles = Arrays.asList("CENTRAL_POC", "STATE_POC", "VENDOR", "ADMIN");
-            List<User> countryUsers = userService.searchUsersByRoleInCountry(requestInfo, allRoles);
+            List<User> countryUsers = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", allRoles);
             
             for (User user : countryUsers) {
                 if (emailId.equals(user.getEmailId())) {
