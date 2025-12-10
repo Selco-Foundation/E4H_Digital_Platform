@@ -67,10 +67,23 @@ public class CSVGenerationService {
     /**
      * Generate CSV filename with timestamp
      */
-    public String generateCsvFileName(String escalationType, String escalationLevel, String tenantId) {
+    public String generateCsvFileName(String escalationType, String escalationLevel, String stateName) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        // Sanitize state name for filename (replace spaces and special characters)
+        String sanitizedStateName = sanitizeForFileName(stateName);
         return String.format("escalation_%s_%s_%s_%s.csv", 
-                escalationType, escalationLevel, tenantId, timestamp);
+                escalationType, escalationLevel, sanitizedStateName, timestamp);
+    }
+    
+    /**
+     * Sanitize string for use in filename (replace spaces and special characters with underscores)
+     */
+    private String sanitizeForFileName(String name) {
+        if (name == null || name.isEmpty()) {
+            return "Unknown";
+        }
+        // Replace spaces and special characters with underscores, convert to lowercase
+        return name.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
     }
     
     /**
