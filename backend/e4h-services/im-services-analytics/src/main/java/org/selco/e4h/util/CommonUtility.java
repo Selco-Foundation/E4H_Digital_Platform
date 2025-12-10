@@ -303,13 +303,8 @@ public class CommonUtility {
             color = increase ? "%23dc2626" : "%2316a34a"; // Red for increase, green for decrease
         }
         
-        // Determine arrow class for CSS (up = good, down = bad)
-        String arrowClass;
-        if (isFunctional) {
-            arrowClass = increase ? "up" : "down";
-        } else {
-            arrowClass = increase ? "down" : "up";
-        }
+        // Arrow class matches the actual arrow direction (up or down)
+        String arrowClass = increase ? "up" : "down";
         
         // Create SVG data URIs with appropriate colors
         String upArrowSvg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='" + color + "' d='M6 2L2 8h8z'/%3E%3C/svg%3E";
