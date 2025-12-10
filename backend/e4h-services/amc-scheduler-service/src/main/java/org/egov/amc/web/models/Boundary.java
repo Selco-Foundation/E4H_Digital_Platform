@@ -13,12 +13,12 @@ import org.springframework.validation.annotation.Validated;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Boundary {
-  @JsonProperty("code")
+  @JsonProperty("state")
   private String state = null;
 
-  @JsonProperty("message")
+  @JsonProperty("district")
   private String district = null;
 
-  @JsonProperty("message")
+  @JsonProperty("block")
   private String block = null;
 }

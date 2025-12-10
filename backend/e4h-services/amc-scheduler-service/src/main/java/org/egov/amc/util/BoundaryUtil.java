@@ -85,7 +85,8 @@ public class BoundaryUtil {
                                         JsonNode facilities = block.get("children");
                                         JsonNode blockCodeNode = block.get("code");
                                         String blockCode = blockCodeNode.asText();
-                                        if (facilities != null && facilities.isArray()) {
+                                        // To take into account facilities whose boundary code is: India_Assam_Kamrup_Amingaon_FAC/2025/0045
+                                        if (facilities != null && facilities.isArray() && !facilities.isEmpty()) {
                                             for (JsonNode facility : facilities) {
                                                 JsonNode boundaryTypeNode = facility.get("boundaryType");
                                                 JsonNode facilityCodeNode = facility.get("code");
@@ -94,6 +95,14 @@ public class BoundaryUtil {
                                                     Boundary boundary = Boundary.builder().state(stateCode).district(districtCode).block(blockCode).build();
                                                     blockToDistrictMap.put(facilityCode, boundary);
                                                 }
+                                            }
+                                        }
+                                        else{ // To take into account facilities whose boundary code is: India_Assam_Kamrup_Amingaon
+                                            JsonNode boundaryTypeNode = block.get("boundaryType");
+                                            if (boundaryTypeNode != null && blockCodeNode !=null && "Block".equals(boundaryTypeNode.asText())) {
+                                                blockCode = blockCodeNode.asText();
+                                                Boundary boundary = Boundary.builder().state(stateCode).district(districtCode).block(blockCode).build();
+                                                blockToDistrictMap.put(blockCode, boundary);
                                             }
                                         }
                                     }
