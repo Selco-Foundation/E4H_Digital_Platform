@@ -13,7 +13,7 @@ public class IncidentQueryBuilder {
 
     private static final String STATUS_COUNT_QUERY =
             "SELECT " +
-                    "    tenantid, " +
+                    "    boundarycode, " +
                     "    COUNT(*) AS total_occurrences, " +
                     "    SUM(CASE WHEN applicationstatus IN (" +
                     "        'PENDINGFORASSIGNMENT', " +
