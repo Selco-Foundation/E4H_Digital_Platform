@@ -97,14 +97,6 @@ public class BoundaryUtil {
                                                 }
                                             }
                                         }
-                                        else{ // To take into account facilities whose boundary code is: India_Assam_Kamrup_Amingaon
-                                            JsonNode boundaryTypeNode = block.get("boundaryType");
-                                            if (boundaryTypeNode != null && blockCodeNode !=null && "Block".equals(boundaryTypeNode.asText())) {
-                                                blockCode = blockCodeNode.asText();
-                                                Boundary boundary = Boundary.builder().state(stateCode).district(districtCode).block(blockCode).build();
-                                                blockToDistrictMap.put(blockCode, boundary);
-                                            }
-                                        }
                                     }
                                 }
                             }

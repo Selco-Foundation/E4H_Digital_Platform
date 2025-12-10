@@ -14,6 +14,7 @@ public class ScheduledVisitAssignment {
     private String tenantId;
     private String scheduledVisitId;
     private String assignedUser;
+    private User user;
     @JsonProperty("isActive")
     private boolean isActive;
     private Map<String, Object> additionalDetails;

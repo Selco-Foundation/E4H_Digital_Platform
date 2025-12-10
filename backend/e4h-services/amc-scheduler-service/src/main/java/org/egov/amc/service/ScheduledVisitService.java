@@ -382,15 +382,26 @@ public class ScheduledVisitService {
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         for (ScheduledVisit scheduledVisit : amcConfigurationList){
             String boundaryCode = scheduledVisit.getFacility().getBoundaryCode();
-            Object additionalDetails = scheduledVisit.getFacility().getAdditionalDetails();
             if (boundaryCode != null && listBlock != null) {
                 Boundary boundary = listBlock.get(boundaryCode);
                 if (boundary != null) {
                     log.debug("✨ Enriching projectId={} with state={}, district={} and block={}", scheduledVisit.getId(), boundary.getState(), boundary.getDistrict(), boundary.getBlock());
+                    Object additionalDetails = scheduledVisit.getFacility().getAdditionalDetails();
                     Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "boundary", boundary);
                     scheduledVisit.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
                 } else {
                     log.warn("⚠️ No boundary found for code={} in facility boundary={}", boundaryCode, scheduledVisit.getId());
+                }
+            }
+            for(ScheduledVisitAssignment assignment : scheduledVisit.getAssignments()){
+                try{
+                    Employee employee =  getUserById(request, assignment.getAssignedUser());
+                    if (employee !=null && employee.getUser() !=null){
+                        assignment.setUser(employee.getUser());
+                    }
+                }
+                catch(Exception e){
+                    log.error("error while calling hrms {} ", e.getMessage());
                 }
             }
         }
