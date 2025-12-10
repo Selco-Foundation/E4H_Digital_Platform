@@ -7,6 +7,7 @@ import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.ScheduledVisitRepository;
 import org.egov.amc.service.enrichment.ScheduledVisitEnrichment;
 import org.egov.amc.util.AmcConfigurationServiceUtil;
+import org.egov.amc.util.BoundaryUtil;
 import org.egov.amc.util.MDMSUtils;
 import org.egov.amc.validator.ScheduledVisitValidator;
 import org.egov.amc.web.models.*;
@@ -43,6 +44,7 @@ public class ScheduledVisitService {
     private final VisitWorkflowService workflowService;
     private final JdbcTemplate jdbcTemplate;
     private final MDMSUtils mdmsUtils;
+    private BoundaryUtil boundaryUtil;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -51,7 +53,7 @@ public class ScheduledVisitService {
     @Autowired
     public ScheduledVisitService(
             ScheduledVisitRepository scheduledVisitsRepository, ScheduledVisitValidator scheduledVisitsValidator, ServiceRequestRepository requestRepository, ScheduledVisitEnrichment scheduledVisitsEnrichment, AMCServiceConfiguration scheduledVisitsConfiguration,
-            Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils) {
+            Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils, BoundaryUtil boundaryUtil) {
             this.scheduledVisitsValidator = scheduledVisitsValidator;
         this.requestRepository = requestRepository;
         this.producer = producer;
@@ -63,6 +65,7 @@ public class ScheduledVisitService {
         this.workflowService = workflowService;
         this.jdbcTemplate = jdbcTemplate;
         this.mdmsUtils = mdmsUtils;
+        this.boundaryUtil = boundaryUtil;
     }
 
     public ScheduledVisitRequest createScheduledVisit(ScheduledVisitRequest request) {
@@ -376,7 +379,34 @@ public class ScheduledVisitService {
     public List<ScheduledVisit> searchScheduledVisit(ScheduledVisitSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         scheduledVisitsValidator.validateSearchScheduledVisitRequest(request, limit, offset, tenantId);
         List<ScheduledVisit> amcConfigurationList = scheduledVisitsRepository.getScheduledVisit(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+        for (ScheduledVisit scheduledVisit : amcConfigurationList){
+            String boundaryCode = scheduledVisit.getFacility().getBoundaryCode();
+            Object additionalDetails = scheduledVisit.getFacility().getAdditionalDetails();
+            if (boundaryCode != null && listBlock != null) {
+                Boundary boundary = listBlock.get(boundaryCode);
+                if (boundary != null) {
+                    log.debug("✨ Enriching projectId={} with state={}, district={} and block={}", scheduledVisit.getId(), boundary.getState(), boundary.getDistrict(), boundary.getBlock());
+                    Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "boundary", boundary);
+                    scheduledVisit.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
+                } else {
+                    log.warn("⚠️ No boundary found for code={} in facility boundary={}", boundaryCode, scheduledVisit.getId());
+                }
+            }
+        }
         return amcConfigurationList;
+    }
+
+    private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
+        if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else {
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
+        }
     }
 
     private void processScheduledVisitUpdate(ScheduledVisitRequest request, ScheduledVisit visit, List<ScheduledVisit> scheduleVisitFromDB) {

@@ -94,8 +94,8 @@ public class AMCServiceConfiguration {
     @Value("${project.default.limit}")
     private Integer defaultLimit;
 
-    @Value("${egov.location.hierarchy.type}")
-    private String locationHierarchyType;
+    @Value("${egov.boundary.hierarchy.type}")
+    private String boundaryHierarchyType;
 
     @Value("${egov.user.id.validator}")
     private String egovUserIdValidator;
