@@ -51,6 +51,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   String? _lastProjectId;
   Map<String, dynamic> _projectInitialKV = const {};
   int _formSeed = 0;
+  late FormsBloc _formsBloc;
 
   Future<void> _loadInitialKVForProject() async {
     final kv = await buildInitialAmcValues(
@@ -171,6 +172,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _formsBloc = context.read<FormsBloc>();
     if (!_loadedOnce) {
       _loadedOnce = true;
       Future(() async {
@@ -185,14 +187,13 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
     }
 
     if (_lastProjectId != widget.scheduledVisit.id) {
-      final formsBloc = context.read<FormsBloc>();
       final currentKey = currentSchemaKey(
-          state: formsBloc.state,
+          state: _formsBloc.state,
           pageName: widget.pageName,
           schemaName: widget.schemaName,
           uniqueIdentifier: widget.uniqueIdentifier);
       if (currentKey != null) {
-        formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
+        _formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
       }
       Future(() async {
         await _loadInitialKVForProject();
@@ -202,6 +203,20 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
         });
       });
     }
+  }
+
+  @override
+  void dispose() {
+    final key = currentSchemaKey(
+      state: _formsBloc.state,
+      pageName: widget.pageName,
+      schemaName: widget.schemaName,
+      uniqueIdentifier: widget.uniqueIdentifier,
+    );
+    if (key != null) {
+      _formsBloc.add(FormsEvent.clearForm(schemaKey: key));
+    }
+    super.dispose();
   }
 
   Future<void> _finalizeAndReturn({

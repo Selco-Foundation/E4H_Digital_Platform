@@ -6,6 +6,7 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../model/comment/comment.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
@@ -97,6 +98,9 @@ class _AmcRejctionReasonsPageState extends State<AmcRejctionReasonsPage> {
         showSuffixIcon: false,
         text: context.translate(i18.common.coreCommonNext),
         onPress: () {
+          context.read<SelectedAmcOriginBloc>().add(
+              const SelectedAmcOriginEvent.select(
+                  FormOrigin.submitForApproval));
           context.router.push(
             AmcDynamicFormRoute(
               pageName: "AMC_Report",

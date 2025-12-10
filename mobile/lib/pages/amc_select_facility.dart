@@ -17,6 +17,7 @@ import 'package:intl/intl.dart';
 import 'package:selco/utils/utils.dart';
 
 import '../blocs/scheduled_visit/scheduled_visit.dart';
+import '../blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
@@ -166,6 +167,13 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                                     SelectedScheduledVisitBloc>()
                                                 .add(SelectedScheduledVisitEvent
                                                     .select(scheduledVisit));
+
+                                            context
+                                                .read<SelectedAmcOriginBloc>()
+                                                .add(
+                                                    const SelectedAmcOriginEvent
+                                                        .select(FormOrigin
+                                                            .overallSummary));
 
                                             context.router.push(
                                               AmcDynamicFormRoute(

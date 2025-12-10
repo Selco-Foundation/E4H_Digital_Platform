@@ -901,7 +901,7 @@ Future<void> _performScheduleVisitSubmission({
 
     visitDocuments.add(
       Document(
-        documentType: media.itemType, // e.g. "image"
+        documentType: media.itemType,
         fileStore: fileStoreId,
         documentUid:
             'DOC-AMC-${media.itemType}-${DateTime.now().millisecondsSinceEpoch}',

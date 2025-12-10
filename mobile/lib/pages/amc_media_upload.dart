@@ -268,6 +268,29 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
             );
           },
         ),
+        BlocListener<SelectedAmcOriginBloc, SelectedAmcOriginState>(
+          listener: (context, state) {
+            state.whenOrNull(selected: (o) {
+              setState(() {
+                origin = o;
+              });
+            });
+          },
+        ),
+        BlocListener<SelectedScheduledVisitBloc, SelectedScheduledVisitState>(
+          listener: (context, state) {
+            state.whenOrNull(selected: (visit) {
+              _currentScheduledVisitId = visit.id;
+              scheduledVisit = visit;
+
+              _loadRejectionReasonsFromVisit(visit);
+
+              context.read<CacheAmcMediaUploadBloc>().add(
+                    CacheAmcMediaUploadEvent.get(visit.id!, userType),
+                  );
+            });
+          },
+        ),
       ],
       child: BlocBuilder<ScheduleVisitSubmitBloc, ScheduleVisitSubmitState>(
         builder: (context, scheduleState) {
@@ -358,12 +381,13 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
-                        Text(
-                          'Please take a selfie in front of the name board of the health center',
-                          style: textTheme.headingS
-                              .copyWith(color: theme.colorTheme.text.primary),
-                        ),
-                        const SizedBox(height: spacer2),
+                        if (!isReadOnlyMedia)
+                          Text(
+                            'Please take a selfie in front of the name board of the health center',
+                            style: textTheme.headingS
+                                .copyWith(color: theme.colorTheme.text.primary),
+                          ),
+                        if (!isReadOnlyMedia) const SizedBox(height: spacer2),
                         if (isReadOnlyMedia &&
                             existingImageReports != null &&
                             _isImagesInitLoading == false)
@@ -414,6 +438,8 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                             else
                               for (final reason in _rejectionReasons) ...[
                                 DigitCheckbox(
+                                  key: ValueKey(
+                                      'amc-rej-${_currentScheduledVisitId ?? "none"}-$reason'),
                                   label: reason,
                                   value: _selectedRejectionReasons
                                       .contains(reason),

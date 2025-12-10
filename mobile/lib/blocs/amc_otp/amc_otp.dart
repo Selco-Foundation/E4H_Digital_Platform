@@ -5,6 +5,7 @@ import 'package:selco/utils/utils.dart';
 
 import '../../model/document/document.dart';
 import '../../model/scheduled_visit/scheduled_visit.dart';
+import '../../repositories/dynamic_form_repo.dart';
 import '../../repositories/scheduled_visit_repo.dart';
 
 part 'amc_otp.freezed.dart';
@@ -85,6 +86,12 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
           scheduledVisitId: event.visitId, userType: USER_TYPES.AMC.name);
       await localScheduleVisitRepo.deleteInstallationForm(
           scheduledVisitId: event.visitId);
+      await AmcDynamicFormRepository()
+          .delete(isar: isar, scheduledVisitId: event.visitId);
+      await AmcDynamicFormRepository()
+          .deleteAllLocal(isar: isar, scheduledVisitId: event.visitId);
+      await ScheduledVisitRepository(isar)
+          .deleteAmcMediaUploads(isar: isar, scheduledVisitId: event.visitId);
       emit(const AmcOtpState.submitSuccess());
     } catch (e) {
       emit(const AmcOtpState.failure(

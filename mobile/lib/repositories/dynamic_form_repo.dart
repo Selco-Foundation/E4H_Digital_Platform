@@ -4,11 +4,11 @@ import 'dart:convert';
 import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/data/nosql/cache_amc_doc.dart';
-import 'package:selco/data/nosql/cache_schedule_visit_form_values.dart';
 
 import '../data/nosql/cache_activity_facility_bom_values.dart';
+import '../data/nosql/cache_amc_doc.dart';
 import '../data/nosql/cache_bom_doc.dart';
+import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
 import '../utils/envConfig.dart' as env;
@@ -575,16 +575,30 @@ class AmcDynamicFormRepository {
         .findAll();
   }
 
-  Future<void> deleteLocal({
-    required Isar isar,
-    required String scheduledVisitId,
-    required String schemaKey,
-  }) async {
-    final rec = await getLocal(
-        isar: isar, scheduledVisitId: scheduledVisitId, schemaKey: schemaKey);
-    if (rec != null) {
-      await isar.writeTxn(() async => isar.cacheAmcDocs.delete(rec.id));
-    }
+  // Future<void> deleteLocal({
+  //   required Isar isar,
+  //   required String scheduledVisitId,
+  //   required String schemaKey,
+  // }) async {
+  //   final rec = await getLocal(
+  //       isar: isar, scheduledVisitId: scheduledVisitId, schemaKey: schemaKey);
+  //   if (rec != null) {
+  //     await isar.writeTxn(() async => isar.cacheAmcDocs.delete(rec.id));
+  //   }
+  // }
+
+  Future<void> deleteAllLocal(
+      {required Isar isar, required String scheduledVisitId}) async {
+    await isar.writeTxn(() async {
+      final col = isar.cacheAmcDocs;
+      final rec = await col
+          .where()
+          .scheduleVisitIdEqualToAnySchemaKey(scheduledVisitId)
+          .findAll();
+      for (final r in rec) {
+        await col.delete(r.id);
+      }
+    });
   }
 
   Future<void> delete(

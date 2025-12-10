@@ -1,6 +1,7 @@
 import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/data/nosql/cache_amc_media_upload.dart';
 import 'package:selco/utils/utils.dart';
 
 import '../data/nosql/cache_amc_installation_form.dart';
@@ -154,13 +155,6 @@ class ScheduledVisitRepository {
   ScheduledVisitRepository(this._isar)
       : _remote = ScheduledVisitRemoteRepository();
 
-  /// Main entry point for UI / bloc.
-  ///
-  /// Behaviour:
-  /// - Try remote with pagination.
-  ///   - If offset == 0, clear cache for this facility, write fresh list.
-  ///   - If offset > 0, append to cache.
-  /// - If remote fails, read from cache and paginate in memory.
   Future<PaginatedScheduledVisits> fetchByWorkflowStatus({
     required List<String> statuses,
     int limit = defaultPageSize,
@@ -277,10 +271,7 @@ class ScheduledVisitRepository {
       all.addAll(matches);
     }
 
-    // Sort in memory by scheduledDate DESC for deterministic order
-    all.sort(
-      (a, b) => b.scheduledDate.compareTo(a.scheduledDate),
-    );
+    all.sort((a, b) => b.scheduledDate.compareTo(a.scheduledDate));
 
     final slice = all.skip(offset).take(limit);
     return slice.map((c) => c.toModel()).toList();
@@ -300,7 +291,6 @@ class ScheduledVisitRepository {
     CacheAmcInstallationForm entry,
   ) async {
     await isar.writeTxn(() async {
-      // Find existing record for this scheduledVisitId + userType
       final existing = await isar.cacheAmcInstallationForms
           .where()
           .scheduledVisitIdEqualTo(entry.scheduledVisitId)
@@ -343,6 +333,18 @@ class ScheduledVisitRepository {
         .filter()
         .userTypeEqualTo(userType)
         .findFirst();
+  }
+
+  Future<void> deleteAmcMediaUploads(
+      {required Isar isar, required String scheduledVisitId}) async {
+    await isar.writeTxn(() async {
+      final col = isar.cacheAmcMediaUploads;
+      final rec =
+          await col.where().scheduledVisitIdEqualTo(scheduledVisitId).findAll();
+      for (final r in rec) {
+        await col.delete(r.id);
+      }
+    });
   }
 }
 

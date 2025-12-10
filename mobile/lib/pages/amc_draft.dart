@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../blocs/scheduled_visit/scheduled_visit.dart';
+import '../blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../router/app_router.dart';
@@ -196,6 +197,9 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                     context
                         .read<SelectedScheduledVisitBloc>()
                         .add(SelectedScheduledVisitEvent.select(visit));
+                    context.read<SelectedAmcOriginBloc>().add(
+                        const SelectedAmcOriginEvent.select(
+                            FormOrigin.submitted));
                     context.router.push(
                       AmcDynamicFormRoute(
                           pageName: "AMC_Report",
