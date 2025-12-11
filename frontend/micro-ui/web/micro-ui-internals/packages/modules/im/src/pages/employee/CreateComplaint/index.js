@@ -51,15 +51,16 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [blockUI, setBlockUI] = useState(false);
   const [selectBoundaryCode, setSelectBoundaryCode] = useState("");
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
 
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes || ["-"]);
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
   const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
 
   useEffect(() => {
-    setSelectBoundaryCode(jurisdictionCurrentBoundary?.codes?.join(","));
+    setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
     if (boundaryData) {
       setStateBoundaryCode(boundaryData.states?.map((state) => state?.code)?.join(","));
       setDistrictMenu(boundaryData.districts);

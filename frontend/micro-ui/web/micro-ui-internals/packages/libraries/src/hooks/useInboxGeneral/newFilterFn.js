@@ -7,7 +7,7 @@ export const filterFunctions = {
   Incident: (filtersArg) => {
     let { uuid } = Digit.UserService.getUser()?.info || {};
 
-    const searchFilters = {};
+    let searchFilters = {};
     const workflowFilters = {};
 
     const {
@@ -40,20 +40,33 @@ export const filterFunctions = {
       searchFilters.incidentType=convertIncidentType;
     }
 
-    if (district) {
-      let convertDistrict = [district];
-      if (district.includes(",")) {
-        convertDistrict = district.split(",");
-      }
-      searchFilters.district = convertDistrict;
-    }
+    const jurisdictionCurrentBoundaries = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
+      country: ["-"],
+    };
 
-    if (block) {
+    if (facility) {
+      let convertFacility = [facility];
+      if(facility.includes(",")){
+        convertFacility = facility.split(',');
+      }
+      searchFilters.facility = convertFacility;
+
+    } else if (block) {
       let convertBlock = [block];
       if (block.includes(",")) {
         convertBlock = block.split(",");
       }
       searchFilters.block = convertBlock;
+
+    } else if (district) {
+      let convertDistrict = [district];
+      if (district.includes(",")) {
+        convertDistrict = district.split(",");
+      }
+      searchFilters.district = convertDistrict;
+
+    } else {
+      searchFilters = { ...searchFilters, ...jurisdictionCurrentBoundaries };
     }
 
     if (isSystemFunctional) {
@@ -62,14 +75,6 @@ export const filterFunctions = {
         convertIsSystemFunctional = isSystemFunctional.split(",");
       }
       searchFilters.systemFunctional = convertIsSystemFunctional;
-    }
-
-    if(facility){
-      let convertFacility=[facility];
-      if(facility.includes(",")){
-        convertFacility=facility.split(',');
-      }
-      searchFilters.facility=convertFacility;
     }
     
     if (filtersArg?.uuid && filtersArg?.uuid.code === "ASSIGNED_TO_ME") {

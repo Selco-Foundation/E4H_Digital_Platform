@@ -30,7 +30,8 @@ const Filter = (props) => {
   const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === userName;
 
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {};
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundary?.codes || []);
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
   const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
 
   useEffect(() => {

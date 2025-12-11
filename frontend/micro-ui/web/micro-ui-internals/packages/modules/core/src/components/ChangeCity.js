@@ -20,14 +20,13 @@ const ChangeCity = (prop) => {
   }
   const history = useHistory();
   const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionBoundaries?.codes || [])
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries) || [])
   const { t } = prop;
 
   const handleChangeCity = (city) => {
     setDropDownData(city);
-    Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", {
-      codes: city.code.split(","),
-      type: city.type,
+    Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", city.type === "UNIFIED" ? jurisdictionBoundaries : {
+      [city.type]: city.code.split(","),
     })
     if (window.location.href.includes(`/${window.contextPath}/employee/`)) {
       const redirectPath = location.state?.from || `/${window.contextPath}/employee`;
@@ -37,11 +36,14 @@ const ChangeCity = (prop) => {
   };
 
   useEffect(() => {
+    const jurisdictionBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries);
+    const jurisdictionBoundaryTypes = Digit.Utils.BoundaryUtil.aggregateBoundaryTypes(jurisdictionBoundaries);
+    const isOnlyFacilityType = jurisdictionBoundaryTypes.length === 1 && jurisdictionBoundaryTypes[0] === "facility";
     let filteredArray = [
       {
-        code: jurisdictionBoundaries?.codes?.join(","),
-        label: (jurisdictionBoundaries?.type !== "facility" || jurisdictionBoundaries?.codes?.length > 1) ? t("CORE_COMMON_ALL") : t(`Boundary_${jurisdictionBoundaries?.codes?.[0]}`),
-        type: jurisdictionBoundaries?.type,
+        code: jurisdictionBoundaryCodes?.join(","),
+        label: (jurisdictionBoundaryCodes?.length === 1 &&  isOnlyFacilityType) ? t(`Boundary_${jurisdictionBoundaryCodes?.[0]}`) : t("CORE_COMMON_ALL"),
+        type: "UNIFIED",
       }
     ];
     if (boundaryData) {
@@ -57,7 +59,8 @@ const ChangeCity = (prop) => {
     }
     filteredArray.sort((a, b) => a.label.localeCompare(b.label));
     const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
-    const selectedBoundary = filteredArray?.find(select => select?.code === jurisdictionCurrentBoundary?.codes?.join(","));
+    const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+    const selectedBoundary = filteredArray?.find(select => select?.code === jurisdictionCurrentBoundaryCodes?.join(","));
     setSelectCityData(filteredArray);
     setDropDownData(selectedBoundary);
   }, [boundaryData, t]);
