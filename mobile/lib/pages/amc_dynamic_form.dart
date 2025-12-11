@@ -55,6 +55,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   String? get _visitId => widget.scheduledVisit.id;
   String? get _baseSchemaKey => widget.schemaName ?? widget.uniqueIdentifier;
   late FormsBloc _formsBloc;
+  bool _isPreparingForm = false;
 
   Future<void> _loadInitialKVForProject() async {
     final kv = await buildInitialAmcValues(
@@ -71,16 +72,6 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   Future<void> _ensureSchemaLoaded() async {
     final bloc = context.read<FormsBloc>();
     final baseKey = _baseSchemaKey;
-    // final requestedKey = widget.schemaName ?? widget.uniqueIdentifier;
-
-    // if (requestedKey != null &&
-    //     bloc.state.cachedSchemas.containsKey(requestedKey)) {
-    //   bloc.add(FormsUpdateEvent(
-    //     schema: bloc.state.cachedSchemas[requestedKey]!,
-    //     schemaKey: requestedKey,
-    //   ));
-    //   return;
-    // }
 
     if (baseKey != null && _visitId != null) {
       final ownerVisitId = _schemaOwnerByVisit[baseKey];
@@ -160,8 +151,6 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
     }
 
     final schemaObj = SchemaObject.fromJson(schemaJson);
-    // final cacheKey =
-    //     widget.schemaName ?? widget.uniqueIdentifier ?? schemaObj.name;
     final cacheKey = baseKey ?? schemaObj.name;
 
     if (_visitId != null) {
@@ -193,40 +182,86 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
     });
   }
 
+  void _prepareFormForCurrentVisit() {
+    final formsBloc = context.read<FormsBloc>();
+
+    final currentKey = currentSchemaKey(
+      state: formsBloc.state,
+      pageName: widget.pageName,
+      schemaName: widget.schemaName,
+      uniqueIdentifier: widget.uniqueIdentifier,
+    );
+
+    setState(() {
+      _isPreparingForm = true;
+      _projectInitialKV = const {};
+    });
+
+    if (currentKey != null) {
+      formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
+    }
+
+    Future(() async {
+      await _ensureSchemaLoaded();
+      await _loadInitialKVForProject();
+      if (!mounted) return;
+      setState(() {
+        _lastProjectId = widget.scheduledVisit.id;
+        _isPreparingForm = false;
+      });
+    });
+  }
+
+  // @override
+  // void didChangeDependencies() {
+  //   super.didChangeDependencies();
+  //   _formsBloc = context.read<FormsBloc>();
+  //   if (!_loadedOnce) {
+  //     _loadedOnce = true;
+  //     Future(() async {
+  //       await _ensureSchemaLoaded();
+  //       await _loadInitialKVForProject();
+  //       if (!mounted) return;
+  //       setState(() {
+  //         _lastProjectId = widget.scheduledVisit.id;
+  //       });
+  //     });
+  //     return;
+  //   }
+  //
+  //   if (_lastProjectId != widget.scheduledVisit.id) {
+  //     final currentKey = currentSchemaKey(
+  //         state: _formsBloc.state,
+  //         pageName: widget.pageName,
+  //         schemaName: widget.schemaName,
+  //         uniqueIdentifier: widget.uniqueIdentifier);
+  //     if (currentKey != null) {
+  //       _formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
+  //     }
+  //     Future(() async {
+  //       await _ensureSchemaLoaded();
+  //       await _loadInitialKVForProject();
+  //       if (!mounted) return;
+  //       setState(() {
+  //         _lastProjectId = widget.scheduledVisit.id;
+  //       });
+  //     });
+  //   }
+  // }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _formsBloc = context.read<FormsBloc>();
     if (!_loadedOnce) {
       _loadedOnce = true;
-      Future(() async {
-        await _ensureSchemaLoaded();
-        await _loadInitialKVForProject();
-        if (!mounted) return;
-        setState(() {
-          _lastProjectId = widget.scheduledVisit.id;
-        });
-      });
+      _prepareFormForCurrentVisit(); // first time this page is opened
       return;
     }
 
+    // If we ever reuse this State for another visit, prepare again
     if (_lastProjectId != widget.scheduledVisit.id) {
-      final currentKey = currentSchemaKey(
-          state: _formsBloc.state,
-          pageName: widget.pageName,
-          schemaName: widget.schemaName,
-          uniqueIdentifier: widget.uniqueIdentifier);
-      if (currentKey != null) {
-        _formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
-      }
-      Future(() async {
-        await _ensureSchemaLoaded();
-        await _loadInitialKVForProject();
-        if (!mounted) return;
-        setState(() {
-          _lastProjectId = widget.scheduledVisit.id;
-        });
-      });
+      _prepareFormForCurrentVisit();
     }
   }
 
@@ -351,7 +386,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
                 pageName: widget.pageName,
                 schemaName: widget.schemaName,
                 uniqueIdentifier: widget.uniqueIdentifier);
-            if (currentKey == null) {
+            if (_isPreparingForm || currentKey == null) {
               return const Center(child: CircularProgressIndicator());
             }
             final schemaObject = state.cachedSchemas[currentKey];
