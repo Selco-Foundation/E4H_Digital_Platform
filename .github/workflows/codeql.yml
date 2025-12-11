@@ -207,8 +207,8 @@ jobs:
           node-version: '14'
 
       # For interpreted languages, CodeQL works fine with build-mode: none
-      # We always run init+analyze to maintain categories
       - name: Initialize CodeQL
+        if: steps.check.outputs.should_analyze == 'true'
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
@@ -236,9 +236,15 @@ jobs:
           fi
 
       - name: Perform CodeQL Analysis
+        if: steps.check.outputs.should_analyze == 'true'
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
+
+      - name: Skip Analysis
+        if: steps.check.outputs.should_analyze != 'true'
+        run: |
+          echo "⏭️ Skipping ${{ matrix.language }} analysis - no relevant files changed"
 
   # Analyze Java - requires manual build mode, MUST skip entirely if no Java changes
   analyze-java:
