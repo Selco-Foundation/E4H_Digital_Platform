@@ -15,8 +15,9 @@ jobs:
   detect-changes:
     name: Detect Changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
-      # Comma-separated lists (safer than JSON for GitHub outputs)
       core_services: ${{ steps.changes.outputs.core_services }}
       e4h_services: ${{ steps.changes.outputs.e4h_services }}
       java_changed: ${{ steps.changes.outputs.java_changed }}
@@ -147,11 +148,12 @@ jobs:
           echo "Core services: ${CORE_SERVICES:-none}"
           echo "E4H services: ${E4H_SERVICES:-none}"
 
-  analyze:
+  # Analyze interpreted languages (Actions, JS/TS, Python) - can run with build-mode: none
+  analyze-interpreted:
     name: Analyze (${{ matrix.language }})
     needs: detect-changes
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ (matrix.language == 'java-kotlin' && 360) || 120 }}
+    timeout-minutes: 120
     permissions:
       security-events: write
       packages: read
@@ -164,54 +166,33 @@ jobs:
         include:
           - language: actions
             build-mode: none
-          - language: java-kotlin
-            build-mode: manual
+            change_flag: actions_changed
           - language: javascript-typescript
             build-mode: none
+            change_flag: js_changed
           - language: python
             build-mode: none
+            change_flag: python_changed
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      # Determine if this language needs full analysis
       - name: Check if analysis needed
         id: check
         run: |
           SHOULD_ANALYZE="false"
-          
           if [ "${{ needs.detect-changes.outputs.full_analysis }}" == "true" ]; then
             SHOULD_ANALYZE="true"
-            echo "Full analysis mode - analyzing ${{ matrix.language }}"
           elif [ "${{ matrix.language }}" == "actions" ] && [ "${{ needs.detect-changes.outputs.actions_changed }}" == "true" ]; then
             SHOULD_ANALYZE="true"
-            echo "Workflow files changed - analyzing actions"
-          elif [ "${{ matrix.language }}" == "java-kotlin" ] && [ "${{ needs.detect-changes.outputs.java_changed }}" == "true" ]; then
-            SHOULD_ANALYZE="true"
-            echo "Java files changed - analyzing java-kotlin"
           elif [ "${{ matrix.language }}" == "javascript-typescript" ] && [ "${{ needs.detect-changes.outputs.js_changed }}" == "true" ]; then
             SHOULD_ANALYZE="true"
-            echo "Frontend files changed - analyzing javascript-typescript"
           elif [ "${{ matrix.language }}" == "python" ] && [ "${{ needs.detect-changes.outputs.python_changed }}" == "true" ]; then
             SHOULD_ANALYZE="true"
-            echo "Python files changed - analyzing python"
-          else
-            echo "⏭️ No relevant changes for ${{ matrix.language }} - skipping heavy analysis"
           fi
-          
           echo "should_analyze=${SHOULD_ANALYZE}" >> $GITHUB_OUTPUT
-
-      # Setup steps - only run if needed
-      - name: Set up JDK 17
-        if: matrix.language == 'java-kotlin' && steps.check.outputs.should_analyze == 'true'
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
+          echo "Analysis needed for ${{ matrix.language }}: ${SHOULD_ANALYZE}"
 
       - name: Set up Python
         if: matrix.language == 'python' && steps.check.outputs.should_analyze == 'true'
@@ -224,121 +205,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '14'
-          cache: 'npm'
-          cache-dependency-path: frontend/micro-ui/web/yarn.lock
 
-      # Initialize CodeQL - always runs to maintain category
-      # NOTE: For Java with manual build mode, CodeQL init MUST come before build
-      # so it can instrument/trace the compilation process
+      # For interpreted languages, CodeQL works fine with build-mode: none
+      # We always run init+analyze to maintain categories
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-          build-mode: ${{ matrix.build-mode }}
+          build-mode: none
           queries: security-extended,security-and-quality
-
-      # Build Java services - runs AFTER CodeQL init (required for tracing)
-      - name: Build Changed Backend Services (Java)
-        if: matrix.language == 'java-kotlin' && steps.check.outputs.should_analyze == 'true'
-        env:
-          CORE_SERVICES: ${{ needs.detect-changes.outputs.core_services }}
-          E4H_SERVICES: ${{ needs.detect-changes.outputs.e4h_services }}
-        run: |
-          set -e
-          echo "Building changed E4H Backend Services..."
-          echo "Java version: $(java -version 2>&1 | head -n 1)"
-          echo ""
-          
-          SUCCESSFUL=0
-          FAILED=0
-          
-          # Parse comma-separated service lists
-          IFS=',' read -ra CORE_ARRAY <<< "$CORE_SERVICES"
-          IFS=',' read -ra E4H_ARRAY <<< "$E4H_SERVICES"
-          
-          echo "Core services to build: ${CORE_SERVICES:-none}"
-          echo "E4H services to build: ${E4H_SERVICES:-none}"
-          echo ""
-          
-          # Build core-services individually (each has its own pom.xml, no parent dependency)
-          if [ -n "$CORE_SERVICES" ]; then
-            echo "=== Building Core Services ==="
-            for service in "${CORE_ARRAY[@]}"; do
-              if [ -z "$service" ]; then continue; fi
-              SERVICE_DIR="backend/core-services/${service}"
-              if [ -d "$SERVICE_DIR" ] && [ -f "$SERVICE_DIR/pom.xml" ]; then
-                echo "Building ${service}..."
-                cd "$SERVICE_DIR"
-                # Use -N to skip child modules if any, -B for batch mode
-                if mvn clean compile -DskipTests -Dmaven.javadoc.skip=true -B 2>&1 | tail -20; then
-                  echo "✅ ${service}"
-                  SUCCESSFUL=$((SUCCESSFUL + 1))
-                else
-                  echo "⚠️ ${service} - build failed, continuing..."
-                  FAILED=$((FAILED + 1))
-                fi
-                cd - > /dev/null
-              else
-                echo "⚠️ ${service} - directory or pom.xml not found"
-              fi
-            done
-          fi
-          
-          # Build e4h-services individually
-          if [ -n "$E4H_SERVICES" ]; then
-            echo ""
-            echo "=== Building E4H Services ==="
-            for service in "${E4H_ARRAY[@]}"; do
-              if [ -z "$service" ]; then continue; fi
-              SERVICE_DIR="backend/e4h-services/${service}"
-              if [ -d "$SERVICE_DIR" ] && [ -f "$SERVICE_DIR/pom.xml" ]; then
-                echo "Building ${service}..."
-                cd "$SERVICE_DIR"
-                if mvn clean compile -DskipTests -Dmaven.javadoc.skip=true -B 2>&1 | tail -20; then
-                  echo "✅ ${service}"
-                  SUCCESSFUL=$((SUCCESSFUL + 1))
-                else
-                  echo "⚠️ ${service} - build failed, continuing..."
-                  FAILED=$((FAILED + 1))
-                fi
-                cd - > /dev/null
-              else
-                echo "⚠️ ${service} - directory or pom.xml not found"
-              fi
-            done
-          fi
-          
-          echo ""
-          echo "=== Build Summary ==="
-          echo "✅ Successful: ${SUCCESSFUL}"
-          echo "⚠️ Failed: ${FAILED}"
-          
-          # Only fail if ALL attempted services failed AND we had services to build
-          TOTAL=$((SUCCESSFUL + FAILED))
-          if [ "$TOTAL" -gt 0 ] && [ "$SUCCESSFUL" -eq 0 ]; then
-            echo "❌ All services failed to build"
-            exit 1
-          fi
-          
-          if [ "$TOTAL" -eq 0 ]; then
-            echo "ℹ️ No services to build"
-          fi
 
       - name: Install Frontend Dependencies
         if: matrix.language == 'javascript-typescript' && steps.check.outputs.should_analyze == 'true'
         working-directory: frontend
         run: |
-          set -e
           if [ -d "installation-ui" ] && [ -f "installation-ui/package.json" ]; then
-            echo "Installing installation-ui dependencies..."
-            cd installation-ui
-            npm install --legacy-peer-deps || npm install --force || echo "⚠️ installation-ui install had issues"
+            cd installation-ui && npm install --legacy-peer-deps 2>/dev/null || npm install --force 2>/dev/null || true
             cd ..
           fi
           if [ -d "micro-ui/web" ] && [ -f "micro-ui/web/package.json" ]; then
-            echo "Installing micro-ui dependencies..."
-            cd micro-ui/web
-            npm install --legacy-peer-deps || npm install --force || echo "⚠️ micro-ui install had issues"
+            cd micro-ui/web && npm install --legacy-peer-deps 2>/dev/null || npm install --force 2>/dev/null || true
             cd ../..
           fi
 
@@ -346,11 +232,122 @@ jobs:
         if: matrix.language == 'python' && steps.check.outputs.should_analyze == 'true'
         run: |
           if [ -f "backend/e4h-services/ingestion-service/requirements.txt" ]; then
-            pip install -r backend/e4h-services/ingestion-service/requirements.txt || echo "⚠️ Some Python deps failed"
+            pip install -r backend/e4h-services/ingestion-service/requirements.txt 2>/dev/null || true
           fi
 
-      # Analyze - always runs to upload category to GitHub
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
+
+  # Analyze Java - requires manual build mode, MUST skip entirely if no Java changes
+  analyze-java:
+    name: Analyze (java-kotlin)
+    needs: detect-changes
+    # Only run if Java files changed or full analysis requested
+    if: needs.detect-changes.outputs.java_changed == 'true' || needs.detect-changes.outputs.full_analysis == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      # For Java, CodeQL MUST init before build to trace compilation
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: java-kotlin
+          build-mode: manual
+          queries: security-extended,security-and-quality
+
+      - name: Build Changed Backend Services
+        env:
+          CORE_SERVICES: ${{ needs.detect-changes.outputs.core_services }}
+          E4H_SERVICES: ${{ needs.detect-changes.outputs.e4h_services }}
+        run: |
+          set -e
+          echo "Building E4H Backend Services..."
+          echo "Java version: $(java -version 2>&1 | head -n 1)"
+          
+          SUCCESSFUL=0
+          FAILED=0
+          
+          IFS=',' read -ra CORE_ARRAY <<< "$CORE_SERVICES"
+          IFS=',' read -ra E4H_ARRAY <<< "$E4H_SERVICES"
+          
+          echo "Core services: ${CORE_SERVICES:-none}"
+          echo "E4H services: ${E4H_SERVICES:-none}"
+          echo ""
+          
+          # Build core-services
+          if [ -n "$CORE_SERVICES" ]; then
+            echo "=== Building Core Services ==="
+            for service in "${CORE_ARRAY[@]}"; do
+              [ -z "$service" ] && continue
+              SERVICE_DIR="backend/core-services/${service}"
+              if [ -d "$SERVICE_DIR" ] && [ -f "$SERVICE_DIR/pom.xml" ]; then
+                echo "Building ${service}..."
+                cd "$SERVICE_DIR"
+                if mvn clean compile -DskipTests -Dmaven.javadoc.skip=true -B 2>&1 | tail -10; then
+                  echo "✅ ${service}"
+                  SUCCESSFUL=$((SUCCESSFUL + 1))
+                else
+                  echo "⚠️ ${service} failed"
+                  FAILED=$((FAILED + 1))
+                fi
+                cd - > /dev/null
+              fi
+            done
+          fi
+          
+          # Build e4h-services
+          if [ -n "$E4H_SERVICES" ]; then
+            echo ""
+            echo "=== Building E4H Services ==="
+            for service in "${E4H_ARRAY[@]}"; do
+              [ -z "$service" ] && continue
+              SERVICE_DIR="backend/e4h-services/${service}"
+              if [ -d "$SERVICE_DIR" ] && [ -f "$SERVICE_DIR/pom.xml" ]; then
+                echo "Building ${service}..."
+                cd "$SERVICE_DIR"
+                if mvn clean compile -DskipTests -Dmaven.javadoc.skip=true -B 2>&1 | tail -10; then
+                  echo "✅ ${service}"
+                  SUCCESSFUL=$((SUCCESSFUL + 1))
+                else
+                  echo "⚠️ ${service} failed"
+                  FAILED=$((FAILED + 1))
+                fi
+                cd - > /dev/null
+              fi
+            done
+          fi
+          
+          echo ""
+          echo "=== Build Summary ==="
+          echo "✅ Successful: ${SUCCESSFUL} | ⚠️ Failed: ${FAILED}"
+          
+          TOTAL=$((SUCCESSFUL + FAILED))
+          if [ "$TOTAL" -gt 0 ] && [ "$SUCCESSFUL" -eq 0 ]; then
+            echo "❌ All services failed"
+            exit 1
+          fi
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:java-kotlin"
