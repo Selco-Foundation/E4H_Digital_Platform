@@ -197,6 +197,15 @@ public class V20251103170700__migrate_incident_facilities extends BaseJavaMigrat
                                 continue;
                             }
 
+                            if (facilityMappings.containsKey(extractedHfrOrNinId)) {
+                                logSkippedFacility(
+                                        migrationLogger, skippedFacilities, facilityTenantId, facilityName,
+                                        "A health facility with same HFR/NIN ID is already processed", null
+                                );
+                                skippedCount++;
+                                continue;
+                            }
+
                             // Build facility object
                             Map<String, Object> facility = buildFacilityObject(
                                     tenant, stateName, districtName, blockName, hcrDetails.get("hcrName"), facilityTenantId,
