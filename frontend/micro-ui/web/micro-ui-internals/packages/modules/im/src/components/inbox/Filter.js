@@ -11,6 +11,7 @@ const Filter = (props) => {
   const { userName } = Digit.UserService.getUser().info;
   const { searchParams } = props;
   const { t } = useTranslation();
+  const [stateMenu, setStateMenu] = useState([]);
   const [districtMenu, setDistrictMenu] = useState([]);
   const [blockMenu, setBlockMenu] = useState([]);
   const [facilityMenu, setFacilityMenu] = useState([]);
@@ -71,6 +72,7 @@ const isCodePresent = (array, codeToCheck) =>{
     searchParams?.filters?.pgrfilters || {
       incidentType: [],
       facility: [],
+      state: [],
       district: [],
       block: [],
       isSystemFunctional: [],
@@ -86,6 +88,32 @@ const isCodePresent = (array, codeToCheck) =>{
   );
 
   useEffect(() => {
+
+    const refactorStateMenu = () => {
+      const response = boundaryData?.states;
+      if (response) {
+        const uniqueStates = {};
+        const newStateMenu = response
+          .filter((state) => {
+            if (!uniqueStates[state.code]) {
+              uniqueStates[state.code] = true;
+              return true;
+            }
+            return false;
+          })
+          .map((state) => ({
+            code: state.code,
+            name: t(`Boundary_${state.code}`),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
+        setStateMenu(newStateMenu);
+        setDistrictMenu([]);
+        setBlockMenu([]);
+        setFacilityMenu([]);
+      }
+    }
+
     const refactorDistrictMenu = () => {
       const response = boundaryData?.districts;
       if (response) {
@@ -126,7 +154,7 @@ const isCodePresent = (array, codeToCheck) =>{
       }
     }
 
-    refactorDistrictMenu();
+    refactorStateMenu();
     refactorSystemFunctionalMenu();
   }, [boundaryData, t]);
 
@@ -153,6 +181,20 @@ const isCodePresent = (array, codeToCheck) =>{
   }, [t]);
 
   useEffect(() => {
+    const selectedState = pgrfilters.state?.[0];
+    if (selectedState && boundaryData) {
+      const newDistrictMenu = boundaryData.districts
+        .filter((district) => district?.parentCode === selectedState.code)
+        .map((district) => ({
+          code: district?.code,
+          name: t(`Boundary_${district?.code}`),
+          stateCode: district?.parentCode,
+        }))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
+
+      setDistrictMenu(newDistrictMenu);
+    }
+
     const selectedDistrict = pgrfilters.district?.[0];
     if (selectedDistrict && boundaryData) {
       const newBlockMenu = boundaryData.blocks
@@ -268,8 +310,12 @@ const isCodePresent = (array, codeToCheck) =>{
     let afterRemove = pgrfilters[key].filter((value, i) => {
       return i !== index;
     });
-
-    if (key === "district") {
+    if (key === "state") {
+      setDistrictMenu([]);
+      setBlockMenu([]);
+      setFacilityMenu([]);
+      setPgrFilters({ ...pgrfilters, state: [], district: [], block: [], facility: [] });
+    } else if (key === "district") {
       setBlockMenu([]);
       setFacilityMenu([]);
       setPgrFilters({ ...pgrfilters, district: [], block: [], facility: [] });
@@ -288,6 +334,14 @@ const isCodePresent = (array, codeToCheck) =>{
         return value.code !== type.code;
       });
       setPgrFilters({ ...pgrfilters, applicationStatus: filteredStatus });
+    }
+  };
+
+  const handleStateChange = (selectedState) => {
+    const previouslySelectedState = pgrfilters.state[0];
+
+    if (previouslySelectedState?.code !== selectedState.code) {
+      setPgrFilters({ ...pgrfilters, state: [selectedState], district: [], block: [], facility: [] });
     }
   };
 
@@ -315,6 +369,7 @@ const isCodePresent = (array, codeToCheck) =>{
     let pgrReset = {
       incidentType: [],
       facility: [],
+      state: [],
       district: [],
       block: [],
       isSystemFunctional: [],
@@ -338,16 +393,21 @@ const isCodePresent = (array, codeToCheck) =>{
 
   const GetSelectOptions = (lable, options, selected = null, select, optionKey, onRemove, key) => {
     selected = selected || { [optionKey]: "", code: "" };
+
+    const disableSelection = (!options || options.length < 2)
+    if (disableSelection && options?.length) {
+      select(options[0], key);
+    }
    
     return (
       <div>
         <div className="filter-label">{lable}</div>
-        {<Dropdown option={options} selected={selected} select={(value) => select(value, key)} optionKey={optionKey} />}
+        {<Dropdown disable={disableSelection} option={options} selected={selected} select={(value) => select(value, key)} optionKey={optionKey} />}
 
         <div className="tag-container">
           {pgrfilters[key].length > 0 &&
             pgrfilters[key].map((value, index) => {
-              return <RemoveableTag key={index} text={`${value[optionKey]} ...`} onClick={() => onRemove(index, key)} />;
+              return <RemoveableTag disabled={disableSelection} key={index} text={`${value[optionKey]} ...`} onClick={() => onRemove(index, key)} />;
             })}
         </div>
       </div>
@@ -389,6 +449,19 @@ const isCodePresent = (array, codeToCheck) =>{
             </div>
             {isNonHcrUser && (
               <div>
+                <div>
+                  {
+                    GetSelectOptions(
+                      t("CS_STATE"),
+                      stateMenu,
+                      null,
+                      handleStateChange,
+                      "name",
+                      onRemove,
+                      "state"
+                    )
+                  }
+                </div>
                 <div>
                   {
                     GetSelectOptions(

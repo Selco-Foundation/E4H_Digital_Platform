@@ -14,7 +14,7 @@ export const filterFunctions = {
       applicationNumber, mobileNumber, limit,
       offset, sortBy, sortOrder, total,
       applicationStatus, services, incidentType,
-      facility, assignee, nearingSLA, district, block, isSystemFunctional
+      facility, assignee, nearingSLA, state, district, block, isSystemFunctional
     } = filtersArg || {};
 
     if (filtersArg?.IncidentWrappers) {
@@ -40,9 +40,6 @@ export const filterFunctions = {
       searchFilters.incidentType=convertIncidentType;
     }
 
-    const jurisdictionCurrentBoundaries = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
-      country: ["-"],
-    };
 
     if (facility) {
       let convertFacility = [facility];
@@ -65,8 +62,12 @@ export const filterFunctions = {
       }
       searchFilters.district = convertDistrict;
 
-    } else {
-      searchFilters = { ...searchFilters, ...jurisdictionCurrentBoundaries };
+    } else if (state) {
+      let convertState = [state];
+      if (state.includes(",")) {
+        convertState = state.split(",");
+      }
+      searchFilters.state = convertState;
     }
 
     if (isSystemFunctional) {
