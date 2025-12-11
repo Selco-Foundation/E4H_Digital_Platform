@@ -1,16 +1,16 @@
 import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/data/nosql/cache_amc_media_upload.dart';
-import 'package:selco/utils/utils.dart';
 
 import '../data/nosql/cache_amc_installation_form.dart';
+import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_prefilled_scheduled_visit.dart';
 import '../data/nosql/cache_scheduled_visit.dart';
 import '../data/remote_client.dart';
 import '../model/document/document.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../utils/envConfig.dart';
+import '../utils/utils.dart';
 
 class PaginatedScheduledVisits {
   final List<ScheduledVisit> items;

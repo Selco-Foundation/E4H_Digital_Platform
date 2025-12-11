@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:selco/utils/utils.dart';
+
+import '../../utils/utils.dart';
 
 part 'selected_amc_origin.freezed.dart';
 

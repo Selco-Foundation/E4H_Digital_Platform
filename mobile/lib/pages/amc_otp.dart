@@ -8,10 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import 'package:selco/model/scheduled_visit/scheduled_visit.dart';
 
 import '../blocs/amc_otp/amc_otp.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
+import '../model/scheduled_visit/scheduled_visit.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;

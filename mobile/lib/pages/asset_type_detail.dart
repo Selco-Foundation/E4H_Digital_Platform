@@ -171,11 +171,9 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                           final newDetail = CacheAssetDetail(
                             activityFacilityId: _currentProjectId!,
                             assetType: assetTypeTitle,
-                            warranty: isSupervisor ? selectedWarranty : null,
+                            warranty: selectedWarranty,
                             brand: selectedBrandCode!,
-                            model: isSupervisor
-                                ? modelController.text.trim()
-                                : null,
+                            model: modelController.text.trim(),
                           );
 
                           context
@@ -217,7 +215,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                 readOnly: true,
                               ),
                             ),
-                            // if (isSupervisor)
                             LabeledField(
                                 label: 'Warranty Duration',
                                 labelStyle: textTheme.headingS.copyWith(
@@ -272,21 +269,20 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                     });
                                   },
                                 )),
-                            if (isSupervisor)
-                              LabeledField(
-                                label: 'Model Number',
-                                labelStyle: textTheme.headingS.copyWith(
-                                    color: theme.colorTheme.text.primary),
-                                capitalizedFirstLetter: false,
-                                child: DigitTextFormInput(
-                                  controller: modelController,
-                                  innerLabel: 'SR45934295',
-                                  keyboardType: TextInputType.text,
-                                  onChange: (value) {
-                                    setState(() {});
-                                  },
-                                ),
+                            LabeledField(
+                              label: 'Model Number',
+                              labelStyle: textTheme.headingS.copyWith(
+                                  color: theme.colorTheme.text.primary),
+                              capitalizedFirstLetter: false,
+                              child: DigitTextFormInput(
+                                controller: modelController,
+                                innerLabel: 'SR45934295',
+                                keyboardType: TextInputType.text,
+                                onChange: (value) {
+                                  setState(() {});
+                                },
                               ),
+                            ),
                           ])
                         ],
                       ),

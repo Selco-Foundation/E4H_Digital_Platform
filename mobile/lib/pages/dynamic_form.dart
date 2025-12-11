@@ -52,14 +52,13 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   String? _lastProjectId;
   Map<String, dynamic> _projectInitialKV = const {};
   int _formSeed = 0;
-  static const String _initialUserType = 'SUPERVISOR';
 
   Future<void> _loadInitialKVForProject() async {
     final isar = context.read<ActivityFacilityBloc>().isar;
     final kv = await BomRepository().getProjectBomKV(
       isar: isar,
       projectId: widget.projectId,
-      userType: _initialUserType,
+      userType: widget.userType,
     );
     if (!mounted) return;
     setState(() {
@@ -261,7 +260,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       final existingAllKV = await BomRepository().getProjectBomKV(
             isar: isar,
             projectId: projectId,
-            userType: USER_TYPES.SUPERVISOR.name,
+            userType: widget.userType,
           ) ??
           <String, dynamic>{};
 
@@ -282,14 +281,14 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       await BomRepository().mergeKvForEntryKey(
         isar: isar,
         projectId: projectId,
-        userType: USER_TYPES.SUPERVISOR.name,
+        userType: widget.userType,
         kvUpdate: filtered,
       );
 
       if (changed) {
         await PrefilledActivityFacilityRepository(isar).addOrTouch(
           activityFacilityId: projectId,
-          userType: USER_TYPES.SUPERVISOR.name,
+          userType: widget.userType,
         );
       }
     }

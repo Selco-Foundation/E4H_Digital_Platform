@@ -6,7 +6,8 @@ import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:selco/utils/extensions.dart';
+
+import '../../utils/extensions.dart';
 
 class InboxReportCard extends StatelessWidget {
   final String? title;

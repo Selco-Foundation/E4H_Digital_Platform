@@ -5,13 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import 'package:recase/recase.dart';
-import 'package:selco/utils/utils.dart';
 
 import '../blocs/auth/authbloc.dart';
 import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/utils.dart';
 import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
