@@ -345,11 +345,10 @@ jobs:
           
           echo ""
           echo "=== Build Summary ==="
-          echo "✅ Successful: ${SUCCESSFUL} | ⚠️ Failed: ${FAILED}"
+          echo "✅ Successful: ${SUCCESSFUL} | ❌ Failed: ${FAILED}"
           
-          TOTAL=$((SUCCESSFUL + FAILED))
-          if [ "$TOTAL" -gt 0 ] && [ "$SUCCESSFUL" -eq 0 ]; then
-            echo "❌ All services failed"
+          if [ "$FAILED" -gt 0 ]; then
+            echo "❌ ${FAILED} service(s) failed to build - aborting to prevent incomplete security analysis"
             exit 1
           fi
 
