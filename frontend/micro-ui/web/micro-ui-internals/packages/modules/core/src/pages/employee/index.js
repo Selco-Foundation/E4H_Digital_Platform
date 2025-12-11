@@ -49,9 +49,10 @@ const EmployeeApp = ({
 
   useEffect(() => {
     if (stateLogos?.length) {
-      setLogos(prevState => ([...prevState, ...stateLogos]))
+      const baseLogos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+      setLogos([...baseLogos, ...stateLogos]);
     }
-  }, [stateLogos])
+  }, [stateLogos]);
 
   return (
     <div className="employee">
