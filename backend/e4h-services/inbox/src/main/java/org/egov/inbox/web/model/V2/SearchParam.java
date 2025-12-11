@@ -42,7 +42,9 @@ public class SearchParam {
 
         MULTI_MATCH("MULTI_MATCH"),
 
-        MUST_NOT("MUST_NOT");
+        MUST_NOT("MUST_NOT"),
+
+        SHOULD("SHOULD");
 
 
         private String value;
