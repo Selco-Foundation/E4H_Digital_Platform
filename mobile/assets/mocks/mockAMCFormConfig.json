@@ -605,7 +605,7 @@
                   {
                     "type": "required",
                     "value": true,
-                    "message": "Make is required"
+                    "message": "Faults observed is required"
                   }
                 ]
               },

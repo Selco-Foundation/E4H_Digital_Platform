@@ -51,6 +51,9 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   String? _lastProjectId;
   Map<String, dynamic> _projectInitialKV = const {};
   int _formSeed = 0;
+  static final Map<String, String> _schemaOwnerByVisit = {};
+  String? get _visitId => widget.scheduledVisit.id;
+  String? get _baseSchemaKey => widget.schemaName ?? widget.uniqueIdentifier;
   late FormsBloc _formsBloc;
 
   Future<void> _loadInitialKVForProject() async {
@@ -67,15 +70,31 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
 
   Future<void> _ensureSchemaLoaded() async {
     final bloc = context.read<FormsBloc>();
-    final requestedKey = widget.schemaName ?? widget.uniqueIdentifier;
+    final baseKey = _baseSchemaKey;
+    // final requestedKey = widget.schemaName ?? widget.uniqueIdentifier;
 
-    if (requestedKey != null &&
-        bloc.state.cachedSchemas.containsKey(requestedKey)) {
-      bloc.add(FormsUpdateEvent(
-        schema: bloc.state.cachedSchemas[requestedKey]!,
-        schemaKey: requestedKey,
-      ));
-      return;
+    // if (requestedKey != null &&
+    //     bloc.state.cachedSchemas.containsKey(requestedKey)) {
+    //   bloc.add(FormsUpdateEvent(
+    //     schema: bloc.state.cachedSchemas[requestedKey]!,
+    //     schemaKey: requestedKey,
+    //   ));
+    //   return;
+    // }
+
+    if (baseKey != null && _visitId != null) {
+      final ownerVisitId = _schemaOwnerByVisit[baseKey];
+      final isSameVisit = ownerVisitId != null && ownerVisitId == _visitId;
+
+      if (isSameVisit && bloc.state.cachedSchemas.containsKey(baseKey)) {
+        bloc.add(
+          FormsUpdateEvent(
+            schema: bloc.state.cachedSchemas[baseKey]!,
+            schemaKey: baseKey,
+          ),
+        );
+        return;
+      }
     }
 
     Map<String, dynamic>? schemaJson;
@@ -141,8 +160,13 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
     }
 
     final schemaObj = SchemaObject.fromJson(schemaJson);
-    final cacheKey =
-        widget.schemaName ?? widget.uniqueIdentifier ?? schemaObj.name;
+    // final cacheKey =
+    //     widget.schemaName ?? widget.uniqueIdentifier ?? schemaObj.name;
+    final cacheKey = baseKey ?? schemaObj.name;
+
+    if (_visitId != null) {
+      _schemaOwnerByVisit[cacheKey] = _visitId!;
+    }
 
     await SecureStore().setRawSchemaDoc(cacheKey, Map.from(schemaJson));
     bloc.add(FormsUpdateEvent(schema: schemaObj, schemaKey: cacheKey));
@@ -196,6 +220,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
         _formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
       }
       Future(() async {
+        await _ensureSchemaLoaded();
         await _loadInitialKVForProject();
         if (!mounted) return;
         setState(() {
