@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Redirect, Route, Switch, useLocation, useRouteMatch, useHistory } from "react-router-dom";
 import { AppModules } from "../../components/AppModules";
@@ -10,6 +10,7 @@ import EmployeeLogin from "./Login";
 import UserProfile from "../citizen/Home/UserProfile";
 import ErrorComponent from "../../components/ErrorComponent";
 import { PrivateRoute } from "@selco/digit-ui-react-components";
+import { useSelector } from "react-redux";
 
 const userScreensExempted = ["user/profile", "user/error"];
 
@@ -36,7 +37,8 @@ const EmployeeApp = ({
   const showLanguageChange = location?.pathname?.includes("language-selection");
   const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
   const bgImageUrl = window?.globalConfigs?.getConfig("BG_IMAGE");
-  const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+  const stateLogos = useSelector((state) => state.common.stateLogos);
+  const [logos, setLogos] = useState(window?.globalConfigs?.getConfig("LOGO_LIST") || []);
   const user = Digit.UserService.getUser();
   const isInboxRoute = location.pathname.includes("/im/inbox");
 
@@ -44,6 +46,14 @@ const EmployeeApp = ({
     Digit.UserService.setType("employee");
   }, []);
   const isMobile = window.Digit.Utils.browser.isMobile();
+
+  useEffect(() => {
+    if (stateLogos?.length) {
+      const baseLogos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+      setLogos([...baseLogos, ...stateLogos]);
+    }
+  }, [stateLogos]);
+
   return (
     <div className="employee">
       <Switch>
