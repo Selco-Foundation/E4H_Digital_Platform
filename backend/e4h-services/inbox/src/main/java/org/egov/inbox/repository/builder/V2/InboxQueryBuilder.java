@@ -107,10 +107,10 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         // Group the different blocks of should into a single should block
         List<Map<String, Object>> updatedMustClauseList = extractShouldClauses(mustClauseList);
         List<Map<String, Object>> updatedJurisdictionMustClauseList = extractJurisdictionShouldClauses(jurisdictionMustClauseList);
-        List<Map<String, Object>> mergedMustClause = mergeMustClauseLists(updatedJurisdictionMustClauseList, updatedMustClauseList);
+        List<Map<String, Object>> mergedMustClause = mergeMustClauseLists(updatedMustClauseList, updatedJurisdictionMustClauseList);
         log.info("Final must clause list after conversion {} ", updatedMustClauseList);
         log.info("Final jurisdiction must clause list after conversion {} ", updatedJurisdictionMustClauseList);
-        log.info("Final merge must clause list {} ", updatedJurisdictionMustClauseList);
+        log.info("Final merge must clause list {} ", mergedMustClause);
 
         innerBoolClause.put(MUST_KEY, mergedMustClause);
 
