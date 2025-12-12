@@ -53,7 +53,9 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
   const [blockUI, setBlockUI] = useState(false);
   const [selectBoundaryCode, setSelectBoundaryCode] = useState("");
-  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
+    country: ["-"],
+  };
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
@@ -278,6 +280,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 ],
                 tenantId,
               },
+              jurisdictionSearchCriteria: jurisdictionCurrentBoundary,
               moduleSearchCriteria: {
                 facility: [healthcentre.code],
                 incidentType: [complaintType.key],
