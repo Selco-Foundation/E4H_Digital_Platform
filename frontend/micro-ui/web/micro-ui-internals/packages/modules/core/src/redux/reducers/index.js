@@ -7,6 +7,10 @@ export const commonReducer = (defaultData) => (state = defaultData, action) => {
       const newLanguages = action.payload.filter((language) => !existingLanguageValues.includes(language.value));
       return {...state, languages: [...(state.languages || []), ...newLanguages]};
     }
+    case "ADD_STATE_LOGOS":
+      return { ...state, stateLogos: action.payload };
+    case "SET_CRM_HELPLINE_NUMBER":
+      return { ...state, crmHelplineNumber: action.payload };
     default:
       return state;
   }
