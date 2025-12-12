@@ -1,6 +1,8 @@
 package org.egov.inbox.repository.builder.V2;
 
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -52,6 +54,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 configuration.getAllowedSearchCriteria(), configuration.getSortParam());
 
         Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
+        Map<String, Object> jurisdictionParams = inboxRequest.getInbox().getJurisdictionSearchCriteria();
         Map<String, Object> baseEsQuery = getBaseESQueryBody(inboxRequest, isPaginationRequired);
         log.debug("📝 Base ES query initialized: {}", baseEsQuery);
 
@@ -71,6 +74,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         Map<String, Object> innerBoolClause =
                 (HashMap<String, Object>) ((HashMap<String, Object>) baseEsQuery.get(QUERY_KEY)).get(BOOL_KEY);
         List<Object> mustClauseList = (ArrayList<Object>) innerBoolClause.get(MUST_KEY);
+        List<Object> jurisdictionMustClauseList = new ArrayList<Object>();
 
         Map<String, String> nameToPathMap = new HashMap<>();
         Map<String, SearchParam.Operator> nameToOperator = new HashMap<>();
@@ -91,10 +95,24 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         addModuleSearchCriteriaToBaseQuery(params, nameToPathMap, nameToOperator, mustClauseList);
         log.debug("📥 Added module search criteria to mustClauseList");
 
+        addJurisdictionSearchCriteriaToBaseQuery(jurisdictionParams, nameToPathMap, nameToOperator, jurisdictionMustClauseList);
+        log.debug("📥 Added jurisdiction search criteria to mustClauseList");
+
         addProcessSearchCriteriaToBaseQuery(inboxRequest.getInbox().getProcessSearchCriteria(), nameToPathMap, nameToOperator, mustClauseList);
         log.debug("📥 Added process search criteria to mustClauseList");
 
-        innerBoolClause.put(MUST_KEY, mustClauseList);
+        log.info("Final must clause list {} ", mustClauseList);
+        log.info("Final jurisdiction must clause list {} ", jurisdictionMustClauseList);
+
+        // Group the different blocks of should into a single should block
+        List<Map<String, Object>> updatedMustClauseList = extractShouldClauses(mustClauseList);
+        List<Map<String, Object>> updatedJurisdictionMustClauseList = extractJurisdictionShouldClauses(jurisdictionMustClauseList);
+        List<Map<String, Object>> mergedMustClause = mergeMustClauseLists(updatedJurisdictionMustClauseList, updatedMustClauseList);
+        log.info("Final must clause list after conversion {} ", updatedMustClauseList);
+        log.info("Final jurisdiction must clause list after conversion {} ", updatedJurisdictionMustClauseList);
+        log.info("Final merge must clause list {} ", updatedJurisdictionMustClauseList);
+
+        innerBoolClause.put(MUST_KEY, mergedMustClause);
 
         // Add SLA filter if required
         if (params.containsKey("nearingSLA") && isSLA) {
@@ -136,11 +154,164 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         log.info("✅ ES query built successfully for tenantId='{}' | module='{}'",
                 inboxRequest.getInbox().getTenantId(),
                 inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
-        log.trace("📄 Final ES query: {}", baseEsQuery);
+        log.info("📄 Final ES query: {}", baseEsQuery);
 
         return baseEsQuery;
     }
 
+    // Group the different blocks of should into a single should block
+    public List<Map<String, Object>> extractShouldClauses(List<Object> mustClauseList) {
+        List<Map<String, Object>> result =
+                mustClauseList.stream()
+                        .filter(o -> o instanceof Map)
+                        .map(o -> (Map<String, Object>) o)
+                        .collect(Collectors.toList());
+
+        List<Map<String, Object>> finalClauses = new ArrayList<>();
+        List<Object> mergedShouldList = new ArrayList<>();
+
+        for (Map<String, Object> clause : result) {
+
+            if (clause.containsKey("should")) {
+                Object shouldObj = clause.get("should");
+
+                // C’est soit un map direct, soit une liste de maps
+                if (shouldObj instanceof Map) {
+                    mergedShouldList.add(shouldObj);
+                } else if (shouldObj instanceof List) {
+                    mergedShouldList.addAll((List<?>) shouldObj);
+                }
+
+            } else {
+                // Clause normale → on garde
+                finalClauses.add(clause);
+            }
+        }
+
+        // Ajouter le should regroupé si non vide
+        if (!mergedShouldList.isEmpty()) {
+            Map<String, Object> groupedShould = new HashMap<>();
+            groupedShould.put("bool", new HashMap<>());
+            Map<String, Object> boolShouldList = (Map<String, Object>) groupedShould.get("bool");
+            boolShouldList.put("should", mergedShouldList);
+            boolShouldList.put("minimum_should_match", 1);
+            finalClauses.add(groupedShould);
+        }
+
+        return finalClauses;
+    }
+
+    // Group the different blocks of should into a single should block
+    public List<Map<String, Object>> extractJurisdictionShouldClauses(List<Object> mustClauseList) {
+        List<Map<String, Object>> result =
+                mustClauseList.stream()
+                        .filter(o -> o instanceof Map)
+                        .map(o -> (Map<String, Object>) o)
+                        .collect(Collectors.toList());
+
+        List<Map<String, Object>> finalClauses = new ArrayList<>();
+        List<Object> mergedShouldList = new ArrayList<>();
+
+        for (Map<String, Object> clause : result) {
+
+            if (clause.containsKey("should")) {
+                Object shouldObj = clause.get("should");
+
+                // C’est soit un map direct, soit une liste de maps
+                if (shouldObj instanceof Map) {
+                    mergedShouldList.add(shouldObj);
+                } else if (shouldObj instanceof List) {
+                    mergedShouldList.addAll((List<?>) shouldObj);
+                }
+
+            }
+        }
+
+        // Ajouter le should regroupé si non vide
+        if (!mergedShouldList.isEmpty()) {
+            Map<String, Object> groupedShould = new HashMap<>();
+            groupedShould.put("bool", new HashMap<>());
+            Map<String, Object> boolShouldList = (Map<String, Object>) groupedShould.get("bool");
+            boolShouldList.put("should", mergedShouldList);
+            boolShouldList.put("minimum_should_match", 1);
+            finalClauses.add(groupedShould);
+        }
+
+        return finalClauses;
+    }
+
+    public List<Map<String, Object>> mergeMustClauseLists(
+            List<Map<String, Object>> list1,
+            List<Map<String, Object>> list2) {
+
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        // Conserver les éléments non-bool de list1 (ex: wildcard)
+        list1.forEach(clause -> {
+            if (!clause.containsKey("bool")) {
+                result.add(clause);
+            }
+        });
+
+        // Fonction utilitaire pour compléter should avec toutes les clés nécessaires
+        BiFunction<Map<String, Object>, List<String>, Map<String, Object>> normalizeBool = (boolClause, allKeys) -> {
+            Map<String, Object> boolCopy = new HashMap<>();
+            Map<String, Object> innerBool = new HashMap<>();
+
+            List<Map<String, Object>> shouldList = new ArrayList<>();
+            if (boolClause.containsKey("bool")) {
+                Map<String, Object> existingBool = (Map<String, Object>) boolClause.get("bool");
+                List<Map<String, Object>> existingShould = (List<Map<String, Object>>) existingBool.getOrDefault("should", new ArrayList<>());
+
+                // Ajouter toutes les clés manquantes avec empty lists
+                for (String key : allKeys) {
+                    boolean keyExists = existingShould.stream().anyMatch(map -> {
+                        if (map.containsKey("terms")) {
+                            return ((Map<String,Object>) map.get("terms")).containsKey(key);
+                        }
+                        return false;
+                    });
+                    if (!keyExists) {
+                        Map<String, Object> emptyTerms = new HashMap<>();
+                        emptyTerms.put("terms", Collections.singletonMap(key, new ArrayList<>()));
+                        existingShould.add(emptyTerms);
+                    }
+                }
+
+                shouldList.addAll(existingShould);
+                innerBool.put("should", shouldList);
+                innerBool.put("minimum_should_match", 1);
+                boolCopy.put("bool", innerBool);
+            }
+
+            return boolCopy;
+        };
+
+        // Déterminer toutes les clés possibles pour uniformiser
+        List<String> allKeys = Arrays.asList(
+                "Data.incident.boundary.countryCode.keyword",
+                "Data.incident.boundary.stateCode.keyword",
+                "Data.incident.boundary.districtCode.keyword",
+                "Data.incident.boundary.blockCode.keyword",
+                "Data.incident.boundary.facilityCode.keyword"
+        );
+
+        // Normaliser list2 et ajouter à la liste finale
+        list2.forEach(clause -> {
+            if (clause.containsKey("bool")) {
+                result.add(normalizeBool.apply(clause, allKeys));
+            }
+        });
+
+        // Normaliser list1 bools et ajouter à la liste finale
+        list1.forEach(clause -> {
+            if (clause.containsKey("bool")) {
+                result.add(normalizeBool.apply(clause, allKeys));
+            }
+        });
+
+        return result;
+    }
 
     public Map<String, Object> getESQueryProject(InboxRequest inboxRequest, Boolean isPaginationRequired) {
         String tenantId = inboxRequest.getInbox().getTenantId();
@@ -345,6 +516,41 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         });
     }
 
+    private void addJurisdictionSearchCriteriaToBaseQuery(Map<String, Object> params, Map<String, String> nameToPathMap,
+                                                    Map<String, SearchParam.Operator> nameToOperator, List<Object> mustClauseList) {
+        params.keySet().forEach(key -> {
+            if (!(key.equals(SORT_ORDER_CONSTANT) || key.equals(SORT_BY_CONSTANT))) {
+
+                SearchParam.Operator operator = nameToOperator.get(key);
+                if (operator != null && operator.equals(SearchParam.Operator.WILDCARD)) {
+                    List<Map<String, Object>> mustClauseChild = null;
+
+                    mustClauseChild = (List<Map<String, Object>>) prepareMustClauseWildCardChild(params, key,
+                            nameToPathMap, nameToOperator);
+
+                    if (CollectionUtils.isEmpty(mustClauseChild)) {
+                        log.info("Error occurred while preparing filter for must clause. Filter for key " + key
+                                + " will not be added.");
+                    } else {
+                        mustClauseList.addAll(mustClauseChild);
+                    }
+                } else {
+
+                    Map<String, Object> mustClauseChild = null;
+                    mustClauseChild = (Map<String, Object>) prepareMustClauseChild(params, key, nameToPathMap,
+                            nameToOperator);
+                    if (CollectionUtils.isEmpty(mustClauseChild)) {
+                        log.info("Error occurred while preparing filter for must clause. Filter for key " + key
+                                + " will not be added.");
+                    } else {
+                        mustClauseList.add(mustClauseChild);
+                    }
+
+                }
+            }
+        });
+    }
+
     @Override
     public Map<String, Object> getStatusCountQuery(InboxRequest inboxRequest) {
         Map<String, Object> baseEsQuery = getESQuery(inboxRequest, Boolean.FALSE, Boolean.FALSE);
@@ -499,6 +705,16 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             Map<String, Object> innerTermClause = (Map<String, Object>) termClause.get("terms");
             innerTermClause.put(addDataPathToSearchParamKey(key, nameToPathMap), params.get(key));
             return boolClause;
+        } else if (operator.equals(SearchParam.Operator.SHOULD)) {
+            log.debug("📌 Adding SHOULD clause for key='{}' with values={}", key, params.get(key));
+            Map<String, Object> shouldClause = new HashMap<>();
+            shouldClause.put("should", new HashMap<>());
+            Map<String, Object> termsClause = (Map<String, Object>) shouldClause.get("should");
+            termsClause.put("terms", new HashMap<>());
+            Map<String, Object> innerShouldClause = (Map<String, Object>) termsClause.get("terms");
+            innerShouldClause.put(addDataPathToSearchParamKey(key, nameToPathMap), params.get(key));
+            log.info("SHOULD request : {}", shouldClause);
+            return shouldClause;
         } else if (operator.equals(SearchParam.Operator.SLA_COMPARE)) {
             log.debug("📌 SLA_COMPARE operator detected for key='{}', returning empty clause", key);
             return new HashMap<>();
