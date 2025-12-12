@@ -20,8 +20,34 @@ const ChangeCity = (prop) => {
   }
   const history = useHistory();
   const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries) || [])
+  const [facilityOptions, setFacilityOptions] = useState([]);
+  const [facilityBoundaries, setFacilityBoundaries] = useState([]);
+  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
+
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries) || []);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
   const { t } = prop;
+
+  useEffect(() => {
+    if (boundaryData) {
+      setFacilityBoundaries(boundaryData.facilities);
+      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code));
+    }
+  }, [boundaryData]);
+
+  useEffect(() => {
+    if (facilityBoundaries?.length && facilityData?.facilities?.length) {
+      const facilityBoundaryCodeToParentMap = new Map();
+      for (let facilityBoundary of facilityBoundaries) {
+        facilityBoundaryCodeToParentMap.set(facilityBoundary.code, facilityBoundary.parentCode);
+      }
+      setFacilityOptions(facilityData?.facilities?.map((facility) => ({
+        code: facility.boundaryCode,
+        id: facility.facilityId,
+        parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
+      })));
+    }
+  }, [facilityBoundaries, facilityData]);
 
   const handleChangeCity = (city) => {
     setDropDownData(city);
@@ -46,8 +72,8 @@ const ChangeCity = (prop) => {
         type: "UNIFIED",
       }
     ];
-    if (boundaryData) {
-      boundaryData?.facilities?.forEach((facility) => {
+    if (facilityOptions) {
+      facilityOptions.forEach((facility) => {
         if (filteredArray.every((boundary) => boundary.code !== facility.code)) {
           filteredArray.push({
             code: facility.code,
@@ -63,7 +89,7 @@ const ChangeCity = (prop) => {
     const selectedBoundary = filteredArray?.find(select => select?.code === jurisdictionCurrentBoundaryCodes?.join(","));
     setSelectCityData(filteredArray);
     setDropDownData(selectedBoundary);
-  }, [boundaryData, t]);
+  }, [facilityOptions, t]);
 
   // if (isDropdown) {
   return (
