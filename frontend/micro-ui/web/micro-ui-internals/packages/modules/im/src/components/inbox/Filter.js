@@ -38,7 +38,7 @@ const Filter = (props) => {
   useEffect(() => {
     if (boundaryData) {
       setFacilityBoundaries(boundaryData.facilities);
-      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code));
+      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
     }
   }, [boundaryData]);
 
