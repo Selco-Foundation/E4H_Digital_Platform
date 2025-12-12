@@ -5,7 +5,7 @@ import ChangePassword from "../pages/employee/ChangePassword/index";
 import ForgotPassword from "../pages/employee/ForgotPassword/index";
 import { AppHome } from "./Home";
 import {useDispatch} from "react-redux";
-import {addLanguageOptions} from "../redux/actions";
+import {addLanguageOptions, addStateLogos, setCrmHelplineNumber } from "../redux/actions";
 // import UserProfile from "./userProfile";
 
 const getTenants = (codes, tenants) => {
@@ -19,28 +19,33 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
   const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
   const dispatch = useDispatch();
 
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionBoundaries?.codes || []);
-  const { data: boundaryLanguageData } = Digit.Hooks.pgr.useMDMS(stateCode, "common-masters", ["BoundaryLanguage"]);
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries));
 
   useEffect(() => {
     const initData = Digit.SessionStorage.get("initData");
     if (!initData || !Array.isArray(initData.languages)) return;
 
-    if (boundaryData && boundaryLanguageData) {
+    if (boundaryData) {
       const stateCodes = (boundaryData.states || []).map((state) => state.code);
-      const boundaryLanguages = boundaryLanguageData["common-masters"]?.["BoundaryLanguage"] || [];
+      const stateBoundaryInfos = window?.globalConfigs?.getStateBoundaryInfos?.(stateCodes);
+      if (stateBoundaryInfos?.length === 1) {
+        dispatch(addStateLogos(stateBoundaryInfos[0].logos || []))
+        dispatch(setCrmHelplineNumber(stateBoundaryInfos[0].crmHelplineNumber || ""))
+      }
+      const boundaryLanguages = [];
+      if (stateBoundaryInfos) {
+        for (let stateBoundaryInfo of stateBoundaryInfos) {
+          boundaryLanguages.push(...(stateBoundaryInfo.languages || []));
+        }
+      }
       const existingLanguageValues = initData.languages?.map(language => language?.value) || [];
-      const filteredBoundaryLanguages = boundaryLanguages
-        .filter((boundaryLanguage) => (stateCodes.includes(boundaryLanguage?.boundaryCode) && !existingLanguageValues.includes(boundaryLanguage?.value)))
-        .map((boundaryLanguage) => ({
-          label: boundaryLanguage.label,
-          value: boundaryLanguage.value,
-        }));
+      const filteredBoundaryLanguages = boundaryLanguages.filter((boundaryLanguage) => !existingLanguageValues.includes(boundaryLanguage?.value));
       initData.languages = [...initData.languages, ...filteredBoundaryLanguages];
       Digit.SessionStorage.set("initData", initData);
     }
+
     dispatch(addLanguageOptions(initData.languages));
-  }, [boundaryData, boundaryLanguageData]);
+  }, [boundaryData]);
 
   const appRoutes = modules.map(({ code, tenants }, index) => {
     const Module = Digit.ComponentRegistryService.getComponent(`${code}Module`);
