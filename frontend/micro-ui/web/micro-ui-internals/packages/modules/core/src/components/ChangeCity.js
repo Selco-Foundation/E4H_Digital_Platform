@@ -20,14 +20,39 @@ const ChangeCity = (prop) => {
   }
   const history = useHistory();
   const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionBoundaries?.codes || [])
+  const [facilityOptions, setFacilityOptions] = useState([]);
+  const [facilityBoundaries, setFacilityBoundaries] = useState([]);
+  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
+
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries) || []);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
   const { t } = prop;
+
+  useEffect(() => {
+    if (boundaryData) {
+      setFacilityBoundaries(boundaryData.facilities);
+      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
+    }
+  }, [boundaryData]);
+
+  useEffect(() => {
+    if (facilityBoundaries?.length && facilityData?.facilities?.length) {
+      const facilityBoundaryCodeToParentMap = new Map();
+      for (let facilityBoundary of facilityBoundaries) {
+        facilityBoundaryCodeToParentMap.set(facilityBoundary.code, facilityBoundary.parentCode);
+      }
+      setFacilityOptions(facilityData?.facilities?.map((facility) => ({
+        code: facility.boundaryCode,
+        id: facility.facilityId,
+        parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
+      })));
+    }
+  }, [facilityBoundaries, facilityData]);
 
   const handleChangeCity = (city) => {
     setDropDownData(city);
-    Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", {
-      codes: city.code.split(","),
-      type: city.type,
+    Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", city.type === "UNIFIED" ? jurisdictionBoundaries : {
+      [city.type]: city.code.split(","),
     })
     if (window.location.href.includes(`/${window.contextPath}/employee/`)) {
       const redirectPath = location.state?.from || `/${window.contextPath}/employee`;
@@ -37,15 +62,18 @@ const ChangeCity = (prop) => {
   };
 
   useEffect(() => {
+    const jurisdictionBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries);
+    const jurisdictionBoundaryTypes = Digit.Utils.BoundaryUtil.aggregateBoundaryTypes(jurisdictionBoundaries);
+    const isOnlyFacilityType = jurisdictionBoundaryTypes.length === 1 && jurisdictionBoundaryTypes[0] === "facility";
     let filteredArray = [
       {
-        code: jurisdictionBoundaries?.codes?.join(","),
-        label: (jurisdictionBoundaries?.type !== "facility" || jurisdictionBoundaries?.codes?.length > 1) ? t("CORE_COMMON_ALL") : t(`Boundary_${jurisdictionBoundaries?.codes?.[0]}`),
-        type: jurisdictionBoundaries?.type,
+        code: jurisdictionBoundaryCodes?.join(","),
+        label: (jurisdictionBoundaryCodes?.length === 1 &&  isOnlyFacilityType) ? t(`Boundary_${jurisdictionBoundaryCodes?.[0]}`) : t("CORE_COMMON_ALL"),
+        type: "UNIFIED",
       }
     ];
-    if (boundaryData) {
-      boundaryData?.facilities?.forEach((facility) => {
+    if (facilityOptions) {
+      facilityOptions.forEach((facility) => {
         if (filteredArray.every((boundary) => boundary.code !== facility.code)) {
           filteredArray.push({
             code: facility.code,
@@ -57,10 +85,11 @@ const ChangeCity = (prop) => {
     }
     filteredArray.sort((a, b) => a.label.localeCompare(b.label));
     const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
-    const selectedBoundary = filteredArray?.find(select => select?.code === jurisdictionCurrentBoundary?.codes?.join(","));
+    const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+    const selectedBoundary = filteredArray?.find(select => select?.code === jurisdictionCurrentBoundaryCodes?.join(","));
     setSelectCityData(filteredArray);
     setDropDownData(selectedBoundary);
-  }, [boundaryData, t]);
+  }, [facilityOptions, t]);
 
   // if (isDropdown) {
   return (

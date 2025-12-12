@@ -19,14 +19,13 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
   const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
   const dispatch = useDispatch();
 
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionBoundaries?.codes || []);
-  const { data: boundaryLanguageData } = Digit.Hooks.pgr.useMDMS(stateCode, "common-masters", ["BoundaryLanguage"]);
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries));
 
   useEffect(() => {
     const initData = Digit.SessionStorage.get("initData");
     if (!initData || !Array.isArray(initData.languages)) return;
 
-    if (boundaryData && boundaryLanguageData) {
+    if (boundaryData) {
       const stateCodes = (boundaryData.states || []).map((state) => state.code);
       const stateBoundaryInfos = window?.globalConfigs?.getStateBoundaryInfos?.(stateCodes);
       if (stateBoundaryInfos?.length === 1) {
@@ -46,7 +45,7 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
     }
 
     dispatch(addLanguageOptions(initData.languages));
-  }, [boundaryData, boundaryLanguageData]);
+  }, [boundaryData]);
 
   const appRoutes = modules.map(({ code, tenants }, index) => {
     const Module = Digit.ComponentRegistryService.getComponent(`${code}Module`);
