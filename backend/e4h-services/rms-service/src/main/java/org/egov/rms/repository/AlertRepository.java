@@ -142,6 +142,16 @@ public class AlertRepository {
      * Checks if there's an open ticket in eg_incident_v2 for the given facility, alert type, and sub-type
      * Returns true if there's an open ticket, false if ticket is closed or doesn't exist
      * 
+     * This method directly queries eg_incident_v2 table to find open tickets matching:
+     * - Incident type (mapped from alert type)
+     * - Incident subtype (mapped from alert sub-type)
+     * - Facility identifier (rmsFacilityId in additionalDetails or boundaryCode)
+     * 
+     * This approach is more reliable than checking active_alerts.ticket_id because:
+     * 1. It checks the actual incident table directly
+     * 2. It works even if ticket_id wasn't saved to active_alerts
+     * 3. It uses the same facility identifier that was used when creating the ticket
+     * 
      * Open statuses: PENDINGFORASSIGNMENT, PENDING_ASSIGNMENT_SPARE_PART_NEEDED, 
      *                PENDING_ASSIGNMENT_OUT_OF_WARRANTY, PENDING_RESOLUTION_SPARE_PART_NEEDED,
      *                PENDING_RESOLUTION_OUT_OF_WARRANTY, PENDINGRESOLUTION
@@ -149,40 +159,31 @@ public class AlertRepository {
      */
     public boolean hasOpenTicket(String facilityId, Alert.AlertType alertType, Alert.AlertSubType alertSubType) {
         try {
-            // First, get the ticket_id from active_alerts
-            String getTicketIdSql = "SELECT ticket_id FROM active_alerts " +
-                    "WHERE facility_id = ? AND alert_type = ? AND alert_sub_type = ? " +
-                    "AND ticket_id IS NOT NULL AND ticket_id != '' " +
-                    "LIMIT 1";
-
-            List<String> ticketIds = jdbcTemplate.queryForList(getTicketIdSql, String.class,
-                    facilityId, alertType.name(), alertSubType.name());
-
-            if (ticketIds == null || ticketIds.isEmpty()) {
-                log.debug("No ticket_id found in active_alerts for facility: {}, type: {}, subType: {}",
-                        facilityId, alertType, alertSubType);
-                return false;
-            }
-
-            String ticketId = ticketIds.get(0);
-            log.debug("Found ticket_id {} in active_alerts, checking status in eg_incident_v2", ticketId);
-
-            // Check if ticket exists and is open in eg_incident_v2
-            // Map alert type/subtype to incident type/subtype (this might need adjustment based on your mapping)
-            String checkStatusSql = "SELECT applicationstatus FROM eg_incident_v2 " +
-                    "WHERE incidentid = ? " +
-                    "LIMIT 1";
-
-            List<String> statuses = jdbcTemplate.queryForList(checkStatusSql, String.class, ticketId);
-
-            if (statuses == null || statuses.isEmpty()) {
-                log.debug("Ticket {} not found in eg_incident_v2 - allowing new ticket creation", ticketId);
-                return false; // Ticket doesn't exist in incident table, allow creation
-            }
-
-            String applicationStatus = statuses.get(0);
+            // Map alert type/subtype to incident type/subtype (same mapping as PayloadGenerator)
+            String incidentType = mapAlertTypeToIncidentType(alertType);
+            String incidentSubType = mapAlertSubTypeToIncidentSubType(alertSubType, alertType);
             
-            // Define open and closed statuses
+            log.debug("Checking for open tickets - facilityId: {}, alertType: {}, alertSubType: {}, incidentType: {}, incidentSubType: {}", 
+                    facilityId, alertType, alertSubType, incidentType, incidentSubType);
+            
+            // Get boundaryCode from existing tickets if available (for better matching)
+            String boundaryCode = null;
+            try {
+                String getBoundaryCodeSql = "SELECT boundarycode FROM eg_incident_v2 " +
+                        "WHERE incidenttype = ? " +
+                        "AND incidentsubtype = ? " +
+                        "AND additionaldetails->>'rmsFacilityId' = ? " +
+                        "LIMIT 1";
+                List<String> boundaryCodes = jdbcTemplate.queryForList(getBoundaryCodeSql, String.class,
+                        incidentType, incidentSubType, facilityId);
+                if (boundaryCodes != null && !boundaryCodes.isEmpty()) {
+                    boundaryCode = boundaryCodes.get(0);
+                }
+            } catch (Exception e) {
+                log.debug("Could not fetch boundaryCode from existing tickets: {}", e.getMessage());
+            }
+            
+            // Define open statuses
             String[] openStatuses = {
                 "PENDINGFORASSIGNMENT",
                 "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
@@ -191,42 +192,107 @@ public class AlertRepository {
                 "PENDING_RESOLUTION_OUT_OF_WARRANTY",
                 "PENDINGRESOLUTION"
             };
-
-            String[] closedStatuses = {
-                "RESOLVED",
-                "CLOSEDAFTERRESOLUTION",
-                "REJECTED",
-                "CLOSEDAFTERREJECTION"
-            };
-
-            // Check if status is open
-            for (String openStatus : openStatuses) {
-                if (openStatus.equalsIgnoreCase(applicationStatus)) {
-                    log.info("Ticket {} has open status: {} - preventing duplicate ticket creation", 
-                            ticketId, applicationStatus);
-                    return true;
-                }
+            
+            // Query eg_incident_v2 directly for open tickets matching:
+            // 1. incidenttype = mapped alert type
+            // 2. incidentsubtype = mapped alert sub-type
+            // 3. (boundarycode matches OR additionaldetails->>'rmsFacilityId' = facilityId)
+            // 4. applicationstatus IN (open statuses)
+            
+            String checkStatusSql;
+            List<String> statuses;
+            
+            if (boundaryCode != null && !boundaryCode.trim().isEmpty()) {
+                // Check by both rmsFacilityId and boundaryCode for better matching
+                checkStatusSql = "SELECT applicationstatus FROM eg_incident_v2 " +
+                        "WHERE incidenttype = ? " +
+                        "AND incidentsubtype = ? " +
+                        "AND applicationstatus IN (?, ?, ?, ?, ?, ?) " +
+                        "AND (additionaldetails->>'rmsFacilityId' = ? OR boundarycode = ?) " +
+                        "LIMIT 1";
+                
+                statuses = jdbcTemplate.queryForList(checkStatusSql, String.class,
+                        incidentType, incidentSubType,
+                        openStatuses[0], openStatuses[1], openStatuses[2], 
+                        openStatuses[3], openStatuses[4], openStatuses[5],
+                        facilityId, boundaryCode);
+            } else {
+                // Check only by rmsFacilityId in additionalDetails
+                checkStatusSql = "SELECT applicationstatus FROM eg_incident_v2 " +
+                        "WHERE incidenttype = ? " +
+                        "AND incidentsubtype = ? " +
+                        "AND applicationstatus IN (?, ?, ?, ?, ?, ?) " +
+                        "AND additionaldetails->>'rmsFacilityId' = ? " +
+                        "LIMIT 1";
+                
+                statuses = jdbcTemplate.queryForList(checkStatusSql, String.class,
+                        incidentType, incidentSubType,
+                        openStatuses[0], openStatuses[1], openStatuses[2], 
+                        openStatuses[3], openStatuses[4], openStatuses[5],
+                        facilityId);
             }
-
-            // Check if status is closed
-            for (String closedStatus : closedStatuses) {
-                if (closedStatus.equalsIgnoreCase(applicationStatus)) {
-                    log.info("Ticket {} has closed status: {} - allowing new ticket creation", 
-                            ticketId, applicationStatus);
-                    return false; // Ticket is closed, allow new ticket
-                }
+            
+            if (statuses == null || statuses.isEmpty()) {
+                log.debug("No open tickets found in eg_incident_v2 for facility: {}, type: {}, subType: {} - allowing ticket creation", 
+                        facilityId, alertType, alertSubType);
+                return false; // No open ticket found, allow creation
             }
-
-            // If status is neither open nor closed (unknown status), treat as open to be safe
-            log.warn("Ticket {} has unknown status: {} - treating as open to prevent duplicates", 
-                    ticketId, applicationStatus);
-            return true;
-
+            
+            String applicationStatus = statuses.get(0);
+            log.info("Found open ticket in eg_incident_v2 with status: {} for facility: {}, type: {}, subType: {} - preventing duplicate ticket creation", 
+                    applicationStatus, facilityId, alertType, alertSubType);
+            return true; // Open ticket exists, prevent duplicate
+            
         } catch (Exception e) {
             log.error("Error checking ticket status in eg_incident_v2 for facility: {}, type: {}, subType: {}", 
                     facilityId, alertType, alertSubType, e);
-            // On error, default to checking active_alerts only (fallback behavior)
+            // On error, fallback to checking active_alerts only
+            log.warn("Falling back to active_alerts check due to error");
             return hasExistingTicket(facilityId, alertType, alertSubType);
+        }
+    }
+    
+    /**
+     * Maps RMS alert type to IM service incident type (same as PayloadGenerator)
+     */
+    private String mapAlertTypeToIncidentType(Alert.AlertType alertType) {
+        switch (alertType) {
+            case PANEL:
+                return "PANEL";
+            case INVERTER:
+                return "INVERTER";
+            case BATTERY:
+                return "BATTERY";
+            case GRID:
+                return "GRID";
+            default:
+                return "GIPB";
+        }
+    }
+    
+    /**
+     * Maps RMS alert sub-type to IM service incident sub-type (same as PayloadGenerator)
+     */
+    private String mapAlertSubTypeToIncidentSubType(Alert.AlertSubType alertSubType, Alert.AlertType alertType) {
+        switch (alertSubType) {
+            case LOW_GENERATION:
+                return "LowGeneration";
+            case SHUTDOWN:
+                return "ShutdownInverter";
+            case HIGH_VOLTAGE:
+                return "VoltageInverter";
+            case BURNT_DISCONNECTED:
+                return "Overcharge";
+            case DEEP_DISCHARGING:
+                return "DeepDischarge";
+            case OVERCHARGING:
+                return "Overcharge";
+            case VOLTAGE_VARIATION_LOW:
+                return "LowVoltage";
+            case VOLTAGE_VARIATION_HIGH:
+                return "HighVoltage";
+            default:
+                return "RMS Data Alert";
         }
     }
 
