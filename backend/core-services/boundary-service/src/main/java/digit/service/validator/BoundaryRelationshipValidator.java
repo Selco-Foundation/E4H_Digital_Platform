@@ -41,14 +41,23 @@ public class BoundaryRelationshipValidator {
         // Check for duplicates
         checkDuplicates(body);
 
-        // Check if parent boundary entity exists and return its materialized path and boundary type
-        GenericPair<String, String> parentAttributes = validateParentAndReturnAttributes(body);
+        String ancestralMaterializedPath = "";
 
-        // Check if the relationship being created has proper hierarchy
-        validateRelationshipForProperHierarchy(body, parentAttributes.getSecond());
+        List<String> hierarchyOrder = hierarchyUtil.getHierarchyOrder(body.getBoundaryRelationship().getTenantId(),
+                body.getBoundaryRelationship().getHierarchyType());
 
-        // Return ancestralMaterializedPath of parent
-        return parentAttributes.getFirst();
+        if (!Objects.equals(body.getBoundaryRelationship().getBoundaryType(), hierarchyOrder.get(0))) {
+            // Check if parent boundary entity exists and return its materialized path and boundary type
+            GenericPair<String, String> parentAttributes = validateParentAndReturnAttributes(body);
+
+            // Check if the relationship being created has proper hierarchy
+            validateRelationshipForProperHierarchy(body, parentAttributes.getSecond());
+
+            // Return ancestralMaterializedPath of parent
+            ancestralMaterializedPath = parentAttributes.getFirst();
+        }
+
+        return ancestralMaterializedPath;
     }
 
     /**
