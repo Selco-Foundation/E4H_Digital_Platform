@@ -74,10 +74,6 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   const jurisdictionCurrentBoundaryTypes = Digit.Utils.BoundaryUtil.aggregateBoundaryTypes(jurisdictionCurrentBoundary);
   const isOnlyFacilityType = jurisdictionCurrentBoundaryTypes.length === 1 && jurisdictionCurrentBoundaryTypes[0] === "facility";
 
-  if (!userInfo?.uuid) {
-    return <Redirect to={`${window?.contextPath}/employee/user/login`} />;
-  }
-
   useEffect(() => {
     setCity((jurisdictionCurrentBoundaryCodes?.length === 1 &&  isOnlyFacilityType) ? t(`Boundary_${jurisdictionCurrentBoundaryCodes?.[0]}`) : t("CORE_COMMON_ALL"))
   }, []);
