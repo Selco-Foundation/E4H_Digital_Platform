@@ -11,6 +11,7 @@ import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.ProcessInstance;
+import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 
@@ -77,6 +78,9 @@ public class IMService {
         Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
                 request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
         );
+        if (boundary == null) {
+            throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + request.getIncident().getBoundaryCode());
+        }
         enrichmentService.enrichCreateRequest(request, boundary);
         RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
                 .tenantId(request.getIncident().getTenantId())
