@@ -287,6 +287,7 @@ jobs:
           E4H_SERVICES: ${{ needs.detect-changes.outputs.e4h_services }}
         run: |
           set -e
+          set -o pipefail
           echo "Building E4H Backend Services..."
           echo "Java version: $(java -version 2>&1 | head -n 1)"
           
@@ -309,11 +310,14 @@ jobs:
               if [ -d "$SERVICE_DIR" ] && [ -f "$SERVICE_DIR/pom.xml" ]; then
                 echo "Building ${service}..."
                 cd "$SERVICE_DIR"
-                if mvn clean compile -DskipTests -Dmaven.javadoc.skip=true -B 2>&1 | tail -10; then
+                # Use tee to capture output while preserving Maven's exit code
+                if mvn clean compile -DskipTests -Dmaven.javadoc.skip=true -B 2>&1 | tee /tmp/mvn_build.log | tail -20; then
                   echo "✅ ${service}"
                   SUCCESSFUL=$((SUCCESSFUL + 1))
                 else
-                  echo "⚠️ ${service} failed"
+                  echo "❌ ${service} failed"
+                  echo "--- Last 50 lines of build log ---"
+                  tail -50 /tmp/mvn_build.log || true
                   FAILED=$((FAILED + 1))
                 fi
                 cd - > /dev/null
@@ -331,11 +335,14 @@ jobs:
               if [ -d "$SERVICE_DIR" ] && [ -f "$SERVICE_DIR/pom.xml" ]; then
                 echo "Building ${service}..."
                 cd "$SERVICE_DIR"
-                if mvn clean compile -DskipTests -Dmaven.javadoc.skip=true -B 2>&1 | tail -10; then
+                # Use tee to capture output while preserving Maven's exit code
+                if mvn clean compile -DskipTests -Dmaven.javadoc.skip=true -B 2>&1 | tee /tmp/mvn_build.log | tail -20; then
                   echo "✅ ${service}"
                   SUCCESSFUL=$((SUCCESSFUL + 1))
                 else
-                  echo "⚠️ ${service} failed"
+                  echo "❌ ${service} failed"
+                  echo "--- Last 50 lines of build log ---"
+                  tail -50 /tmp/mvn_build.log || true
                   FAILED=$((FAILED + 1))
                 fi
                 cd - > /dev/null
