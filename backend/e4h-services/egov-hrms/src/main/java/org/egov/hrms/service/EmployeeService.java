@@ -207,26 +207,56 @@ public class EmployeeService {
 			}
 		}
 
-		String stateLevelTenantId = centralInstanceUtil.getStateLevelTenant(criteria.getTenantId());
+		String stateLevelTenantId = criteria.getTenantId();
 		if(userChecked)
 			criteria.setTenantId(null);
+
+		// Early return: If both roles and boundaryCodes are provided, and no users found with those roles, return empty list
+		if(!CollectionUtils.isEmpty(criteria.getRoles()) && !CollectionUtils.isEmpty(criteria.getBoundaryCodes()) 
+				&& CollectionUtils.isEmpty(criteria.getUuids())) {
+			return EmployeeResponse.builder().responseInfo(factory.createResponseInfoFromRequestInfo(requestInfo, true))
+					.employees(new ArrayList<>()).build();
+		}
 
 		List <Employee> employees = new ArrayList<>();
         if(!((!CollectionUtils.isEmpty(criteria.getRoles()) || !CollectionUtils.isEmpty(criteria.getNames()) || !StringUtils.isEmpty(criteria.getPhone())) && CollectionUtils.isEmpty(criteria.getUuids())))
             employees = repository.fetchEmployees(criteria, requestInfo, stateLevelTenantId);
+        
+        // If both roles and boundaryCodes are provided, and no employees found in that boundary, return empty list
+        if(!CollectionUtils.isEmpty(criteria.getRoles()) && !CollectionUtils.isEmpty(criteria.getBoundaryCodes()) 
+        		&& CollectionUtils.isEmpty(employees)) {
+        	return EmployeeResponse.builder().responseInfo(factory.createResponseInfoFromRequestInfo(requestInfo, true))
+        			.employees(new ArrayList<>()).build();
+        }
+        
         List<String> uuids = employees.stream().map(Employee :: getUuid).collect(Collectors.toList());
 		if(!CollectionUtils.isEmpty(uuids)){
             Map<String, Object> UserSearchCriteria = new HashMap<>();
             UserSearchCriteria.put(HRMSConstants.HRMS_USER_SEARCH_CRITERA_UUID,uuids);
-            if(mapOfUsers.isEmpty()){
             UserResponse userResponse = userService.getUser(requestInfo, UserSearchCriteria);
 			if(!CollectionUtils.isEmpty(userResponse.getUser())) {
-				mapOfUsers = userResponse.getUser().stream()
+				// Merge with existing mapOfUsers instead of replacing it
+				Map<String, User> fetchedUsers = userResponse.getUser().stream()
 						.collect(Collectors.toMap(User :: getUuid, Function.identity()));
-            }
+				mapOfUsers.putAll(fetchedUsers);
             }
             for(Employee employee: employees){
                 employee.setUser(mapOfUsers.get(employee.getUuid()));
+            }
+            
+            // Filter employees to ensure they have the requested roles
+            if(!CollectionUtils.isEmpty(criteria.getRoles()) && !CollectionUtils.isEmpty(employees)) {
+                List<String> requestedRoleCodes = criteria.getRoles();
+                employees = employees.stream()
+                    .filter(employee -> {
+                        if(employee.getUser() == null || CollectionUtils.isEmpty(employee.getUser().getRoles())) {
+                            return false;
+                        }
+                        // Check if employee's user has any of the requested roles
+                        return employee.getUser().getRoles().stream()
+                            .anyMatch(role -> requestedRoleCodes.contains(role.getCode()));
+                    })
+                    .collect(Collectors.toList());
             }
 		}
 		return EmployeeResponse.builder().responseInfo(factory.createResponseInfoFromRequestInfo(requestInfo, true))

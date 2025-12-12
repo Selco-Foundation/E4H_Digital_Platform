@@ -160,8 +160,8 @@ public class EmployeeValidator {
 	private void validateExistingDuplicates(EmployeeRequest request, Map<String, String> errorMap) {
 		List<Employee> employees = request.getEmployees();
 		validateDataUniqueness(employees,errorMap);
-        validateUserMobile(employees,errorMap,request.getRequestInfo());
-        validateUserName(employees,errorMap,request.getRequestInfo());
+    //validateUserMobile(employees,errorMap,request.getRequestInfo());
+    validateUserName(employees,errorMap,request.getRequestInfo());
 	}
 
 	/**

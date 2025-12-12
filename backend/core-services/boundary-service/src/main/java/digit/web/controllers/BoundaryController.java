@@ -54,6 +54,19 @@ public class BoundaryController {
     }
 
     /**
+     * Request handler for serving boundary entities search request.
+     * @param boundaryV2SearchRequest
+     * @return
+     */
+    @PostMapping(value = "/v2/_search")
+    public ResponseEntity<BoundaryResponse> searchWithRequestBody(@Valid @RequestBody BoundaryV2SearchRequest boundaryV2SearchRequest) {
+        BoundaryResponse boundaryResponse = boundaryService.searchBoundary(
+                boundaryV2SearchRequest.getBoundarySearchCriteria() , boundaryV2SearchRequest.getRequestInfo()
+        );
+        return new ResponseEntity<>(boundaryResponse, HttpStatus.OK);
+    }
+
+    /**
      * Request handler for serving boundary entities update request.
      * @param body
      * @return

@@ -4,10 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
-import org.egov.im.web.models.Incident;
-import org.egov.im.web.models.IncidentRequestWrapper;
-import org.egov.im.web.models.IndexView;
-import org.egov.im.web.models.LocalizationResponse;
+import org.egov.im.web.models.*;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -50,15 +47,32 @@ public class LocalizationService {
         }
     }
 
+    public void enrichLocalizedDistrictAndBlockNames(IncidentRequest incidentRequest, Boundary boundary) {
+        Incident incident = incidentRequest.getIncident();
+        String tenantId = incident.getTenantId();
+        String locale = "en_IN";
+
+        String districtCode = "Boundary_" + boundary.getDistrictCode();
+        String blockCode = "Boundary_" + boundary.getBlockCode();
+        String boundaryCodes = String.join(",", districtCode, blockCode);
+
+        LocalizationResponse boundaryResponse = getLocalizationMessages(incidentRequest.getRequestInfo(), tenantId, "rainmaker-in", locale, boundaryCodes);
+
+        incident.setDistrict(boundaryResponse.getMessageByCode(districtCode));
+        incident.setBlock(boundaryResponse.getMessageByCode(blockCode));
+    }
+
     public void enrichLocalizedFieldsForIndexing(IncidentRequestWrapper wrapper) {
         Incident incident = wrapper.getIncidentRequest().getIncident();
         RequestInfo requestInfo = wrapper.getIncidentRequest().getRequestInfo();
+        IndexView indexView = wrapper.getIndexView();
 
         String tenantId = incident.getTenantId();
         String stateTenant = tenantId.split("\\.")[0];
         String locale = "en_IN";
 
-        String stateCode = "HEADER_TENANT_TENANTS_" + stateTenant.toUpperCase();
+        String stateCode = "Boundary_" + indexView.getBoundary().getStateCode();
+        String facilityCode = "Boundary_" + indexView.getBoundary().getFacilityCode();
         String incidentTypeCode = "SERVICEDEFS." + incident.getIncidentType().toUpperCase();
         String incidentSubTypeCode = "SERVICEDEFS." + incident.getIncidentSubType().toUpperCase();
 
@@ -67,25 +81,17 @@ public class LocalizationService {
                 .map(status -> "CS_COMMON_" + status)
                 .orElse("");
 
-        String tenantCode = "TENANT_TENANTS_" + tenantId.replace(".", "_").toUpperCase();
         String imCodes = String.join(",", incidentTypeCode, incidentSubTypeCode, appStatusCode);
-        String commonCodes = tenantCode;
+        String boundaryCodes = String.join(",", stateCode, facilityCode);
 
-        LocalizationResponse stateTenantResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-" + stateTenant, locale, stateCode);
+        LocalizationResponse boundaryResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-in", locale, boundaryCodes);
         LocalizationResponse imResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-im", locale, imCodes);
-        LocalizationResponse commonResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-common", locale, commonCodes);
 
-        IndexView indexView = wrapper.getIndexView();
-        if (indexView == null) {
-            indexView = new IndexView();
-            wrapper.setIndexView(indexView);
-        }
-
-        indexView.setState(stateTenantResponse.getMessageByCode(stateCode));
+        indexView.setState(boundaryResponse.getMessageByCode(stateCode));
         indexView.setIncidentTypeLocalized(imResponse.getMessageByCode(incidentTypeCode));
         indexView.setIncidentSubTypeLocalized(imResponse.getMessageByCode(incidentSubTypeCode));
         indexView.setApplicationStatusLocalized(imResponse.getMessageByCode(appStatusCode));
-        indexView.setTenantIdLocalized(commonResponse.getMessageByCode(tenantCode));
+        indexView.setTenantIdLocalized(boundaryResponse.getMessageByCode(facilityCode));
     }
 
     public void enrichLocalizedApplicationStatuses(IncidentRequestWrapper wrapper,String startingStatus) {

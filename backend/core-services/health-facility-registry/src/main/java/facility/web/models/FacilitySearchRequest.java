@@ -15,4 +15,5 @@ public class FacilitySearchRequest {
     private String boundaryCode;
     private Integer limit = 10;
     private Integer offset = 0;
+    private Boolean isOnmReady;
 }

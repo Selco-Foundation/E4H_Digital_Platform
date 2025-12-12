@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Redirect, Route, Switch, useLocation, useRouteMatch, useHistory } from "react-router-dom";
 import { AppModules } from "../../components/AppModules";
@@ -6,11 +6,11 @@ import ErrorBoundary from "../../components/ErrorBoundaries";
 import TopBarSideBar from "../../components/TopBarSideBar";
 import ChangePassword from "./ChangePassword";
 import ForgotPassword from "./ForgotPassword";
-import LanguageSelection from "./LanguageSelection";
 import EmployeeLogin from "./Login";
 import UserProfile from "../citizen/Home/UserProfile";
 import ErrorComponent from "../../components/ErrorComponent";
 import { PrivateRoute } from "@selco/digit-ui-react-components";
+import { useSelector } from "react-redux";
 
 const userScreensExempted = ["user/profile", "user/error"];
 
@@ -37,12 +37,23 @@ const EmployeeApp = ({
   const showLanguageChange = location?.pathname?.includes("language-selection");
   const isUserProfile = userScreensExempted.some((url) => location?.pathname?.includes(url));
   const bgImageUrl = window?.globalConfigs?.getConfig("BG_IMAGE");
-  const logos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+  const stateLogos = useSelector((state) => state.common.stateLogos);
+  const [logos, setLogos] = useState(window?.globalConfigs?.getConfig("LOGO_LIST") || []);
+  const user = Digit.UserService.getUser();
+  const isInboxRoute = location.pathname.includes("/im/inbox");
 
   useEffect(() => {
     Digit.UserService.setType("employee");
   }, []);
   const isMobile = window.Digit.Utils.browser.isMobile();
+
+  useEffect(() => {
+    if (stateLogos?.length) {
+      const baseLogos = window?.globalConfigs?.getConfig("LOGO_LIST") || [];
+      setLogos([...baseLogos, ...stateLogos]);
+    }
+  }, [stateLogos]);
+
   return (
     <div className="employee">
       <Switch>
@@ -94,78 +105,77 @@ const EmployeeApp = ({
                   }}
                 />
               </Route>
-              <Route path={`${path}/user/language-selection`}>
-                <LanguageSelection />
-              </Route>
               <Route>
-                <Redirect to={`${path}/user/language-selection`} />
+                <Redirect to={`${path}/user/login`} />
               </Route>
             </Switch>
           </div>
         </Route>
-        <Route>
-          <TopBarSideBar
-            t={t}
-            stateInfo={stateInfo}
-            userDetails={userDetails}
-            CITIZEN={CITIZEN}
-            cityDetails={cityDetails}
-            mobileView={mobileView}
-            handleUserDropdownSelection={handleUserDropdownSelection}
-            logoUrl={logoUrl}
-            modules={modules}
-          />
-          <div className={`main ${DSO ? "m-auto" : ""}`}>
-            <div className="employee-app-wrapper">
-              <ErrorBoundary initData={initData}>
-                <AppModules stateCode={stateCode} userType="employee" modules={modules} appTenants={appTenants} />
-              </ErrorBoundary>
-            </div>
+        {(!!user && !!user?.access_token && !!user?.info) && (
+          <Route>
+            <TopBarSideBar
+              t={t}
+              stateInfo={stateInfo}
+              userDetails={userDetails}
+              CITIZEN={CITIZEN}
+              cityDetails={cityDetails}
+              mobileView={mobileView}
+              handleUserDropdownSelection={handleUserDropdownSelection}
+              logoUrl={logoUrl}
+              modules={modules}
+            />
+            <div className={`main ${DSO ? "m-auto" : ""}`}>
+              <div className="employee-app-wrapper">
+                <ErrorBoundary initData={initData}>
+                  <AppModules stateCode={stateCode} userType="employee" modules={modules} appTenants={appTenants} />
+                </ErrorBoundary>
+              </div>
 
-            <div
-              style={
-                window.location.href.includes("/im/inbox")
-                  ? { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "15px", marginTop: "10px" }
-                  : { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "58px", marginTop: "-26px" }
-              }
-            >
-              {logos.map((logo, index) => (
+              <div
+                style={
+                  isInboxRoute
+                    ? { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "15px", marginTop: "10px" }
+                    : { display: "flex", justifyContent: "center", gap: "1rem", marginBottom: "58px", marginTop: "-26px" }
+                }
+              >
+                {logos.map((logo, index) => (
+                  <img
+                    key={index}
+                    className="bannerLogo"
+                    src={logo.url}
+                    alt={logo.alt}
+                    style={{
+                      height: "3rem",
+                      width: "3rem",
+                      cursor: "pointer",
+                      marginRight: "unset",
+                      paddingRight: "unset",
+                    }}
+                  />
+                ))}
+              </div>
+              <div
+                className="employee-home-footer"
+                style={
+                  isInboxRoute
+                    ? { padding: "0px", height: "auto", marginBottom: "30px" }
+                    : { padding: "0px", height: "auto", marginBottom: "73px", marginTop: "-43px" }
+                }
+              >
                 <img
-                  key={index}
-                  className="bannerLogo"
-                  src={logo.url}
-                  alt={logo.alt}
-                  style={{
-                    height: "3rem",
-                    width: "3rem",
-                    cursor: "pointer",
-                    marginRight: "unset",
-                    paddingRight: "unset",
+                  alt="Powered by DIGIT"
+                  src={window?.globalConfigs?.getConfig?.("DIGIT_FOOTER")}
+                  style={{ height: "1.1rem", cursor: "pointer" }}
+                  onClick={() => {
+                    window.open(window?.globalConfigs?.getConfig?.("DIGIT_HOME_URL"), "_blank").focus();
                   }}
                 />
-              ))}
+              </div>
             </div>
-            <div
-              className="employee-home-footer"
-              style={
-                window.location.href.includes("/im/inbox")
-                  ? { padding: "0px", height: "auto", marginBottom: "30px" }
-                  : { padding: "0px", height: "auto", marginBottom: "73px", marginTop: "-43px" }
-              }
-            >
-              <img
-                alt="Powered by DIGIT"
-                src={window?.globalConfigs?.getConfig?.("DIGIT_FOOTER")}
-                style={{ height: "1.1rem", cursor: "pointer" }}
-                onClick={() => {
-                  window.open(window?.globalConfigs?.getConfig?.("DIGIT_HOME_URL"), "_blank").focus();
-                }}
-              />
-            </div>
-          </div>
-        </Route>
+          </Route>
+        )}
         <Route>
-          <Redirect to={`${path}/user/language-selection`} />
+          <Redirect to={{pathname: `${path}/user/login`, search: `?from=${encodeURIComponent(location.pathname + location.search)}` }} />
         </Route>
       </Switch>
     </div>

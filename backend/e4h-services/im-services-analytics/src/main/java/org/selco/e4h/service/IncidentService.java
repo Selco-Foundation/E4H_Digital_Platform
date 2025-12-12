@@ -25,6 +25,7 @@ import static org.selco.e4h.config.ServiceConstants.NON_FUNCTIONAL;
 public class IncidentService {
 
     private final IncidentRepository incidentRepository;
+    private final EscalationMasterDataService masterDataService;
     private final KafkaProducerService producerService;
 
     private ConsumerConfiguration config;
@@ -32,9 +33,10 @@ public class IncidentService {
     private final ObjectMapper objectMapper;
     private final ElasticSearchClient esClient;
 
-    public IncidentService(IncidentRepository incidentRepository, ConsumerConfiguration config, @Qualifier("objectMapper") ObjectMapper objectMapper,
+    public IncidentService(IncidentRepository incidentRepository, EscalationMasterDataService masterDataService, ConsumerConfiguration config, @Qualifier("objectMapper") ObjectMapper objectMapper,
                            KafkaProducerService producerService, ElasticSearchClient esClient){
         this.incidentRepository = incidentRepository;
+        this.masterDataService = masterDataService;
         this.producerService = producerService;
         this.config = config;
         this.objectMapper = objectMapper;
@@ -95,8 +97,9 @@ public class IncidentService {
 
     private void processIncident(IncidentRequest request, String mappedVendorName, String mappedVendorUserName) {
         String tenantId = request.getIncident().getTenantId();
-        List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(tenantId);
-        List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(tenantId);
+        String boundaryCode = request.getIncident().getBoundaryCode();
+        List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(boundaryCode);
+        List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
 
         if (statusAgregations != null && !statusAgregations.isEmpty()) {
             IncidentStatusAgregation incidentStatusAgregation = statusAgregations.get(0);
@@ -110,7 +113,7 @@ public class IncidentService {
             incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
             incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
 
-            Map<String, Object> tickets = esClient.getHFByTenantId(tenantId);
+            Map<String, Object> tickets = esClient.getHFByBoundaryCode(boundaryCode);
             if (tickets != null && !tickets.isEmpty()) {
                 Map<String, Object> source = (Map<String, Object>) tickets.get("_source");
                 if (source != null) {
@@ -125,6 +128,7 @@ public class IncidentService {
                         incidentStatusAgregation.setPhcType((String) data.get("phcType"));
                         incidentStatusAgregation.setType((String) data.get("type"));
                         incidentStatusAgregation.setTenantId(tenantId);
+                        incidentStatusAgregation.setBoundaryCode(boundaryCode);
                         incidentStatusAgregation.setTenantIdLocalized((String) data.get("tenantId_localized"));
                         incidentStatusAgregation.setGeoPoint((List<Double>) data.get("geo-point"));
                         incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
@@ -161,6 +165,7 @@ public class IncidentService {
                     String district = (String)data.get("district");
                     boolean isLive = (boolean)data.get("isLive");
                     String name = (String)data.get("name");
+                    String existBoundaryCode = (String)data.get("boundaryCode");
                     String phcType = (String)data.get("phcType");
                     String type = (String)data.get("type");
                     String tenantId = (String)data.get("tenantId");
@@ -173,6 +178,7 @@ public class IncidentService {
                     incidentStatusAgregation.setDistrict(district);
                     incidentStatusAgregation.setLive(isLive);
                     incidentStatusAgregation.setName(name);
+                    incidentStatusAgregation.setBoundaryCode(existBoundaryCode);
                     incidentStatusAgregation.setPhcType(phcType);
                     incidentStatusAgregation.setType(type);
                     incidentStatusAgregation.setTenantId(tenantId);
