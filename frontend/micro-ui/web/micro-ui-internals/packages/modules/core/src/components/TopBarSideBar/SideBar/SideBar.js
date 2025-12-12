@@ -23,6 +23,7 @@ import { set } from "lodash";
 import { useHistory, useLocation, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import LogoutDialog from "../../Dialog/LogoutDialog";
+import { useSelector } from "react-redux";
 const DIGIT_UI_CONTEXTS = [
   "digit-ui",
   "works-ui",
@@ -95,7 +96,7 @@ const Sidebar = ({ data }) => {
   const [selectedChildLevelOne, setSelectedChildLevelOne] = useState(null);
   const [showDialog, setShowDialog] = useState(false);
   const [subNav, setSubNav] = useState(false);
-  const crmHelplineNumber = window?.globalConfigs?.getConfig("CRM_HELPLINE_NUMBER") || "9876543210";
+  const crmHelplineNumber = useSelector((state) => state.common.crmHelplineNumber);
 
   const IconsObject = {
     home: <HomeIcon />,
@@ -435,15 +436,17 @@ const Sidebar = ({ data }) => {
         })}
         {flag && (
           <div>
-            <div className={`sidebar-link`}>
-              <div className="actions">
-                <Phone />
-                <div data-tip="React-tooltip" data-for={`jk-side-helpline}`} style={{display:"flex",flexDirection:"column"}}>
-                  <span>{t("CS_COMMON_HELPLINE")} </span>
-                  <span>{crmHelplineNumber} </span>
+            {crmHelplineNumber && (
+              <div className={`sidebar-link`}>
+                <div className="actions">
+                  <Phone />
+                  <div data-tip="React-tooltip" data-for={`jk-side-helpline`} style={{display:"flex",flexDirection:"column"}}>
+                    <span>{t("CS_COMMON_HELPLINE")} </span>
+                    <span>{crmHelplineNumber} </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
             <div onClick={handleLogout} className={`sidebar-link`}>
               <div className="actions">
                 <LogoutIcon></LogoutIcon>
