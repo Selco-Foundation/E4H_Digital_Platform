@@ -88,7 +88,6 @@ const isCodePresent = (array, codeToCheck) =>{
   );
 
   useEffect(() => {
-
     const refactorStateMenu = () => {
       const response = boundaryData?.states;
       if (response) {
@@ -114,30 +113,10 @@ const isCodePresent = (array, codeToCheck) =>{
       }
     }
 
-    const refactorDistrictMenu = () => {
-      const response = boundaryData?.districts;
-      if (response) {
-        const uniqueDistricts = {};
-        const newDistrictMenu = response
-          .filter((district) => {
-            if (!uniqueDistricts[district.code]) {
-              uniqueDistricts[district.code] = true;
-              return true;
-            }
-            return false;
-          })
-          .map((district) => ({
-            code: district.code,
-            name: t(`Boundary_${district.code}`),
-          }))
-          .sort((a, b) => a.name.localeCompare(b.name));
+    refactorStateMenu();
+  }, [boundaryData, t]);
 
-        setDistrictMenu(newDistrictMenu);
-        setBlockMenu([]);
-        setFacilityMenu([]);
-      }
-    };
-
+  useEffect(() => {
     const refactorSystemFunctionalMenu = () => {
       const response = mdmsData?.Incident?.SystemFunctionality;
       if (response) {
@@ -154,9 +133,8 @@ const isCodePresent = (array, codeToCheck) =>{
       }
     }
 
-    refactorStateMenu();
     refactorSystemFunctionalMenu();
-  }, [boundaryData, t]);
+  }, [mdmsData, t]);
 
   useEffect(() => {
 
@@ -362,7 +340,11 @@ const isCodePresent = (array, codeToCheck) =>{
   };
 
   const handleSystemFunctionalityChange = (selectedSystemFunctionality) => {
-    setPgrFilters({...pgrfilters, isSystemFunctional: [selectedSystemFunctionality]});
+    const previouslySelectedSystemFunctionality = pgrfilters.isSystemFunctional[0];
+
+    if (previouslySelectedSystemFunctionality?.code !== selectedSystemFunctionality.code) {
+      setPgrFilters({...pgrfilters, isSystemFunctional: [selectedSystemFunctionality]});
+    }
   }
 
   function clearAll() {
@@ -376,6 +358,7 @@ const isCodePresent = (array, codeToCheck) =>{
       applicationStatus: []
     };
     let wfRest = { assigned: [{ code: [] }] };
+    setDistrictMenu([]);
     setBlockMenu([]);
     setFacilityMenu([]);
     setPgrFilters(pgrReset);
@@ -394,7 +377,7 @@ const isCodePresent = (array, codeToCheck) =>{
   const GetSelectOptions = (lable, options, selected = null, select, optionKey, onRemove, key) => {
     selected = selected || { [optionKey]: "", code: "" };
 
-    const disableSelection = (!options || options.length < 2)
+    const disableSelection = (!options || options.length === 1)
     if (disableSelection && options?.length) {
       select(options[0], key);
     }
