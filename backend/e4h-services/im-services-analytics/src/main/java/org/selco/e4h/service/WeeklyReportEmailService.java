@@ -189,7 +189,7 @@ public class WeeklyReportEmailService {
         }
         
         variables.put("DOWNLOAD_BUTTON", downloadButtonHtml);
-        variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl(tenantId));
+        variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl());
         
         return variables;
     }

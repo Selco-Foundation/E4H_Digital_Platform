@@ -87,8 +87,8 @@ public class QueryBuilderUtil {
         }
 
         if (!CollectionUtils.isEmpty(criteria.getBoundaryCodes())) {
-            whereClause.append(" AND boundary_code ILIKE ANY ( ARRAY [ ").append(createQuery(criteria.getBoundaryCodes().size())).append(" ] )");
-            params.addAll(criteria.getBoundaryCodes().stream().map((boundaryCode) -> boundaryCode + "%").toList());
+            whereClause.append(" AND boundary_code in ( ").append(createQuery(criteria.getBoundaryCodes().size())).append(" )");
+            params.addAll(criteria.getBoundaryCodes());
         }
 
         List<Role> currentUserRoles = Optional.ofNullable(requestInfo)

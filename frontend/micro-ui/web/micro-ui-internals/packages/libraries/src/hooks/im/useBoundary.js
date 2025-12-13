@@ -17,10 +17,13 @@ const fetchBoundaries = async (codes) => {
     const compileBoundaries = (boundaries, parentCode, compiledObject) => {
       if (!boundaries?.length) return;
       for (let boundary of boundaries) {
-        compiledObject[boundary?.boundaryType] = [...(compiledObject[boundary?.boundaryType] || []), {
-          code: boundary?.code,
-          parentCode: parentCode,
-        }]
+        const existingBoundaries = compiledObject[boundary?.boundaryType] || [];
+        if (!existingBoundaries.some((boundaryData) => boundaryData?.code === boundary?.code)) {
+          compiledObject[boundary?.boundaryType] = [...(existingBoundaries), {
+            code: boundary?.code,
+            parentCode: parentCode,
+          }]
+        }
         compileBoundaries(boundary?.children, boundary?.code, compiledObject);
       }
     }
