@@ -202,7 +202,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                               style: textTheme.headingXl.copyWith(
                                   color: theme.colorTheme.primary.primary2),
                             ),
-                            // if (isSupervisor)
                             LabeledField(
                               label: 'Warranty Start Date',
                               labelStyle: textTheme.headingS.copyWith(

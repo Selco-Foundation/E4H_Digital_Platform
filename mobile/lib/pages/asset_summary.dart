@@ -213,12 +213,22 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                   submitted: () => true,
                   orElse: () => false,
                 );
+                final isNewReport = reportState.maybeWhen(
+                  newReport: () => true,
+                  orElse: () => false,
+                );
                 final isInCache = projectState.maybeWhen(
                   inCache: (cached) => cached,
                   orElse: () => false,
                 );
 
-                if (isApproved || (isSubmitted && !isInCache)) {
+                print("isApproved $isApproved");
+                print("isSubmitted $isSubmitted");
+                print("isInCache $isInCache");
+                print("isNewReport $isNewReport");
+
+                if (!isNewReport &&
+                    (isApproved || (isSubmitted && !isInCache))) {
                   return const SizedBox.shrink();
                 }
 

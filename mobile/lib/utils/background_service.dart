@@ -634,13 +634,11 @@ Future<void> _performSubmissionForActivityFacility({
         }
 
         final now = DateTime.now().toUtc();
-        final startIso = now.toIso8601String();
-        final years = userType == USER_TYPES.FIELD_STAFF.name
-            ? 0
-            : parseWarrantyYears(detail.warranty!);
-        final endIso = userType == USER_TYPES.FIELD_STAFF.name
-            ? ""
-            : now.add(Duration(days: 365 * years)).toIso8601String();
+        final years = parseWarrantyYears(detail.warranty);
+        final startIso = years > 0 ? now.toIso8601String() : "";
+        final endIso = (years > 0)
+            ? now.add(Duration(days: 365 * years)).toIso8601String()
+            : "";
 
         final assetDetails = AssetDetails(
           totalCapacity: spec.totalCapacity,
@@ -689,12 +687,9 @@ Future<void> _performSubmissionForActivityFacility({
           serialNumber: saved.serialNumber,
           brandID: detail.brand,
           assetDetails: assetDetails,
-          warrantyStartDate:
-              userType == USER_TYPES.SUPERVISOR.name ? startIso : "",
-          warrantyDuration: userType == USER_TYPES.SUPERVISOR.name
-              ? parseWarrantyYears(detail.warranty)
-              : 0,
-          warrantyEndDate: userType == USER_TYPES.SUPERVISOR.name ? endIso : "",
+          warrantyStartDate: startIso,
+          warrantyDuration: years,
+          warrantyEndDate: endIso,
           modelNumber: detail.model,
           wfStatus: "CREATED",
           isActive: true,
@@ -715,6 +710,7 @@ Future<void> _performSubmissionForActivityFacility({
       isar: isar,
       activityFacilityId: activityFacilityId,
       types: typesForDocs,
+      userType: userType,
     );
     workflowDocuments.addAll(workflowDocumentFromCache);
 
@@ -745,8 +741,8 @@ Future<void> _performSubmissionForActivityFacility({
       );
     }
 
-    final resolvedBomUserType = await BomRepository()
-        .resolveBomUserType(isar: isar, activityFacilityId: activityFacilityId);
+    final resolvedBomUserType = await BomRepository().resolveBomUserType(
+        isar: isar, activityFacilityId: activityFacilityId, userType: userType);
 
     if (resolvedBomUserType != null) {
       try {
@@ -810,7 +806,13 @@ Future<void> _performSubmissionForActivityFacility({
         .delete(projectId: activityFacilityId);
     await BomRepository()
         .delete(isar: isar, activityFacilityId: activityFacilityId);
-
+    await BomRepository()
+        .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
+    await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
     return;
   } catch (e) {
     AppLogger.instance.info("e ${e.toString()}");
@@ -833,6 +835,7 @@ Future<void> _performRejectionForActivityFacility({
       isar: isar,
       activityFacilityId: activityFacilityId,
       types: types,
+      userType: userType,
     );
     workflowDocuments.addAll(fromCache);
 
@@ -850,6 +853,13 @@ Future<void> _performRejectionForActivityFacility({
         .delete(projectId: activityFacilityId);
     await BomRepository()
         .delete(isar: isar, activityFacilityId: activityFacilityId);
+    await BomRepository()
+        .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
+    await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
   } catch (e) {
     throw PlainError(_pretty(e));
   }

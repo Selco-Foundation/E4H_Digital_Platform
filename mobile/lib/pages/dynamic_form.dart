@@ -57,7 +57,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     final isar = context.read<ActivityFacilityBloc>().isar;
     final kv = await BomRepository().getProjectBomKV(
       isar: isar,
-      projectId: widget.projectId,
+      activityFacilityId: widget.projectId,
       userType: widget.userType,
     );
     if (!mounted) return;
@@ -259,7 +259,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
       final existingAllKV = await BomRepository().getProjectBomKV(
             isar: isar,
-            projectId: projectId,
+            activityFacilityId: projectId,
             userType: widget.userType,
           ) ??
           <String, dynamic>{};

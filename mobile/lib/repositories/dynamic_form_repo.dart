@@ -102,6 +102,20 @@ class BomRepository {
     }
   }
 
+  Future<void> deleteAllBomDocs(
+      {required Isar isar, required String activityFacilityId}) async {
+    await isar.writeTxn(() async {
+      final col = isar.cacheBomDocs;
+      final rec = await col
+          .where()
+          .activityFacilityIdEqualTo(activityFacilityId)
+          .findAll();
+      for (final r in rec) {
+        await col.delete(r.id);
+      }
+    });
+  }
+
   Future<void> delete(
       {required Isar isar, required String activityFacilityId}) async {
     await isar.writeTxn(() async {
@@ -351,22 +365,15 @@ class BomRepository {
   Future<String?> resolveBomUserType({
     required Isar isar,
     required String activityFacilityId,
+    required userType,
   }) async {
-    final candidates = [
-      USER_TYPES.SUPERVISOR.name,
-      USER_TYPES.FIELD_STAFF.name,
-    ];
+    final entryKey = '$activityFacilityId::$userType';
+    final rec = await isar.cacheActivityFacilityBomValues
+        .where()
+        .entryKeyEqualTo(entryKey)
+        .findFirst();
 
-    for (final ut in candidates) {
-      final entryKey = '$activityFacilityId::$ut';
-      final rec = await isar.cacheActivityFacilityBomValues
-          .where()
-          .entryKeyEqualTo(entryKey)
-          .findFirst();
-
-      if (rec != null) return ut;
-    }
-
+    if (rec != null) return userType;
     return null;
   }
 
@@ -443,13 +450,14 @@ class BomRepository {
 
   Future<Map<String, dynamic>?> getProjectBomKV({
     required Isar isar,
-    required String projectId,
+    required String activityFacilityId,
     required String userType,
   }) async {
-    final entryKey = '$projectId::$userType';
+    // final entryKey = '$activityFacilityId::$userType';
     final rec = await isar.cacheActivityFacilityBomValues
         .where()
-        .entryKeyEqualTo(entryKey)
+        .activityFacilityIdEqualTo(activityFacilityId)
+        // .entryKeyEqualTo(entryKey)
         .findFirst();
     if (rec == null || rec.dataJson.isEmpty) return null;
     try {

@@ -16,6 +16,7 @@ class ActivityFacilityWorkflowRepository {
     required Isar isar,
     required String activityFacilityId,
     required List<String> types,
+    required String userType,
   }) async {
     final out = <Document>[];
     for (final type in types) {
@@ -23,6 +24,7 @@ class ActivityFacilityWorkflowRepository {
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
+          .userTypeEqualTo(userType)
           .assetTypeEqualTo(type)
           .findAll();
 
@@ -55,6 +57,24 @@ class ActivityFacilityWorkflowRepository {
       }
     }
     return out;
+  }
+
+  Future<void> deleteWorkflowMediaDocs(
+      {required Isar isar,
+      required String activityFacilityId,
+      required String userType}) async {
+    await isar.writeTxn(() async {
+      final col = isar.cacheMediaUploads;
+      final reports = await col
+          .where()
+          .activityFacilityIdEqualTo(activityFacilityId)
+          .filter()
+          .userTypeEqualTo(userType)
+          .findAll();
+      for (final report in reports) {
+        await col.delete(report.id);
+      }
+    });
   }
 
   Future<String> getActivityFacilitySystem({

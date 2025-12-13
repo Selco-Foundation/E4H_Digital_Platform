@@ -14,6 +14,7 @@ class CacheBomDoc {
       composite: [CompositeIndex('schemaKey')],
       unique: true,
       caseSensitive: false)
+  @Index()
   late String activityFacilityId;
   late String schemaKey;
   String? serverBomId;
