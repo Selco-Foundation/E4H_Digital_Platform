@@ -68,6 +68,7 @@ class ActivityFacilityBomBloc
     try {
       final isPrefilled = await _isPrefilledActivityFacility(
           _isar, event.activityFacilityId, event.userType);
+      print("Got here so what? ");
       if (isPrefilled) {
         emit(const ActivityFacilityBomState.success(
           savedBomValues: false,

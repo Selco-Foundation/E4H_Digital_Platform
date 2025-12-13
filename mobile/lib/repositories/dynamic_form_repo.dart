@@ -278,6 +278,7 @@ class BomRepository {
       }
 
       final bom = (boms.first as Map<String, dynamic>);
+      print("bom data ${bom['data']}");
 
       bool savedValues = false;
       final data = (bom['data'] as Map<String, dynamic>?);

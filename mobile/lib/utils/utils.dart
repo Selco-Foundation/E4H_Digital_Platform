@@ -202,24 +202,24 @@ bool isValidUuid(String value) {
   }
 }
 
+String normalizeReportNameType(String t) {
+  final s = (t).toLowerCase();
+  if (s.contains('installation_report_bom')) return 'installation_report_bom';
+  if (s.contains('installation_report')) return 'installation_report';
+  return s;
+}
+
 String? normalizedInstallPdfNameFromPath(
   String path,
   List<Document> docs,
 ) {
-  String normalizeType(String t) {
-    final s = (t).toLowerCase();
-    if (s.contains('installation_report_bom')) return 'installation_report_bom';
-    if (s.contains('installation_report')) return 'installation_report';
-    return s;
-  }
-
   final pathLower = path.toLowerCase();
   final byFsId = <String, String>{};
   for (final d in docs) {
     final fsid = (d.fileStore ?? '').toLowerCase();
     final dtype = (d.documentType ?? '').toLowerCase();
     if (fsid.isNotEmpty && dtype.isNotEmpty) {
-      byFsId[fsid] = normalizeType(dtype);
+      byFsId[fsid] = normalizeReportNameType(dtype);
     }
   }
 

@@ -625,6 +625,24 @@ class RejectedEditAssetSummary extends StatelessWidget {
     final textTheme = theme.digitTextTheme(ctx);
     final hasComments = comments != null && comments.isNotEmpty;
 
+    String buttonText = "Edit";
+
+    final userState = ctx.read<UserTypeBloc>().state;
+    bool isRejectedByQc = false;
+    bool isFieldStaff =
+        userState.maybeWhen(staff: () => true, orElse: () => false);
+
+    final selState = ctx.read<SelectedActivityFacilityBloc>().state;
+
+    selState.whenOrNull(selected: (project) {
+      isRejectedByQc = project.status ==
+          WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
+
+      if (isFieldStaff && isRejectedByQc) {
+        buttonText = "View";
+      }
+    });
+
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Stack(alignment: Alignment.center, children: [
         Align(
@@ -643,7 +661,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
         Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Expanded(
             child: DigitButton(
-              label: 'Edit',
+              label: buttonText,
               onPressed: () {
                 ctx
                     .read<AssetTypeBloc>()
@@ -652,7 +670,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
               },
               type: DigitButtonType.secondary,
               size: DigitButtonSize.medium,
-              prefixIcon: Icons.edit,
+              prefixIcon: (isFieldStaff && isRejectedByQc) ? null : Icons.edit,
               mainAxisSize: MainAxisSize.min,
             ),
           ),

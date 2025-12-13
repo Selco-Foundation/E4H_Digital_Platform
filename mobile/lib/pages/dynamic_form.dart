@@ -27,7 +27,7 @@ class DynamicFormsPage extends StatefulWidget {
   final String pageName;
   final String? schemaName;
   final String? uniqueIdentifier;
-  final String projectId;
+  final String activityFacilityId;
   final FormOrigin origin;
   final String userType;
 
@@ -36,7 +36,7 @@ class DynamicFormsPage extends StatefulWidget {
     @PathParam() required this.pageName,
     this.schemaName,
     this.uniqueIdentifier,
-    required this.projectId,
+    required this.activityFacilityId,
     required this.origin,
     required this.userType,
   });
@@ -49,20 +49,20 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   final _repo = AppInitRepo();
   bool _loadedOnce = false;
 
-  String? _lastProjectId;
-  Map<String, dynamic> _projectInitialKV = const {};
+  String? _lastActivityFacilityId;
+  Map<String, dynamic> _activityFacilityInitialKV = const {};
   int _formSeed = 0;
 
-  Future<void> _loadInitialKVForProject() async {
+  Future<void> _loadInitialKVForActivityFacility() async {
     final isar = context.read<ActivityFacilityBloc>().isar;
     final kv = await BomRepository().getProjectBomKV(
       isar: isar,
-      activityFacilityId: widget.projectId,
+      activityFacilityId: widget.activityFacilityId,
       userType: widget.userType,
     );
     if (!mounted) return;
     setState(() {
-      _projectInitialKV = kv ?? const {};
+      _activityFacilityInitialKV = kv ?? const {};
       _formSeed++;
     });
   }
@@ -182,38 +182,70 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     });
   }
 
+  // @override
+  // void didChangeDependencies() {
+  //   super.didChangeDependencies();
+  //   if (!_loadedOnce) {
+  //     _loadedOnce = true;
+  //     Future(() async {
+  //       await _ensureSchemaLoaded();
+  //       await _loadInitialKVForActivityFacility();
+  //       if (!mounted) return;
+  //       setState(() {
+  //         _lastActivityFacilityId = widget.activityFacilityId;
+  //       });
+  //     });
+  //     return;
+  //   }
+  //
+  //   if (_lastActivityFacilityId != widget.activityFacilityId) {
+  //     final formsBloc = context.read<FormsBloc>();
+  //     final currentKey = currentSchemaKey(
+  //         state: formsBloc.state,
+  //         pageName: widget.pageName,
+  //         schemaName: widget.schemaName,
+  //         uniqueIdentifier: widget.uniqueIdentifier);
+  //     if (currentKey != null) {
+  //       formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
+  //     }
+  //     Future(() async {
+  //       await _loadInitialKVForActivityFacility();
+  //       if (!mounted) return;
+  //       setState(() {
+  //         _lastActivityFacilityId = widget.activityFacilityId;
+  //       });
+  //     });
+  //   }
+  // }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    final formsBloc = context.read<FormsBloc>();
+    final currentKey = currentSchemaKey(
+      state: formsBloc.state,
+      pageName: widget.pageName,
+      schemaName: widget.schemaName,
+      uniqueIdentifier: widget.uniqueIdentifier,
+    );
+
+    if (_lastActivityFacilityId != widget.activityFacilityId) {
+      if (currentKey != null) {
+        formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
+      }
+      _activityFacilityInitialKV = const {};
+      _formSeed++;
+      _lastActivityFacilityId = widget.activityFacilityId;
+
+      Future(() async => _loadInitialKVForActivityFacility());
+    }
+
     if (!_loadedOnce) {
       _loadedOnce = true;
       Future(() async {
         await _ensureSchemaLoaded();
-        await _loadInitialKVForProject();
-        if (!mounted) return;
-        setState(() {
-          _lastProjectId = widget.projectId;
-        });
-      });
-      return;
-    }
-
-    if (_lastProjectId != widget.projectId) {
-      final formsBloc = context.read<FormsBloc>();
-      final currentKey = currentSchemaKey(
-          state: formsBloc.state,
-          pageName: widget.pageName,
-          schemaName: widget.schemaName,
-          uniqueIdentifier: widget.uniqueIdentifier);
-      if (currentKey != null) {
-        formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
-      }
-      Future(() async {
-        await _loadInitialKVForProject();
-        if (!mounted) return;
-        setState(() {
-          _lastProjectId = widget.projectId;
-        });
+        await _loadInitialKVForActivityFacility();
       });
     }
   }
@@ -224,7 +256,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   }) async {
     final formsBloc = context.read<FormsBloc>();
     final projectBloc = context.read<ActivityFacilityBloc>();
-    final projectId = widget.projectId;
+    final projectId = widget.activityFacilityId;
 
     final Map<String, dynamic> flatValues = {};
     schema.pages.forEach((_, pageSchema) {
@@ -305,7 +337,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       listener: (context, state) async {
         state.maybeWhen(
           success: (_) async {
-            await _loadInitialKVForProject();
+            await _loadInitialKVForActivityFacility();
             if (!mounted) return;
             final formsBloc = context.read<FormsBloc>();
             final currentKey = currentSchemaKey(
@@ -350,12 +382,12 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             final pageDefaults = subsetForPage(
               schemaObject,
               widget.pageName,
-              _projectInitialKV,
+              _activityFacilityInitialKV,
             );
 
             return ReactiveFormBuilder(
               key: ValueKey(
-                  '${widget.projectId}::$currentKey::$pageIndex::$_formSeed'),
+                  '${widget.activityFacilityId}::$currentKey::$pageIndex::$_formSeed'),
               form: () {
                 final controls = JsonForms.getFormControls(pageSchema,
                     defaultValues: const {});
@@ -364,7 +396,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 final propertyKeys =
                     (pageSchema.properties?.keys.toList() ?? const <String>[]);
 
-                if (_projectInitialKV.isEmpty) {
+                if (_activityFacilityInitialKV.isEmpty) {
                   for (final k in propertyKeys) {
                     if (!form.contains(k)) continue;
                     final ctrl = form.control(k);
@@ -529,7 +561,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                             } else {
                               context.router.push(DynamicFormsRoute(
                                 pageName: next,
-                                projectId: widget.projectId,
+                                projectId: widget.activityFacilityId,
                                 schemaName: currentKey,
                                 origin: widget.origin,
                                 userType: widget.userType,

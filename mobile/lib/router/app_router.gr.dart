@@ -128,7 +128,7 @@ abstract class _$AppRouter extends RootStackRouter {
           pageName: args.pageName,
           schemaName: args.schemaName,
           uniqueIdentifier: args.uniqueIdentifier,
-          projectId: args.projectId,
+          activityFacilityId: args.projectId,
           origin: args.origin,
           userType: args.userType,
         ),

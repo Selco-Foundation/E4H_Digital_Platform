@@ -53,6 +53,8 @@ const String _svcChannelId = 'asset_submission_channel';
 const String _svcChannelName = 'Asset Submission';
 const int _svcNotifId = 728331;
 
+String installationReportBom = "INSTALLATION_REPORT_BOM";
+
 final FlutterLocalNotificationsPlugin _fln = FlutterLocalNotificationsPlugin();
 
 StreamSubscription? _uiErrSub;
@@ -574,6 +576,29 @@ Future<void> writeJobStatus({
   });
 }
 
+bool _isInstallBomPdfNameOrPath(String value) {
+  final v = value.trim();
+  if (v.isEmpty) return false;
+
+  final normalized = normalizeReportNameType(v);
+  if ((normalized ?? '').toUpperCase() == installationReportBom) {
+    return true;
+  }
+
+  final s = v.toLowerCase();
+  return s.contains('installation') && s.contains('bom');
+}
+
+Future<void> _deleteLocalFileIfExists(String path) async {
+  if (path.trim().isEmpty) return;
+  try {
+    final f = File(path);
+    if (await f.exists()) {
+      await f.delete();
+    }
+  } catch (_) {}
+}
+
 Future<void> _performSubmissionForActivityFacility({
   required Isar isar,
   required String activityFacilityId,
@@ -722,9 +747,19 @@ Future<void> _performSubmissionForActivityFacility({
     final completionDocuments = <Document>[];
     for (final report in completionReports) {
       if (report.filePath.isEmpty) continue;
-      if (((report.fileName ?? '')
-          .toLowerCase()
-          .contains('installation_report_bom'))) {
+      // if (((report.fileName ?? '')
+      //     .toUpperCase()
+      //     .contains(installationReportBom))) {
+      //   continue;
+      // }
+      final fileName = (report.fileName ?? '').trim().isNotEmpty
+          ? report.fileName!.trim()
+          : report.filePath;
+
+      final isBomPdf = _isInstallBomPdfNameOrPath(fileName);
+
+      if (isBomPdf) {
+        await _deleteLocalFileIfExists(report.filePath);
         continue;
       }
       final mediaId = await getFilestoreUrl(report.filePath);
@@ -746,6 +781,9 @@ Future<void> _performSubmissionForActivityFacility({
 
     if (resolvedBomUserType != null) {
       try {
+        workflowDocuments.removeWhere((d) => (d.documentType ?? '')
+            .toUpperCase()
+            .contains(installationReportBom));
         final bomFileStoreId = await BomRepository().generateBomPdf(
           isar: isar,
           activityFacilityId: activityFacilityId,
@@ -760,7 +798,7 @@ Future<void> _performSubmissionForActivityFacility({
 
         workflowDocuments.add(
           Document(
-            documentType: "INSTALLATION_REPORT_BOM",
+            documentType: installationReportBom,
             fileStore: bomFileStoreId,
             documentUid:
                 "BOM-$activityFacilityId-${DateTime.now().millisecondsSinceEpoch}",

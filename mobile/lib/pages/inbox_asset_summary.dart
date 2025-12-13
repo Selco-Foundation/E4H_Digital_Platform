@@ -75,6 +75,13 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
       context
           .read<CacheAssetBloc>()
           .add(CacheAssetEvent.start(proj.activityFacility.id, userType, proj));
+      context.read<ActivityFacilityBomBloc>().add(
+            ActivityFacilityBomEvent.syncIfNeeded(
+              activityFacilityId: _currentProjectId!,
+              facilityId: proj.activityFacility.facility?.facilityId ?? "",
+              userType: userType,
+            ),
+          );
       _loadProjectSystem();
       _loadInitialCompletion();
     });
