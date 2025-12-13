@@ -28,6 +28,9 @@ public class InboxSearchCriteria {
     
     @JsonProperty("moduleSearchCriteria")
     private HashMap<String,Object> moduleSearchCriteria;
+
+    @JsonProperty("jurisdictionSearchCriteria")
+    private HashMap<String,Object> jurisdictionSearchCriteria;
     
     @JsonProperty("offset")
     private Integer offset;

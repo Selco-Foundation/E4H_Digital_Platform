@@ -4,9 +4,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.springframework.validation.annotation.Validated;
 
+import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import java.util.List;
 
 @Validated
 @AllArgsConstructor
@@ -115,6 +117,10 @@ public class User {
 
     @JsonProperty("accountLocked")
     private Boolean accountLocked;
+
+    @JsonProperty("roles")
+    @Valid
+    private List<Role> roles;
 
     @Size(max=100)
     @JsonProperty("fatherOrHusbandName")
