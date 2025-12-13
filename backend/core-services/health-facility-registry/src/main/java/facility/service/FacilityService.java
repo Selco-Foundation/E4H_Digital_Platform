@@ -230,7 +230,7 @@ public class FacilityService {
         }
 
         // Check if the facility exists in DB before attempting an update
-        String checkSql = "SELECT COUNT(*) FROM facility WHERE facility_id = ? AND tenant_id = ?";
+        String checkSql = "SELECT COUNT(*) FROM facility WHERE id = ? AND tenant_id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, update.getFacilityId(), update.getTenantId());
         if (count == null || count == 0) {
             return null; // facility not found
