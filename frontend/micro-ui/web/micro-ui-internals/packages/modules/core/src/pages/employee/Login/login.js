@@ -87,10 +87,6 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         console.error("Login report failed", err);
       }
 
-      let boundaryCodes = {
-        codes: ["-"],
-        type: "country"
-      };
       const hrmsResponse = await Digit.HRMSService.search("in", null, { codes: user.info.userName });
       const hrmsUser = hrmsResponse?.Employees?.[0];
       if (!hrmsUser) {
@@ -112,29 +108,8 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         }
       }
 
-      if (jurisdictionBoundaries?.state?.length) {
-        boundaryCodes = {
-          codes: jurisdictionBoundaries.state,
-          type: "state",
-        }
-      } else if (jurisdictionBoundaries?.district?.length) {
-        boundaryCodes = {
-          codes: jurisdictionBoundaries.district,
-          type: "district",
-        }
-      } else if (jurisdictionBoundaries?.block?.length) {
-        boundaryCodes = {
-          codes: jurisdictionBoundaries.block,
-          type: "block",
-        }
-      } else if (jurisdictionBoundaries?.facility?.length) {
-        boundaryCodes = {
-          codes: jurisdictionBoundaries.facility,
-          type: "facility",
-        }
-      }
-      Digit.SessionStorage.set("Jurisdiction.Boundaries", boundaryCodes);
-      Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", boundaryCodes);
+      Digit.SessionStorage.set("Jurisdiction.Boundaries", jurisdictionBoundaries);
+      Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", jurisdictionBoundaries);
 
       const fromParam = new URLSearchParams(location.search).get("from");
       if (fromParam) {
