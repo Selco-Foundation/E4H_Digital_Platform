@@ -24,7 +24,7 @@ const ProjectFieldPlans = () => {
   const prevPageSizeRef = useRef(pageSize);
   const [createdProject, setCreatedProject] = useState(null);
   const dispatch = useDispatch();
-  const [showIntro, setShowIntro] = useState(false);
+  const [introModalData, setIntroModalData] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -157,6 +157,10 @@ const ProjectFieldPlans = () => {
     history.push(`/${window.contextPath}/employee/pm/project/${projectId}/field-plan/create`);
   }
 
+  const handleAMCCreationNavigation = () => {
+    history.push(`/${window.contextPath}/employee/pm/project/${projectId}/amc/create`);
+  }
+
   if (projectDataLoading) {
     return <Loader />
   }
@@ -219,7 +223,12 @@ const ProjectFieldPlans = () => {
             opacity: !createdProject?.status ? "0.5" : "1",
           }}
           disabled={!createdProject?.status}
-          onClick={() => setShowIntro(true)}
+          onClick={() => setIntroModalData({
+            action: handleFieldPlanCreationNavigation,
+            title: "PM_BEFORE_CREATING_FIELD_PLAN_TITLE",
+            subTitle: "PM_BEFORE_CREATING_FIELD_PLAN_SUBTITLE",
+            description: "PM_BEFORE_CREATING_FIELD_PLAN_DESC",
+          })}
         >
           <span
             style={{
@@ -248,16 +257,46 @@ const ProjectFieldPlans = () => {
             {t("CORE_COMMON_ADD_NEW")}
           </span>
         </button>
+        <button
+          type="button"
+          className={"jk-digit-secondary-btn"}
+          style={{
+            display: "flex",
+            justifyContent: "space-around",
+            alignItems: "center",
+            height: "32px",
+            padding: "0px 20px",
+            cursor: !createdProject?.status ? "default" : "pointer",
+            opacity: !createdProject?.status ? "0.5" : "1",
+          }}
+          disabled={!createdProject?.status}
+          onClick={() => setIntroModalData({
+            action: handleAMCCreationNavigation,
+            title: "PM_BEFORE_CREATING_AMC_TITLE",
+            subTitle: "PM_BEFORE_CREATING_AMC_SUBTITLE",
+            description: "PM_BEFORE_CREATING_AMC_DESC",
+          })}
+        >
+          <span
+            style={{
+              fontSize: "16px",
+              fontWeight: "500",
+              fontFamily: "Roboto"
+            }}
+          >
+            {t("PM_ACTION_SET_UP_AMC")}
+          </span>
+        </button>
       </div>
       {renderFieldPlanTable()}
       <IntroModal
-        open={showIntro}
-        onClose={() => setShowIntro(false)}
+        open={!!introModalData}
+        onClose={() => setIntroModalData(null)}
         t={t}
-        action={handleFieldPlanCreationNavigation}
-        title={"PM_BEFORE_CREATING_FIELD_PLAN_TITLE"}
-        subTitle={"PM_BEFORE_CREATING_FIELD_PLAN_SUBTITLE"}
-        description={"PM_BEFORE_CREATING_FIELD_PLAN_DESC"}
+        action={introModalData?.action}
+        title={introModalData?.title}
+        subTitle={introModalData?.subTitle}
+        description={introModalData?.description}
       />
     </div>
   )
