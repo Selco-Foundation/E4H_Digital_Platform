@@ -101,6 +101,7 @@ const CustomDropdown = ({
       >
         <input
           ref={inputRef}
+          disabled={disable}
           type="text"
           value={displayValue}
           onChange={handleInputChange}

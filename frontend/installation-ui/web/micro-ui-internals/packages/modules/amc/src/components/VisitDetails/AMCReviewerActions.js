@@ -11,11 +11,16 @@ const AMCReviewerActions = ({ t, revalidateData, setUpdatingWorkflow, aggregated
   const [toast, setToast] = useState(null);
 
   useEffect(()=>{
+    let timeoutId;
     if(toast){
-      setTimeout(()=>{
+      timeoutId = setTimeout(()=>{
         setToast(null);
       },2500)
     }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   },[toast])
 
   const handleApprove = async () => {

@@ -112,7 +112,7 @@ const Filter = ({ t, onFilterChange, projectQueryFilter, statusesList }) => {
           </div>
           {statusesList?.map((option, index) => {
             return (
-              <div>
+              <div key={index}>
                 <CustomCheckBox
                   key={index}
                   onChange={(e) => {handleStatusChange(option, e.target.checked)}}

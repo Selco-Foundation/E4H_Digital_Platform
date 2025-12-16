@@ -49,7 +49,6 @@ const VisitDetails = ({t}) => {
       setReportDocumentAggregation(visitData.reportDocumentAggregation);
       setWorkflowDocuments(visitData.workflowDocuments);
       setVisitReport(visitData.visitReport);
-      console.debug("visitData.visitReport", visitData.visitReport);
     }
   }, [visitData]);
 

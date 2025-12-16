@@ -28,7 +28,11 @@ const Summary = ({ t, sectionName, section, data, images, report, isDocument, su
     return (
       <div>
         {!!dataToRender?.properties?.length && (
-          dataToRender.properties.map((data) => AssetInfoItem(data.label, t(data.value)))
+          dataToRender.properties.map((data, index) => (
+            <React.Fragment key={index}>
+              {AssetInfoItem(data.label, t(data.value))}
+            </React.Fragment>
+          ))
         )}
         {!!dataToRender?.children?.length && (
           dataToRender.children.map((item, index) => (
