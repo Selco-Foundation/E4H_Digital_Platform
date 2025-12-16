@@ -45,8 +45,8 @@ public class QueryBuilderUtil {
         }
 
         if (request.getBoundaryCode() != null && !request.getBoundaryCode().isBlank()) {
-            whereClause.append(" AND boundary_code = ?");
-            params.add(request.getBoundaryCode());
+            whereClause.append(" AND boundary_code ILIKE ?");
+            params.add(request.getBoundaryCode()+ "%");
         }
 
         if (request.getIsOnmReady() != null) {

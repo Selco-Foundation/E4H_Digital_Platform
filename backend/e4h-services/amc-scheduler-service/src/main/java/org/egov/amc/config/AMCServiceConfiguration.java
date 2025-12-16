@@ -27,6 +27,9 @@ public class AMCServiceConfiguration {
     @Value("${egov.search.project.url}")
     private String projectServiceSearchUrl;
 
+    @Value("${egov.staff.project.create.url}")
+    private String projectStaffCreateUrl;
+
     @Value("${egov.asset.host}")
     private String assetServiceHost;
 
@@ -91,8 +94,8 @@ public class AMCServiceConfiguration {
     @Value("${project.default.limit}")
     private Integer defaultLimit;
 
-    @Value("${egov.location.hierarchy.type}")
-    private String locationHierarchyType;
+    @Value("${egov.boundary.hierarchy.type}")
+    private String boundaryHierarchyType;
 
     @Value("${egov.user.id.validator}")
     private String egovUserIdValidator;

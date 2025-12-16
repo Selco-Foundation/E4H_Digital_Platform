@@ -34,9 +34,11 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         visit.setTenantId(rs.getString("sv_tenant_id"));
         visit.setAmcConfigurationId(rs.getString("sv_amc_configuration_id"));
         visit.setFacilityId(rs.getString("sv_facility_id"));
+        visit.setProjectId(rs.getString("sv_project_id"));
         visit.setVisitNumber(rs.getInt("sv_visit_number"));
         visit.setScheduledDate(rs.getLong("sv_scheduled_date"));
         visit.setActualVisitDate(rs.getLong("sv_actual_visit_date"));
+        visit.setLastVisitDate(rs.getLong("sv_last_scheduled_visit_date"));
         visit.setStatus(rs.getString("sv_status"));
 
         // visit_report (JSONB → POJO)

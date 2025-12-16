@@ -113,6 +113,7 @@ public class EscalationController {
             // Fetch master data
             List<EscalationRecipient> escalationRecipients = masterDataService.fetchEscalationRecipients(requestInfo);
             List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
+            Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
             if (escalationRecipients.isEmpty()) {
                 log.warn("No escalation recipients found in MDMS");
                 escalationStatusService.publishGeneralFailureStatus("weekly", "No escalation recipients found in MDMS");
@@ -122,7 +123,7 @@ public class EscalationController {
             log.info("Found {} escalation recipients and {} active tenants", escalationRecipients.size(), activeTenantIds.size());
             
             // Process weekly reports using Incident.EscalationRecipient MDMS
-            processWeeklyReportsWithEscalationRecipients(requestInfo, escalationRecipients, activeTenantIds);
+            processWeeklyReportsWithEscalationRecipients(requestInfo, escalationRecipients, activeTenantIds, activeTenantIdsName);
             
             log.info("Completed weekly DRE system report processing");
             return ResponseEntity.ok("Weekly DRE system report processing completed successfully");
@@ -141,14 +142,13 @@ public class EscalationController {
      */
     private void processWeeklyReportsWithEscalationRecipients(RequestInfo requestInfo, 
                                                            List<EscalationRecipient> escalationRecipients, 
-                                                           List<String> activeTenantIds) {
+                                                           List<String> activeTenantIds, Map<String, String> activeTenantIdsName) {
         try {
             log.info("Processing weekly reports with {} escalation recipients for {} active tenants", 
                 escalationRecipients.size(), activeTenantIds.size());
             
             // Group escalation recipients by email ID to send one email per recipient
             Map<String, List<EscalationRecipient>> recipientsByEmail = new HashMap<>();
-            
             for (EscalationRecipient recipient : escalationRecipients) {
                 if (recipient.getActive() == null || !recipient.getActive()) {
                     log.info("Skipping inactive escalation recipient: {}", recipient.getId());
@@ -162,11 +162,12 @@ public class EscalationController {
                 if ("state".equals(recipient.getBoundaryLevel())) {
                     // For state-level recipients, get users from all active tenants
                     for (String tenantId : activeTenantIds) {
-                        users.addAll(userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes));
+                        String state = activeTenantIdsName.get(tenantId);
+                        users.addAll(userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes));
                     }
                 } else if ("country".equals(recipient.getBoundaryLevel())) {
-                    // For country-level recipients, get users from 'in' tenant
-                    users = userService.searchUsersByRoleInCountry(requestInfo, roleCodes);
+                    // For country-level recipients, get users with boundary "India" from 'in' tenant
+                    users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", roleCodes);
                 }
                 
                 for (User user : users) {
@@ -184,7 +185,7 @@ public class EscalationController {
                 List<EscalationRecipient> recipientsForEmail = entry.getValue();
                 
                 try {
-                    processWeeklyReportForEmail(requestInfo, emailId, recipientsForEmail, activeTenantIds);
+                    processWeeklyReportForEmail(requestInfo, emailId, recipientsForEmail, activeTenantIds, activeTenantIdsName);
         } catch (Exception e) {
                     log.error("Error processing weekly report for email: {}", emailId, e);
                 }
@@ -203,7 +204,7 @@ public class EscalationController {
                                                     List<EscalationRecipient> recipients, 
                                                     List<String> activeTenantIds) {
         Set<String> relevantTenantIds = new HashSet<>();
-        
+        Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
         for (EscalationRecipient recipient : recipients) {
             if (recipient.getActive() == null || !recipient.getActive()) {
                 continue;
@@ -214,7 +215,8 @@ public class EscalationController {
             if ("state".equals(recipient.getBoundaryLevel())) {
                 // For state-level recipients, check each tenant individually and track tenant ID
                 for (String tenantId : activeTenantIds) {
-                    List<User> tenantUsers = userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes);
+                    String state = activeTenantIdsName.get(tenantId);
+                    List<User> tenantUsers = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes);
                     for (User user : tenantUsers) {
                         if (emailId.equals(user.getEmailId())) {
                             relevantTenantIds.add(tenantId);
@@ -223,8 +225,8 @@ public class EscalationController {
                     }
                 }
             } else if ("country".equals(recipient.getBoundaryLevel())) {
-                // For country-level recipients, get users from 'in' tenant
-                List<User> users = userService.searchUsersByRoleInCountry(requestInfo, roleCodes);
+                // For country-level recipients, get users with boundary "India" from 'in' tenant
+                List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", roleCodes);
                 for (User user : users) {
                     if (emailId.equals(user.getEmailId())) {
                         // For country-level roles, include all active tenants
@@ -244,7 +246,7 @@ public class EscalationController {
      */
     private void processWeeklyReportForEmail(RequestInfo requestInfo, String emailId, 
                                           List<EscalationRecipient> recipients, 
-                                          List<String> activeTenantIds) {
+                                          List<String> activeTenantIds, Map<String, String> activeTenantIdsName) {
         try {
             log.info("Processing weekly report for email: {} with {} recipients", emailId, recipients.size());
             
@@ -258,7 +260,11 @@ public class EscalationController {
             for (String tenantId : relevantTenantIds) {
                 try {
                     // Generate weekly report data for this tenant
-                    WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(tenantId, requestInfo);
+                    String state = activeTenantIdsName.get(tenantId);
+                    if (state==null || state.trim().isEmpty())
+                        continue;
+
+                    WeeklyReportData reportData = weeklyReportService.generateWeeklyReportData(state, requestInfo);
                     reportDataByTenant.put(tenantId, reportData);
                 } catch (Exception e) {
                     log.error("Error generating weekly report data for tenant: {}", tenantId, e);
@@ -267,7 +273,15 @@ public class EscalationController {
 
             // Build ONE consolidated CSV across all mapped states and upload to tenant "in"
             try {
-                String consolidatedCsv = generateConsolidatedWeeklyCsv(relevantTenantIds, requestInfo);
+                // Convert tenantIds to state codes for filtering
+                Set<String> stateCodes = new HashSet<>();
+                for (String tenantId : relevantTenantIds) {
+                    String stateCode = activeTenantIdsName.get(tenantId);
+                    if (stateCode != null && !stateCode.trim().isEmpty()) {
+                        stateCodes.add(stateCode);
+                    }
+                }
+                String consolidatedCsv = generateConsolidatedWeeklyCsv(stateCodes, requestInfo);
                 String consolidatedFileName = generateCsvFileName();
                 String consolidatedFsId = uploadCsvToFileStore(consolidatedCsv, consolidatedFileName, "in", requestInfo);
                 if (consolidatedFsId != null) {
@@ -426,7 +440,7 @@ public class EscalationController {
             .build();
 
         return WeeklyReportData.builder()
-            .tenantId("consolidated")
+            .tenantId("in")
             .dateRange(firstReport.getDateRange())
             .weekStartDate(firstReport.getWeekStartDate())
             .weekEndDate(firstReport.getWeekEndDate())
@@ -475,11 +489,13 @@ public class EscalationController {
             String recipientRoleName = recipientRole.getRole();
             
             if ("state".equals(recipientRole.getBoundaryLevel())) {
+                Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
                 // State level processing - Loop 3
                 for (String tenantId : activeTenantIds) {
                     try {
-                        processStateLevelEscalation(requestInfo, escalationRecipient, recipientRole, tenantId, escalationType);
+                        processStateLevelEscalation(requestInfo, escalationRecipient, recipientRole, tenantId, escalationType, activeTenantIdsName);
                     } catch (Exception e) {
+//                        e.printStackTrace();
                         log.error("Error processing state level escalation for tenant: {}", tenantId, e);
                         escalationStatusService.publishFailureStatus(escalationType, escalationId, tenantId, recipientRoleName, e.getMessage());
                     }
@@ -504,13 +520,14 @@ public class EscalationController {
      * Process state level escalation with separate queries per escalation item
      */
     private void processStateLevelEscalation(RequestInfo requestInfo, EscalationRecipient escalationRecipient,
-                                           RecipientRole recipientRole, String tenantId, String escalationType) {
+                                           RecipientRole recipientRole, String tenantId, String escalationType, Map<String, String> activeTenantIdsName) {
         String escalationId = escalationRecipient.getId().toString();
         String recipientRoleName = recipientRole.getRole();
-        
+        String state = activeTenantIdsName.get(tenantId); // Get BoundaryCode from tenantId: For tenantId pg, state = India_Karnataka
+
         // Step 3a: Query users for role
         List<String> roleCodes = List.of(recipientRole.getRole());
-        List<User> users = userService.searchUsersByRoleAndTenant(requestInfo, tenantId, roleCodes);
+        List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, roleCodes);
         
         if (users.isEmpty()) {
             log.warn("No users found for role: {} in tenant: {}", recipientRole.getRole(), tenantId);
@@ -540,7 +557,7 @@ public class EscalationController {
             // One query per escalation item in array (LLD requirement)
             // Pass RequestInfo for MDMS-driven threshold calculation
             List<EscalationTicket> tickets = slaBreachService.findSLABreachTickets(
-                    tenantId,
+                    state,
                     item.getWorkflowStates(),
                     escalationId,
                     item.getEscalationLevel(),
@@ -558,9 +575,11 @@ public class EscalationController {
             ticketsByLevel.put(item.getEscalationLevel(), filteredTickets);
             
             // Always generate CSV (with headers only if no tickets)
+            // Use state name in filename instead of tenantId
             String csvContent = csvGenerationService.generateEscalationCsv(filteredTickets);
-            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), tenantId);
-            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+            String stateName = commonUtility.getStateDisplayName(state);
+            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), stateName);
+            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
             
             if (csvFileStoreId != null) {
                 csvFileStoreIds.add(csvFileStoreId);
@@ -599,12 +618,12 @@ public class EscalationController {
         String escalationId = escalationRecipient.getId().toString();
         String recipientRoleName = recipientRole.getRole();
         
-        // Step 3b: Query users for role in 'in' tenant
+        // Step 3b: Query users for role with boundary "India" in 'in' tenant
         List<String> roleCodes = List.of(recipientRole.getRole());
-        List<User> users = userService.searchUsersByRoleInCountry(requestInfo, roleCodes);
+        List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", roleCodes);
         
         if (users.isEmpty()) {
-            log.warn("No users found for role: {} in 'in' tenant", recipientRole.getRole());
+            log.warn("No users found for role: {} with boundary India in 'in' tenant", recipientRole.getRole());
             escalationStatusService.publishSuccessStatus(escalationType, escalationId, "in", recipientRoleName);
             return;
         }
@@ -647,9 +666,11 @@ public class EscalationController {
             ticketsByLevel.put(item.getEscalationLevel(), filteredTickets);
             
             // Always generate CSV (with headers only if no tickets)
+            // All files are stored under tenantId "in"
+            // Use "AllStates" for country-level escalations
             String csvContent = csvGenerationService.generateEscalationCsv(filteredTickets);
-            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), "in");
-            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, tenantId, requestInfo);
+            String csvFileName = csvGenerationService.generateCsvFileName("daily", item.getEscalationLevel(), "AllStates");
+            String csvFileStoreId = uploadCsvToFileStore(csvContent, csvFileName, "in", requestInfo);
             
             if (csvFileStoreId != null) {
                 csvFileStoreIds.add(csvFileStoreId);
@@ -679,7 +700,7 @@ public class EscalationController {
             // Generate combined CSV for L1 section
             if (!l1Tickets.isEmpty()) {
                 String l1CsvContent = csvGenerationService.generateEscalationCsv(l1Tickets);
-                String l1CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_ONE", "in");
+                String l1CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_ONE", "AllStates");
                 String l1CsvFileStoreId = uploadCsvToFileStore(l1CsvContent, l1CsvFileName, "in", requestInfo);
                 
                 if (l1CsvFileStoreId != null) {
@@ -694,7 +715,7 @@ public class EscalationController {
                     // Add L2 file if it exists
                     if (ticketsByLevel.get("LEVEL_TWO") != null && !ticketsByLevel.get("LEVEL_TWO").isEmpty()) {
                         String l2CsvContent = csvGenerationService.generateEscalationCsv(ticketsByLevel.get("LEVEL_TWO"));
-                        String l2CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_TWO", "in");
+                        String l2CsvFileName = csvGenerationService.generateCsvFileName("daily", "LEVEL_TWO", "AllStates");
                         String l2CsvFileStoreId = uploadCsvToFileStore(l2CsvContent, l2CsvFileName, "in", requestInfo);
                         
                         if (l2CsvFileStoreId != null) {
@@ -730,14 +751,15 @@ public class EscalationController {
     
     /**
      * Extract escalation level from CSV filename
-     * Example: "escalation_daily_LEVEL_ONE_in_20251010_045240.csv" -> "LEVEL_ONE"
+     * Example: "escalation_daily_LEVEL_ONE_karnataka_20251010_045240.csv" -> "LEVEL_ONE"
+     * Pattern: escalation_{type}_{LEVEL}_{stateName}_{timestamp}.csv
      */
     private String extractEscalationLevelFromFileName(String fileName) {
         if (fileName == null || fileName.isEmpty()) {
             return null;
         }
         
-        // Pattern: escalation_daily_LEVEL_ONE_in_20251010_045240.csv
+        // Pattern: escalation_daily_LEVEL_ONE_karnataka_20251010_045240.csv
         String[] parts = fileName.split("_");
         for (int i = 0; i < parts.length; i++) {
             if ("LEVEL".equals(parts[i]) && i + 1 < parts.length) {
@@ -858,11 +880,12 @@ public class EscalationController {
         try {
             // Search for users with this email ID across all active tenants
             List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
-            
+            Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
             for (String tenantId : activeTenantIds) {
                 // Search for users with any role in this tenant
+                String state = activeTenantIdsName.get(tenantId);
                 List<String> allRoles = Arrays.asList("CENTRAL_POC", "STATE_POC", "VENDOR", "ADMIN");
-                List<User> users = userService.searchUsersByRoleAndTenant(requestInfo, tenantId, allRoles);
+                List<User> users = userService.searchUsersByRoleAndBoundaryCode(requestInfo, state, allRoles);
                 
                 for (User user : users) {
                     if (emailId.equals(user.getEmailId())) {
@@ -872,9 +895,9 @@ public class EscalationController {
                 }
             }
             
-            // Also check country-level tenant
+            // Also check country-level users with boundary "India"
             List<String> allRoles = Arrays.asList("CENTRAL_POC", "STATE_POC", "VENDOR", "ADMIN");
-            List<User> countryUsers = userService.searchUsersByRoleInCountry(requestInfo, allRoles);
+            List<User> countryUsers = userService.searchUsersByRoleAndBoundaryCode(requestInfo, "India", allRoles);
             
             for (User user : countryUsers) {
                 if (emailId.equals(user.getEmailId())) {
@@ -932,26 +955,32 @@ public class EscalationController {
      * Generate a single consolidated weekly CSV across all mapped state tenants.
      * The CSV includes both functional and non-functional facilities and is intended
      * to be uploaded under tenantId = "in".
+     * Uses boundary.stateCode to filter tickets since all tickets are now under tenantId "in".
      */
-    private String generateConsolidatedWeeklyCsv(Set<String> stateTenantIds, RequestInfo requestInfo) {
+    private String generateConsolidatedWeeklyCsv(Set<String> stateCodes, RequestInfo requestInfo) {
         StringBuilder csv = new StringBuilder();
         appendCsvHeader(csv);
 
         try {
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
-            log.info("Consolidated CSV: fetched {} tickets from ES", tickets.size());
+            log.info("Consolidated CSV: fetched {} tickets from ES, filtering by {} state codes", tickets.size(), stateCodes.size());
 
             Map<String, Map<String, Object>> facilityAgg = new LinkedHashMap<>();
+            int filteredCount = 0;
             for (Map<String, Object> ticket : tickets) {
                 Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
                 if (data == null) continue;
 
-                String tenantId = getStringValue(data, "tenantId");
-                if (!isInScope(tenantId, stateTenantIds)) continue;
+                // Extract state code from boundary instead of tenantId
+                String ticketStateCode = extractBoundaryStateCodeFromData(data);
+                if (ticketStateCode == null || !isStateCodeInScope(ticketStateCode, stateCodes)) {
+                    continue;
+                }
+                filteredCount++;
 
                 String facilityName = resolveFacilityName(data);
                 String ninOrHfr = getStringValue(data, "nin_hfr_id");
-                String stateRoot = rootTenant(tenantId);
+                // Use state code for state identification
                 String district = getStringValue(data, "district");
                 String block = getStringValue(data, "block");
                 String hfType = resolveHfType(data);
@@ -960,9 +989,11 @@ public class EscalationController {
                 boolean isClosed = isClosed(status);
                 boolean isFunctional = "FUNCTIONAL".equalsIgnoreCase(getStringValue(data, "systemFunctional"));
 
-                Map<String, Object> row = getOrCreateFacilityRow(facilityAgg, facilityName, ninOrHfr, stateRoot, district, block, hfType, vendor);
+                Map<String, Object> row = getOrCreateFacilityRow(facilityAgg, facilityName, ninOrHfr, ticketStateCode, district, block, hfType, vendor);
                 incrementCounts(row, isClosed, isFunctional);
             }
+            
+            log.info("Consolidated CSV: filtered to {} tickets matching state codes", filteredCount);
 
             facilityAgg.values().forEach(r -> appendCsvRow(csv, r));
 
@@ -977,16 +1008,34 @@ public class EscalationController {
         csv.append("\"Health Facility\",\"NIN OR HFR\",\"Solar Working\",\"State\",\"District\",\"Block\",\"Health Facility Type\",\"Mapped Vendor\",\"No of Ticket\",\"Open Ticket\",\"Closed Ticket\"\r\n");
     }
 
-    private boolean isInScope(String tenantId, Set<String> stateTenantIds) {
-        if (tenantId == null || tenantId.isEmpty()) return false;
-        for (String state : stateTenantIds) {
-            if (tenantId.equalsIgnoreCase(state) || tenantId.startsWith(state + ".")) return true;
+    /**
+     * Check if state code is in scope (matches or starts with any of the target state codes)
+     * Handles formats like "india_sikkim", "india_karnataka", etc.
+     */
+    private boolean isStateCodeInScope(String ticketStateCode, Set<String> targetStateCodes) {
+        if (ticketStateCode == null || ticketStateCode.isEmpty()) return false;
+        for (String targetStateCode : targetStateCodes) {
+            if (ticketStateCode.equalsIgnoreCase(targetStateCode) || 
+                ticketStateCode.startsWith(targetStateCode + ".") ||
+                targetStateCode.startsWith(ticketStateCode + ".")) {
+                return true;
+            }
         }
         return false;
     }
-
-    private String rootTenant(String tenantId) {
-        return tenantId.contains(".") ? tenantId.substring(0, tenantId.indexOf('.')) : tenantId;
+    
+    /**
+     * Extract state code from boundary in ticket data
+     * Returns null if boundary or stateCode is not found
+     */
+    private String extractBoundaryStateCodeFromData(Map<String, Object> data) {
+        Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+        if (incident == null) return null;
+        
+        Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
+        if (boundary == null) return null;
+        
+        return getStringValue(boundary, "stateCode");
     }
 
     private String resolveFacilityName(Map<String, Object> data) {
@@ -1029,14 +1078,16 @@ public class EscalationController {
     }
 
     private Map<String, Object> getOrCreateFacilityRow(Map<String, Map<String, Object>> agg,
-                                                       String facility, String nin, String stateRoot,
+                                                       String facility, String nin, String stateCode,
                                                        String district, String block, String type, String vendor) {
-        String key = facility + "|" + district + "|" + block + "|" + stateRoot;
+        // Use state code for facility key to uniquely identify facilities
+        String key = facility + "|" + district + "|" + block + "|" + stateCode;
         return agg.computeIfAbsent(key, k -> {
             Map<String, Object> m = new HashMap<>();
             m.put("facility", facility);
             m.put("nin", nin);
-            m.put("state", commonUtility.getStateDisplayName(stateRoot));
+            // Convert state code to display name (e.g., "india_sikkim" -> "Sikkim")
+            m.put("state", commonUtility.getStateDisplayName(stateCode));
             m.put("district", district);
             m.put("block", block);
             m.put("type", type);

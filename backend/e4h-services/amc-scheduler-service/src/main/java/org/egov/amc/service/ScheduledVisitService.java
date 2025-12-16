@@ -7,12 +7,12 @@ import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.repository.ScheduledVisitRepository;
 import org.egov.amc.service.enrichment.ScheduledVisitEnrichment;
 import org.egov.amc.util.AmcConfigurationServiceUtil;
+import org.egov.amc.util.BoundaryUtil;
 import org.egov.amc.util.MDMSUtils;
 import org.egov.amc.validator.ScheduledVisitValidator;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.models.user.OtpValidationRequest;
 import org.egov.common.producer.Producer;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +44,7 @@ public class ScheduledVisitService {
     private final VisitWorkflowService workflowService;
     private final JdbcTemplate jdbcTemplate;
     private final MDMSUtils mdmsUtils;
+    private BoundaryUtil boundaryUtil;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -52,7 +53,7 @@ public class ScheduledVisitService {
     @Autowired
     public ScheduledVisitService(
             ScheduledVisitRepository scheduledVisitsRepository, ScheduledVisitValidator scheduledVisitsValidator, ServiceRequestRepository requestRepository, ScheduledVisitEnrichment scheduledVisitsEnrichment, AMCServiceConfiguration scheduledVisitsConfiguration,
-            Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils) {
+            Producer producer, AmcConfigurationServiceUtil scheduledVisitsServiceUtil, AmcConfigurationService amcConfigurationService, VisitWorkflowService workflowService, JdbcTemplate jdbcTemplate, MDMSUtils mdmsUtils, BoundaryUtil boundaryUtil) {
             this.scheduledVisitsValidator = scheduledVisitsValidator;
         this.requestRepository = requestRepository;
         this.producer = producer;
@@ -64,13 +65,34 @@ public class ScheduledVisitService {
         this.workflowService = workflowService;
         this.jdbcTemplate = jdbcTemplate;
         this.mdmsUtils = mdmsUtils;
+        this.boundaryUtil = boundaryUtil;
     }
 
     public ScheduledVisitRequest createScheduledVisit(ScheduledVisitRequest request) {
         scheduledVisitsValidator.validateCreateScheduledVisitRequest(request);
-        for (ScheduledVisit amcConfiguration : request.getScheduledVisits()) {
-            scheduledVisitsEnrichment.enrichScheduledVisitOnCreate(amcConfiguration, request.getRequestInfo());
-            log.info("Enriched with AMC Ids and AuditDetails {}", amcConfiguration);
+        for (ScheduledVisit scheduledVisit : request.getScheduledVisits()) {
+            // Avoid creating two visits with same visit number
+            ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder()
+                    .tenantId(scheduledVisit.getTenantId())
+                    .amcConfigurationIds(List.of(scheduledVisit.getAmcConfigurationId()))
+                    .visitNumbers(List.of(scheduledVisit.getVisitNumber()))
+                    .build();
+            ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
+                    .RequestInfo(request.getRequestInfo())
+                    .searchCriteria(searchCriteria)
+                    .build();
+            List<ScheduledVisit> scheduledVisits = searchScheduledVisit(searchRequest, 1, 0, scheduledVisit.getTenantId(), null, null);
+            if (scheduledVisits !=null && !scheduledVisits.isEmpty()){
+                throw new CustomException("CREATE_VISIT_ERROR", "A visit number: "+ scheduledVisit.getVisitNumber()+" already exist for configuration "+scheduledVisit.getAmcConfigurationId());
+            }
+
+            // remove Duplicate Assignments
+            Set<String> seenUsers = new HashSet<>();
+            List<ScheduledVisitAssignment> assignments = scheduledVisit.getAssignments().stream().filter(a -> seenUsers.add(a.getAssignedUser()))
+                    .toList();
+            scheduledVisit.setAssignments(assignments);
+            scheduledVisitsEnrichment.enrichScheduledVisitOnCreate(scheduledVisit, request.getRequestInfo());
+            log.info("Enriched with AMC Ids and AuditDetails {}", scheduledVisit);
             log.info("Pushed to kafka");
         }
         producer.push(amcServiceConfiguration.getSaveScheduledVisitTopic(), request);
@@ -109,6 +131,7 @@ public class ScheduledVisitService {
             throw new CustomException("GENERATE_VISIT_ERROR", "Cannot generate scheduled visit for this configuration");
 
         List<ScheduledVisit> scheduledVisitList = new ArrayList<>();
+        Long previousVisitDate = null;
         int i =1;
         for (Long visitDate : generateAmcVisits){
             List<ScheduledVisitAssignment> assignments = amcConfiguration.getAssignments().stream()
@@ -120,6 +143,8 @@ public class ScheduledVisitService {
             ScheduledVisit visit = ScheduledVisit.builder()
                     .tenantId(amcConfiguration.getTenantId())
                     .amcConfigurationId(amcConfiguration.getId())
+                    .projectId(amcConfiguration.getProjectId())
+                    .lastVisitDate(previousVisitDate)
                     .facilityId(amcConfiguration.getFacilityId())
                     .visitNumber(i)
                     .scheduledDate(visitDate)
@@ -128,6 +153,7 @@ public class ScheduledVisitService {
                     .build();
 
             scheduledVisitList.add(visit);
+            previousVisitDate = visitDate;
             i++;
         }
 
@@ -171,7 +197,47 @@ public class ScheduledVisitService {
 
         ScheduledVisit existingVisit = scheduledVisitsList.get(0);
 
-        // 2. Call workflow transition
+        // Step 2: if action is SUBMIT_VISIT_REPORT, check if send OTP is successful or not
+        if ("SUBMIT_VISIT_REPORT".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            // We need to update visit report on existing visit
+            existingVisit.setVisitReport(request.getVisitReport());
+            // We need to send OTP to AMC_FIELD_STAFF
+            Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+            if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
+                OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
+                if (otpResponse !=null && otpResponse.getOtp()!=null){
+                    log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                    existingVisit.getVisitReport().setOtpReference(otpResponse.getOtp().getOtp());
+                }
+                else {
+                    log.warn("OTP generation returned null response for visit: {}", existingVisit.getId());
+                }
+            }
+            else
+                log.warn("Cannot send OTP - employee or mobile number not found for user ID: {}", request.getRequestInfo().getUserInfo().getUuid());
+        }
+
+        // if action is SUBMIT_OTP, check if OTP verification is working fine or not
+        if ("SUBMIT_OTP".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            // We need to validate OTP to AMC_FIELD_STAFF
+            if (request.getVisitReport() == null || request.getVisitReport().getOtpReference() == null) {
+                throw new CustomException("INVALID_OTP_REQUEST", "Visit report with OTP reference is required for SUBMIT_OTP action");
+            }
+             if (existingVisit.getVisitReport() == null) {
+                 throw new CustomException("INVALID_VISIT_STATE", "Visit report not found on existing visit");
+             }
+            Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+            if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
+                OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
+                if (otpResponse !=null && otpResponse.getOtp()!=null){
+                    log.info("OTP {} validated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                    // We need to update visit report on existing visit after validation
+                    existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
+                }
+            }
+        }
+
+        // 3. Call workflow transition
         ProcessInstance updatedWorkflow;
         try {
             updatedWorkflow = workflowService.transitionWorkflow(
@@ -179,10 +245,10 @@ public class ScheduledVisitService {
                     request.getWorkflow().getAction(),
                     request.getWorkflow().getDocuments(),
                     request.getRequestInfo(),
-                    request.getWorkflow().getComments()
+                    request.getWorkflow().getComment()
             );
         } catch (Exception e) {
-            e.printStackTrace();
+//            e.printStackTrace();
             log.error(e.getMessage());
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
                     "Failed to transition workflow for facility: " + request.getVisitId());
@@ -192,39 +258,8 @@ public class ScheduledVisitService {
             handleTransactions(request, updatedWorkflow);
         }
 
-        // 3. Inject workflow status into activity facility
+        // 4. Inject workflow status into activity facility
         existingVisit.setStatus(updatedWorkflow.getState().getState());
-
-        try {
-            // Step 4: After successful workflow transition, if action is SUBMIT_VISIT_REPORT
-            if ("SUBMIT_VISIT_REPORT".equalsIgnoreCase(request.getWorkflow().getAction())) {
-                // We need to update visit report on existing visit
-                existingVisit.setVisitReport(request.getVisitReport());
-                // We need to send OTP to AMC_FIELD_STAFF
-                Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
-                if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
-                    OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
-                    if (otpResponse !=null && otpResponse.getOtp()!=null){
-                        log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
-                        existingVisit.getVisitReport().setOtpReference(otpResponse.getOtp().getOtp());
-                    }
-                }
-            }
-
-            if ("SUBMIT_OTP".equalsIgnoreCase(request.getWorkflow().getAction())) {
-                // We need to validate OTP to AMC_FIELD_STAFF
-                Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
-                if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
-                    OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
-                    if (otpResponse !=null && otpResponse.getOtp()!=null){
-                        log.info("OTP {} validated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
-                        // We need to update visit report on existing visit after validation
-                        existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
-                    }
-                }
-            }
-        }
-        catch (Exception e){}
 
         // 5. Create a new Visit Instance instance with enriched additionalDetails
         ScheduledVisit updatedScheduledVisit = ScheduledVisit.builder()
@@ -344,7 +379,45 @@ public class ScheduledVisitService {
     public List<ScheduledVisit> searchScheduledVisit(ScheduledVisitSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         scheduledVisitsValidator.validateSearchScheduledVisitRequest(request, limit, offset, tenantId);
         List<ScheduledVisit> amcConfigurationList = scheduledVisitsRepository.getScheduledVisit(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+        for (ScheduledVisit scheduledVisit : amcConfigurationList){
+            String boundaryCode = scheduledVisit.getFacility().getBoundaryCode();
+            if (boundaryCode != null && listBlock != null) {
+                Boundary boundary = listBlock.get(boundaryCode);
+                if (boundary != null) {
+                    log.debug("✨ Enriching projectId={} with state={}, district={} and block={}", scheduledVisit.getId(), boundary.getState(), boundary.getDistrict(), boundary.getBlock());
+                    Object additionalDetails = scheduledVisit.getFacility().getAdditionalDetails();
+                    Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "boundary", boundary);
+                    scheduledVisit.getFacility().setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
+                } else {
+                    log.warn("⚠️ No boundary found for code={} in facility boundary={}", boundaryCode, scheduledVisit.getId());
+                }
+            }
+            for(ScheduledVisitAssignment assignment : scheduledVisit.getAssignments()){
+                try{
+                    Employee employee =  getUserById(request, assignment.getAssignedUser());
+                    if (employee !=null && employee.getUser() !=null){
+                        assignment.setUser(employee.getUser());
+                    }
+                }
+                catch(Exception e){
+                    log.error("error while calling hrms {} ", e.getMessage());
+                }
+            }
+        }
         return amcConfigurationList;
+    }
+
+    private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
+        if (additionalDetails instanceof Map) {
+            ((Map<String, Object>) additionalDetails).put(key, value);
+            return additionalDetails;
+        } else {
+            // default to HashMap if null or unknown type
+            Map<String, Object> map = new HashMap<>();
+            map.put(key, value);
+            return map;
+        }
     }
 
     private void processScheduledVisitUpdate(ScheduledVisitRequest request, ScheduledVisit visit, List<ScheduledVisit> scheduleVisitFromDB) {
@@ -604,7 +677,7 @@ public class ScheduledVisitService {
         if(otpResponse == null){
             throw new CustomException(
                     "ERROR_OTP_GENERATION",
-                    "Error occured while creating OTP"
+                    "OTP validation unsuccessful"
             );
         }
         return otpResponse;
