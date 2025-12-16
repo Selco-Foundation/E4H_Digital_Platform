@@ -51,13 +51,21 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   ActivityFacilityWorkflow? project;
   double? _latitude;
   double? _longitude;
-  bool rejection1 = false;
-  bool rejection2 = false;
-  bool rejection3 = false;
+  // bool rejection1 = false;
+  // bool rejection2 = false;
+  // bool rejection3 = false;
   String? _system;
 
   bool _initialized = false;
   late List<dynamic> _entries;
+  List<PlatformFile> _pickedFiles = [];
+  List<ExistingReport> _existingReports = [];
+
+  List<String> _rejectionReasons = const <String>[];
+  final Set<String> _selectedRejectionReasons = <String>{};
+
+  StreamSubscription<LocationState>? _locSub;
+
   late Future<List<({String label, String schemaName, String pageName})>>
       _bomButtonsFuture;
   late Future<
@@ -68,11 +76,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
             String schemaName,
             String pageName
           })>> _buttonsWithActionsFuture;
-
-  List<PlatformFile> _pickedFiles = [];
-  List<ExistingReport> _existingReports = [];
-
-  StreamSubscription<LocationState>? _locSub;
 
   @override
   void initState() {
@@ -109,7 +112,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     selState.whenOrNull(selected: (selProject) {
       activityFacilityId = selProject.activityFacility.id;
       project = selProject;
-
+      _loadRejectionReasonsFromWorkflow(project);
       context
           .read<CacheAssetBloc>()
           .add(CacheAssetEvent.start(activityFacilityId, userType, project!));
@@ -166,6 +169,33 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     if (!mounted) return;
     setState(() {
       _pickedFiles = copied;
+    });
+  }
+
+  List<String> _extractRejectionReasonsFromWorkflow(
+      ActivityFacilityWorkflow? wf) {
+    final txs = wf?.transactions;
+    if (txs == null || txs.isEmpty) return const <String>[];
+
+    final out = <String>[];
+    final seen = <String>{};
+
+    for (final tx in txs) {
+      for (final c in tx.comments ?? const <Comment>[]) {
+        final r = c.reason?.trim();
+        if (r == null || r.isEmpty) continue;
+        if (seen.add(r)) out.add(r);
+      }
+    }
+
+    return out;
+  }
+
+  void _loadRejectionReasonsFromWorkflow(ActivityFacilityWorkflow? wf) {
+    final reasons = _extractRejectionReasonsFromWorkflow(wf);
+    setState(() {
+      _rejectionReasons = reasons;
+      _selectedRejectionReasons.clear();
     });
   }
 
@@ -227,7 +257,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    final allChecked = rejection1 && rejection2 && rejection3;
+//    final allChecked = rejection1 && rejection2 && rejection3;
     final isSupervisor = userType == USER_TYPES.SUPERVISOR.name;
 
     return Scaffold(
@@ -335,7 +365,12 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   final hasCompletion =
                       _existingReports.isNotEmpty || _pickedFiles.isNotEmpty;
 
-                  final isDisabled = !allChecked ||
+                  final notAllRejectionsChecked = (isRejectedByQc &&
+                      _rejectionReasons.isNotEmpty &&
+                      _selectedRejectionReasons.length !=
+                          _rejectionReasons.length);
+
+                  final isDisabled = notAllRejectionsChecked ||
                       submitting ||
                       (requireCompletion && !hasCompletion);
 
@@ -513,31 +548,57 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                         .copyWith(color: theme.colorTheme.primary.primary2),
                   ),
                   const SizedBox(height: spacer1),
-                  DigitCard(children: [
-                    DigitCheckbox(
-                        label: 'Inverter Rejection reason 1',
-                        onChanged: (value) {
-                          setState(() {
-                            rejection1 = value;
-                          });
-                        }),
-                    const SizedBox(height: spacer1),
-                    DigitCheckbox(
-                        label: 'Inverter Rejection reason 2',
-                        onChanged: (value) {
-                          setState(() {
-                            rejection2 = value;
-                          });
-                        }),
-                    const SizedBox(height: spacer1),
-                    DigitCheckbox(
-                        label: 'Panel  Rejection reason 1',
-                        onChanged: (value) {
-                          setState(() {
-                            rejection3 = value;
-                          });
-                        }),
-                  ])
+                  DigitCard(
+                    children: [
+                      SizedBox(width: context.width),
+                      // DigitCheckbox(
+                      //     label: 'Inverter Rejection reason 1',
+                      //     onChanged: (value) {
+                      //       setState(() {
+                      //         rejection1 = value;
+                      //       });
+                      //     }),
+                      // const SizedBox(height: spacer1),
+                      // DigitCheckbox(
+                      //     label: 'Inverter Rejection reason 2',
+                      //     onChanged: (value) {
+                      //       setState(() {
+                      //         rejection2 = value;
+                      //       });
+                      //     }),
+                      // const SizedBox(height: spacer1),
+                      // DigitCheckbox(
+                      //     label: 'Panel  Rejection reason 1',
+                      //     onChanged: (value) {
+                      //       setState(() {
+                      //         rejection3 = value;
+                      //       });
+                      //     }),
+                      if (_rejectionReasons.isEmpty)
+                        Text(
+                          "No rejection reasons found",
+                          style: textTheme.bodyS,
+                        )
+                      else
+                        for (final reason in _rejectionReasons) ...[
+                          DigitCheckbox(
+                            key: ValueKey(
+                                'rej-${activityFacilityId.isEmpty ? "none" : activityFacilityId}-$reason'),
+                            label: reason,
+                            value: _selectedRejectionReasons.contains(reason),
+                            onChanged: (value) {
+                              setState(() {
+                                if (value == true)
+                                  _selectedRejectionReasons.add(reason);
+                                else
+                                  _selectedRejectionReasons.remove(reason);
+                              });
+                            },
+                          ),
+                          const SizedBox(height: spacer1),
+                        ],
+                    ],
+                  )
                 ],
               ),
             ),
