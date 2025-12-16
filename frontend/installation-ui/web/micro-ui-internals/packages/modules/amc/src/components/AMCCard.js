@@ -10,9 +10,9 @@ const AMCCard = () => {
   const { info } = Digit.UserService.getUser();
   const currentUserRoles = info?.roles?.map(role => role.code);
 
-  // if(!currentUserRoles?.includes("AMC_REVIEWER")) {
-  //   return null;
-  // }
+  if(!currentUserRoles?.includes("AMC_REVIEWER")) {
+    return null;
+  }
 
   const userType = "employee";
 
