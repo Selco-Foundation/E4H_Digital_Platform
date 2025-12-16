@@ -174,7 +174,7 @@ const ProjectTable = () => {
       accessor: "state",
       Cell: ({row}) => GetCell(
         row.original.additionalDetails?.geographyDetails?.state?.code ?
-          t(`STATE_${row.original.additionalDetails?.geographyDetails?.state?.code.toUpperCase()}`) :
+          t(`Boundary_${row.original.additionalDetails?.geographyDetails?.state?.code}`) :
           "-"
       ),
     },

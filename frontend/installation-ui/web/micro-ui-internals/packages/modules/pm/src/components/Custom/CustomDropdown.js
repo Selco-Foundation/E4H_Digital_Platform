@@ -114,6 +114,8 @@ const CustomDropdown = ({
             padding: "8px",
             fontFamily: "Roboto",
             fontSize: "16px",
+            paddingRight: "30px",
+            textOverflow: "ellipsis",
           }}
         />
         <ArrowDown
