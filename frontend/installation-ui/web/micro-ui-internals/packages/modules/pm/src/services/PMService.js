@@ -54,7 +54,6 @@ const formatActivityOrganizationUsers = (activityAssignments = []) => {
     }
     const organizationToUsersMap = new Map();
     for (const userAssignment of activityAssignment.users) {
-      if (!userAssignment.organization?.value?.id) continue;
       const vendorObject = organizationToUsersMap.get(userAssignment.organization.value.id) || {
         vendorId: userAssignment.organization.value.id,
         vendor: userAssignment.organization.value.name,
