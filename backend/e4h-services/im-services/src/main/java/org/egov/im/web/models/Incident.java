@@ -105,12 +105,9 @@ public class Incident   {
         @JsonProperty("systemFunctional")
         private String systemFunctional = null;
 
+        @SafeHtml
         @JsonProperty("isPotentialDuplicate")
         private boolean isPotentialDuplicate;
-
-        @SafeHtml
-        @JsonProperty("isPotentialDuplicateLocalized")
-        private String isPotentialDuplicateLocalized = null;
 
         @JsonProperty("filedDate")
         private Long filedDate = null;

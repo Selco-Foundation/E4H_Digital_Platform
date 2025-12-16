@@ -49,7 +49,6 @@ jobs:
           commit_hash=$(git log -1 --pretty=format:%H -- frontend/micro-ui)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
-
         # Builds & Push Docker images using buildx cli plugin of docker buildx builder
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -63,7 +62,6 @@ jobs:
           build-args: |
             PUBLIC_PATH=/assam/
             WORK_DIR=frontend/micro-ui/
-
 
 #  Workflow_Trigger:
 #    if: startsWith(github.ref, 'refs/heads/develop')

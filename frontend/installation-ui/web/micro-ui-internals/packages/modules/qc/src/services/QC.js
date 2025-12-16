@@ -44,5 +44,4 @@ export const QCService = {
       size: humanReadable,
     };
   },
-
 }
