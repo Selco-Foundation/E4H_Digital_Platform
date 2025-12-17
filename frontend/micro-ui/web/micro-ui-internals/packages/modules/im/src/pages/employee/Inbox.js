@@ -12,7 +12,7 @@ const Inbox = () => {
   const { userName } = Digit.UserService.getUser().info;
   const [totalRecords, setTotalRecords] = useState(0);
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
-  const { nearing } = Digit.Hooks.useQueryParams();
+  const { nearingSLA } = Digit.Hooks.useQueryParams();
 
   const isCodePresent = (array, codeToCheck) => array.some((item) => item.code === codeToCheck);
 
@@ -149,7 +149,7 @@ const Inbox = () => {
 
   useEffect(() => {
     try {
-      if (nearing === "1") {
+      if (nearingSLA === "1") {
         Digit.Utils.analytics?.trackPageView("nearing_sla_page", {
           page_path: window.location?.pathname || "/inbox",
           page_title: "Nearing SLA Page",
@@ -166,7 +166,7 @@ const Inbox = () => {
 
     history.replace({
       pathname: location.pathname,
-      search: `${nearing === "1" ? `nearing=1&` : ``}filter=${JSON.stringify(searchParams)}&pageSize=${pageSize}&pageOffset=${pageOffset}`
+      search: `${nearingSLA === "1" ? `nearingSLA=1&` : ``}filter=${JSON.stringify(searchParams)}&pageSize=${pageSize}&pageOffset=${pageOffset}`
     });
 
   }, [searchParams, pageSize, pageOffset]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -235,7 +235,7 @@ const Inbox = () => {
   };
 
   const isMobile = Digit.Utils.browser.isMobile();
-  const allSearchParams = { ...searchParams, ...(nearing === "1" && { nearingSLA: true }) };
+  const allSearchParams = { ...searchParams, ...(nearingSLA === "1" && { nearingSLA: true }) };
 
   const inboxParams = { ...allSearchParams, offset: pageOffset, limit: pageSize };
   const { data: complaints, isLoading } = Digit.Hooks.pgr.useInboxData(inboxParams);
