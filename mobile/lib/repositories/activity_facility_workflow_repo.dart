@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/data/nosql/cache_activity_facility_workflow.dart';
 
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
@@ -56,6 +57,24 @@ class ActivityFacilityWorkflowRepository {
         out.addAll(docs);
       }
     }
+    return out;
+  }
+
+  Future<List<Document>> collectWorkflowDocs({
+    required Isar isar,
+    required String activityFacilityId,
+  }) async {
+    final out = <Document>[];
+    //   for (final type in types) {
+    final workflow = await isar.cacheActivityFacilityWorkflows
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .findFirst();
+
+    final docs = workflow?.workflow?.documents ?? [];
+    out.addAll(docs);
+    //}
+    // }
     return out;
   }
 

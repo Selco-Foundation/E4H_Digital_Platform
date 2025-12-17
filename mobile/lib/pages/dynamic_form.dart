@@ -52,6 +52,11 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   String? _lastActivityFacilityId;
   Map<String, dynamic> _activityFacilityInitialKV = const {};
   int _formSeed = 0;
+  static final Map<String, String> _schemaOwnerByFacility = {};
+  String? get _baseSchemaKey => widget.schemaName ?? widget.uniqueIdentifier;
+
+  late FormsBloc _formsBloc;
+  bool _isPreparingForm = false;
 
   Future<void> _loadInitialKVForActivityFacility() async {
     final isar = context.read<ActivityFacilityBloc>().isar;
@@ -69,15 +74,33 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
   Future<void> _ensureSchemaLoaded() async {
     final bloc = context.read<FormsBloc>();
-    final requestedKey = widget.schemaName ?? widget.uniqueIdentifier;
+    // final requestedKey = widget.schemaName ?? widget.uniqueIdentifier;
+    //
+    // if (requestedKey != null &&
+    //     bloc.state.cachedSchemas.containsKey(requestedKey)) {
+    //   bloc.add(FormsUpdateEvent(
+    //     schema: bloc.state.cachedSchemas[requestedKey]!,
+    //     schemaKey: requestedKey,
+    //   ));
+    //   return;
+    // }
 
-    if (requestedKey != null &&
-        bloc.state.cachedSchemas.containsKey(requestedKey)) {
-      bloc.add(FormsUpdateEvent(
-        schema: bloc.state.cachedSchemas[requestedKey]!,
-        schemaKey: requestedKey,
-      ));
-      return;
+    final baseKey = _baseSchemaKey;
+
+    if (baseKey != null) {
+      final owner = _schemaOwnerByFacility[baseKey];
+      final isSameFacility =
+          owner != null && owner == widget.activityFacilityId;
+
+      if (isSameFacility && bloc.state.cachedSchemas.containsKey(baseKey)) {
+        bloc.add(
+          FormsUpdateEvent(
+            schema: bloc.state.cachedSchemas[baseKey]!,
+            schemaKey: baseKey,
+          ),
+        );
+        return;
+      }
     }
 
     Map<String, dynamic>? schemaJson;
@@ -143,9 +166,14 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     }
 
     final schemaObj = SchemaObject.fromJson(schemaJson);
-    final cacheKey =
-        widget.schemaName ?? widget.uniqueIdentifier ?? schemaObj.name;
+    // final cacheKey =
+    //     widget.schemaName ?? widget.uniqueIdentifier ?? schemaObj.name;
+    //
+    // await SecureStore().setRawSchemaDoc(cacheKey, Map.from(schemaJson));
+    // bloc.add(FormsUpdateEvent(schema: schemaObj, schemaKey: cacheKey));
 
+    final cacheKey = _baseSchemaKey ?? schemaObj.name;
+    _schemaOwnerByFacility[cacheKey] = widget.activityFacilityId;
     await SecureStore().setRawSchemaDoc(cacheKey, Map.from(schemaJson));
     bloc.add(FormsUpdateEvent(schema: schemaObj, schemaKey: cacheKey));
   }
@@ -218,11 +246,9 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   //   }
   // }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
+  void _prepareFormForCurrentActivityFacility() {
     final formsBloc = context.read<FormsBloc>();
+
     final currentKey = currentSchemaKey(
       state: formsBloc.state,
       pageName: widget.pageName,
@@ -230,24 +256,87 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       uniqueIdentifier: widget.uniqueIdentifier,
     );
 
-    if (_lastActivityFacilityId != widget.activityFacilityId) {
-      if (currentKey != null) {
-        formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
-      }
+    setState(() {
+      _isPreparingForm = true;
       _activityFacilityInitialKV = const {};
       _formSeed++;
-      _lastActivityFacilityId = widget.activityFacilityId;
+    });
 
-      Future(() async => _loadInitialKVForActivityFacility());
+    if (currentKey != null) {
+      formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
     }
+
+    Future(() async {
+      await _ensureSchemaLoaded();
+      await _loadInitialKVForActivityFacility();
+      if (!mounted) return;
+      setState(() {
+        _lastActivityFacilityId = widget.activityFacilityId;
+        _isPreparingForm = false;
+      });
+    });
+  }
+
+  // @override
+  // void didChangeDependencies() {
+  //   super.didChangeDependencies();
+  //
+  //   final formsBloc = context.read<FormsBloc>();
+  //   final currentKey = currentSchemaKey(
+  //     state: formsBloc.state,
+  //     pageName: widget.pageName,
+  //     schemaName: widget.schemaName,
+  //     uniqueIdentifier: widget.uniqueIdentifier,
+  //   );
+  //
+  //   if (_lastActivityFacilityId != widget.activityFacilityId) {
+  //     if (currentKey != null) {
+  //       formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
+  //     }
+  //     _activityFacilityInitialKV = const {};
+  //     _formSeed++;
+  //     _lastActivityFacilityId = widget.activityFacilityId;
+  //
+  //     Future(() async => _loadInitialKVForActivityFacility());
+  //   }
+  //
+  //   if (!_loadedOnce) {
+  //     _loadedOnce = true;
+  //     Future(() async {
+  //       await _ensureSchemaLoaded();
+  //       await _loadInitialKVForActivityFacility();
+  //     });
+  //   }
+  // }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _formsBloc = context.read<FormsBloc>();
 
     if (!_loadedOnce) {
       _loadedOnce = true;
-      Future(() async {
-        await _ensureSchemaLoaded();
-        await _loadInitialKVForActivityFacility();
-      });
+      _prepareFormForCurrentActivityFacility(); // first open
+      return;
     }
+
+    if (_lastActivityFacilityId != widget.activityFacilityId) {
+      _prepareFormForCurrentActivityFacility(); // switching facility
+    }
+  }
+
+  @override
+  void dispose() {
+    final key = currentSchemaKey(
+      state: _formsBloc.state,
+      pageName: widget.pageName,
+      schemaName: widget.schemaName,
+      uniqueIdentifier: widget.uniqueIdentifier,
+    );
+    if (key != null) {
+      _formsBloc.add(FormsEvent.clearForm(schemaKey: key));
+    }
+    super.dispose();
   }
 
   Future<void> _finalizeAndReturn({
@@ -363,7 +452,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                 pageName: widget.pageName,
                 schemaName: widget.schemaName,
                 uniqueIdentifier: widget.uniqueIdentifier);
-            if (currentKey == null) {
+            if (_isPreparingForm || currentKey == null) {
               return const Center(child: CircularProgressIndicator());
             }
             final schemaObject = state.cachedSchemas[currentKey];

@@ -869,11 +869,9 @@ Future<void> _performRejectionForActivityFacility({
     final workflowDocuments = <Document>[];
 
     final fromCache =
-        await ActivityFacilityWorkflowRepository().collectWorkflowMediaDocs(
+        await ActivityFacilityWorkflowRepository().collectWorkflowDocs(
       isar: isar,
       activityFacilityId: activityFacilityId,
-      types: types,
-      userType: userType,
     );
     workflowDocuments.addAll(fromCache);
 

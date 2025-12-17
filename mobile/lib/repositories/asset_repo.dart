@@ -343,7 +343,7 @@ class AssetRepository {
 
         for (var doc in activityFacility.workflow?.documents ?? []) {
           if (doc.documentType != 'ASSET' &&
-              doc.documentType != 'INSTALLATION_REPORT') {
+              !doc.documentType.contains('INSTALLATION_REPORT')) {
             final parts = doc.documentType?.split('-') ?? [];
             if (parts.length != 2) continue;
 

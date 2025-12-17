@@ -155,11 +155,21 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     setState(() {
       _existingReports = combined.map((pf) {
         final path = pf.path!;
+        final type = inferFileType(path);
+        String name = p.basename(path);
+
+        final docs = projectWorkflow?.workflow?.documents ?? [];
+        if (type == 'pdf') {
+          final normalized = normalizedInstallPdfNameFromPath(path, docs);
+          if (normalized != null && normalized.isNotEmpty) {
+            name = normalized;
+          }
+        }
         return ExistingReport(
           isarId: null,
           filePath: path,
-          fileName: p.basename(path),
-          fileType: inferFileType(path),
+          fileName: name,
+          fileType: type,
         );
       }).toList();
       _pickedFiles = [];
