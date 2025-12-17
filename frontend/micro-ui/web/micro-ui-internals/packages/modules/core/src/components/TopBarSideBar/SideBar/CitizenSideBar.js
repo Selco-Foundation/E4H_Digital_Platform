@@ -8,6 +8,7 @@ import SideBarMenu from "../../../config/sidebar-menu";
 import ChangeCity from "../../ChangeCity";
 import { defaultImage } from "../../utils";
 import StaticCitizenSideBar from "./StaticCitizenSideBar";
+import { useSelector } from "react-redux";
 
 
 const Profile = ({ info, stateName, t }) => {
@@ -107,7 +108,7 @@ export const CitizenSideBar = ({ isOpen, isMobile = false, toggleSidebar, onLogo
   if (islinkDataLoading || isLoading) {
     return <Loader />;
   }
-  const filteredTenantContact = window?.globalConfigs?.getConfig("CRM_HELPLINE_NUMBER") || storeData?.tenants[0]?.contactNumber;
+  const filteredTenantContact = useSelector((state) => state.common.crmHelplineNumber);
 
   let menuItems = [...SideBarMenu(t, closeSidebar, redirectToLoginPage, isEmployee, storeData, tenantId)];
   let profileItem;
