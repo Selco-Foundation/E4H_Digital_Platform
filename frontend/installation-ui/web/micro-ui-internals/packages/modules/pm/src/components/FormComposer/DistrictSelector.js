@@ -34,7 +34,7 @@ const DistrictSelector = ({
         ?.filter((district) => district.stateCode === selectedStateCode)
         .map((district) => ({
           ...district,
-          name: `DISTRICT_${district.code.toUpperCase()}`,
+          name: `Boundary_${district.code}`,
         }));
       setDistrictMenu(newDistrictMenu);
 

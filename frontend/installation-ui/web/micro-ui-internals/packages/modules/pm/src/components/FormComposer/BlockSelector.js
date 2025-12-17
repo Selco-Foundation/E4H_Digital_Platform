@@ -34,7 +34,7 @@ const BlockSelector = ({
         ?.filter((block) => selectedDistrictCodes.includes(block.districtCode))
         .map((block) => ({
           ...block,
-          name: `BLOCK_${block.code.toUpperCase()}`,
+          name: `Boundary_${block.code}`,
         }));
       setBlockMenu(newBlockMenu);
 
