@@ -412,7 +412,7 @@ public class ElasticSearchClient {
             if (currentProcessInstance == null) {
                 return "Medium"; // Default fallback
             }
-            
+
             Object businessServiceObj = currentProcessInstance.get("businessService");
             if (businessServiceObj instanceof String businessService && businessService.contains("_")) {
                 String[] parts = businessService.split("_", 2);
@@ -420,7 +420,7 @@ public class ElasticSearchClient {
                     return parts[1]; // Return part after underscore (High, Low, Medium)
                 }
             }
-            
+
             return "Medium"; // Default fallback
         } catch (Exception e) {
             log.warn("Error extracting priority from business service: {}", e.getMessage());

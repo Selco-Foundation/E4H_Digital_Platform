@@ -213,13 +213,13 @@ const FacilityTable = ({ t }) => {
     {
       Header: t("CS_BLOCK"),
       Cell: ({ row }) => {
-        return GetCell(row.original["block"] ? t(`BLOCK_${row.original["block"].toUpperCase()}`) : "-");
+        return GetCell(row.original["block"] ? t(`Boundary_${row.original["block"]}`) : "-");
       },
     },
     {
       Header: t("CS_DISTRICT"),
       Cell: ({ row }) => {
-        return GetCell(row.original["district"] ? t(`DISTRICT_${row.original["district"].toUpperCase()}`) : "-");
+        return GetCell(row.original["district"] ? t(`Boundary_${row.original["district"]}`) : "-");
       },
     },
     {
@@ -335,7 +335,7 @@ const FacilityTable = ({ t }) => {
             alignItems: "center",
             height: "100%",
             width: "100%",
-            zIndex: 10000000,
+            zIndex: 10_000_000,
             backgroundColor: "gray",
             opacity: 0.5,
             position: "fixed",

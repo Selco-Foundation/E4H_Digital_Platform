@@ -155,7 +155,7 @@ const ProjectDetails = () => {
           </button>
         </div>
         <div>
-          {PropertyCard(t("PM_PROJECT_INFO_STATE"), t(`STATE_${createdProject?.additionalDetails?.geographyDetails?.state?.code?.toUpperCase()}`))}
+          {PropertyCard(t("PM_PROJECT_INFO_STATE"), t(`Boundary_${createdProject?.additionalDetails?.geographyDetails?.state?.code}`) || "-")}
           {PropertyCard(
             t("PM_PROJECT_INFO_DISTRICTS"),
             <span style={{ color: "#C84C0E", textDecoration: "underline" }}>

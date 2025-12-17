@@ -42,7 +42,6 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
         key: "error",
         message: t("QC_FACILITY_APPROVE_FAILURE"),
       });
-
     } finally {
       setUpdatingWorkflow(false);
     }
@@ -96,7 +95,6 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
         key: "error",
         message: t("QC_FACILITY_REJECT_FAILURE"),
       });
-
     } finally {
       setUpdatingWorkflow(false);
     }
@@ -126,7 +124,6 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
         key: "error",
         message: t("QC_FACILITY_FLAG_FOR_QC_FAILURE"),
       });
-
     } finally {
       setUpdatingWorkflow(false);
     }

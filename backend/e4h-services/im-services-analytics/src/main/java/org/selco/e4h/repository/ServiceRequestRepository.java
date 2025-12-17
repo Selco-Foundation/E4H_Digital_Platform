@@ -71,7 +71,7 @@ public class ServiceRequestRepository {
         body.add("tenantId", context.getTenantId());
         body.add("module", context.getModule());
         body.add("tag", context.getTag());
-        
+
         // Convert RequestInfo object to JSON string if it's not already a string
         String requestInfoJson = context.getRequestInfo();
         if (requestInfoJson == null || requestInfoJson.trim().isEmpty()) {
@@ -112,12 +112,12 @@ public class ServiceRequestRepository {
                 Resource.class
         );
     }
-    
+
     /**
      * Create a default RequestInfo JSON string
      */
     private String createDefaultRequestInfoJson() {
-        return "{\"apiId\":\"im-services-analytics\",\"ver\":\"1.0\",\"ts\":" + System.currentTimeMillis() + 
+        return "{\"apiId\":\"im-services-analytics\",\"ver\":\"1.0\",\"ts\":" + System.currentTimeMillis() +
                ",\"action\":\"_create\",\"did\":\"1\",\"key\":\"\",\"msgId\":\"20170310130900|en_IN\"," +
                "\"requesterId\":\"\",\"authToken\":\"\",\"userInfo\":{\"id\":1,\"uuid\":\"system\"," +
                "\"type\":\"SYSTEM\",\"tenantId\":\"in\",\"roles\":[{\"name\":\"System\",\"code\":\"SYSTEM\"," +
