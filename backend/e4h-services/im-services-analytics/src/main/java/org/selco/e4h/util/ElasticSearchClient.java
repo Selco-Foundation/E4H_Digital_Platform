@@ -90,16 +90,16 @@ public class ElasticSearchClient {
     }
 
     private Map<String, Object> fetchTicketByBoundaryCode(String indexName, String boundaryCode) {
-        String uri = getBaseUrl() + "/" + indexName + "/" + DOC_PATH + "/" + boundaryCode;
-
+        String uri = getBaseUrl() + "/{index}/" + DOC_PATH + "/{id}";
         HttpEntity<String> entity = new HttpEntity<>(updateService.buildHeaders());
-
         try {
             ResponseEntity<Map> response = restTemplate.exchange(
                     uri,
                     HttpMethod.GET,
                     entity,
-                    Map.class
+                    Map.class,
+                    indexName,
+                    boundaryCode
             );
 
             log.info("Fetched ticket audit for boundaryCode={} from index={}", boundaryCode, indexName);
