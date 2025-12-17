@@ -50,7 +50,7 @@ public class KafkaProducerService {
             incidentStatusAgregation.setPhcType(phcType);
             incidentStatusAgregation.setType(type);
             incidentStatusAgregation.setTenantId(tenantId);
-            incidentStatusAgregation.setBoundaryCode(existBoundaryCode);
+//            incidentStatusAgregation.setBoundaryCode(existBoundaryCode);
         }
         log.info("List tickets {}", tickets.size());
     }

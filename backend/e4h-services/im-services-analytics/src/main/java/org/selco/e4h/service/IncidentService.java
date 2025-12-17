@@ -7,6 +7,7 @@ import org.selco.e4h.config.ConsumerConfiguration;
 import org.selco.e4h.kafka.consumer.KafkaProducerService;
 import org.selco.e4h.repository.IncidentRepository;
 import org.selco.e4h.util.ElasticSearchClient;
+import org.selco.e4h.web.models.Boundary;
 import org.selco.e4h.web.models.IncidentRequest;
 import org.selco.e4h.web.models.IncidentRequestWrapper;
 import org.selco.e4h.web.models.IncidentStatusAgregation;
@@ -98,10 +99,12 @@ public class IncidentService {
     private void processIncident(IncidentRequest request, String mappedVendorName, String mappedVendorUserName) {
         String tenantId = request.getIncident().getTenantId();
         String boundaryCode = request.getIncident().getBoundaryCode();
+        String facilityId = extractAndEncodeFacilityCode(boundaryCode);
         List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(boundaryCode);
         List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
 
         if (statusAgregations != null && !statusAgregations.isEmpty()) {
+//            IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
             IncidentStatusAgregation incidentStatusAgregation = statusAgregations.get(0);
 
             // systemFunctional = NON_FUNCTIONAL if at least one NON_FUNCTIONAL, otherwise FUNCTIONAL
@@ -113,22 +116,26 @@ public class IncidentService {
             incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
             incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
 
-            Map<String, Object> tickets = esClient.getHFByBoundaryCode(boundaryCode);
+            Map<String, Object> tickets = esClient.getHFByBoundaryCode(facilityId);
             if (tickets != null && !tickets.isEmpty()) {
                 Map<String, Object> source = (Map<String, Object>) tickets.get("_source");
                 if (source != null) {
                     Map<String, Object> data = (Map<String, Object>) source.get("Data");
+                    Boundary boundary = objectMapper.convertValue(data.get("boundary"), Boundary.class);
                     if (data != null) {
                         incidentStatusAgregation.setBlock((String) data.get("block"));
                         incidentStatusAgregation.setCode(String.valueOf(data.get("code")));
                         incidentStatusAgregation.setState((String) data.get("state"));
                         incidentStatusAgregation.setDistrict((String) data.get("district"));
                         incidentStatusAgregation.setLive((boolean) data.get("isLive"));
+                        Boolean synced = (Boolean) data.get("synced");
+                        incidentStatusAgregation.setSynced(Boolean.TRUE.equals(synced));
                         incidentStatusAgregation.setName((String) data.get("name"));
                         incidentStatusAgregation.setPhcType((String) data.get("phcType"));
                         incidentStatusAgregation.setType((String) data.get("type"));
+                        incidentStatusAgregation.setFacilityId((String) data.get("facilityId"));
                         incidentStatusAgregation.setTenantId(tenantId);
-                        incidentStatusAgregation.setBoundaryCode(boundaryCode);
+                        incidentStatusAgregation.setBoundary(boundary);
                         incidentStatusAgregation.setTenantIdLocalized((String) data.get("tenantId_localized"));
                         incidentStatusAgregation.setGeoPoint((List<Double>) data.get("geo-point"));
                         incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
@@ -150,6 +157,21 @@ public class IncidentService {
         }
     }
 
+    public static String extractAndEncodeFacilityCode(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return null;
+        }
+
+        int index = boundaryCode.indexOf("FAC/");
+        if (index == -1) {
+            return null;
+        }
+
+        String facilityCode = boundaryCode.substring(index);
+
+        return facilityCode;
+    }
+
 
     public void scriptUpdatePHCAgregation() {
         log.info("Script function called");
@@ -165,12 +187,12 @@ public class IncidentService {
                     String district = (String)data.get("district");
                     boolean isLive = (boolean)data.get("isLive");
                     String name = (String)data.get("name");
-                    String existBoundaryCode = (String)data.get("boundaryCode");
                     String phcType = (String)data.get("phcType");
                     String type = (String)data.get("type");
                     String tenantId = (String)data.get("tenantId");
                     String tenantIdLocalized = (String)data.get("tenantId_localized");
                     List<Double> geoPoint = (List<Double>) data.get("geo-point");
+                    Boundary existBoundaryCode = objectMapper.convertValue(data.get("boundary"), Boundary.class);
 
                     IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
                     incidentStatusAgregation.setBlock(block);
@@ -178,7 +200,7 @@ public class IncidentService {
                     incidentStatusAgregation.setDistrict(district);
                     incidentStatusAgregation.setLive(isLive);
                     incidentStatusAgregation.setName(name);
-                    incidentStatusAgregation.setBoundaryCode(existBoundaryCode);
+                    incidentStatusAgregation.setBoundary(existBoundaryCode);
                     incidentStatusAgregation.setPhcType(phcType);
                     incidentStatusAgregation.setType(type);
                     incidentStatusAgregation.setTenantId(tenantId);
