@@ -50,6 +50,7 @@ public class AmcConfigurationService {
     }
 
     public AmcConfigurationRequest createAmcConfiguration(AmcConfigurationRequest request) {
+        log.info("Received AMC request for creation {}", request);
         amcConfigurationValidator.validateCreateAmcConfigurationRequest(request);
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             // remove Duplicate Assignments if the same user is AMC_STAFF and AMC_REVIEWER
@@ -58,7 +59,7 @@ public class AmcConfigurationService {
                     .toList();
             amcConfiguration.setAssignments(assignments);
             amcConfigurationEnrichment.enrichAmcConfigurationOnCreate(amcConfiguration, request.getRequestInfo());
-
+            log.info("Amc object after remove duplication {}", amcConfiguration);
             // Link the AMC_REVIEWER and AMC_STAFF to project
             if (amcConfiguration.getAssignments() != null && !amcConfiguration.getAssignments().isEmpty()) {
                 List<ProjectStaff> staffs = amcConfiguration.getAssignments().stream()
