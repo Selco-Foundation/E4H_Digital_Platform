@@ -241,8 +241,14 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    final bool isReadOnlyMedia = origin != FormOrigin.overallSummary &&
-        origin != FormOrigin.submitForApproval;
+    final currentOrigin = context.select((SelectedAmcOriginBloc b) =>
+        b.state.maybeWhen(selected: (o) => o, orElse: () => null));
+
+    final bool isReadOnlyMedia = currentOrigin != FormOrigin.overallSummary &&
+        currentOrigin != FormOrigin.submitForApproval;
+
+    // final bool isReadOnlyMedia = origin != FormOrigin.overallSummary &&
+    //     origin != FormOrigin.submitForApproval;
 
     return MultiBlocListener(
       listeners: [
@@ -294,13 +300,16 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
       ],
       child: BlocBuilder<ScheduleVisitSubmitBloc, ScheduleVisitSubmitState>(
         builder: (context, scheduleState) {
-          String footerText = context.translate(i18.common.coreCommonSubmit);
-          if (origin != FormOrigin.overallSummary &&
-              origin != FormOrigin.submitForApproval) {
-            footerText = "Back to Home";
-          }
+          String footerText = isReadOnlyMedia
+              ? "Back to Home"
+              : context.translate(i18.common.coreCommonSubmit);
+          // if (origin != FormOrigin.overallSummary &&
+          //     origin != FormOrigin.submitForApproval) {
+          //   footerText = "Back to Home";
+          // }
 
-          final mustPickRejection = origin == FormOrigin.submitForApproval;
+          final mustPickRejection =
+              currentOrigin == FormOrigin.submitForApproval;
           final notAllRejectionsChecked = mustPickRejection &&
               _rejectionReasons.isNotEmpty &&
               _selectedRejectionReasons.length != _rejectionReasons.length;
@@ -324,7 +333,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                   orElse: () => footerText,
                 ),
                 onPress: () async {
-                  switch (origin) {
+                  switch (currentOrigin) {
                     case FormOrigin.overallSummary:
                     case FormOrigin.submitForApproval:
                       if (_currentScheduledVisitId == null) return;

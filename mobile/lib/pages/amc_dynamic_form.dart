@@ -56,6 +56,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
   String? get _baseSchemaKey => widget.schemaName ?? widget.uniqueIdentifier;
   late FormsBloc _formsBloc;
   bool _isPreparingForm = false;
+  bool _isNextLoading = false;
 
   Future<void> _loadInitialKVForProject() async {
     final kv = await buildInitialAmcValues(
@@ -161,24 +162,25 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
     bloc.add(FormsUpdateEvent(schema: schemaObj, schemaKey: cacheKey));
   }
 
-  void _popUntilThenRefreshOrigin(BuildContext context, FormOrigin origin) {
+  void _popUntilThenRefreshOrigin(BuildContext context) {
     context
         .read<SelectedAmcOriginBloc>()
-        .add(SelectedAmcOriginEvent.select(origin));
+        .add(SelectedAmcOriginEvent.select(widget.origin));
 
-    final root = context.router.root;
+    // final root = context.router.root;
 
-    const PageRouteInfo targetRoute = AmcMediaUploadRoute();
+    // const PageRouteInfo targetRoute = AmcMediaUploadRoute();
 
-    root.navigate(targetRoute);
+    // root.navigate(targetRoute);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!context.mounted) return;
-      final topName = root.current.name;
-      final expected = targetRoute.routeName;
-      if (topName == expected) {
-        root.replace(targetRoute);
-      }
+      context.router.push(const AmcMediaUploadRoute());
+      // final topName = root.current.name;
+      // final expected = targetRoute.routeName;
+      // if (topName == expected) {
+      //   root.replace(targetRoute);
+      // }
     });
   }
 
@@ -350,7 +352,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
 
     formsBloc.add(FormsEvent.clearForm(schemaKey: schemaKey));
     if (!context.mounted) return;
-    _popUntilThenRefreshOrigin(context, widget.origin);
+    _popUntilThenRefreshOrigin(context);
   }
 
   @override
@@ -473,144 +475,154 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
                   children: [
                     ReactiveFormConsumer(
                       builder: (context, form, child) => DigitButton(
-                        label: (pageIndex) < schemaObject.pages.length - 1
-                            ? (pageSchema.actionLabel ?? 'Next')
+                        isDisabled: _isNextLoading,
+                        label: _isNextLoading || _isPreparingForm
+                            ? 'Loading...'
                             : (pageSchema.actionLabel ?? 'Next'),
                         onPressed: () async {
-                          final propKeys =
-                              (pageSchema.properties?.keys.toList() ??
-                                  <String>[]);
-                          final missing = <String>[];
-                          final invalid = <String>[];
+                          if (_isNextLoading || _isPreparingForm) return;
+                          setState(() => _isNextLoading = true);
+                          try {
+                            final propKeys =
+                                (pageSchema.properties?.keys.toList() ??
+                                    <String>[]);
+                            final missing = <String>[];
+                            final invalid = <String>[];
 
-                          for (final k in propKeys) {
-                            if (form.contains(k)) {
-                              final c = form.control(k);
-                              c.markAsTouched();
-                              c.updateValueAndValidity();
-                              if (!c.valid) invalid.add(k);
-                            } else {
-                              missing.add(k);
-                            }
-                          }
-
-                          if (missing.isNotEmpty) {
-                            final first = missing.first;
-                            final label = labelForKey(pageSchema, first);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('$label is required')),
-                            );
-                            return;
-                          }
-                          if (invalid.isNotEmpty) {
-                            final first = invalid.first;
-                            final label = labelForKey(pageSchema, first);
-
-                            final c = form.control(first);
-                            String? reason;
-                            final errors = c.errors;
-                            if (errors
-                                .containsKey(ValidationMessage.required)) {
-                              reason = 'is required';
-                            } else if (errors
-                                .containsKey(ValidationMessage.pattern)) {
-                              reason = 'has an invalid format';
-                            } else if (errors
-                                .containsKey(ValidationMessage.number)) {
-                              reason = 'must be a number';
-                            } else if (errors
-                                .containsKey(ValidationMessage.min)) {
-                              reason = 'is below the minimum';
-                            } else if (errors
-                                .containsKey(ValidationMessage.max)) {
-                              reason = 'is above the maximum';
+                            for (final k in propKeys) {
+                              if (form.contains(k)) {
+                                final c = form.control(k);
+                                c.markAsTouched();
+                                c.updateValueAndValidity();
+                                if (!c.valid) invalid.add(k);
+                              } else {
+                                missing.add(k);
+                              }
                             }
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(reason == null
-                                      ? 'Please correct: $label'
-                                      : '$label $reason')),
+                            if (missing.isNotEmpty) {
+                              final first = missing.first;
+                              final label = labelForKey(pageSchema, first);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('$label is required')),
+                              );
+                              return;
+                            }
+                            if (invalid.isNotEmpty) {
+                              final first = invalid.first;
+                              final label = labelForKey(pageSchema, first);
+
+                              final c = form.control(first);
+                              String? reason;
+                              final errors = c.errors;
+                              if (errors
+                                  .containsKey(ValidationMessage.required)) {
+                                reason = 'is required';
+                              } else if (errors
+                                  .containsKey(ValidationMessage.pattern)) {
+                                reason = 'has an invalid format';
+                              } else if (errors
+                                  .containsKey(ValidationMessage.number)) {
+                                reason = 'must be a number';
+                              } else if (errors
+                                  .containsKey(ValidationMessage.min)) {
+                                reason = 'is below the minimum';
+                              } else if (errors
+                                  .containsKey(ValidationMessage.max)) {
+                                reason = 'is above the maximum';
+                              }
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text(reason == null
+                                        ? 'Please correct: $label'
+                                        : '$label $reason')),
+                              );
+                              return;
+                            }
+
+                            final values =
+                                JsonForms.getFormValues(form, pageSchema);
+                            final updatedPage = pageSchema.copyWith(
+                              properties: Map.fromEntries(
+                                pageSchema.properties?.entries.map(
+                                      (e) => values.containsKey(e.key)
+                                          ? MapEntry(
+                                              e.key,
+                                              e.value.copyWith(
+                                                  value: values[e.key]),
+                                            )
+                                          : MapEntry(e.key, e.value),
+                                    ) ??
+                                    [],
+                              ),
                             );
-                            return;
-                          }
 
-                          final values =
-                              JsonForms.getFormValues(form, pageSchema);
-                          final updatedPage = pageSchema.copyWith(
-                            properties: Map.fromEntries(
-                              pageSchema.properties?.entries.map(
-                                    (e) => values.containsKey(e.key)
-                                        ? MapEntry(
-                                            e.key,
-                                            e.value
-                                                .copyWith(value: values[e.key]),
-                                          )
-                                        : MapEntry(e.key, e.value),
-                                  ) ??
-                                  [],
-                            ),
-                          );
-
-                          context.read<FormsBloc>().add(
-                                FormsUpdateEvent(
-                                  schema: schemaObject.copyWith(
-                                    pages: Map.fromEntries(
-                                      schemaObject.pages.entries.map(
-                                        (entry) => MapEntry(
-                                          entry.key,
-                                          entry.key == widget.pageName
-                                              ? updatedPage
-                                              : entry.value,
+                            context.read<FormsBloc>().add(
+                                  FormsUpdateEvent(
+                                    schema: schemaObject.copyWith(
+                                      pages: Map.fromEntries(
+                                        schemaObject.pages.entries.map(
+                                          (entry) => MapEntry(
+                                            entry.key,
+                                            entry.key == widget.pageName
+                                                ? updatedPage
+                                                : entry.value,
+                                          ),
                                         ),
                                       ),
                                     ),
+                                    schemaKey: currentKey,
                                   ),
-                                  schemaKey: currentKey,
-                                ),
-                              );
+                                );
 
-                          final lastPage = isLastPage(
-                              schema: schemaObject, pageName: widget.pageName);
-                          if (!lastPage) {
-                            final keys = schemaObject.pages.keys.toList();
-                            final idx = keys.indexOf(widget.pageName);
-                            final next = (idx >= 0 && idx < keys.length - 1)
-                                ? keys[idx + 1]
-                                : null;
-                            if (next == null) {
-                              context.read<FormsBloc>().add(
-                                  FormsEvent.submit(schemaKey: currentKey));
-                            } else {
-                              context.router.push(AmcDynamicFormRoute(
-                                pageName: next,
-                                scheduledVisit: widget.scheduledVisit,
-                                schemaName: currentKey,
-                                origin: widget.origin,
-                              ));
+                            final lastPage = isLastPage(
+                                schema: schemaObject,
+                                pageName: widget.pageName);
+                            if (!lastPage) {
+                              final keys = schemaObject.pages.keys.toList();
+                              final idx = keys.indexOf(widget.pageName);
+                              final next = (idx >= 0 && idx < keys.length - 1)
+                                  ? keys[idx + 1]
+                                  : null;
+                              if (next == null) {
+                                context.read<FormsBloc>().add(
+                                    FormsEvent.submit(schemaKey: currentKey));
+                              } else {
+                                context.router.push(AmcDynamicFormRoute(
+                                  pageName: next,
+                                  scheduledVisit: widget.scheduledVisit,
+                                  schemaName: currentKey,
+                                  origin: widget.origin,
+                                ));
+                              }
+                              return;
                             }
-                            return;
-                          }
-                          final updatedSchema = schemaObject.copyWith(
-                            pages: Map.fromEntries(
-                              schemaObject.pages.entries.map(
-                                (entry) => MapEntry(
-                                  entry.key,
-                                  entry.key == widget.pageName
-                                      ? updatedPage
-                                      : entry.value,
+                            final updatedSchema = schemaObject.copyWith(
+                              pages: Map.fromEntries(
+                                schemaObject.pages.entries.map(
+                                  (entry) => MapEntry(
+                                    entry.key,
+                                    entry.key == widget.pageName
+                                        ? updatedPage
+                                        : entry.value,
+                                  ),
                                 ),
                               ),
-                            ),
-                          );
+                            );
 
-                          context.read<FormsBloc>().add(
-                                FormsUpdateEvent(
-                                    schema: updatedSchema,
-                                    schemaKey: currentKey),
-                              );
-                          await _finalizeAndReturn(
-                              schema: updatedSchema, schemaKey: currentKey);
+                            context.read<FormsBloc>().add(
+                                  FormsUpdateEvent(
+                                      schema: updatedSchema,
+                                      schemaKey: currentKey),
+                                );
+                            await _finalizeAndReturn(
+                                schema: updatedSchema, schemaKey: currentKey);
+                          } finally {
+                            if (mounted) {
+                              setState(() => _isNextLoading = false);
+                            }
+                          }
                         },
                         type: DigitButtonType.primary,
                         size: DigitButtonSize.large,
