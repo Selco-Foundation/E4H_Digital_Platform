@@ -499,15 +499,22 @@ const CreateAMC = () => {
         saveActivityDetails(data.activityUserAssignment);
         break;
       case 3:
-        dispatch(
-          populateResponsePage({
-            response: {},
-            message: t("PM_COMMON_AMC_CREATED"),
-            secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
-            onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
+        if (!file) {
+          setToast({
+            label: t("PM_TOAST_FACILITY_UPLOAD_MANDATORY"),
+            key: "error"
           })
-        );
-        history.push(`/${window?.contextPath}/employee/pm/response`);
+        } else {
+          dispatch(
+            populateResponsePage({
+              response: {},
+              message: t("PM_COMMON_AMC_CREATED"),
+              secondaryRedirectionLabel: t("PM_LABEL_GO_TO_PROJECT"),
+              onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
+            })
+          );
+          history.push(`/${window?.contextPath}/employee/pm/response`);
+        }
     }
   };
 
