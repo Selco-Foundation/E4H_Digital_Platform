@@ -58,6 +58,7 @@ public class AmcConfigurationService {
                     .toList();
             amcConfiguration.setAssignments(assignments);
             amcConfigurationEnrichment.enrichAmcConfigurationOnCreate(amcConfiguration, request.getRequestInfo());
+
             // Link the AMC_REVIEWER and AMC_STAFF to project
             if (amcConfiguration.getAssignments() != null && !amcConfiguration.getAssignments().isEmpty()) {
                 List<ProjectStaff> staffs = amcConfiguration.getAssignments().stream()
