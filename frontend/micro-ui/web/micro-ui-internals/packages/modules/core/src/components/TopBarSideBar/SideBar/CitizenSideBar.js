@@ -8,6 +8,7 @@ import SideBarMenu from "../../../config/sidebar-menu";
 import ChangeCity from "../../ChangeCity";
 import { defaultImage } from "../../utils";
 import StaticCitizenSideBar from "./StaticCitizenSideBar";
+import { useSelector } from "react-redux";
 
 
 const Profile = ({ info, stateName, t }) => {
@@ -83,6 +84,7 @@ export const CitizenSideBar = ({ isOpen, isMobile = false, toggleSidebar, onLogo
   const { stateInfo } = storeData || {};
   const user = Digit.UserService.getUser();
   const [search, setSearch] = useState("");
+  const filteredTenantContact = useSelector((state) => state.common.crmHelplineNumber);
 
   const { t } = useTranslation();
   const history = useHistory();
@@ -107,7 +109,6 @@ export const CitizenSideBar = ({ isOpen, isMobile = false, toggleSidebar, onLogo
   if (islinkDataLoading || isLoading) {
     return <Loader />;
   }
-  const filteredTenantContact = window?.globalConfigs?.getConfig("CRM_HELPLINE_NUMBER") || storeData?.tenants[0]?.contactNumber;
 
   let menuItems = [...SideBarMenu(t, closeSidebar, redirectToLoginPage, isEmployee, storeData, tenantId)];
   let profileItem;
@@ -132,21 +133,26 @@ export const CitizenSideBar = ({ isOpen, isMobile = false, toggleSidebar, onLogo
           onClick: onLogout,
         },
       },
-      {
-        text: (
-          <React.Fragment>
-            {t("CS_COMMON_HELPLINE")}
-            <div className="telephone" style={{ marginTop: "-10%" }}>
-              <div className="link">
-                <a href={`tel:${filteredTenantContact}`}>{filteredTenantContact}</a>
-              </div>
-            </div>
-          </React.Fragment>
-        ),
-        element: "Helpline",
-        icon: "Phone",
-      },
     ];
+    if (filteredTenantContact) {
+      menuItems = [
+        ...menuItems,
+        {
+          text: (
+            <React.Fragment>
+              {t("CS_COMMON_HELPLINE")}
+              <div className="telephone" style={{ marginTop: "-10%" }}>
+                <div className="link">
+                  <a href={`tel:${filteredTenantContact}`}>{filteredTenantContact}</a>
+                </div>
+              </div>
+            </React.Fragment>
+          ),
+          element: "Helpline",
+          icon: "Phone",
+        }
+      ]
+    }
   }
 
   let configEmployeeSideBar = {};
