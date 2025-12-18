@@ -60,12 +60,14 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
 
       switch (response?.status) {
         case 200:
+          setUpdatingWorkflow(false);
           setToast({
             key: "success",
             message: t("QC_BULK_APPROVE_SUCCESS"),
           });
           break;
         case 207:
+          setUpdatingWorkflow(false);
           setToast({
             key: "warning",
             message: t("QC_BULK_APPROVE_PARTIAL_SUCCESS"),
@@ -73,6 +75,7 @@ const SearchActionCentre = ({ t, projectQueryFilter, mainCheckBox, selectedFacil
           });
           break;
         default:
+          setUpdatingWorkflow(false);
           setToast({
             key: "error",
             message: t("QC_BULK_APPROVE_FAILED"),

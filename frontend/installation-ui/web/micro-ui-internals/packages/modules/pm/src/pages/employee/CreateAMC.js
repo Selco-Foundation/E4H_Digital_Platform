@@ -31,6 +31,7 @@ const CreateAMC = () => {
   const [toast, setToast] = useState(null);
   const [blockUI, setBlockUI] = useState(null);
   const [file, setFile] = useState(null);
+  const [uploadedValidFile, setUploadedValidFile] = useState(false);
   const [invalidDataError, setInvalidDataError] = useState(null);
   const [getFormData, setGetFormData] = useState(null);
   const [backAlert, setBackAlert] = useState(null);
@@ -133,6 +134,7 @@ const CreateAMC = () => {
     setBlockUI(true);
     try {
       await PMService.downloadAMCFacilityDataTemplate(createdProject.id, persistedFormData, t);
+      setBlockUI(false);
 
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_SUCCESS"),
@@ -141,6 +143,7 @@ const CreateAMC = () => {
 
     } catch (error) {
       console.error("Error downloading project facility data template", error);
+      setBlockUI(false);
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_ERROR"),
         key: "error"
@@ -157,18 +160,21 @@ const CreateAMC = () => {
     let uploadedFile;
     try {
       const response = await PMService.uploadAMCFacilityDataTemplate(chosenFile, createdProject.id, persistedFormData);
+      setBlockUI(false);
 
       if (response.errorCode === "INVALID_TEMPLATE") {
         setToast({
           key: "error",
           label: t("PM_TOAST_FACILITY_DATA_UPLOAD_TEMPLATE_ERROR")
         })
+        setUploadedValidFile(false);
         setInvalidDataError(null);
 
       } else if (response.errorCode === "INVALID_DATA") {
         setInvalidDataError({
           label: `${response.errorCount} ${t("PM_HEALTH_FACILITIES_VALIDATION_FAILED")}`
         })
+        setUploadedValidFile(false);
         uploadedFile = {
           name: response.file.name || chosenFile.name,
           data: response.file.data,
@@ -181,6 +187,7 @@ const CreateAMC = () => {
           label: t("PM_TOAST_FACILITY_DATA_UPLOAD_SUCCESS"),
         })
         setInvalidDataError(null);
+        setUploadedValidFile(true);
         uploadedFile = {
           name: response.file.name || chosenFile.name,
           data: response.file.data,
@@ -189,6 +196,8 @@ const CreateAMC = () => {
 
     } catch (e) {
       console.error("Error uploading template", e);
+      setBlockUI(false);
+      setUploadedValidFile(false);
       setToast({
         key: "error",
         label: t("PM_TOAST_FACILITY_DATA_UPLOAD_ERROR"),
@@ -499,7 +508,7 @@ const CreateAMC = () => {
         saveActivityDetails(data.activityUserAssignment);
         break;
       case 3:
-        if (!file) {
+        if (!(file && uploadedValidFile)) {
           setToast({
             label: t("PM_TOAST_FACILITY_UPLOAD_MANDATORY"),
             key: "error"
