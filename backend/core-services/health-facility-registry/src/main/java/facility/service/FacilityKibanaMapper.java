@@ -21,6 +21,7 @@ import java.util.Base64;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -140,18 +141,9 @@ public class FacilityKibanaMapper {
         }
 
         try {
-            // Build request body
-            Map<String, Object> requestBody = Map.of(
-                "apiId", "Rainmaker",
-                "ver", ".01",
-                "ts", null,
-                "action", "_search",
-                "did", "1",
-                "key", "",
-                "msgId", "20170310130900|en_IN",
-                "authToken", requestInfo != null && requestInfo.getAuthToken() != null 
-                    ? requestInfo.getAuthToken() : ""
-            );
+            // Boundary service expects a standard RequestInfo wrapper as body
+            Map<String, Object> requestBody =
+                    requestInfo != null ? Map.of("RequestInfo", requestInfo) : Map.of();
 
             // Build URI with query parameters
             String uri = UriComponentsBuilder.fromUriString(boundaryHost)
