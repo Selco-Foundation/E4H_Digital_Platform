@@ -74,6 +74,7 @@ public class FacilityKibanaMapper {
         FacilityKibanaIndex.FacilityKibanaIndexBuilder builder = FacilityKibanaIndex.builder()
                 .facilityId(facility.getFacilityId())
                 .name(facility.getFacilityName())
+                .phcName(new HashMap<>()) // Empty map to satisfy ES object type requirement
                 .phcType(facility.getFacilityType())
                 .tenantId(facility.getTenantId())
                 .tenantIdLocalized(facility.getTenantId())

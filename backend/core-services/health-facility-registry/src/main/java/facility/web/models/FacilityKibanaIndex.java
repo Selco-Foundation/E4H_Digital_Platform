@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
 /**
  * Model representing the facility data format expected by Kibana indexer
  */
@@ -20,6 +21,9 @@ public class FacilityKibanaIndex {
     
     @JsonProperty("name")
     private String name;
+
+    @JsonProperty("phcName")
+    private Map<String, String> phcName; // Optional - set to null if not needed
 
     @JsonProperty("phcType")
     private String phcType;
