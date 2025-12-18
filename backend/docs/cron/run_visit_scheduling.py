@@ -29,7 +29,7 @@ base_request_info = {
         "authToken": "cronjob-token",
         "userInfo": {
             "id": None,
-            "uuid": None,  # Will be set to UUID
+            "uuid": "c8ed7e51-c0e5-4552-a420-76eeeee1e1dc",
             "userName": "CRONJOB_VISIT_SCHEDULING",
             "name": "Cron Job - Visit Scheduling",
             "mobileNumber": "0000000000",
@@ -59,8 +59,6 @@ print(f"Processing tenant ID: {tenant_id}")
 # Deep copy to avoid modifying shared data
 request_info = json.loads(json.dumps(base_request_info))
 request_info["RequestInfo"]["ts"] = int(time.time() * 1000)
-request_info["RequestInfo"]["msgId"] = str(uuid.uuid4())
-request_info["RequestInfo"]["userInfo"]["uuid"] = str(uuid.uuid4())
 request_info["RequestInfo"]["userInfo"]["tenantId"] = tenant_id
 request_info["RequestInfo"]["userInfo"]["roles"] = [
     {**role, "tenantId": tenant_id} for role in role_templates
@@ -109,9 +107,12 @@ else:
             "tenantId": visit.get("tenantId"),
             "amcConfigurationId": visit.get("amcConfigurationId"),
             "facilityId": visit.get("facilityId"),
+            "projectId": visit.get("projectId"),
             "visitNumber": visit.get("visitNumber"),
             "scheduledDate": visit.get("scheduledDate"),
             "status": visit.get("status"),
+            "actualVisitDate": visit.get("actualVisitDate"),
+            "visitReport": visit.get("visitReport"),
             "assignments": visit.get("assignments", []),
             "additionalDetails": visit.get("additionalDetails")
         }
