@@ -21,7 +21,7 @@ public class KafkaProducerService {
     }
 
     public void sendIncident(String topic, Object incident) {
-//        kafkaTemplate.send(topic, incident);
+        kafkaTemplate.send(topic, incident);
         System.out.println("Sent incident: " + incident);
     }
 
