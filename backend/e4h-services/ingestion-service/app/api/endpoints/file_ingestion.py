@@ -2654,7 +2654,7 @@ async def bulk_ingest_amc_configurations(
             processed_users = []
             for user in users:
                 # Extract user ID - prefer 'id' (from full user object), then 'userId', then 'uuid'
-                user_id = user.get("id") or user.get("userId") or user.get("uuid")
+                user_id = user.get("uuid") or user.get("userId") or user.get("id")
 
                 if not user_id:
                     logger.warning(f"User object missing ID field: {user}")
