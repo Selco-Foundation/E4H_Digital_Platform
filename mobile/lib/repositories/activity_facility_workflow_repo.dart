@@ -60,23 +60,39 @@ class ActivityFacilityWorkflowRepository {
     return out;
   }
 
-  Future<List<Document>> collectWorkflowDocs({
+  Future<List<Document>> collectWorkflowDocsForRejection({
     required Isar isar,
     required String activityFacilityId,
   }) async {
     final out = <Document>[];
-    //   for (final type in types) {
     final workflow = await isar.cacheActivityFacilityWorkflows
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
+        .filter()
+        .statusEqualTo(
+            WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name)
         .findFirst();
 
     final docs = workflow?.workflow?.documents ?? [];
     out.addAll(docs);
-    //}
-    // }
     return out;
   }
+
+  // Future<void> deleteCacheActivityFacilityWorkflow({
+  //   required Isar isar,
+  //   required String activityFacilityId,
+  // }) async {
+  //   await isar.writeTxn(() async {
+  //     final col = isar.cacheActivityFacilityWorkflows;
+  //     final reports = await col
+  //         .where()
+  //         .activityFacilityIdEqualTo(activityFacilityId)
+  //         .findAll();
+  //     for (final report in reports) {
+  //       await col.delete(report.id);
+  //     }
+  //   });
+  // }
 
   Future<void> deleteWorkflowMediaDocs(
       {required Isar isar,

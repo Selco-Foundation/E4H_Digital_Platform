@@ -851,6 +851,9 @@ Future<void> _performSubmissionForActivityFacility({
       activityFacilityId: activityFacilityId,
       userType: userType,
     );
+    // await ActivityFacilityWorkflowRepository()
+    //     .deleteCacheActivityFacilityWorkflow(
+    //         isar: isar, activityFacilityId: activityFacilityId);
     return;
   } catch (e) {
     AppLogger.instance.info("e ${e.toString()}");
@@ -868,8 +871,8 @@ Future<void> _performRejectionForActivityFacility({
     const types = ['inverter', 'battery', 'panel'];
     final workflowDocuments = <Document>[];
 
-    final fromCache =
-        await ActivityFacilityWorkflowRepository().collectWorkflowDocs(
+    final fromCache = await ActivityFacilityWorkflowRepository()
+        .collectWorkflowDocsForRejection(
       isar: isar,
       activityFacilityId: activityFacilityId,
     );

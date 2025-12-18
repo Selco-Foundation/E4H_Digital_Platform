@@ -365,10 +365,10 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   final hasCompletion =
                       _existingReports.isNotEmpty || _pickedFiles.isNotEmpty;
 
-                  final notAllRejectionsChecked = (isRejectedByQc &&
-                      _rejectionReasons.isNotEmpty &&
-                      _selectedRejectionReasons.length !=
-                          _rejectionReasons.length);
+                  final notAllRejectionsChecked =
+                      (_rejectionReasons.isNotEmpty &&
+                          _selectedRejectionReasons.length !=
+                              _rejectionReasons.length);
 
                   final isDisabled = notAllRejectionsChecked ||
                       submitting ||
@@ -587,8 +587,9 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                             label: reason,
                             value: _selectedRejectionReasons.contains(reason),
                             onChanged: (value) {
+                              final checked = value ?? false;
                               setState(() {
-                                if (value == true)
+                                if (checked)
                                   _selectedRejectionReasons.add(reason);
                                 else
                                   _selectedRejectionReasons.remove(reason);
