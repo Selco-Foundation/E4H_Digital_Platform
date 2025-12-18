@@ -154,7 +154,7 @@ public class IncidentService {
                         }
 
                         log.info("Tickets sent to kafka {}", incidentStatusAgregation);
-//                        producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
+                        producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
                     }
                 }
             }
