@@ -102,6 +102,9 @@ public class IncidentService {
         String facilityId = extractAndEncodeFacilityCode(boundaryCode);
         List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(boundaryCode);
         List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
+        log.info("Status aggregation result size: {}", statusAgregations.size());
+        log.info("systemFunctional aggregation result size: {}", systemFunctional.size());
+
 
         if (statusAgregations != null && !statusAgregations.isEmpty()) {
 //            IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
