@@ -20,10 +20,7 @@ public class FacilityKibanaIndex {
     
     @JsonProperty("name")
     private String name;
-    
-    @JsonProperty("phcName")
-    private String phcName;
-    
+
     @JsonProperty("phcType")
     private String phcType;
     

@@ -74,7 +74,6 @@ public class FacilityKibanaMapper {
         FacilityKibanaIndex.FacilityKibanaIndexBuilder builder = FacilityKibanaIndex.builder()
                 .facilityId(facility.getFacilityId())
                 .name(facility.getFacilityName())
-                .phcName(facility.getFacilityName())
                 .phcType(facility.getFacilityType())
                 .tenantId(facility.getTenantId())
                 .tenantIdLocalized(facility.getTenantId())
