@@ -31,6 +31,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
 
       revalidateData();
       dispatch(clearRejectionReasons());
+      setUpdatingWorkflow(false);
       setToast({
         key: "success",
         message: t("QC_FACILITY_APPROVE_SUCCESS"),
@@ -38,6 +39,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
 
     } catch (error) {
       console.error("Error approving", error);
+      setUpdatingWorkflow(false);
       setToast({
         key: "error",
         message: t("QC_FACILITY_APPROVE_FAILURE"),
@@ -85,6 +87,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
 
       revalidateData();
       dispatch(clearRejectionReasons());
+      setUpdatingWorkflow(false);
       setToast({
         key: "success",
         message: t("QC_FACILITY_REJECT_SUCCESS"),
@@ -92,6 +95,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
 
     } catch (error) {
       console.error("Error rejecting", error);
+      setUpdatingWorkflow(false);
       setToast({
         key: "error",
         message: t("QC_FACILITY_REJECT_FAILURE"),
@@ -115,6 +119,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
 
       revalidateData();
       dispatch(clearRejectionReasons());
+      setUpdatingWorkflow(false);
       setToast({
         key: "success",
         message: t("QC_FACILITY_FLAG_FOR_QC_SUCCESS"),
@@ -122,6 +127,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
 
     } catch (error) {
       console.error("Error flagging for QC", error);
+      setUpdatingWorkflow(false);
       setToast({
         key: "error",
         message: t("QC_FACILITY_FLAG_FOR_QC_FAILURE"),
