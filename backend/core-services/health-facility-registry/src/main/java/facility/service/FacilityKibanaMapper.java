@@ -84,7 +84,8 @@ public class FacilityKibanaMapper {
                 .synced(false)
                 .totalTickets(0)
                 .openTickets(0)
-                .closedTickets(0);
+                .closedTickets(0)
+                .lastModifiedTime(System.currentTimeMillis());
 
         // Set geoPoint from address if available
         if (facility.getAddress() != null && 

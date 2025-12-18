@@ -77,5 +77,8 @@ public class FacilityKibanaIndex {
     
     @JsonProperty("boundary")
     private BoundaryInfo boundary;
+    
+    @JsonProperty("lastModifiedTime")
+    private Long lastModifiedTime;
 }
 
