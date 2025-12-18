@@ -43,11 +43,11 @@ public class IMAnalyticsController {
         }
     }
 
-//    @GetMapping("/update_phc")
-//    public String getTicketByTenantId() {
-//        incidentService.scriptUpdatePHCAgregation();
-//        return "Script done!";
-//    }
+    @GetMapping("/update_phc")
+    public String getTicketByTenantId() {
+        incidentService.scriptUpdatePHCAgregation();
+        return "Script done!";
+    }
 
     @PostMapping("/test_update_phc")
     public String sendDummyTopicIncident(@Valid @RequestBody IncidentRequest incidentRequest) {

@@ -125,8 +125,8 @@ public class IncidentService {
                 Map<String, Object> source = (Map<String, Object>) tickets.get("_source");
                 if (source != null) {
                     Map<String, Object> data = (Map<String, Object>) source.get("Data");
-                    Boundary boundary = objectMapper.convertValue(data.get("boundary"), Boundary.class);
                     if (data != null) {
+                        Boundary boundary = objectMapper.convertValue(data.get("boundary"), Boundary.class);
                         incidentStatusAgregation.setBlock((String) data.get("block"));
                         incidentStatusAgregation.setCode(String.valueOf(data.get("code")));
                         incidentStatusAgregation.setState((String) data.get("state"));
@@ -180,11 +180,12 @@ public class IncidentService {
     public void scriptUpdatePHCAgregation() {
         log.info("Script function called");
         try{
-            List<Map<String, Object>> listPHCs = esClient.getAllPHC(0, 6000);
+            List<Map<String, Object>> listPHCs = esClient.getAllPHC(0, 7000);
             log.info("List tickets size {}", listPHCs.size());
             if(listPHCs!=null && !listPHCs.isEmpty()){
                 for (Map<String, Object> phc : listPHCs){
                     Map<String, Object> data = (Map<String, Object>)phc.get("Data");
+                    Boundary boundary = objectMapper.convertValue(data.get("boundary"), Boundary.class);
                     String block = (String)data.get("block");
                     String code = String.valueOf(data.get("code"));
                     String state = (String)data.get("state");
@@ -196,17 +197,19 @@ public class IncidentService {
                     String tenantId = (String)data.get("tenantId");
                     String tenantIdLocalized = (String)data.get("tenantId_localized");
                     List<Double> geoPoint = (List<Double>) data.get("geo-point");
-                    Boundary existBoundaryCode = objectMapper.convertValue(data.get("boundary"), Boundary.class);
 
                     IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
                     incidentStatusAgregation.setBlock(block);
                     incidentStatusAgregation.setCode(code);
                     incidentStatusAgregation.setDistrict(district);
                     incidentStatusAgregation.setLive(isLive);
+                    Boolean synced = (Boolean) data.get("synced");
+                    incidentStatusAgregation.setSynced(Boolean.TRUE.equals(synced));
                     incidentStatusAgregation.setName(name);
-                    incidentStatusAgregation.setBoundary(existBoundaryCode);
+                    incidentStatusAgregation.setBoundary(boundary);
                     incidentStatusAgregation.setPhcType(phcType);
                     incidentStatusAgregation.setType(type);
+                    incidentStatusAgregation.setFacilityId((String) data.get("facilityId"));
                     incidentStatusAgregation.setTenantId(tenantId);
                     incidentStatusAgregation.setTenantIdLocalized(tenantIdLocalized);
                     incidentStatusAgregation.setGeoPoint(geoPoint);
@@ -214,8 +217,12 @@ public class IncidentService {
                     incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
                     incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
 
-                    List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(tenantId);
-                    List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(tenantId);
+                    if(boundary ==null || boundary.getFacilityCode()==null || boundary.getFacilityCode().isEmpty()){
+                        continue;
+                    }
+                    String boundaryCode = boundary.getFacilityCode();
+                    List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(boundaryCode);
+                    List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
                     if(statusAgregations !=null && !statusAgregations.isEmpty()){
                         IncidentStatusAgregation incidentStatusAgregationDB = statusAgregations.get(0);
                         incidentStatusAgregation.setTotalOccurences(incidentStatusAgregationDB.getTotalOccurences());
