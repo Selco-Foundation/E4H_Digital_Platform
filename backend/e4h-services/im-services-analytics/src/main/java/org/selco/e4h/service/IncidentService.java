@@ -120,6 +120,7 @@ public class IncidentService {
             incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
 
             Map<String, Object> tickets = esClient.getHFByBoundaryCode(facilityId);
+            log.info("Ticket with facilityID {} found: {}", facilityId, tickets);
             if (tickets != null && !tickets.isEmpty()) {
                 Map<String, Object> source = (Map<String, Object>) tickets.get("_source");
                 if (source != null) {
@@ -153,7 +154,7 @@ public class IncidentService {
                         }
 
                         log.info("Tickets sent to kafka {}", incidentStatusAgregation);
-                        producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
+//                        producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
                     }
                 }
             }
