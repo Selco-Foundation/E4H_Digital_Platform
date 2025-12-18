@@ -4,7 +4,7 @@ import { SubmitBar, Table } from "@egovernments/digit-ui-react-components";
 import { MobileNumber } from "@egovernments/digit-ui-react-components";
 import { CheckCircleOutline } from "@egovernments/digit-ui-svg-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
-import OrganizationUserDropdown from "./OrganizationUserDropdown";
+import OrganizationUserDropdown from "../OrganizationUserDropdown";
 import CustomDropdown from "../Custom/CustomDropdown";
 
 const ActivityDetails = ({

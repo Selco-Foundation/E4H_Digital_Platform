@@ -13,6 +13,7 @@ import DownloadTemplate from "./components/File/DownloadTemplate";
 import CustomUploadFile from "./components/File/CustomUploadFile";
 import ActivitySelector from "./components/FormComposer/ActivitySelector";
 import ActivityDetails from "./components/CreateFieldPlan/ActivityDetails";
+import AMCUserManager from "./components/CreateAMC/AMCUserManager";
 
 export const PMReducers = getRootReducer;
 
@@ -69,6 +70,7 @@ const componentsToRegister = {
   PMUploadFacilityData: CustomUploadFile,
   PMActivitySelector: ActivitySelector,
   PMActivityDetails: ActivityDetails,
+  PMAMCUserManager: AMCUserManager
 };
 
 export const initPMComponents = () => {

@@ -73,28 +73,50 @@ serviceMaps:
       queryMaps:
         - query: >
             UPDATE facility SET
-              facility_name = ?, facility_type = ?, facility_category = ?,
-              facility_subtype = ?, facility_ownership = ?, facility_region = ?,
-              addressId = ?, facility_details = ?, wf_status = ?,
-              additional_details = ?, is_active = ?, is_onm_ready = ?
+              facility_name = ?, facility_type = ?, facility_subtype = ?,
+              addressId = ?, facility_details = ?, additional_details = ?, is_onm_ready = ?
             WHERE id = ? AND tenant_id = ?;
-          basePath: $
+          basePath: $.FacilityUpdate
           jsonMaps:
-            - jsonPath: $.facilityName
-            - jsonPath: $.facilityType
-            - jsonPath: $.facilityCategory
-            - jsonPath: $.facilitySubtype
-            - jsonPath: $.facilityOwnership
-            - jsonPath: $.facilityRegion
-            - jsonPath: $.address.id
-            - jsonPath: $.facilityDetails
+            - jsonPath: $.FacilityUpdate.facility_name
+            - jsonPath: $.FacilityUpdate.facility_type
+            - jsonPath: $.FacilityUpdate.facility_subtype
+            - jsonPath: $.FacilityUpdate.address.addressId
+            - jsonPath: $.FacilityUpdate.facility_details
               type: JSON
               dbType: JSONB
-            - jsonPath: $.wfStatus
-            - jsonPath: $.additionalDetails
+            - jsonPath: $.FacilityUpdate.additionalDetails
               type: JSON
               dbType: JSONB
-            - jsonPath: $.isActive
-            - jsonPath: $.isOnmReady
-            - jsonPath: $.id
-            - jsonPath: $.tenantId
+            - jsonPath: $.FacilityUpdate.isOnmReady
+            - jsonPath: $.FacilityUpdate.facilityId
+            - jsonPath: $.FacilityUpdate.tenant_id
+
+    - version: 1.0
+      description: Updates a single FacilityAddress object
+      fromTopic: update-facility
+      isTransaction: true
+      queryMaps:
+        - query: >
+            UPDATE facility_address SET
+              doorNo = ?, latitude = ?, longitude = ?, locationAccuracy = ?,
+              type = ?, addressLine1 = ?, addressLine2 = ?, landmark = ?, city = ?,
+              pincode = ?, buildingName = ?, street = ?, localityCode = ?
+            WHERE id = ? AND tenant_id = ?;
+          basePath: $.FacilityUpdate.address
+          jsonMaps:
+            - jsonPath: $.FacilityUpdate.address.doorNo
+            - jsonPath: $.FacilityUpdate.address.latitude
+            - jsonPath: $.FacilityUpdate.address.longitude
+            - jsonPath: $.FacilityUpdate.address.locationAccuracy
+            - jsonPath: $.FacilityUpdate.address.type
+            - jsonPath: $.FacilityUpdate.address.addressLine1
+            - jsonPath: $.FacilityUpdate.address.addressLine2
+            - jsonPath: $.FacilityUpdate.address.landmark
+            - jsonPath: $.FacilityUpdate.address.city
+            - jsonPath: $.FacilityUpdate.address.pincode
+            - jsonPath: $.FacilityUpdate.address.buildingName
+            - jsonPath: $.FacilityUpdate.address.street
+            - jsonPath: $.FacilityUpdate.address.localityCode
+            - jsonPath: $.FacilityUpdate.address.addressId
+            - jsonPath: $.FacilityUpdate.address.tenantId

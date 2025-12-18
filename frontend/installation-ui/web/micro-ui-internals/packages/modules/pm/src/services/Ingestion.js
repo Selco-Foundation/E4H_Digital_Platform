@@ -99,4 +99,53 @@ export const IngestionService = {
       responseType: "blob",
     });
   },
+
+  downloadAMCFacilityDataTemplate : async (requestData) => {
+    const endpoint = "/ingestion-service/template/amcConfigurationTemplate";
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    await CustomRequest({
+      url : endpoint,
+      data : requestData,
+      userService : true,
+      method : "POST",
+      auth : true,
+      headers : headers,
+      fileDownload: true,
+      responseType: "blob",
+      defaultFilename: "download.xlsx"
+    });
+  },
+
+  validateAMCFacilityData: async (filledFacilityData) => {
+    const endpoint = "/ingestion-service/ingest/amcConfigurationValidateData";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : filledFacilityData,
+      userService : true,
+      method : "POST",
+      attachAuthHeaders: true,
+      auth : true,
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    })
+  },
+
+  uploadAMCFacilityData : async (validatedFacilityData) => {
+    const endpoint = "/ingestion-service/ingest/amcConfigurationBulkIngest";
+
+    return await CustomRequest({
+      url : endpoint,
+      data : validatedFacilityData,
+      userService : true,
+      method : "POST",
+      attachAuthHeaders: true,
+      auth : true,
+      attachRequestInfo: (data, RequestInfo) => {data.append("request_info", JSON.stringify(RequestInfo))},
+      responseType: "blob",
+    });
+  },
 }
