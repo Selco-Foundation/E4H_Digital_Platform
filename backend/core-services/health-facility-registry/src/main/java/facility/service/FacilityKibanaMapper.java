@@ -119,17 +119,41 @@ public class FacilityKibanaMapper {
         BoundaryCodes boundaryCodes = fetchBoundaryHierarchy(facility, requestInfo);
         
         // Set top-level fields from boundary hierarchy
+        String blockCode = null;
+        String districtCode = null;
+        String stateCode = null;
+        String countryCode = null;
         if (boundaryCodes != null) {
-            builder.block(boundaryCodes.getBlockCode())
-                   .district(boundaryCodes.getDistrictCode())
-                   .state(boundaryCodes.getStateCode());
+            blockCode = boundaryCodes.getBlockCode();
+            districtCode = boundaryCodes.getDistrictCode();
+            stateCode = boundaryCodes.getStateCode();
+            countryCode = boundaryCodes.getCountryCode();
+            builder.block(blockCode)
+                   .district(districtCode)
+                   .state(stateCode);
         }
         
-        // Build boundary info from fetched hierarchy
-        BoundaryInfo boundaryInfo = buildBoundaryInfo(facility, boundaryCodes);
+        // Build boundary info from fetched hierarchy (use extracted values)
+        BoundaryInfo boundaryInfo = buildBoundaryInfo(facility, boundaryCodes, blockCode, districtCode, stateCode, countryCode);
         builder.boundary(boundaryInfo);
+        
+        // Log boundary object for debugging
+        if (boundaryInfo != null) {
+            log.info("Boundary object built for facility {}: facilityCode={}, blockCode={}, districtCode={}, stateCode={}, countryCode={}",
+                    facility.getFacilityId(), boundaryInfo.getFacilityCode(), boundaryInfo.getBlockCode(), 
+                    boundaryInfo.getDistrictCode(), boundaryInfo.getStateCode(), boundaryInfo.getCountryCode());
+        } else {
+            log.warn("Boundary object is null for facility {}", facility.getFacilityId());
+        }
 
-        return builder.build();
+        FacilityKibanaIndex result = builder.build();
+        // Log the full boundary object in the result
+        if (result.getBoundary() != null) {
+            log.info("Boundary in FacilityKibanaIndex: {}", result.getBoundary());
+        } else {
+            log.warn("Boundary is null in FacilityKibanaIndex for facility {}", facility.getFacilityId());
+        }
+        return result;
     }
 
     /**
@@ -249,21 +273,32 @@ public class FacilityKibanaMapper {
 
     /**
      * Builds BoundaryInfo object from extracted codes
+     * Uses provided block/district/state values to ensure boundary object is populated
      */
-    private BoundaryInfo buildBoundaryInfo(Facility facility, BoundaryCodes codes) {
-        BoundaryInfo.BoundaryInfoBuilder builder =
-            BoundaryInfo.builder()
-                .facilityCode(codes != null && codes.getFacilityCode() != null 
-                    ? codes.getFacilityCode() : facility.getBoundaryCode());
+    private BoundaryInfo buildBoundaryInfo(Facility facility, BoundaryCodes codes,
+                                          String blockCode, String districtCode, String stateCode, String countryCode) {
+        BoundaryInfo.BoundaryInfoBuilder builder = BoundaryInfo.builder();
+        
+        // Set facilityCode (always available)
+        String facilityCodeValue = codes != null && codes.getFacilityCode() != null 
+            ? codes.getFacilityCode() : facility.getBoundaryCode();
+        builder.facilityCode(facilityCodeValue);
 
-        if (codes != null) {
-            builder.blockCode(codes.getBlockCode())
-                   .districtCode(codes.getDistrictCode())
-                   .stateCode(codes.getStateCode())
-                   .countryCode(codes.getCountryCode());
-        }
+        // Use codes from boundary hierarchy if available, otherwise use provided values
+        // This ensures boundary object always has values when top-level fields are populated
+        String finalBlockCode = codes != null && codes.getBlockCode() != null ? codes.getBlockCode() : blockCode;
+        String finalDistrictCode = codes != null && codes.getDistrictCode() != null ? codes.getDistrictCode() : districtCode;
+        String finalStateCode = codes != null && codes.getStateCode() != null ? codes.getStateCode() : stateCode;
+        String finalCountryCode = codes != null && codes.getCountryCode() != null ? codes.getCountryCode() : countryCode;
+        
+        builder.blockCode(finalBlockCode)
+               .districtCode(finalDistrictCode)
+               .stateCode(finalStateCode)
+               .countryCode(finalCountryCode);
 
-        return builder.build();
+        BoundaryInfo result = builder.build();
+        log.debug("Built BoundaryInfo: {}", result);
+        return result;
     }
 
     /**
