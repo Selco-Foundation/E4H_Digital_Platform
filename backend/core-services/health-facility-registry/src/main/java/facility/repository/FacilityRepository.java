@@ -3,6 +3,7 @@ package facility.repository;
 
 import facility.kafka.Producer;
 import facility.web.models.Facility;
+import facility.web.models.FacilityCreateRequest;
 import facility.web.models.FacilityKibanaIndex;
 import facility.web.models.FacilityUpdateRequest;
 import lombok.RequiredArgsConstructor;

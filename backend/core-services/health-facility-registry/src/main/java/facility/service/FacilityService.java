@@ -239,26 +239,23 @@ public class FacilityService {
             throw new IllegalArgumentException("facilityId and tenantId must be provided for update");
         }
 
-        // Check if the facility exists in DB
+        // Check if the facility exists in DB before attempting an update
         String checkSql = "SELECT COUNT(*) FROM facility WHERE id = ? AND tenant_id = ?";
         Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, update.getFacilityId(), update.getTenantId());
         if (count == null || count == 0) {
             return null; // facility not found
         }
 
-        // Build facility object from update request (user has sent the whole object)
-        Facility facility = Facility.builder()
-                .facilityId(update.getFacilityId())
-                .tenantId(update.getTenantId())
-                .facilityType(update.getFacilityType())
-                .facilitySubtype(update.getFacilitySubtype())
-                .facilityName(update.getFacilityName())
-                .address(update.getAddress())
-                .additionalDetails(update.getAdditionalDetails())
-                .boundaryCode(update.getBoundaryCode())
-                .facilityDetails(update.getFacilityDetails())
-                .isOnmReady(update.getIsOnmReady())
-                .build();
+        Facility facility = new Facility();
+        facility.setFacilityId(update.getFacilityId());
+        facility.setTenantId(update.getTenantId());
+        facility.setFacilityType(update.getFacilityType());
+        facility.setFacilitySubtype(update.getFacilitySubtype());
+        facility.setFacilityName(update.getFacilityName());
+        facility.setAddress(update.getAddress());
+        facility.setAdditionalDetails(update.getAdditionalDetails());
+        facility.setBoundaryCode(update.getBoundaryCode());
+        facility.setFacilityDetails(update.getFacilityDetails());
 
         // Validate with MDMS and boundary APIs
         facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
