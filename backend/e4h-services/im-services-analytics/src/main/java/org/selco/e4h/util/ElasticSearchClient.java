@@ -62,6 +62,10 @@ public class ElasticSearchClient {
         return fetchAllPHCs(phcIndex, from, size);
     }
 
+    public int getPHCDocsSize() {
+        return getPHCsSize(phcIndex);
+    }
+
     private List<Map<String, Object>> fetchTickets(String indexName, int from, int size, Boolean closedTickets) {
         String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
         Map<String, Object> query = buildRequiredTicketQuery(from, size, closedTickets);
@@ -86,6 +90,19 @@ public class ElasticSearchClient {
         } catch (Exception e) {
             log.error("Failed to fetch open tickets from index '{}'", indexName, e);
             return Collections.emptyList();
+        }
+    }
+
+    private int getPHCsSize(String indexName) {
+        String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
+        Map<String, Object> query = buildHFQuery(0, 1);
+        HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
+        try {
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            return parseESTotalHits(response);
+        } catch (Exception e) {
+            log.error("Failed to fetch open tickets from index '{}'", indexName, e);
+            return 0;
         }
     }
 
@@ -160,6 +177,19 @@ public class ElasticSearchClient {
         }
 
         return resultList;
+    }
+
+    private int parseESTotalHits(Map<String, Object> response) {
+        int totalIndex = 0;
+        if (response == null) return totalIndex;
+
+        Map<String, Object> hits = (Map<String, Object>) response.get("hits");
+        if (hits == null || !hits.containsKey("hits")) return totalIndex;
+
+        Map<String, Object> totalHits = (Map<String, Object>) hits.get("total");
+        totalIndex = (int)totalHits.get("value");
+
+        return totalIndex;
     }
 
     /**
