@@ -23,7 +23,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.Array;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -114,8 +113,20 @@ public class ActivityService {
                     }
                 }
 
-                if(activityFacility.getSpocUser() != null && !activityFacility.getSpocUser().isEmpty()){
-                    for (String userId : activityFacility.getSpocUser()){
+                if(activityFacility.getFieldStaffUsers() != null && !activityFacility.getFieldStaffUsers().isEmpty()){
+                    for (String userId : activityFacility.getFieldStaffUsers()){
+                        ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
+                                .activityFacilityId(activityFacility.getId())
+                                .userId(userId)
+                                .tenantId(activityFacility.getTenantId())
+                                .isDeleted(false)
+                                .build();
+                        activityFacilityUsers.add(facilityUser);
+                    }
+                }
+
+                if(activityFacility.getFieldSupervisorUsers() != null && !activityFacility.getFieldSupervisorUsers().isEmpty()){
+                    for (String userId : activityFacility.getFieldSupervisorUsers()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
                                 .activityFacilityId(activityFacility.getId())
                                 .userId(userId)

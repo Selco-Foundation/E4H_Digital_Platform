@@ -7,11 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.http.client.ServiceRequestClient;
 import org.egov.common.models.core.SearchResponse;
-import org.egov.common.models.project.Project;
-import org.egov.common.models.project.ProjectRequest;
-import org.egov.common.models.project.ProjectResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.validator.Validator;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
@@ -461,7 +457,8 @@ public class FieldPlannerService {
                                 .scheduledAt(fieldPlan.getStartDate())
                                 .activatedAt(fieldPlan.getStartDate())
                                 .reviewerUser(roleToIds.get("INSTALLATION_REVIEWER"))
-                                .spocUser(roleToIds.get("INSTALLATION_SPOC"))
+                                .fieldStaffUsers(roleToIds.get("INSTALLATION_SPOC"))
+                                .fieldSupervisorUsers(roleToIds.get("INSTALLATION_SPOC"))
                                 .build();
 
                         activityFacilities.add(activityFacility);
