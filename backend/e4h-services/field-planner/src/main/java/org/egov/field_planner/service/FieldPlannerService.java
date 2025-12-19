@@ -425,8 +425,9 @@ public class FieldPlannerService {
                     log.error("Activity Assignment is empty for the fieldplan");
                     throw new CustomException("FIELDPLAN", "Activity Assignment is empty for the fieldplan");
                 }
-                if(!hasSpocAndReviewer(activityAssignmentList)){
-                    throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and INSTALLATION_SPOC need to be assigned for the fieldplan");
+                // Check if at least one INSTALLATION_REVIEWER, one FIELD_STAFF and one FIELD_STAFF are already link to field plan
+                if(!hasRequiredUsers(activityAssignmentList)){
+                    throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and FIELD_STAFF and FIELD_SUPERVISOR need to be assigned for the fieldplan");
                 }
 
                 sendActivityAssignmentEmail(request, activityAssignmentList);
@@ -457,8 +458,8 @@ public class FieldPlannerService {
                                 .scheduledAt(fieldPlan.getStartDate())
                                 .activatedAt(fieldPlan.getStartDate())
                                 .reviewerUser(roleToIds.get("INSTALLATION_REVIEWER"))
-                                .fieldStaffUsers(roleToIds.get("INSTALLATION_SPOC"))
-                                .fieldSupervisorUsers(roleToIds.get("INSTALLATION_SPOC"))
+                                .fieldStaffUsers(roleToIds.get("FIELD_STAFF"))
+                                .fieldSupervisorUsers(roleToIds.get("FIELD_SUPERVISOR"))
                                 .build();
 
                         activityFacilities.add(activityFacility);
@@ -572,19 +573,23 @@ public class FieldPlannerService {
         log.info("All facility activities are added");
     }
 
-    public boolean hasSpocAndReviewer(List<ActivityAssignment> activityAssignmentList) {
-        boolean hasSpoc = false;
+    public boolean hasRequiredUsers(List<ActivityAssignment> activityAssignmentList) {
+        boolean hasFieldStaff = false;
+        boolean hasFieldSupervisor = false;
         boolean hasReviewer = false;
 
         for (ActivityAssignment assignment : activityAssignmentList) {
             Map<String, Object> roleMap = assignment.getRole();
-            if ("INSTALLATION_SPOC".equalsIgnoreCase((String) roleMap.get("code"))) {
-                hasSpoc = true;
+            if ("FIELD_STAFF".equalsIgnoreCase((String) roleMap.get("code"))) {
+                hasFieldStaff = true;
+            }
+            if ("FIELD_SUPERVISOR".equalsIgnoreCase((String) roleMap.get("code"))) {
+                hasFieldSupervisor = true;
             }
             if ("INSTALLATION_REVIEWER".equalsIgnoreCase((String) roleMap.get("code"))) {
                 hasReviewer = true;
             }
-            if (hasSpoc && hasReviewer) {
+            if (hasFieldStaff && hasFieldSupervisor && hasReviewer) {
                 return true;
             }
         }
