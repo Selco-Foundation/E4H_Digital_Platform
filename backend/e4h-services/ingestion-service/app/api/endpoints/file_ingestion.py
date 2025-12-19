@@ -2367,29 +2367,6 @@ async def validate_amc_configurations_excel_sheet(
         frequency_col = "AMC-Frequency" if required_columns else "amc-frequency"
         duration_col = "AMC-Duration" if required_columns else "amc-duration"
 
-        # First, validate that all non-empty rows have vendor, AMC frequency, and duration
-        missing_fields_rows = []
-        for index, row in df.iterrows():
-            missing_fields = []
-            vendor_name = str(row.get(vendor_col, "")).strip() if not pd.isna(row.get(vendor_col)) else ""
-            amc_frequency = str(row.get(frequency_col, "")).strip() if not pd.isna(row.get(frequency_col)) else ""
-            amc_duration = str(row.get(duration_col, "")).strip() if not pd.isna(row.get(duration_col)) else ""
-
-            if not vendor_name:
-                missing_fields.append("Vendor")
-            if not amc_frequency:
-                missing_fields.append("AMC frequency")
-            if not amc_duration:
-                missing_fields.append("AMC duration")
-
-            if missing_fields:
-                missing_fields_rows.append(f"Row {index + 2}: Missing {', '.join(missing_fields)}")
-
-        # If any rows are missing required fields, return the specific error message
-        if missing_fields_rows:
-            error_message = "Please ensure vendor, AMC frequency, and duration are selected for all listed assets before upload."
-            raise HTTPException(status_code=400, detail=error_message)
-
         # Validate each row - only check vendor, AMC frequency, and AMC duration
         error_count = 0
         for index, row in df.iterrows():
@@ -2402,12 +2379,10 @@ async def validate_amc_configurations_excel_sheet(
                 amc_duration = str(row.get(duration_col, "")).strip() if not pd.isna(row.get(duration_col)) else ""
 
                 # Check if fields are filled
-                if not vendor_name:
-                    validation_errors.append("Vendor is required")
-                if not amc_frequency:
-                    validation_errors.append("AMC frequency is required")
-                if not amc_duration:
-                    validation_errors.append("AMC duration is required")
+                if not vendor_name or not amc_frequency or not amc_duration:
+                    validation_errors.append(
+                        "Please ensure vendor, AMC frequency, and duration are selected for all listed assets before upload."
+                    )
 
                 # Set status and error
                 if validation_errors:
