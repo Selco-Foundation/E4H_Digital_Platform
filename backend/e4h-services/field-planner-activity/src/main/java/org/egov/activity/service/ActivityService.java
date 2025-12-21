@@ -101,6 +101,8 @@ public class ActivityService {
             for (ActivityFacility activityFacility : activityFacilities) {
                 log.info("processing {} valid entities", activityFacility);
                 activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
+
+                // Get reviewer users. Can see facility activity on UI directly by getting field plan first
                 if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
                     for (String userId : activityFacility.getReviewerUser()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
@@ -113,6 +115,7 @@ public class ActivityService {
                     }
                 }
 
+                // Get staff users. Can see facility once activity facility status = ASSIGNED_TO_FIELD_STAFF
                 if(activityFacility.getFieldStaffUsers() != null && !activityFacility.getFieldStaffUsers().isEmpty()){
                     for (String userId : activityFacility.getFieldStaffUsers()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
@@ -125,6 +128,7 @@ public class ActivityService {
                     }
                 }
 
+                // Get supervisor users. Can see facility once activity facility status = ASSIGNED_TO_FIELD_STAFF
                 if(activityFacility.getFieldSupervisorUsers() != null && !activityFacility.getFieldSupervisorUsers().isEmpty()){
                     for (String userId : activityFacility.getFieldSupervisorUsers()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
@@ -138,6 +142,12 @@ public class ActivityService {
                 }
             }
 
+            // remove Duplicate activity facility users if the same user is REVIEWER, STAFF and SUPERVISOR
+            Set<String> seenUsers = new HashSet<>();
+            activityFacilityUsers = activityFacilityUsers.stream().filter(a -> seenUsers.add(a.getUserId()))
+                    .toList();
+
+            // Create linked users, so that reviewer, staff and supervisor are linked to each activity facility. Reviewer can see list of activities on UI.
             if(activityFacilityUsers != null && !activityFacilityUsers.isEmpty()){
                 ActivityFacilityUserBulkRequest activityFacilityUserBulkRequest = ActivityFacilityUserBulkRequest.builder()
                         .requestInfo(request.getRequestInfo())
@@ -345,7 +355,7 @@ public class ActivityService {
                 activityConfiguration.getTenantId(), false, null);
 
         if (activityFacilities == null || activityFacilities.isEmpty()) {
-            throw new CustomException("FACILITY_NOT_FOUND", "Facility not found with ID: " + request.getActivityFacilityId());
+            throw new CustomException("FACILITY_NOT_FOUND", "Activity Facility not found with ID: " + request.getActivityFacilityId());
         }
 
         ActivityFacility existingActivityFacitlity = activityFacilities.get(0);
