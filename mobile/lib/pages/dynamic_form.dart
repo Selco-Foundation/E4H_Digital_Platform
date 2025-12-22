@@ -74,16 +74,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
   Future<void> _ensureSchemaLoaded() async {
     final bloc = context.read<FormsBloc>();
-    // final requestedKey = widget.schemaName ?? widget.uniqueIdentifier;
-    //
-    // if (requestedKey != null &&
-    //     bloc.state.cachedSchemas.containsKey(requestedKey)) {
-    //   bloc.add(FormsUpdateEvent(
-    //     schema: bloc.state.cachedSchemas[requestedKey]!,
-    //     schemaKey: requestedKey,
-    //   ));
-    //   return;
-    // }
 
     final baseKey = _baseSchemaKey;
 
@@ -152,7 +142,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
           schemaJson = transformed;
         }
       } catch (_) {
-        // fallback
       }
     }
 
@@ -166,11 +155,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     }
 
     final schemaObj = SchemaObject.fromJson(schemaJson);
-    // final cacheKey =
-    //     widget.schemaName ?? widget.uniqueIdentifier ?? schemaObj.name;
-    //
-    // await SecureStore().setRawSchemaDoc(cacheKey, Map.from(schemaJson));
-    // bloc.add(FormsUpdateEvent(schema: schemaObj, schemaKey: cacheKey));
 
     final cacheKey = _baseSchemaKey ?? schemaObj.name;
     _schemaOwnerByFacility[cacheKey] = widget.activityFacilityId;
@@ -210,42 +194,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     });
   }
 
-  // @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //   if (!_loadedOnce) {
-  //     _loadedOnce = true;
-  //     Future(() async {
-  //       await _ensureSchemaLoaded();
-  //       await _loadInitialKVForActivityFacility();
-  //       if (!mounted) return;
-  //       setState(() {
-  //         _lastActivityFacilityId = widget.activityFacilityId;
-  //       });
-  //     });
-  //     return;
-  //   }
-  //
-  //   if (_lastActivityFacilityId != widget.activityFacilityId) {
-  //     final formsBloc = context.read<FormsBloc>();
-  //     final currentKey = currentSchemaKey(
-  //         state: formsBloc.state,
-  //         pageName: widget.pageName,
-  //         schemaName: widget.schemaName,
-  //         uniqueIdentifier: widget.uniqueIdentifier);
-  //     if (currentKey != null) {
-  //       formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
-  //     }
-  //     Future(() async {
-  //       await _loadInitialKVForActivityFacility();
-  //       if (!mounted) return;
-  //       setState(() {
-  //         _lastActivityFacilityId = widget.activityFacilityId;
-  //       });
-  //     });
-  //   }
-  // }
-
   void _prepareFormForCurrentActivityFacility() {
     final formsBloc = context.read<FormsBloc>();
 
@@ -277,38 +225,6 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
     });
   }
 
-  // @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //
-  //   final formsBloc = context.read<FormsBloc>();
-  //   final currentKey = currentSchemaKey(
-  //     state: formsBloc.state,
-  //     pageName: widget.pageName,
-  //     schemaName: widget.schemaName,
-  //     uniqueIdentifier: widget.uniqueIdentifier,
-  //   );
-  //
-  //   if (_lastActivityFacilityId != widget.activityFacilityId) {
-  //     if (currentKey != null) {
-  //       formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
-  //     }
-  //     _activityFacilityInitialKV = const {};
-  //     _formSeed++;
-  //     _lastActivityFacilityId = widget.activityFacilityId;
-  //
-  //     Future(() async => _loadInitialKVForActivityFacility());
-  //   }
-  //
-  //   if (!_loadedOnce) {
-  //     _loadedOnce = true;
-  //     Future(() async {
-  //       await _ensureSchemaLoaded();
-  //       await _loadInitialKVForActivityFacility();
-  //     });
-  //   }
-  // }
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -316,12 +232,12 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
     if (!_loadedOnce) {
       _loadedOnce = true;
-      _prepareFormForCurrentActivityFacility(); // first open
+      _prepareFormForCurrentActivityFacility();
       return;
     }
 
     if (_lastActivityFacilityId != widget.activityFacilityId) {
-      _prepareFormForCurrentActivityFacility(); // switching facility
+      _prepareFormForCurrentActivityFacility();
     }
   }
 

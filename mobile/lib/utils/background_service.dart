@@ -747,11 +747,6 @@ Future<void> _performSubmissionForActivityFacility({
     final completionDocuments = <Document>[];
     for (final report in completionReports) {
       if (report.filePath.isEmpty) continue;
-      // if (((report.fileName ?? '')
-      //     .toUpperCase()
-      //     .contains(installationReportBom))) {
-      //   continue;
-      // }
       final fileName = (report.fileName ?? '').trim().isNotEmpty
           ? report.fileName!.trim()
           : report.filePath;
@@ -851,9 +846,6 @@ Future<void> _performSubmissionForActivityFacility({
       activityFacilityId: activityFacilityId,
       userType: userType,
     );
-    // await ActivityFacilityWorkflowRepository()
-    //     .deleteCacheActivityFacilityWorkflow(
-    //         isar: isar, activityFacilityId: activityFacilityId);
     return;
   } catch (e) {
     AppLogger.instance.info("e ${e.toString()}");

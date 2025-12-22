@@ -138,7 +138,6 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
           schemaJson = transformed;
         }
       } catch (_) {
-        // fallback
       }
     }
 
@@ -167,20 +166,9 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
         .read<SelectedAmcOriginBloc>()
         .add(SelectedAmcOriginEvent.select(widget.origin));
 
-    // final root = context.router.root;
-
-    // const PageRouteInfo targetRoute = AmcMediaUploadRoute();
-
-    // root.navigate(targetRoute);
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!context.mounted) return;
       context.router.push(const AmcMediaUploadRoute());
-      // final topName = root.current.name;
-      // final expected = targetRoute.routeName;
-      // if (topName == expected) {
-      //   root.replace(targetRoute);
-      // }
     });
   }
 
@@ -214,54 +202,16 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
     });
   }
 
-  // @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //   _formsBloc = context.read<FormsBloc>();
-  //   if (!_loadedOnce) {
-  //     _loadedOnce = true;
-  //     Future(() async {
-  //       await _ensureSchemaLoaded();
-  //       await _loadInitialKVForProject();
-  //       if (!mounted) return;
-  //       setState(() {
-  //         _lastProjectId = widget.scheduledVisit.id;
-  //       });
-  //     });
-  //     return;
-  //   }
-  //
-  //   if (_lastProjectId != widget.scheduledVisit.id) {
-  //     final currentKey = currentSchemaKey(
-  //         state: _formsBloc.state,
-  //         pageName: widget.pageName,
-  //         schemaName: widget.schemaName,
-  //         uniqueIdentifier: widget.uniqueIdentifier);
-  //     if (currentKey != null) {
-  //       _formsBloc.add(FormsEvent.clearForm(schemaKey: currentKey));
-  //     }
-  //     Future(() async {
-  //       await _ensureSchemaLoaded();
-  //       await _loadInitialKVForProject();
-  //       if (!mounted) return;
-  //       setState(() {
-  //         _lastProjectId = widget.scheduledVisit.id;
-  //       });
-  //     });
-  //   }
-  // }
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _formsBloc = context.read<FormsBloc>();
     if (!_loadedOnce) {
       _loadedOnce = true;
-      _prepareFormForCurrentVisit(); // first time this page is opened
+      _prepareFormForCurrentVisit();
       return;
     }
 
-    // If we ever reuse this State for another visit, prepare again
     if (_lastProjectId != widget.scheduledVisit.id) {
       _prepareFormForCurrentVisit();
     }

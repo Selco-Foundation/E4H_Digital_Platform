@@ -417,7 +417,6 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                   ],
                                 ),
                                 const SizedBox(height: spacer4),
-                                // if (userType == USER_TYPES.SUPERVISOR.name)
                                 Column(
                                   children: [
                                     DigitCard(

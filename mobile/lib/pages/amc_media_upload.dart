@@ -200,7 +200,6 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
       } catch (_) {}
     }
 
-    // match your existing page logic
     final processes = visit.processInstances;
     if (processes.isEmpty) return const <String>[];
 
@@ -246,9 +245,6 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
 
     final bool isReadOnlyMedia = currentOrigin != FormOrigin.overallSummary &&
         currentOrigin != FormOrigin.submitForApproval;
-
-    // final bool isReadOnlyMedia = origin != FormOrigin.overallSummary &&
-    //     origin != FormOrigin.submitForApproval;
 
     return MultiBlocListener(
       listeners: [
@@ -303,10 +299,6 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
           String footerText = isReadOnlyMedia
               ? "Back to Home"
               : context.translate(i18.common.coreCommonSubmit);
-          // if (origin != FormOrigin.overallSummary &&
-          //     origin != FormOrigin.submitForApproval) {
-          //   footerText = "Back to Home";
-          // }
 
           final mustPickRejection =
               currentOrigin == FormOrigin.submitForApproval;

@@ -278,7 +278,6 @@ class BomRepository {
       }
 
       final bom = (boms.first as Map<String, dynamic>);
-      print("bom data ${bom['data']}");
 
       bool savedValues = false;
       final data = (bom['data'] as Map<String, dynamic>?);
@@ -454,11 +453,9 @@ class BomRepository {
     required String activityFacilityId,
     required String userType,
   }) async {
-    // final entryKey = '$activityFacilityId::$userType';
     final rec = await isar.cacheActivityFacilityBomValues
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
-        // .entryKeyEqualTo(entryKey)
         .findFirst();
     if (rec == null || rec.dataJson.isEmpty) return null;
     try {
@@ -584,18 +581,6 @@ class AmcDynamicFormRepository {
         .findAll();
   }
 
-  // Future<void> deleteLocal({
-  //   required Isar isar,
-  //   required String scheduledVisitId,
-  //   required String schemaKey,
-  // }) async {
-  //   final rec = await getLocal(
-  //       isar: isar, scheduledVisitId: scheduledVisitId, schemaKey: schemaKey);
-  //   if (rec != null) {
-  //     await isar.writeTxn(() async => isar.cacheAmcDocs.delete(rec.id));
-  //   }
-  // }
-
   Future<void> deleteAllLocal(
       {required Isar isar, required String scheduledVisitId}) async {
     await isar.writeTxn(() async {
@@ -688,8 +673,6 @@ class AmcDynamicFormRepository {
       }
 
       String? filestoreId = _extractFilestoreId(response.data);
-
-      print("$filestoreId filestore");
 
       if (filestoreId == null || filestoreId.isEmpty) {
         throw Exception("filestoreId missing in response");

@@ -9,9 +9,7 @@ import '../workflow/workflow.dart';
 part 'scheduled_visit.freezed.dart';
 part 'scheduled_visit.g.dart';
 
-/// ------------------------------
-/// Root search response
-/// ------------------------------
+
 @freezed
 class ScheduledVisitSearchResponse with _$ScheduledVisitSearchResponse {
   const factory ScheduledVisitSearchResponse({
@@ -25,9 +23,7 @@ class ScheduledVisitSearchResponse with _$ScheduledVisitSearchResponse {
       _$ScheduledVisitSearchResponseFromJson(json);
 }
 
-/// ------------------------------
-/// AMC configuration
-/// ------------------------------
+
 @freezed
 class AmcConfiguration with _$AmcConfiguration {
   const factory AmcConfiguration({
@@ -80,9 +76,7 @@ class AmcAssignment with _$AmcAssignment {
       _$AmcAssignmentFromJson(json);
 }
 
-/// ------------------------------
-/// ScheduledVisit – main model
-/// ------------------------------
+
 @freezed
 class ScheduledVisit with _$ScheduledVisit {
   const factory ScheduledVisit({
@@ -110,9 +104,7 @@ class ScheduledVisit with _$ScheduledVisit {
       _$ScheduledVisitFromJson(json);
 }
 
-/// ------------------------------
-/// Visit report – reuses Document
-/// ------------------------------
+
 @freezed
 class ScheduledVisitReport with _$ScheduledVisitReport {
   const factory ScheduledVisitReport({
@@ -122,11 +114,7 @@ class ScheduledVisitReport with _$ScheduledVisitReport {
     @EpochDateTimeConverter() DateTime? submittedAt,
     String? otpReference,
     @EpochDateTimeConverter() DateTime? otpVerifiedAt,
-
-    /// Flexible { key: value, ... } map
     Map<String, dynamic>? responses,
-
-    /// Reuse Document from workflow model
     List<Document>? documents,
     Map<String, dynamic>? additionalDetails,
   }) = _ScheduledVisitReport;
@@ -135,9 +123,6 @@ class ScheduledVisitReport with _$ScheduledVisitReport {
       _$ScheduledVisitReportFromJson(json);
 }
 
-/// ------------------------------
-/// ScheduledVisit assignments
-/// ------------------------------
 @freezed
 class ScheduledVisitAssignment with _$ScheduledVisitAssignment {
   const factory ScheduledVisitAssignment({
@@ -154,9 +139,6 @@ class ScheduledVisitAssignment with _$ScheduledVisitAssignment {
       _$ScheduledVisitAssignmentFromJson(json);
 }
 
-/// ------------------------------
-/// Search criteria
-/// ------------------------------
 @freezed
 class ScheduledVisitSearchCriteria with _$ScheduledVisitSearchCriteria {
   const factory ScheduledVisitSearchCriteria({
@@ -190,9 +172,7 @@ class ScheduledVisitSearchCriteria with _$ScheduledVisitSearchCriteria {
   }
 }
 
-/// ------------------------------
-/// Epoch millis DateTime converter
-/// ------------------------------
+
 class EpochDateTimeConverter implements JsonConverter<DateTime?, Object?> {
   const EpochDateTimeConverter();
 
@@ -219,10 +199,7 @@ class EpochDateTimeConverter implements JsonConverter<DateTime?, Object?> {
   Object? toJson(DateTime? date) => date?.millisecondsSinceEpoch;
 }
 
-/// ------------------------------
-/// WorkflowFlexConverter – same
-/// as ActivityFacilityWorkflow
-/// ------------------------------
+
 class WorkflowFlexConverter implements JsonConverter<Workflow?, Object?> {
   const WorkflowFlexConverter();
 
@@ -252,17 +229,13 @@ class WorkflowFlexConverter implements JsonConverter<Workflow?, Object?> {
   Object? toJson(Workflow? value) => value?.toJson();
 }
 
-/// ------------------------------
-/// FacilityConverter – bridge
-/// Facility <-> JSON using fromMap/toMap
-/// ------------------------------
+
 class FacilityConverter
     implements JsonConverter<Facility, Map<String, dynamic>> {
   const FacilityConverter();
 
   @override
   Facility fromJson(Map<String, dynamic> json) {
-    // Ensure we have a proper Map<String, dynamic>
     final m = Map<String, dynamic>.from(json);
     return Facility.fromMap(m);
   }

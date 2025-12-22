@@ -661,10 +661,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   },
                                 ),
                                 const SizedBox(height: spacer4),
-                                // userState.maybeWhen(
-                                //   orElse: () => Container(),
-                                //   supervisor: () => Column(
-                                //     children: [
                                 DigitCard(
                                   children: [
                                     Text(
@@ -770,9 +766,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                           ]),
                                   ],
                                 ),
-                                //    ],
-                                //   ),
-                                // )
                               ],
                             ),
                           ),

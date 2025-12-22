@@ -1,3 +1,4 @@
+import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
@@ -44,7 +45,6 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
     emit(const AmcOtpState.submitLoading());
 
     try {
-      // input workflowDocument from either local which is from
       final localScheduleVisitRepo = ScheduledVisitRepository(isar);
       final cachedForm =
           await localScheduleVisitRepo.getCacheAmcInstallationForm(
@@ -53,8 +53,15 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       );
 
       List<Document>? workflowDocuments;
+      String fileStoreId = "";
       if (cachedForm != null) {
-        final fileStoreId = await getFilestoreUrl(cachedForm.filePath);
+        try {
+          fileStoreId = await getFilestoreUrl(cachedForm.filePath);
+        } catch (e) {
+          AppLogger.instance.error(title: "AMC Form", message: e.toString());
+          emit(const AmcOtpState.failure('File upload failed'));
+          return;
+        }
         final doc = Document(
             documentType: 'AMC_INSTALLATION_FORM',
             fileStore: fileStoreId,
@@ -65,11 +72,14 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
                 longitude: cachedForm.longitude));
 
         workflowDocuments = [doc];
-      } else if (event.scheduledVisit?.processInstances.first.documents !=
-              null &&
-          event.scheduledVisit!.processInstances.first.documents!.isNotEmpty) {
-        workflowDocuments =
-            event.scheduledVisit!.processInstances.first.documents;
+      } else {
+        final docs =
+            (event.scheduledVisit?.processInstances.isNotEmpty ?? false)
+                ? event.scheduledVisit!.processInstances.first.documents
+                : null;
+        if (docs != null && docs.isNotEmpty) {
+          workflowDocuments = docs;
+        }
       }
 
       await scheduledVisitRepo.updateVisitWorkflow(
@@ -82,16 +92,39 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
         workflowDocuments: workflowDocuments,
         visitDocuments: null,
       );
-      await PrefilledScheduledVisitRepository(isar).delete(
-          scheduledVisitId: event.visitId, userType: USER_TYPES.AMC.name);
-      await localScheduleVisitRepo.deleteInstallationForm(
-          scheduledVisitId: event.visitId);
-      await AmcDynamicFormRepository()
-          .delete(isar: isar, scheduledVisitId: event.visitId);
-      await AmcDynamicFormRepository()
-          .deleteAllLocal(isar: isar, scheduledVisitId: event.visitId);
-      await ScheduledVisitRepository(isar)
-          .deleteAmcMediaUploads(isar: isar, scheduledVisitId: event.visitId);
+      try {
+        await PrefilledScheduledVisitRepository(isar).delete(
+            scheduledVisitId: event.visitId, userType: USER_TYPES.AMC.name);
+      } catch (e) {
+        emit(const AmcOtpState.failure(
+            'Error clearing cache for prefilled scheduled visit.'));
+      }
+      try {
+        await localScheduleVisitRepo.deleteInstallationForm(
+            scheduledVisitId: event.visitId);
+      } catch (e) {
+        emit(const AmcOtpState.failure(
+            'Error clearing cache for Schedule visit form'));
+      }
+      try {
+        await AmcDynamicFormRepository()
+            .delete(isar: isar, scheduledVisitId: event.visitId);
+      } catch (e) {
+        emit(const AmcOtpState.failure('Error clearing cache for filled form'));
+      }
+      try {
+        await AmcDynamicFormRepository()
+            .deleteAllLocal(isar: isar, scheduledVisitId: event.visitId);
+      } catch (e) {
+        emit(const AmcOtpState.failure('Error clearing cache for form schema'));
+      }
+      try {
+        await ScheduledVisitRepository(isar)
+            .deleteAmcMediaUploads(isar: isar, scheduledVisitId: event.visitId);
+      } catch (e) {
+        emit(const AmcOtpState.failure(
+            'Error clearing cache for media uploads'));
+      }
       emit(const AmcOtpState.submitSuccess());
     } catch (e) {
       emit(const AmcOtpState.failure(

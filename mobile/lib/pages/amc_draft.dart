@@ -82,7 +82,7 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
             );
           }
         }
-        return false; // let scroll events keep bubbling
+        return false;
       },
       child: Scaffold(
         body: ScrollableContent(

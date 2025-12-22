@@ -13,7 +13,6 @@ class ScheduledVisitBloc
   final Isar isar;
   static const _pageSize = ScheduledVisitRepository.defaultPageSize;
 
-  /// 🔹 Bloc receives Isar and builds the repository itself.
   ScheduledVisitBloc(this.isar)
       : repository = ScheduledVisitRepository(isar),
         super(const ScheduledVisitState.initial()) {
@@ -78,7 +77,6 @@ class ScheduledVisitBloc
         ),
       );
     } catch (_) {
-      // Keep old list, just stop the loading-more spinner
       emit(current.copyWith(isLoadingMore: false));
     }
   }

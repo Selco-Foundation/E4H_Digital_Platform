@@ -51,9 +51,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   ActivityFacilityWorkflow? project;
   double? _latitude;
   double? _longitude;
-  // bool rejection1 = false;
-  // bool rejection2 = false;
-  // bool rejection3 = false;
   String? _system;
 
   bool _initialized = false;
@@ -256,8 +253,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
-
-//    final allChecked = rejection1 && rejection2 && rejection3;
     final isSupervisor = userType == USER_TYPES.SUPERVISOR.name;
 
     return Scaffold(
@@ -454,7 +449,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   ),
                   const SizedBox(height: spacer4),
                   const RejectedEditAssetSummary(),
-                  // if (userType == USER_TYPES.SUPERVISOR.name) ...[
                   const SizedBox(height: spacer4),
                   DigitCard(
                     children: [
@@ -540,7 +534,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                       ),
                     ],
                   ),
-                  // ],
                   const SizedBox(height: spacer4),
                   Text(
                     "Rejection List",
@@ -551,29 +544,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                   DigitCard(
                     children: [
                       SizedBox(width: context.width),
-                      // DigitCheckbox(
-                      //     label: 'Inverter Rejection reason 1',
-                      //     onChanged: (value) {
-                      //       setState(() {
-                      //         rejection1 = value;
-                      //       });
-                      //     }),
-                      // const SizedBox(height: spacer1),
-                      // DigitCheckbox(
-                      //     label: 'Inverter Rejection reason 2',
-                      //     onChanged: (value) {
-                      //       setState(() {
-                      //         rejection2 = value;
-                      //       });
-                      //     }),
-                      // const SizedBox(height: spacer1),
-                      // DigitCheckbox(
-                      //     label: 'Panel  Rejection reason 1',
-                      //     onChanged: (value) {
-                      //       setState(() {
-                      //         rejection3 = value;
-                      //       });
-                      //     }),
                       if (_rejectionReasons.isEmpty)
                         Text(
                           "No rejection reasons found",

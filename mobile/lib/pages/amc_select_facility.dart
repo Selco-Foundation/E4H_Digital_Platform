@@ -80,7 +80,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                 );
               }
             }
-            return false; // let scroll events continue bubbling
+            return false;
           },
           child: Scaffold(
             body: ScrollableContent(
@@ -241,7 +241,6 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                         _searchQuery = text;
                         _sortDirection = null;
                       });
-                      // _fetchProject();
                     },
                   ),
                 ),

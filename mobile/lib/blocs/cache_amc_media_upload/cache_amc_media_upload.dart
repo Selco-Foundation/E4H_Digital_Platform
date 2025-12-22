@@ -116,6 +116,9 @@ class CacheAmcMediaUploadBloc
 
       if (updatedEntry != null) {
         emit(CacheAmcMediaUploadState.updated(updatedEntry));
+      } else {
+        emit(const CacheAmcMediaUploadState.error(
+            'Entry not found after update.'));
       }
     } catch (e) {
       emit(CacheAmcMediaUploadState.error(e.toString()));

@@ -24,7 +24,6 @@ class PaginatedScheduledVisits {
   });
 }
 
-/// Remote-only repository (like ActivityFacilityRemoteRepository)
 class ScheduledVisitRemoteRepository {
   ScheduledVisitRemoteRepository();
 
@@ -37,7 +36,6 @@ class ScheduledVisitRemoteRepository {
   }) async {
     try {
       const searchPath = 'asset-amc/v1/visit/_search';
-      print('Criteria: ${criteria.toApiMap()}');
       final response = await dio.post(
         searchPath,
         queryParameters: {
@@ -49,8 +47,6 @@ class ScheduledVisitRemoteRepository {
           'searchCriteria': {
             'tenantId': envConfig.variables.tenantId,
             ...criteria.toApiMap(),
-            //'statuses': ['DRAFT'],
-            // "ids": ["540ed531-5f5a-413f-bd28-b99d2b2eab82"]
           },
         },
       );
@@ -447,18 +443,14 @@ class PrefilledScheduledVisitRepository {
     final hasPendingOtp = statuses
         .contains(WORKFLOW_STATUS_AMC_FIELD_STAFF.PENDING_OTP_APPROVAL.name);
 
-    // Start from what remote returned (assume already sorted as you want)
     var result = remoteVisits;
 
-    // 1️⃣ For SCHEDULED: exclude visits that are already prefilled
     if (hasScheduled && prefilledVisitIds.isNotEmpty) {
       result = result.where((v) {
         final id = v.id ?? '';
         if (id.isEmpty) return false;
 
         final isPrefilled = prefilledVisitIds.contains(id);
-
-        // Drop SCHEDULED + prefilled
         if (v.status == WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name &&
             isPrefilled) {
           return false;
@@ -467,8 +459,6 @@ class PrefilledScheduledVisitRepository {
       }).toList();
     }
 
-    // 2️⃣ For PENDING_OTP_APPROVAL:
-    //     prepend cached visits whose id is prefilled and not already in result
     if (hasPendingOtp && cachedPrefilledVisits.isNotEmpty) {
       final existingIds = <String>{};
       for (final v in result) {
@@ -494,7 +484,7 @@ class PrefilledScheduledVisitRepository {
         return bd.compareTo(ad);
       });
 
-      // 👇 put new cached ones on top, keep remote order intact
+      // put new cached ones on top, keep remote order intact
       result = [...newFromCache, ...result];
     }
 

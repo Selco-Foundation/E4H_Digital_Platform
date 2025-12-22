@@ -78,22 +78,6 @@ class ActivityFacilityWorkflowRepository {
     return out;
   }
 
-  // Future<void> deleteCacheActivityFacilityWorkflow({
-  //   required Isar isar,
-  //   required String activityFacilityId,
-  // }) async {
-  //   await isar.writeTxn(() async {
-  //     final col = isar.cacheActivityFacilityWorkflows;
-  //     final reports = await col
-  //         .where()
-  //         .activityFacilityIdEqualTo(activityFacilityId)
-  //         .findAll();
-  //     for (final report in reports) {
-  //       await col.delete(report.id);
-  //     }
-  //   });
-  // }
-
   Future<void> deleteWorkflowMediaDocs(
       {required Isar isar,
       required String activityFacilityId,
