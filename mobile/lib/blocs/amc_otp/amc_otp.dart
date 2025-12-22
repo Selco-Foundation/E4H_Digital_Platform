@@ -96,34 +96,41 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
         await PrefilledScheduledVisitRepository(isar).delete(
             scheduledVisitId: event.visitId, userType: USER_TYPES.AMC.name);
       } catch (e) {
-        emit(const AmcOtpState.failure(
-            'Error clearing cache for prefilled scheduled visit.'));
+        AppLogger.instance.error(
+            title: "Cleanup Error",
+            message: 'Error clearing cache for prefilled scheduled visit.');
       }
       try {
         await localScheduleVisitRepo.deleteInstallationForm(
             scheduledVisitId: event.visitId);
       } catch (e) {
-        emit(const AmcOtpState.failure(
-            'Error clearing cache for Schedule visit form'));
+        AppLogger.instance.error(
+            title: "Cleanup Error",
+            message: 'Error clearing cache for Schedule visit form');
       }
       try {
         await AmcDynamicFormRepository()
             .delete(isar: isar, scheduledVisitId: event.visitId);
       } catch (e) {
-        emit(const AmcOtpState.failure('Error clearing cache for filled form'));
+        AppLogger.instance.error(
+            title: "Cleanup Error",
+            message: 'Error clearing cache for filled form');
       }
       try {
         await AmcDynamicFormRepository()
             .deleteAllLocal(isar: isar, scheduledVisitId: event.visitId);
       } catch (e) {
-        emit(const AmcOtpState.failure('Error clearing cache for form schema'));
+        AppLogger.instance.error(
+            title: "Cleanup Error",
+            message: 'Error clearing cache for form schema');
       }
       try {
         await ScheduledVisitRepository(isar)
             .deleteAmcMediaUploads(isar: isar, scheduledVisitId: event.visitId);
       } catch (e) {
-        emit(const AmcOtpState.failure(
-            'Error clearing cache for media uploads'));
+        AppLogger.instance.error(
+            title: "Cleanup Error",
+            message: 'Error clearing cache for media uploads');
       }
       emit(const AmcOtpState.submitSuccess());
     } catch (e) {
