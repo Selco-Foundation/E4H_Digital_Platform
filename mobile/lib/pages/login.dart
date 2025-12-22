@@ -5,12 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 import 'package:recase/recase.dart';
-import 'package:selco/blocs/auth/authbloc.dart';
 
+import '../blocs/auth/authbloc.dart';
 import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/utils.dart';
 import '../widgets/navigation/navbar.dart';
 
 @RoutePage()
@@ -114,15 +115,29 @@ class _LoginPageState extends State<LoginPage> {
                           },
                           authenticated:
                               (accesstoken, refreshtoken, userRequest) {
-                            final hasInstallerRole = userRequest?.roles.any(
+                            final hasSupervisorRole = userRequest?.roles.any(
                                     (role) =>
                                         role.code ==
                                         'INSTALLATION_REPORT_PART_B_EDITOR') ??
                                 false;
-                            if (hasInstallerRole) {
+                            final hasAMCRole = userRequest?.roles.any(
+                                    (role) => role.code == 'AMC_FIELD_STAFF') ??
+                                false;
+                            if (hasAMCRole) {
+                              context
+                                  .read<UserTypeBloc>()
+                                  .add(UserTypeEvent.typeSelected(
+                                    USER_TYPES.AMC.name.toLowerCase(),
+                                  ));
+                              context.router.replace(
+                                  const AuthenticatedRouteWrapper(
+                                      children: const [AmcHomeRoute()]));
+                              return;
+                            } else if (hasSupervisorRole) {
                               context.read<UserTypeBloc>().add(
-                                  const UserTypeEvent.typeSelected(
-                                      "supervisor"));
+                                  UserTypeEvent.typeSelected(USER_TYPES
+                                      .SUPERVISOR.name
+                                      .toLowerCase()));
                             } else {
                               context.read<UserTypeBloc>().add(
                                   const UserTypeEvent.typeSelected("user"));

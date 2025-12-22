@@ -1,0 +1,97 @@
+{
+  "ResponseInfo": {
+    "apiId": null,
+    "ver": null,
+    "ts": null,
+    "resMsgId": "uief87324",
+    "msgId": null,
+    "status": "successful"
+  },
+  "mdms": [
+    {
+      "id": "d52a792e-b002-41a3-8db7-1dae1ef9ef62",
+      "tenantId": "in",
+      "schemaCode": "common-masters.SolutionDesignTypeAMCReport",
+      "uniqueIdentifier": "",
+      "data": {
+        "systemCode": "AC_OFF_GRID",
+        "amcReport": "AC_OFF_GRID"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705921801,
+        "lastModifiedTime": 1748705921801
+      }
+    },
+    {
+      "id": "d52a792e-b002-41a3-8db7-1dae1ef9ef62",
+      "tenantId": "in",
+      "schemaCode": "common-masters.SolutionDesignTypeBOMForms",
+      "uniqueIdentifier": "",
+      "data": {
+        "systemCode": "AC_OFF_GRID_THREE_PHASE",
+        "amcReport": "AC_OFF_GRID_THREE_PHASE"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705921801,
+        "lastModifiedTime": 1748705921801
+      }
+    },
+    {
+      "id": "d52a792e-b002-41a3-8db7-1dae1ef9ef62",
+      "tenantId": "in",
+      "schemaCode": "common-masters.SolutionDesignTypeBOMForms",
+      "uniqueIdentifier": "",
+      "data": {
+        "systemCode": "HYBRID_SINGLE_PHASE",
+        "amcReport": "HYBRID_SINGLE_PHASE"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705921801,
+        "lastModifiedTime": 1748705921801
+      }
+    },
+    {
+      "id": "d52a792e-b002-41a3-8db7-1dae1ef9ef62",
+      "tenantId": "in",
+      "schemaCode": "common-masters.SolutionDesignTypeBOMForms",
+      "uniqueIdentifier": "",
+      "data": {
+        "systemCode": "HYBRID_THREE_PHASE",
+        "amcReport": "HYBRID_THREE_PHASE"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705921801,
+        "lastModifiedTime": 1748705921801
+      }
+    },
+    {
+      "id": "d52a792e-b002-41a3-8db7-1dae1ef9ef62",
+      "tenantId": "in",
+      "schemaCode": "common-masters.SolutionDesignTypeBOMForms",
+      "uniqueIdentifier": "",
+      "data": {
+        "systemCode": "DC",
+        "amcReport": "DC"
+      },
+      "isActive": true,
+      "auditDetails": {
+        "createdBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "lastModifiedBy": "3059806b-3059-4724-8ae1-d3f4e12686ff",
+        "createdTime": 1748705921801,
+        "lastModifiedTime": 1748705921801
+      }
+    }
+  ]
+}

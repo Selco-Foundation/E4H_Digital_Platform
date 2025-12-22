@@ -29,6 +29,7 @@ public class FacilityService {
     private final FacilityQueryDao facilityQueryDao;
     private final BoundaryService boundaryService;
     private final Configuration configs;
+    private final FacilityKibanaMapper facilityKibanaMapper;
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -39,7 +40,8 @@ public class FacilityService {
             BoundaryValidator boundaryValidator,
             FacilityQueryDao facilityQueryDao,
             BoundaryService boundaryService,
-            Configuration configs
+            Configuration configs,
+            FacilityKibanaMapper facilityKibanaMapper
     ) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
@@ -50,6 +52,7 @@ public class FacilityService {
         this.facilityQueryDao = facilityQueryDao;
         this.boundaryService = boundaryService;
         this.configs = configs;
+        this.facilityKibanaMapper = facilityKibanaMapper;
     }
 
     /**
@@ -170,6 +173,13 @@ public class FacilityService {
             for (Facility facility : tenantFacilities) {
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
+                
+                // If facility is ONM ready, push to Kibana for indexing
+                if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+                    FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
+                    facilityRepository.pushToKibana(kibanaIndex);
+                }
+                
                 validatedFacilities.add(facility);
             }
         }
@@ -260,6 +270,54 @@ public class FacilityService {
         if (facility.getIsActive() == null) facility.setIsActive(true);
 
         facilityRepository.pushUpdateFacility(request);
+        
+        // If user sent isOnmReady = true, check if facility exists in Kibana, if not then push
+        if (Boolean.TRUE.equals(update.getIsOnmReady())) {
+            // Check if facility already exists in Kibana
+            boolean existsInKibana = facilityKibanaMapper.existsInKibana(
+                    update.getFacilityId(), 
+                    update.getTenantId(), 
+                    request.getRequestInfo()
+            );
+            
+            if (existsInKibana) {
+                log.info("Facility {} already exists in Kibana, skipping push", update.getFacilityId());
+                return facility;
+            }
+            
+            // Fetch full facility from DB only to get missing fields not in update request (like facilityCategory, facilityOwnership, etc.)
+            String fetchFullFacilitySql = "SELECT * FROM facility WHERE id = ? AND tenant_id = ?";
+            Facility existingFacility;
+            try {
+                existingFacility = jdbcTemplate.queryForObject(fetchFullFacilitySql, new Object[]{update.getFacilityId(), update.getTenantId()}, facilityRowMapper.rowMapper);
+            } catch (EmptyResultDataAccessException e) {
+                log.warn("Facility not found when trying to push to Kibana: {}", update.getFacilityId());
+                return facility;
+            }
+            
+            // Merge update request data with existing facility data (prioritize update values)
+            Facility facilityForKibana = Facility.builder()
+                    .facilityId(facility.getFacilityId())
+                    .tenantId(facility.getTenantId())
+                    .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
+                    .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
+                    .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
+                    .facilityCategory(existingFacility.getFacilityCategory()) // Not in update request, use existing
+                    .facilityOwnership(existingFacility.getFacilityOwnership()) // Not in update request, use existing
+                    .facilityRegion(existingFacility.getFacilityRegion()) // Not in update request, use existing
+                    .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
+                    .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
+                    .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
+                    .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
+                    .isOnmReady(true) // Set from update request
+                    .build();
+            
+            // Transform to Kibana index format and push
+            FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facilityForKibana, request.getRequestInfo());
+            facilityRepository.pushToKibana(kibanaIndex);
+            log.info("Facility {} pushed to Kibana successfully", update.getFacilityId());
+        }
+        
         return facility;
     }
 
