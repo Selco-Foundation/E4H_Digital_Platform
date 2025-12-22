@@ -9,7 +9,6 @@ import '../workflow/workflow.dart';
 part 'scheduled_visit.freezed.dart';
 part 'scheduled_visit.g.dart';
 
-
 @freezed
 class ScheduledVisitSearchResponse with _$ScheduledVisitSearchResponse {
   const factory ScheduledVisitSearchResponse({
@@ -22,7 +21,6 @@ class ScheduledVisitSearchResponse with _$ScheduledVisitSearchResponse {
   factory ScheduledVisitSearchResponse.fromJson(Map<String, dynamic> json) =>
       _$ScheduledVisitSearchResponseFromJson(json);
 }
-
 
 @freezed
 class AmcConfiguration with _$AmcConfiguration {
@@ -76,7 +74,6 @@ class AmcAssignment with _$AmcAssignment {
       _$AmcAssignmentFromJson(json);
 }
 
-
 @freezed
 class ScheduledVisit with _$ScheduledVisit {
   const factory ScheduledVisit({
@@ -103,7 +100,6 @@ class ScheduledVisit with _$ScheduledVisit {
   factory ScheduledVisit.fromJson(Map<String, dynamic> json) =>
       _$ScheduledVisitFromJson(json);
 }
-
 
 @freezed
 class ScheduledVisitReport with _$ScheduledVisitReport {
@@ -153,25 +149,32 @@ class ScheduledVisitSearchCriteria with _$ScheduledVisitSearchCriteria {
 
   const ScheduledVisitSearchCriteria._();
 
+  static const String TENANT_ID = 'tenantId';
+  static const String FACILITY_ID = 'facilityId';
+  static const String AMC_CONFIGURATION_ID = 'amcConfigurationId';
+  static const String STATUSES = 'statuses';
+  static const String VISIT_NUMBER = 'visitNumber';
+  static const String SCHEDULED_FROM = 'scheduledFrom';
+  static const String SCHEDULED_TO = 'scheduledTo';
+
   Map<String, dynamic> toApiMap() {
     final out = <String, dynamic>{};
-    if (tenantId != null) out['tenantId'] = tenantId;
-    if (facilityId != null) out['facilityId'] = facilityId;
+    if (tenantId != null) out[TENANT_ID] = tenantId;
+    if (facilityId != null) out[FACILITY_ID] = facilityId;
     if (amcConfigurationId != null) {
-      out['amcConfigurationId'] = amcConfigurationId;
+      out[AMC_CONFIGURATION_ID] = amcConfigurationId;
     }
-    if (statuses.isNotEmpty) out['statuses'] = statuses;
-    if (visitNumber != null) out['visitNumber'] = visitNumber;
+    if (statuses.isNotEmpty) out[STATUSES] = statuses;
+    if (visitNumber != null) out[VISIT_NUMBER] = visitNumber;
     if (scheduledFrom != null) {
-      out['scheduledFrom'] = scheduledFrom!.millisecondsSinceEpoch;
+      out[SCHEDULED_FROM] = scheduledFrom!.millisecondsSinceEpoch;
     }
     if (scheduledTo != null) {
-      out['scheduledTo'] = scheduledTo!.millisecondsSinceEpoch;
+      out[SCHEDULED_TO] = scheduledTo!.millisecondsSinceEpoch;
     }
     return out;
   }
 }
-
 
 class EpochDateTimeConverter implements JsonConverter<DateTime?, Object?> {
   const EpochDateTimeConverter();
@@ -198,7 +201,6 @@ class EpochDateTimeConverter implements JsonConverter<DateTime?, Object?> {
   @override
   Object? toJson(DateTime? date) => date?.millisecondsSinceEpoch;
 }
-
 
 class WorkflowFlexConverter implements JsonConverter<Workflow?, Object?> {
   const WorkflowFlexConverter();
@@ -228,7 +230,6 @@ class WorkflowFlexConverter implements JsonConverter<Workflow?, Object?> {
   @override
   Object? toJson(Workflow? value) => value?.toJson();
 }
-
 
 class FacilityConverter
     implements JsonConverter<Facility, Map<String, dynamic>> {
