@@ -6,13 +6,16 @@ import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:selco/utils/extensions.dart';
+
+import '../../utils/extensions.dart';
 
 class InboxReportCard extends StatelessWidget {
   final String? title;
   final String? status;
   final DateTime dateAssigned;
   final Function() onPress;
+  final bool? isAmc;
+  final bool? isOtp;
 
   const InboxReportCard({
     super.key,
@@ -20,6 +23,8 @@ class InboxReportCard extends StatelessWidget {
     this.status,
     required this.dateAssigned,
     required this.onPress,
+    this.isAmc = false,
+    this.isOtp = false,
   });
 
   @override
@@ -89,7 +94,11 @@ class InboxReportCard extends StatelessWidget {
           const SizedBox(height: spacer4),
           DigitButton(
               mainAxisSize: MainAxisSize.max,
-              label: 'View Summary',
+              label: !(isAmc!)
+                  ? 'View Summary'
+                  : isOtp!
+                      ? 'Submit For Approval'
+                      : 'View Report',
               onPressed: onPress,
               type: DigitButtonType.secondary,
               size: DigitButtonSize.large),

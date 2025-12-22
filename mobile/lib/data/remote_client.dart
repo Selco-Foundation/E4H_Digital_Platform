@@ -1,5 +1,4 @@
-// Importing necessary packages and files
-import "package:dio/dio.dart"; // Dio package for HTTP requests
+import "package:dio/dio.dart";
 
 import '../utils/envConfig.dart';
 import 'api_interceptors.dart';

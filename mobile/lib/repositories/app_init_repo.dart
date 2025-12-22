@@ -481,4 +481,33 @@ class AppInitRepo {
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
   }
+
+  Future<List<Map<String, dynamic>>> searchAMCFormConfigsRaw(
+      MdmsRequestModel mdmsRequestBody) async {
+    if (envConfig.variables.envType == EnvType.dev) {
+      return _loadLocalMdmsRaw('assets/mocks/mockAMCFormConfig.json');
+    }
+
+    final body = mdmsRequestBody.toJson();
+    final client = DioClient().dio;
+    final headers = <String, String>{
+      "Access-Control-Allow-Origin": "*",
+      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
+    };
+
+    final response = await client.post(
+      "egov-mdms-service/v2/_search",
+      data: body,
+      options: Options(headers: headers),
+    );
+
+    final raw = response.data['mdms'];
+    if (raw is! List) {
+      throw Exception('MDMS v2 response missing "mdms" array');
+    }
+    return raw
+        .cast<Map>()
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
 }

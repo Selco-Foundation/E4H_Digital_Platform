@@ -10,6 +10,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../blocs/auth/authbloc.dart';
 import '../../blocs/localization/app_localization.dart';
+import '../../blocs/user_type/user_type.dart';
 import '../../router/app_router.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 
@@ -48,7 +49,13 @@ class CustomDrawer extends StatelessWidget {
                 ),
                 onPressed: () {
                   Navigator.of(context, rootNavigator: true).pop();
-                  context.router.replaceAll([const HomeRoute()]);
+                  final userState = context.read<UserTypeBloc>().state;
+                  if (userState.maybeWhen(
+                      amc: () => true, orElse: () => false)) {
+                    context.router.replaceAll([const AmcHomeRoute()]);
+                  } else {
+                    context.router.replaceAll([const HomeRoute()]);
+                  }
                 },
                 icon: Icons.home,
               ),

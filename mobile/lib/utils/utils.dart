@@ -2,24 +2,34 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:digit_forms_engine/blocs/forms/forms.dart';
+import 'package:digit_forms_engine/models/property_schema/property_schema.dart'
+    as DigitPropertySchema;
+import 'package:digit_forms_engine/models/schema_object/schema_object.dart';
 import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/src/platform_file.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:reactive_forms/reactive_forms.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
+import '../blocs/scheduled_visit/scheduled_visit.dart';
 import '../data/app_shared_preferences.dart';
 import '../data/nosql/cache_completion_report.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/document/document.dart';
+import '../model/scheduled_visit/scheduled_visit.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
+import '../repositories/dynamic_form_repo.dart';
 
 getSelectedLanguage(Initialized state, int index) {
   if (AppSharedPreferences().getSelectedLocale == null) {
@@ -152,6 +162,14 @@ enum WORKFLOW_STATUS_FIELD_SUPERVISOR {
   PENDING_APPROVAL_FLAGGED_FOR_QC
 }
 
+enum WORKFLOW_STATUS_AMC_FIELD_STAFF {
+  SCHEDULED,
+  APPROVED,
+  REJECTED,
+  PENDING_OTP_APPROVAL,
+  PENDING_APPROVAL,
+}
+
 enum WORKFLOW_ACTIONS {
   CREATE_AND_SAVE_DRAFT,
   SUBMIT_REPORT_A,
@@ -168,7 +186,7 @@ enum REPORT_TYPES {
   ADD_MORE
 }
 
-enum USER_TYPES { SUPERVISOR, FIELD_STAFF }
+enum USER_TYPES { SUPERVISOR, FIELD_STAFF, AMC }
 
 enum ASSET_TYPES { BATTERY, INVERTER, PANEL }
 
@@ -184,24 +202,24 @@ bool isValidUuid(String value) {
   }
 }
 
+String normalizeReportNameType(String t) {
+  final s = (t).toLowerCase();
+  if (s.contains('installation_report_bom')) return 'installation_report_bom';
+  if (s.contains('installation_report')) return 'installation_report';
+  return s;
+}
+
 String? normalizedInstallPdfNameFromPath(
   String path,
   List<Document> docs,
 ) {
-  String normalizeType(String t) {
-    final s = (t).toLowerCase();
-    if (s.contains('installation_report_bom')) return 'installation_report_bom';
-    if (s.contains('installation_report')) return 'installation_report';
-    return s;
-  }
-
   final pathLower = path.toLowerCase();
   final byFsId = <String, String>{};
   for (final d in docs) {
     final fsid = (d.fileStore ?? '').toLowerCase();
     final dtype = (d.documentType ?? '').toLowerCase();
     if (fsid.isNotEmpty && dtype.isNotEmpty) {
-      byFsId[fsid] = normalizeType(dtype);
+      byFsId[fsid] = normalizeReportNameType(dtype);
     }
   }
 
@@ -419,6 +437,125 @@ Map<String, dynamic> deepMerge(
   return result;
 }
 
+Map<String, dynamic> subsetForPage(
+  SchemaObject schema,
+  String pageName,
+  Map<String, dynamic> kv,
+) {
+  final page = schema.pages[pageName];
+  if (page == null || page.properties == null) return const {};
+  final allowed = page.properties!.keys.toSet();
+  final out = <String, dynamic>{};
+  for (final entry in kv.entries) {
+    if (allowed.contains(entry.key)) {
+      out[entry.key] = entry.value;
+    }
+  }
+  return out;
+}
+
+Map<String, dynamic> extractKVFromRawDoc(Map<String, dynamic> raw) {
+  final acc = <String, dynamic>{};
+  dynamic root = raw;
+  if (root is Map && root['data'] is Map) {
+    root = root['data'];
+    if (root is Map && root['data'] is Map) {
+      root = root['data'];
+    }
+  }
+
+  void visit(dynamic node) {
+    if (node is Map) {
+      final fn = node['fieldName'];
+      if (fn is String && fn.isNotEmpty && node.containsKey('value')) {
+        acc[fn] = node['value'];
+      }
+      for (final v in node.values) {
+        visit(v);
+      }
+    } else if (node is List) {
+      for (final v in node) visit(v);
+    }
+  }
+
+  visit(root);
+  return acc;
+}
+
+String prettyLabel(String s) {
+  if (s.trim().isEmpty) return s;
+  final spaced = s.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
+  return spaced.replaceAllMapped(
+      RegExp(r'\b[a-z]'), (m) => m.group(0)!.toUpperCase());
+}
+
+String labelForKey(DigitPropertySchema.PropertySchema pageSchema, String key) {
+  final raw = pageSchema?.properties?[key]?.label ?? key;
+  return prettyLabel(raw);
+}
+
+dynamic coerceForControl(AbstractControl<Object?> control, dynamic v) {
+  if (v == null) return null;
+
+  if (control is FormControl<DateTime?>) {
+    if (v is DateTime) return v;
+    if (v is String) return DateTime.tryParse(v);
+    return null;
+  }
+
+  if (control is FormControl<int?>) {
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is String) return int.tryParse(v);
+    return null;
+  }
+
+  if (control is FormControl<double?>) {
+    if (v is double) return v;
+    if (v is int) return v.toDouble();
+    if (v is String) return double.tryParse(v);
+    return null;
+  }
+
+  if (control is FormControl<bool?>) {
+    if (v is bool) return v;
+    if (v is String) {
+      final s = v.toLowerCase().trim();
+      if (s == 'true' || s == '1' || s == 'yes') return true;
+      if (s == 'false' || s == '0' || s == 'no') return false;
+    }
+    if (v is num) return v != 0;
+    return null;
+  }
+
+  return v;
+}
+
+String? currentSchemaKey({
+  required FormsState state,
+  required String pageName,
+  String? schemaName,
+  String? uniqueIdentifier,
+}) {
+  final requested = schemaName ?? uniqueIdentifier;
+  if (requested != null && state.cachedSchemas.containsKey(requested)) {
+    return requested;
+  }
+  final active = state.activeSchemaKey;
+  if (active != null && state.cachedSchemas.containsKey(active)) {
+    return active;
+  }
+  for (final e in state.cachedSchemas.entries) {
+    if (e.value.pages.containsKey(pageName)) return e.key;
+  }
+  return state.cachedSchemas.isEmpty ? null : state.cachedSchemas.keys.first;
+}
+
+bool isLastPage({required SchemaObject schema, required String pageName}) {
+  final lastKey = schema.pages.keys.isEmpty ? null : schema.pages.keys.last;
+  return lastKey == pageName;
+}
+
 String basenameUtil(String path) {
   final norm = path.replaceAll('\\', '/');
   final idx = norm.lastIndexOf('/');
@@ -517,6 +654,26 @@ Future<List<PlatformFile>> copyPickedFilesLocally(
     );
   }
   return copied;
+}
+
+Future<Map<String, dynamic>> buildInitialAmcValues({
+  required BuildContext context,
+  required ScheduledVisit scheduledVisit,
+  required FormOrigin origin,
+}) async {
+  final userType = USER_TYPES.AMC.name;
+
+  final isar = context.read<ScheduledVisitBloc>().isar;
+
+  final formRepo = AmcDynamicFormRepository();
+  final initialValues = await formRepo.getInitialFormValues(
+    isar: isar,
+    scheduledVisitId: scheduledVisit.id!,
+    responsesFromModel: scheduledVisit.visitReport?.responses,
+    userType: userType,
+  );
+
+  return initialValues ?? {"faults_observed": "YES"};
 }
 
 class DioErrorParser {

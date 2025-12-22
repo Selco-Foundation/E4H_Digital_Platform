@@ -24,7 +24,7 @@ import '../blocs/user_type/user_type.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
-import '../repositories/activity_facility_workflow.dart';
+import '../repositories/activity_facility_workflow_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -155,11 +155,21 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     setState(() {
       _existingReports = combined.map((pf) {
         final path = pf.path!;
+        final type = inferFileType(path);
+        String name = p.basename(path);
+
+        final docs = projectWorkflow?.workflow?.documents ?? [];
+        if (type == 'pdf') {
+          final normalized = normalizedInstallPdfNameFromPath(path, docs);
+          if (normalized != null && normalized.isNotEmpty) {
+            name = normalized;
+          }
+        }
         return ExistingReport(
           isarId: null,
           filePath: path,
-          fileName: p.basename(path),
-          fileType: inferFileType(path),
+          fileName: name,
+          fileType: type,
         );
       }).toList();
       _pickedFiles = [];
@@ -651,131 +661,111 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   },
                                 ),
                                 const SizedBox(height: spacer4),
-                                userState.maybeWhen(
-                                  orElse: () => Container(),
-                                  supervisor: () => Column(
-                                    children: [
-                                      DigitCard(
-                                        children: [
-                                          Text(
-                                            'Installation Completion Report',
-                                            style: textTheme.headingM.copyWith(
-                                              color: theme
-                                                  .colorTheme.primary.primary2,
-                                            ),
-                                          ),
-                                          ...(isNewReport || isInboxReport
-                                              ? [
-                                                  Text(
-                                                    'Please fill out all sections of the report or upload relevant documents.',
-                                                    style: textTheme.bodyS
-                                                        .copyWith(
-                                                            color: theme
-                                                                .colorTheme
-                                                                .primary
-                                                                .primary2),
-                                                  ),
-                                                ]
-                                              : []),
-                                          ...[
-                                            BlocBuilder<AppInitialization,
-                                                InitState>(
-                                              builder: (context, state) {
-                                                return state.maybeWhen(
-                                                  orElse: () =>
-                                                      const SizedBox.shrink(),
-                                                  initialized: (
-                                                    appConfig,
-                                                    assetCount,
-                                                    assetType,
-                                                    system,
-                                                    warranty,
-                                                    brand,
-                                                    solutionDesign,
-                                                    solutionDesignBom,
-                                                  ) {
-                                                    return Column(
-                                                      children: [
-                                                        if (_system != null)
-                                                          BomButtonsSection(
-                                                            key: PageStorageKey(
-                                                                'bom-buttons-${_currentProjectId!}'),
-                                                            solutionDesignBom:
-                                                                solutionDesignBom,
-                                                            systemCode:
-                                                                _system!,
-                                                            projectId:
-                                                                _currentProjectId!,
-                                                            origin: isSubmittedReport
-                                                                ? FormOrigin
-                                                                    .submitted
-                                                                : FormOrigin
-                                                                    .overallSummary,
-                                                          ),
-                                                      ],
-                                                    );
-                                                  },
-                                                );
-                                              },
-                                            )
-                                          ],
-                                          ...(isNewReport || isInboxReport
-                                              ? [
-                                                  FileUploadWidget(
-                                                      allowedExtensions: const [
-                                                        "pdf",
-                                                        "jpg",
-                                                        "jpeg",
-                                                        "png"
-                                                      ],
-                                                      showPreview: true,
-                                                      allowMultiples: true,
-                                                      label: 'Upload',
-                                                      onFilesSelected: (files) {
-                                                        if (files.isEmpty) {
-                                                          return <PlatformFile,
-                                                              String?>{};
-                                                        }
-                                                        _ensureLocationLoaded();
-                                                        _handleUploads(files);
-
-                                                        return <PlatformFile,
-                                                            String?>{};
-                                                      }),
-                                                  ExistingFilesOrLoader(
-                                                    existingReports:
-                                                        _existingReports,
-                                                    workflowDocuments:
-                                                        projectWorkflow
-                                                                ?.workflow
-                                                                ?.documents ??
-                                                            [],
-                                                    readOnly: false,
-                                                    onRemove: (r) {
-                                                      setState(() {
-                                                        _existingReports
-                                                            ?.remove(r);
-                                                      });
-                                                    },
-                                                  ),
-                                                ]
-                                              : [
-                                                  ExistingFilesOrLoader(
-                                                    existingReports:
-                                                        _existingReports,
-                                                    workflowDocuments:
-                                                        projectWorkflow
-                                                                ?.workflow
-                                                                ?.documents ??
-                                                            [],
-                                                    readOnly: true,
-                                                  ),
-                                                ]),
-                                        ],
+                                DigitCard(
+                                  children: [
+                                    Text(
+                                      'Installation Completion Report',
+                                      style: textTheme.headingM.copyWith(
+                                        color:
+                                            theme.colorTheme.primary.primary2,
                                       ),
+                                    ),
+                                    ...(isNewReport || isInboxReport
+                                        ? [
+                                            Text(
+                                              'Please fill out all sections of the report or upload relevant documents.',
+                                              style: textTheme.bodyS.copyWith(
+                                                  color: theme.colorTheme
+                                                      .primary.primary2),
+                                            ),
+                                          ]
+                                        : []),
+                                    ...[
+                                      BlocBuilder<AppInitialization, InitState>(
+                                        builder: (context, state) {
+                                          return state.maybeWhen(
+                                            orElse: () =>
+                                                const SizedBox.shrink(),
+                                            initialized: (
+                                              appConfig,
+                                              assetCount,
+                                              assetType,
+                                              system,
+                                              warranty,
+                                              brand,
+                                              solutionDesign,
+                                              solutionDesignBom,
+                                            ) {
+                                              return Column(
+                                                children: [
+                                                  if (_system != null)
+                                                    BomButtonsSection(
+                                                      key: PageStorageKey(
+                                                          'bom-buttons-${_currentProjectId!}'),
+                                                      solutionDesignBom:
+                                                          solutionDesignBom,
+                                                      systemCode: _system!,
+                                                      projectId:
+                                                          _currentProjectId!,
+                                                      origin: isSubmittedReport
+                                                          ? FormOrigin.submitted
+                                                          : FormOrigin
+                                                              .overallSummary,
+                                                    ),
+                                                ],
+                                              );
+                                            },
+                                          );
+                                        },
+                                      )
                                     ],
-                                  ),
-                                )
+                                    ...(isNewReport || isInboxReport
+                                        ? [
+                                            FileUploadWidget(
+                                                allowedExtensions: const [
+                                                  "pdf",
+                                                  "jpg",
+                                                  "jpeg",
+                                                  "png"
+                                                ],
+                                                showPreview: true,
+                                                allowMultiples: true,
+                                                label: 'Upload',
+                                                onFilesSelected: (files) {
+                                                  if (files.isEmpty) {
+                                                    return <PlatformFile,
+                                                        String?>{};
+                                                  }
+                                                  _ensureLocationLoaded();
+                                                  _handleUploads(files);
+
+                                                  return <PlatformFile,
+                                                      String?>{};
+                                                }),
+                                            ExistingFilesOrLoader(
+                                              existingReports: _existingReports,
+                                              workflowDocuments: projectWorkflow
+                                                      ?.workflow?.documents ??
+                                                  [],
+                                              readOnly: false,
+                                              onRemove: (r) {
+                                                setState(() {
+                                                  _existingReports?.remove(r);
+                                                });
+                                              },
+                                            ),
+                                          ]
+                                        : [
+                                            ExistingFilesOrLoader(
+                                              existingReports: _existingReports,
+                                              workflowDocuments: projectWorkflow
+                                                      ?.workflow?.documents ??
+                                                  [],
+                                              readOnly: true,
+                                            ),
+                                          ]),
+                                  ],
+                                ),
                               ],
                             ),
                           ),

@@ -6,7 +6,9 @@ import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_activity_facility_bom_values.dart';
+import '../data/nosql/cache_amc_doc.dart';
 import '../data/nosql/cache_bom_doc.dart';
+import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
 import '../utils/envConfig.dart' as env;
@@ -100,6 +102,20 @@ class BomRepository {
     }
   }
 
+  Future<void> deleteAllBomDocs(
+      {required Isar isar, required String activityFacilityId}) async {
+    await isar.writeTxn(() async {
+      final col = isar.cacheBomDocs;
+      final rec = await col
+          .where()
+          .activityFacilityIdEqualTo(activityFacilityId)
+          .findAll();
+      for (final r in rec) {
+        await col.delete(r.id);
+      }
+    });
+  }
+
   Future<void> delete(
       {required Isar isar, required String activityFacilityId}) async {
     await isar.writeTxn(() async {
@@ -147,34 +163,6 @@ class BomRepository {
         }
       }
     });
-  }
-
-  Map<String, dynamic> extractKVFromRawDoc(Map<String, dynamic> raw) {
-    final acc = <String, dynamic>{};
-    dynamic root = raw;
-    if (root is Map && root['data'] is Map) {
-      root = root['data'];
-      if (root is Map && root['data'] is Map) {
-        root = root['data'];
-      }
-    }
-
-    void visit(dynamic node) {
-      if (node is Map) {
-        final fn = node['fieldName'];
-        if (fn is String && fn.isNotEmpty && node.containsKey('value')) {
-          acc[fn] = node['value'];
-        }
-        for (final v in node.values) {
-          visit(v);
-        }
-      } else if (node is List) {
-        for (final v in node) visit(v);
-      }
-    }
-
-    visit(root);
-    return acc;
   }
 
   Future<void> submitMergedForProject({
@@ -374,6 +362,21 @@ class BomRepository {
     }
   }
 
+  Future<String?> resolveBomUserType({
+    required Isar isar,
+    required String activityFacilityId,
+    required userType,
+  }) async {
+    final entryKey = '$activityFacilityId::$userType';
+    final rec = await isar.cacheActivityFacilityBomValues
+        .where()
+        .entryKeyEqualTo(entryKey)
+        .findFirst();
+
+    if (rec != null) return userType;
+    return null;
+  }
+
   Future<void> mergeKvForEntryKey({
     required Isar isar,
     required String projectId,
@@ -447,13 +450,12 @@ class BomRepository {
 
   Future<Map<String, dynamic>?> getProjectBomKV({
     required Isar isar,
-    required String projectId,
+    required String activityFacilityId,
     required String userType,
   }) async {
-    final entryKey = '$projectId::$userType';
     final rec = await isar.cacheActivityFacilityBomValues
         .where()
-        .entryKeyEqualTo(entryKey)
+        .activityFacilityIdEqualTo(activityFacilityId)
         .findFirst();
     if (rec == null || rec.dataJson.isEmpty) return null;
     try {
@@ -505,5 +507,354 @@ class BomRepository {
       }
     };
     return controller.stream;
+  }
+}
+
+class AmcDynamicFormRepository {
+  final Dio _dio = DioClient().dio;
+
+  AmcDynamicFormRepository();
+
+  Future<void> saveLocal({
+    required Isar isar,
+    required String scheduledVisitId,
+    required String schemaKey,
+    String? facilityId,
+    String? assignUserUuid,
+    required Map<String, dynamic> rawDocWithValues,
+    String? formName,
+  }) async {
+    await isar.writeTxn(() async {
+      final existing = await isar.cacheAmcDocs
+          .where()
+          .filter()
+          .scheduleVisitIdEqualTo(scheduledVisitId)
+          .schemaKeyEqualTo(schemaKey, caseSensitive: false)
+          .findFirst();
+
+      final now = DateTime.now().toUtc();
+
+      if (existing == null) {
+        final doc = CacheAmcDoc()
+          ..scheduleVisitId = scheduledVisitId
+          ..schemaKey = schemaKey
+          ..tenantId = envConfigs.variables.tenantId
+          ..facilityId = facilityId
+          ..assignUserUuid = assignUserUuid
+          ..formName = formName ?? schemaKey
+          ..dataMap = rawDocWithValues
+          ..updatedAt = now
+          ..isDirty = true;
+        await isar.cacheAmcDocs.put(doc);
+      } else {
+        existing.tenantId = envConfigs.variables.tenantId;
+        existing.facilityId = facilityId ?? existing.facilityId;
+        existing.assignUserUuid = assignUserUuid ?? existing.assignUserUuid;
+        existing.formName = (formName ?? existing.formName ?? schemaKey);
+        existing.dataMap = rawDocWithValues;
+        existing.updatedAt = now;
+        existing.isDirty = true;
+        await isar.cacheAmcDocs.put(existing);
+      }
+    });
+  }
+
+  Future<CacheAmcDoc?> getLocal({
+    required Isar isar,
+    required String scheduledVisitId,
+    required String schemaKey,
+  }) {
+    return isar.cacheAmcDocs
+        .where()
+        .filter()
+        .scheduleVisitIdEqualTo(scheduledVisitId)
+        .schemaKeyEqualTo(schemaKey, caseSensitive: false)
+        .findFirst();
+  }
+
+  Future<List<CacheAmcDoc>> getAllForScheduledVisit(
+      Isar isar, String scheduledVisitId) {
+    return isar.cacheAmcDocs
+        .where()
+        .filter()
+        .scheduleVisitIdEqualTo(scheduledVisitId)
+        .findAll();
+  }
+
+  Future<void> deleteAllLocal(
+      {required Isar isar, required String scheduledVisitId}) async {
+    await isar.writeTxn(() async {
+      final col = isar.cacheAmcDocs;
+      final rec = await col
+          .where()
+          .scheduleVisitIdEqualToAnySchemaKey(scheduledVisitId)
+          .findAll();
+      for (final r in rec) {
+        await col.delete(r.id);
+      }
+    });
+  }
+
+  Future<void> delete(
+      {required Isar isar, required String scheduledVisitId}) async {
+    await isar.writeTxn(() async {
+      final col = isar.cacheScheduleVisitFormValues;
+      final rec =
+          await col.where().scheduledVisitIdEqualTo(scheduledVisitId).findAll();
+      for (final r in rec) {
+        await col.delete(r.id);
+      }
+    });
+  }
+
+  Future<void> enrichScheduledVisitDocs({
+    required Isar isar,
+    required String scheduledVisitId,
+    String? tenantId,
+    String? facilityId,
+    String? assignUserUuid,
+  }) async {
+    final docs = await getAllForScheduledVisit(isar, scheduledVisitId);
+    if (docs.isEmpty) return;
+
+    await isar.writeTxn(() async {
+      for (final d in docs) {
+        bool changed = false;
+        if (tenantId != null && (d.tenantId.isEmpty)) {
+          d.tenantId = tenantId;
+          changed = true;
+        }
+        if (facilityId != null &&
+            (d.facilityId == null || d.facilityId!.isEmpty)) {
+          d.facilityId = facilityId;
+          changed = true;
+        }
+        if (assignUserUuid != null &&
+            (d.assignUserUuid == null || d.assignUserUuid!.isEmpty)) {
+          d.assignUserUuid = assignUserUuid;
+          changed = true;
+        }
+        if (changed) {
+          d.isDirty = true;
+          await isar.cacheAmcDocs.put(d);
+        }
+      }
+    });
+  }
+
+  Future<String> generateFormPdf({
+    required Isar isar,
+    required String scheduledVisitId,
+    required String userType,
+  }) async {
+    try {
+      final entryKey = '$scheduledVisitId::$userType';
+      final rec = await isar.cacheScheduleVisitFormValues
+          .where()
+          .entryKeyEqualTo(entryKey)
+          .findFirst();
+      if (rec == null) {
+        throw Exception("No Form values found for scheduled visit");
+      }
+      final Map<String, dynamic> bomData =
+          jsonDecode(rec.dataJson) as Map<String, dynamic>;
+
+      final tenantId = env.envConfig.variables.tenantId;
+      final body = {
+        "amc": bomData,
+      };
+
+      final path = "pdf-service/v1/_create?key=amc-report&tenantId=$tenantId";
+
+      final response = await _dio.post(path, data: body);
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception("Generate Form PDF failed: ${response.statusCode}");
+      }
+
+      String? filestoreId = _extractFilestoreId(response.data);
+
+      if (filestoreId == null || filestoreId.isEmpty) {
+        throw Exception("filestoreId missing in response");
+      }
+
+      return filestoreId;
+    } catch (e) {
+      AppLogger.instance.info("error $e");
+      throw Exception("Failed to generate BOM PDF filestoreId");
+    }
+  }
+
+  String? _extractFilestoreId(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      // New shape: filestoreIds: ["id1", ...]
+      final ids = data["filestoreIds"];
+      if (ids is List && ids.isNotEmpty) {
+        final first = ids.first;
+        if (first is String) return first;
+      }
+
+      // Old shape: filestoreId: "id1"
+      final single = data["filestoreId"];
+      if (single is String && single.isNotEmpty) {
+        return single;
+      }
+
+      return null;
+    }
+
+    if (data is List && data.isNotEmpty) {
+      // If backend now returns an array at top-level, use first element
+      return _extractFilestoreId(data.first);
+    }
+
+    if (data is String && data.trim().isNotEmpty) {
+      // If Dio gives you a raw JSON string
+      final parsed = jsonDecode(data);
+      return _extractFilestoreId(parsed);
+    }
+
+    return null;
+  }
+
+  Future<void> mergeKvForEntryKey({
+    required Isar isar,
+    required String scheduledVisitId,
+    required String userType,
+    required Map<String, dynamic> kvUpdate,
+  }) async {
+    final entryKey = '$scheduledVisitId::$userType';
+    final safeIncoming = jsonSafe(kvUpdate) as Map<String, dynamic>;
+
+    await isar.writeTxn(() async {
+      final existing = await isar.cacheScheduleVisitFormValues
+          .where()
+          .entryKeyEqualTo(entryKey)
+          .findFirst();
+
+      final existingMap = (existing?.dataJson.isNotEmpty ?? false)
+          ? (json.decode(existing!.dataJson) as Map<String, dynamic>)
+          : <String, dynamic>{};
+
+      final merged = deepMerge(existingMap, safeIncoming);
+      final jsonString = json.encode(jsonSafe(merged));
+
+      final rec = existing ?? CacheScheduleVisitFormValues()
+        ..scheduledVisitId = scheduledVisitId
+        ..userType = userType
+        ..entryKey = entryKey;
+
+      rec
+        ..dataJson = jsonString
+        ..updatedAt = DateTime.now();
+
+      await isar.cacheScheduleVisitFormValues.put(rec);
+    });
+  }
+
+  Future<bool> hasFormForSchema({
+    required Isar isar,
+    required String scheduledVisitId,
+    required String schemaKey,
+  }) async {
+    final existing = await isar.cacheAmcDocs
+        .where()
+        .scheduleVisitIdEqualToAnySchemaKey(scheduledVisitId)
+        .filter()
+        .schemaKeyEqualTo(schemaKey)
+        .findFirst();
+    return existing != null;
+  }
+
+  Future<String> resolveFormActionLabel({
+    required Isar isar,
+    required String scheduledVisitId,
+    required String schemaKey,
+    required FormOrigin origin,
+  }) async {
+    if (origin == FormOrigin.inboxSummary || origin == FormOrigin.submitted) {
+      return 'Start';
+    }
+    final exists = await hasFormForSchema(
+      isar: isar,
+      scheduledVisitId: scheduledVisitId,
+      schemaKey: schemaKey,
+    );
+
+    return exists ? 'Resume' : 'Start';
+  }
+
+  Future<Map<String, dynamic>?> getScheduledVisitFormKV({
+    required Isar isar,
+    required String scheduledVisitId,
+    required String userType,
+  }) async {
+    final entryKey = '$scheduledVisitId::$userType';
+    final rec = await isar.cacheScheduleVisitFormValues
+        .where()
+        .entryKeyEqualTo(entryKey)
+        .findFirst();
+    if (rec == null || rec.dataJson.isEmpty) return null;
+    try {
+      return jsonDecode(rec.dataJson) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Stream<void> watchFormForSchema({
+    required Isar isar,
+    required String scheduledVisitId,
+    required String schemaKey,
+  }) {
+    final q = isar.cacheAmcDocs
+        .where()
+        .scheduleVisitIdEqualToAnySchemaKey(scheduledVisitId)
+        .filter()
+        .schemaKeyEqualTo(schemaKey);
+    return q.watchLazy(fireImmediately: false);
+  }
+
+  Stream<void> watchFormForSchemas({
+    required Isar isar,
+    required String scheduledVisitId,
+    required List<String> schemaKeys,
+  }) {
+    final controller = StreamController<void>.broadcast();
+    final subs = <StreamSubscription<void>>[];
+
+    void addSub(String key) {
+      final sub = watchFormForSchema(
+        isar: isar,
+        scheduledVisitId: scheduledVisitId,
+        schemaKey: key,
+      ).listen((_) {
+        if (!controller.isClosed) controller.add(null);
+      });
+      subs.add(sub);
+    }
+
+    for (final key in schemaKeys.toSet()) {
+      addSub(key);
+    }
+
+    controller.onCancel = () {
+      for (final s in subs) {
+        s.cancel();
+      }
+    };
+    return controller.stream;
+  }
+
+  Future<Map<String, dynamic>?> getInitialFormValues({
+    required Isar isar,
+    required String scheduledVisitId,
+    required Map<String, dynamic>? responsesFromModel,
+    required String userType,
+  }) async {
+    final local = await getScheduledVisitFormKV(
+        isar: isar, scheduledVisitId: scheduledVisitId, userType: userType);
+    if (local != null) return local;
+    return responsesFromModel;
   }
 }

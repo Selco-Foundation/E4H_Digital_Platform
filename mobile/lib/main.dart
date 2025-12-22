@@ -12,8 +12,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
 import 'package:location/location.dart';
 
+import '../blocs/cache_amc_media_upload/cache_amc_media_upload.dart';
+import '../blocs/scheduled_visit/scheduled_visit.dart';
 import 'blocs/activity_facility/activity_facility.dart';
 import 'blocs/activity_facility_bom/activity_facility_bom.dart';
+import 'blocs/amc_otp/amc_otp.dart';
 import 'blocs/app_init/app_init.dart';
 import 'blocs/asset_rejection/asset_rejection.dart';
 import 'blocs/asset_submission/asset_submission.dart';
@@ -32,6 +35,7 @@ import 'blocs/cache_sync_record/cache_sync_record.dart';
 import 'blocs/localization/app_localization.dart';
 import 'blocs/localization/localization.dart';
 import 'blocs/overall_asset_summary/overall_asset_summary.dart';
+import 'blocs/scheduled_visit_submission/scheduled_visit_submission.dart';
 import 'blocs/user_type/user_type.dart';
 import 'data/app_shared_preferences.dart';
 import 'data/nosql/localization.dart';
@@ -89,10 +93,8 @@ class _MainAppState extends State<MainApp> {
                   AppInitialization()..add(const InitEvent.onLaunch()),
             ),
             BlocProvider(
-              create: (context) {
-                return AuthBloc()..add(const AuthEvent.attemptLoad());
-              },
-            ),
+                create: (context) =>
+                    AuthBloc()..add(const AuthEvent.attemptLoad())),
             BlocProvider(create: (context) => UserOtpBloc()),
             BlocProvider<ActivityFacilityBloc>(
                 create: (context) => ActivityFacilityBloc(widget.isar)),
@@ -123,6 +125,12 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(
                 create: (context) => ActivityFacilityBomBloc(widget.isar)),
             BlocProvider(create: (context) => RejectionBloc(widget.isar)),
+            BlocProvider(create: (context) => ScheduledVisitBloc(widget.isar)),
+            BlocProvider(
+                lazy: true, create: (context) => ScheduleVisitSubmitBloc()),
+            BlocProvider(
+                create: (context) => CacheAmcMediaUploadBloc(widget.isar)),
+            BlocProvider(create: (context) => AmcOtpBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(
             builder: (context, state) {

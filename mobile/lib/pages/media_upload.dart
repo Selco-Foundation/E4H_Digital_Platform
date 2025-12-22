@@ -118,43 +118,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
     }
   }
 
-  Future<void> _populateFromCache2(List<CacheMediaUpload> entries) async {
-    final images = <PlatformFile>[];
-    final videos = <PlatformFile>[];
-
-    final hasImageEntries = entries.any((e) => e.itemType == 'image');
-    final hasVideoEntries = entries.any((e) => e.itemType == 'video');
-
-    if (hasImageEntries || hasVideoEntries) {
-      setState(() {
-        _isImagesInitLoading = hasImageEntries;
-        _isVideosInitLoading = hasVideoEntries;
-      });
-    }
-
-    for (final e in entries) {
-      final file = await getCachedFile(e.filePath);
-      if (file == null) continue;
-      final pf = PlatformFile(
-        name: basename(file.path),
-        path: file.path,
-        size: await file.length(),
-      );
-      if (e.itemType == 'image') {
-        images.add(pf);
-      } else if (e.itemType == 'video') {
-        videos.add(pf);
-      }
-    }
-
-    setState(() {
-      _selectedImages = images;
-      _selectedVideos = videos;
-      if (hasImageEntries) _isImagesInitLoading = false;
-      if (hasVideoEntries) _isVideosInitLoading = false;
-    });
-  }
-
   Future<void> _populateFromCache(List<CacheMediaUpload> entries) async {
     final hasImageEntries = entries.any((e) => e.itemType == 'image');
     final hasVideoEntries = entries.any((e) => e.itemType == 'video');

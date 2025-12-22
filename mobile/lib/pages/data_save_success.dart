@@ -3,7 +3,6 @@ import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/molecules/panel_cards.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:selco/utils/utils.dart';
 
 import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/inbox_type/inbox_type.dart';
@@ -12,6 +11,7 @@ import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../router/app_router.dart';
+import '../utils/utils.dart';
 
 @RoutePage()
 class DataSaveSuccessPage extends StatefulWidget {

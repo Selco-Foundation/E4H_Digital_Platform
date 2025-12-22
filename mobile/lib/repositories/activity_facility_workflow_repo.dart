@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/data/nosql/cache_activity_facility_workflow.dart';
 
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
@@ -16,6 +17,7 @@ class ActivityFacilityWorkflowRepository {
     required Isar isar,
     required String activityFacilityId,
     required List<String> types,
+    required String userType,
   }) async {
     final out = <Document>[];
     for (final type in types) {
@@ -23,6 +25,7 @@ class ActivityFacilityWorkflowRepository {
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
+          .userTypeEqualTo(userType)
           .assetTypeEqualTo(type)
           .findAll();
 
@@ -55,6 +58,42 @@ class ActivityFacilityWorkflowRepository {
       }
     }
     return out;
+  }
+
+  Future<List<Document>> collectWorkflowDocsForRejection({
+    required Isar isar,
+    required String activityFacilityId,
+  }) async {
+    final out = <Document>[];
+    final workflow = await isar.cacheActivityFacilityWorkflows
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .filter()
+        .statusEqualTo(
+            WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name)
+        .findFirst();
+
+    final docs = workflow?.workflow?.documents ?? [];
+    out.addAll(docs);
+    return out;
+  }
+
+  Future<void> deleteWorkflowMediaDocs(
+      {required Isar isar,
+      required String activityFacilityId,
+      required String userType}) async {
+    await isar.writeTxn(() async {
+      final col = isar.cacheMediaUploads;
+      final reports = await col
+          .where()
+          .activityFacilityIdEqualTo(activityFacilityId)
+          .filter()
+          .userTypeEqualTo(userType)
+          .findAll();
+      for (final report in reports) {
+        await col.delete(report.id);
+      }
+    });
   }
 
   Future<String> getActivityFacilitySystem({

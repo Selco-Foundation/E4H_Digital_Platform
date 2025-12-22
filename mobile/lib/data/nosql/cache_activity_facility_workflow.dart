@@ -1,6 +1,6 @@
 import 'package:isar/isar.dart';
-import 'package:selco/data/nosql/workflow_audit_details.dart';
 
+import '../../data/nosql/workflow_audit_details.dart';
 import '../../model/activity_facility/activity_facility.dart';
 import '../../model/comment/comment.dart';
 import '../../model/document/document.dart';

@@ -7,113 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/activity_facility/activity_facility.dart';
-import '../../data/secure_storage/secureStore.dart';
-import '../../repositories/bom_repo.dart';
+import '../../blocs/user_type/user_type.dart';
+import '../../repositories/dynamic_form_repo.dart';
 import '../../router/app_router.dart';
 import '../../utils/utils.dart';
 import '../summary/summary.dart';
-
-const _kBomSystemKey = 'bom_system_code';
-const _kDefaultSystem = 'DC';
-
-const _systemOptions = <String>[
-  'AC_OFF_GRID',
-  'AC_OFF_GRID_THREE_PHASE',
-  'HYBRID_RMS_SINGLE_PHASE',
-  'HYBRID_RMS_THREE_PHASE',
-  'DC',
-];
-
-String _prettySystemLabel(String v) {
-  switch (v) {
-    case 'AC_OFF_GRID':
-      return 'AC Off-Grid';
-    case 'AC_OFF_GRID_THREE_PHASE':
-      return 'AC Off-Grid (3φ)';
-    case 'HYBRID_RMS_SINGLE_PHASE':
-      return 'Hybrid RMS (1φ)';
-    case 'HYBRID_RMS_THREE_PHASE':
-      return 'Hybrid RMS (3φ)';
-    case 'DC':
-      return 'DC';
-    default:
-      return v;
-  }
-}
-
-class BomSystemSelector extends StatefulWidget {
-  const BomSystemSelector({
-    super.key,
-    required this.onChanged,
-  });
-
-  final void Function(String systemCode) onChanged;
-
-  @override
-  State<BomSystemSelector> createState() => _BomSystemSelectorState();
-}
-
-class _BomSystemSelectorState extends State<BomSystemSelector>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  String _selected = _kDefaultSystem;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    Future(() async {
-      final stored = await SecureStore().storage.read(key: _kBomSystemKey);
-      final resolved = (stored != null && _systemOptions.contains(stored))
-          ? stored
-          : _kDefaultSystem;
-      if (!mounted) return;
-      setState(() {
-        _selected = resolved;
-        _loading = false;
-      });
-      widget.onChanged(resolved);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context); // keep-alive
-
-    if (_loading) {
-      return const SizedBox.shrink();
-    }
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: DropdownButtonFormField<String>(
-        value: _selected,
-        isDense: true,
-        isExpanded: false,
-        decoration: const InputDecoration(
-          labelText: 'System',
-          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          border: OutlineInputBorder(),
-        ),
-        items: _systemOptions
-            .map(
-              (code) => DropdownMenuItem<String>(
-                value: code,
-                child: Text(_prettySystemLabel(code)),
-              ),
-            )
-            .toList(),
-        onChanged: (val) async {
-          if (val == null) return;
-          setState(() => _selected = val);
-          await SecureStore().storage.write(key: _kBomSystemKey, value: val);
-          widget.onChanged(val); // parent will refresh BOM list
-        },
-      ),
-    );
-  }
-}
 
 class BomButtonsSection extends StatefulWidget {
   const BomButtonsSection({
@@ -247,6 +145,13 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
     }
   }
 
+  String _resolveUserType() {
+    return context.read<UserTypeBloc>().state.maybeWhen(
+          supervisor: () => USER_TYPES.SUPERVISOR.name,
+          orElse: () => USER_TYPES.FIELD_STAFF.name,
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -266,12 +171,14 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
             mainAxisSize: MainAxisSize.max,
             label: '${m.actionWord} ${m.label}',
             onPressed: () async {
+              final userType = _resolveUserType();
               final result = await context.router.push(
                 DynamicFormsRoute(
                   pageName: m.pageName,
                   schemaName: m.schemaName,
                   projectId: widget.projectId,
                   origin: widget.origin,
+                  userType: userType,
                 ),
               );
               if (!mounted) return;

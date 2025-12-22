@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:selco/data/nosql/cache_activity_facility_bom_values.dart';
-import 'package:selco/data/nosql/cache_submission_job.dart';
 
 import '../data/nosql/cache_activity_facility_asset.dart';
+import '../data/nosql/cache_activity_facility_bom_values.dart';
 import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
+import '../data/nosql/cache_amc_doc.dart';
+import '../data/nosql/cache_amc_installation_form.dart';
+import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_completion_report.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_prefilled_activity_facility.dart';
+import '../data/nosql/cache_prefilled_scheduled_visit.dart';
+import '../data/nosql/cache_schedule_visit_form_values.dart';
+import '../data/nosql/cache_scheduled_visit.dart';
 import '../data/nosql/cache_specification.dart';
+import '../data/nosql/cache_submission_job.dart';
 import '../data/nosql/cache_sync_record.dart';
 import '../data/nosql/cache_unsubmitted_activity_facility.dart';
 import '../data/nosql/localization.dart';
@@ -61,6 +67,12 @@ class Constants {
           CachePrefilledActivityFacilitySchema,
           CacheActivityFacilityBomValuesSchema,
           CacheSubmissionJobSchema,
+          CacheScheduledVisitSchema,
+          CacheAmcDocSchema,
+          CacheAmcMediaUploadSchema,
+          CacheScheduleVisitFormValuesSchema,
+          CachePrefilledScheduledVisitSchema,
+          CacheAmcInstallationFormSchema,
         ],
         name: 'E4H',
         inspector: true,

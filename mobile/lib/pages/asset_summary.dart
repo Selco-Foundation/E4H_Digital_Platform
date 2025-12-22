@@ -213,12 +213,16 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                   submitted: () => true,
                   orElse: () => false,
                 );
+                final isNewReport = reportState.maybeWhen(
+                  newReport: () => true,
+                  orElse: () => false,
+                );
                 final isInCache = projectState.maybeWhen(
                   inCache: (cached) => cached,
                   orElse: () => false,
                 );
-
-                if (isApproved || (isSubmitted && !isInCache)) {
+                if (!isNewReport &&
+                    (isApproved || (isSubmitted && !isInCache))) {
                   return const SizedBox.shrink();
                 }
 
@@ -702,9 +706,22 @@ Widget editButton({
           final isApprovedReport =
               inboxState.maybeWhen(approved: () => true, orElse: () => false);
 
+          final userState = context.read<UserTypeBloc>().state;
+          bool isRejectedByQc = false;
+          bool isFieldStaff =
+              userState.maybeWhen(staff: () => true, orElse: () => false);
+
+          final selState = context.read<SelectedActivityFacilityBloc>().state;
+
+          selState.whenOrNull(selected: (project) {
+            isRejectedByQc = project.status ==
+                WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
+          });
+
           final bool hideEditButton = isSubmittedReport ||
               (isInboxReport && isApprovedReport) ||
-              isSendBackReport;
+              isSendBackReport ||
+              (isFieldStaff && isRejectedByQc);
           return hideEditButton
               ? const SizedBox.shrink()
               : GestureDetector(

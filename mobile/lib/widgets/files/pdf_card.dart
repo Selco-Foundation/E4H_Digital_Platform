@@ -1,7 +1,8 @@
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/theme.dart';
 import 'package:flutter/material.dart';
-import 'package:selco/utils/utils.dart';
+
+import '../../utils/utils.dart';
 
 Widget pdfCard(
     {required BuildContext context, String? filePath, String? fileSize}) {

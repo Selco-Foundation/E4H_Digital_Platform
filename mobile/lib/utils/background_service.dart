@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show DartPluginRegistrant;
 
@@ -9,8 +10,11 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_add_new_asset.dart';
+import '../data/nosql/cache_amc_installation_form.dart';
+import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/nosql/cache_submission_job.dart';
 import '../data/secure_storage/secureStore.dart';
@@ -19,10 +23,11 @@ import '../model/audit_details/audit_details.dart';
 import '../model/document/document.dart';
 import '../model/transaction/transaction.dart';
 import '../repositories/activity_facility_repo.dart';
-import '../repositories/activity_facility_workflow.dart';
+import '../repositories/activity_facility_workflow_repo.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
-import '../repositories/bom_repo.dart';
+import '../repositories/dynamic_form_repo.dart';
+import '../repositories/scheduled_visit_repo.dart';
 import '../utils/utils.dart';
 import 'constants.dart';
 
@@ -36,6 +41,10 @@ const String kMethodReject = 'reject_project';
 const String kEvtRejectDone = 'rejection_done';
 const String kEvtRejectError = 'rejection_error';
 
+const String kMethodSubmitVisit = 'submit_schedule_visit';
+const String kEvtScheduleVisitDone = 'schedule_visit_done';
+const String kEvtScheduleVisitError = 'schedule_visit_error';
+
 const String kEvtReady = 'bg_ready';
 
 const String kCmdForeground = 'bring_to_foreground';
@@ -43,6 +52,8 @@ const String kCmdForeground = 'bring_to_foreground';
 const String _svcChannelId = 'asset_submission_channel';
 const String _svcChannelName = 'Asset Submission';
 const int _svcNotifId = 728331;
+
+String installationReportBom = "INSTALLATION_REPORT_BOM";
 
 final FlutterLocalNotificationsPlugin _fln = FlutterLocalNotificationsPlugin();
 
@@ -256,6 +267,58 @@ class BackgroundServiceController {
     });
   }
 
+  Future<void> enqueueScheduleVisitSubmission({
+    required String scheduledVisitId,
+    required String userType,
+  }) async {
+    final svc = FlutterBackgroundService();
+
+    if (await svc.isRunning()) {
+      AppLogger.instance.info(
+        '[BG-CTL] service already running -> submit_schedule_visit directly',
+      );
+
+      await ensureAndroidNotificationPermission();
+      svc.invoke(kCmdForeground, {
+        'title': 'Submitting visit report',
+        'content': 'Preparing visit submission…',
+      });
+
+      svc.invoke(kMethodSubmitVisit, {
+        'scheduledVisitId': scheduledVisitId,
+        'userType': userType,
+      });
+      return;
+    }
+
+    final readyStream = svc.on(kEvtReady);
+
+    await svc.startService();
+    final running = await svc.isRunning();
+    AppLogger.instance.info(
+      '[BG-CTL] service.startService() -> running=$running (visit submit)',
+    );
+
+    try {
+      await readyStream.first.timeout(const Duration(seconds: 5));
+    } catch (e) {
+      AppLogger.instance.info(
+        '[BG-CTL] kEvtReady timeout for visit submit; invoking anyway',
+      );
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+
+    svc.invoke(kCmdForeground, {
+      'title': 'Submitting visit report',
+      'content': 'Preparing visit submission…',
+    });
+
+    svc.invoke(kMethodSubmitVisit, {
+      'scheduledVisitId': scheduledVisitId,
+      'userType': userType,
+    });
+  }
+
   Future<void> stopNow() async {
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
@@ -388,6 +451,82 @@ void onStart(ServiceInstance service) async {
     }
   });
 
+  service.on(kMethodSubmitVisit).listen((payload) async {
+    final isar = await isarFuture;
+    await envFuture;
+
+    final visitId = payload?['scheduledVisitId'] as String?;
+    final userType = payload?['userType'] as String?;
+
+    AppLogger.instance.info(
+      '[BG] submit_schedule_visit received payload=$payload',
+    );
+
+    if (visitId == null || userType == null) {
+      AppLogger.instance.info(
+        '[BG] submit_schedule_visit missing visitId or userType',
+      );
+      return;
+    }
+
+    try {
+      await writeJobStatus(
+        isar: isar,
+        activityFacilityId: visitId,
+        status: 'queued',
+      );
+
+      await writeJobStatus(
+        isar: isar,
+        activityFacilityId: visitId,
+        status: 'running',
+      );
+
+      await _performScheduleVisitSubmission(
+        isar: isar,
+        scheduledVisitId: visitId,
+        userType: userType,
+      );
+
+      await writeJobStatus(
+        isar: isar,
+        activityFacilityId: visitId,
+        status: 'success',
+      );
+
+      service.invoke(kEvtScheduleVisitDone, {
+        'scheduledVisitId': visitId,
+      });
+    } catch (e, st) {
+      AppLogger.instance.error(
+        title: '[BG] _performScheduleVisitSubmission failed',
+        message: e.toString(),
+        stackTrace: st,
+      );
+
+      String msg;
+      final str = e.toString();
+      if (str.contains('FORM_NOT_FILLED')) {
+        msg =
+            'Visit form is not filled yet. Please fill the AMC form before submitting.';
+      } else {
+        msg = 'Something went wrong while submitting the visit report.';
+      }
+
+      await writeJobStatus(
+        isar: isar,
+        activityFacilityId: visitId,
+        status: 'failed',
+        error: msg,
+      );
+
+      service.invoke(kEvtScheduleVisitError, {
+        'scheduledVisitId': visitId,
+        'message': msg,
+      });
+    }
+  });
+
   service.on(kCmdStop).listen((_) async {
     AppLogger.instance.info('[BG] stop requested');
     if (service is AndroidServiceInstance) {
@@ -435,6 +574,29 @@ Future<void> writeJobStatus({
       await isar.cacheSubmissionJobs.put(existing);
     }
   });
+}
+
+bool _isInstallBomPdfNameOrPath(String value) {
+  final v = value.trim();
+  if (v.isEmpty) return false;
+
+  final normalized = normalizeReportNameType(v);
+  if ((normalized ?? '').toUpperCase() == installationReportBom) {
+    return true;
+  }
+
+  final s = v.toLowerCase();
+  return s.contains('installation') && s.contains('bom');
+}
+
+Future<void> _deleteLocalFileIfExists(String path) async {
+  if (path.trim().isEmpty) return;
+  try {
+    final f = File(path);
+    if (await f.exists()) {
+      await f.delete();
+    }
+  } catch (_) {}
 }
 
 Future<void> _performSubmissionForActivityFacility({
@@ -497,13 +659,11 @@ Future<void> _performSubmissionForActivityFacility({
         }
 
         final now = DateTime.now().toUtc();
-        final startIso = now.toIso8601String();
-        final years = userType == USER_TYPES.FIELD_STAFF.name
-            ? 0
-            : parseWarrantyYears(detail.warranty!);
-        final endIso = userType == USER_TYPES.FIELD_STAFF.name
-            ? ""
-            : now.add(Duration(days: 365 * years)).toIso8601String();
+        final years = parseWarrantyYears(detail.warranty);
+        final startIso = years > 0 ? now.toIso8601String() : "";
+        final endIso = (years > 0)
+            ? now.add(Duration(days: 365 * years)).toIso8601String()
+            : "";
 
         final assetDetails = AssetDetails(
           totalCapacity: spec.totalCapacity,
@@ -552,12 +712,9 @@ Future<void> _performSubmissionForActivityFacility({
           serialNumber: saved.serialNumber,
           brandID: detail.brand,
           assetDetails: assetDetails,
-          warrantyStartDate:
-              userType == USER_TYPES.SUPERVISOR.name ? startIso : "",
-          warrantyDuration: userType == USER_TYPES.SUPERVISOR.name
-              ? parseWarrantyYears(detail.warranty)
-              : 0,
-          warrantyEndDate: userType == USER_TYPES.SUPERVISOR.name ? endIso : "",
+          warrantyStartDate: startIso,
+          warrantyDuration: years,
+          warrantyEndDate: endIso,
           modelNumber: detail.model,
           wfStatus: "CREATED",
           isActive: true,
@@ -578,6 +735,7 @@ Future<void> _performSubmissionForActivityFacility({
       isar: isar,
       activityFacilityId: activityFacilityId,
       types: typesForDocs,
+      userType: userType,
     );
     workflowDocuments.addAll(workflowDocumentFromCache);
 
@@ -589,9 +747,14 @@ Future<void> _performSubmissionForActivityFacility({
     final completionDocuments = <Document>[];
     for (final report in completionReports) {
       if (report.filePath.isEmpty) continue;
-      if (((report.fileName ?? '')
-          .toLowerCase()
-          .contains('installation_report_bom'))) {
+      final fileName = (report.fileName ?? '').trim().isNotEmpty
+          ? report.fileName!.trim()
+          : report.filePath;
+
+      final isBomPdf = _isInstallBomPdfNameOrPath(fileName);
+
+      if (isBomPdf) {
+        await _deleteLocalFileIfExists(report.filePath);
         continue;
       }
       final mediaId = await getFilestoreUrl(report.filePath);
@@ -608,8 +771,14 @@ Future<void> _performSubmissionForActivityFacility({
       );
     }
 
-    if (userType == USER_TYPES.SUPERVISOR.name) {
+    final resolvedBomUserType = await BomRepository().resolveBomUserType(
+        isar: isar, activityFacilityId: activityFacilityId, userType: userType);
+
+    if (resolvedBomUserType != null) {
       try {
+        workflowDocuments.removeWhere((d) => (d.documentType ?? '')
+            .toUpperCase()
+            .contains(installationReportBom));
         final bomFileStoreId = await BomRepository().generateBomPdf(
           isar: isar,
           activityFacilityId: activityFacilityId,
@@ -624,7 +793,7 @@ Future<void> _performSubmissionForActivityFacility({
 
         workflowDocuments.add(
           Document(
-            documentType: "INSTALLATION_REPORT_BOM",
+            documentType: installationReportBom,
             fileStore: bomFileStoreId,
             documentUid:
                 "BOM-$activityFacilityId-${DateTime.now().millisecondsSinceEpoch}",
@@ -670,7 +839,13 @@ Future<void> _performSubmissionForActivityFacility({
         .delete(projectId: activityFacilityId);
     await BomRepository()
         .delete(isar: isar, activityFacilityId: activityFacilityId);
-
+    await BomRepository()
+        .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
+    await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
     return;
   } catch (e) {
     AppLogger.instance.info("e ${e.toString()}");
@@ -688,11 +863,10 @@ Future<void> _performRejectionForActivityFacility({
     const types = ['inverter', 'battery', 'panel'];
     final workflowDocuments = <Document>[];
 
-    final fromCache =
-        await ActivityFacilityWorkflowRepository().collectWorkflowMediaDocs(
+    final fromCache = await ActivityFacilityWorkflowRepository()
+        .collectWorkflowDocsForRejection(
       isar: isar,
       activityFacilityId: activityFacilityId,
-      types: types,
     );
     workflowDocuments.addAll(fromCache);
 
@@ -710,9 +884,122 @@ Future<void> _performRejectionForActivityFacility({
         .delete(projectId: activityFacilityId);
     await BomRepository()
         .delete(isar: isar, activityFacilityId: activityFacilityId);
+    await BomRepository()
+        .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
+    await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
   } catch (e) {
     throw PlainError(_pretty(e));
   }
+}
+
+Future<void> _performScheduleVisitSubmission({
+  required Isar isar,
+  required String scheduledVisitId,
+  required String userType,
+}) async {
+  AppLogger.instance.info(
+    '[BG] _performScheduleVisitSubmission started for visit=$scheduledVisitId userType=$userType',
+  );
+
+  final form = await isar.cacheScheduleVisitFormValues
+      .where()
+      .scheduledVisitIdEqualTo(scheduledVisitId)
+      .filter()
+      .userTypeEqualTo(userType)
+      .findFirst();
+
+  if (form == null || form.dataJson.trim().isEmpty) {
+    throw Exception('Form not filled');
+  }
+
+  final responses = jsonDecode(form.dataJson) as Map<String, dynamic>;
+  final amcFormRepo = AmcDynamicFormRepository();
+
+  final pdfFileStoreId = await amcFormRepo.generateFormPdf(
+      isar: isar, scheduledVisitId: scheduledVisitId, userType: userType);
+
+  if (pdfFileStoreId == null || pdfFileStoreId.isEmpty) {
+    throw Exception('Failed to generate AMC PDF');
+  }
+
+  final cachedMedia = await isar.cacheAmcMediaUploads
+      .where()
+      .scheduledVisitIdEqualTo(scheduledVisitId)
+      .filter()
+      .userTypeEqualTo(userType)
+      .findAll();
+
+  final visitDocuments = <Document>[];
+
+  for (final media in cachedMedia) {
+    if (media.filePath.isEmpty) continue;
+
+    final fileStoreId = await getFilestoreUrl(media.filePath);
+
+    visitDocuments.add(
+      Document(
+        documentType: media.itemType,
+        fileStore: fileStoreId,
+        documentUid:
+            'DOC-AMC-${media.itemType}-${DateTime.now().millisecondsSinceEpoch}',
+        geoLocation: GeoLocation(
+          latitude: media.latitude,
+          longitude: media.longitude,
+        ),
+      ),
+    );
+  }
+
+  final workflowDocuments = <Document>[];
+
+  final String? mediaLat =
+      cachedMedia.isNotEmpty ? cachedMedia.first.latitude : null;
+  final String? mediaLon =
+      cachedMedia.isNotEmpty ? cachedMedia.first.longitude : null;
+
+  workflowDocuments.add(
+    Document(
+      documentType: 'AMC_INSTALLATION_FORM',
+      fileStore: pdfFileStoreId,
+      documentUid:
+          'AMC-FORM-$scheduledVisitId-${DateTime.now().millisecondsSinceEpoch}',
+      geoLocation: GeoLocation(
+        latitude: mediaLat,
+        longitude: mediaLon,
+      ),
+    ),
+  );
+
+  final remote = ScheduledVisitRemoteRepository();
+  await remote.updateVisitWorkflow(
+    visitId: scheduledVisitId,
+    schemaCode: "12345678",
+    version: 1,
+    responses: responses,
+    workflowDocuments: workflowDocuments,
+    visitDocuments: visitDocuments,
+  );
+
+  await PrefilledScheduledVisitRepository(isar)
+      .addOrTouch(scheduledVisitId: scheduledVisitId, userType: userType);
+  final installationForm = workflowDocuments.first;
+  await ScheduledVisitRepository(isar).upsertCacheAmcInstallationForm(
+      isar,
+      new CacheAmcInstallationForm(
+        scheduledVisitId: scheduledVisitId,
+        filePath: installationForm.fileStore ?? '',
+        latitude: installationForm.geoLocation?.latitude ?? '',
+        longitude: installationForm.geoLocation?.longitude ?? '',
+        userType: userType,
+      ));
+
+  AppLogger.instance.info(
+    '[BG] _performScheduleVisitSubmission completed for visit=$scheduledVisitId',
+  );
 }
 
 class PlainError implements Exception {

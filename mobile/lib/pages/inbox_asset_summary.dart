@@ -23,7 +23,7 @@ import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../repositories/activity_facility_repo.dart';
-import '../repositories/activity_facility_workflow.dart';
+import '../repositories/activity_facility_workflow_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
@@ -75,6 +75,13 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
       context
           .read<CacheAssetBloc>()
           .add(CacheAssetEvent.start(proj.activityFacility.id, userType, proj));
+      context.read<ActivityFacilityBomBloc>().add(
+            ActivityFacilityBomEvent.syncIfNeeded(
+              activityFacilityId: _currentProjectId!,
+              facilityId: proj.activityFacility.facility?.facilityId ?? "",
+              userType: userType,
+            ),
+          );
       _loadProjectSystem();
       _loadInitialCompletion();
     });
@@ -410,68 +417,66 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                   ],
                                 ),
                                 const SizedBox(height: spacer4),
-                                if (userType == USER_TYPES.SUPERVISOR.name)
-                                  Column(
-                                    children: [
-                                      DigitCard(
-                                        children: [
-                                          Text(
-                                            'Installation Completion Report',
-                                            style: textTheme.headingM.copyWith(
-                                              color: theme
-                                                  .colorTheme.primary.primary2,
-                                            ),
+                                Column(
+                                  children: [
+                                    DigitCard(
+                                      children: [
+                                        Text(
+                                          'Installation Completion Report',
+                                          style: textTheme.headingM.copyWith(
+                                            color: theme
+                                                .colorTheme.primary.primary2,
                                           ),
-                                          ...[
-                                            BlocBuilder<AppInitialization,
-                                                InitState>(
-                                              builder: (context, state) {
-                                                return state.maybeWhen(
-                                                  orElse: () =>
-                                                      const SizedBox.shrink(),
-                                                  initialized: (
-                                                    appConfig,
-                                                    assetCount,
-                                                    assetType,
-                                                    system,
-                                                    warranty,
-                                                    brand,
-                                                    solutionDesign,
-                                                    solutionDesignBom,
-                                                  ) {
-                                                    return Column(
-                                                      children: [
-                                                        if (_system != null)
-                                                          BomButtonsSection(
-                                                            key: PageStorageKey(
-                                                                'bom-buttons-${_currentProjectId!}'),
-                                                            solutionDesignBom:
-                                                                solutionDesignBom,
-                                                            systemCode:
-                                                                _system!,
-                                                            projectId:
-                                                                _currentProjectId!,
-                                                            origin: FormOrigin
-                                                                .inboxSummary,
-                                                          ),
-                                                      ],
-                                                    );
-                                                  },
-                                                );
-                                              },
-                                            )
-                                          ],
-                                          ExistingFilesOrLoader(
-                                            existingReports: _existingReports,
-                                            workflowDocuments:
-                                                workflow?.workflow?.documents ??
-                                                    [],
-                                            readOnly: true,
-                                          ),
+                                        ),
+                                        ...[
+                                          BlocBuilder<AppInitialization,
+                                              InitState>(
+                                            builder: (context, state) {
+                                              return state.maybeWhen(
+                                                orElse: () =>
+                                                    const SizedBox.shrink(),
+                                                initialized: (
+                                                  appConfig,
+                                                  assetCount,
+                                                  assetType,
+                                                  system,
+                                                  warranty,
+                                                  brand,
+                                                  solutionDesign,
+                                                  solutionDesignBom,
+                                                ) {
+                                                  return Column(
+                                                    children: [
+                                                      if (_system != null)
+                                                        BomButtonsSection(
+                                                          key: PageStorageKey(
+                                                              'bom-buttons-${_currentProjectId!}'),
+                                                          solutionDesignBom:
+                                                              solutionDesignBom,
+                                                          systemCode: _system!,
+                                                          projectId:
+                                                              _currentProjectId!,
+                                                          origin: FormOrigin
+                                                              .inboxSummary,
+                                                        ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            },
+                                          )
                                         ],
-                                      ),
-                                    ],
-                                  )
+                                        ExistingFilesOrLoader(
+                                          existingReports: _existingReports,
+                                          workflowDocuments:
+                                              workflow?.workflow?.documents ??
+                                                  [],
+                                          readOnly: true,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                )
                               ],
                             ),
                           ),
