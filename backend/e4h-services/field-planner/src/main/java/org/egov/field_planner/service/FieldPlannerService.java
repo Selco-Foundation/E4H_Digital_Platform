@@ -450,19 +450,21 @@ public class FieldPlannerService {
                                     Collectors.mapping(item -> (String) item.getAssignedTo(), Collectors.toList())
                             ));
                     for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
-                        ActivityFacility activityFacility = ActivityFacility.builder()
-                                .tenantId("in")
-                                .fieldPlanId(fieldPlanFacility.getFieldPlanId())
-                                .facilityId(fieldPlanFacility.getFacilityId())
-                                .activityId((String)fieldPlan.getActivities().get(0).get("code"))
-                                .scheduledAt(fieldPlan.getStartDate())
-                                .activatedAt(fieldPlan.getStartDate())
-                                .reviewerUser(roleToIds.get("INSTALLATION_REVIEWER"))
-                                .fieldStaffUsers(roleToIds.get("FIELD_STAFF"))
-                                .fieldSupervisorUsers(roleToIds.get("FIELD_SUPERVISOR"))
-                                .build();
+                        for(Map<String, Object> activity : fieldPlan.getActivities()){
+                            ActivityFacility activityFacility = ActivityFacility.builder()
+                                    .tenantId("in")
+                                    .fieldPlanId(fieldPlanFacility.getFieldPlanId())
+                                    .facilityId(fieldPlanFacility.getFacilityId())
+                                    .activityId((String)activity.get("code"))
+                                    .scheduledAt(fieldPlan.getStartDate())
+                                    .activatedAt(fieldPlan.getStartDate())
+                                    .reviewerUser(roleToIds.get(INSTALLATION_REVIEWER_ROLE))
+                                    .fieldStaffUsers(roleToIds.get(FIELD_STAFF_ROLE))
+                                    .fieldSupervisorUsers(roleToIds.get(FIELD_SUPERVISOR_ROLE))
+                                    .build();
 
-                        activityFacilities.add(activityFacility);
+                            activityFacilities.add(activityFacility);
+                        }
                     }
 
                     createFacilityActivity(request.getRequestInfo(), activityFacilities);
@@ -580,13 +582,13 @@ public class FieldPlannerService {
 
         for (ActivityAssignment assignment : activityAssignmentList) {
             Map<String, Object> roleMap = assignment.getRole();
-            if ("FIELD_STAFF".equalsIgnoreCase((String) roleMap.get("code"))) {
+            if (FIELD_STAFF_ROLE.equalsIgnoreCase((String) roleMap.get("code"))) {
                 hasFieldStaff = true;
             }
-            if ("FIELD_SUPERVISOR".equalsIgnoreCase((String) roleMap.get("code"))) {
+            if (FIELD_SUPERVISOR_ROLE.equalsIgnoreCase((String) roleMap.get("code"))) {
                 hasFieldSupervisor = true;
             }
-            if ("INSTALLATION_REVIEWER".equalsIgnoreCase((String) roleMap.get("code"))) {
+            if (INSTALLATION_REVIEWER_ROLE.equalsIgnoreCase((String) roleMap.get("code"))) {
                 hasReviewer = true;
             }
             if (hasFieldStaff && hasFieldSupervisor && hasReviewer) {
