@@ -101,7 +101,7 @@ public class ActivityService {
             for (ActivityFacility activityFacility : activityFacilities) {
                 log.info("processing {} valid entities", activityFacility);
                 activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
-
+                List<ActivityFacilityUser> usersFacility = new ArrayList<>();
                 // Get reviewer users. Can see facility activity on UI directly by getting field plan first
                 if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
                     for (String userId : activityFacility.getReviewerUser()){
@@ -111,7 +111,7 @@ public class ActivityService {
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
                                 .build();
-                        activityFacilityUsers.add(facilityUser);
+                        usersFacility.add(facilityUser);
                     }
                 }
 
@@ -124,7 +124,7 @@ public class ActivityService {
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
                                 .build();
-                        activityFacilityUsers.add(facilityUser);
+                        usersFacility.add(facilityUser);
                     }
                 }
 
@@ -137,15 +137,16 @@ public class ActivityService {
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
                                 .build();
-                        activityFacilityUsers.add(facilityUser);
+                        usersFacility.add(facilityUser);
                     }
                 }
+                // remove Duplicate activity facility users if the same user is REVIEWER, STAFF and SUPERVISOR
+                Set<String> seenUsers = new HashSet<>();
+                usersFacility = usersFacility.stream().filter(a -> seenUsers.add(a.getUserId()))
+                        .toList();
+                activityFacilityUsers.addAll(usersFacility);
             }
 
-            // remove Duplicate activity facility users if the same user is REVIEWER, STAFF and SUPERVISOR
-            Set<String> seenUsers = new HashSet<>();
-            activityFacilityUsers = activityFacilityUsers.stream().filter(a -> seenUsers.add(a.getUserId()))
-                    .toList();
 
             // Create linked users, so that reviewer, staff and supervisor are linked to each activity facility. Reviewer can see list of activities on UI.
             if(activityFacilityUsers != null && !activityFacilityUsers.isEmpty()){

@@ -425,7 +425,7 @@ public class FieldPlannerService {
                     log.error("Activity Assignment is empty for the fieldplan");
                     throw new CustomException("FIELDPLAN", "Activity Assignment is empty for the fieldplan");
                 }
-                // Check if at least one INSTALLATION_REVIEWER, one FIELD_STAFF and one FIELD_STAFF are already link to field plan
+                // Check if at least one INSTALLATION_REVIEWER, one FIELD_SUPERVISOR and one FIELD_STAFF are already link to field plan
                 if(!hasRequiredUsers(activityAssignmentList)){
                     throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and FIELD_STAFF and FIELD_SUPERVISOR need to be assigned for the fieldplan");
                 }
