@@ -15,11 +15,14 @@ class Workflow {
   @Embedded()
   WorkflowAuditDetails? auditDetails;
 
+  String? comment;
+
   String? rawJson;
 
   Workflow({
     this.documents,
     this.auditDetails,
+    this.comment,
     this.rawJson,
   });
 
@@ -39,7 +42,12 @@ class Workflow {
           )
         : null;
     final rawJson = json.isNotEmpty ? jsonEncode(json) : null;
-    return Workflow(documents: docs, auditDetails: details, rawJson: rawJson);
+    return Workflow(
+      documents: docs,
+      auditDetails: details,
+      rawJson: rawJson,
+      comment: json['comment']?.toString(),
+    );
   }
 
   Map<String, dynamic> toJson() => {
