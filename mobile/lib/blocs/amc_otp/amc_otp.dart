@@ -22,6 +22,9 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
     on<AmcOtpEventSubmit>(_onSubmit);
   }
 
+  static const String CLEANUP_ERROR = "Cleanup Error";
+  static const String ERROR_CLEARING_CACHE = "Error clearing cache for";
+
   Future<void> _onResend(
     AmcOtpEventResend event,
     Emitter<AmcOtpState> emit,
@@ -97,40 +100,38 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
             scheduledVisitId: event.visitId, userType: USER_TYPES.AMC.name);
       } catch (e) {
         AppLogger.instance.error(
-            title: "Cleanup Error",
-            message: 'Error clearing cache for prefilled scheduled visit.');
+            title: CLEANUP_ERROR,
+            message: '$ERROR_CLEARING_CACHE prefilled scheduled visit.');
       }
       try {
         await localScheduleVisitRepo.deleteInstallationForm(
             scheduledVisitId: event.visitId);
       } catch (e) {
         AppLogger.instance.error(
-            title: "Cleanup Error",
-            message: 'Error clearing cache for Schedule visit form');
+            title: CLEANUP_ERROR,
+            message: '$ERROR_CLEARING_CACHE Schedule visit form');
       }
       try {
         await AmcDynamicFormRepository()
             .delete(isar: isar, scheduledVisitId: event.visitId);
       } catch (e) {
         AppLogger.instance.error(
-            title: "Cleanup Error",
-            message: 'Error clearing cache for filled form');
+            title: CLEANUP_ERROR, message: '$ERROR_CLEARING_CACHE filled form');
       }
       try {
         await AmcDynamicFormRepository()
             .deleteAllLocal(isar: isar, scheduledVisitId: event.visitId);
       } catch (e) {
         AppLogger.instance.error(
-            title: "Cleanup Error",
-            message: 'Error clearing cache for form schema');
+            title: CLEANUP_ERROR, message: '$ERROR_CLEARING_CACHE form schema');
       }
       try {
         await ScheduledVisitRepository(isar)
             .deleteAmcMediaUploads(isar: isar, scheduledVisitId: event.visitId);
       } catch (e) {
         AppLogger.instance.error(
-            title: "Cleanup Error",
-            message: 'Error clearing cache for media uploads');
+            title: CLEANUP_ERROR,
+            message: '$ERROR_CLEARING_CACHE media uploads');
       }
       emit(const AmcOtpState.submitSuccess());
     } catch (e) {
