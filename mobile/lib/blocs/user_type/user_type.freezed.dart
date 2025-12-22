@@ -21,6 +21,7 @@ mixin _$UserTypeState {
     required TResult Function() initial,
     required TResult Function() staff,
     required TResult Function() supervisor,
+    required TResult Function() amc,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -28,6 +29,7 @@ mixin _$UserTypeState {
     TResult? Function()? initial,
     TResult? Function()? staff,
     TResult? Function()? supervisor,
+    TResult? Function()? amc,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -35,6 +37,7 @@ mixin _$UserTypeState {
     TResult Function()? initial,
     TResult Function()? staff,
     TResult Function()? supervisor,
+    TResult Function()? amc,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -43,6 +46,7 @@ mixin _$UserTypeState {
     required TResult Function(UserTypeInitial value) initial,
     required TResult Function(UserTypeStaff value) staff,
     required TResult Function(UserTypeSupervisor value) supervisor,
+    required TResult Function(UserTypeAMC value) amc,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -50,6 +54,7 @@ mixin _$UserTypeState {
     TResult? Function(UserTypeInitial value)? initial,
     TResult? Function(UserTypeStaff value)? staff,
     TResult? Function(UserTypeSupervisor value)? supervisor,
+    TResult? Function(UserTypeAMC value)? amc,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -57,6 +62,7 @@ mixin _$UserTypeState {
     TResult Function(UserTypeInitial value)? initial,
     TResult Function(UserTypeStaff value)? staff,
     TResult Function(UserTypeSupervisor value)? supervisor,
+    TResult Function(UserTypeAMC value)? amc,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -121,6 +127,7 @@ class _$UserTypeInitialImpl implements UserTypeInitial {
     required TResult Function() initial,
     required TResult Function() staff,
     required TResult Function() supervisor,
+    required TResult Function() amc,
   }) {
     return initial();
   }
@@ -131,6 +138,7 @@ class _$UserTypeInitialImpl implements UserTypeInitial {
     TResult? Function()? initial,
     TResult? Function()? staff,
     TResult? Function()? supervisor,
+    TResult? Function()? amc,
   }) {
     return initial?.call();
   }
@@ -141,6 +149,7 @@ class _$UserTypeInitialImpl implements UserTypeInitial {
     TResult Function()? initial,
     TResult Function()? staff,
     TResult Function()? supervisor,
+    TResult Function()? amc,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -155,6 +164,7 @@ class _$UserTypeInitialImpl implements UserTypeInitial {
     required TResult Function(UserTypeInitial value) initial,
     required TResult Function(UserTypeStaff value) staff,
     required TResult Function(UserTypeSupervisor value) supervisor,
+    required TResult Function(UserTypeAMC value) amc,
   }) {
     return initial(this);
   }
@@ -165,6 +175,7 @@ class _$UserTypeInitialImpl implements UserTypeInitial {
     TResult? Function(UserTypeInitial value)? initial,
     TResult? Function(UserTypeStaff value)? staff,
     TResult? Function(UserTypeSupervisor value)? supervisor,
+    TResult? Function(UserTypeAMC value)? amc,
   }) {
     return initial?.call(this);
   }
@@ -175,6 +186,7 @@ class _$UserTypeInitialImpl implements UserTypeInitial {
     TResult Function(UserTypeInitial value)? initial,
     TResult Function(UserTypeStaff value)? staff,
     TResult Function(UserTypeSupervisor value)? supervisor,
+    TResult Function(UserTypeAMC value)? amc,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -229,6 +241,7 @@ class _$UserTypeStaffImpl implements UserTypeStaff {
     required TResult Function() initial,
     required TResult Function() staff,
     required TResult Function() supervisor,
+    required TResult Function() amc,
   }) {
     return staff();
   }
@@ -239,6 +252,7 @@ class _$UserTypeStaffImpl implements UserTypeStaff {
     TResult? Function()? initial,
     TResult? Function()? staff,
     TResult? Function()? supervisor,
+    TResult? Function()? amc,
   }) {
     return staff?.call();
   }
@@ -249,6 +263,7 @@ class _$UserTypeStaffImpl implements UserTypeStaff {
     TResult Function()? initial,
     TResult Function()? staff,
     TResult Function()? supervisor,
+    TResult Function()? amc,
     required TResult orElse(),
   }) {
     if (staff != null) {
@@ -263,6 +278,7 @@ class _$UserTypeStaffImpl implements UserTypeStaff {
     required TResult Function(UserTypeInitial value) initial,
     required TResult Function(UserTypeStaff value) staff,
     required TResult Function(UserTypeSupervisor value) supervisor,
+    required TResult Function(UserTypeAMC value) amc,
   }) {
     return staff(this);
   }
@@ -273,6 +289,7 @@ class _$UserTypeStaffImpl implements UserTypeStaff {
     TResult? Function(UserTypeInitial value)? initial,
     TResult? Function(UserTypeStaff value)? staff,
     TResult? Function(UserTypeSupervisor value)? supervisor,
+    TResult? Function(UserTypeAMC value)? amc,
   }) {
     return staff?.call(this);
   }
@@ -283,6 +300,7 @@ class _$UserTypeStaffImpl implements UserTypeStaff {
     TResult Function(UserTypeInitial value)? initial,
     TResult Function(UserTypeStaff value)? staff,
     TResult Function(UserTypeSupervisor value)? supervisor,
+    TResult Function(UserTypeAMC value)? amc,
     required TResult orElse(),
   }) {
     if (staff != null) {
@@ -337,6 +355,7 @@ class _$UserTypeSupervisorImpl implements UserTypeSupervisor {
     required TResult Function() initial,
     required TResult Function() staff,
     required TResult Function() supervisor,
+    required TResult Function() amc,
   }) {
     return supervisor();
   }
@@ -347,6 +366,7 @@ class _$UserTypeSupervisorImpl implements UserTypeSupervisor {
     TResult? Function()? initial,
     TResult? Function()? staff,
     TResult? Function()? supervisor,
+    TResult? Function()? amc,
   }) {
     return supervisor?.call();
   }
@@ -357,6 +377,7 @@ class _$UserTypeSupervisorImpl implements UserTypeSupervisor {
     TResult Function()? initial,
     TResult Function()? staff,
     TResult Function()? supervisor,
+    TResult Function()? amc,
     required TResult orElse(),
   }) {
     if (supervisor != null) {
@@ -371,6 +392,7 @@ class _$UserTypeSupervisorImpl implements UserTypeSupervisor {
     required TResult Function(UserTypeInitial value) initial,
     required TResult Function(UserTypeStaff value) staff,
     required TResult Function(UserTypeSupervisor value) supervisor,
+    required TResult Function(UserTypeAMC value) amc,
   }) {
     return supervisor(this);
   }
@@ -381,6 +403,7 @@ class _$UserTypeSupervisorImpl implements UserTypeSupervisor {
     TResult? Function(UserTypeInitial value)? initial,
     TResult? Function(UserTypeStaff value)? staff,
     TResult? Function(UserTypeSupervisor value)? supervisor,
+    TResult? Function(UserTypeAMC value)? amc,
   }) {
     return supervisor?.call(this);
   }
@@ -391,6 +414,7 @@ class _$UserTypeSupervisorImpl implements UserTypeSupervisor {
     TResult Function(UserTypeInitial value)? initial,
     TResult Function(UserTypeStaff value)? staff,
     TResult Function(UserTypeSupervisor value)? supervisor,
+    TResult Function(UserTypeAMC value)? amc,
     required TResult orElse(),
   }) {
     if (supervisor != null) {
@@ -402,6 +426,120 @@ class _$UserTypeSupervisorImpl implements UserTypeSupervisor {
 
 abstract class UserTypeSupervisor implements UserTypeState {
   const factory UserTypeSupervisor() = _$UserTypeSupervisorImpl;
+}
+
+/// @nodoc
+abstract class _$$UserTypeAMCImplCopyWith<$Res> {
+  factory _$$UserTypeAMCImplCopyWith(
+          _$UserTypeAMCImpl value, $Res Function(_$UserTypeAMCImpl) then) =
+      __$$UserTypeAMCImplCopyWithImpl<$Res>;
+}
+
+/// @nodoc
+class __$$UserTypeAMCImplCopyWithImpl<$Res>
+    extends _$UserTypeStateCopyWithImpl<$Res, _$UserTypeAMCImpl>
+    implements _$$UserTypeAMCImplCopyWith<$Res> {
+  __$$UserTypeAMCImplCopyWithImpl(
+      _$UserTypeAMCImpl _value, $Res Function(_$UserTypeAMCImpl) _then)
+      : super(_value, _then);
+}
+
+/// @nodoc
+
+class _$UserTypeAMCImpl implements UserTypeAMC {
+  const _$UserTypeAMCImpl();
+
+  @override
+  String toString() {
+    return 'UserTypeState.amc()';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType && other is _$UserTypeAMCImpl);
+  }
+
+  @override
+  int get hashCode => runtimeType.hashCode;
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() staff,
+    required TResult Function() supervisor,
+    required TResult Function() amc,
+  }) {
+    return amc();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? staff,
+    TResult? Function()? supervisor,
+    TResult? Function()? amc,
+  }) {
+    return amc?.call();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? staff,
+    TResult Function()? supervisor,
+    TResult Function()? amc,
+    required TResult orElse(),
+  }) {
+    if (amc != null) {
+      return amc();
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(UserTypeInitial value) initial,
+    required TResult Function(UserTypeStaff value) staff,
+    required TResult Function(UserTypeSupervisor value) supervisor,
+    required TResult Function(UserTypeAMC value) amc,
+  }) {
+    return amc(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(UserTypeInitial value)? initial,
+    TResult? Function(UserTypeStaff value)? staff,
+    TResult? Function(UserTypeSupervisor value)? supervisor,
+    TResult? Function(UserTypeAMC value)? amc,
+  }) {
+    return amc?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(UserTypeInitial value)? initial,
+    TResult Function(UserTypeStaff value)? staff,
+    TResult Function(UserTypeSupervisor value)? supervisor,
+    TResult Function(UserTypeAMC value)? amc,
+    required TResult orElse(),
+  }) {
+    if (amc != null) {
+      return amc(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class UserTypeAMC implements UserTypeState {
+  const factory UserTypeAMC() = _$UserTypeAMCImpl;
 }
 
 /// @nodoc

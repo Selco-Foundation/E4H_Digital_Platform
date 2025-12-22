@@ -92,6 +92,19 @@ const CacheBomDocSchema = CollectionSchema(
         )
       ],
     ),
+    r'activityFacilityId': IndexSchema(
+      id: -3740981522167357561,
+      name: r'activityFacilityId',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'activityFacilityId',
+          type: IndexType.hash,
+          caseSensitive: true,
+        )
+      ],
+    ),
     r'updatedAt': IndexSchema(
       id: -6238191080293565125,
       name: r'updatedAt',
@@ -526,6 +539,51 @@ extension CacheBomDocQueryWhere
               indexName: r'activityFacilityId_schemaKey',
               lower: [activityFacilityId],
               upper: [activityFacilityId, schemaKey],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterWhereClause>
+      activityFacilityIdEqualTo(String activityFacilityId) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'activityFacilityId',
+        value: [activityFacilityId],
+      ));
+    });
+  }
+
+  QueryBuilder<CacheBomDoc, CacheBomDoc, QAfterWhereClause>
+      activityFacilityIdNotEqualTo(String activityFacilityId) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'activityFacilityId',
+              lower: [],
+              upper: [activityFacilityId],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'activityFacilityId',
+              lower: [activityFacilityId],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'activityFacilityId',
+              lower: [activityFacilityId],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'activityFacilityId',
+              lower: [],
+              upper: [activityFacilityId],
               includeUpper: false,
             ));
       }

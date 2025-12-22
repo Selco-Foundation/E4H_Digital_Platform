@@ -21,6 +21,68 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const AddNewAssetPage(),
       );
     },
+    AmcDraftRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcDraftPage(),
+      );
+    },
+    AmcDynamicFormRoute.name: (routeData) {
+      final args = routeData.argsAs<AmcDynamicFormRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: AmcDynamicFormPage(
+          key: args.key,
+          pageName: args.pageName,
+          schemaName: args.schemaName,
+          uniqueIdentifier: args.uniqueIdentifier,
+          scheduledVisit: args.scheduledVisit,
+          origin: args.origin,
+        ),
+      );
+    },
+    AmcHomeRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcHomePage(),
+      );
+    },
+    AmcInboxRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcInboxPage(),
+      );
+    },
+    AmcMediaUploadRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcMediaUploadPage(),
+      );
+    },
+    AmcOtpRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcOtpPage(),
+      );
+    },
+    AmcRejctionReasonsRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcRejctionReasonsPage(),
+      );
+    },
+    AmcReportHomeRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcReportHomePage(),
+      );
+    },
+    AmcSelectFacilityRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const AmcSelectFacilityPage(),
+      );
+    },
     AssetCountRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -66,8 +128,9 @@ abstract class _$AppRouter extends RootStackRouter {
           pageName: args.pageName,
           schemaName: args.schemaName,
           uniqueIdentifier: args.uniqueIdentifier,
-          projectId: args.projectId,
+          activityFacilityId: args.projectId,
           origin: args.origin,
+          userType: args.userType,
         ),
       );
     },
@@ -249,6 +312,177 @@ class AddNewAssetRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [AmcDraftPage]
+class AmcDraftRoute extends PageRouteInfo<void> {
+  const AmcDraftRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcDraftRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcDraftRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcDynamicFormPage]
+class AmcDynamicFormRoute extends PageRouteInfo<AmcDynamicFormRouteArgs> {
+  AmcDynamicFormRoute({
+    Key? key,
+    required String pageName,
+    String? schemaName,
+    String? uniqueIdentifier,
+    required ScheduledVisit scheduledVisit,
+    required FormOrigin origin,
+    List<PageRouteInfo>? children,
+  }) : super(
+          AmcDynamicFormRoute.name,
+          args: AmcDynamicFormRouteArgs(
+            key: key,
+            pageName: pageName,
+            schemaName: schemaName,
+            uniqueIdentifier: uniqueIdentifier,
+            scheduledVisit: scheduledVisit,
+            origin: origin,
+          ),
+          rawPathParams: {'pageName': pageName},
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcDynamicFormRoute';
+
+  static const PageInfo<AmcDynamicFormRouteArgs> page =
+      PageInfo<AmcDynamicFormRouteArgs>(name);
+}
+
+class AmcDynamicFormRouteArgs {
+  const AmcDynamicFormRouteArgs({
+    this.key,
+    required this.pageName,
+    this.schemaName,
+    this.uniqueIdentifier,
+    required this.scheduledVisit,
+    required this.origin,
+  });
+
+  final Key? key;
+
+  final String pageName;
+
+  final String? schemaName;
+
+  final String? uniqueIdentifier;
+
+  final ScheduledVisit scheduledVisit;
+
+  final FormOrigin origin;
+
+  @override
+  String toString() {
+    return 'AmcDynamicFormRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, scheduledVisit: $scheduledVisit, origin: $origin}';
+  }
+}
+
+/// generated route for
+/// [AmcHomePage]
+class AmcHomeRoute extends PageRouteInfo<void> {
+  const AmcHomeRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcHomeRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcHomeRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcInboxPage]
+class AmcInboxRoute extends PageRouteInfo<void> {
+  const AmcInboxRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcInboxRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcInboxRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcMediaUploadPage]
+class AmcMediaUploadRoute extends PageRouteInfo<void> {
+  const AmcMediaUploadRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcMediaUploadRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcMediaUploadRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcOtpPage]
+class AmcOtpRoute extends PageRouteInfo<void> {
+  const AmcOtpRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcOtpRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcOtpRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcRejctionReasonsPage]
+class AmcRejctionReasonsRoute extends PageRouteInfo<void> {
+  const AmcRejctionReasonsRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcRejctionReasonsRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcRejctionReasonsRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcReportHomePage]
+class AmcReportHomeRoute extends PageRouteInfo<void> {
+  const AmcReportHomeRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcReportHomeRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcReportHomeRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [AmcSelectFacilityPage]
+class AmcSelectFacilityRoute extends PageRouteInfo<void> {
+  const AmcSelectFacilityRoute({List<PageRouteInfo>? children})
+      : super(
+          AmcSelectFacilityRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'AmcSelectFacilityRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
 /// [AssetCountPage]
 class AssetCountRoute extends PageRouteInfo<void> {
   const AssetCountRoute({List<PageRouteInfo>? children})
@@ -342,6 +576,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
     String? uniqueIdentifier,
     required String projectId,
     required FormOrigin origin,
+    required String userType,
     List<PageRouteInfo>? children,
   }) : super(
           DynamicFormsRoute.name,
@@ -352,6 +587,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
             uniqueIdentifier: uniqueIdentifier,
             projectId: projectId,
             origin: origin,
+            userType: userType,
           ),
           rawPathParams: {'pageName': pageName},
           initialChildren: children,
@@ -371,6 +607,7 @@ class DynamicFormsRouteArgs {
     this.uniqueIdentifier,
     required this.projectId,
     required this.origin,
+    required this.userType,
   });
 
   final Key? key;
@@ -385,9 +622,11 @@ class DynamicFormsRouteArgs {
 
   final FormOrigin origin;
 
+  final String userType;
+
   @override
   String toString() {
-    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, projectId: $projectId, origin: $origin}';
+    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, projectId: $projectId, origin: $origin, userType: $userType}';
   }
 }
 

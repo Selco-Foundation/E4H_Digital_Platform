@@ -171,11 +171,9 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                           final newDetail = CacheAssetDetail(
                             activityFacilityId: _currentProjectId!,
                             assetType: assetTypeTitle,
-                            warranty: isSupervisor ? selectedWarranty : null,
+                            warranty: selectedWarranty,
                             brand: selectedBrandCode!,
-                            model: isSupervisor
-                                ? modelController.text.trim()
-                                : null,
+                            model: modelController.text.trim(),
                           );
 
                           context
@@ -204,51 +202,48 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                               style: textTheme.headingXl.copyWith(
                                   color: theme.colorTheme.primary.primary2),
                             ),
-                            if (isSupervisor)
-                              LabeledField(
-                                label: 'Warranty Start Date',
+                            LabeledField(
+                              label: 'Warranty Start Date',
+                              labelStyle: textTheme.headingS.copyWith(
+                                  color: theme.colorTheme.text.primary),
+                              capitalizedFirstLetter: false,
+                              child: DigitDateFormInput(
+                                controller: TextEditingController(),
+                                initialValue: 'Default Today Date',
+                                isDisabled: true,
+                                readOnly: true,
+                              ),
+                            ),
+                            LabeledField(
+                                label: 'Warranty Duration',
                                 labelStyle: textTheme.headingS.copyWith(
                                     color: theme.colorTheme.text.primary),
                                 capitalizedFirstLetter: false,
-                                child: DigitDateFormInput(
-                                  controller: TextEditingController(),
-                                  initialValue: 'Default Today Date',
-                                  isDisabled: true,
-                                  readOnly: true,
-                                ),
-                              ),
-                            if (isSupervisor)
-                              LabeledField(
-                                  label: 'Warranty Duration',
-                                  labelStyle: textTheme.headingS.copyWith(
-                                      color: theme.colorTheme.text.primary),
-                                  capitalizedFirstLetter: false,
-                                  child: DigitDropdown(
-                                    sentenceCaseEnabled: false,
-                                    selectedOption: DropdownItem(
-                                      name: (selectedWarranty == null ||
-                                              selectedWarranty!.isEmpty)
-                                          ? ''
-                                          : (parseWarrantyYears(
-                                                      selectedWarranty!)
-                                                  ?.toString() ??
-                                              ''),
-                                      code: selectedWarranty ?? "",
-                                    ),
-                                    items: assetWarranties
-                                        .map((type) => DropdownItem(
-                                              name: parseWarrantyYears(
-                                                      type.duration)
-                                                  .toString(),
-                                              code: type.duration,
-                                            ))
-                                        .toList(),
-                                    onSelect: (DropdownItem selected) {
-                                      setState(() {
-                                        selectedWarranty = selected.code;
-                                      });
-                                    },
-                                  )),
+                                child: DigitDropdown(
+                                  sentenceCaseEnabled: false,
+                                  selectedOption: DropdownItem(
+                                    name: (selectedWarranty == null ||
+                                            selectedWarranty!.isEmpty)
+                                        ? ''
+                                        : (parseWarrantyYears(selectedWarranty!)
+                                                ?.toString() ??
+                                            ''),
+                                    code: selectedWarranty ?? "",
+                                  ),
+                                  items: assetWarranties
+                                      .map((type) => DropdownItem(
+                                            name: parseWarrantyYears(
+                                                    type.duration)
+                                                .toString(),
+                                            code: type.duration,
+                                          ))
+                                      .toList(),
+                                  onSelect: (DropdownItem selected) {
+                                    setState(() {
+                                      selectedWarranty = selected.code;
+                                    });
+                                  },
+                                )),
                             LabeledField(
                                 label: 'Brand',
                                 labelStyle: textTheme.headingS.copyWith(
@@ -273,21 +268,20 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                     });
                                   },
                                 )),
-                            if (isSupervisor)
-                              LabeledField(
-                                label: 'Model Number',
-                                labelStyle: textTheme.headingS.copyWith(
-                                    color: theme.colorTheme.text.primary),
-                                capitalizedFirstLetter: false,
-                                child: DigitTextFormInput(
-                                  controller: modelController,
-                                  innerLabel: 'SR45934295',
-                                  keyboardType: TextInputType.text,
-                                  onChange: (value) {
-                                    setState(() {});
-                                  },
-                                ),
+                            LabeledField(
+                              label: 'Model Number',
+                              labelStyle: textTheme.headingS.copyWith(
+                                  color: theme.colorTheme.text.primary),
+                              capitalizedFirstLetter: false,
+                              child: DigitTextFormInput(
+                                controller: modelController,
+                                innerLabel: 'SR45934295',
+                                keyboardType: TextInputType.text,
+                                onChange: (value) {
+                                  setState(() {});
+                                },
                               ),
+                            ),
                           ])
                         ],
                       ),
