@@ -14,7 +14,7 @@ Widget videoCard({required BuildContext context, filePath}) {
             color: Theme.of(context).colorTheme.primary.primary1),
         const SizedBox(width: spacer2),
         Text(
-          truncateTextFromStart(filePath, maxLength: 40),
+          removeFlutterKeywordAndtruncateTextFromStart(filePath, maxLength: 40),
           style: textTheme.bodyS.copyWith(
             color: Theme.of(context).colorTheme.text.primary,
           ),

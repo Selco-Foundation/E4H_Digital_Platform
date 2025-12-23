@@ -100,6 +100,15 @@ String truncateTextFromStart(String text, {int maxLength = 16}) {
   return '...${text.substring(text.length - keep)}';
 }
 
+String removeFlutterKeywordAndtruncateTextFromStart(String text,
+    {int maxLength = 16}) {
+  final cleaned = text
+      .replaceAll(RegExp('flutter', caseSensitive: false), '')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  return truncateTextFromStart(cleaned, maxLength: maxLength);
+}
+
 int parseWarrantyMonths(String s) {
   final regex = RegExp(r'^P(?:(\d+)Y)?(?:(\d+)M)?');
   final match = regex.firstMatch(s);
