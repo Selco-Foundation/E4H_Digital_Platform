@@ -120,6 +120,7 @@ const CreateProject = () => {
     setBlockUI(true);
     try {
       await PMService.downloadProjectFacilityDataTemplate(createdProject.id, createdProject.additionalDetails.geographyDetails, t);
+      setBlockUI(false);
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_SUCCESS"),
         key: "success",
@@ -127,6 +128,7 @@ const CreateProject = () => {
 
     } catch (error) {
       console.error("Error downloading project facility data template", error);
+      setBlockUI(false);
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_ERROR"),
         key: "error"
@@ -143,6 +145,7 @@ const CreateProject = () => {
     let uploadedFile;
     try {
       const response = await PMService.uploadProjectFacilityDataTemplate(file, createdProject?.id);
+      setBlockUI(false);
 
       if (response.errorCode === "INVALID_TEMPLATE") {
         setToast({
@@ -175,6 +178,7 @@ const CreateProject = () => {
 
     } catch (e) {
       console.error("Error uploading template", e);
+      setBlockUI(false);
       setToast({
         key: "error",
         label: t("PM_TOAST_FACILITY_DATA_UPLOAD_ERROR"),
@@ -475,6 +479,7 @@ const CreateProject = () => {
         search: `projectId=${createdProjectResponse.id}&key=${currentKey + 1}`,
       });
       setCurrentKey(prev => prev + 1);
+      setBlockUI(false);
       setToast({
         key: "success",
         label: createdProject?.id ? t("PM_TOAST_DRAFT_PROJECT_UPDATION_SUCCESS") : t("PM_TOAST_DRAFT_PROJECT_CREATION_SUCCESS"),
@@ -482,6 +487,7 @@ const CreateProject = () => {
 
     } catch (e) {
       console.error(`Error ${ createdProject?.id ? `updating` : `creating` } project`, e);
+      setBlockUI(false);
       setToast({
         key: "error",
         label: createdProject?.id ? t("PM_TOAST_DRAFT_PROJECT_UPDATION_ERROR") : t("PM_TOAST_DRAFT_PROJECT_CREATION_ERROR"),
@@ -572,6 +578,7 @@ const CreateProject = () => {
 
     } catch (error) {
       console.error("Error updating project workflow", error);
+      setBlockUI(false);
       setToast({
         key: "error",
         label: t("PM_TOAST_DRAFT_PROJECT_WORKFLOW_UPDATE_ERROR"),
@@ -678,7 +685,7 @@ const CreateProject = () => {
   }
 
   return (
-    <div style={{padding: mobileView ? "15px" : "0px"}}>
+    <div className={"create-project-wrapper"} style={{padding: mobileView ? "15px" : "0px"}}>
       {blockUI && (
         <div
           style={{

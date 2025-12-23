@@ -3,7 +3,6 @@ import useBoundary from "../../hooks/useBoundary";
 import useMDMS from "../../hooks/useMDMS";
 import useProject from "../../hooks/useProject";
 import { useTranslation } from "react-i18next";
-import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { Button, FormComposerV2, Loader, PopUp, Toast } from "@egovernments/digit-ui-react-components";
 import { Stepper } from "@egovernments/digit-ui-components";
 import { useDispatch } from "react-redux";
@@ -125,7 +124,7 @@ const CreateFieldPlan = () => {
   }, [createdFieldPlan?.id, currentKey])
 
   useEffect(()=>{
-    if(toast){
+    if (toast) {
       setTimeout(()=>{
         setToast(null);
       },2500)
@@ -215,7 +214,7 @@ const CreateFieldPlan = () => {
             .filter((state) => state.code === createdFieldPlan.geographyDetails.state)
             .map((state) => ({
               code: state?.code,
-              name: `STATE_${state?.code.toUpperCase()}`,
+              name: `Boundary_${state?.code}`,
             }))
             ?.[0],
 
@@ -262,6 +261,7 @@ const CreateFieldPlan = () => {
       }
       await PMService.downloadFieldPlanFacilityDataTemplate(createdProject.id, createdFieldPlan.id, geographyDetails, t);
 
+      setBlockUI(false);
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_SUCCESS"),
         key: "success",
@@ -269,6 +269,7 @@ const CreateFieldPlan = () => {
 
     } catch (error) {
       console.error("Error downloading project facility data template", error);
+      setBlockUI(false);
       setToast({
         label: t("PM_TOAST_FACILITY_TEMPLATE_DOWNLOAD_ERROR"),
         key: "error"
@@ -285,6 +286,7 @@ const CreateFieldPlan = () => {
     let uploadedFile;
     try {
       const response = await PMService.uploadFieldPlanFacilityDataTemplate(chosenFile, createdFieldPlan.id);
+      setBlockUI(false);
 
       if (response.errorCode === "INVALID_TEMPLATE") {
         setToast({
@@ -317,6 +319,7 @@ const CreateFieldPlan = () => {
 
     } catch (e) {
       console.error("Error uploading template", e);
+      setBlockUI(false);
       setToast({
         key: "error",
         label: t("PM_TOAST_FACILITY_DATA_UPLOAD_ERROR"),
@@ -339,6 +342,7 @@ const CreateFieldPlan = () => {
 
   const validateActivityData = (activityData) => {
     let faultyData = false;
+    let emptyData = true;
 
     const validatedData = activityData.map((dataEntry) => ({
       ...dataEntry,
@@ -346,21 +350,34 @@ const CreateFieldPlan = () => {
         const newUserEntry = {}
 
         if (Object.keys(userEntry).every((key) => (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key) || !userEntry[key].value))) {
-          return userEntry;
+          Object.keys(userEntry).forEach((key) => {
+            if (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key)) {
+              newUserEntry[key] =  userEntry[key];
+            } else {
+              newUserEntry[key] =  {
+                ...userEntry[key],
+                error: ""
+              };
+            }
+          })
+          return newUserEntry;
         }
 
+        emptyData = false;
         Object.keys(userEntry).forEach((key) => {
           if (["id", "isEmailSent", "deleteAssignment", "savedAssignment"].includes(key)) {
             newUserEntry[key] =  userEntry[key];
-          }
-          else if (!userEntry[key].value) {
+          } else if (!userEntry[key].value) {
             faultyData = true;
             newUserEntry[key] = {
               ...userEntry[key],
               error: t("CORE_COMMON_REQUIRED")
             };
           } else {
-            newUserEntry[key] =  userEntry[key];
+            newUserEntry[key] =  {
+              ...userEntry[key],
+              error: ""
+            };
           }
         })
 
@@ -370,6 +387,7 @@ const CreateFieldPlan = () => {
 
     return {
       faultyData,
+      emptyData,
       validatedData,
     }
   }
@@ -438,9 +456,21 @@ const CreateFieldPlan = () => {
 
   const handleActivityDataSave = async (activityData) => {
 
-    const { faultyData, validatedData } = validateActivityData(activityData);
+    const { faultyData, emptyData, validatedData } = validateActivityData(activityData);
 
     if (faultyData) {
+      setPersistedFormData((prevState) => ({
+        ...prevState,
+        activityDetails: {
+          activityUserAssignment: validatedData,
+        },
+      }));
+
+    } else if (emptyData) {
+      setToast({
+        key: "error",
+        label: t("PM_TOAST_ACTIVITY_DETAILS_EMPTY_SAVE_WARNING"),
+      })
       setPersistedFormData((prevState) => ({
         ...prevState,
         activityDetails: {
@@ -590,8 +620,9 @@ const CreateFieldPlan = () => {
             customProps: {
               name: "activities",
               selectedOptions: (createdFieldPlan?.id && createdFieldPlan?.status !== "DRAFT") ? activityData?.filter((activity) => createdFieldPlan.activities.map((activity) => activity.code).includes(activity?.code)) : [],
+              description: "PM_CREATE_FIELD_PLAN_LABEL_ACTIVITIES_DESC",
               t,
-              activityData,
+              activityData: activityData?.filter((activity) => activity?.code !== "AMC"),
             },
             route: "activities",
             nextRoute: "",
@@ -781,6 +812,7 @@ const CreateFieldPlan = () => {
         search: `fieldPlanId=${upsertedFieldPlanResponse.id}&key=${currentKey + 1}`,
       });
       setCurrentKey(prev => prev + 1);
+      setBlockUI(false);
       setToast({
         key: "success",
         label: createdFieldPlan?.id ? t("PM_TOAST_DRAFT_FIELD_PLAN_UPDATION_SUCCESS") : t("PM_TOAST_DRAFT_FIELD_PLAN_CREATION_SUCCESS"),
@@ -788,6 +820,7 @@ const CreateFieldPlan = () => {
 
     } catch (e) {
       console.error(`Error ${ createdFieldPlan?.id ? `updating` : `creating` } field plan`, e);
+      setBlockUI(false);
       setToast({
         key: "error",
         label: createdFieldPlan?.id ? t("PM_TOAST_DRAFT_FIELD_PLAN_UPDATION_ERROR") : t("PM_TOAST_DRAFT_FIELD_PLAN_CREATION_ERROR"),

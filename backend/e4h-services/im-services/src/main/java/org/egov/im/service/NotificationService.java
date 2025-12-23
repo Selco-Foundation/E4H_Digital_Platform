@@ -766,9 +766,9 @@ public class NotificationService {
             tenantId = tenantId.split("\\.")[0];
         }
         if (request.getWorkflow().getAssignes() != null)
-            url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role);
+            url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role, request.getIncident().getBoundaryCode());
         else
-            url = hrmsUtils.getHRMSURI(null, tenantId, role);
+            url = hrmsUtils.getHRMSURI(null, tenantId, role, request.getIncident().getBoundaryCode());
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(request.getRequestInfo()).build();
         Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
 
@@ -821,7 +821,7 @@ public class NotificationService {
 
         String tenantId = request.getIncident().getTenantId();
 
-        StringBuilder url = hrmsUtils.getHRMSURI(uuids, tenantId, role);
+        StringBuilder url = hrmsUtils.getHRMSURI(uuids, tenantId, role, request.getIncident().getBoundaryCode());
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder()
                 .requestInfo(request.getRequestInfo())
                 .build();

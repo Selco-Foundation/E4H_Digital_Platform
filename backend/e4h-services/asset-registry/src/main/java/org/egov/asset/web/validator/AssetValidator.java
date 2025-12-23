@@ -48,7 +48,7 @@ public class AssetValidator {
         Map<String, Object> mdmsData = mdmsUtil.getMDMSData(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId());
         log.debug("Fetched MDMS data keys: {}", mdmsData.keySet());
         if (!CollectionUtils.isEmpty(mdmsData.keySet())) {
-            validateMdmsData(request.getAssetDetail().getAsset(), errorMap, mdmsData);
+            validateMdmsData(request, errorMap, mdmsData);
         }
         if (!CollectionUtils.isEmpty(errorMap.keySet()))
             throw new CustomException(errorMap);
@@ -57,7 +57,8 @@ public class AssetValidator {
                 request.getAssetDetail().getAsset().getAssetId());
     }
 
-    private void validateMdmsData(Asset asset, Map<String, String> errorMap, Map<String, Object> mdmsData) {
+    private void validateMdmsData(AssetCreateRequest request, Map<String, String> errorMap, Map<String, Object> mdmsData) {
+        Asset asset = request.getAssetDetail().getAsset();
         log.debug("Validating MDMS data for assetId={} assetType={}", asset.getAssetId(), asset.getAssetTypeID());
         validateAssetType(asset, errorMap, mdmsData.get(AssetConstants.ASSET_TYPE_CODE));
         validateBrandType(asset, errorMap, mdmsData.get(AssetConstants.BRAND_CODE));
@@ -65,6 +66,7 @@ public class AssetValidator {
         validateSystem(asset, errorMap, mdmsData.get(AssetConstants.SYSTEM_CODE));
         validateAssetDetails(asset, errorMap);
         validateFacilityId(asset, errorMap);
+        validateActivityFacilityId(request, errorMap);
     }
 
     private void validateAssetDetails(Asset asset, Map<String, String> errorMap) {
@@ -260,10 +262,11 @@ public class AssetValidator {
         // System-specific validations
         if (SYSTEM_DC.equals(systemType) || SYSTEM_AC_OFF_GRID.equals(systemType)) {
             // Both DC and AC Off Grid systems require panel capacity
-            // Validate Panel Capacity for DC system
             if (panelDetails.getPanelCapacity() == null) {
                 errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_REQUIRED_CODE, ErrorConstants.ASSET_PANEL_CAPACITY_REQUIRED_MSG);
-            } else if (!VALID_PANEL_CAPACITIES.contains(panelDetails.getPanelCapacity())) {
+            }
+
+            if (!VALID_DC_PANEL_CAPACITIES.contains(panelDetails.getPanelCapacity()) && SYSTEM_DC.equals(systemType)) {
                 errorMap.put(ErrorConstants.ASSET_PANEL_CAPACITY_INVALID_VALUE_CODE,
                         ErrorConstants.ASSET_PANEL_CAPACITY_INVALID_VALUE_MSG);
             }
@@ -392,6 +395,14 @@ public class AssetValidator {
         List<Object> facilities = facilityUtil.searchFacility(asset.getTenantId(), asset.getFacilityID());
         if(facilities.isEmpty())
             errorMap.put(ErrorConstants.ASSET_FACILITY_ID_VALIDATION_CODE, ErrorConstants.ASSET_FACILITY_ID_VALIDATION_MSG);
+    }
+
+    private void validateActivityFacilityId(AssetCreateRequest request, Map<String,String> errorMap){
+        Asset asset = request.getAssetDetail().getAsset();
+        log.info("Validating activity facility for assetId={} facilityId={}", asset.getAssetId(), asset.getActivityFacilityID());
+        List<Object> activityList = facilityUtil.getActivityFacilityById(request.getRequestInfo(), asset.getFacilityID(), asset.getTenantId());
+        if(activityList.isEmpty())
+            errorMap.put(ErrorConstants.ASSET_ACTIVITY_FACILITY_ID_VALIDATION_CODE, ErrorConstants.ASSET_ACTIVITY_FACILITY_ID_VALIDATION_MSG);
     }
 
     public void validateAsset(String assetID, AssetCreateRequest body) {

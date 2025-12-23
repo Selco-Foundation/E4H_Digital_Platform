@@ -1,0 +1,1 @@
+ALTER TABLE bom ADD COLUMN activity_facility_id VARCHAR;

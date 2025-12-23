@@ -26,7 +26,7 @@ public class Incident {
         private String incidentType = null;
 		
 		@NotNull
-        @JsonProperty("incidentSubType")
+        @JsonProperty("incidentSubtype")
         private String incidentSubType = null;
 
 	    @JsonProperty("reporterType")
@@ -83,4 +83,10 @@ public class Incident {
 
         @JsonProperty("migrationId")
         private String migrationId = null;
+
+        @JsonProperty("facilityId")
+        private String facilityId = null;
+
+        @JsonProperty("boundaryCode")
+        private String boundaryCode = null;
 }

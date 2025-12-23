@@ -18,24 +18,42 @@ const ChangeCity = (prop) => {
   if(selectCityData.length>0){
     sortSelectCityData=selectCityData.sort((a, b) => a.label.localeCompare(b.label));
   }
-  const [selectedCity, setSelectedCity] = useState([]); //selectedCities?.[0]?.value
   const history = useHistory();
-  const isDropdown = prop.dropdown || false;
-  let selectedCities = [];
-  const { data: tenantsData } = Digit.Hooks.useTenants();
+  const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
+  const [facilityOptions, setFacilityOptions] = useState([]);
+  const [facilityBoundaries, setFacilityBoundaries] = useState([]);
+  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
+
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries) || []);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
   const { t } = prop;
 
-  const handleChangeCity = (city) => {
-    const loggedInData = Digit.SessionStorage.get("citizen.userRequestObject");
-    const filteredRoles = Digit.SessionStorage.get("citizen.userRequestObject")?.info?.roles?.filter(role => role.tenantId === city.value);  
-     if (filteredRoles?.length > 0) {
-      loggedInData.info.roles = filteredRoles;
-      loggedInData.info.tenantId = city?.value;
+  useEffect(() => {
+    if (boundaryData) {
+      setFacilityBoundaries(boundaryData.facilities);
+      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
     }
-    Digit.SessionStorage.set("Employee.tenantId", city?.value);
-    localStorage.setItem("Employee.tenant-id", city?.value);
-    Digit.UserService.setUser(loggedInData);
+  }, [boundaryData]);
+
+  useEffect(() => {
+    if (facilityBoundaries?.length && facilityData?.facilities?.length) {
+      const facilityBoundaryCodeToParentMap = new Map();
+      for (let facilityBoundary of facilityBoundaries) {
+        facilityBoundaryCodeToParentMap.set(facilityBoundary.code, facilityBoundary.parentCode);
+      }
+      setFacilityOptions(facilityData?.facilities?.map((facility) => ({
+        code: facility.boundaryCode,
+        id: facility.facilityId,
+        parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
+      })));
+    }
+  }, [facilityBoundaries, facilityData]);
+
+  const handleChangeCity = (city) => {
     setDropDownData(city);
+    Digit.SessionStorage.set("Jurisdiction.CurrentBoundary", city.type === "UNIFIED" ? jurisdictionBoundaries : {
+      [city.type]: city.code.split(","),
+    })
     if (window.location.href.includes(`/${window.contextPath}/employee/`)) {
       const redirectPath = location.state?.from || `/${window.contextPath}/employee`;
       history.replace(redirectPath);
@@ -44,39 +62,34 @@ const ChangeCity = (prop) => {
   };
 
   useEffect(() => {
-    const userloggedValues = Digit.SessionStorage.get("citizen.userRequestObject");
-    let teantsArray = [], filteredArray = [];
-    userloggedValues?.info?.roles?.forEach(role => teantsArray.push(role.tenantId));
-    let unique = teantsArray.filter((item, i, ar) => ar.indexOf(item) === i);
-    unique?.forEach((uniCode) => {
-      filteredArray.push({
-        label: prop?.t(`TENANT_TENANTS_${stringReplaceAll(uniCode, ".", "_")?.toUpperCase()}`),
-        value: uniCode
-      })
-    });
-
-    //For CRM and State Manager, add all the tenant ids within the state.
-    const user = Digit.UserService.getUser();
-    if (user?.info?.roles?.some(role => ["COMPLAINT_ASSESSOR", "COMPLAINT_FACILITATOR_1"].includes(role.code))) {
-      tenantsData?.forEach(tenant => {
-        if (!unique?.includes(tenant?.code)) {
+    const jurisdictionBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries);
+    const jurisdictionBoundaryTypes = Digit.Utils.BoundaryUtil.aggregateBoundaryTypes(jurisdictionBoundaries);
+    const isOnlyFacilityType = jurisdictionBoundaryTypes.length === 1 && jurisdictionBoundaryTypes[0] === "facility";
+    let filteredArray = [
+      {
+        code: jurisdictionBoundaryCodes?.join(","),
+        label: (jurisdictionBoundaryCodes?.length === 1 &&  isOnlyFacilityType) ? t(`Boundary_${jurisdictionBoundaryCodes?.[0]}`) : t("CORE_COMMON_ALL"),
+        type: "UNIFIED",
+      }
+    ];
+    if (facilityOptions) {
+      facilityOptions.forEach((facility) => {
+        if (filteredArray.every((boundary) => boundary.code !== facility.code)) {
           filteredArray.push({
-            label: t(tenant?.i18nKey),
-            value: tenant?.code
+            code: facility.code,
+            label: t(`Boundary_${facility.code}`),
+            type: "facility",
           })
         }
-      });
+      })
     }
-
-    selectedCities = filteredArray?.filter(select => select.value == Digit.SessionStorage.get("Employee.tenantId"));
-    const convertedData = filteredArray.map(item => ({
-      name: item.label,
-      code: item.value
-    }));
-    Digit.SessionStorage.set("Tenants",convertedData)
+    filteredArray.sort((a, b) => a.label.localeCompare(b.label));
+    const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
+    const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+    const selectedBoundary = filteredArray?.find(select => select?.code === jurisdictionCurrentBoundaryCodes?.join(","));
     setSelectCityData(filteredArray);
-    setDropDownData(selectedCities?.[0]);
-  }, [tenantsData, t]);
+    setDropDownData(selectedBoundary);
+  }, [facilityOptions, t]);
 
   // if (isDropdown) {
   return (

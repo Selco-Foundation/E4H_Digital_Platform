@@ -126,6 +126,10 @@ const Dropdown = React.forwardRef((props, ref) => {
     }
   };
 
+  useEffect(() => {
+    validate();
+  }, [selectedOption]);
+
   const clearError = () => {
     return setError("");
   };

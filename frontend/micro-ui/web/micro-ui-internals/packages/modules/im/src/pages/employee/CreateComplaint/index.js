@@ -10,12 +10,15 @@ import { Link } from "react-router-dom";
 
 export const CreateComplaint = ({ parentUrl }) => {
   const { t } = useTranslation();
-  const stateTenantId = Digit.ULBService.getStateId();
-  const [healthCareType, setHealthCareType] = useState();
   const [healthcentre, setHealthCentre] = useState();
-  const [blockMenu, setBlockMenu] = useState([]);
-  const [blockMenuNew, setBlockMenuNew] = useState([]);
   const [districtMenu, setDistrictMenu] = useState([]);
+  const [sortedDistrictMenu, setSortedDistrictMenu] = useState([]);
+  const [blockOptions, setBlockOptions] = useState([]);
+  const [blockMenu, setBlockMenu] = useState([]);
+  const [sortedBlockMenu, setSortedBlockMenu] = useState([]);
+  const [facilityOptions, setFacilityOptions] = useState([]);
+  const [facilityMenu, setFacilityMenu] = useState([]);
+  const [sortedFacilityMenu, setSortedFacilityMenu] = useState([]);
   const [file, setFile] = useState(null);
   const [showToast, setShowToast] = useState(null);
   const [uploadedFile, setUploadedFile] = useState([]);
@@ -32,14 +35,11 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
   const [error, setError] = useState(null);
-  let reporterName = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.name;
   const [canSubmit, setSubmitValve] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const tenantId = window.Digit.SessionStorage.get("Employee.tenantId");
-  const [tenant, setTenant] = useState(window.Digit.SessionStorage.get("Employee.tenantId"));
   const [complaintType, setComplaintType] = useState({});
   const [subTypeMenu, setSubTypeMenu] = useState([]);
-  const [phcSubTypeMenu, setPhcSubTypeMenu] = useState([]);
   const [disbaled, setDisable] = useState(true);
   const [disbaledUpload, setDisableUpload] = useState(true);
   const [phcMenuNew, setPhcMenu] = useState([]);
@@ -49,15 +49,81 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
   const [blockUI, setBlockUI] = useState(false);
+  const [selectBoundaryCode, setSelectBoundaryCode] = useState("");
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
+    country: ["-"],
+  };
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+  const [stateBoundaryCode, setStateBoundaryCode] = useState("");
+  const [facilityBoundaries, setFacilityBoundaries] = useState([]);
+  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
+
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+
+  useEffect(() => {
+    setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
+    if (boundaryData) {
+      setStateBoundaryCode(boundaryData.states?.map((state) => state?.code)?.join(","));
+      setDistrictMenu(boundaryData.districts);
+      setBlockOptions(boundaryData.blocks);
+      setFacilityBoundaries(boundaryData.facilities);
+      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
+    }
+  }, [boundaryData, t]);
+
+  useEffect(() => {
+    if (facilityBoundaries?.length && facilityData?.facilities?.length) {
+      const facilityBoundaryCodeToParentMap = new Map();
+      for (let facilityBoundary of facilityBoundaries) {
+        facilityBoundaryCodeToParentMap.set(facilityBoundary.code, facilityBoundary.parentCode);
+      }
+      setFacilityOptions(facilityData?.facilities?.map((facility) => ({
+        code: facility.boundaryCode,
+        id: facility.facilityId,
+        parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
+      })));
+    }
+  }, [facilityBoundaries, facilityData]);
+
+  useEffect(() => {
+    setSortedDistrictMenu(
+      districtMenu
+        .map((district) => ({
+          ...district,
+          name: t(`Boundary_${district.code}`),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    )
+  }, [t, districtMenu]);
+
+  useEffect(() => {
+    setSortedBlockMenu(
+      blockMenu
+        .map((block) => ({
+          ...block,
+          name: t(`Boundary_${block.code}`),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    )
+  }, [t, blockMenu]);
+
+  useEffect(() => {
+    setSortedFacilityMenu(
+      facilityMenu
+        .map((facility) => ({
+          ...facility,
+          name: t(`Boundary_${facility.code}`),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    )
+  }, [t, facilityMenu]);
+
   let sortedSubMenu = [];
   if (subTypeMenu !== null) {
     sortedSubMenu = subTypeMenu.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  let sortedphcSubMenu = [];
-  if (phcSubTypeMenu !== null) {
-    sortedphcSubMenu = phcSubTypeMenu.sort((a, b) => a.name.localeCompare(b.name));
-  }
   const menu = Digit.Hooks.pgr.useComplaintTypes({ stateCode: tenantId });
   let sortedMenu = [];
   if (menu !== null) {
@@ -80,32 +146,9 @@ export const CreateComplaint = ({ parentUrl }) => {
     sortedSubMenu = otherItems;
   }
   const state = Digit.ULBService.getStateId();
-  const [selectTenant, setSelectTenant] = useState(Digit.SessionStorage.get("Employee.tenantId") || null);
-  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block", "SystemFunctionality"]);
-  const { data: phcMenu } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
-  let blockNew = mdmsData?.Incident?.Block;
-  
+  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["SystemFunctionality"]);
+
   useEffect(() => {
-    const fetchDistrictMenu = async () => {
-      const response = phcMenu?.Incident?.District;
-      if (response) {
-        const uniqueDistricts = {};
-        const districts = response.filter((def) => {
-          if (!uniqueDistricts[def.code]) {
-            uniqueDistricts[def.code] = true;
-            return true;
-          }
-          return false;
-        });
-        districts.sort((a, b) => a.name.localeCompare(b.name));
-        setDistrictMenu(
-          districts.map((def) => ({
-            key: def.code,
-            name: t(def.name),
-          }))
-        );
-      }
-    };
     const fetchSystemFunctionalMenu = async () => {
       const response = mdmsData?.Incident?.SystemFunctionality;
       if (response) {
@@ -119,7 +162,7 @@ export const CreateComplaint = ({ parentUrl }) => {
         );
       }
     }
-    fetchDistrictMenu();
+
     fetchSystemFunctionalMenu();
   }, [state, mdmsData, t]);
 
@@ -128,9 +171,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       page_path: window.location?.pathname || "/new-ticket",
       page_title: "New Ticket",
     });
-    let tenants = Digit.SessionStorage.get("Employee.tenantId");
-    setSelectTenant(tenants);
-    if (selectTenant !== stateTenantId) {
+    if (selectBoundaryCode !== stateBoundaryCode) {
       ticketTypeRef?.current?.validate();
       ticketSubTypeRef?.current?.validate();
     } else {
@@ -139,30 +180,35 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, []);
 
   useEffect(async () => {
-    if (selectTenant && selectTenant !== stateTenantId) {
-      let tenant = Digit.SessionStorage.get("IM_TENANTS");
-      const selectedTenantData = tenant.find((item) => item.code === selectTenant);
-      const selectedDistrict = {
-        key: t(selectedTenantData.city.districtCode),
-        codeNew: selectedTenantData.city.districtCode,
-        name: t(selectedTenantData.city.districtName),
-      };
-      const selectedTenantBlock = blockNew !== undefined ? blockNew.find((item) => item.code === selectedTenantData.city.blockCode) : "";
-      let selectedBlock = "";
-      if (selectedTenantBlock !== undefined && selectedTenantBlock.length !== 0) {
-        selectedBlock = {
-          key: t(selectedTenantBlock.code.split(".")[1].toUpperCase()),
-          name: t(selectedTenantBlock.name),
-          codeNew: selectedTenantBlock.code,
-          codeKey: selectedTenantBlock.code.split(".")[1].toUpperCase(),
-        };
-      }
-      handleDistrictChange(selectedDistrict);
-      handleBlockChange(selectedBlock);
+    if (
+      selectBoundaryCode && stateBoundaryCode && selectBoundaryCode !== stateBoundaryCode
+      && districtMenu?.length && blockOptions?.length && facilityOptions?.length
+    ) {
+      const selectedHealthCentre = facilityOptions.find((facility) => facility?.code === selectBoundaryCode)
+      if (selectedHealthCentre) {
+        setHealthCentre({
+          ...selectedHealthCentre,
+          name: t(`Boundary_${selectedHealthCentre.code}`),
+        })
 
-      // setBlock(selectedBlock);
+        const selectedBlock = blockOptions.find((block) => block?.code === selectedHealthCentre.parentCode);
+        if (selectedBlock) {
+          setBlock({
+            ...selectedBlock,
+            name: t(`Boundary_${selectedBlock.code}`),
+          })
+
+          const selectedDistrict = districtMenu.find((district) => district?.code === selectedBlock.parentCode);
+          if (selectedDistrict) {
+            setDistrict({
+              ...selectedDistrict,
+              name: t(`Boundary_${selectedDistrict.code}`),
+            })
+          }
+        }
+      }
     }
-  }, [selectTenant, mdmsData, state]);
+  }, [t, districtMenu, blockOptions, facilityOptions, selectBoundaryCode, stateBoundaryCode]);
 
   useEffect(() => {
     (async () => {
@@ -195,16 +241,16 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   useEffect(() => {
     const isAnyUploading = isImageUploading || isVideoUploading;
-    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthCareType?.code && healthcentre?.code && district?.key && block.key && !isAnyUploading) {
+    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthcentre?.code && district?.code && block?.code && !isAnyUploading) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [complaintType, subType, systemFunctionality, healthcentre, healthCareType, district, block, isImageUploading, isVideoUploading]);
+  }, [complaintType, subType, systemFunctionality, healthcentre, district, block, isImageUploading, isVideoUploading]);
 
   useEffect(() => {
     const handleDuplicateCheck = async () => {
-      if (district?.name && block?.name && healthcentre?.code && complaintType?.key && subType?.key) {
+      if (healthcentre?.code && complaintType?.key && subType?.key) {
         setBlockUI(true);
         try {
           const data = await Digit.InboxGeneral.Search({
@@ -223,10 +269,9 @@ export const CreateComplaint = ({ parentUrl }) => {
                 ],
                 tenantId,
               },
+              jurisdictionSearchCriteria: jurisdictionCurrentBoundary,
               moduleSearchCriteria: {
-                district: [district.name],
-                block: [block.name],
-                phcType: [healthcentre.code],
+                facility: [healthcentre.code],
                 incidentType: [complaintType.key],
                 incidentSubType: [subType?.key],
                 tenantId,
@@ -252,7 +297,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     }
 
     handleDuplicateCheck();
-  }, [district, block, healthcentre, complaintType, subType]);
+  }, [healthcentre, complaintType, subType]);
 
   async function selectedType(value) {
     setDisableUpload(false);
@@ -274,22 +319,9 @@ export const CreateComplaint = ({ parentUrl }) => {
     setDistrict(selectedDistrict);
     setBlock({});
     setHealthCentre({});
-    setHealthCareType({});
-    setPhcMenu([]);
-    setPhcSubTypeMenu([]);
-    const response = mdmsData?.Incident?.Block;
-    if (response) {
-      const blocks = response.filter((def) => def.districtCode === selectedDistrict.key);
 
-      blocks.sort((a, b) => a.name.localeCompare(b.name));
-      setBlockMenuNew(blocks);
-      setBlockMenu(
-        blocks.map((block) => ({
-          key: block.name,
-          name: t(block.name),
-        }))
-      );
-    }
+    const newBlocksMenu = blockOptions?.filter((blockOption) => blockOption?.parentCode === selectedDistrict?.code);
+    setBlockMenu(newBlocksMenu);
   };
 
   function selectedSubType(value) {
@@ -301,57 +333,15 @@ export const CreateComplaint = ({ parentUrl }) => {
   }
   async function selectedHealthCentre(value) {
     setHealthCentre(value);
-    setPhcSubTypeMenu([value]);
-    setHealthCareType(value);
     setDisableUpload(false);
     setDisable(false);
-    setTenant(value?.city?.districtTenantCode);
-    centerTypeRef?.current?.clearError();
     setShowToast(null);
   }
   const handleBlockChange = (selectedBlock) => {
-    //sessionStorage.setItem("block",JSON.stringify(value))
     setHealthCentre({});
-    setHealthCareType({});
-    setPhcSubTypeMenu([]);
-    if (selectTenant && selectTenant !== stateTenantId) {
-      const phcMenuType = phcMenu?.tenant?.tenants.filter((centre) => centre?.city?.blockCode === selectedBlock?.codeNew);
-      const translatedPhcMenu = phcMenuType?.map((item) => ({
-        ...item,
-        key: item?.name,
-        name: t(item?.name),
-        code: item?.code,
-        centreTypeKey: item?.centreType,
-        centreType: t(item?.centreType),
-      }));
-      setPhcMenu(translatedPhcMenu);
-      setBlock(selectedBlock);
-
-      let tenant = Digit.SessionStorage.get("Employee.tenantId");
-
-      const filtereddata = phcMenuType?.filter((codeNew) => codeNew.code == tenant);
-
-      if (filtereddata) {
-        selectedHealthCentre(filtereddata?.[0]);
-      }
-    } else {
-      const block = blockMenuNew.find((item) => item?.name.toUpperCase() === selectedBlock?.key.toUpperCase());
-      const phcMenuType = phcMenu?.tenant?.tenants.filter((centre) => centre?.city?.blockCode === block?.code);
-      const translatedPhcMenu = phcMenuType?.map((item) => ({
-        ...item,
-        key: item?.name,
-        name: t(item?.name),
-        centreTypeKey: item?.centreType,
-        centreType: t(item?.centreType),
-      }));
-      setPhcMenu(translatedPhcMenu);
-
-      setBlock(selectedBlock);
-    }
-  };
-
-  const handlePhcSubType = async (value) => {
-    setHealthCareType(value);
+    setBlock(selectedBlock);
+    const newFacilityMenu = facilityOptions.filter((facility) => facility?.parentCode === selectedBlock?.code);
+    setFacilityMenu(newFacilityMenu);
   };
 
   const wrapperSubmit = (data) => {
@@ -368,13 +358,17 @@ export const CreateComplaint = ({ parentUrl }) => {
       complaintType,
       subType,
       systemFunctionality,
-      district,
-      block,
-      healthCareType,
+      district : {
+        ...district,
+        name: t(`Boundary_${district.code}`, { lng: "en_IN" })
+      },
+      block : {
+        ...block,
+        name: t(`Boundary_${block.code}`, { lng: "en_IN" })
+      },
       healthcentre,
-      reporterName,
       uploadedFile,
-      tenantId: healthcentre?.code,
+      tenantId,
     };
     await dispatch(createComplaint(formData));
     await client.refetchQueries(["fetchInboxData"]);
@@ -383,7 +377,6 @@ export const CreateComplaint = ({ parentUrl }) => {
   const districtRef = useRef(null);
   const blockRef = useRef(null);
   const healthCareRef = useRef(null);
-  const centerTypeRef = useRef(null);
   const ticketTypeRef = useRef(null);
   const ticketSubTypeRef = useRef(null);
   const systemFunctionalityRef = useRef(null);
@@ -391,7 +384,6 @@ export const CreateComplaint = ({ parentUrl }) => {
     { field: district, ref: districtRef },
     { field: block, ref: blockRef },
     { field: healthcentre, ref: healthCareRef },
-    { field: healthCareType, ref: centerTypeRef },
     { field: complaintType, ref: ticketTypeRef },
     { field: subType, ref: ticketSubTypeRef },
     { field: systemFunctionality, ref: systemFunctionalityRef },
@@ -515,17 +507,16 @@ export const CreateComplaint = ({ parentUrl }) => {
           populators: (
             <Dropdown
               ref={districtRef}
-              option={districtMenu}
+              option={sortedDistrictMenu}
               optionKey="name"
               id="name"
               selected={district}
               select={handleDistrictChange}
-              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
+              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
               required={true}
             />
           ),
         },
-
         {
           label: t("INCIDENT_BLOCK"),
           isMandatory: true,
@@ -534,12 +525,12 @@ export const CreateComplaint = ({ parentUrl }) => {
           populators: (
             <Dropdown
               ref={blockRef}
-              option={blockMenu}
+              option={sortedBlockMenu}
               optionKey="name"
               id="name"
               selected={block}
               select={handleBlockChange}
-              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
+              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
               required={true}
             />
           ),
@@ -552,30 +543,12 @@ export const CreateComplaint = ({ parentUrl }) => {
             <Dropdown
               ref={healthCareRef}
               t={t}
-              option={phcMenuNew}
+              option={sortedFacilityMenu}
               optionKey="name"
               id="healthCentre"
               selected={healthcentre}
               select={selectedHealthCentre}
-              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
-              required={true}
-            />
-          ),
-        },
-        {
-          label: t("HEALTH_CENTRE_TYPE"),
-          isMandatory: true,
-          type: "dropdown",
-          populators: (
-            <Dropdown
-              ref={centerTypeRef}
-              t={t}
-              option={sortedphcSubMenu}
-              optionKey="centreType"
-              id="healthcaretype"
-              selected={healthCareType}
-              select={handlePhcSubType}
-              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
+              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
               required={true}
             />
           ),
@@ -669,9 +642,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={5}
                 disabled={disbaledUpload}
-                ulb={
-                  Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
-                }
+                ulb={Digit.SessionStorage.get("Employee.tenantId")}
                 acceptFiles={".png, .jpg, .jpeg, image/*"}
                 multiple={true}
                 specificFileConstraint={specificFileConstraint[1]}
@@ -697,9 +668,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={2}
                 disabled={disbaledUpload}
-                ulb={
-                  Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
-                }
+                ulb={Digit.SessionStorage.get("Employee.tenantId")}
                 acceptFiles={".mp4, .avi, .mov, .wmv, video/*"}
                 multiple={false}
                 specificFileConstraint={specificFileConstraint[0]}
@@ -796,6 +765,8 @@ export const CreateComplaint = ({ parentUrl }) => {
                   fontSize: "16px",
                   textAlign: "center",
                   marginBottom: "5px",
+                  maxHeight: "250px",
+                  overflow: "auto",
                 }}
               >
                 <span>

@@ -2,7 +2,6 @@ package org.egov.activity.web.controllers;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.annotations.ApiParam;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -31,15 +30,17 @@ public class ActivityApiController {
 
     private final HttpServletRequest httpServletRequest;
     private final ActivityService activityService;
+    private final ActivityFacilityUsersService facilityUsersService;
     private final FacilityWorkflowService facilityWorkflowService;
 
     @Autowired
     public ActivityApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
                                  Producer producer,
                                  ActivityConfiguration fieldPlannerConfiguration,
-                                 ActivityService activityService, FacilityWorkflowService facilityWorkflowService) {
+                                 ActivityService activityService, ActivityFacilityUsersService facilityUsersService, FacilityWorkflowService facilityWorkflowService) {
         this.httpServletRequest = httpServletRequest;
         this.activityService = activityService;
+        this.facilityUsersService = facilityUsersService;
         this.facilityWorkflowService = facilityWorkflowService;
     }
 
@@ -56,17 +57,30 @@ public class ActivityApiController {
     }
 
     @RequestMapping(value = "/_update", method = RequestMethod.POST)
-    public ResponseEntity<ActivityFacilityResponse> updateActivityAssignment(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
-        ActivityFacilityBulkRequest enrichedFieldPlanRequest = activityService.updateActivityFacitlity(request);
+    public ResponseEntity<ActivityFacilityResponse> updateActivityFacility(@ApiParam(value = "Details for the updated Project.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+        ActivityFacilityBulkRequest enrichedFieldPlanRequest = activityService.updateActivityFacility(request);
 
         ResponseInfo responseInfo = ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true);
         ActivityFacilityResponse activityFacilityResponse = ActivityFacilityResponse.builder().responseInfo(responseInfo).activityFacilities(enrichedFieldPlanRequest.getActivityFacilities()).build();
         return new ResponseEntity<ActivityFacilityResponse>(activityFacilityResponse, HttpStatus.OK);
     }
 
+    @RequestMapping(value = "/_delete", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityResponse> deleteActivityFacility(@ApiParam(value = "Delete activity Facility.", required = true) @Valid @RequestBody ActivityFacilityBulkRequest request) {
+
+        List<ActivityFacility> activityFacilities = activityService.delete(request);
+        ActivityFacilityResponse response = ActivityFacilityResponse.builder()
+                .activityFacilities(activityFacilities)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
     @RequestMapping(value = "/_search", method = RequestMethod.POST)
     public ResponseEntity<FacilityStatusResponse> searchActivityFacility(
-            @ApiParam(value = "Details for the fieldPlan.", required = true) @Valid @RequestBody ActivityFacilitySearchRequest request,
+            @ApiParam(value = "Details for the Activity Facility.", required = true) @Valid @RequestBody ActivityFacilitySearchRequest request,
             @Valid @ModelAttribute URLParams urlParams
     ) {
         List<ActivityFacility> activityFacilityList = activityService.searchActivityFacility(
@@ -237,5 +251,43 @@ public class ActivityApiController {
             // Partial success/fail
             return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(response);
         }
+    }
+
+    @RequestMapping(value = "/staff/v1/_create", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityUserResponse> facilityUsersV1CreatePost(@ApiParam(value = "Capture linkage of Activity Facility and staff user.", required = true) @Valid @RequestBody ActivityFacilityUserBulkRequest request) throws Exception {
+
+        List<ActivityFacilityUser> staff = facilityUsersService.createActivityFacilityUsers(request);
+        ActivityFacilityUserResponse response = ActivityFacilityUserResponse.builder()
+                .activityFacilityUser(staff)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/staff/v1/_update", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityUserResponse> facilityUsersV1UpdatePost(@ApiParam(value = "Capture linkage of Project and staff user.", required = true) @Valid @RequestBody ActivityFacilityUserBulkRequest request) {
+
+        List<ActivityFacilityUser> activityFacilityUsers = facilityUsersService.update(request);
+        ActivityFacilityUserResponse response = ActivityFacilityUserResponse.builder()
+                .activityFacilityUser(activityFacilityUsers)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/staff/v1/_delete", method = RequestMethod.POST)
+    public ResponseEntity<ActivityFacilityUserResponse> facilityUsersV1DeletePost(@ApiParam(value = "Capture linkage of Project and staff user.", required = true) @Valid @RequestBody ActivityFacilityUserBulkRequest request) {
+
+        List<ActivityFacilityUser> activityFacilityUsers = facilityUsersService.delete(request);
+        ActivityFacilityUserResponse response = ActivityFacilityUserResponse.builder()
+                .activityFacilityUser(activityFacilityUsers)
+                .responseInfo(ResponseInfoFactory
+                        .createResponseInfo(request.getRequestInfo(), true))
+                .build();
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 }

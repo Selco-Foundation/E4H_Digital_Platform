@@ -39,6 +39,10 @@ public class Asset {
     @NotNull
     private String facilityID = null;
 
+    @JsonProperty("activityFacilityID")
+    @NotNull
+    private String activityFacilityID = null;
+
     @JsonProperty("assetTypeID")
     @NotNull
     private String assetTypeID = null;

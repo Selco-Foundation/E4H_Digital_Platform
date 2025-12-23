@@ -47,8 +47,6 @@ jobs:
           commit_hash=$(git log -1 --pretty=format:%H -- frontend/micro-ui)
           echo "commit_hash=$commit_hash" >> $GITHUB_ENV
 
-      
-
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -61,7 +59,6 @@ jobs:
           build-args: |
             PUBLIC_PATH=/odisha/
             WORK_DIR=frontend/micro-ui/
-
 
 #  Workflow_Trigger:
 #    if: startsWith(github.ref, 'refs/heads/develop')

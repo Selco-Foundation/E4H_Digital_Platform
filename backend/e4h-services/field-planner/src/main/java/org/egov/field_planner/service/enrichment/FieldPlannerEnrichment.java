@@ -77,7 +77,7 @@ public class FieldPlannerEnrichment {
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichFieldPlanFacilityRequestOnDelete(FieldPlanFacility fieldPlan, RequestInfo requestInfo) {
-        AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), fieldPlan.getAuditDetails(), false);
+        AuditDetails auditDetails = AuditDetails.builder().lastModifiedBy(requestInfo.getUserInfo().getUuid()).lastModifiedTime(System.currentTimeMillis()).build();
         fieldPlan.setAuditDetails(auditDetails);
         log.info("Enriched project audit details for project " + fieldPlan.getId());
     }

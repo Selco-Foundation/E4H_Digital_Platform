@@ -23,13 +23,13 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
   });
 
   const { isLoading, data } = useBoundary(
-    fieldPlan?.address?.boundary, "State"
+    fieldPlan?.stateBoundaryCode, "State"
   );
 
   useEffect(() => {
     if (data) {
-      setDistrictMenu(data.districts?.map(district => ({...district, name: t(`DISTRICT_${district.code.toUpperCase()}`)})));
-      setBlocksList(data.blocks?.map(block => ({...block, name: t(`BLOCK_${block.code.toUpperCase()}`)})));
+      setDistrictMenu(data.districts?.map(district => ({...district, name: t(`Boundary_${district.code}`)})));
+      setBlocksList(data.blocks?.map(block => ({...block, name: t(`Boundary_${block.code}`)})));
     }
   }, [data, t]);
 

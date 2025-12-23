@@ -12,6 +12,7 @@ import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.models.core.AdditionalFields;
 import org.springframework.validation.annotation.Validated;
 
+import java.util.List;
 import java.util.Map;
 
 @Validated
@@ -32,6 +33,12 @@ public class ActivityFacility {
 
     @JsonProperty("assignedEmployeeUser")
     private User assignedEmployeeUser = null;
+
+    @JsonProperty("spocUser")
+    private List<String> spocUser = null;
+
+    @JsonProperty("reviewerUser")
+    private List<String> reviewerUser = null;
 
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
@@ -56,6 +63,9 @@ public class ActivityFacility {
 
     @JsonProperty("status")
     private String status = null;
+
+    @JsonProperty("isDeleted")
+    private Boolean isDeleted;
 
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails = null;

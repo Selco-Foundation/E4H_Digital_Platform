@@ -65,6 +65,12 @@ public class ConsumerConfiguration {
     @Value("${egov.user.search.endpoint}")
     private String userSearchEndpoint;
 
+    @Value("${egov.hrms.host}")
+    private String hrmsHost;
+
+    @Value("${egov.hrms.search.url}")
+    private String hrmsSearchUrl;
+
     @Value("${egov.filestore.host}")
     private String fileStoreHost;
 

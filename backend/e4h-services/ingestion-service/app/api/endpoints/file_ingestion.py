@@ -2,7 +2,7 @@ import io
 import json
 import os
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 import uuid
 from typing import Optional, Dict, List
 
@@ -11,6 +11,7 @@ from openpyxl import load_workbook
 from openpyxl.styles import Protection, Font, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 
+from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
 from app.utils.excel_utils import autofit_columns
 from app.utils.facility_validator import project_facility_validation
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
@@ -39,6 +40,7 @@ from app.utils.convertor import request_info_from_json, create_vendor_request, c
     get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
     get_staff_search_payload, create_update_payload, get_incident_request_info
 from app.utils.facility_service_client import FacilityServiceClient
+from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
 from app.utils.file_utils import cleanup_temp_file
 from app.utils.im_service_client import IMServiceClient
@@ -51,15 +53,19 @@ router = APIRouter()
 logger = AppLogger().get_logger()
 
 from dotenv import load_dotenv
+from collections import defaultdict
 
 load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
 org_service_url = os.getenv("VENDOR_SERVICE_URL")
 project_service_url = os.getenv("PROJECT_SERVICE_URL")
 fieldPlan_service_url = os.getenv("FIELDPLAN_SERVICE_URL")
+fieldPlan_activity_service_url = os.getenv("FIELDPLAN_ACTIVITY_SERVICE_URL")
 facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 hrms_service_url = os.getenv("HRMS_SERVICE_URL")
 im_services_url = os.getenv("IM_SERVICES_URL")
+amc_scheduler_service_url = os.getenv("AMC_SCHEDULER_SERVICE_URL")
+DEFAULT_AMC_ASSET_TYPES = ["INVERTER", "PANEL", "BATTERY"]
 ENVIRONMENT = os.getenv("ENVIRONMENT", "uat").lower()
 base_path = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.abspath(os.path.join(base_path, "..", "..", "config"))
@@ -2150,51 +2156,119 @@ async def create_fielplan_facilities(
             df['Field Plan Linking Status'] = ''
 
         fieldplan_client = FieldPlanServiceClient(fieldPlan_service_url)
+        fieldplan_activity_client = FieldPlanActivityServiceClient(fieldPlan_activity_service_url)
 
-        # iterate all rows — handle existing facility ids (linking) and new rows (create -> link)
-        for index, row in df.iterrows():
+        # Fetch fieldplan-linked facilities if fieldplan_id is provided
+        fieldplan_linked_facility_ids = set()
+        if fieldplan_id:
             try:
-                # normalize facility id and include flag
-                facility_id_val = row.get(facility_id_col, None)
-                facility_id = None
-                if pd.notna(facility_id_val) and str(facility_id_val).strip():
-                    facility_id = str(facility_id_val).strip()
+                fieldplan_facilities_response = fieldplan_client.search_fieldplan_facility(request_info, fieldplan_id)
+                fieldplan_facilities = fieldplan_facilities_response.get("FieldPlanFacilities", [])
+                fieldplan_linked_facility_ids = {pf.get("facilityId") for pf in fieldplan_facilities if
+                                                 pf.get("facilityId")}
+                logger.info(
+                    f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
 
-                include_val = ''
-                if include_col:
-                    include_val = str(row.get(include_col, "")).strip().lower()
-                else:
-                    include_val = str(row.get("Included in Field Plan (Mandatory)", "")).strip().lower()
+                # Get FieldPlan status
+                fieldplan_response = fieldplan_client.search_fieldPlan(request_info, fieldplan_id)
+                fieldplan_data = fieldplan_response.get("FieldPlans", [])
 
-                should_link = include_val == "yes"
+                fieldplan_assignment_response = fieldplan_activity_client.search_fieldplan_activity_assignment(request_info, fieldplan_id)
+                fieldplan_assignment_data = fieldplan_assignment_response.get("ActivitiesAssignments", [])
+                role_to_ids = defaultdict(list)
 
-                # ---------- CASE A: existing facility_id present -> skip creation, attempt linking if requested ----------
-                if facility_id:
-                    # df.at[index, 'Facility Creation Status'] = "Already Exists"
-                    # attempt linking if requested
-                    if should_link:
-                        try:
-                            project_resp = fieldplan_client.create_fieldPlan_facility(
-                                request_info=request_info,
-                                fieldPlan_id=fieldplan_id,
-                                facility_id=facility_id
-                            )
-                            if project_resp.status_code in (200, 201, 202):
-                                df.at[index, 'Field Plan Linking Status'] = "Linked"
+                for item in fieldplan_assignment_data:
+                    role = item.get("role")
+                    if role:
+                        code = role.get("code")
+                        if code:
+                            role_to_ids[code].append(item.get("assignedTo"))
+
+                # iterate all rows — handle existing facility ids (linking) and new rows (create -> link)
+                for index, row in df.iterrows():
+                    try:
+                        # normalize facility id and include flag
+                        facility_id_val = row.get(facility_id_col, None)
+                        facility_id = None
+                        if pd.notna(facility_id_val) and str(facility_id_val).strip():
+                            facility_id = str(facility_id_val).strip()
+
+                        include_val = ''
+                        if include_col:
+                            include_val = str(row.get(include_col, "")).strip().lower()
+                        else:
+                            include_val = str(row.get("Included in Field Plan (Mandatory)", "")).strip().lower()
+
+                        should_link = include_val == "yes"
+
+                        # ---------- CASE A: existing facility_id present -> skip creation, attempt linking if requested ----------
+                        if facility_id:
+                            # df.at[index, 'Facility Creation Status'] = "Already Exists"
+                            # attempt linking if requested
+                            if facility_id in fieldplan_linked_facility_ids:
+                                if should_link:
+                                    # already linked → skip API
+                                    df.at[index, 'Field Plan Linking Status'] = "Already Linked"
+                                else:
+                                    # linked but Excel says No → unlink
+                                    try:
+                                        fieldPlan_facility_data = next(
+                                            (pf for pf in fieldplan_facilities if pf.get("facilityId") == facility_id),
+                                            None)
+                                        fieldplan_client.unlink_fieldplan_facility(
+                                            request_info=request_info,
+                                            fieldplan_id=fieldplan_id,
+                                            facility_id=facility_id,
+                                            fieldplan_facility_data=fieldPlan_facility_data
+                                        )
+
+                                        facilities_activity_response = fieldplan_activity_client.search_facility_activity(
+                                            request_info, fieldplan_id, facility_id)
+                                        facilities_activity = facilities_activity_response.get("FacilityActivities",[])
+                                        facility_activity_ids = list({fa.get("activityFacility").get("id") for fa in facilities_activity if fa.get("activityFacility").get("id")})
+                                        fieldplan_activity_client.delete_facility_activity(request_info=request_info, facility_activity_id=facility_activity_ids)
+
+                                        df.at[index, 'Field Plan Linking Status'] = "Unlinked"
+                                        fieldplan_linked_facility_ids.remove(facility_id)
+                                    except Exception as e:
+                                        df.at[index, 'Field Plan Linking Status'] = f"Exception during unlink: {str(e)}"
                             else:
-                                df.at[index, 'Field Plan Linking Status'] = f"Failed: {project_resp.status_code} {project_resp.text}"
-                        except Exception as e:
-                            df.at[index, 'Field Plan Linking Status'] = f"Exception: {str(e)}"
-                    else:
-                        df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
+                                if should_link:
+                                    try:
+                                        fieldplan_resp = fieldplan_client.create_fieldPlan_facility(
+                                            request_info=request_info,
+                                            fieldPlan_id=fieldplan_id,
+                                            facility_id=facility_id
+                                        )
 
-                    # continue to next row
-                    continue
+                                        if fieldplan_data:
+                                            fieldplan = fieldplan_data[0]
+                                            if(fieldplan.get("status")=='SCHEDULED'):
+                                                facility_activity_resp = fieldplan_activity_client.create_facility_activity(request_info=request_info,
+                                                                                                                fieldPlan=fieldplan, roleToIds= role_to_ids, facility_id=facility_id)
+                                                print(f"Facility Activity Created successfully: {facility_activity_resp}")
+                                        if fieldplan_resp.status_code in (200, 201, 202):
+                                            df.at[index, 'Field Plan Linking Status'] = "Linked"
+                                        else:
+                                            df.at[
+                                                index, 'Field Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
+                                    except Exception as e:
+                                        print(e)
+                                        df.at[index, 'Field Plan Linking Status'] = f"Exception: {str(e)}"
+                                else:
+                                    df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
+
+                                # continue to next row
+                                continue
+
+                    except Exception as e:
+                        # any unexpected error per row
+                        df.at[index, 'Field Plan Linking Status'] = "Not Attempted"
+                        continue
 
             except Exception as e:
-                # any unexpected error per row
-                df.at[index, 'Field Plan Linking Status'] = "Not Attempted"
-                continue
+                logger.error(f"Error fetching fieldplan facilities: {e}")
+                # Continue without fieldplan facility data if there's an error
 
         # ---------- write results back into workbook preserving formatting ----------
         # Ensure headers exist in sheet (without wiping template)
@@ -2239,3 +2313,491 @@ async def create_fielplan_facilities(
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)
 
+
+@router.post('/amcConfigurationValidateData',
+             summary='Validate AMC configuration Excel file before processing',
+             response_description='Returns validation report Excel with PASSED/FAILED rows')
+async def validate_amc_configurations_excel_sheet(
+        background_tasks: BackgroundTasks,
+        amc_file: UploadFile = File(..., description="Excel file containing AMC configuration data"),
+        amc_sheet_name: str = Form(default="amc-configurations", description="Name of the sheet containing AMC data"),
+        request_info: str = Form(default="")
+):
+    input_temp_file = None
+    output_temp_file = None
+    request_info_obj = request_info_from_json(request_info)
+
+    try:
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await amc_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+
+        # Prepare output file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"amc_configuration_validation_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        # Read Excel file
+        wb = load_workbook(input_temp_file.name)
+        if amc_sheet_name not in wb.sheetnames:
+            raise HTTPException(status_code=400, detail=f"Sheet '{amc_sheet_name}' not found")
+
+        df = pd.read_excel(input_temp_file.name, sheet_name=amc_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # Add status and error columns if not present
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+
+        required_columns = [
+            "Facility Id",
+            "Health Facility Name",
+            "Vendor",
+            "AMC-Frequency",
+            "AMC-Duration"
+        ]
+
+        # Column names
+        vendor_col = "Vendor" if required_columns else "vendor"
+        frequency_col = "AMC-Frequency" if required_columns else "amc-frequency"
+        duration_col = "AMC-Duration" if required_columns else "amc-duration"
+
+        # Validate each row - only check vendor, AMC frequency, and AMC duration
+        error_count = 0
+        for index, row in df.iterrows():
+            validation_errors = []
+
+            try:
+                # Validate vendor, AMC frequency, and AMC duration
+                vendor_name = str(row.get(vendor_col, "")).strip() if not pd.isna(row.get(vendor_col)) else ""
+                amc_frequency = str(row.get(frequency_col, "")).strip() if not pd.isna(row.get(frequency_col)) else ""
+                amc_duration = str(row.get(duration_col, "")).strip() if not pd.isna(row.get(duration_col)) else ""
+
+                # Check if fields are filled
+                if not vendor_name or not amc_frequency or not amc_duration:
+                    validation_errors.append(
+                        "Please ensure vendor, AMC frequency, and duration are selected for all listed assets before upload."
+                    )
+
+                # Set status and error
+                if validation_errors:
+                    df.at[index, 'status'] = 'FAILED'
+                    df.at[index, 'error'] = "; ".join(validation_errors)
+                    error_count += 1
+                else:
+                    df.at[index, 'status'] = 'PASSED'
+                    df.at[index, 'error'] = ''
+
+            except Exception as e:
+                df.at[index, 'status'] = 'FAILED'
+                df.at[index, 'error'] = f'Unexpected error: {str(e)}'
+                error_count += 1
+                logger.error(f"Error validating row {index}: {e}")
+
+        # Write results to Excel
+        ws = wb[amc_sheet_name]
+        header_values = [cell.value for cell in ws[1]]
+
+        # Add status/error columns if missing
+        for col_name in ["status", "error"]:
+            if col_name not in header_values:
+                new_col_idx = len(header_values) + 1
+                cell = ws.cell(row=1, column=new_col_idx, value=col_name)
+                cell.font = Font(bold=True)
+                header_values.append(col_name)
+
+                # lock header cell
+                cell.protection = Protection(locked=True)
+
+                # lock all data cells in this new column
+                for r_idx in range(2, ws.max_row + 1):
+                    ws.cell(row=r_idx, column=new_col_idx).protection = Protection(locked=True)
+
+        grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+        # Write data rows back (without header row)
+        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+            for c_idx, value in enumerate(row, start=1):
+                cell = ws.cell(row=r_idx, column=c_idx, value=value)
+
+                # force lock for status/error columns
+                if ws.cell(1, c_idx).value in ["status", "error"]:
+                    cell.protection = Protection(locked=True)
+                    cell.fill = grey_fill
+
+        # Ensure sheet protection is ON
+        ws.protection.sheet = True
+        ws.protection.enable()
+
+        # Save to output file
+        wb.save(output_file_path)
+
+        autofit_columns(output_file_path, amc_sheet_name, auto_fit=True)
+
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+        background_tasks.add_task(cleanup_temp_file, input_temp_file.name)
+
+        response = FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response.headers["X-Error-Count"] = str(error_count)
+
+        return response
+
+    except HTTPException:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+        if output_temp_file and os.path.exists(output_temp_file.name):
+            os.unlink(output_temp_file.name)
+        raise
+    except Exception as e:
+        logger.error(f"Unhandled error in validate_amc_configurations_excel_sheet: {e}")
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+        if output_temp_file and os.path.exists(output_temp_file.name):
+            os.unlink(output_temp_file.name)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
+
+@router.post('/amcConfigurationBulkIngest',
+             summary='Bulk ingest AMC configuration template data',
+             response_description="Returns processed Excel file with AMC configuration creation results")
+async def bulk_ingest_amc_configurations(
+        background_tasks: BackgroundTasks,
+        amc_file: UploadFile = File(..., description="Excel file containing AMC configuration data"),
+        amc_sheet_name: str = Form(default="amc-configurations", description="Name of the sheet containing AMC data"),
+        project_id: str = Form(..., description="Project ID"),
+        user_info_list: str = Form(..., description="JSON array of user info objects with vendor mapping"),
+        request_info: str = Form(default="")
+):
+    input_temp_file = None
+    output_temp_file = None
+    request_info_obj = request_info_from_json(request_info)
+
+    # Get tenant ID from request info or use default
+    tenant_id = request_info_obj.user_info.tenant_id if request_info_obj.user_info and request_info_obj.user_info.tenant_id else "in"
+
+    try:
+        # Parse user info list
+        try:
+            user_info_data = json.loads(user_info_list)
+            if not isinstance(user_info_data, list):
+                raise HTTPException(status_code=400, detail="user_info_list must be a JSON array")
+        except json.JSONDecodeError as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON in user_info_list: {str(e)}")
+
+        # Create vendor to users mapping (supports multiple users per vendor)
+        vendor_to_users = {}  # Key: vendor name (from Excel), Value: {vendorId, users}
+        vendor_id_to_name = {}  # Reverse mapping: vendorId -> vendor name (if available)
+
+        for vendor_mapping in user_info_data:
+            # Primary key: vendorId (UUID)
+            vendor_id = vendor_mapping.get("vendorId", "").strip()
+            # Secondary: vendor name (for backward compatibility and Excel lookup)
+            vendor_name = vendor_mapping.get("vendor", "").strip()
+
+            if not vendor_id:
+                # Fallback: if no vendorId, use vendor name as key
+                if not vendor_name:
+                    logger.warning(f"Vendor mapping missing both vendorId and vendor name: {vendor_mapping}")
+                    continue
+                vendor_id = vendor_name  # Use name as fallback key
+
+            # Support both old format (single user) and new format (list of users)
+            users = vendor_mapping.get("users", [])
+            if not users:
+                # Backward compatibility: if "users" not found, check for single user fields
+                if "userId" in vendor_mapping:
+                    users = [{"userId": vendor_mapping.get("userId"), "userName": vendor_mapping.get("userName")}]
+                else:
+                    logger.warning(f"No users found for vendorId: {vendor_id}")
+                    continue
+
+            # Validate users list
+            if not isinstance(users, list):
+                raise HTTPException(status_code=400, detail=f"users must be a list for vendorId: {vendor_id}")
+
+            # Process users
+            processed_users = []
+            for user in users:
+                # Extract user ID - prefer 'id' (from full user object), then 'userId', then 'uuid'
+                user_id = user.get("uuid") or user.get("userId") or user.get("id")
+
+                if not user_id:
+                    logger.warning(f"User object missing ID field: {user}")
+                    continue
+
+                # Extract user name - prefer 'name', then 'userName'
+                user_name = user.get("name") or user.get("userName", "")
+
+                # Extract tenant ID from user object if available
+                user_tenant_id = user.get("tenantId")
+
+                # Store full user object for reference, with extracted fields
+                processed_users.append({
+                    "id": str(user_id),  # Convert to string for consistency
+                    "userId": str(user_id),  # Keep for backward compatibility
+                    "userName": user_name,
+                    "name": user_name,
+                    "tenantId": user_tenant_id,
+                    "fullUser": user  # Store full user object for reference
+                })
+
+            if not processed_users:
+                logger.warning(f"No valid users found for vendorId: {vendor_id}")
+                continue
+
+            # Store mapping by vendor name (for Excel lookup) and vendorId
+            if vendor_name:
+                vendor_to_users[vendor_name] = {
+                    "vendorId": vendor_id,
+                    "vendorName": vendor_name,
+                    "users": processed_users
+                }
+                vendor_id_to_name[vendor_id] = vendor_name
+
+            # Also store by vendorId for direct lookup
+            if vendor_id not in vendor_to_users or not vendor_to_users[vendor_id].get("vendorId"):
+                vendor_to_users[vendor_id] = {
+                    "vendorId": vendor_id,
+                    "vendorName": vendor_name,
+                    "users": processed_users
+                }
+
+        # Save uploaded file
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await amc_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
+
+        # Prepare output file
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"amc_configuration_ingestion_results_{timestamp}.xlsx"
+        output_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        output_temp_file.close()
+        output_file_path = output_temp_file.name
+
+        # Read Excel file
+        wb = load_workbook(input_temp_file.name)
+        if amc_sheet_name not in wb.sheetnames:
+            raise HTTPException(status_code=400, detail=f"Sheet '{amc_sheet_name}' not found")
+
+        df = pd.read_excel(input_temp_file.name, sheet_name=amc_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # Add status and error columns if not present
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+
+        required_columns = ["Facility Id", "Health Facility Name", "Vendor", "AMC-Frequency", "AMC-Duration"]
+
+        # Initialize clients
+        facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
+        amc_client = AMCSchedulerServiceClient(amc_scheduler_service_url) if amc_scheduler_service_url else None
+
+        if not amc_client:
+            raise HTTPException(status_code=500, detail="AMC Scheduler Service is not configured")
+
+        if not facility_client:
+            raise HTTPException(status_code=500, detail="Facility Service is not configured")
+
+        # Track configurations to detect duplicates (vendor-facility-project combination)
+        seen_configs = set()
+
+        # Process each row
+        for index, row in df.iterrows():
+            try:
+                # Skip empty rows
+                if pd.isna(row.get("Facility Id")) and pd.isna(row.get("Health Facility Name")):
+                    df.at[index, 'status'] = 'skipped'
+                    df.at[index, 'error'] = 'Empty row'
+                    continue
+
+                # Get facility by Facility ID
+                facility_id = str(row.get("Facility Id", "")).strip()
+                if not facility_id:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = 'Facility Id is required'
+                    continue
+
+                facility = None
+                try:
+                    facility_response = facility_client.search_facility(tenant_id='in', facility_id=facility_id)
+                    facilities = facility_response.get('facilities', [])
+                    if facilities:
+                        facility = facilities[0]
+                except Exception as e:
+                    logger.error(f"Error searching facility for {facility_id}: {e}")
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'Error searching facility: {str(e)}'
+                    continue
+
+                if not facility:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'Facility not found for Facility Id: {facility_id}'
+                    continue
+
+                # Get vendor and vendor mapping (data retrieval, not validation)
+                vendor_col = "Vendor" if "Vendor" in df.columns else "vendor"
+                vendor_name = str(row.get(vendor_col, "")).strip()
+
+                # Get vendor mapping (by vendor name from Excel)
+                vendor_mapping = vendor_to_users.get(vendor_name)
+                if not vendor_mapping:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'No vendor mapping found for vendor: {vendor_name}'
+                    continue
+
+                # Extract vendorId and users from mapping
+                vendor_id = vendor_mapping.get("vendorId")
+                vendor_users = vendor_mapping.get("users", [])
+
+                if not vendor_users or len(vendor_users) == 0:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'No users found for vendor: {vendor_name}'
+                    continue
+
+                if not vendor_id:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'No vendorId found for vendor: {vendor_name}'
+                    continue
+
+                # Get AMC frequency and duration (already validated, just convert to months)
+                frequency_col = "AMC-Frequency" if "AMC-Frequency" in df.columns else "amc-frequency"
+                duration_col = "AMC-Duration" if "AMC-Duration" in df.columns else "amc-duration"
+                amc_frequency = str(row.get(frequency_col, "")).strip()
+                amc_duration = str(row.get(duration_col, "")).strip()
+
+                # Convert frequency to months (format already validated in validation endpoint)
+                if amc_frequency == "Every 6 Months":
+                    frequency_months = 6
+                elif amc_frequency == "Every 1 Year":
+                    frequency_months = 12
+                else:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'Unexpected AMC frequency value: {amc_frequency}'
+                    continue
+
+                # Convert duration to months (format already validated in validation endpoint)
+                if amc_duration == "1 Year":
+                    duration_months = 12
+                elif amc_duration == "3 Years":
+                    duration_months = 36
+                elif amc_duration == "5 Years":
+                    duration_months = 60
+                else:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'Unexpected AMC duration value: {amc_duration}'
+                    continue
+
+                # Check for duplicate configuration (vendor-facility-project combination)
+                config_key = (vendor_name, facility_id, project_id)
+                if config_key in seen_configs:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[
+                        index, 'error'] = 'Duplicate configuration: vendor-facility-project combination already exists'
+                    continue
+                seen_configs.add(config_key)
+
+                # Create assignments array from vendor users
+                assignments = []
+                for user in vendor_users:
+                    # Use user's id (from full user object) or userId (backward compatibility)
+                    assigned_user_id = user.get("id") or user.get("userId")
+                    # Prefer user's tenantId if available, otherwise use default tenant_id
+                    assignment_tenant_id = user.get("tenantId") or tenant_id
+
+                    assignment = {
+                        "assignedUser": str(assigned_user_id),
+                        "tenantId": assignment_tenant_id
+                    }
+                    assignments.append(assignment)
+
+                # Convert asset types to API format (objects with code and name)
+                asset_types_formatted = []
+                asset_type_names = {
+                    "INVERTER": "Inverter",
+                    "PANEL": "Panel",
+                    "BATTERY": "Battery"
+                }
+                for asset_type in DEFAULT_AMC_ASSET_TYPES:
+                    asset_types_formatted.append({
+                        "code": asset_type,
+                        "name": asset_type_names.get(asset_type, asset_type.title())
+                    })
+
+                # Calculate configuration dates (start date = now, end date = start + duration)
+                now = datetime.now()
+                configuration_start_date = int(now.timestamp() * 1000)  # Convert to milliseconds
+                end_date = now + timedelta(days=duration_months * 30)  # Approximate: 30 days per month
+                configuration_end_date = int(end_date.timestamp() * 1000)
+
+                # Create AMC configuration payload matching API format
+                # vendor_id is already extracted from vendor_mapping above
+                amc_config = {
+                    "tenantId": tenant_id,
+                    "vendorId": vendor_id,  # Use vendorId (UUID) from mapping
+                    "facilityId": facility_id,
+                    "projectId": project_id,
+                    "durationMonths": duration_months,
+                    "visitFrequencyMonths": frequency_months,
+                    "status": "ACTIVE",
+                    "configurationStartDate": configuration_start_date,
+                    "configurationEndDate": configuration_end_date,
+                    "assetTypes": asset_types_formatted,
+                    "assignments": assignments
+                }
+
+                # Create AMC configuration via scheduler service
+                try:
+                    result = amc_client.create_amc_configuration(request_info_obj, amc_config)
+                    df.at[index, 'status'] = 'success'
+                    df.at[index, 'error'] = ''
+                    logger.info(
+                        f"Successfully created AMC configuration for facility {facility_id}, vendor {vendor_name}")
+                except Exception as e:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = str(e)
+                    logger.error(f"Failed to create AMC configuration: {e}")
+
+            except Exception as e:
+                df.at[index, 'status'] = 'failed'
+                df.at[index, 'error'] = f'Unexpected error: {str(e)}'
+                logger.error(f"Error processing row {index}: {e}")
+
+        # Write results to Excel
+        with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name=amc_sheet_name)
+
+        autofit_columns(output_file_path, amc_sheet_name, auto_fit=True)
+
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+        background_tasks.add_task(cleanup_temp_file, input_temp_file.name)
+
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except HTTPException:
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+        if output_temp_file and os.path.exists(output_temp_file.name):
+            os.unlink(output_temp_file.name)
+        raise
+    except Exception as e:
+        logger.error(f"Unhandled error in bulk_ingest_amc_configurations: {e}")
+        if input_temp_file and os.path.exists(input_temp_file.name):
+            os.unlink(input_temp_file.name)
+        if output_temp_file and os.path.exists(output_temp_file.name):
+            os.unlink(output_temp_file.name)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
