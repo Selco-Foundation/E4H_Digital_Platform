@@ -76,9 +76,6 @@ public class ActivityConfiguration {
     @Value("${project.document.id.verification.required}")
     private String documentIdVerificationRequired;
 
-    @Value("${fieldPlan.management.system.kafka.create.topic}")
-    private String saveFieldPlanTopic;
-
     @Value("${activity.assignment.kafka.create.topic}")
     private String createActivityAssignmentTopic;
 

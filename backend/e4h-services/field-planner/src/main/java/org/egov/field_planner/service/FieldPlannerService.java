@@ -7,11 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.http.client.ServiceRequestClient;
 import org.egov.common.models.core.SearchResponse;
-import org.egov.common.models.project.Project;
-import org.egov.common.models.project.ProjectRequest;
-import org.egov.common.models.project.ProjectResponse;
 import org.egov.common.producer.Producer;
 import org.egov.common.validator.Validator;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
@@ -414,7 +410,7 @@ public class FieldPlannerService {
         // If status equals to scheduled, so dont update the fieldplan name
         if(StringUtils.equals(fieldPlan.getStatus(), "SCHEDULED")){
             try {
-                // Check if INSTALLATION_REVIEWER and INSTALLATION_SPOC is assigned and if at least one facility is linked to the fieldplan
+                // Check if INSTALLATION_REVIEWER, one FIELD_SUPERVISOR and one FIELD_STAFF is assigned and if at least one facility is linked to the fieldplan
                 if (fieldPlan == null) {
                     log.error("Field Plan is mandatory");
                     throw new CustomException("FIELDPLAN", "Field Plan is mandatory");
@@ -429,8 +425,9 @@ public class FieldPlannerService {
                     log.error("Activity Assignment is empty for the fieldplan");
                     throw new CustomException("FIELDPLAN", "Activity Assignment is empty for the fieldplan");
                 }
-                if(!hasSpocAndReviewer(activityAssignmentList)){
-                    throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and INSTALLATION_SPOC need to be assigned for the fieldplan");
+                // Check if at least one INSTALLATION_REVIEWER, one FIELD_SUPERVISOR and one FIELD_STAFF are already link to field plan
+                if(!hasRequiredUsers(activityAssignmentList)){
+                    throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and FIELD_STAFF and FIELD_SUPERVISOR need to be assigned for the fieldplan");
                 }
 
                 sendActivityAssignmentEmail(request, activityAssignmentList);
@@ -453,18 +450,21 @@ public class FieldPlannerService {
                                     Collectors.mapping(item -> (String) item.getAssignedTo(), Collectors.toList())
                             ));
                     for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
-                        ActivityFacility activityFacility = ActivityFacility.builder()
-                                .tenantId("in")
-                                .fieldPlanId(fieldPlanFacility.getFieldPlanId())
-                                .facilityId(fieldPlanFacility.getFacilityId())
-                                .activityId((String)fieldPlan.getActivities().get(0).get("code"))
-                                .scheduledAt(fieldPlan.getStartDate())
-                                .activatedAt(fieldPlan.getStartDate())
-                                .reviewerUser(roleToIds.get("INSTALLATION_REVIEWER"))
-                                .spocUser(roleToIds.get("INSTALLATION_SPOC"))
-                                .build();
+                        for(Map<String, Object> activity : fieldPlan.getActivities()){
+                            ActivityFacility activityFacility = ActivityFacility.builder()
+                                    .tenantId("in")
+                                    .fieldPlanId(fieldPlanFacility.getFieldPlanId())
+                                    .facilityId(fieldPlanFacility.getFacilityId())
+                                    .activityId((String)activity.get("code"))
+                                    .scheduledAt(fieldPlan.getStartDate())
+                                    .activatedAt(fieldPlan.getStartDate())
+                                    .reviewerUser(roleToIds.get(INSTALLATION_REVIEWER_ROLE))
+                                    .fieldStaffUsers(roleToIds.get(FIELD_STAFF_ROLE))
+                                    .fieldSupervisorUsers(roleToIds.get(FIELD_SUPERVISOR_ROLE))
+                                    .build();
 
-                        activityFacilities.add(activityFacility);
+                            activityFacilities.add(activityFacility);
+                        }
                     }
 
                     createFacilityActivity(request.getRequestInfo(), activityFacilities);
@@ -575,19 +575,23 @@ public class FieldPlannerService {
         log.info("All facility activities are added");
     }
 
-    public boolean hasSpocAndReviewer(List<ActivityAssignment> activityAssignmentList) {
-        boolean hasSpoc = false;
+    public boolean hasRequiredUsers(List<ActivityAssignment> activityAssignmentList) {
+        boolean hasFieldStaff = false;
+        boolean hasFieldSupervisor = false;
         boolean hasReviewer = false;
 
         for (ActivityAssignment assignment : activityAssignmentList) {
             Map<String, Object> roleMap = assignment.getRole();
-            if ("INSTALLATION_SPOC".equalsIgnoreCase((String) roleMap.get("code"))) {
-                hasSpoc = true;
+            if (FIELD_STAFF_ROLE.equalsIgnoreCase((String) roleMap.get("code"))) {
+                hasFieldStaff = true;
             }
-            if ("INSTALLATION_REVIEWER".equalsIgnoreCase((String) roleMap.get("code"))) {
+            if (FIELD_SUPERVISOR_ROLE.equalsIgnoreCase((String) roleMap.get("code"))) {
+                hasFieldSupervisor = true;
+            }
+            if (INSTALLATION_REVIEWER_ROLE.equalsIgnoreCase((String) roleMap.get("code"))) {
                 hasReviewer = true;
             }
-            if (hasSpoc && hasReviewer) {
+            if (hasFieldStaff && hasFieldSupervisor && hasReviewer) {
                 return true;
             }
         }
