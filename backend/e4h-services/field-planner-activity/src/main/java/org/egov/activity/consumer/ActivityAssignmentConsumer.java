@@ -21,13 +21,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ActivityAssignmentConsumer {
 
-    private final ActivityService service;
     private final ObjectMapper objectMapper;
     private final ActivityConfiguration activityConfiguration;
     private ActivityService activityService;
 
-    public ActivityAssignmentConsumer(ActivityService service, @Qualifier("objectMapper") ObjectMapper objectMapper, ActivityConfiguration activityConfiguration, ActivityService activityService) {
-        this.service = service;
+    public ActivityAssignmentConsumer(@Qualifier("objectMapper") ObjectMapper objectMapper, ActivityConfiguration activityConfiguration, ActivityService activityService) {
         this.objectMapper = objectMapper;
         this.activityConfiguration = activityConfiguration;
         this.activityService = activityService;
@@ -38,7 +36,7 @@ public class ActivityAssignmentConsumer {
                                                @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
         try {
             ActivityAssignmentBulkRequest request = objectMapper.convertValue(consumerRecord, ActivityAssignmentBulkRequest.class);
-            return service.createActivityAssignment(request);
+            return activityService.createActivityAssignment(request);
         } catch (Exception exception) {
             log.error("error in fieldplan facility consumer bulk create", ExceptionUtils.getStackTrace(exception));
             return Collections.emptyList();
