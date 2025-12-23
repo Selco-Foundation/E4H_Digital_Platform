@@ -17,14 +17,12 @@ import org.egov.common.utils.ResponseInfoFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -37,16 +35,18 @@ public class ActivityApiController {
     private final ActivityService activityService;
     private final ActivityFacilityUsersService facilityUsersService;
     private final FacilityWorkflowService facilityWorkflowService;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Autowired
     public ActivityApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
                                  Producer producer,
                                  ActivityConfiguration fieldPlannerConfiguration,
-                                 ActivityService activityService, ActivityFacilityUsersService facilityUsersService, FacilityWorkflowService facilityWorkflowService) {
+                                 ActivityService activityService, ActivityFacilityUsersService facilityUsersService, FacilityWorkflowService facilityWorkflowService, KafkaTemplate<String, Object> kafkaTemplate) {
         this.httpServletRequest = httpServletRequest;
         this.activityService = activityService;
         this.facilityUsersService = facilityUsersService;
         this.facilityWorkflowService = facilityWorkflowService;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @RequestMapping(value = "/_create", method = RequestMethod.POST)
@@ -294,5 +294,14 @@ public class ActivityApiController {
                 .build();
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @PostMapping("/test_update_activity")
+    public String sendDummyTopicActivityFacility(@Valid @RequestBody ActivityFacilityBulkRequest incidentRequest) {
+        Map<String, Object> producerRecord = new HashMap<>();
+        producerRecord.put("topic", "save-activity-facility-topic");
+        producerRecord.put("value", incidentRequest);
+        kafkaTemplate.send("process-audit-records", producerRecord);
+        return "Object sent!";
     }
 }

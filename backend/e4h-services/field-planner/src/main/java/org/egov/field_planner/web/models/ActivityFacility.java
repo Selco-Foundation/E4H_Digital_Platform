@@ -29,8 +29,11 @@ public class ActivityFacility {
     @JsonProperty("assignedUser")
     private String assignedUser = null;
 
-    @JsonProperty("spocUser")
-    private List<String> spocUser = null;
+    @JsonProperty("fieldStaffUsers")
+    private List<String> fieldStaffUsers = null;
+
+    @JsonProperty("fieldSupervisorUsers")
+    private List<String> fieldSupervisorUsers = null;
 
     @JsonProperty("reviewerUser")
     private List<String> reviewerUser = null;
