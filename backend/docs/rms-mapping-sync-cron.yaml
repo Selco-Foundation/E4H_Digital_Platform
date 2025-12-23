@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rms-mapping-sync-cron
+  labels:
+    app: rms-service
+    job-type: rms-mapping-sync
+spec:
+  # Every Sunday at 02:00 (server timezone)
+  schedule: "0 2 * * 0"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: rms-mapping-sync-runner
+              image: python:3.11-slim
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: RMS_BASE_URL
+                  value: "http://rms-service:8885"
+              command:
+                - "python"
+                - "/scripts/run_rms_mapping_sync.py"
+              volumeMounts:
+                - name: rms-cron-scripts
+                  mountPath: /scripts
+          volumes:
+            - name: rms-cron-scripts
+              configMap:
+                name: rms-cron-scripts
+                # The ConfigMap should contain run_rms_mapping_sync.py
+                # as a key with the script content
+
+
