@@ -184,9 +184,10 @@ public class ElasticSearchClient {
         if (response == null) return totalIndex;
 
         Map<String, Object> hits = (Map<String, Object>) response.get("hits");
-        if (hits == null || !hits.containsKey("hits")) return totalIndex;
+        if (hits == null || !hits.containsKey("total")) return totalIndex;
 
         Map<String, Object> totalHits = (Map<String, Object>) hits.get("total");
+        if (totalHits == null || !totalHits.containsKey("value")) return totalIndex;
         totalIndex = (int)totalHits.get("value");
 
         return totalIndex;
