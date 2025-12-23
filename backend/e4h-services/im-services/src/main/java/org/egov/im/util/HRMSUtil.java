@@ -90,6 +90,8 @@ public class HRMSUtil {
 
         builder.append("&roles=");
         builder.append(role);
+        builder.append("&isActive=");
+        builder.append(true);
 
         return builder;
     }
