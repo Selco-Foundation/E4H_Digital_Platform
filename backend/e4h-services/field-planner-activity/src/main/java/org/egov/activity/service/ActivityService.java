@@ -23,7 +23,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.Array;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -102,6 +101,8 @@ public class ActivityService {
             for (ActivityFacility activityFacility : activityFacilities) {
                 log.info("processing {} valid entities", activityFacility);
                 activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
+                List<ActivityFacilityUser> usersFacility = new ArrayList<>();
+                // Get reviewer users. Can see facility activity on UI directly by getting field plan first
                 if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
                     for (String userId : activityFacility.getReviewerUser()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
@@ -110,23 +111,44 @@ public class ActivityService {
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
                                 .build();
-                        activityFacilityUsers.add(facilityUser);
+                        usersFacility.add(facilityUser);
                     }
                 }
 
-                if(activityFacility.getSpocUser() != null && !activityFacility.getSpocUser().isEmpty()){
-                    for (String userId : activityFacility.getSpocUser()){
+                // Get staff users. Can see facility once activity facility status = ASSIGNED_TO_FIELD_STAFF
+                if(activityFacility.getFieldStaffUsers() != null && !activityFacility.getFieldStaffUsers().isEmpty()){
+                    for (String userId : activityFacility.getFieldStaffUsers()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
                                 .activityFacilityId(activityFacility.getId())
                                 .userId(userId)
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
                                 .build();
-                        activityFacilityUsers.add(facilityUser);
+                        usersFacility.add(facilityUser);
                     }
                 }
+
+                // Get supervisor users. Can see facility once activity facility status = ASSIGNED_TO_FIELD_STAFF
+                if(activityFacility.getFieldSupervisorUsers() != null && !activityFacility.getFieldSupervisorUsers().isEmpty()){
+                    for (String userId : activityFacility.getFieldSupervisorUsers()){
+                        ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
+                                .activityFacilityId(activityFacility.getId())
+                                .userId(userId)
+                                .tenantId(activityFacility.getTenantId())
+                                .isDeleted(false)
+                                .build();
+                        usersFacility.add(facilityUser);
+                    }
+                }
+                // remove Duplicate activity facility users if the same user is REVIEWER, STAFF and SUPERVISOR
+                Set<String> seenUsers = new HashSet<>();
+                usersFacility = usersFacility.stream().filter(a -> seenUsers.add(a.getUserId()))
+                        .toList();
+                activityFacilityUsers.addAll(usersFacility);
             }
 
+
+            // Create linked users, so that reviewer, staff and supervisor are linked to each activity facility. Reviewer can see list of activities on UI.
             if(activityFacilityUsers != null && !activityFacilityUsers.isEmpty()){
                 ActivityFacilityUserBulkRequest activityFacilityUserBulkRequest = ActivityFacilityUserBulkRequest.builder()
                         .requestInfo(request.getRequestInfo())
@@ -334,7 +356,7 @@ public class ActivityService {
                 activityConfiguration.getTenantId(), false, null);
 
         if (activityFacilities == null || activityFacilities.isEmpty()) {
-            throw new CustomException("FACILITY_NOT_FOUND", "Facility not found with ID: " + request.getActivityFacilityId());
+            throw new CustomException("FACILITY_NOT_FOUND", "Activity Facility not found with ID: " + request.getActivityFacilityId());
         }
 
         ActivityFacility existingActivityFacitlity = activityFacilities.get(0);
