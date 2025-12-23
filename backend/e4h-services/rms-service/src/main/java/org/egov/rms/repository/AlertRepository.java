@@ -123,6 +123,28 @@ public class AlertRepository {
     }
 
     /**
+     * Finds alert(s) by ticket ID
+     * Multiple alerts can share the same ticket ID in edge cases
+     */
+    public List<Alert> findAlertsByTicketId(String ticketId) {
+        String sql = "SELECT * FROM active_alerts WHERE ticket_id = ?";
+        return jdbcTemplate.query(sql, new AlertRowMapper(), ticketId);
+    }
+
+    /**
+     * Resolves alert(s) by ticket ID when ticket is closed in Saura eMitra
+     * Updates status to RESOLVED and sets resolved_at timestamp
+     */
+    public int resolveAlertsByTicketId(String ticketId) {
+        String sql = "UPDATE active_alerts SET status = 'RESOLVED', resolved_at = CURRENT_TIMESTAMP, " +
+                "updated_at = CURRENT_TIMESTAMP WHERE ticket_id = ? AND status != 'RESOLVED'";
+
+        int updated = jdbcTemplate.update(sql, ticketId);
+        log.info("Resolved {} alert(s) for ticket ID: {}", updated, ticketId);
+        return updated;
+    }
+
+    /**
      * Checks if an alert already has a ticket created
      * Returns true if a ticket exists for the given facility, alert type, and sub-type
      * This method only checks active_alerts table - use hasOpenTicket() for status check
