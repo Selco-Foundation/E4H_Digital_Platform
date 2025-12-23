@@ -27,4 +27,13 @@ class Routes {
   static const videoViewer = 'video-viewer?path';
   static const pdfViewer = 'pdf-viewer?path';
   static const dynamicForm = 'forms/:pageName';
+  static const amcHome = 'amc-home';
+  static const amcReportHome = 'amc-report-home';
+  static const amcSelectFacility = 'amc-select-facility';
+  static const amcDynamicForm = 'amc-dynamic-form';
+  static const amcOtp = 'amc-otp';
+  static const amcDraft = 'amc-draft';
+  static const amcInbox = 'amc-inbox';
+  static const amcMediaUpload = 'amc-media-upload';
+  static const amcRejectionReasons = 'amc-rejection-reasons';
 }

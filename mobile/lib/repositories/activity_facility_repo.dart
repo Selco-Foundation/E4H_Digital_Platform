@@ -15,7 +15,7 @@ import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/document/document.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
-import 'bom_repo.dart';
+import 'dynamic_form_repo.dart';
 
 class ActivityFacilityRemoteRepository {
   ActivityFacilityRemoteRepository();

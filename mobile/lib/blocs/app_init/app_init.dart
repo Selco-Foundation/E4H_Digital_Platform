@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:selco/model/solution_design_type_bom/solution_design_type_bom.dart';
+import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 
 import '../../model/appconfig/mdmsRequest.dart';
 import '../../model/appconfig/mdmsResponse.dart';

@@ -416,6 +416,8 @@ public class ActivityService {
                 updateAssetsForFacility(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
                 // Step 8: Trigger installation completion side effects (Asset AMC creation and visit generation)
                 triggerInstallationCompletionSideEffects(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
+                // Step 9: Mark facility as ONM ready
+                markFacilityOnmReady(existingActivityFacitlity, request.getRequestInfo());
             }
         }
 
@@ -450,6 +452,43 @@ public class ActivityService {
 
     private void handleTransactionUpdate(List<Transaction> transactions) {
         producer.push(activityConfiguration.getTransactionPersistTopic(), new TransactionRequest(transactions));
+    }
+
+    /**
+     * Mark the underlying facility record as ONM ready (is_onm_ready = true) after installation approval.
+     * Flow:
+     *  - Fetch facility by facilityId using facility-service V2 search
+     *  - Call facility-service update API to set is_onm_ready = true
+     */
+    private void markFacilityOnmReady(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        try {
+            String facilityId = activityFacility.getFacilityId();
+            if (facilityId == null || facilityId.isEmpty()) {
+                log.warn("Cannot mark facility ONM ready: facilityId is null for activityFacility {}", activityFacility.getId());
+                return;
+            }
+
+            Facility facility = activityValidator.getFacilityById(facilityId);
+            if (facility == null) {
+                log.warn("Facility not found in facility-service for facilityId {}. Skipping ONM ready update.", facilityId);
+                return;
+            }
+
+            facility.setIsOnmReady(Boolean.TRUE);
+
+            Map<String, Object> updateRequest = new HashMap<>();
+            updateRequest.put("RequestInfo", requestInfo);
+            updateRequest.put("Facility", facility);
+
+            String url = activityConfiguration.getFacilityServiceHost()
+                    + activityConfiguration.getFacilityServiceUpdateUrl();
+
+            log.info("Marking facility {} as ONM ready via {}", facilityId, url);
+            serviceRequest.fetchResult(new StringBuilder(url), updateRequest);
+        } catch (Exception e) {
+            log.error("Failed to mark facility ONM ready for activityFacility {}: {}",
+                    activityFacility.getId(), e.getMessage(), e);
+        }
     }
 
     private void updateAssetsForFacility(ActivityFacility activityFacility, RequestInfo requestInfo, String facilityId) throws CustomException {

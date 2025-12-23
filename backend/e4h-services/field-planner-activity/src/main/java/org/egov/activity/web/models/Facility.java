@@ -62,4 +62,7 @@ public class Facility {
 
     @JsonProperty("boundaryCode")
     private String boundaryCode = null;
+
+    @JsonProperty("is_onm_ready")
+    private Boolean isOnmReady = null;
 }
