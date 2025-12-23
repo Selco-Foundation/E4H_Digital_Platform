@@ -33,6 +33,9 @@ public class BillOfMaterial {
     @JsonProperty("facilityId")
     private String facilityId = null;
 
+    @JsonProperty("activityFacilityId")
+    private String activityFacilityId = null;
+
     @JsonProperty("name")
     private String name = null;
 

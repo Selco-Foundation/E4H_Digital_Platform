@@ -118,7 +118,8 @@ public class DynamicEmailTemplateService {
         variables.put("ESCALATION_SECTIONS", escalationSections);
         
         // Generate state-specific dashboard URL
-        variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl(tenantId));
+        // All states use the common dashboard URL since tenantId is "in" for all
+        variables.put("DASHBOARD_URL", commonUtility.generateStateDashboardUrl());
 
         // Role-specific intro line with resolved placeholders
         String introLine = generateIntroLine(
@@ -191,8 +192,9 @@ public class DynamicEmailTemplateService {
         section.append("  <tr><td class=\"sp-16\"></td></tr>\n");
         
         // Download button - always show if file store ID is available (even for zero counts)
+        // All files are uploaded to tenant "in", so use "in" for download URLs regardless of state tenant ID
         if (fileStoreId != null && !fileStoreId.isEmpty()) {
-            String downloadUrl = commonUtility.generateDownloadUrl(fileStoreId, tenantId, 
+            String downloadUrl = commonUtility.generateDownloadUrl(fileStoreId, "in", 
                 consumerConfiguration.getFileStoreBaseUrl(), consumerConfiguration.getFileStoreDownloadEndpoint());
             section.append("  <tr>\n");
             section.append("    <td align=\"center\">\n");
@@ -381,7 +383,7 @@ public class DynamicEmailTemplateService {
      * Get call to action text based on escalation level and role
      */
     private String getCallToAction(String level, String recipientRole, String tenantId) {
-        String sauraEmitraUrl = commonUtility.generateSauraEmitraUrl(tenantId);
+        String sauraEmitraUrl = commonUtility.generateSauraEmitraUrl();
 
         // Senior Program Manager (SPM)
         if (ROLE_SENIOR_PROGRAM_MANAGER.equals(recipientRole)) {

@@ -1,5 +1,5 @@
 import React, {useEffect, useMemo, useState} from "react";
-import {Dropdown} from "@egovernments/digit-ui-react-components";
+import {Dropdown, CustomDropdown} from "@egovernments/digit-ui-react-components";
 
 const StateSelector = ({
   data = {},
@@ -20,7 +20,7 @@ const StateSelector = ({
       setStateMenu(
         boundaryData.states?.map((state) => ({
           ...state,
-          name: t(`STATE_${state.code.toUpperCase()}`),
+          name: t(`Boundary_${state.code}`),
         }))
       );
     }
@@ -32,13 +32,16 @@ const StateSelector = ({
 
   return (
     <div className={"employee-select-wrap"}>
-      <Dropdown
+      <CustomDropdown
         disable={disable}
         t={t}
-        option={stateMenu}
-        optionKey={"name"}
-        select={handleStateSelection}
-        selected={selectedState}
+        onChange={handleStateSelection}
+        value={selectedState}
+        config={{
+          name: "state",
+          options: stateMenu,
+          optionsKey: "name",
+        }}
       />
     </div>
   );

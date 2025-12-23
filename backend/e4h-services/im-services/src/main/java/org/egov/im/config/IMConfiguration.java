@@ -296,4 +296,25 @@ public class IMConfiguration {
 
     @Value("${ffmpeg.cpulimitpercentage}")
     private String ffmpegCpuLimitPercentage;
+
+    // RMS Service Config
+    @Value("${egov.rms.host}")
+    private String rmsHost;
+
+    @Value("${egov.rms.ticket.status.update.path}")
+    private String rmsTicketStatusUpdatePath;
+
+    //Facility Service Config
+    @Value("${egov.facility.host}")
+    private String facilityHost;
+
+    @Value("${egov.facility.search.path}")
+    private String facilitySearchPath;
+
+    //Boundary Service Config
+    @Value("${egov.boundary.host}")
+    private String boundaryHost;
+
+    @Value("${egov.boundary.search.path}")
+    private String boundarySearchPath;
 }

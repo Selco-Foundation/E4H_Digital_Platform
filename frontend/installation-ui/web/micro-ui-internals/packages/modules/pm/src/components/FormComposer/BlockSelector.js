@@ -34,7 +34,7 @@ const BlockSelector = ({
         ?.filter((block) => selectedDistrictCodes.includes(block.districtCode))
         .map((block) => ({
           ...block,
-          name: `BLOCK_${block.code.toUpperCase()}`,
+          name: `Boundary_${block.code}`,
         }));
       setBlockMenu(newBlockMenu);
 
@@ -55,6 +55,7 @@ const BlockSelector = ({
       <MultiSelectDropdown
         options={blockMenu}
         optionsKey={"name"}
+        isSearchable={true}
         onSelect={() => {
           // Triggering state update here causes render issues since dropdown within remains open
         }}

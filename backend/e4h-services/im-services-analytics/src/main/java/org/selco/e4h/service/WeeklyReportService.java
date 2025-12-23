@@ -32,6 +32,11 @@ public class WeeklyReportService {
     private static final SimpleDateFormat DATE_RANGE_FORMAT = new SimpleDateFormat("dd MMM");
     private static final SimpleDateFormat TODAY_FORMAT = new SimpleDateFormat("dd MMM yyyy");
     
+    // Constants for field names and values
+    private static final String FIELD_FILED_DATE = "filedDate";
+    private static final String FIELD_CREATED_TIME = "createdTime";
+    private static final String SYSTEM_STATUS_NON_FUNCTIONAL = "NON_FUNCTIONAL";
+
     static {
         // Set timezone to IST for date formatting
         TimeZone istTimeZone = TimeZone.getTimeZone("Asia/Kolkata");
@@ -43,29 +48,51 @@ public class WeeklyReportService {
     /**
      * Utility method to filter tickets by tenant and process them
      */
-    private List<Map<String, Object>> filterTicketsByTenant(List<Map<String, Object>> tickets, String tenantId) {
+    private List<Map<String, Object>> filterTicketsByTenant(List<Map<String, Object>> tickets, String stateCode) {
         return tickets.stream()
             .filter(ticket -> {
                 Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
                 if (data == null) return false;
-                
-                String ticketTenantId = (String) data.get("tenantId");
-                if (ticketTenantId == null) return false;
 
-                return ticketTenantId.equals(tenantId) || ticketTenantId.startsWith(tenantId + ".");
+//                String ticketTenantId = (String) data.get("tenantId");
+                Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+                Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
+                if(boundary ==null)
+                    return false;
+                String ticketStateCode = (String) boundary.get("stateCode");
+                if (ticketStateCode == null) return false;
+
+                return ticketStateCode.equals(stateCode) || ticketStateCode.startsWith(stateCode + ".");
             })
             .collect(Collectors.toList());
     }
-    
+
     /**
      * Utility method to extract common ticket data fields
      */
     private TicketData extractTicketData(Map<String, Object> ticket) {
         Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
         if (data == null) return null;
-        
+
         // Normalize filedDate from any of the possible locations and formats
-        Long filedDate = parseFiledDate(ticket.get("filedDate"));
+        // Check multiple locations: Data.filedDate, root filedDate, Data.incident.filedDate, Data.incident.auditDetails.createdTime
+        Long filedDate = parseFiledDate(data.get(FIELD_FILED_DATE));
+        if (filedDate == null) {
+            filedDate = parseFiledDate(ticket.get(FIELD_FILED_DATE));
+        }
+        if (filedDate == null) {
+            Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+            if (incident != null) {
+                filedDate = parseFiledDate(incident.get(FIELD_FILED_DATE));
+                if (filedDate == null) {
+                    Map<String, Object> audit = (Map<String, Object>) incident.get("auditDetails");
+                    if (audit != null) {
+                        filedDate = parseFiledDate(audit.get(FIELD_CREATED_TIME));
+                    }
+                }
+            }
+        }
+
         return TicketData.builder()
             .tenantId((String) data.get("tenantId"))
             .filedDate(filedDate)
@@ -107,14 +134,14 @@ public class WeeklyReportService {
         }
         return null;
     }
-    
-    
+
+
     /**
      * Generate weekly report data for a specific tenant
      */
-    public WeeklyReportData generateWeeklyReportData(String tenantId, RequestInfo requestInfo) {
+    public WeeklyReportData generateWeeklyReportData(String stateCode, RequestInfo requestInfo) {
         try {
-            log.info("Generating weekly report data for tenant: {}", tenantId);
+            log.info("Generating weekly report data for tenant: {}", stateCode);
             
             // Get date range for the previous week (Monday to Sunday)
             Date[] weekDates = getPreviousWeekDates();
@@ -138,8 +165,8 @@ public class WeeklyReportService {
             log.info("Weekly report period: {} to {} ({})", weekStartStr, weekEndStr, dateRange);
             
             // Get functional/non-functional counts at start and end of week
-            FunctionalMetrics startMetrics = getFunctionalMetrics(tenantId, weekStart);
-            FunctionalMetrics endMetrics = getFunctionalMetrics(tenantId, weekEnd);
+            FunctionalMetrics startMetrics = getFunctionalMetrics(stateCode, weekStart);
+            FunctionalMetrics endMetrics = getFunctionalMetrics(stateCode, weekEnd);
             
             // Calculate percentages
             int totalStart = startMetrics.getFunctionalCount() + startMetrics.getNonFunctionalCount();
@@ -155,14 +182,14 @@ public class WeeklyReportService {
             ArrowData nonFuncArrow = commonUtility.calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
             
             // Get age bucket data
-            AgeBucketData ageBucketData = getAgeBucketData(tenantId);
+            AgeBucketData ageBucketData = getAgeBucketData(stateCode);
             
             // Get state-wise data
-            Map<String, WeeklyReportData.StateAgeBucketData> stateData = getStateWiseAgeBucketData(tenantId);
+            Map<String, WeeklyReportData.StateAgeBucketData> stateData = getStateWiseAgeBucketData(stateCode);
             
             // Build the report data
             WeeklyReportData reportData = WeeklyReportData.builder()
-                .tenantId(tenantId)
+                .tenantId(stateCode)
                 .dateRange(dateRange)
                 .weekStartDate(weekStartStr)
                 .weekEndDate(weekEndStr)
@@ -172,15 +199,15 @@ public class WeeklyReportService {
                 .nonFunctionalArrow(nonFuncArrow)
                 .totalAgeBuckets(ageBucketData)
                 .stateData(stateData)
-                .stateList(formatStateList(tenantId, stateData.keySet()))
+                .stateList(formatStateList(stateCode, stateData.keySet()))
                 .todayFormatted(todayFormatted)
                 .build();
             
-            log.info("Successfully generated weekly report data for tenant: {}", tenantId);
+            log.info("Successfully generated weekly report data for tenant: {}", stateCode);
             return reportData;
             
         } catch (Exception e) {
-            log.error("Error generating weekly report data for tenant: {}", tenantId, e);
+            log.error("Error generating weekly report data for tenant: {}", stateCode, e);
             throw new RuntimeException("Failed to generate weekly report data", e);
         }
     }
@@ -188,33 +215,50 @@ public class WeeklyReportService {
     /**
      * Get functional/non-functional metrics for a specific date using Elasticsearch
      */
-    private FunctionalMetrics getFunctionalMetrics(String tenantId, Date date) {
+    private FunctionalMetrics getFunctionalMetrics(String stateCode, Date date) {
         try {
             // Query Elasticsearch for tickets as of the specified date
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
-            
+            log.info("Fetched {} total tickets from ES for tenant: {}", tickets.size(), stateCode);
+
             // Filter tickets by tenant
-            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, tenantId);
-            
+            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, stateCode);
+            log.info("Filtered to {} tickets for tenant: {}", filteredTickets.size(), stateCode);
+
             int functionalCount = 0;
             int nonFunctionalCount = 0;
-            
+            int skippedNoFiledDate = 0;
+            int skippedAfterDate = 0;
+
             for (Map<String, Object> ticket : filteredTickets) {
                 TicketData ticketData = extractTicketData(ticket);
-                if (ticketData == null) continue;
-                
+
                 // Filter by date (tickets filed before or on the specified date)
-                if (ticketData.getFiledDate() != null && ticketData.getFiledDate() <= date.getTime()) {
-                    if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
-                        nonFunctionalCount++;
-                    } else {
-                        functionalCount++;
-                    }
+                boolean shouldSkip = false;
+                if (ticketData == null) {
+                    shouldSkip = true;
+                } else if (ticketData.getFiledDate() == null) {
+                    skippedNoFiledDate++;
+                    shouldSkip = true;
+                } else if (ticketData.getFiledDate() > date.getTime()) {
+                    skippedAfterDate++;
+                    shouldSkip = true;
+                }
+
+                if (shouldSkip) {
+                    continue;
+                }
+
+                // Count functional vs non-functional
+                if (SYSTEM_STATUS_NON_FUNCTIONAL.equals(ticketData.getSystemFunctional())) {
+                    nonFunctionalCount++;
+                } else {
+                    functionalCount++;
                 }
             }
             
-            log.debug("Functional metrics for {} on {}: Functional={}, Non-Functional={}", 
-                tenantId, date, functionalCount, nonFunctionalCount);
+            log.info("Functional metrics for {} on {}: Functional={}, Non-Functional={}, Skipped(no filedDate)={}, Skipped(after date)={}",
+                    stateCode, date, functionalCount, nonFunctionalCount, skippedNoFiledDate, skippedAfterDate);
             
             return FunctionalMetrics.builder()
                 .functionalCount(functionalCount)
@@ -222,7 +266,7 @@ public class WeeklyReportService {
                 .build();
                 
         } catch (Exception e) {
-            log.error("Error getting functional metrics from Elasticsearch for tenant: {} on date: {}", tenantId, date, e);
+            log.error("Error getting functional metrics from Elasticsearch for tenant: {} on date: {}", stateCode, date, e);
             return FunctionalMetrics.builder()
                 .functionalCount(0)
                 .nonFunctionalCount(0)
@@ -233,51 +277,61 @@ public class WeeklyReportService {
     
     /**
      * Get age bucket data for non-functional systems
-     * Uses the correct age bucket logic as per Slack clarification:
+     * Uses the correct age bucket logic
      * - 1 Week: 8 ≤ age in days ≤ 30
      * - 1 Month: 31 ≤ age in days ≤ 90  
      * - 3 Month: age in days > 90
      * - For facilities with multiple tickets, consider only the oldest ticket
+     * - Counts unique facilities (HFs), not tickets
+     * Uses boundary.stateCode to identify state since all tickets are now under tenantId 'in'
      */
-    private AgeBucketData getAgeBucketData(String tenantId) {
+    private AgeBucketData getAgeBucketData(String stateCode) {
         try {
             // Query Elasticsearch for all open tickets
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             
+            // Filter tickets by boundary.stateCode (not tenantId, since all tickets are now under 'in')
+            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, stateCode);
+
+            // Group tickets by facility and find oldest ticket per facility
+            // Use facility key: facility name + district + block + stateCode to uniquely identify facilities
+            Map<String, TicketData> oldestTicketByFacility = new HashMap<>();
+
+            for (Map<String, Object> ticket : filteredTickets) {
+                TicketData ticketData = extractTicketData(ticket);
+                
+                // Extract boundary.stateCode to verify this ticket belongs to the requested state
+                String facilityStateCode = extractBoundaryStateCode(ticketData);
+                
+                // Only consider non-functional tickets with valid filedDate and boundary.stateCode
+                if (!isValidNonFunctionalTicket(ticketData) || facilityStateCode == null) {
+                    continue;
+                }
+
+                // Extract facility identifier: facility name + district + block + stateCode
+                // This uniquely identifies a facility
+                Map<String, Object> data = ticketData.getData();
+                String facilityKey = generateFacilityKey(data, facilityStateCode);
+
+                // For each facility, keep only the ticket with the oldest filedDate
+                updateFacilityMapWithOldestTicket(oldestTicketByFacility, facilityKey, ticketData);
+            }
+
+            // Count facilities by age bucket
             int totalLt1Wk = 0;
             int totalLt1Mo = 0;
             int totalLt3Mo = 0;
             
-            // Filter tickets by tenant
-            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, tenantId);
-            
-            for (Map<String, Object> ticket : filteredTickets) {
-                TicketData ticketData = extractTicketData(ticket);
-                if (ticketData == null) continue;
-                
-                // Only count non-functional tickets
-                if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
-                    // Calculate age in days
-                    if (ticketData.getFiledDate() != null) {
-                        int ageInDays = computeBusinessDays(ticketData.getFiledDate(), System.currentTimeMillis());
-                        
-                        // Age bucket logic as per Slack clarification:
-                        // 1 Week: 8 ≤ age in days ≤ 30
-                        // 1 Month: 31 ≤ age in days ≤ 90
-                        // 3 Month: age in days > 90
-                        if (ageInDays >= 8 && ageInDays <= 30) {
-                            totalLt1Wk++;
-                        } else if (ageInDays >= 31 && ageInDays <= 90) {
-                            totalLt1Mo++;
-                        } else if (ageInDays > 90) {
-                            totalLt3Mo++;
-                        }
-                    }
-                }
+            for (TicketData oldestTicket : oldestTicketByFacility.values()) {
+                int ageInDays = computeBusinessDays(oldestTicket.getFiledDate(), System.currentTimeMillis());
+                AgeBucketCounts counts = calculateAgeBucket(ageInDays);
+                totalLt1Wk += counts.lt1Wk;
+                totalLt1Mo += counts.lt1Mo;
+                totalLt3Mo += counts.lt3Mo;
             }
             
-            log.debug("Age bucket data for {}: <1Wk={}, <1Mo={}, <3Mo={}", 
-                tenantId, totalLt1Wk, totalLt1Mo, totalLt3Mo);
+            log.info("Age bucket data for {}: Total facilities={}, <1Wk={}, <1Mo={}, <3Mo={}",
+                stateCode, oldestTicketByFacility.size(), totalLt1Wk, totalLt1Mo, totalLt3Mo);
             
             return AgeBucketData.builder()
                 .totalLt1Wk(totalLt1Wk)
@@ -286,7 +340,7 @@ public class WeeklyReportService {
                 .build();
                 
         } catch (Exception e) {
-            log.error("Error getting age bucket data from Elasticsearch for tenant: {}", tenantId, e);
+            log.error("Error getting age bucket data from Elasticsearch for tenant: {}", stateCode, e);
             return AgeBucketData.builder()
                 .totalLt1Wk(0)
                 .totalLt1Mo(0)
@@ -297,58 +351,197 @@ public class WeeklyReportService {
     
     /**
      * Get state-wise age bucket data using Elasticsearch
+     * Counts unique facilities (HFs) per state, using oldest ticket per facility
+     * Uses boundary.stateCode to identify state since all tickets are now under tenantId 'in'
      */
-    private Map<String, WeeklyReportData.StateAgeBucketData> getStateWiseAgeBucketData(String tenantId) {
+    private Map<String, WeeklyReportData.StateAgeBucketData> getStateWiseAgeBucketData(String stateCode) {
         try {
             // Query Elasticsearch for all open tickets
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             
-            Map<String, WeeklyReportData.StateAgeBucketData> stateData = new LinkedHashMap<>();
-            
-            // Filter tickets by tenant
-            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, tenantId);
-            
+            // Filter tickets by boundary.stateCode (not tenantId, since all tickets are now under 'in')
+            List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, stateCode);
+
+            // Group tickets by state and facility, find oldest ticket per facility
+            // Structure: stateCode (from boundary) -> facilityKey -> oldest TicketData
+            Map<String, Map<String, TicketData>> stateFacilityMap = new HashMap<>();
+
             for (Map<String, Object> ticket : filteredTickets) {
                 TicketData ticketData = extractTicketData(ticket);
-                if (ticketData == null) continue;
                 
-                // Only count non-functional tickets
-                if ("NON_FUNCTIONAL".equals(ticketData.getSystemFunctional())) {
-                    // Calculate age in days
-                    if (ticketData.getFiledDate() != null) {
-                        int ageInDays = computeBusinessDays(ticketData.getFiledDate(), System.currentTimeMillis());
+                // Extract boundary.stateCode to identify which state this ticket belongs to
+                String ticketStateCode = extractBoundaryStateCode(ticketData);
+                
+                // Only consider non-functional tickets with valid filedDate and boundary.stateCode
+                if (!isValidNonFunctionalTicket(ticketData) || ticketStateCode == null) {
+                    continue;
+                }
 
-                        String ticketTenantId = ticketData.getTenantId();
-                        String rootTenantId = ticketTenantId != null && ticketTenantId.contains(".")
-                            ? ticketTenantId.substring(0, ticketTenantId.indexOf('.'))
-                            : ticketTenantId;
+                // Extract facility identifier: facility name + district + block + stateCode
+                // This uniquely identifies a facility
+                Map<String, Object> data = ticketData.getData();
+                String facilityKey = generateFacilityKey(data, ticketStateCode);
 
-                        WeeklyReportData.StateAgeBucketData stateBucket = stateData.computeIfAbsent(rootTenantId, 
-                            k -> WeeklyReportData.StateAgeBucketData.builder()
-                                .stateName(commonUtility.getStateDisplayName(k))
-                                .lt1Wk(0)
-                                .lt1Mo(0)
-                                .lt3Mo(0)
-                                .build());
-                        
-                        // Age bucket logic
-                        if (ageInDays >= 8 && ageInDays <= 30) {
-                            stateBucket.setLt1Wk(stateBucket.getLt1Wk() + 1);
-                        } else if (ageInDays >= 31 && ageInDays <= 90) {
-                            stateBucket.setLt1Mo(stateBucket.getLt1Mo() + 1);
-                        } else if (ageInDays > 90) {
-                            stateBucket.setLt3Mo(stateBucket.getLt3Mo() + 1);
-                        }
-                    }
+                // Get or create state map using boundary.stateCode
+                Map<String, TicketData> facilityMap = stateFacilityMap.computeIfAbsent(ticketStateCode, k -> new HashMap<>());
+
+                // For each facility, keep only the ticket with the oldest filedDate
+                updateFacilityMapWithOldestTicket(facilityMap, facilityKey, ticketData);
+            }
+
+            // Build state-wise age bucket data
+            Map<String, WeeklyReportData.StateAgeBucketData> stateData = new LinkedHashMap<>();
+            
+            for (Map.Entry<String, Map<String, TicketData>> stateEntry : stateFacilityMap.entrySet()) {
+                String ticketStateCode = stateEntry.getKey();
+                Map<String, TicketData> facilityMap = stateEntry.getValue();
+
+                WeeklyReportData.StateAgeBucketData stateBucket = stateData.computeIfAbsent(ticketStateCode,
+                    k -> WeeklyReportData.StateAgeBucketData.builder()
+                        .stateName(commonUtility.getStateDisplayName(k))
+                        .lt1Wk(0)
+                        .lt1Mo(0)
+                        .lt3Mo(0)
+                        .build());
+
+                // Count facilities by age bucket for this state
+                for (TicketData oldestTicket : facilityMap.values()) {
+                    int ageInDays = computeBusinessDays(oldestTicket.getFiledDate(), System.currentTimeMillis());
+                    AgeBucketCounts counts = calculateAgeBucket(ageInDays);
+                    stateBucket.setLt1Wk(stateBucket.getLt1Wk() + counts.lt1Wk);
+                    stateBucket.setLt1Mo(stateBucket.getLt1Mo() + counts.lt1Mo);
+                    stateBucket.setLt3Mo(stateBucket.getLt3Mo() + counts.lt3Mo);
                 }
             }
             
-            log.debug("State-wise age bucket data for {}: {} states", tenantId, stateData.size());
+            log.info("State-wise age bucket data for {}: {} states, total facilities={}",
+                stateCode, stateData.size(),
+                stateFacilityMap.values().stream().mapToInt(Map::size).sum());
             return stateData;
             
         } catch (Exception e) {
-            log.error("Error getting state-wise age bucket data from Elasticsearch for tenant: {}", tenantId, e);
+            log.error("Error getting state-wise age bucket data from Elasticsearch for tenant: {}", stateCode, e);
             return new HashMap<>();
+        }
+    }
+    
+    /**
+     * Helper method to safely get string value from map
+     */
+    private String getStringValue(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value != null ? value.toString() : "";
+    }
+    
+    /**
+     * Extract boundary stateCode from ticket data
+     * @param ticketData The ticket data
+     * @return The stateCode from boundary, or null if not found
+     */
+    private String extractBoundaryStateCode(TicketData ticketData) {
+        if (ticketData == null) {
+            return null;
+        }
+        
+        Map<String, Object> data = ticketData.getData();
+        if (data == null) {
+            return null;
+        }
+        
+        Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+        if (incident == null) {
+            return null;
+        }
+        
+        Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
+        if (boundary == null) {
+            return null;
+        }
+        
+        return (String) boundary.get("stateCode");
+    }
+    
+    /**
+     * Generate unique facility key from ticket data
+     * Format: facilityName|district|block|stateCode
+     * @param data The ticket data map
+     * @param stateCode The state code from boundary
+     * @return Unique facility key
+     */
+    private String generateFacilityKey(Map<String, Object> data, String stateCode) {
+        String facilityName = getStringValue(data, "tenantId_localized");
+        if (facilityName == null || facilityName.isEmpty()) {
+            facilityName = getStringValue(data, "tenantId");
+        }
+        String district = getStringValue(data, "district");
+        String block = getStringValue(data, "block");
+        return facilityName + "|" + district + "|" + block + "|" + stateCode;
+    }
+    
+    /**
+     * Check if ticket is valid non-functional ticket with required fields
+     * @param ticketData The ticket data
+     * @return true if ticket is valid non-functional ticket
+     */
+    private boolean isValidNonFunctionalTicket(TicketData ticketData) {
+        return ticketData != null
+            && SYSTEM_STATUS_NON_FUNCTIONAL.equals(ticketData.getSystemFunctional())
+            && ticketData.getFiledDate() != null;
+    }
+    
+    /**
+     * Calculate age bucket for a given age in days
+     * @param ageInDays Age in business days
+     * @return AgeBucketCounts with counts for each bucket
+     */
+    private AgeBucketCounts calculateAgeBucket(int ageInDays) {
+        int lt1Wk = 0;
+        int lt1Mo = 0;
+        int lt3Mo = 0;
+        
+        // Age bucket logic:
+        // 1 Week: 8 ≤ age in days ≤ 30
+        // 1 Month: 31 ≤ age in days ≤ 90
+        // 3 Month: age in days > 90
+        if (ageInDays >= 8 && ageInDays <= 30) {
+            lt1Wk = 1;
+        } else if (ageInDays >= 31 && ageInDays <= 90) {
+            lt1Mo = 1;
+        } else if (ageInDays > 90) {
+            lt3Mo = 1;
+        }
+        
+        return new AgeBucketCounts(lt1Wk, lt1Mo, lt3Mo);
+    }
+    
+    /**
+     * Update facility map with oldest ticket per facility
+     * @param facilityMap The map to update (facilityKey -> TicketData)
+     * @param facilityKey The unique facility key
+     * @param ticketData The ticket data to potentially add
+     */
+    private void updateFacilityMapWithOldestTicket(Map<String, TicketData> facilityMap, 
+                                                   String facilityKey, 
+                                                   TicketData ticketData) {
+        TicketData existing = facilityMap.get(facilityKey);
+        if (existing == null || existing.getFiledDate() == null ||
+            ticketData.getFiledDate() < existing.getFiledDate()) {
+            facilityMap.put(facilityKey, ticketData);
+        }
+    }
+    
+    /**
+     * Inner class to hold age bucket counts
+     */
+    private static class AgeBucketCounts {
+        final int lt1Wk;
+        final int lt1Mo;
+        final int lt3Mo;
+        
+        AgeBucketCounts(int lt1Wk, int lt1Mo, int lt3Mo) {
+            this.lt1Wk = lt1Wk;
+            this.lt1Mo = lt1Mo;
+            this.lt3Mo = lt3Mo;
         }
     }
 

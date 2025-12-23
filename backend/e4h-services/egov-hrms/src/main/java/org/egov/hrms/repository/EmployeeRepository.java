@@ -47,6 +47,7 @@ public class EmployeeRepository {
 	 * 
 	 * @param criteria
 	 * @param requestInfo
+	 * @param stateLevelTenantId
 	 * @return
 	 */
 	public List<Employee> fetchEmployees(EmployeeSearchCriteria criteria, RequestInfo requestInfo, String stateLevelTenantId){
@@ -62,6 +63,24 @@ public class EmployeeRepository {
 					criteria.setUuids(criteria.getUuids().stream().filter(empUuids::contains).collect(Collectors.toList()));
 				else
 					criteria.setUuids(empUuids);
+			}
+		}
+
+		if(hrmsUtils.isJurisdictionSearchReqd(criteria)) {
+			List<String> empUuids = fetchEmployeesforJurisdiction(criteria, requestInfo, stateLevelTenantId);
+			if (CollectionUtils.isEmpty(empUuids))
+				return employees;
+			else {
+				if(!CollectionUtils.isEmpty(criteria.getUuids())) {
+					List<String> filteredUuids = criteria.getUuids().stream().filter(empUuids::contains).collect(Collectors.toList());
+					// If both roles and boundaryCodes are provided, and no employees match both criteria, return empty list
+					if(!CollectionUtils.isEmpty(criteria.getRoles()) && CollectionUtils.isEmpty(filteredUuids)) {
+						return employees;
+					}
+					criteria.setUuids(filteredUuids);
+				} else {
+					criteria.setUuids(empUuids);
+				}
 			}
 		}
 		
@@ -97,6 +116,27 @@ public class EmployeeRepository {
 
 		try {
 
+			employeesIds = jdbcTemplate.queryForList(query, preparedStmtList.toArray(),String.class);
+		}catch(Exception e) {
+			log.error("Exception while making the db call: ",e);
+			log.error("query; "+query);
+		}
+		return employeesIds;
+	}
+
+	private List<String> fetchEmployeesforJurisdiction(EmployeeSearchCriteria criteria, RequestInfo requestInfo, String stateLevelTenantId) {
+		List<String> employeesIds = new ArrayList<>();
+		List <Object> preparedStmtList = new ArrayList<>();
+		String query = queryBuilder.getJurisdictionSearchQuery(criteria, preparedStmtList, requestInfo, stateLevelTenantId);
+
+		try {
+			query = centralInstanceUtil.replaceSchemaPlaceholder(query, stateLevelTenantId);
+		} catch (InvalidTenantIdException e1) {
+			throw new CustomException("HRMS_TENANTID_ERROR",
+					"TenantId length is not sufficient to replace query schema in a multi state instance");
+		}
+
+		try {
 			employeesIds = jdbcTemplate.queryForList(query, preparedStmtList.toArray(),String.class);
 		}catch(Exception e) {
 			log.error("Exception while making the db call: ",e);

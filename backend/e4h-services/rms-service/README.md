@@ -89,6 +89,35 @@ Manually triggers mapping validation. This will:
 - Mark inactive mappings for facilities that no longer exist
 - Update validation timestamps
 
+### POST /rms-service/v1/ticket/status/update
+Webhook endpoint to receive ticket status updates from Saura eMitra. When a ticket is closed/resolved, this endpoint:
+- Updates the corresponding alert(s) in the active_alerts table
+- Marks alerts as RESOLVED with a resolved_at timestamp
+- Prevents duplicate ticket creation for the same issue (deduplication checks for closed tickets)
+
+**Request Body:**
+```json
+{
+  "incidentId": "ticket-id-123",
+  "applicationStatus": "RESOLVED",
+  "requestInfo": {}
+}
+```
+
+**Closed Status Values:** RESOLVED, CLOSEDAFTERRESOLUTION, REJECTED, CLOSEDAFTERREJECTION
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Ticket status update processed successfully",
+  "ticketId": "ticket-id-123",
+  "status": "RESOLVED",
+  "alertsUpdated": 1,
+  "isClosed": true
+}
+```
+
 ## Scheduled Jobs
 
 1. **Rule Engine**: Executes every 15 minutes (configurable)

@@ -23,7 +23,6 @@ import javax.validation.constraints.NotNull;
 public class AssetSearchRequest {
     @JsonProperty("RequestInfo")
     @NotNull
-
     @Valid
     private RequestInfo requestInfo = null;
 

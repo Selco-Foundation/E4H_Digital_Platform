@@ -9,6 +9,7 @@ import CreateFieldPlan from "./CreateFieldPlan";
 import ProjectFieldPlans from "./ProjectFieldPlans";
 import ProjectTable from "./ProjectTable";
 import ProjectDetails from "./ProjectDetails";
+import CreateAMC from "./CreateAMC";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -23,7 +24,7 @@ const PMApp = () => {
       show: true,
     },
     projectCreation: {
-      content: pmStore?.workingProject?.status ? t("PM_ACTION_EDIT_PROJECT") : t("PM_ACTION_CREATE_PROJECT"),
+      content: t("PM_ACTION_CREATE_PROJECT"),
       internalLink: match.url + `/project/create`,
       show: true,
     },
@@ -45,6 +46,11 @@ const PMApp = () => {
     fieldPlanCreation: {
       content: t("PM_ACTION_CREATE_FIELD_PLAN"),
       internalLink: match.url + `/project/${pmStore?.workingProject?.id}/field-plan/create`,
+      show: true,
+    },
+    amcCreation: {
+      content: t("PM_ACTION_SET_UP_AMC"),
+      internalLink: match.url + `/project/${pmStore?.workingProject?.id}/amc/create`,
       show: true,
     },
     response: {
@@ -95,6 +101,13 @@ const PMApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.fieldPlanCreation]}
           />
           <CreateFieldPlan />
+        </Route>
+        <Route path={`${path}/project/:projectId/amc/create`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.amcCreation]}
+          />
+          <CreateAMC />
         </Route>
         <Route path={`${path}/response`} exact={true}>
           <BreadCrumb

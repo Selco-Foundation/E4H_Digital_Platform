@@ -303,17 +303,17 @@ public class PrioritySLAService {
 
         for (int i = 0; i < processInstances.size(); i++) {
             ProcessInstance current = processInstances.get(i);
-            String state = current.getState().getApplicationStatus();
+            String status = current.getState().getApplicationStatus();
 
-            if (PENDING_RESOLUTION.equals(state) || PENDING_FOR_ASSIGNMENT.equals(state)
-                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDING_RESOLUTION_PREFIX)) {
+            if (PENDING_RESOLUTION.equals(status) || PENDING_FOR_ASSIGNMENT.equals(status)
+                    || status.startsWith(PENDING_ASSIGNMENT_PREFIX) || status.startsWith(PENDING_RESOLUTION_PREFIX)) {
 
                 long prevStateTime = current.getAuditDetails().getCreatedTime();
                 long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
                         : Instant.now().toEpochMilli();
 
                 long currentStateTimeSpent = calculateBusinessMillis(prevStateTime, nextStateTime, businessHours);
-                long currentStateDefinedSla = getDurationFromMap(slaMap, tenantId, businessService, state).toMillis();
+                long currentStateDefinedSla = getDurationFromMap(slaMap, tenantId, businessService, status).toMillis();
                 if((i+1) >= processInstances.size() || currentStateDefinedSla-currentStateTimeSpent<0){
                     remainingTotalSla += currentStateDefinedSla-currentStateTimeSpent;
                 }

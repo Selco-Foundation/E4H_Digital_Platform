@@ -34,7 +34,7 @@ const DistrictSelector = ({
         ?.filter((district) => district.stateCode === selectedStateCode)
         .map((district) => ({
           ...district,
-          name: `DISTRICT_${district.code.toUpperCase()}`,
+          name: `Boundary_${district.code}`,
         }));
       setDistrictMenu(newDistrictMenu);
 
@@ -55,6 +55,7 @@ const DistrictSelector = ({
       <MultiSelectDropdown
         options={districtMenu}
         optionsKey={"name"}
+        isSearchable={true}
         onSelect={() => {
           // Triggering state update here causes render issues since dropdown within is remains open
         }}

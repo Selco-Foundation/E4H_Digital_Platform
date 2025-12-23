@@ -52,7 +52,11 @@ const AuditTrail = ({t, auditTrail}) => {
       <div style={{ display: "flex", flexDirection: "column", position: "relative" }}>
         <React.Fragment>
           {auditTrail?.length === 1 ? (
-            <CheckPoint isCompleted={true} label={t("CS_" + auditTrail[0]?.status.toUpperCase())} />
+            <CheckPoint
+              isCompleted={true}
+              label={t("CS_" + auditTrail[0]?.status.toUpperCase())}
+              customChild={getTimelineCaptions(auditTrail[0])}
+            />
           ) : (
             <ConnectingCheckPoints>
               {auditTrail &&

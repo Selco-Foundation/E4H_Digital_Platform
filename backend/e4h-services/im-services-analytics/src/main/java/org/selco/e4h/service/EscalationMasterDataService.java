@@ -12,6 +12,7 @@ import org.selco.e4h.web.models.EscalationRecipient;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -136,7 +137,7 @@ public class EscalationMasterDataService {
                         String tenantId = (String) tenant.get("code");
                         if (tenantId != null && !tenantId.trim().isEmpty()) {
                             // Only include state-level tenants (exclude 'in' which is country-level)
-                            if (!"in".equals(tenantId)) {
+                            if (!tenantId.startsWith("in")) {
                                 activeTenantIds.add(tenantId);
                                 log.debug("Added tenant: {}", tenantId);
                             } else {
@@ -161,6 +162,75 @@ public class EscalationMasterDataService {
             log.error("Error fetching tenants from MDMS", e);
             return new ArrayList<>();
         }
+    }
+
+    // Allow to get boundary for each state base
+    public Map<String, String> getActiveTenantIdsName(RequestInfo requestInfo) {
+        log.info("Fetching active tenant IDs from MDMS");
+
+        try {
+            Map<String, Map<String, JSONArray>> mdmsData = mdmsUtil.fetchMdmsData(
+                    requestInfo,
+                    "in",
+                    TENANT_MODULE,
+                    List.of(TENANT_MASTER)
+            );
+
+            JSONArray tenants = mdmsData
+                    .getOrDefault(TENANT_MODULE, Map.of())
+                    .get(TENANT_MASTER);
+
+            if (tenants == null || tenants.isEmpty()) {
+                log.warn("No tenants found in MDMS");
+                return Map.of();
+            }
+
+            Map<String, String> tenantMap = new HashMap<>();
+
+            for (Object tenantObj : tenants) {
+                processTenant(tenantObj, tenantMap);
+            }
+
+            log.info("Found {} active state-level tenants: {}", tenantMap.size(), tenantMap);
+            return tenantMap;
+
+        } catch (Exception e) {
+            log.error("Error fetching tenants from MDMS", e);
+            return Map.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void processTenant(Object tenantObj, Map<String, String> tenantMap) {
+        if (!(tenantObj instanceof Map)) {
+            log.warn("Invalid tenant object format: {}", tenantObj);
+            return;
+        }
+
+        Map<String, Object> tenant = (Map<String, Object>) tenantObj;
+        String tenantId = (String) tenant.get("code");
+        String tenantName = (String) tenant.get("name");
+
+        if (!isValidTenant(tenantId, tenantName)) {
+            log.warn("Tenant object missing required fields: {}", tenantObj);
+            return;
+        }
+
+        if (tenantId.startsWith("in")) {
+            log.debug("Skipping country-level tenant: {}", tenantId);
+            return;
+        }
+
+        tenantMap.put(tenantId, "India_" + tenantName);
+        log.debug("Added tenant: {} with name {}", tenantId, tenantName);
+    }
+
+    private boolean isValidTenant(String tenantId, String tenantName) {
+        return isNonEmpty(tenantId) && isNonEmpty(tenantName);
+    }
+
+    private boolean isNonEmpty(String value) {
+        return value != null && !value.trim().isEmpty();
     }
     
 }

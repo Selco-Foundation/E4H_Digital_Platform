@@ -54,12 +54,16 @@ public class ElasticSearchClient {
         return fetchTickets(OLD_INDEX_NAME, from, size,  closedTickets);
     }
 
-    public Map<String, Object> getHFByTenantId(String tenantId) {
-        return fetchTicketById(phcIndex, tenantId);
+    public Map<String, Object> getHFByBoundaryCode(String boundaryCode) {
+        return fetchTicketByBoundaryCode(phcIndex, boundaryCode);
     }
 
     public List<Map<String, Object>> getAllPHC(int from, int size) {
         return fetchAllPHCs(phcIndex, from, size);
+    }
+
+    public int getPHCDocsSize() {
+        return getPHCsSize(phcIndex);
     }
 
     private List<Map<String, Object>> fetchTickets(String indexName, int from, int size, Boolean closedTickets) {
@@ -89,24 +93,37 @@ public class ElasticSearchClient {
         }
     }
 
-    private Map<String, Object> fetchTicketById(String indexName, String tenantId) {
-        String uri = getBaseUrl() + "/" + indexName + "/" + DOC_PATH + "/" + tenantId;
+    private int getPHCsSize(String indexName) {
+        String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
+        Map<String, Object> query = buildHFQuery(0, 1);
+        HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
+        try {
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            return parseESTotalHits(response);
+        } catch (Exception e) {
+            log.error("Failed to fetch open tickets from index '{}'", indexName, e);
+            return 0;
+        }
+    }
 
+    private Map<String, Object> fetchTicketByBoundaryCode(String indexName, String boundaryCode) {
+        String uri = getBaseUrl() + "/{index}/" + DOC_PATH + "/{id}";
         HttpEntity<String> entity = new HttpEntity<>(updateService.buildHeaders());
-
         try {
             ResponseEntity<Map> response = restTemplate.exchange(
                     uri,
                     HttpMethod.GET,
                     entity,
-                    Map.class
+                    Map.class,
+                    indexName,
+                    boundaryCode
             );
 
-            log.info("Fetched ticket audit for tenantId={} from index={}", tenantId, indexName);
+            log.info("Fetched ticket audit for boundaryCode={} from index={}", boundaryCode, indexName);
             return response.getBody() != null ? response.getBody() : Collections.emptyMap();
 
         } catch (Exception e) {
-            log.error("Failed to fetch ticket audit from index '{}' with tenantId '{}'", indexName, tenantId, e);
+            log.error("Failed to fetch ticket audit from index '{}' with tenantId '{}'", indexName, boundaryCode, e);
             return Collections.emptyMap();
         }
     }
@@ -160,6 +177,19 @@ public class ElasticSearchClient {
         }
 
         return resultList;
+    }
+
+    private int parseESTotalHits(Map<String, Object> response) {
+        int totalIndex = 0;
+        if (response == null) return totalIndex;
+
+        Map<String, Object> hits = (Map<String, Object>) response.get("hits");
+        if (hits == null || !hits.containsKey("hits")) return totalIndex;
+
+        Map<String, Object> totalHits = (Map<String, Object>) hits.get("total");
+        totalIndex = (int)totalHits.get("value");
+
+        return totalIndex;
     }
 
     /**
@@ -412,7 +442,7 @@ public class ElasticSearchClient {
             if (currentProcessInstance == null) {
                 return "Medium"; // Default fallback
             }
-            
+
             Object businessServiceObj = currentProcessInstance.get("businessService");
             if (businessServiceObj instanceof String businessService && businessService.contains("_")) {
                 String[] parts = businessService.split("_", 2);
@@ -420,7 +450,7 @@ public class ElasticSearchClient {
                     return parts[1]; // Return part after underscore (High, Low, Medium)
                 }
             }
-            
+
             return "Medium"; // Default fallback
         } catch (Exception e) {
             log.warn("Error extracting priority from business service: {}", e.getMessage());

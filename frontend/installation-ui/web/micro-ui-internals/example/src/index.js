@@ -4,8 +4,11 @@ import { initLibraries } from "@egovernments/digit-ui-libraries";
 import { initUtilitiesComponents } from "@egovernments/digit-ui-module-utilities";
 import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
 import { PMReducers, initPMComponents } from "@selco/digit-ui-module-pm";
+import { AMCReducers, initAMCComponents } from "@selco/digit-ui-module-amc";
 import { Loader } from "@egovernments/digit-ui-components";
 
+import "@egovernments/digit-ui-components-css/dist/index.css";
+import "@egovernments/digit-ui-css/dist/index.css";
 import "@selco/installation-ui-css/example/index.css";
 
 import { pgrCustomizations, overrideComponents } from "./pgr";
@@ -23,6 +26,7 @@ const DigitUI = React.lazy(() =>
 const enabledModules = [
   "QC",
   "PM",
+  "AMC",
   "Utilities",
 ];
 
@@ -80,10 +84,12 @@ const initDigitUI = () => {
   initUtilitiesComponents();
   initQCComponents();
   initPMComponents();
+  initAMCComponents();
 
   const moduleReducers = (initData) => ({
     qc: QCReducers(initData),
     pm: PMReducers(initData),
+    amc: AMCReducers(initData),
   });
 
   // const stateCode = window?.globalConfigs?.getConfig("STATE_LEVEL_TENANT_ID") || "pb";

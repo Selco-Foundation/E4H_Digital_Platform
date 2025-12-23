@@ -44,6 +44,9 @@ public class ActivityConfiguration {
     @Value("${egov.createandsave.pdf.url}")
     private String pdfCreateSaveFilestore;
 
+    @Value("${egov.kafka.notification.email.topic}")
+    private String notificationEmailTopic;
+
     @Value("${egov.off.grid.single.phase.key}")
     private String bomACOffGridSinglePhase;
 
@@ -91,6 +94,9 @@ public class ActivityConfiguration {
     @Value("${activity.facility.kafka.update.topic}")
     private String updateActivityFacilityTopic;
 
+    @Value("${activity.facility.kafka.delete.topic}")
+    private String deleteActivityFacilityTopic;
+
     @Value("${activity.assignment.kafka.update.topic}")
     private String updateActivityAssignmentTopic;
 
@@ -99,6 +105,12 @@ public class ActivityConfiguration {
 
     @Value("${bom.kafka.update.topic}")
     private String updateBOMTopic;
+
+    @Value("${facility.user.kafka.create.topic}")
+    private String createFacilityUserTopic;
+
+    @Value("${facility.user.kafka.update.topic}")
+    private String updateFacilityUserTopic;
 
     @Value("${project.search.max.limit}")
     private Integer maxLimit;
@@ -168,4 +180,22 @@ public class ActivityConfiguration {
 
     @Value("${egov.asset.update.url}")
     private String assetUpdateUrl;
+
+    @Value("${email.activity.assignment.subject}")
+    private String activityEmailSubject;
+
+    @Value("${email.activity.assignment.body}")
+    private String activityEmailBody;
+
+    @Value("${egov.amc.scheduler.host}")
+    private String amcSchedulerHost;
+
+    @Value("${egov.amc.scheduler.asset.create.url}")
+    private String amcAssetCreateUrl;
+
+    @Value("${egov.amc.scheduler.configuration.search.url}")
+    private String amcConfigurationSearchUrl;
+
+    @Value("${egov.amc.scheduler.visit.generate.url}")
+    private String amcVisitGenerateUrl;
 }

@@ -14,7 +14,7 @@ import {
 } from "@selco/digit-ui-react-components";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useHistory } from "react-router-dom";
+import { Redirect, useHistory } from "react-router-dom";
 import UploadDrawer from "./ImageUpload/UploadDrawer";
 
 const defaultImage =
@@ -69,6 +69,15 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   const [errors, setErrors] = React.useState({});
   const isMobile = window.Digit.Utils.browser.isMobile();
   const analyticsOnceRef = React.useRef(false);
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+  const jurisdictionCurrentBoundaryTypes = Digit.Utils.BoundaryUtil.aggregateBoundaryTypes(jurisdictionCurrentBoundary);
+  const isOnlyFacilityType = jurisdictionCurrentBoundaryTypes.length === 1 && jurisdictionCurrentBoundaryTypes[0] === "facility";
+
+  useEffect(() => {
+    setCity((jurisdictionCurrentBoundaryCodes?.length === 1 &&  isOnlyFacilityType) ? t(`Boundary_${jurisdictionCurrentBoundaryCodes?.[0]}`) : t("CORE_COMMON_ALL"))
+  }, []);
+
   const getUserInfo = async () => {
     const uuid = userInfo?.uuid;
     if (uuid) {

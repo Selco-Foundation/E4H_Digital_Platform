@@ -1,31 +1,49 @@
-import React from 'react';
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Toast } from "@egovernments/digit-ui-react-components";
 import { clearRejectionReasons } from "../../redux/actions";
-import { QCService } from "../../services/QC";
+import { ActivityService } from "../../services/Activity";
 
-const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments }) => {
+const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments }) => {
 
   const dispatch = useDispatch();
   const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
   const selectedFacility = useSelector((state) => state.qc.common.selectedFacility);
+  const [toast, setToast] = useState(null);
+
+  useEffect(()=>{
+    if(toast){
+      setTimeout(()=>{
+        setToast(null);
+      },2500)
+    }
+  },[toast])
 
   const handleApprove = async () => {
     setUpdatingWorkflow(true);
 
     try {
-      const response = await QCService.updateProjectWorkflow(
-        selectedFacility?.projectId, "APPROVE",
+      await ActivityService.updateActivityFacilityWorkflow(
+        selectedFacility?.id, "APPROVE",
         [], "Approved by Installation Reviewer",
         aggregatedDocuments
       );
 
-      if (response) {
-        revalidateData();
-        dispatch(clearRejectionReasons());
-      }
+      revalidateData();
+      dispatch(clearRejectionReasons());
+      setUpdatingWorkflow(false);
+      setToast({
+        key: "success",
+        message: t("QC_FACILITY_APPROVE_SUCCESS"),
+      });
 
     } catch (error) {
       console.error("Error approving", error);
+      setUpdatingWorkflow(false);
+      setToast({
+        key: "error",
+        message: t("QC_FACILITY_APPROVE_FAILURE"),
+      });
     } finally {
       setUpdatingWorkflow(false);
     }
@@ -60,19 +78,27 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments })
     const comments = formatRejectionReasons(rejectionReasons);
 
     try {
-      const response = await QCService.updateProjectWorkflow(
-        selectedFacility?.projectId, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
+      await ActivityService.updateActivityFacilityWorkflow(
+        selectedFacility?.id, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
         comments, "Rejected by Installation Reviewer",
         aggregatedDocuments
       );
 
-      if (response) {
-        revalidateData();
-        dispatch(clearRejectionReasons());
-      }
+      revalidateData();
+      dispatch(clearRejectionReasons());
+      setUpdatingWorkflow(false);
+      setToast({
+        key: "success",
+        message: t("QC_FACILITY_REJECT_SUCCESS"),
+      });
 
     } catch (error) {
       console.error("Error rejecting", error);
+      setUpdatingWorkflow(false);
+      setToast({
+        key: "error",
+        message: t("QC_FACILITY_REJECT_FAILURE"),
+      });
     } finally {
       setUpdatingWorkflow(false);
     }
@@ -83,19 +109,27 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments })
     const comments = formatRejectionReasons(rejectionReasons);
 
     try {
-      const response = await QCService.updateProjectWorkflow(
-        selectedFacility?.projectId, "FLAG_FOR_QC",
+      await ActivityService.updateActivityFacilityWorkflow(
+        selectedFacility?.id, "FLAG_FOR_QC",
         comments, "Flagged for QC by Installation Reviewer",
         aggregatedDocuments
       );
 
-      if (response) {
-        revalidateData();
-        dispatch(clearRejectionReasons());
-      }
+      revalidateData();
+      dispatch(clearRejectionReasons());
+      setUpdatingWorkflow(false);
+      setToast({
+        key: "success",
+        message: t("QC_FACILITY_FLAG_FOR_QC_SUCCESS"),
+      });
 
     } catch (error) {
       console.error("Error flagging for QC", error);
+      setUpdatingWorkflow(false);
+      setToast({
+        key: "error",
+        message: t("QC_FACILITY_FLAG_FOR_QC_FAILURE"),
+      });
     } finally {
       setUpdatingWorkflow(false);
     }
@@ -131,7 +165,7 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments })
               cursor: 'pointer'
             }}
           >
-            Flag for QC
+            {t("QC_ACTION_FLAG_FOR_QC")}
           </button>
           <button
             onClick={handleReject}
@@ -146,7 +180,7 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments })
               cursor: 'pointer'
             }}
           >
-            Reject
+            {t("CORE_COMMON_REJECT")}
           </button>
         </div>
       ) : (
@@ -163,10 +197,22 @@ const QCActions = ({ revalidateData, setUpdatingWorkflow, aggregatedDocuments })
             cursor: 'pointer'
           }}
         >
-          Approve
+          {t("CORE_COMMON_APPROVE")}
         </button>
       )}
-
+      {toast && (
+        <Toast
+          error={toast.key === "error"}
+          warning={toast.key === "warning"}
+          label={toast.message}
+          onClose={() => setToast(null)}
+          style={{
+            ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
+            maxWidth: "670px"
+          }}
+          isDleteBtn={true}
+        />
+      )}
     </div>
   );
 };
