@@ -410,7 +410,7 @@ public class FieldPlannerService {
         // If status equals to scheduled, so dont update the fieldplan name
         if(StringUtils.equals(fieldPlan.getStatus(), "SCHEDULED")){
             try {
-                // Check if INSTALLATION_REVIEWER and INSTALLATION_SPOC is assigned and if at least one facility is linked to the fieldplan
+                // Check if INSTALLATION_REVIEWER, one FIELD_SUPERVISOR and one FIELD_STAFF is assigned and if at least one facility is linked to the fieldplan
                 if (fieldPlan == null) {
                     log.error("Field Plan is mandatory");
                     throw new CustomException("FIELDPLAN", "Field Plan is mandatory");

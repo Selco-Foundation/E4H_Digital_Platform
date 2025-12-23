@@ -46,7 +46,7 @@ public class ActivityAssignmentConsumer {
     }
 
     // Update activity facility status workflow to SCHEDULED first, and Update to ASSIGNED_TO_FIELD_STAFF. So staff can see facility from APK
-    @KafkaListener(topics = "process-audit-records")
+    @KafkaListener(topics = "${persister.kafka.create.topic}")
     public void updateActivityFacilityWorkflowStatus(Map<String, Object> producerRecord) throws Exception {
         log.info("Received topic from process-audit-records");
         String createActivityFacilityTopic = activityConfiguration.getCreateActivityFacilityTopic();
