@@ -822,6 +822,8 @@ public class NotificationService {
         String tenantId = request.getIncident().getTenantId();
 
         StringBuilder url = hrmsUtils.getHRMSURI(uuids, tenantId, role, request.getIncident().getBoundaryCode());
+        url.append("&searchOnlyInBoundary=");
+        url.append(true);
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder()
                 .requestInfo(request.getRequestInfo())
                 .build();
