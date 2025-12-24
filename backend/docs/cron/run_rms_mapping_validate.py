@@ -3,7 +3,7 @@ import requests
 import sys
 
 # Endpoint and headers
-url = 'http://rms-service:8885/rms-service/v1/mapping/validate'
+url = 'http://rms-service.core-dev:8080/rms-service/v1/mapping/validate'
 headers = {
     'Content-Type': 'application/json'
 }

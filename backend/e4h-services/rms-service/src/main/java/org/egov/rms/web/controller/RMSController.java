@@ -22,7 +22,7 @@ import java.util.List;
 
 @Slf4j
 @RestController
-@RequestMapping("/rms-service/v1")
+@RequestMapping("/v1")
 @RequiredArgsConstructor
 public class RMSController {
 

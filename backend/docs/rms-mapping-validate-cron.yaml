@@ -14,25 +14,8 @@ spec:
     spec:
       template:
         spec:
-          restartPolicy: OnFailure
           containers:
             - name: rms-mapping-validate-runner
-              image: python:3.11-slim
+              image: rms-mapping-validate-cron:latest  # Your Docker image
               imagePullPolicy: IfNotPresent
-              env:
-                - name: RMS_BASE_URL
-                  value: "http://rms-service:8885"
-              command:
-                - "python"
-                - "/scripts/run_rms_mapping_validate.py"
-              volumeMounts:
-                - name: rms-cron-scripts
-                  mountPath: /scripts
-          volumes:
-            - name: rms-cron-scripts
-              configMap:
-                name: rms-cron-scripts
-                # The ConfigMap should contain run_rms_mapping_validate.py
-                # as a key with the script content
-
-
+          restartPolicy: OnFailure
