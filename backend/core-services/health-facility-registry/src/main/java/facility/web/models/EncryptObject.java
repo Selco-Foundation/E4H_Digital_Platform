@@ -19,26 +19,9 @@ import org.springframework.validation.annotation.Validated;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class Boundary {
+public class EncryptObject {
 
-    @JsonProperty("id")
-    private String id = null;
-
-    @JsonProperty("tenantId")
-    private String tenantId = null;
-
-    @JsonProperty("code")
-    @NotNull
-    private String code = null;
-
-    @JsonProperty("geometry")
-    @Valid
-    private JsonNode geometry = null;
-
-    @JsonProperty("auditDetails")
-    private AuditDetails auditDetails = null;
-
-    @JsonProperty("additionalDetails")
-    private JsonNode additionalDetails = null;
+    @JsonProperty("mobileNumber")
+    private String mobileNumber = null;
 
 }

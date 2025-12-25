@@ -35,12 +35,12 @@ public class QueryBuilderUtil {
         }
 
         if (request.getHfrId() != null && !request.getHfrId().isBlank()) {
-            whereClause.append(" AND facility_details ->> 'hfr_id' = ?");
+            whereClause.append(" AND hfr_id = ?");
             params.add(request.getHfrId());
         }
 
         if (request.getNinId() != null && !request.getNinId().isBlank()) {
-            whereClause.append(" AND facility_details ->> 'nin_id' = ?");
+            whereClause.append(" AND nin_id = ?");
             params.add(request.getNinId());
         }
 
@@ -77,12 +77,12 @@ public class QueryBuilderUtil {
         }
 
         if (!CollectionUtils.isEmpty(criteria.getHfrIds())) {
-            whereClause.append(" AND facility_details ->> 'hfr_id' in ( ").append(createQuery(criteria.getHfrIds().size())).append(" )");
+            whereClause.append(" AND hfr_id in ( ").append(createQuery(criteria.getHfrIds().size())).append(" )");
             params.addAll(criteria.getHfrIds());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getNinIds())) {
-            whereClause.append(" AND facility_details ->> 'nin_id' in ( ").append(createQuery(criteria.getNinIds().size())).append(" )");
+            whereClause.append(" AND nin_id in ( ").append(createQuery(criteria.getNinIds().size())).append(" )");
             params.addAll(criteria.getNinIds());
         }
 

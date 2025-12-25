@@ -84,6 +84,10 @@ public class Configuration {
     @Value("${egov.sms.notification.topic}")
     private String smsNotificationTopic;
 
+    //Enc Service TenantId
+    @Value("${enc.service.tenant.id}")
+    private String encServiceTenantId;
+
 
     //Facility Search
     @Value("${onm-non-ready.allowed.roles}")

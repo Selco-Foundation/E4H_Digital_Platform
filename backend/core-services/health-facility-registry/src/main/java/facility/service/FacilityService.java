@@ -1,7 +1,9 @@
 package facility.service;
 
+import digit.models.coremodels.user.User;
 import facility.config.Configuration;
 import facility.repository.FacilityRepository;
+import facility.util.EncryptionDecryptionUtil;
 import facility.util.IdgenUtil;
 import facility.util.QueryBuilderResult;
 import facility.util.QueryBuilderUtil;
@@ -30,6 +32,7 @@ public class FacilityService {
     private final BoundaryService boundaryService;
     private final Configuration configs;
     private final FacilityKibanaMapper facilityKibanaMapper;
+    private EncryptionDecryptionUtil encryptionDecryptionUtil;
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -41,8 +44,8 @@ public class FacilityService {
             FacilityQueryDao facilityQueryDao,
             BoundaryService boundaryService,
             Configuration configs,
-            FacilityKibanaMapper facilityKibanaMapper
-    ) {
+            FacilityKibanaMapper facilityKibanaMapper,
+            EncryptionDecryptionUtil encryptionDecryptionUtil) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.facilityRowMapper = facilityRowMapper;
@@ -53,6 +56,7 @@ public class FacilityService {
         this.boundaryService = boundaryService;
         this.configs = configs;
         this.facilityKibanaMapper = facilityKibanaMapper;
+        this.encryptionDecryptionUtil = encryptionDecryptionUtil;
     }
 
     /**
@@ -95,6 +99,30 @@ public class FacilityService {
             List<BoundaryRelation> boundaryRelationList = new ArrayList<>();
 
             for (FacilityCreate facilityCreate : facilityCreateList) {
+                String encryptedPocMobileNumber = facilityCreate.getFacilityPocPhone();
+                if(facilityCreate.getFacilityPocPhone()!=null && !facilityCreate.getFacilityPocPhone().isBlank()){
+                    EncryptObject object = EncryptObject.builder()
+                            .mobileNumber(facilityCreate.getFacilityPocPhone())
+                            .build();
+                    Map<String, EncryptObject> userMap = new HashMap<>();
+                    userMap.put("userObject", object);
+                    EncReqObject encReqObject = EncReqObject.builder()
+                            .tenantId(configs.getEncServiceTenantId())
+                            .type("Normal")
+                            .value(userMap)
+                            .build();
+                    EncryptionRequest encryptionRequest = EncryptionRequest.builder()
+                            .encryptionRequests(List.of(encReqObject))
+                            .build();
+                    List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.encryptObject(encryptionRequest);
+                    for (Map<String, EncryptObject> map : response) {
+                        EncryptObject user = map.get("userObject"); // clé du JSON
+                        if (user != null) {
+                            log.info("Mobile crypté : {}", user.getMobileNumber());
+                            encryptedPocMobileNumber = user.getMobileNumber();
+                        }
+                    }
+                }
                 Facility facility = Facility.builder()
                         .tenantId(tenantId)
                         .facilityCategory(facilityCreate.getFacilityCategory())
@@ -102,6 +130,13 @@ public class FacilityService {
                         .facilitySubtype(facilityCreate.getFacilitySubtype())
                         .facilityName(facilityCreate.getFacilityName())
                         .facilityOwnership(facilityCreate.getFacilityOwnership())
+                        .facilityPocName(facilityCreate.getFacilityPocName())
+                        .facilityPocPhone(encryptedPocMobileNumber)
+                        .facilityPocEmail(facilityCreate.getFacilityPocEmail())
+                        .hfrId(facilityCreate.getHfrId())
+                        .ninId(facilityCreate.getNinId())
+                        .userId(facilityCreate.getUserId())
+                        .facilityStatus(facilityCreate.getFacilityStatus())
                         .facilityRegion(facilityCreate.getFacilityRegion())
                         .address(facilityCreate.getAddress())
                         .facilityDetails(facilityCreate.getFacilityDetails())
@@ -209,11 +244,9 @@ public class FacilityService {
      * in the same tenant. Throws a CustomException if duplicate found.
      */
     private void validateHfrOrNinUniqueness(Facility facility, String tenantId) {
-        HealthFacilityDetails details = facility.getFacilityDetails();
-
-        if (details != null) {
-            String hfrId = details.getHfrId();
-            String ninId = details.getNinId();
+        if (facility != null) {
+            String hfrId = facility.getHfrId();
+            String ninId = facility.getNinId();
 
             if ((hfrId != null && !hfrId.isBlank()) || (ninId != null && !ninId.isBlank())) {
                 boolean exists = facilityQueryDao.existsByHfrIdOrNinId(hfrId, ninId, tenantId);
@@ -256,6 +289,13 @@ public class FacilityService {
         facility.setAdditionalDetails(update.getAdditionalDetails());
         facility.setBoundaryCode(update.getBoundaryCode());
         facility.setFacilityDetails(update.getFacilityDetails());
+        facility.setFacilityPocName(update.getPocName());
+        facility.setFacilityPocPhone(update.getPocContact());
+        facility.setFacilityPocEmail(update.getPocEmail());
+        facility.setHfrId(update.getHfrId());
+        facility.setNinId(update.getNinId());
+        facility.setFacilityStatus(update.getStatus());
+        facility.setUserId(update.getUserId());
 
         // Validate with MDMS and boundary APIs
         facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
@@ -310,6 +350,12 @@ public class FacilityService {
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
                     .isOnmReady(true) // Set from update request
+                    .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
+                    .facilityPocPhone(facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank() ? facility.getFacilityPocPhone(): existingFacility.getFacilityPocPhone())
+                    .facilityPocEmail(facility.getFacilityPocEmail()!=null && !facility.getFacilityPocEmail().isBlank() ? facility.getFacilityPocEmail(): existingFacility.getFacilityPocEmail())
+                    .hfrId(facility.getHfrId()!=null && !facility.getHfrId().isBlank() ? facility.getHfrId(): existingFacility.getHfrId())
+                    .ninId(facility.getNinId()!=null && !facility.getNinId().isBlank() ? facility.getNinId(): existingFacility.getNinId())
+                    .userId(facility.getUserId()!=null && !facility.getUserId().isBlank() ? facility.getUserId(): existingFacility.getUserId())
                     .build();
             
             // Transform to Kibana index format and push
@@ -338,7 +384,9 @@ public class FacilityService {
         allParams.add(request.getLimit());
         allParams.add(request.getOffset());
 
-        return jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
+        List<Facility> facilityList = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
+        facilityList = decryptMobileNumber(facilityList);
+        return facilityList;
     }
 
     /**
@@ -364,7 +412,9 @@ public class FacilityService {
 
         log.info("Bulk Search Query: {}", query);
         log.info("Bulk Search Params: {}", allParams);
-        return jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
+        List<Facility> facilityList = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
+        facilityList = decryptMobileNumber(facilityList);
+        return facilityList;
     }
 
 
@@ -404,5 +454,92 @@ public class FacilityService {
         return jdbcTemplate.queryForObject(query, result.getParams().toArray(), Integer.class);
     }
 
+    public void migrateFacilityData() {
+        StringBuilder query = new StringBuilder("SELECT * FROM facility ORDER BY created_at DESC LIMIT 2");
+        List<Object> allParams = new ArrayList<>();
+        List<Facility> facilities = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
+        for (Facility facilityDB : facilities){
+            FacilityUpdateRequestFacilityUpdate facility = new FacilityUpdateRequestFacilityUpdate();
+            facility.setFacilityId(facilityDB.getFacilityId());
+            facility.setTenantId(facilityDB.getTenantId());
+            facility.setFacilityType(facilityDB.getFacilityType());
+            facility.setFacilitySubtype(facilityDB.getFacilitySubtype());
+            facility.setFacilityName(facilityDB.getFacilityName());
+            facility.setAddress(facilityDB.getAddress());
+            facility.setAdditionalDetails(facilityDB.getAdditionalDetails());
+            facility.setBoundaryCode(facilityDB.getBoundaryCode());
+            facility.setPocName(facilityDB.getFacilityDetails().getPocName());
+            facility.setPocEmail(facilityDB.getFacilityDetails().getPocEmail());
+            facility.setHfrId(facilityDB.getFacilityDetails().getHfrId());
+            facility.setNinId(facilityDB.getFacilityDetails().getNinId());
+            facility.setSolarSolutionDesignType(facilityDB.getFacilityDetails().getSolarSolutionDesignType());
+            facility.setStatus("ACTIVE");
+            facility.setUserId(facilityDB.getUserId());
+            facility.setIsOnmReady(facilityDB.getIsOnmReady());
+
+            if(facilityDB.getFacilityDetails()!=null && facilityDB.getFacilityDetails().getPocContact()!=null && !facilityDB.getFacilityDetails().getPocContact().isBlank()){
+                EncryptObject object = EncryptObject.builder()
+                        .mobileNumber(facilityDB.getFacilityDetails().getPocContact())
+                        .build();
+                Map<String, EncryptObject> userMap = new HashMap<>();
+                userMap.put("userObject", object);
+                EncReqObject encReqObject = EncReqObject.builder()
+                        .tenantId(configs.getEncServiceTenantId())
+                        .type("Normal")
+                        .value(userMap)
+                        .build();
+                EncryptionRequest request = EncryptionRequest.builder()
+                        .encryptionRequests(List.of(encReqObject))
+                        .build();
+                List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.encryptObject(request);
+                for (Map<String, EncryptObject> map : response) {
+                    EncryptObject user = map.get("userObject"); // clé du JSON
+                    if (user != null) {
+                        log.info("Mobile crypté : {}", user.getMobileNumber());
+                        facility.setPocContact(user.getMobileNumber());
+                    }
+                }
+            }
+
+            HealthFacilityDetails details = facilityDB.getFacilityDetails();
+            details.setPocName(null);
+            details.setPocContact(null);
+            details.setPocEmail(null);
+            details.setNinId(null);
+            details.setHfrId(null);
+            facility.setFacilityDetails(details);
+
+            FacilityUpdateRequest request = FacilityUpdateRequest.builder()
+                    .facilityUpdate(facility)
+                    .build();
+            log.info("Final HF to migrate : {}", request);
+            facilityRepository.pushUpdateFacility(request);
+        }
+    }
+
+    private List<Facility> decryptMobileNumber(List<Facility> facilities){
+        for (Facility facility: facilities){
+            if(facility.getFacilityPocPhone()!=null && facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank()){
+                EncryptObject object = EncryptObject.builder()
+                        .mobileNumber(facility.getFacilityPocPhone())
+                        .build();
+                Map<String, EncryptObject> userMap = new HashMap<>();
+                userMap.put("userObject", object);
+                DecryptionRequest request = DecryptionRequest.builder()
+                        .decryptionRequests(List.of(userMap))
+                        .build();
+                List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.decryptObject(request);
+                for (Map<String, EncryptObject> map : response) {
+                    EncryptObject user = map.get("userObject"); // clé du JSON
+                    if (user != null) {
+                        log.info("Mobile decrypté : {}", user.getMobileNumber());
+                        facility.setFacilityPocPhone(user.getMobileNumber());
+                    }
+                }
+            }
+        }
+
+        return facilities;
+    }
 
 }

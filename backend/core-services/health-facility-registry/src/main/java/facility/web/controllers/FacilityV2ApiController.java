@@ -126,6 +126,12 @@ public class FacilityV2ApiController {
         return ResponseEntity.ok(new FacilitySearchResponse(facilities, totalCount));
     }
 
+    @GetMapping("/migrate_data")
+    public String migrateFacilityDB() {
+        facilityService.migrateFacilityData();
+        return "Script done";
+    }
+
 
 
 }

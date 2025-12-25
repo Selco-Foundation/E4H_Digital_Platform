@@ -38,6 +38,13 @@ public class FacilityRowMapper {
         facility.setFacilityCategory(rs.getString("facility_category"));
         facility.setFacilityOwnership(rs.getString("facility_ownership"));
         facility.setBoundaryCode(rs.getString("boundary_code"));
+        facility.setFacilityPocName(rs.getString("facility_poc_name"));
+        facility.setFacilityPocPhone(rs.getString("facility_poc_phone"));
+        facility.setFacilityPocEmail(rs.getString("facility_poc_email"));
+        facility.setHfrId(rs.getString("hfr_id"));
+        facility.setNinId(rs.getString("nin_id"));
+        facility.setFacilityStatus(rs.getString("facility_status"));
+        facility.setUserId(rs.getString("user_id"));
         facility.setWfStatus(rs.getString("wf_status"));
         facility.setIsActive(rs.getBoolean("is_active"));
         facility.setFacilityRegion(rs.getString("facility_region"));

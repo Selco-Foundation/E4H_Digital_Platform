@@ -50,6 +50,9 @@ public class HealthFacilityDetails {
     )
     private String pocName;
 
+    @JsonProperty("pocEmail")
+    private String pocEmail;
+
     @JsonProperty("pocDesignation")
     @Pattern(
             regexp = "^[a-zA-Z\\s]+$",
