@@ -101,7 +101,6 @@ public class FacilityService {
             List<BoundaryRelation> boundaryRelationList = new ArrayList<>();
 
             for (FacilityCreate facilityCreate : facilityCreateList) {
-                String encryptedPocMobileNumber = encryptMobileNumber(facilityCreate.getFacilityPocPhone());
                 Facility facility = Facility.builder()
                         .tenantId(tenantId)
                         .facilityCategory(facilityCreate.getFacilityCategory())
@@ -110,7 +109,6 @@ public class FacilityService {
                         .facilityName(facilityCreate.getFacilityName())
                         .facilityOwnership(facilityCreate.getFacilityOwnership())
                         .facilityPocName(facilityCreate.getFacilityPocName())
-                        .facilityPocPhone(encryptedPocMobileNumber)
                         .facilityPocEmail(facilityCreate.getFacilityPocEmail())
                         .hfrId(facilityCreate.getHfrId())
                         .ninId(facilityCreate.getNinId())
@@ -124,6 +122,11 @@ public class FacilityService {
                         .isActive(facilityCreate.getIsActive())
                         .isOnmReady(facilityCreate.getIsOnmReady())
                         .build();
+
+                String encryptedPocMobileNumber = encryptMobileNumber(facilityCreate.getFacilityPocPhone());
+                if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                    facility.setFacilityPocPhone(encryptedPocMobileNumber);
+                }
 
                 facility.setFacilityId(idgenUtil.getIdList(
                         request.getRequestInfo(), tenantId, "facility.id", "", 1
