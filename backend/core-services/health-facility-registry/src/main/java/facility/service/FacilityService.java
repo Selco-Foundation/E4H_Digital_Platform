@@ -1,5 +1,6 @@
 package facility.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import digit.models.coremodels.user.User;
 import facility.config.Configuration;
 import facility.repository.FacilityRepository;
@@ -10,6 +11,7 @@ import facility.util.QueryBuilderUtil;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -99,30 +101,7 @@ public class FacilityService {
             List<BoundaryRelation> boundaryRelationList = new ArrayList<>();
 
             for (FacilityCreate facilityCreate : facilityCreateList) {
-                String encryptedPocMobileNumber = facilityCreate.getFacilityPocPhone();
-                if(facilityCreate.getFacilityPocPhone()!=null && !facilityCreate.getFacilityPocPhone().isBlank()){
-                    EncryptObject object = EncryptObject.builder()
-                            .mobileNumber(facilityCreate.getFacilityPocPhone())
-                            .build();
-                    Map<String, EncryptObject> userMap = new HashMap<>();
-                    userMap.put("userObject", object);
-                    EncReqObject encReqObject = EncReqObject.builder()
-                            .tenantId(configs.getEncServiceTenantId())
-                            .type("Normal")
-                            .value(userMap)
-                            .build();
-                    EncryptionRequest encryptionRequest = EncryptionRequest.builder()
-                            .encryptionRequests(List.of(encReqObject))
-                            .build();
-                    List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.encryptObject(encryptionRequest);
-                    for (Map<String, EncryptObject> map : response) {
-                        EncryptObject user = map.get("userObject"); // clé du JSON
-                        if (user != null) {
-                            log.info("Mobile crypté : {}", user.getMobileNumber());
-                            encryptedPocMobileNumber = user.getMobileNumber();
-                        }
-                    }
-                }
+                String encryptedPocMobileNumber = encryptMobileNumber(facilityCreate.getFacilityPocPhone());
                 Facility facility = Facility.builder()
                         .tenantId(tenantId)
                         .facilityCategory(facilityCreate.getFacilityCategory())
@@ -385,7 +364,13 @@ public class FacilityService {
         allParams.add(request.getOffset());
 
         List<Facility> facilityList = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
-        facilityList = decryptMobileNumber(facilityList);
+        for (Facility facility: facilityList){
+            String decryptedMobileNumber = decryptMobileNumber(facility.getFacilityPocPhone());
+            if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                facility.setFacilityPocPhone(decryptedMobileNumber);
+            }
+        }
+
         return facilityList;
     }
 
@@ -413,7 +398,12 @@ public class FacilityService {
         log.info("Bulk Search Query: {}", query);
         log.info("Bulk Search Params: {}", allParams);
         List<Facility> facilityList = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
-        facilityList = decryptMobileNumber(facilityList);
+        for (Facility facility: facilityList){
+            String decryptedMobileNumber = decryptMobileNumber(facility.getFacilityPocPhone());
+            if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                facility.setFacilityPocPhone(decryptedMobileNumber);
+            }
+        }
         return facilityList;
     }
 
@@ -478,26 +468,9 @@ public class FacilityService {
             facility.setIsOnmReady(facilityDB.getIsOnmReady());
 
             if(facilityDB.getFacilityDetails()!=null && facilityDB.getFacilityDetails().getPocContact()!=null && !facilityDB.getFacilityDetails().getPocContact().isBlank()){
-                EncryptObject object = EncryptObject.builder()
-                        .mobileNumber(facilityDB.getFacilityDetails().getPocContact())
-                        .build();
-                Map<String, EncryptObject> userMap = new HashMap<>();
-                userMap.put("userObject", object);
-                EncReqObject encReqObject = EncReqObject.builder()
-                        .tenantId(configs.getEncServiceTenantId())
-                        .type("Normal")
-                        .value(userMap)
-                        .build();
-                EncryptionRequest request = EncryptionRequest.builder()
-                        .encryptionRequests(List.of(encReqObject))
-                        .build();
-                List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.encryptObject(request);
-                for (Map<String, EncryptObject> map : response) {
-                    EncryptObject user = map.get("userObject"); // clé du JSON
-                    if (user != null) {
-                        log.info("Mobile crypté : {}", user.getMobileNumber());
-                        facility.setPocContact(user.getMobileNumber());
-                    }
+                String encryptedMobileNumber = encryptMobileNumber(facilityDB.getFacilityDetails().getPocContact());
+                if (encryptedMobileNumber!=null && !encryptedMobileNumber.isBlank()){
+                    facility.setPocContact(encryptedMobileNumber);
                 }
             }
 
@@ -517,29 +490,55 @@ public class FacilityService {
         }
     }
 
-    private List<Facility> decryptMobileNumber(List<Facility> facilities){
-        for (Facility facility: facilities){
-            if(facility.getFacilityPocPhone()!=null && facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank()){
-                EncryptObject object = EncryptObject.builder()
-                        .mobileNumber(facility.getFacilityPocPhone())
-                        .build();
-                Map<String, EncryptObject> userMap = new HashMap<>();
-                userMap.put("userObject", object);
-                DecryptionRequest request = DecryptionRequest.builder()
-                        .decryptionRequests(List.of(userMap))
-                        .build();
-                List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.decryptObject(request);
-                for (Map<String, EncryptObject> map : response) {
-                    EncryptObject user = map.get("userObject"); // clé du JSON
-                    if (user != null) {
-                        log.info("Mobile decrypté : {}", user.getMobileNumber());
-                        facility.setFacilityPocPhone(user.getMobileNumber());
-                    }
+    public String encryptMobileNumber(String mobileNumber){
+        String encryptedMobileNumber = null;
+        if(mobileNumber!=null && !mobileNumber.isBlank()){
+            EncryptObject object = EncryptObject.builder()
+                    .mobileNumber(mobileNumber)
+                    .build();
+            Map<String, EncryptObject> userMap = new HashMap<>();
+            userMap.put("userObject", object);
+            EncReqObject encReqObject = EncReqObject.builder()
+                    .tenantId(configs.getEncServiceTenantId())
+                    .type("Normal")
+                    .value(userMap)
+                    .build();
+            EncryptionRequest encryptionRequest = EncryptionRequest.builder()
+                    .encryptionRequests(List.of(encReqObject))
+                    .build();
+            List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.encryptObject(encryptionRequest);
+            for (Map<String, EncryptObject> map : response) {
+                EncryptObject user = map.get("userObject"); // clé du JSON
+                if (user != null) {
+                    log.info("Mobile crypté : {}", user.getMobileNumber());
+                    encryptedMobileNumber = user.getMobileNumber();
                 }
             }
         }
+        return encryptedMobileNumber;
+    }
 
-        return facilities;
+    public String decryptMobileNumber(String mobileNumber){
+        String decryptedMobileNumber = null;
+        if(mobileNumber!=null && !mobileNumber.isBlank()){
+            EncryptObject object = EncryptObject.builder()
+                    .mobileNumber(mobileNumber)
+                    .build();
+            Map<String, EncryptObject> userMap = new HashMap<>();
+            userMap.put("userObject", object);
+            DecryptionRequest request = DecryptionRequest.builder()
+                    .decryptionRequests(List.of(userMap))
+                    .build();
+            List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.decryptObject(request);
+            for (Map<String, EncryptObject> map : response) {
+                EncryptObject user = map.get("userObject"); // clé du JSON
+                if (user != null) {
+                    log.info("Mobile decrypté : {}", user.getMobileNumber());
+                    decryptedMobileNumber = user.getMobileNumber();
+                }
+            }
+        }
+        return decryptedMobileNumber;
     }
 
 }
