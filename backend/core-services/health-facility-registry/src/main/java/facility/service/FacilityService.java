@@ -452,6 +452,7 @@ public class FacilityService {
         List<Object> allParams = new ArrayList<>();
         List<Facility> facilities = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
         for (Facility facilityDB : facilities){
+            log.info("Before HF to migrate : {}", facilityDB);
             FacilityUpdateRequestFacilityUpdate facility = new FacilityUpdateRequestFacilityUpdate();
             facility.setFacilityId(facilityDB.getFacilityId());
             facility.setTenantId(facilityDB.getTenantId());
@@ -473,6 +474,7 @@ public class FacilityService {
             if(facilityDB.getFacilityDetails()!=null && facilityDB.getFacilityDetails().getPocContact()!=null && !facilityDB.getFacilityDetails().getPocContact().isBlank()){
                 String encryptedMobileNumber = encryptMobileNumber(facilityDB.getFacilityDetails().getPocContact());
                 if (encryptedMobileNumber!=null && !encryptedMobileNumber.isBlank()){
+                    log.info("mobile number {} encrypted to : {}", facilityDB.getFacilityDetails().getPocContact(), encryptedMobileNumber);
                     facility.setPocContact(encryptedMobileNumber);
                 }
             }
@@ -488,7 +490,7 @@ public class FacilityService {
             FacilityUpdateRequest request = FacilityUpdateRequest.builder()
                     .facilityUpdate(facility)
                     .build();
-            log.info("Final HF to migrate : {}", request);
+            log.info("Final HF to migrate : {}", request.getFacilityUpdate());
             facilityRepository.pushUpdateFacility(request);
         }
     }
