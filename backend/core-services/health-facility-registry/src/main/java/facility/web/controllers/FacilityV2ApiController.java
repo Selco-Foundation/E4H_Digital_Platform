@@ -127,9 +127,9 @@ public class FacilityV2ApiController {
     }
 
     @GetMapping("/migrate_data")
-    public String migrateFacilityDB() {
+    public ResponseEntity<String> migrateFacilityDB() {
         facilityService.migrateFacilityData();
-        return "Script done";
+        return ResponseEntity.ok("Script done");
     }
 
 

@@ -448,7 +448,7 @@ public class FacilityService {
     }
 
     public void migrateFacilityData() {
-        StringBuilder query = new StringBuilder("SELECT * FROM facility ORDER BY created_at DESC LIMIT 2");
+        StringBuilder query = new StringBuilder("SELECT * FROM facility");
         List<Object> allParams = new ArrayList<>();
         List<Facility> facilities = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
         for (Facility facilityDB : facilities){
