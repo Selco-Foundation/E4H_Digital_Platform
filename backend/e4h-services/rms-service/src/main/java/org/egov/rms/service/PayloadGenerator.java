@@ -150,8 +150,7 @@ public class PayloadGenerator {
         
         // Parse JSON first (database structure is correct, so parse directly)
         try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> metadataMap = (Map<String, Object>) objectMapper.readValue(metadataStr, Map.class);
+            Map<String, Object> metadataMap = objectMapper.readValue(metadataStr, Map.class);
             log.debug("Parsed metadata map: {}", metadataMap);
             
             // Build comments, filtering out null, boolean false values, and facilityName
