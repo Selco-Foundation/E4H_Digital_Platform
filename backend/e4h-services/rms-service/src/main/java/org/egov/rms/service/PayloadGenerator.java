@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.contract.request.User;
 import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.Alert;
 import org.egov.rms.model.FacilityDetails;
@@ -154,17 +153,22 @@ public class PayloadGenerator {
             Map<String, Object> metadataMap = objectMapper.readValue(metadataStr, Map.class);
             log.debug("Parsed metadata map: {}", metadataMap);
             
-            // Build comments, filtering out null and boolean false values
+            // Build comments, filtering out null, boolean false values, and facilityName
             StringBuilder comments = new StringBuilder();
             for (Map.Entry<String, Object> entry : metadataMap.entrySet()) {
                 Object value = entry.getValue();
                 
-                // Skip null values and boolean false
+                String key = entry.getKey();
+                
+                // Skip null values, boolean false, and facilityName
                 if (value == null || (value instanceof Boolean && !((Boolean) value))) {
                     continue;
                 }
                 
-                String key = entry.getKey();
+                // Skip facilityName field as it should not appear in comments
+                if ("facilityName".equalsIgnoreCase(key) || "facility_name".equalsIgnoreCase(key)) {
+                    continue;
+                }
                 String valueStr;
                 
                 // Handle string values - remove escaped quotes if present
@@ -263,9 +267,14 @@ public class PayloadGenerator {
         java.util.regex.Pattern pattern1 = java.util.regex.Pattern.compile("\"([^\"]+)\"\\s*:?\\s*([^,\\}]+)");
         java.util.regex.Matcher matcher1 = pattern1.matcher(cleaned);
         
-        while (matcher1.find()) {
+            while (matcher1.find()) {
             String key = matcher1.group(1);
             String value = matcher1.group(2).trim().replaceAll("^\"|\"$", "");
+            
+            // Skip facilityName field as it should not appear in comments
+            if ("facilityName".equalsIgnoreCase(key) || "facility_name".equalsIgnoreCase(key)) {
+                continue;
+            }
             
             // ULTRA-AGGRESSIVE: Remove "false" from key using regex first
             key = key.replaceAll("(?i)false", "");
@@ -312,6 +321,11 @@ public class PayloadGenerator {
         while (matcher2.find()) {
             String key = matcher2.group(1).trim();
             String value = matcher2.group(2).trim().replaceAll("^\"|\"$", "");
+            
+            // Skip facilityName field as it should not appear in comments
+            if ("facilityName".equalsIgnoreCase(key) || "facility_name".equalsIgnoreCase(key)) {
+                continue;
+            }
             
             // ULTRA-AGGRESSIVE: Remove "false" from key using regex first
             key = key.replaceAll("(?i)false", "");
