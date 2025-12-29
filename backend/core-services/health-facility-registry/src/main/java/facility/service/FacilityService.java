@@ -110,6 +110,7 @@ public class FacilityService {
                         .facilityOwnership(facilityCreate.getFacilityOwnership())
                         .facilityPocName(facilityCreate.getFacilityPocName())
                         .facilityPocEmail(facilityCreate.getFacilityPocEmail())
+                        .facilityPocPhone(facilityCreate.getFacilityPocPhone())
                         .hfrId(facilityCreate.getHfrId())
                         .ninId(facilityCreate.getNinId())
                         .userId(facilityCreate.getUserId())
@@ -122,11 +123,6 @@ public class FacilityService {
                         .isActive(facilityCreate.getIsActive())
                         .isOnmReady(facilityCreate.getIsOnmReady())
                         .build();
-
-                String encryptedPocMobileNumber = encryptMobileNumber(facilityCreate.getFacilityPocPhone());
-                if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                    facility.setFacilityPocPhone(encryptedPocMobileNumber);
-                }
 
                 facility.setFacilityId(idgenUtil.getIdList(
                         request.getRequestInfo(), tenantId, "facility.id", "", 1
@@ -188,6 +184,10 @@ public class FacilityService {
             }
 
             for (Facility facility : tenantFacilities) {
+                String encryptedPocMobileNumber = encryptMobileNumber(facility.getFacilityPocPhone());
+                if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                    facility.setFacilityPocPhone(encryptedPocMobileNumber);
+                }
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
                 
@@ -466,7 +466,6 @@ public class FacilityService {
             facility.setPocEmail(facilityDB.getFacilityDetails().getPocEmail());
             facility.setHfrId(facilityDB.getFacilityDetails().getHfrId());
             facility.setNinId(facilityDB.getFacilityDetails().getNinId());
-            facility.setSolarSolutionDesignType(facilityDB.getFacilityDetails().getSolarSolutionDesignType());
             facility.setStatus("ACTIVE");
             facility.setUserId(facilityDB.getUserId());
             facility.setIsOnmReady(facilityDB.getIsOnmReady());

@@ -34,8 +34,8 @@ public class FacilityUpdateRequestFacilityUpdate {
     private String tenantId;
 
     /** Facility identifier (read‑only) */
-    @Schema(name = "facilityId", accessMode = Schema.AccessMode.READ_ONLY, description = "The facility to be updated. This cannot be overwritten.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    @JsonProperty("facilityId")
+    @Schema(name = "facility_id", accessMode = Schema.AccessMode.READ_ONLY, description = "The facility to be updated. This cannot be overwritten.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @JsonProperty("facility_id")
     private String facilityId;
 
     /** Exact facility type under a category */
@@ -81,28 +81,24 @@ public class FacilityUpdateRequestFacilityUpdate {
     @JsonProperty("nin_id")
     private String ninId;
 
-    @JsonProperty("solar_solution_design_type")
-    @NotNull(message = "solar_solution_design_type is required")
-    private SolarSolutionDesignType solarSolutionDesignType;
-
-    @JsonProperty("pocContact")
+    @JsonProperty("facility_poc_phone")
     @Pattern(
             regexp = "^\\d{10}$",
             message = "PoC contact number must be a valid 10-digit Indian mobile number"
     )
     private String pocContact;
 
-    @JsonProperty("pocName")
+    @JsonProperty("facility_poc_name")
     @Pattern(
             regexp = "^[a-zA-Z\\s]+$",
             message = "POC Name pattern is incorrect"
     )
     private String pocName;
 
-    @JsonProperty("pocEmail")
+    @JsonProperty("facility_poc_email")
     private String pocEmail;
 
-    @JsonProperty("status")
+    @JsonProperty("facility_status")
     private String status;
 
     @JsonProperty("pocDesignation")
@@ -117,6 +113,6 @@ public class FacilityUpdateRequestFacilityUpdate {
     private Boolean isOnmReady;
 
 //    @Schema(name = "user_id", accessMode = Schema.AccessMode.READ_ONLY, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    @JsonProperty("userId")
+    @JsonProperty("user_id")
     private String userId;
 }

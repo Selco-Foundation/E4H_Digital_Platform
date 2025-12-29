@@ -207,15 +207,15 @@ public class FacilityMdmsValidator {
         map.put("facility_id", facility.getFacilityId());
         map.put("tenant_id", facility.getTenantId());
         map.put("boundaryCode", facility.getBoundaryCode());
+        map.put("HFR ID", facility.getHfrId());
+        map.put("NIN ID", facility.getNinId());
+        map.put("HC PoC Name", facility.getFacilityPocName());
+        map.put("HC PoC Contact number", facility.getFacilityPocPhone());
 
         HealthFacilityDetails details = facility.getFacilityDetails();
         if (details != null) {
-            map.put("HFR ID", details.getHfrId());
-            map.put("NIN ID", details.getNinId());
             map.put("Solution Design Type", details.getSolarSolutionDesignType());
-            map.put("HC PoC Name", details.getPocName());
             map.put("HC PoC Designation", details.getPocDesignation());
-            map.put("HC PoC Contact number", details.getPocContact());
         }
 
         return map;
