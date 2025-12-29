@@ -165,7 +165,7 @@ public class RMSOrchestratorService {
             log.info("Collected {} facilities from RMS API for battery deep discharge analysis", facilities.size());
             
             // Apply rule engine to create alerts
-            List<Alert> alerts = ruleEngineService.applyBatteryRules(facilities);
+            List<Alert> alerts = ruleEngineService.applyBatteryDeepDischargeRules(facilities);
             log.info("Generated {} battery deep discharge/overcharge alerts from rule engine", alerts.size());
             
             // Apply deduplication to prevent duplicate tickets
@@ -232,8 +232,9 @@ public class RMSOrchestratorService {
                 // Check if there's an open ticket in eg_incident_v2
                 // If ticket is closed or doesn't exist, we allow creating a new ticket
                 // Note: We don't skip alerts with ticket_id set because they might have closed tickets
-                if (alertRepository.hasOpenTicket(alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType())) {
-                    log.info("Skipping alert {} - open ticket already exists in eg_incident_v2 for facility: {}, type: {}, subType: {}", 
+                boolean hasOpenTicket = alertRepository.hasOpenTicket(alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
+                if (hasOpenTicket) {
+                    log.warn("DUPLICATE PREVENTION: Skipping alert {} - open ticket already exists in eg_incident_v2 for facility: {}, type: {}, subType: {}", 
                             alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                     skippedCount++;
                     continue;
@@ -244,6 +245,11 @@ public class RMSOrchestratorService {
                     log.info("Alert {} has closed ticket {} - creating new ticket for facility: {}, type: {}, subType: {}", 
                             alert.getId(), alert.getTicketId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                 }
+                
+                // Log when creating ticket to help track duplicates
+                log.info("PROCEEDING WITH TICKET CREATION: Alert {} - facility: {}, type: {}, subType: {}, ticketId: {}", 
+                        alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType(), 
+                        alert.getTicketId() != null ? alert.getTicketId() : "none");
                 
                 log.info("Creating ticket for alert: {} (facility: {}, type: {}, subType: {})", 
                         alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
@@ -316,7 +322,7 @@ public class RMSOrchestratorService {
                 .id(14301L)
                 .uuid("fb022833-743d-43cb-adfa-312fbd13f438")
                 .userName("rms_user")
-                .name("nikhil")
+                .name("RMS_USER")
                 .mobileNumber("9901224634")
                 .emailId("crm@gmail.com")
                 .type("EMPLOYEE")
