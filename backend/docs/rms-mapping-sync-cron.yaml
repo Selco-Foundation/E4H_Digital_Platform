@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rms-mapping-sync-cron
+  labels:
+    app: rms-service
+    job-type: rms-mapping-sync
+spec:
+  # Every Sunday at 02:00 (server timezone)
+  schedule: "0 2 * * 0"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: rms-mapping-sync-runner
+              image: rms-mapping-sync-cron:latest  # Your Docker image
+              imagePullPolicy: IfNotPresent
+          restartPolicy: OnFailure
+
+

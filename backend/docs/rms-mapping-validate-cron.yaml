@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rms-mapping-validate-cron
+  labels:
+    app: rms-service
+    job-type: rms-mapping-validate
+spec:
+  # Every Sunday at 03:00 (server timezone)
+  schedule: "0 3 * * 0"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: rms-mapping-validate-runner
+              image: rms-mapping-validate-cron:latest  # Your Docker image
+              imagePullPolicy: IfNotPresent
+          restartPolicy: OnFailure

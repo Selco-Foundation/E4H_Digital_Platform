@@ -44,12 +44,15 @@ public class IMService {
 
     private BoundaryService boundaryService;
 
+    private RmsStatusUpdateService rmsStatusUpdateService;
+
     @Autowired
     public IMService(
             EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
             ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
             IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils,
-            LocalizationService localizationService, BoundaryService boundaryService
+            LocalizationService localizationService, BoundaryService boundaryService,
+            RmsStatusUpdateService rmsStatusUpdateService
     ) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
@@ -63,6 +66,7 @@ public class IMService {
         this.imUtils = imUtils;
         this.localizationService = localizationService;
         this.boundaryService = boundaryService;
+        this.rmsStatusUpdateService = rmsStatusUpdateService;
     }
 
 
@@ -191,6 +195,10 @@ public class IMService {
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
+
+        // Notify RMS when ticket status is moved to a closed state.
+        rmsStatusUpdateService.notifyRmsOnStatusUpdate(request);
+
         return request;
     }
 
