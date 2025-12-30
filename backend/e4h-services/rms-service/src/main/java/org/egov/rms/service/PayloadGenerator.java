@@ -112,7 +112,7 @@ public class PayloadGenerator {
             case HIGH_VOLTAGE:
                 return "VoltageInverter";
             case BURNT_DISCONNECTED:
-                return "Overcharge";
+                return "BurnedBattery";
             case DEEP_DISCHARGING:
                 return "DeepDischarge";
             case OVERCHARGING:
