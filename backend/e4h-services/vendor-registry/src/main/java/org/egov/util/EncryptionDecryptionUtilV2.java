@@ -1,13 +1,13 @@
-package facility.util;
+package org.egov.util;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import facility.repository.ServiceRequestRepository;
-import facility.web.models.DecryptionRequest;
-import facility.web.models.DecryptionRequestWrapper;
-import facility.web.models.EncryptObject;
-import facility.web.models.EncryptionRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.repository.ServiceRequestRepository;
+import org.egov.web.models.DecryptionRequest;
+import org.egov.web.models.DecryptionRequestWrapper;
+import org.egov.web.models.EncryptObject;
+import org.egov.web.models.EncryptionRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -18,7 +18,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class EncryptionDecryptionUtil {
+public class EncryptionDecryptionUtilV2 {
     private final ServiceRequestRepository serviceRequestRepository;
     @Autowired
     private ObjectMapper objectMapper;
@@ -33,7 +33,7 @@ public class EncryptionDecryptionUtil {
     @Value("${egov.enc.decrypt.endpoint}")
     private String encServiceDecryptPath;
 
-    public EncryptionDecryptionUtil(ServiceRequestRepository serviceRequestRepository) {
+    public EncryptionDecryptionUtilV2(ServiceRequestRepository serviceRequestRepository) {
         this.serviceRequestRepository = serviceRequestRepository;
     }
 

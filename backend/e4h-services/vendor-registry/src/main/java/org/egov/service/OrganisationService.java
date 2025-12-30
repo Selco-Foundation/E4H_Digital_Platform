@@ -69,7 +69,8 @@ public class OrganisationService {
         }catch (Exception e) {
             throw new CustomException("CLONING_ERROR", "Error while cloning");
         }
-        encryptionService.encryptDetails(clone,ORGANISATION_ENCRYPT_KEY);
+//        encryptionService.encryptDetails(clone,ORGANISATION_ENCRYPT_KEY);
+
         organizationProducer.push(configuration.getOrgKafkaCreateTopic(), clone);
         try {
             notificationService.sendNotification(orgRequest, true);
@@ -99,7 +100,7 @@ public class OrganisationService {
         }catch (Exception e){
             log.error("Exception while sending notification: " + e);
         }
-        encryptionService.encryptDetails(clone,ORGANISATION_ENCRYPT_KEY);
+//        encryptionService.encryptDetails(clone,ORGANISATION_ENCRYPT_KEY);
         organizationProducer.push(configuration.getOrgKafkaUpdateTopic(), clone);
         return orgRequest;
     }

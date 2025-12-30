@@ -62,13 +62,18 @@ public class OrganisationEnrichmentService {
             return 0;
         }).sum();
 
-        List<String> orgFunctionApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getFunctionApplicationNumberName()
-                , config.getFunctionApplicationNumberFormat(), ((int) idgenFuncApplicationNumberCount));
+//        List<String> orgFunctionApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getFunctionApplicationNumberName()
+//                , config.getFunctionApplicationNumberFormat(), ((int) idgenFuncApplicationNumberCount));
 
         int orgAppNumIdFormatIndex = 0;
         int funcAppNumIdFormatIndex = 0;
         int orgCodeIdFormatIndex = 0;
         for (Organisation organisation : organisationList) {
+            //Encrypt poc mobile number
+            String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(organisation.getOrgPocPhone());
+            if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                organisation.setOrgPocPhone(encryptedPocMobileNumber);
+            }
             organisation.setId(UUID.randomUUID().toString());
             organisation.setApplicationNumber(orgApplicationNumbers.get(orgAppNumIdFormatIndex));
             organisation.setCode(orgCodes.get(orgCodeIdFormatIndex));
@@ -103,7 +108,7 @@ public class OrganisationEnrichmentService {
             enrichTaxIdentifier(identifierList);
 
             //set id, audit details, application number for function
-            enrichFunction(requestInfo, functionList, orgFunctionApplicationNumbers, funcAppNumIdFormatIndex);
+//            enrichFunction(requestInfo, functionList, orgFunctionApplicationNumbers, funcAppNumIdFormatIndex);
 
             //jurisdiction
             enrichJurisdiction(jurisdictionList);
@@ -180,7 +185,7 @@ public class OrganisationEnrichmentService {
         if (!CollectionUtils.isEmpty(orgAddressList)) {
             for (Address address : orgAddressList) {
                 address.setId(UUID.randomUUID().toString());
-//                address.getGeoLocation().setId(UUID.randomUUID().toString());
+                address.getGeoLocation().setId(UUID.randomUUID().toString());
             }
         }
     }
@@ -208,6 +213,10 @@ public class OrganisationEnrichmentService {
         String tenantId = organisationList.get(0).getTenantId();
 
         for (Organisation organisation : organisationList) {
+            String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(organisation.getOrgPocPhone());
+            if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                organisation.setOrgPocPhone(encryptedPocMobileNumber);
+            }
             List<Function> functionList = organisation.getFunctions();
             List<Identifier> identifierList = organisation.getIdentifiers();
             List<Document> documentList = organisation.getDocuments();

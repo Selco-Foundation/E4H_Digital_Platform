@@ -110,14 +110,18 @@ public class OrganisationServiceValidator {
         Object mdmsData = mdmsUtil.mDMSCall(requestInfo, tenantId);
 
         Set<String> orgTypeReqSet = new HashSet<>();
-        Set<String> orgFuncCategoryReqSet = new HashSet<>();
-        Set<String> orgFuncClassReqSet = new HashSet<>();
+        Set<String> orgSubTypeReqSet = new HashSet<>();
+        Set<String> orgStatusReqSet = new HashSet<>();
+//        Set<String> orgFuncCategoryReqSet = new HashSet<>();
+//        Set<String> orgFuncClassReqSet = new HashSet<>();
         Set<String> orgIdentifierReqSet = new HashSet<>();
 
         for (Organisation organisation : organisationList) {
-            if (!CollectionUtils.isEmpty(organisation.getFunctions())) {
-                enrichOrgTypeAndFuncCategory(organisation, orgTypeReqSet, orgFuncCategoryReqSet, orgFuncClassReqSet);
-            }
+            enrichOrgTypeAndOrgSubTypeAndOrgStatus(organisation, orgTypeReqSet, orgSubTypeReqSet, orgStatusReqSet);
+
+//            if (!CollectionUtils.isEmpty(organisation.getFunctions())) {
+//                enrichOrgTypeAndFuncCategory(organisation, orgTypeReqSet, orgFuncCategoryReqSet, orgFuncClassReqSet);
+//            }
             if (!CollectionUtils.isEmpty(organisation.getIdentifiers())) {
                 for (Identifier identifier : organisation.getIdentifiers()) {
                     if (StringUtils.isNotBlank(identifier.getType())) {
@@ -127,12 +131,18 @@ public class OrganisationServiceValidator {
             }
         }
         final String jsonPathForOrgType = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_TYPE + ".*";
+        final String jsonPathForOrgSubType = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_SUB_TYPE + ".*";
+        final String jsonPathForOrgStatus = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_STATUS + ".*";
         final String jsonPathForOrgIdentifier = MDMS_RES + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ORG_TAX_IDENTIFIER + ".*";
 
         List<Object> orgTypeRes = null;
+        List<Object> orgSubTypeRes = null;
+        List<Object> orgStatusRes = null;
         List<Object> orgIdentifierRes = null;
         try {
             orgTypeRes = JsonPath.read(mdmsData, jsonPathForOrgType);
+            orgSubTypeRes = JsonPath.read(mdmsData, jsonPathForOrgSubType);
+            orgStatusRes = JsonPath.read(mdmsData, jsonPathForOrgStatus);
             orgIdentifierRes = JsonPath.read(mdmsData, jsonPathForOrgIdentifier);
         } catch (Exception e) {
             log.error(e.getMessage());
@@ -141,11 +151,27 @@ public class OrganisationServiceValidator {
 
         //org type
         validateOrgType(orgTypeReqSet, orgTypeRes, errorMap);
+        //org sub type
+        validateOrgSubType(orgSubTypeReqSet, orgSubTypeRes, errorMap);
+        //org status
+        validateOrgStatus(orgStatusReqSet, orgStatusRes, errorMap);
 
 
         //org identifier type
         validateOrgIdentifierType(orgIdentifierReqSet, orgIdentifierRes, errorMap);
 
+    }
+
+    private void enrichOrgTypeAndOrgSubTypeAndOrgStatus(Organisation organisation, Set<String> orgTypeReqSet, Set<String> orgSubTypeReqSet, Set<String> orgStatusReqSet) {
+        if (organisation.getOrgType()!=null && StringUtils.isNotBlank(organisation.getOrgType())) {
+            orgTypeReqSet.add(organisation.getOrgType());
+        }
+        if (organisation.getOrgSubType()!=null && StringUtils.isNotBlank(organisation.getOrgSubType())) {
+            orgSubTypeReqSet.add(organisation.getOrgSubType());
+        }
+        if (organisation.getOrgStatus()!=null && StringUtils.isNotBlank(organisation.getOrgStatus().name())) {
+            orgStatusReqSet.add(organisation.getOrgStatus().name());
+        }
     }
 
     private void enrichOrgTypeAndFuncCategory(Organisation organisation, Set<String> orgTypeReqSet, Set<String> orgFuncCategoryReqSet, Set<String> orgFuncClassReqSet) {
@@ -209,6 +235,32 @@ public class OrganisationServiceValidator {
                 orgTypeReqSet.removeAll(orgTypeRes);
                 if (!CollectionUtils.isEmpty(orgTypeReqSet)) {
                     errorMap.put("INVALID_ORG_TYPE", "The org types: " + orgTypeReqSet + NOT_PRESENT_IN_MDMS);
+                }
+            }
+        }
+    }
+
+    private void validateOrgSubType(Set<String> orgSubTypeReqSet, List<Object> orgSubTypeRes, Map<String, String> errorMap) {
+        if (CollectionUtils.isEmpty(orgSubTypeReqSet)) {
+            errorMap.put("INVALID_ORG_TYPE", "The org sub type is not configured in MDMS");
+        } else {
+            if (!CollectionUtils.isEmpty(orgSubTypeReqSet)) {
+                orgSubTypeReqSet.removeAll(orgSubTypeRes);
+                if (!CollectionUtils.isEmpty(orgSubTypeReqSet)) {
+                    errorMap.put("INVALID_ORG_TYPE", "The org sub types: " + orgSubTypeReqSet + NOT_PRESENT_IN_MDMS);
+                }
+            }
+        }
+    }
+
+    private void validateOrgStatus(Set<String> orgStatusReqSet, List<Object> orgStatusRes, Map<String, String> errorMap) {
+        if (CollectionUtils.isEmpty(orgStatusRes)) {
+            errorMap.put("INVALID_ORG_TYPE", "The org status is not configured in MDMS");
+        } else {
+            if (!CollectionUtils.isEmpty(orgStatusReqSet)) {
+                orgStatusReqSet.removeAll(orgStatusRes);
+                if (!CollectionUtils.isEmpty(orgStatusReqSet)) {
+                    errorMap.put("INVALID_ORG_TYPE", "The org statuses: " + orgStatusReqSet + NOT_PRESENT_IN_MDMS);
                 }
             }
         }
@@ -341,7 +393,7 @@ public class OrganisationServiceValidator {
             throw new CustomException("ORGANISATION", "Search criteria is mandatory");
         }
 
-        if (searchCriteria.getContactMobileNumber()== null && StringUtils.isBlank(searchCriteria.getTenantId())) {
+        if (searchCriteria.getOrgPocPhone()== null && StringUtils.isBlank(searchCriteria.getTenantId())) {
             log.error("Tenant ID is mandatory in Organisation request body if mobile number is not passed");
             errorMap.put("TENANT_ID", "Tenant ID is mandatory");
         }

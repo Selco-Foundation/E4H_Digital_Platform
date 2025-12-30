@@ -4,14 +4,15 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
-import org.egov.common.contract.request.RequestInfo;
 import org.egov.config.Configuration;
 import org.egov.repository.ServiceRequestRepository;
 import org.egov.tracer.model.CustomException;
 import org.egov.web.models.*;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -20,11 +21,13 @@ public class OrganisationUtil {
     private final ServiceRequestRepository serviceRequestRepository;
     private final Configuration config;
     private final ObjectMapper mapper;
+    private EncryptionDecryptionUtilV2 encryptionDecryptionUtil;
 
-    public OrganisationUtil(ServiceRequestRepository serviceRequestRepository, Configuration config, ObjectMapper mapper) {
+    public OrganisationUtil(ServiceRequestRepository serviceRequestRepository, Configuration config, ObjectMapper mapper, EncryptionDecryptionUtilV2 encryptionDecryptionUtil) {
         this.serviceRequestRepository = serviceRequestRepository;
         this.config = config;
         this.mapper = mapper;
+        this.encryptionDecryptionUtil = encryptionDecryptionUtil;
     }
 
     /**
@@ -86,6 +89,57 @@ public class OrganisationUtil {
             throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
         }
         return employeeResponse.getEmployees().get(0);
+    }
+
+    public String encryptMobileNumber(String mobileNumber){
+        String encryptedMobileNumber = null;
+        if(mobileNumber!=null && !mobileNumber.isBlank()){
+            EncryptObject object = EncryptObject.builder()
+                    .mobileNumber(mobileNumber)
+                    .build();
+            Map<String, EncryptObject> userMap = new HashMap<>();
+            userMap.put("userObject", object);
+            EncReqObject encReqObject = EncReqObject.builder()
+                    .tenantId(config.getStateLevelTenantId())
+                    .type("Normal")
+                    .value(userMap)
+                    .build();
+            EncryptionRequest encryptionRequest = EncryptionRequest.builder()
+                    .encryptionRequests(List.of(encReqObject))
+                    .build();
+            List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.encryptObject(encryptionRequest);
+            for (Map<String, EncryptObject> map : response) {
+                EncryptObject user = map.get("userObject"); // clé du JSON
+                if (user != null) {
+                    log.info("Mobile crypté : {}", user.getMobileNumber());
+                    encryptedMobileNumber = user.getMobileNumber();
+                }
+            }
+        }
+        return encryptedMobileNumber;
+    }
+
+    public String decryptMobileNumber(String mobileNumber){
+        String decryptedMobileNumber = null;
+        if(mobileNumber!=null && !mobileNumber.isBlank()){
+            EncryptObject object = EncryptObject.builder()
+                    .mobileNumber(mobileNumber)
+                    .build();
+            Map<String, EncryptObject> userMap = new HashMap<>();
+            userMap.put("userObject", object);
+            DecryptionRequest request = DecryptionRequest.builder()
+                    .decryptionRequests(List.of(userMap))
+                    .build();
+            List<Map<String, EncryptObject>> response = encryptionDecryptionUtil.decryptObject(request);
+            for (Map<String, EncryptObject> map : response) {
+                EncryptObject user = map.get("userObject"); // clé du JSON
+                if (user != null) {
+                    log.info("Mobile decrypté : {}", user.getMobileNumber());
+                    decryptedMobileNumber = user.getMobileNumber();
+                }
+            }
+        }
+        return decryptedMobileNumber;
     }
 
 }

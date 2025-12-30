@@ -5,6 +5,7 @@ import org.egov.repository.querybuilder.*;
 import org.egov.repository.rowmapper.*;
 import org.egov.service.EncryptionService;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.util.OrganisationUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -39,8 +40,10 @@ public class OrganisationRepository {
     private final EncryptionService encryptionService;
     private final JdbcTemplate jdbcTemplate;
 
+    private final OrganisationUtil organisationUtil;
+
     @Autowired
-    public OrganisationRepository(AddressQueryBuilder addressQueryBuilder, OrganisationFunctionQueryBuilder organisationFunctionQueryBuilder, OrganisationFunctionRowMapper organisationFunctionRowMapper, AddressOrgIdsRowMapper addressOrgIdsRowMapper, AddressRowMapper addressRowMapper, DocumentQueryBuilder documentQueryBuilder, DocumentRowMapper documentRowMapper, ContactDetailsQueryBuilder contactDetailsQueryBuilder, TaxIdentifierRowMapper taxIdentifierRowMapper, ContactDetailsRowMapper contactDetailsRowMapper, ContactDetailsOrgIdsRowMapper contactDetailsOrgIdsRowMapper, JdbcTemplate jdbcTemplate, JurisdictionQueryBuilder jurisdictionQueryBuilder, TaxIdentifierOrgIdsRowMapper taxIdentifierOrgIdsRowMapper, JurisdictionRowMapper jurisdictionRowMapper, TaxIdentifierQueryBuilder taxIdentifierQueryBuilder, EncryptionService encryptionService) {
+    public OrganisationRepository(AddressQueryBuilder addressQueryBuilder, OrganisationFunctionQueryBuilder organisationFunctionQueryBuilder, OrganisationFunctionRowMapper organisationFunctionRowMapper, AddressOrgIdsRowMapper addressOrgIdsRowMapper, AddressRowMapper addressRowMapper, DocumentQueryBuilder documentQueryBuilder, DocumentRowMapper documentRowMapper, ContactDetailsQueryBuilder contactDetailsQueryBuilder, TaxIdentifierRowMapper taxIdentifierRowMapper, ContactDetailsRowMapper contactDetailsRowMapper, ContactDetailsOrgIdsRowMapper contactDetailsOrgIdsRowMapper, JdbcTemplate jdbcTemplate, JurisdictionQueryBuilder jurisdictionQueryBuilder, TaxIdentifierOrgIdsRowMapper taxIdentifierOrgIdsRowMapper, JurisdictionRowMapper jurisdictionRowMapper, TaxIdentifierQueryBuilder taxIdentifierQueryBuilder, EncryptionService encryptionService, OrganisationUtil organisationUtil) {
         this.addressQueryBuilder = addressQueryBuilder;
         this.organisationFunctionQueryBuilder = organisationFunctionQueryBuilder;
         this.organisationFunctionRowMapper = organisationFunctionRowMapper;
@@ -58,11 +61,12 @@ public class OrganisationRepository {
         this.jurisdictionRowMapper = jurisdictionRowMapper;
         this.taxIdentifierQueryBuilder = taxIdentifierQueryBuilder;
         this.encryptionService = encryptionService;
+        this.organisationUtil = organisationUtil;
     }
 
     public List<Organisation> getOrganisations(OrgSearchRequest orgSearchRequest) {
         // Encrypt search criteria
-        encryptionService.encryptDetails(orgSearchRequest, ORGANISATION_ENCRYPT_KEY);
+//        encryptionService.encryptDetails(orgSearchRequest, ORGANISATION_ENCRYPT_KEY);
         //Fetch organisation ids based on identifierType and identifierValue search criteria
         Set<String> orgIdsFromIdentifierSearch = getOrgIdsForIdentifiersBasedOnSearchCriteria(orgSearchRequest);
         //Fetch organisation ids based on boundaryCode in  search criteria
@@ -78,7 +82,7 @@ public class OrganisationRepository {
                 (StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierType())
                 || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue())
                 || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode())
-                || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getContactMobileNumber())
+                || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone())
                 || !orgSearchRequest.getSearchCriteria().getId().isEmpty())) {
             return Collections.emptyList();
         }
@@ -109,15 +113,16 @@ public class OrganisationRepository {
 
         log.info("Fetched organisation details for search request");
         //Construct Organisation Objects with fetched organisations, addresses, contactDetails, jurisdictions, identifiers and documents using Organisation id
-        return encryptionService
-                .decrypt(buildOrganisationSearchResult(organisations, addresses, contactDetails, documents, jurisdictions, identifiers),
-                        ORGANISATION_ENCRYPT_KEY,orgSearchRequest);
+        return buildOrganisationSearchResult(organisations, addresses, contactDetails, documents, jurisdictions, identifiers);
+//        return encryptionService
+//                .decrypt(buildOrganisationSearchResult(organisations, addresses, contactDetails, documents, jurisdictions, identifiers),
+//                        ORGANISATION_ENCRYPT_KEY,orgSearchRequest);
     }
 
     private Set<String> getOrgIdsForContactNumberBasedOnSearchCriteria(OrgSearchRequest orgSearchRequest) {
-        if (StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getContactMobileNumber())) {
+        if (StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone())) {
             List<Object> preparedStmtListTarget = new ArrayList<>();
-            String queryAddress = contactDetailsQueryBuilder.getContactDetailsSearchQueryBasedOnCriteria(orgSearchRequest.getSearchCriteria().getContactMobileNumber(), preparedStmtListTarget);
+            String queryAddress = contactDetailsQueryBuilder.getContactDetailsSearchQueryBasedOnCriteria(orgSearchRequest.getSearchCriteria().getOrgPocPhone(), preparedStmtListTarget);
             Set<String> orgIds = jdbcTemplate.query(queryAddress, contactDetailsOrgIdsRowMapper, preparedStmtListTarget.toArray());
             log.info("Fetched Org Ids for contact details based on Contact Mobile Number search");
             return orgIds;
@@ -165,7 +170,7 @@ public class OrganisationRepository {
                 || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue());
         boolean isBoundarySearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode());
         boolean isOrgIdsSearchCriteriaPresent = orgSearchRequest.getSearchCriteria().getId() != null && !orgSearchRequest.getSearchCriteria().getId().isEmpty();
-        boolean isContactMobileNumberSearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getContactMobileNumber());
+        boolean isContactMobileNumberSearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone());
         if (orgSearchRequest.getSearchCriteria().getId() == null) {
             orgSearchRequest.getSearchCriteria().setId(new ArrayList<>());
         }
@@ -269,6 +274,11 @@ public class OrganisationRepository {
     private List<Organisation> buildOrganisationSearchResult(List<Organisation> organisations, List<Address> addresses, List<ContactDetails> contactDetails, List<Document> documents, List<Jurisdiction> jurisdictions, List<Identifier> identifiers) {
         for (Organisation organisation: organisations) {
             log.info("Constructing organisation object for organisation " + organisation.getId());
+            // Decrypt poc mobile number
+            String decryptedMobileNumber = organisationUtil.decryptMobileNumber(organisation.getOrgPocPhone());
+            if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                organisation.setOrgPocPhone(decryptedMobileNumber);
+            }
             constructOrganizationObject(organisation, addresses, contactDetails, documents, jurisdictions, identifiers);
             log.info("Constructed organisation object for organisation " + organisation.getId());
         }
@@ -372,7 +382,7 @@ public class OrganisationRepository {
                 (StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierType())
                         || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue())
                         || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode())
-                        || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getContactMobileNumber())
+                        || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone())
                         || !orgSearchRequest.getSearchCriteria().getId().isEmpty())) {
             return 0;
         }

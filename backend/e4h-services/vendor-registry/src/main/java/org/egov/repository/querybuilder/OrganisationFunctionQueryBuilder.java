@@ -23,6 +23,8 @@ public class OrganisationFunctionQueryBuilder {
     private static final String FETCH_ORGANISATION_FUNCTION_QUERY = "SELECT org.id as organisation_Id, org.tenant_id as organisation_tenantId, " +
             "org.application_number as organisation_applicationNumber, org.name as organisation_name, org.code as organisation_code, org.org_number as organisation_orgNumber, " +
             "org.external_ref_number as organisation_externalRefNumber, org.date_of_incorporation as organisation_dateOfIncorporation, " +
+            "org.org_type as organisation_type, org.org_subtype as organisation_sub_type, org.org_poc_name as organisation_poc_name, org.org_poc_phone as organisation_poc_phone, " +
+            "org.org_poc_email as organisation_poc_email, org.org_poc_username as organisation_poc_username, org.org_status as organisation_status, " +
             "org.application_status as organisation_applicationStatus, org.is_active as organisation_isActive, " +
             "org.additional_details as organisation_additionalDetails, org.created_by as organisation_createdBy, " +
             "org.last_modified_by as organisation_lastModifiedBy, org.created_time as organisation_createdTime, " +
@@ -89,17 +91,41 @@ public class OrganisationFunctionQueryBuilder {
             preparedStmtList.add(searchCriteria.getApplicationNumber());
         }
 
+        if (StringUtils.isNotBlank(searchCriteria.getOrgType())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" org.org_type=? ");
+            preparedStmtList.add(searchCriteria.getOrgType());
+        }
+
+        if (StringUtils.isNotBlank(searchCriteria.getOrgSubType())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" org.org_subtype=? ");
+            preparedStmtList.add(searchCriteria.getOrgSubType());
+        }
+
+        if (StringUtils.isNotBlank(searchCriteria.getOrgPocPhone())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" org.org_poc_phone=? ");
+            preparedStmtList.add(searchCriteria.getOrgPocPhone());
+        }
+
+        if (StringUtils.isNotBlank(searchCriteria.getOrgStatus())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" org.org_status=? ");
+            preparedStmtList.add(searchCriteria.getOrgStatus());
+        }
+
         if (StringUtils.isNotBlank(searchCriteria.getOrgNumber())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.org_number=? ");
             preparedStmtList.add(searchCriteria.getOrgNumber());
         }
 
-        if (StringUtils.isNotBlank(searchCriteria.getApplicationStatus())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" org.application_status=? ");
-            preparedStmtList.add(searchCriteria.getApplicationStatus());
-        }
+//        if (StringUtils.isNotBlank(searchCriteria.getOrgStatus())) {
+//            addClauseIfRequired(preparedStmtList, queryBuilder);
+//            queryBuilder.append(" org.application_status=? ");
+//            preparedStmtList.add(searchCriteria.getOrgStatus());
+//        }
 
         if (searchCriteria.getCreatedFrom() != null && searchCriteria.getCreatedFrom() != 0) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
