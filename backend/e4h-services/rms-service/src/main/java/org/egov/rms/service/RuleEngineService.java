@@ -173,28 +173,38 @@ public class RuleEngineService {
         for (RMSFacilityData facility : facilities) {
             if (checkNoSignal) {
                 // Rule: No signal for configured days
-                // Note: DataCollectorService already filters by lastSyncTime, so all facilities here meet the criteria
-                // We just need to create alerts for them
+                // Validate that lastSyncTime is actually 2+ days old
                 String facilityId = facility.getFacilityId() != null ? 
                         facility.getFacilityId() : facility.getCenterId();
                 String facilityName = facility.getFacilityName() != null ? 
                         facility.getFacilityName() : facility.getCenterName();
                 
                 if (facilityId != null && facility.getLastSyncTime() != null) {
-                    Alert alert = Alert.builder()
-                            .id(UUID.randomUUID().toString())
-                            .facilityId(facilityId)
-                            .hfrId(facility.getHfrId())
-                            .alertType(Alert.AlertType.INVERTER)
-                            .alertSubType(Alert.AlertSubType.SHUTDOWN)
-                            .status(Alert.AlertStatus.ACTIVE)
-                            .detectedAt(Instant.now())
-                            .metadata(buildMetadata(facility, facilityName, "lastSyncTime", facility.getLastSyncTime()))
-                            .build();
+                    // Calculate days difference between lastSyncTime and now using manual calculation
+                    Instant now = Instant.now();
+                    long millisDifference = now.toEpochMilli() - facility.getLastSyncTime().toEpochMilli();
+                    long daysDifference = millisDifference / (1000 * 60 * 60 * 24); // Convert milliseconds to days
+                    
+                    // Only create alert if device has been inactive for configured days (default: 2)
+                    if (daysDifference >= config.getInverterNoSignalDays()) {
+                        Alert alert = Alert.builder()
+                                .id(UUID.randomUUID().toString())
+                                .facilityId(facilityId)
+                                .hfrId(facility.getHfrId())
+                                .alertType(Alert.AlertType.INVERTER)
+                                .alertSubType(Alert.AlertSubType.SHUTDOWN)
+                                .status(Alert.AlertStatus.ACTIVE)
+                                .detectedAt(Instant.now())
+                                .metadata(buildMetadata(facility, facilityName, "lastSyncTime", facility.getLastSyncTime()))
+                                .build();
 
-                    alerts.add(alert);
-                    log.debug("Inverter shutdown alert created for facility: {} (lastSyncTime: {})", 
-                            facilityId, facility.getLastSyncTime());
+                        alerts.add(alert);
+                        log.debug("Inverter shutdown alert created for facility: {} (lastSyncTime: {}, days without signal: {})", 
+                                facilityId, facility.getLastSyncTime(), daysDifference);
+                    } else {
+                        log.debug("Skipping facility {} - lastSyncTime is only {} days old (required: {} days). Last sync: {}", 
+                                facilityId, daysDifference, config.getInverterNoSignalDays(), facility.getLastSyncTime());
+                    }
                 }
             } else {
                 // Rule: High voltage (> 250V)
