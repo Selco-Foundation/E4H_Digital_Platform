@@ -29,12 +29,19 @@ public class PayloadGenerator {
         log.debug("Generating ticket payload for alert: {}", alert.getId());
 
         try {
+            // Validate hfrId before attempting to fetch facility
+            if (alert.getHfrId() == null || alert.getHfrId().trim().isEmpty()) {
+                log.error("PAYLOAD GENERATION FAILED: Alert {} has null/empty hfrId (facility: {}). ",
+                        alert.getId(), alert.getFacilityId());
+                return null;
+            }
+            
             // Fetch facility details
             FacilityDetails facilityDetails = facilityServiceClient.getFacilityByHfrId(
                     alert.getHfrId(), config.getDefaultTenantId());
 
             if (facilityDetails == null) {
-                log.warn("Facility not found for hfrId: {}", alert.getHfrId());
+                log.error("Facility not found for hfrId: {}", alert.getHfrId());
                 return null;
             }
 
