@@ -29,6 +29,12 @@ public class FacilityServiceClient {
      * Fetches facility details by hfrId
      */
     public FacilityDetails getFacilityByHfrId(String hfrId, String tenantId) {
+        // Validate hfrId
+        if (hfrId == null || hfrId.trim().isEmpty()) {
+            log.warn("HFR id is provided as null");
+            return null;
+        }
+        
         try {
             String url = config.getFacilityServiceBaseUrl() + config.getFacilityServiceSearchEndpoint();
             
@@ -51,8 +57,18 @@ public class FacilityServiceClient {
                 
                 if (facilities != null && !facilities.isEmpty()) {
                     Map<String, Object> facility = facilities.get(0);
-                    return mapToFacilityDetails(facility);
+                    FacilityDetails details = mapToFacilityDetails(facility);
+                    if (details != null) {
+                        log.debug("Successfully fetched facility for hfrId: {} - facilityId: {}, boundaryCode: {}", 
+                                hfrId, details.getFacilityId(), details.getBoundaryCode());
+                    }
+                    return details;
+                } else {
+                    log.warn("No facilities found in response for hfrId: {}", hfrId);
                 }
+            } else {
+                log.warn("Facility service returned non-2xx status or null body for hfrId: {} - Status: {}", 
+                        hfrId, response != null ? response.getStatusCode() : "null response");
             }
 
             return null;
