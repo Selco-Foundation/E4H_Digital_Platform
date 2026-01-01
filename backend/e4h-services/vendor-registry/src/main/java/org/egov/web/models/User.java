@@ -2,12 +2,14 @@ package org.egov.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
+import org.hibernate.validator.constraints.NotEmpty;
 import org.springframework.validation.annotation.Validated;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import java.util.ArrayList;
 import java.util.List;
 
 @Validated
@@ -161,6 +163,8 @@ public class User {
     @Size(max=256)
     @JsonProperty("tenantId")
     private String tenantId;
-    
+
+    @JsonProperty("jurisdiction")
+    private List<String> jurisdiction = new ArrayList<>();
 
 }

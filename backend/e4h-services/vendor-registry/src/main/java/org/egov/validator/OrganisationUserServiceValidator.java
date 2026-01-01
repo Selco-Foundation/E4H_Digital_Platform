@@ -1,21 +1,27 @@
 package org.egov.validator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.models.core.URLParams;
+import org.egov.config.Configuration;
 import org.egov.repository.OrganisationRepository;
-import org.egov.service.OrganisationService;
+import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
-import org.egov.util.BoundaryUtil;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.egov.util.OrganisationConstant.*;
 
 @Component
 @Slf4j
@@ -23,36 +29,38 @@ public class OrganisationUserServiceValidator {
 
     private final MDMSUtil mdmsUtil;
 
+    private final Configuration configuration;
+
     private final OrganisationRepository organisationRepository;
 
     private final OrganisationUtil organisationUtil;
 
-    private final OrganisationService organisationService;
+    private final OrganisationUserRepository userRepository;
+
+    private final ObjectMapper mapper;
 
     private static final String MDMS_RES = "$.MdmsRes.";
     private static final String NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     private static final String VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO = "Valid From in search parameters should be less than Valid To";
     private static final String INVALID_ORG_SEARCH_DATE ="INVALID_ORG_SEARCH_DATE";
     @Autowired
-    public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, OrganisationRepository organisationRepository,
-                                            @Qualifier("objectMapper") ObjectMapper mapper, OrganisationUtil organisationUtil, OrganisationService organisationService) {
+    public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
+                                            OrganisationUtil organisationUtil, OrganisationUserRepository userRepository, ObjectMapper mapper) {
         this.mdmsUtil = mdmsUtil;
+        this.configuration = configuration;
         this.organisationRepository = organisationRepository;
         this.organisationUtil = organisationUtil;
-        this.organisationService = organisationService;
+        this.userRepository = userRepository;
+        this.mapper = mapper;
     }
 
     public void validateCreateOrgUserRequest(OrgUserRequest request) {
-        Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
-        //Verify if ActivityAssignment request and mandatory fields are present
-        validateUserOrgRequest(request);
-
-        if (!errorMap.isEmpty())
-            throw new CustomException(errorMap);
+        //Verify if org users request and mandatory fields are present
+        validateUserOrgCreation(request);
     }
 
     private void validateRequestInfo(RequestInfo requestInfo) {
@@ -70,51 +78,94 @@ public class OrganisationUserServiceValidator {
         }
     }
 
-    private void validateUserOrgRequest(OrgUserRequest request) {
+    private void validateUserOrgCreation(OrgUserRequest request) {
         Map<String, String> errorMap = new HashMap<>();
-
-        if (request.getOrgUsers() == null || request.getOrgUsers().size() == 0) {
-            log.error("Field Plans list is empty. Field Plans is mandatory");
-            throw new CustomException("FIELDPLAN", "Field Plans are mandatory");
+        User orgUser = request.getUser();
+        if (orgUser == null) {
+            log.error("User is mandatory in creation");
+            throw new CustomException("Org User", "User is mandatory");
         }
 
-        for (OrgUser orgUser : request.getOrgUsers()) {
-            if (orgUser == null) {
-                log.error("Org User is mandatory in Activities");
-                throw new CustomException("Activity", "Activity is mandatory");
+        if (request.getOrganizationId() == null || request.getOrganizationId().isBlank()) {
+            log.error("Organization is mandatory in org user request body");
+            errorMap.put("ORGANIZATION", "Organization ID is mandatory");
+        }
+
+        // Check if organisationId already exist
+        OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder().ids(List.of(request.getOrganizationId())).tenantId(orgUser.getTenantId()).build();
+        OrgSearchRequest orgSearchRequest = OrgSearchRequest.builder().requestInfo(request.getRequestInfo()).searchCriteria(searchCriteria).build();
+        List<Organisation> organisations = organisationRepository.getOrganisations(orgSearchRequest);
+        if(organisations == null || organisations.isEmpty()){
+            log.error("Organization is mandatory in org user request body");
+            throw new CustomException("Organization", "Organization ID do not exist");
+        }
+
+        // Validate user object fields
+        validateUserRequest(orgUser);
+
+        // Get existing user with mobile number from hrms service
+        List<Employee> employee = organisationUtil.getUserByPhoneNumber(request, orgUser.getMobileNumber());
+        if (employee == null || employee.isEmpty()) { //If user doesn't exist
+            Organisation organisation = organisations.get(0);
+            String orgType = organisation.getOrgType();
+            Map<String, List<Role>> rolesMap =  getOrgRoles(request.getRequestInfo());
+            if (rolesMap !=null && !rolesMap.isEmpty() && orgType !=null && !orgType.isBlank()){
+                List<Role> roles = rolesMap.get(orgType);
+                //Encrypt poc mobile number
+                String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(orgUser.getMobileNumber());
+                if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                    orgUser.setMobileNumber(encryptedPocMobileNumber);
+                }
+                // Call HRMS service to create user
+
             }
 
-            if (orgUser.getUserId() == null) {
-                log.error("User ID is mandatory in FieldPlans");
-                throw new CustomException("USERID", "User ID is mandatory");
+        }
+        else { // If user found, Check if user belong to another organisation record
+            List<String> uuids = employee.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
+            OrgUserSearchCriteria searchUserCriteria = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
+            OrgUserSearchRequest orgUserSearchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria).build();
+            URLParams urlParams = URLParams.builder().limit(1).offset(0).build();
+            List<OrgUser> users = userRepository.getOrgUsers(orgUserSearchRequest, urlParams);
+            if(users != null && !users.isEmpty()){
+                log.error("This user already belong to another org");
+                throw new CustomException("Organization", "This user already belong to another org");
             }
-            // Get existing user with userId from hrms service
-            Employee employee = organisationUtil.getUserById(request, orgUser.getUserId());
-            if (employee == null) {
-                log.error("user ID do not exist");
-                throw new CustomException("HRMS", "User ID do not exist");
+            else{
+                request.getUser().setUuid(employee.get(0).getUser().getUuid());
+                request.setUserId(employee.get(0).getUser().getUuid());
             }
-
-            if (StringUtils.isBlank(orgUser.getTenantId())) {
-                log.error("Tenant ID is mandatory in Activity request body");
-                errorMap.put("TENANT_ID", "Tenant ID is mandatory");
-            }
-            if (orgUser.getOrganizationId() == null) {
-                log.error("Organization is mandatory in Activity request body");
-                errorMap.put("ORGANIZATION", "Organization ID is mandatory");
-            }
-            OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder().id(List.of(orgUser.getOrganizationId())).tenantId(orgUser.getTenantId()).build();
-            OrgSearchRequest orgSearchRequest = OrgSearchRequest.builder().requestInfo(request.getRequestInfo()).searchCriteria(searchCriteria).build();
-            List<Organisation> organisations = organisationService.searchOrganisation(orgSearchRequest);
-            if(organisations == null || organisations.isEmpty()){
-                log.error("Organization is mandatory in Activity request body");
-                throw new CustomException("Organization", "Organization ID do not exist");
-            }
-
         }
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
+    }
+
+    private void validateUserRequest(User user) {
+        if (StringUtils.isBlank(user.getTenantId())) {
+            log.error("Tenant ID is mandatory in user request body");
+            throw new CustomException("Organization", "Tenant ID is mandatory in user request body");
+        }
+
+        if (user.getName() == null) {
+            log.error("Name is mandatory in User object");
+            throw new CustomException("OrgUserCreation", "Name is mandatory in User object");
+        }
+
+        if (user.getMobileNumber() == null) {
+            log.error("Mobile Number is mandatory in FieldPlans");
+            throw new CustomException("OrgUserCreation", "Mobile Number is mandatory");
+        }
+
+        if (user.getEmailId() == null) {
+            log.error("Email is mandatory in FieldPlans");
+            throw new CustomException("OrgUserCreation", "Email is mandatory in User object");
+        }
+
+        if (user.getRoles() == null || user.getRoles().isEmpty()) {
+            log.error("Roles are mandatory in User object");
+            throw new CustomException("OrgUserCreation", "Roles are mandatory in User object");
+        }
     }
 
     /* Validates search FieldPlan request body and parameters*/
@@ -125,7 +176,7 @@ public class OrganisationUserServiceValidator {
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
         //Verify if search fieldplan request is valid
-        validateActivityAssignmentSearchRequest(request.getCriteria(), tenantId);
+        validateSearchOrgUsersCriteria(request.getCriteria(), tenantId);
         //Verify MDMS Data
         // TODO: Uncomment and fix as per HCM once we get clarity
         // validateRequestMDMSData(project, tenantId, errorMap);
@@ -134,10 +185,10 @@ public class OrganisationUserServiceValidator {
             throw new CustomException(errorMap);
     }
 
-    private void validateActivityAssignmentSearchRequest(OrgUserSearchCriteria criteria, String tenantId) {
+    private void validateSearchOrgUsersCriteria(OrgUserSearchCriteria criteria, String tenantId) {
         if (criteria == null) {
-            log.error("fieldPlan is mandatory in FieldPlans");
-            throw new CustomException("FIELDPLAN", "FieldPlan is mandatory");
+            log.error("criteria is mandatory in Org search");
+            throw new CustomException("OrgSearch", "criteria is mandatory");
         }
         if (StringUtils.isBlank(criteria.getTenantId())) {
             log.error("Tenant ID is mandatory");
@@ -146,13 +197,72 @@ public class OrganisationUserServiceValidator {
         if ((criteria.getId()==null || criteria.getId().isEmpty()) && (criteria.getUserId()==null || criteria.getUserId().isEmpty())
                 && (criteria.getOrganizationId()==null || criteria.getOrganizationId().isEmpty()))
         {
-            log.error("Any one Activity search field is required for FieldPlan Search");
-            throw new CustomException("ACTIVITY_SEARCH_FIELDS", "Any one activity search field is required");
+            log.error("Any one org user search field is required for users Search");
+            throw new CustomException("USER_SEARCH_FIELDS", "Any one user search field is required");
         }
 
         if (!criteria.getTenantId().equals(tenantId)) {
             log.error("Tenant Id must be same in URL param as well as project request body");
             throw new CustomException("MULTIPLE_TENANTS", "Tenant Id must be same in URL param and project request");
+        }
+    }
+
+    public void validateDeleteOrgUserRequest(OrgUserRequest request) {
+        RequestInfo requestInfo = request.getRequestInfo();
+
+        //Verify if RequestInfo and UserInfo is present
+        validateRequestInfo(requestInfo);
+        //Verify if org users request and mandatory fields are present
+        validateDeleteUserOrgRequest(request);
+    }
+
+    private void validateDeleteUserOrgRequest(OrgUserRequest request) {
+        String orgUserId = request.getId();
+        if (orgUserId == null || orgUserId.isBlank()) {
+            log.error("OrgUserId is mandatory in delete");
+            throw new CustomException("Org User", "User is mandatory in delete");
+        }
+
+        OrgUserSearchCriteria searchUserCriteria = OrgUserSearchCriteria.builder().id(List.of()).tenantId(configuration.getGlobalTenantId()).build();
+        OrgUserSearchRequest orgUserSearchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria).build();
+        URLParams urlParams = URLParams.builder().limit(1).offset(0).build();
+        List<OrgUser> users = userRepository.getOrgUsers(orgUserSearchRequest, urlParams);
+        if(users == null || users.isEmpty()){
+            log.error("This org user id do not exist");
+            throw new CustomException("Organization", "This org user id do not exist");
+        }
+
+        //Check if user has any activity assignments
+        List<ActivityAssignment> activityAssignmentList = organisationUtil.getFieldPlanActivityAssignment(request);
+        //user has active assignments exist
+        if(activityAssignmentList != null && !activityAssignmentList.isEmpty()){
+            try {
+                OrgUserDeleteErrorResponse errorResponse = OrgUserDeleteErrorResponse.builder()
+                        .message("User cannot be deleted because they have active or pending assignments.")
+                        .blockingAssignments(activityAssignmentList)
+                        .build();
+                throw new ResponseStatusException(HttpStatus.CONFLICT, mapper.writeValueAsString((errorResponse))); // Ici on renvoie l'objet comme message JSON
+            } catch (Exception e) {
+                throw new CustomException("Organization", "User cannot be deleted because they have active or pending assignments.");
+            }
+        }
+    }
+
+    public Map<String, List<Role>> getOrgRoles(RequestInfo requestInfo){
+        Object mdmsData = mdmsUtil.mDMSCall(requestInfo, configuration.getGlobalTenantId());
+        final String jsonPathForOrgRoles = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_ROLES + "[*]";
+        List<Map<String, Object>> orgRolesRes = null;
+        try {
+            orgRolesRes = JsonPath.read(mdmsData, jsonPathForOrgRoles);
+            List<Role> orgRolesList = orgRolesRes.stream()
+                    .map(item -> mapper.convertValue(item, Role.class))
+                    .toList();
+            Map<String, List<Role>> rolesByOrgType = orgRolesList.stream().collect(Collectors.groupingBy(Role::getOrgType));
+            return rolesByOrgType;
+        } catch (Exception e) {
+            e.printStackTrace();
+            log.error(e.getMessage());
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
         }
     }
 

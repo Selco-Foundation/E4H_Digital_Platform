@@ -28,10 +28,16 @@ public class OrganisationUserEnrichmentService {
     }
 
     /* Enrich OrgUser with id and audit details */
-    public void enrichOrgUserRequestOnCreate(OrgUser orgUser, RequestInfo requestInfo) {
+    public void enrichOrgUserRequestOnCreate(OrgUserRequest orgUser, RequestInfo requestInfo) {
         orgUser.setId(UUID.randomUUID().toString());
         log.info("fieldPlan id set to " + orgUser.getId());
         AuditDetails auditDetails = organisationUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         orgUser.setAuditDetails(auditDetails);
+    }
+
+    public void enrichOrgUserRequestOnUpdate(OrgUserRequest request) {
+        AuditDetails auditDetails = AuditDetails.builder().lastModifiedBy(request.getRequestInfo().getUserInfo().getUuid()).lastModifiedTime(System.currentTimeMillis()).build();;
+        request.setAuditDetails(auditDetails);
+        log.info("Enriched org user audit details for update " + request.getId());
     }
 }

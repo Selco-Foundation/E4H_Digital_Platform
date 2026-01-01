@@ -86,6 +86,18 @@ public class Configuration {
     @Value("${org.user.kafka.create.topic}")
     private String createOrgUserTopic;
 
+    @Value("${org.user.kafka.delete.topic}")
+    private String deleteOrgUserTopic;
+
+    @Value("${egov.fieldplan.activity.host}")
+    private String fieldPlanActivityServiceHost;
+
+    @Value("${egov.fieldplan.activity.assignment.search.url}")
+    private String fieldPlanActivitySearchUrl;
+
+    @Value("${egov.fieldplan.activity.facility.search.url}")
+    private String fieldPlanActivityFacilitySearchUrl;
+
     @Value("${egov.idgen.organisation.number.format}")
     private String orgNumberFormat;
 
@@ -209,4 +221,7 @@ public class Configuration {
 
     @Value("${state.level.tenant.id}")
     private String stateLevelTenantId;
+
+    @Value("${global.tenant.id}")
+    private String globalTenantId;
 }

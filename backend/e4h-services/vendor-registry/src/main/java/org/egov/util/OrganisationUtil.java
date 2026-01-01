@@ -3,7 +3,9 @@ package org.egov.util;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.coyote.Request;
 import org.egov.common.contract.models.AuditDetails;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.config.Configuration;
 import org.egov.repository.ServiceRequestRepository;
 import org.egov.tracer.model.CustomException;
@@ -91,6 +93,18 @@ public class OrganisationUtil {
         return employeeResponse.getEmployees().get(0);
     }
 
+    public List<Employee> getUserByPhoneNumber(Object request, String phoneNumber) {
+
+        String url = config.getHrmsHost() + config.getHrmsEndPoint()+ "?tenantId=in&phone="+phoneNumber;
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            return null;
+        }
+        return employeeResponse.getEmployees();
+    }
+
     public String encryptMobileNumber(String mobileNumber){
         String encryptedMobileNumber = null;
         if(mobileNumber!=null && !mobileNumber.isBlank()){
@@ -141,5 +155,32 @@ public class OrganisationUtil {
         }
         return decryptedMobileNumber;
     }
+
+    public List<ActivityAssignment> getFieldPlanActivityAssignment(OrgUserRequest request) {
+        String userId = request.getUserId();
+        String tenantId = config.getGlobalTenantId();
+        ActivityAssignmentSearchCriteria criteria = ActivityAssignmentSearchCriteria.builder().assignedTo(userId).isActive(true).tenantId(tenantId).build();
+        ActivityAssignmentSearchRequest assignmentSearchRequest = ActivityAssignmentSearchRequest.builder().criteria(criteria).requestInfo(request.getRequestInfo()).build();
+        String url = config.getFieldPlanActivityServiceHost() + config.getFieldPlanActivitySearchUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), assignmentSearchRequest);
+        ActivityAssignmentResponse activityAssignmentList = mapper.convertValue(response, ActivityAssignmentResponse.class);
+        if(activityAssignmentList != null && activityAssignmentList.getActivityAssignment() !=null){
+            return activityAssignmentList.getActivityAssignment();
+        }
+        return null;
+    }
+
+//    public List<ActivityFacility> getFieldPlanFacilityActivities(RequestInfo requestInfo, List<String> activityIds) {
+//        String tenantId = config.getGlobalTenantId();
+//        ActivityFacilitySearchCriteria criteria = ActivityFacilitySearchCriteria.builder().activityId(activityIds).isActive(true).tenantId(tenantId).build();
+//        ActivityFacilitySearchRequest assignmentSearchRequest = ActivityFacilitySearchRequest.builder().criteria(criteria).requestInfo(requestInfo).build();
+//        String url = config.getFieldPlanActivityServiceHost() + config.getFieldPlanActivityFacilitySearchUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
+//        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), assignmentSearchRequest);
+//        ActivityFacilityResponse activityAssignmentList = mapper.convertValue(response, ActivityFacilityResponse.class);
+//        if(activityAssignmentList != null && activityAssignmentList.getActivityFacilities() !=null){
+//            return activityAssignmentList.getActivityFacilities();
+//        }
+//        return null;
+//    }
 
 }

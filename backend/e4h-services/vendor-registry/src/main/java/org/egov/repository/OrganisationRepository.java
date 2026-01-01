@@ -14,8 +14,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.egov.util.OrganisationConstant.ORGANISATION_ENCRYPT_KEY;
-
 @Repository
 @Slf4j
 public class OrganisationRepository {
@@ -83,7 +81,7 @@ public class OrganisationRepository {
                 || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue())
                 || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode())
                 || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone())
-                || !orgSearchRequest.getSearchCriteria().getId().isEmpty())) {
+                || !orgSearchRequest.getSearchCriteria().getIds().isEmpty())) {
             return Collections.emptyList();
         }
 
@@ -169,10 +167,10 @@ public class OrganisationRepository {
         boolean isIdentifierSearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierType())
                 || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue());
         boolean isBoundarySearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode());
-        boolean isOrgIdsSearchCriteriaPresent = orgSearchRequest.getSearchCriteria().getId() != null && !orgSearchRequest.getSearchCriteria().getId().isEmpty();
+        boolean isOrgIdsSearchCriteriaPresent = orgSearchRequest.getSearchCriteria().getIds() != null && !orgSearchRequest.getSearchCriteria().getIds().isEmpty();
         boolean isContactMobileNumberSearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone());
-        if (orgSearchRequest.getSearchCriteria().getId() == null) {
-            orgSearchRequest.getSearchCriteria().setId(new ArrayList<>());
+        if (orgSearchRequest.getSearchCriteria().getIds() == null) {
+            orgSearchRequest.getSearchCriteria().setIds(new ArrayList<>());
         }
 
         // If identifierType or identifierValue present in request, but the search result is empty, then return empty list
@@ -201,7 +199,7 @@ public class OrganisationRepository {
             }
             //Get common orgIds of identifier search result and orgIds in search request
             if (isOrgIdsSearchCriteriaPresent) {
-                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
+                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getIds());
             }
         } else if (isIdentifierSearchCriteriaPresent) {
             orgIds.addAll(orgIdsFromIdentifierSearch);
@@ -211,16 +209,16 @@ public class OrganisationRepository {
             }
             //Get common orgIds of identifier search result and orgIds in search request
             if (isOrgIdsSearchCriteriaPresent) {
-                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
+                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getIds());
             }
         } else if (isBoundarySearchCriteriaPresent) {
             orgIds.addAll(orgIdsFromBoundarySearch);
             //Get common orgIds of boundary search result and orgIds in search request
             if (isOrgIdsSearchCriteriaPresent) {
-                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
+                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getIds());
             }
         } else {
-            orgIds.addAll(orgSearchRequest.getSearchCriteria().getId());
+            orgIds.addAll(orgSearchRequest.getSearchCriteria().getIds());
         }
 
     }
@@ -383,7 +381,7 @@ public class OrganisationRepository {
                         || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue())
                         || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode())
                         || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone())
-                        || !orgSearchRequest.getSearchCriteria().getId().isEmpty())) {
+                        || !orgSearchRequest.getSearchCriteria().getIds().isEmpty())) {
             return 0;
         }
         

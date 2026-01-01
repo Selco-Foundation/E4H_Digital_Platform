@@ -52,23 +52,21 @@ public class OrganisationUserService {
     }
 
 
-    public List<OrgUser> createOrgUser(OrgUserRequest request) {
-        log.info("received request to create bulk fieldplan facility");
+    public OrgUserRequest createOrgUser(OrgUserRequest request) {
+        log.info("received request to create org user {} ", request );
 
         validator.validateCreateOrgUserRequest(request);
-        List<OrgUser> orgUserList = request.getOrgUsers();
+//        List<OrgUser> orgUserList = request.getOrgUsers();
         try {
-            for (OrgUser orgUser : orgUserList) {
-                log.info("processing {} valid entities", orgUserList);
-                organisationEnrichmentService.enrichOrgUserRequestOnCreate(orgUser, request.getRequestInfo());
-            }
+            log.info("processing  {} valid entities", request.getUser());
+            organisationEnrichmentService.enrichOrgUserRequestOnCreate(request, request.getRequestInfo());
             log.info("successfully created org user");
             organizationProducer.push(configuration.getCreateOrgUserTopic(), request);
         } catch (Exception exception) {
             log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
         }
 
-        return orgUserList;
+        return request;
     }
 
     public List<OrgUserEnriched> searchOrganisationUsers(OrgUserSearchRequest request, URLParams urlParams) {
@@ -90,5 +88,20 @@ public class OrganisationUserService {
             orgUserEnricheds.add(enriched);
         }
         return orgUserEnricheds;
+    }
+
+    public OrgUserRequest deleteUserOrg(OrgUserRequest request) {
+        log.info("received request to delete bulk activity facility staff");
+        validator.validateDeleteOrgUserRequest(request);
+        try {
+            request.setIsDeleted(true);
+            organisationEnrichmentService.enrichOrgUserRequestOnUpdate(request);
+            organizationProducer.push(configuration.getDeleteOrgUserTopic(), request);
+            log.info("successfully deleted org user");
+        } catch (Exception exception) {
+            log.error("error occurred while deleting org user", ExceptionUtils.getStackTrace(exception));
+        }
+
+        return request;
     }
 }

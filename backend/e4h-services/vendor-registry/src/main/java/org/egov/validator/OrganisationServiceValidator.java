@@ -278,6 +278,9 @@ public class OrganisationServiceValidator {
             if (StringUtils.isBlank(organisation.getName())) {
                 throw new CustomException("ORG_NAME", "Organisation name is mandatory");
             }
+            if (StringUtils.isBlank(organisation.getOrgType())) {
+                throw new CustomException("ORG_TYPE", "Organisation type is mandatory");
+            }
             validateAddress(organisation);
         }
     }
@@ -351,7 +354,7 @@ public class OrganisationServiceValidator {
 
         //check the org id exist in the system or not
         OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder()
-                .id(orgIds)
+                .ids(orgIds)
                 .tenantId(organisationList.get(0).getTenantId())
                 .includeDeleted(Boolean.FALSE)
                 .build();

@@ -78,9 +78,12 @@ public class OrganisationApiController {
     @RequestMapping(value = "/user/_create", method = RequestMethod.POST)
     public ResponseEntity<OrgUserResponse> orgUserV1CreatePost(@ApiParam(value = "Capture linkage of Project and staff user.", required = true) @Valid @RequestBody OrgUserRequest request) {
 
-        List<OrgUser> orgUserList = userService.createOrgUser(request);
+        OrgUserRequest orgUserList = userService.createOrgUser(request);
         OrgUserResponse response = OrgUserResponse.builder()
-                .orgUsers(orgUserList)
+                .user(orgUserList.getUser())
+                .id(orgUserList.getId())
+                .organizationId(orgUserList.getOrganizationId())
+                .auditDetails(orgUserList.getAuditDetails())
                 .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
                 .build();
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
@@ -102,5 +105,19 @@ public class OrganisationApiController {
                 .build();
 
         return ResponseEntity.status(HttpStatus.OK).body(response);
+    }
+
+    @RequestMapping(value = "/user/_delete", method = RequestMethod.POST)
+    public ResponseEntity<OrgUserResponse> deleteUserOrg(@ApiParam(value = "Delete org user.", required = true) @Valid @RequestBody OrgUserRequest request) {
+
+        OrgUserRequest orgUserList = userService.deleteUserOrg(request);
+        OrgUserResponse response = OrgUserResponse.builder()
+                .user(orgUserList.getUser())
+                .id(orgUserList.getId())
+                .organizationId(orgUserList.getOrganizationId())
+                .auditDetails(orgUserList.getAuditDetails())
+                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
     }
 }

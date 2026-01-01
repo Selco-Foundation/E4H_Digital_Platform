@@ -61,10 +61,16 @@ public class OrganisationFunctionQueryBuilder {
         StringBuilder queryBuilder = new StringBuilder(query);
         OrgSearchCriteria searchCriteria = orgSearchRequest.getSearchCriteria();
 
-        if (orgIds != null && !orgIds.isEmpty()) {
+        if (StringUtils.isNotBlank(searchCriteria.getId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" org.id IN (").append(createQuery(orgIds)).append(")");
-            addToPreparedStatement(preparedStmtList, orgIds);
+            queryBuilder.append(" org.id=? ");
+            preparedStmtList.add(searchCriteria.getOrgType());
+        }
+
+        if (searchCriteria.getIds() != null && !searchCriteria.getIds().isEmpty()) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" org.id IN (").append(createQuery(searchCriteria.getIds())).append(")");
+            addToPreparedStatement(preparedStmtList, searchCriteria.getIds());
         }
 
         if (StringUtils.isNotBlank(searchCriteria.getTenantId()) && searchCriteria.getTenantId().contains(config.getStateLevelTenantId()+".")) {
