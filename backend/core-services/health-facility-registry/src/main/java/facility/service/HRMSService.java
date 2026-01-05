@@ -1,0 +1,195 @@
+package facility.service;
+
+import facility.config.Configuration;
+import facility.repository.ServiceRequestRepository;
+import facility.web.models.Facility;
+import facility.web.models.HealthFacilityDetails;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.egov.common.contract.request.RequestInfo;
+import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.util.*;
+import java.time.Instant;
+
+@Component
+@Slf4j
+@RequiredArgsConstructor
+public class HRMSService {
+
+    private final ServiceRequestRepository serviceRequestRepository;
+    private final Configuration configs;
+
+    /**
+     * Searches for an employee by mobile number (phone number) in HRMS.
+     * 
+     * @param mobileNumber The mobile number to search for
+     * @param tenantId The tenant ID
+     * @param requestInfo RequestInfo for the API call
+     * @return true if an employee with the given mobile number exists, false otherwise
+     */
+    public boolean employeeExistsByMobileNumber(String mobileNumber, String tenantId, RequestInfo requestInfo) {
+        if (mobileNumber == null || mobileNumber.isBlank()) {
+            return false;
+        }
+
+        try {
+            // Build HRMS search request
+            Map<String, Object> searchCriteria = new HashMap<>();
+            searchCriteria.put("mobileNumber", mobileNumber);
+            searchCriteria.put("tenantId", tenantId);
+
+            Map<String, Object> searchRequest = new HashMap<>();
+            searchRequest.put("RequestInfo", requestInfo);
+            searchRequest.put("Criteria", searchCriteria);
+
+            // Construct the URI
+            String uri = UriComponentsBuilder
+                    .fromUriString(configs.getHrmsHost())
+                    .path(configs.getHrmsEndPoint())
+                    .toUriString();
+
+            // Call HRMS search API
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchResult(
+                    new StringBuilder(uri), searchRequest
+            );
+
+            // Parse response to check if employee exists
+            if (response != null && response.containsKey("Employees")) {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> employees = (List<Map<String, Object>>) response.get("Employees");
+                return employees != null && !employees.isEmpty();
+            }
+
+            return false;
+        } catch (Exception e) {
+            log.warn("Error checking if employee exists by mobile number {}: {}. Assuming not present.", 
+                    mobileNumber, e.getMessage());
+            // If check fails, return false to allow creation (fail open approach)
+            return false;
+        }
+    }
+
+    /**
+     * Creates an HRMS employee for the facility POC user with HCR role.
+     * 
+     * @param facility The facility for which to create the POC employee
+     * @param requestInfo RequestInfo for the API call
+     * @return true if employee was created successfully, false otherwise
+     */
+    public boolean createFacilityPOCEmployee(Facility facility, RequestInfo requestInfo) {
+        HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
+        
+        if (facilityDetails == null || facilityDetails.getHfrId() == null || 
+            facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null || 
+            facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
+            log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name", 
+                    facility.getFacilityId());
+            return false;
+        }
+
+        try {
+            // Build employee object
+            Map<String, Object> user = new HashMap<>();
+            user.put("userName", facilityDetails.getHfrId()); // Use HFR ID as username
+            user.put("name", facilityDetails.getPocName());
+            user.put("mobileNumber", facilityDetails.getPocContact());
+            user.put("tenantId", facility.getTenantId());
+            user.put("type", "EMPLOYEE");
+            user.put("active", true);
+
+            // Add roles - COMPLAINANT and EMPLOYEE roles
+            List<Map<String, Object>> roles = new ArrayList<>();
+            
+            // COMPLAINANT role
+            Map<String, Object> complainantRole = new HashMap<>();
+            complainantRole.put("code", "COMPLAINANT");
+            complainantRole.put("name", "Complainant");
+            complainantRole.put("tenantId", facility.getTenantId());
+            roles.add(complainantRole);
+            
+            // EMPLOYEE role
+            Map<String, Object> employeeRole = new HashMap<>();
+            employeeRole.put("code", "EMPLOYEE");
+            employeeRole.put("name", "Employee");
+            employeeRole.put("tenantId", facility.getTenantId());
+            roles.add(employeeRole);
+            
+            user.put("roles", roles);
+
+            // Get current timestamp for dateOfAppointment
+            long currentTimestamp = Instant.now().toEpochMilli();
+
+            // Build employee object
+            Map<String, Object> employee = new HashMap<>();
+            employee.put("code", null); // HRMS will generate employee code
+            employee.put("employeeStatus", "EMPLOYED");
+            employee.put("employeeType", "PERMANENT");
+            employee.put("dateOfAppointment", currentTimestamp);
+            employee.put("tenantId", facility.getTenantId());
+            employee.put("isActive", true);
+            employee.put("user", user);
+
+            // Add jurisdictions with facility boundary
+            if (facility.getBoundaryCode() != null && !facility.getBoundaryCode().isBlank()) {
+                List<Map<String, Object>> jurisdictions = new ArrayList<>();
+                Map<String, Object> jurisdiction = new HashMap<>();
+                jurisdiction.put("hierarchy", "ADMIN");
+                jurisdiction.put("boundary", facility.getBoundaryCode());
+                jurisdiction.put("boundaryType", "Facility");
+                jurisdiction.put("tenantId", facility.getTenantId());
+                jurisdiction.put("isActive", true);
+                jurisdictions.add(jurisdiction);
+                employee.put("jurisdictions", jurisdictions);
+            }
+
+            // Add assignments with designation
+            List<Map<String, Object>> assignments = new ArrayList<>();
+            Map<String, Object> assignment = new HashMap<>();
+            
+            // Add designation code if available
+            if (facilityDetails.getPocDesignation() != null && !facilityDetails.getPocDesignation().isBlank()) {
+                String designationCode = facilityDetails.getPocDesignation().toUpperCase().replaceAll("\\s+", "_");
+                assignment.put("designation", designationCode);
+            }
+            
+            assignment.put("fromDate", currentTimestamp);
+            assignment.put("toDate", null);
+            assignment.put("tenantid", facility.getTenantId());
+            assignment.put("isCurrentAssignment", true);
+            assignments.add(assignment);
+            employee.put("assignments", assignments);
+
+            // Build create request
+            Map<String, Object> createRequest = new HashMap<>();
+            createRequest.put("RequestInfo", requestInfo);
+            createRequest.put("Employees", Arrays.asList(employee));
+
+            // Construct the URI
+            String uri = UriComponentsBuilder
+                    .fromUriString(configs.getHrmsHost())
+                    .path(configs.getHrmsCreateEndpoint())
+                    .toUriString();
+
+            // Call HRMS create API
+            Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchResult(
+                    new StringBuilder(uri), createRequest
+            );
+
+            if (response != null) {
+                log.info("Successfully created POC employee for facility {} with mobile number {}", 
+                        facility.getFacilityId(), facilityDetails.getPocContact());
+                return true;
+            }
+
+            return false;
+        } catch (Exception e) {
+            log.error("Error creating POC employee for facility {}: {}", 
+                    facility.getFacilityId(), e.getMessage(), e);
+            return false;
+        }
+    }
+}
+

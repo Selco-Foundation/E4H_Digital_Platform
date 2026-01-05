@@ -7,6 +7,7 @@ import facility.util.QueryBuilderResult;
 import facility.util.QueryBuilderUtil;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -30,6 +31,7 @@ public class FacilityService {
     private final BoundaryService boundaryService;
     private final Configuration configs;
     private final FacilityKibanaMapper facilityKibanaMapper;
+    private final HRMSService hrmsService;
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -41,7 +43,8 @@ public class FacilityService {
             FacilityQueryDao facilityQueryDao,
             BoundaryService boundaryService,
             Configuration configs,
-            FacilityKibanaMapper facilityKibanaMapper
+            FacilityKibanaMapper facilityKibanaMapper,
+            HRMSService hrmsService
     ) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
@@ -53,6 +56,7 @@ public class FacilityService {
         this.boundaryService = boundaryService;
         this.configs = configs;
         this.facilityKibanaMapper = facilityKibanaMapper;
+        this.hrmsService = hrmsService;
     }
 
     /**
@@ -174,8 +178,12 @@ public class FacilityService {
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
                 
-                // If facility is ONM ready, push to Kibana for indexing
+                // If facility is ONM ready, create POC user and push to Kibana for indexing
                 if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+                    // Create POC user if not exists (check by phone number uniqueness)
+                    createFacilityPOCUserIfNotExists(facility, tenantId, request.getRequestInfo());
+                    
+                    // Push to Kibana for indexing
                     FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
                     facilityRepository.pushToKibana(kibanaIndex);
                 }
@@ -226,6 +234,47 @@ public class FacilityService {
     }
 
     /**
+     * Creates POC user as HRMS employee if not exists (checks by phone number uniqueness).
+     * Validates required fields (HFR ID, POC contact, POC name) before attempting creation.
+     *
+     * @param facility The facility for which to create POC user
+     * @param tenantId The tenant ID
+     * @param requestInfo RequestInfo for API calls
+     */
+    private void createFacilityPOCUserIfNotExists(Facility facility, String tenantId, RequestInfo requestInfo) {
+        HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
+        
+        if (facilityDetails == null || facilityDetails.getHfrId() == null || 
+            facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null || 
+            facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
+            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name", 
+                    facility.getFacilityId());
+            return;
+        }
+        
+        // Check if employee already exists by mobile number
+        boolean employeeExists = hrmsService.employeeExistsByMobileNumber(
+                facilityDetails.getPocContact(),
+                tenantId,
+                requestInfo
+        );
+        
+        if (!employeeExists) {
+            // Create POC user as HRMS employee with COMPLAINANT and EMPLOYEE roles
+            boolean created = hrmsService.createFacilityPOCEmployee(facility, requestInfo);
+            if (created) {
+                log.info("Successfully created POC user for facility {} with HFR ID {}", 
+                        facility.getFacilityId(), facilityDetails.getHfrId());
+            } else {
+                log.warn("Failed to create POC user for facility {}", facility.getFacilityId());
+            }
+        } else {
+            log.info("POC user with mobile number {} already exists for facility {}, skipping creation", 
+                    facilityDetails.getPocContact(), facility.getFacilityId());
+        }
+    }
+
+    /**
      * Updates a facility after validating existence, MDMS values, and boundaries.
      * Pushes the update request to the Kafka topic for persistence.
      *
@@ -239,10 +288,12 @@ public class FacilityService {
             throw new IllegalArgumentException("facilityId and tenantId must be provided for update");
         }
 
-        // Check if the facility exists in DB before attempting an update
-        String checkSql = "SELECT COUNT(*) FROM facility WHERE id = ? AND tenant_id = ?";
-        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, update.getFacilityId(), update.getTenantId());
-        if (count == null || count == 0) {
+        // Fetch existing facility to check current state
+        String fetchExistingFacilitySql = "SELECT * FROM facility WHERE id = ? AND tenant_id = ?";
+        Facility existingFacility;
+        try {
+            existingFacility = jdbcTemplate.queryForObject(fetchExistingFacilitySql, new Object[]{update.getFacilityId(), update.getTenantId()}, facilityRowMapper.rowMapper);
+        } catch (EmptyResultDataAccessException e) {
             return null; // facility not found
         }
 
@@ -271,9 +322,30 @@ public class FacilityService {
 
         facilityRepository.pushUpdateFacility(request);
         
-        // If user sent isOnmReady = true, check if facility exists in Kibana, if not then push
+        // If user sent isOnmReady = true, handle POC user creation and Kibana push
         if (Boolean.TRUE.equals(update.getIsOnmReady())) {
-            // Check if facility already exists in Kibana
+            // Merge update request data with existing facility data to get complete facility info
+            Facility facilityForProcessing = Facility.builder()
+                    .facilityId(facility.getFacilityId())
+                    .tenantId(facility.getTenantId())
+                    .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
+                    .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
+                    .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
+                    .facilityCategory(existingFacility.getFacilityCategory())
+                    .facilityOwnership(existingFacility.getFacilityOwnership())
+                    .facilityRegion(existingFacility.getFacilityRegion())
+                    .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
+                    .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
+                    .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
+                    .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
+                    .isOnmReady(true)
+                    .build();
+
+            // Always check/create POC user when isOnmReady is true (whether transitioning or already true)
+            // This ensures POC user is created if missing, even if facility was already ONM ready
+            createFacilityPOCUserIfNotExists(facilityForProcessing, update.getTenantId(), request.getRequestInfo());
+            
+            // Check if facility already exists in Kibana, if not then push
             boolean existsInKibana = facilityKibanaMapper.existsInKibana(
                     update.getFacilityId(), 
                     update.getTenantId(), 
@@ -282,16 +354,6 @@ public class FacilityService {
             
             if (existsInKibana) {
                 log.info("Facility {} already exists in Kibana, skipping push", update.getFacilityId());
-                return facility;
-            }
-            
-            // Fetch full facility from DB only to get missing fields not in update request (like facilityCategory, facilityOwnership, etc.)
-            String fetchFullFacilitySql = "SELECT * FROM facility WHERE id = ? AND tenant_id = ?";
-            Facility existingFacility;
-            try {
-                existingFacility = jdbcTemplate.queryForObject(fetchFullFacilitySql, new Object[]{update.getFacilityId(), update.getTenantId()}, facilityRowMapper.rowMapper);
-            } catch (EmptyResultDataAccessException e) {
-                log.warn("Facility not found when trying to push to Kibana: {}", update.getFacilityId());
                 return facility;
             }
             
