@@ -74,6 +74,9 @@ public class Configuration {
     @Value("${egov.hrms.create.endpoint}")
     private String hrmsCreateEndpoint;
 
+    @Value("${egov.hrms.default.department.code}")
+    private String hrmsDefaultDepartmentCode;
+
 
     //URLShortening
     @Value("${egov.url.shortner.host}")
