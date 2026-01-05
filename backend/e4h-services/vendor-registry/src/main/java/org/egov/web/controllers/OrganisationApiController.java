@@ -81,6 +81,7 @@ public class OrganisationApiController {
         OrgUserRequest orgUserList = userService.createOrgUser(request);
         OrgUserResponse response = OrgUserResponse.builder()
                 .user(orgUserList.getUser())
+                .userId(orgUserList.getUserId())
                 .id(orgUserList.getId())
                 .organizationId(orgUserList.getOrganizationId())
                 .auditDetails(orgUserList.getAuditDetails())
@@ -94,7 +95,7 @@ public class OrganisationApiController {
             @Valid @ModelAttribute URLParams urlParams,
             @ApiParam(value = "Capture details of Project staff.", required = true) @Valid @RequestBody OrgUserSearchRequest request
     ) throws Exception {
-        List<OrgUserEnriched> orgUserList = userService.searchOrganisationUsers(
+        List<OrgUser> orgUserList = userService.searchOrganisationUsers(
                 request,
                 urlParams
         );
@@ -107,10 +108,24 @@ public class OrganisationApiController {
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
-    @RequestMapping(value = "/user/_delete", method = RequestMethod.POST)
-    public ResponseEntity<OrgUserResponse> deleteUserOrg(@ApiParam(value = "Delete org user.", required = true) @Valid @RequestBody OrgUserRequest request) {
+    @RequestMapping(value = "/user/_update", method = RequestMethod.POST)
+    public ResponseEntity<OrgUserResponse> orgUserUpdate(@ApiParam(value = "Capture linkage of Project and staff user.", required = true) @Valid @RequestBody OrgUserRequest request) {
 
-        OrgUserRequest orgUserList = userService.deleteUserOrg(request);
+        OrgUserRequest orgUserList = userService.updateOrgUser(request);
+        OrgUserResponse response = OrgUserResponse.builder()
+                .user(orgUserList.getUser())
+                .id(orgUserList.getId())
+                .organizationId(orgUserList.getOrganizationId())
+                .auditDetails(orgUserList.getAuditDetails())
+                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
+                .build();
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @RequestMapping(value = "/user/_delete", method = RequestMethod.POST)
+    public ResponseEntity<OrgUserResponse> deleteUserOrg(@ApiParam(value = "Delete org user.", required = true) @Valid @RequestBody DeleteOrgUserRequest request) {
+
+        DeleteOrgUserRequest orgUserList = userService.deleteUserOrg(request);
         OrgUserResponse response = OrgUserResponse.builder()
                 .user(orgUserList.getUser())
                 .id(orgUserList.getId())

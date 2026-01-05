@@ -30,7 +30,7 @@ public class OrgUser {
     @JsonProperty("userId")
     private String userId;
 
-    @JsonProperty("userId")
+    @JsonProperty("user")
     @NotNull
     private User user = null;
 

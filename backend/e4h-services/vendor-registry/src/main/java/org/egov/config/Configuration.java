@@ -86,6 +86,9 @@ public class Configuration {
     @Value("${org.user.kafka.create.topic}")
     private String createOrgUserTopic;
 
+    @Value("${org.user.kafka.update.topic}")
+    private String updateOrgUserTopic;
+
     @Value("${org.user.kafka.delete.topic}")
     private String deleteOrgUserTopic;
 
@@ -138,7 +141,13 @@ public class Configuration {
     private String hrmsHost;
 
     @Value("${egov.hrms.search.endpoint}")
-    private String hrmsEndPoint;
+    private String hrmsSearchEndPoint;
+
+    @Value("${egov.hrms.create.endpoint}")
+    private String hrmsCreateEndPoint;
+
+    @Value("${egov.hrms.update.endpoint}")
+    private String hrmsUpdateEndPoint;
 
     // URLShortening
     @Value("${egov.url.shortner.host}")

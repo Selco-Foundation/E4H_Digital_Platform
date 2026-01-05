@@ -40,69 +40,33 @@
 
 package org.egov.web.models;
 
-import lombok.*;
-import org.egov.common.contract.models.AuditDetails;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.egov.common.contract.request.RequestInfo;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.springframework.validation.annotation.Validated;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-import java.util.ArrayList;
 import java.util.List;
 
 @Validated
-@AllArgsConstructor
-@EqualsAndHashCode
-@Getter
-@NoArgsConstructor
-@Setter
-@ToString
+@Data
 @Builder
-public class Employee {
+@NoArgsConstructor
+@AllArgsConstructor
+public class EmployeeRequest {
 
-    private Long id;
+	@NotNull
+	@JsonProperty("RequestInfo")
+	private RequestInfo requestInfo;
 
-    @Size(max = 1024)
-    private String uuid;
-
-    @Size(min = 1, max = 256)
-    private String code;
-
-    @Size(max = 250)
-    private String employeeStatus;
-
-    @NotNull
-    @Size(max = 250)
-    private String employeeType;
-
-    private Long dateOfAppointment;
-
-    @Valid
-    @NotEmpty
-    @Size(min = 1,max = 50)
-    private List<Jurisdiction> jurisdictions = new ArrayList<>();
-
-
-    @Valid
-    @NotEmpty
-    @Size(min = 1)
-    private List<Assignment> assignments = new ArrayList<>();
-
-
-    private Boolean IsActive;
-
-    @NotNull
-    @Size(max = 250)
-    private String tenantId;
-
-    private AuditDetails auditDetails;
-
-    private Boolean reActivateEmployee;
-
-    @Valid
-    @NotNull
-    private User user;
-
+	@Valid
+	@NotEmpty
+	@JsonProperty("Employees")
+	private List<Employee> employees;
 
 }

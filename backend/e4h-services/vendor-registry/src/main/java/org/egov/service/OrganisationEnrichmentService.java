@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.config.Configuration;
+import org.egov.tracer.model.CustomException;
+import org.egov.util.HRMSUtils;
 import org.egov.util.IdgenUtil;
 import org.egov.util.OrganisationUtil;
 import org.egov.web.models.*;
@@ -22,13 +24,15 @@ public class OrganisationEnrichmentService {
     private final OrganisationUtil organisationUtil;
 
     private final IdgenUtil idgenUtil;
+    private final HRMSUtils hrmsUtils;
 
     private final Configuration config;
 
     @Autowired
-    public OrganisationEnrichmentService(OrganisationUtil organisationUtil, IdgenUtil idgenUtil, Configuration config) {
+    public OrganisationEnrichmentService(OrganisationUtil organisationUtil, IdgenUtil idgenUtil, HRMSUtils hrmsUtils, Configuration config) {
         this.organisationUtil = organisationUtil;
         this.idgenUtil = idgenUtil;
+        this.hrmsUtils = hrmsUtils;
         this.config = config;
     }
 
@@ -213,10 +217,31 @@ public class OrganisationEnrichmentService {
         String tenantId = organisationList.get(0).getTenantId();
 
         for (Organisation organisation : organisationList) {
+            // If org has a POC user (check if org_poc_username exists and has associated HRMS user)
+            if(organisation.getOrgPocUsername() !=null && !organisation.getOrgPocUsername().isEmpty()){
+                Employee employee = hrmsUtils.getUserById(orgRequest, organisation.getOrgPocUsername());
+                if (employee != null) {
+                    // Updating POC user details (name, phone, email) in HRMS
+                    employee.getUser().setName(organisation.getName());
+                    employee.getUser().setMobileNumber(organisation.getOrgPocPhone());
+                    employee.getUser().setEmailId(organisation.getOrgPocEmail());
+
+                    EmployeeRequest employeeRequest = EmployeeRequest.builder().requestInfo(orgRequest.getRequestInfo()).employees(List.of(employee)).build();
+                    List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+                    if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
+                        // User updated successfully
+                        Employee employeeResp = updatedEmployees.get(0);
+                        log.info("Organisation with username {} updated successfully", organisation.getOrgPocUsername());
+                    }
+                }
+            }
+
+            // Encrypt org_poc_phone before storing in organisation table
             String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(organisation.getOrgPocPhone());
             if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
                 organisation.setOrgPocPhone(encryptedPocMobileNumber);
             }
+
             List<Function> functionList = organisation.getFunctions();
             List<Identifier> identifierList = organisation.getIdentifiers();
             List<Document> documentList = organisation.getDocuments();

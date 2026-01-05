@@ -40,69 +40,51 @@
 
 package org.egov.web.models;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import org.egov.common.contract.models.AuditDetails;
-import org.hibernate.validator.constraints.NotEmpty;
 import org.springframework.validation.annotation.Validated;
 
-import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
-import java.util.ArrayList;
-import java.util.List;
 
 @Validated
+@EqualsAndHashCode(exclude = {"auditDetails"})
 @AllArgsConstructor
-@EqualsAndHashCode
+@Builder
 @Getter
 @NoArgsConstructor
 @Setter
 @ToString
-@Builder
-public class Employee {
+public class Assignment {
 
-    private Long id;
+	private String id;
 
-    @Size(max = 1024)
-    private String uuid;
+	private Long position;
 
-    @Size(min = 1, max = 256)
-    private String code;
+	@NotNull
+	private String designation;
 
-    @Size(max = 250)
-    private String employeeStatus;
+	@NotNull
+	private String department;
 
-    @NotNull
-    @Size(max = 250)
-    private String employeeType;
+	@NotNull
+	private Long fromDate;
 
-    private Long dateOfAppointment;
+	private Long toDate;
 
-    @Valid
-    @NotEmpty
-    @Size(min = 1,max = 50)
-    private List<Jurisdiction> jurisdictions = new ArrayList<>();
+	private String govtOrderNumber;
 
+	private String tenantid;
 
-    @Valid
-    @NotEmpty
-    @Size(min = 1)
-    private List<Assignment> assignments = new ArrayList<>();
+	private  String reportingTo;
 
+	@JsonProperty("isHOD")
+	private Boolean isHOD=false;
+	
+	@NotNull
+	@JsonProperty("isCurrentAssignment")
+	private Boolean isCurrentAssignment;
 
-    private Boolean IsActive;
-
-    @NotNull
-    @Size(max = 250)
-    private String tenantId;
-
-    private AuditDetails auditDetails;
-
-    private Boolean reActivateEmployee;
-
-    @Valid
-    @NotNull
-    private User user;
-
+	private AuditDetails auditDetails;
 
 }
