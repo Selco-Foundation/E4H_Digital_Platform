@@ -86,7 +86,7 @@ public class HRMSService {
             facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null || 
             facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
             log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name", 
-                    facility.getFacilityId());
+                    sanitizeForLog(facility.getFacilityId()));
             return false;
         }
 
@@ -180,16 +180,30 @@ public class HRMSService {
 
             if (response != null) {
                 log.info("Successfully created POC employee for facility {} with mobile number {}", 
-                        facility.getFacilityId(), facilityDetails.getPocContact());
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getPocContact()));
                 return true;
             }
 
             return false;
         } catch (Exception e) {
             log.error("Error creating POC employee for facility {}: {}", 
-                    facility.getFacilityId(), e.getMessage(), e);
+                    sanitizeForLog(facility.getFacilityId()), e.getMessage(), e);
             return false;
         }
+    }
+
+    /**
+     * Sanitizes a string value for safe logging by removing control characters
+     * that could be used for log injection attacks (newlines, carriage returns).
+     * 
+     * @param value The string value to sanitize
+     * @return null if input is null, otherwise the sanitized string with \r and \n replaced by spaces
+     */
+    private String sanitizeForLog(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replace('\r', ' ').replace('\n', ' ');
     }
 }
 

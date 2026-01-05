@@ -238,7 +238,6 @@ public class FacilityService {
      * Validates required fields (HFR ID, POC contact, POC name) before attempting creation.
      *
      * @param facility The facility for which to create POC user
-     * @param tenantId The tenant ID
      * @param requestInfo RequestInfo for API calls
      */
     private void createFacilityPOCUserIfNotExists(Facility facility, String tenantId, RequestInfo requestInfo) {
@@ -248,7 +247,7 @@ public class FacilityService {
             facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null || 
             facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
             log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name", 
-                    facility.getFacilityId());
+                    sanitizeForLog(facility.getFacilityId()));
             return;
         }
         
@@ -264,13 +263,13 @@ public class FacilityService {
             boolean created = hrmsService.createFacilityPOCEmployee(facility, requestInfo);
             if (created) {
                 log.info("Successfully created POC user for facility {} with HFR ID {}", 
-                        facility.getFacilityId(), facilityDetails.getHfrId());
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
             } else {
-                log.warn("Failed to create POC user for facility {}", facility.getFacilityId());
+                log.warn("Failed to create POC user for facility {}", sanitizeForLog(facility.getFacilityId()));
             }
         } else {
             log.info("POC user with mobile number {} already exists for facility {}, skipping creation", 
-                    facilityDetails.getPocContact(), facility.getFacilityId());
+                    sanitizeForLog(facilityDetails.getPocContact()), sanitizeForLog(facility.getFacilityId()));
         }
     }
 
@@ -292,7 +291,12 @@ public class FacilityService {
         String fetchExistingFacilitySql = "SELECT * FROM facility WHERE id = ? AND tenant_id = ?";
         Facility existingFacility;
         try {
-            existingFacility = jdbcTemplate.queryForObject(fetchExistingFacilitySql, new Object[]{update.getFacilityId(), update.getTenantId()}, facilityRowMapper.rowMapper);
+            existingFacility = jdbcTemplate.queryForObject(
+                    fetchExistingFacilitySql,
+                    facilityRowMapper.rowMapper,
+                    update.getFacilityId(),
+                    update.getTenantId()
+            );
         } catch (EmptyResultDataAccessException e) {
             return null; // facility not found
         }
@@ -353,7 +357,7 @@ public class FacilityService {
             );
             
             if (existsInKibana) {
-                log.info("Facility {} already exists in Kibana, skipping push", update.getFacilityId());
+                log.info("Facility {} already exists in Kibana, skipping push", sanitizeForLog(update.getFacilityId()));
                 return facility;
             }
             
@@ -377,7 +381,7 @@ public class FacilityService {
             // Transform to Kibana index format and push
             FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facilityForKibana, request.getRequestInfo());
             facilityRepository.pushToKibana(kibanaIndex);
-            log.info("Facility {} pushed to Kibana successfully", update.getFacilityId());
+            log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
         }
         
         return facility;
@@ -440,13 +444,13 @@ public class FacilityService {
     public FacilitySummary getFacilitySummary(String facilityId) {
         String sql = "SELECT facility_name, facility_type FROM facility WHERE facility_id = ?";
         try {
-            return jdbcTemplate.queryForObject(sql, new Object[]{facilityId}, (rs, rowNum) -> {
+            return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
                 String name = rs.getString("facility_name");
                 String type = rs.getString("facility_type");
                 FacilitySummary summary = new FacilitySummary();
                 summary.setSummary("Facility '" + name + "' is of type '" + type + "'.");
                 return summary;
-            });
+            }, facilityId);
         } catch (EmptyResultDataAccessException e) {
             return null;
         }
@@ -455,7 +459,7 @@ public class FacilityService {
     public int countFacilities(FacilitySearchRequest request) {
         QueryBuilderResult result = QueryBuilderUtil.buildWhereClause(request);
         String query = "SELECT COUNT(*) FROM facility" + result.getWhereClause();
-        return jdbcTemplate.queryForObject(query, result.getParams().toArray(), Integer.class);
+        return jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
     }
 
     public int countFacilitiesForBulkSearch(FacilityBulkSearchRequest request) {
@@ -463,8 +467,20 @@ public class FacilityService {
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
         String query = "SELECT COUNT(*) FROM facility" + result.getWhereClause();
-        return jdbcTemplate.queryForObject(query, result.getParams().toArray(), Integer.class);
+        return jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
     }
 
-
+    /**
+     * Sanitizes a string value for safe logging by removing control characters
+     * that could be used for log injection attacks (newlines, carriage returns).
+     * 
+     * @param value The string value to sanitize
+     * @return null if input is null, otherwise the sanitized string with \r and \n replaced by spaces
+     */
+    private String sanitizeForLog(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replace('\r', ' ').replace('\n', ' ');
+    }
 }
