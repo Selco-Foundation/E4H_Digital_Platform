@@ -36,29 +36,25 @@ public class HRMSService {
 
         try {
             // Build HRMS search request
-            Map<String, Object> searchCriteria = new HashMap<>();
-            searchCriteria.put("mobileNumber", mobileNumber);
-            searchCriteria.put("tenantId", tenantId);
-
-            Map<String, Object> searchRequest = new HashMap<>();
-            searchRequest.put("RequestInfo", requestInfo);
-            searchRequest.put("Criteria", searchCriteria);
-
-            // Construct the URI
             String uri = UriComponentsBuilder
                     .fromUriString(configs.getHrmsHost())
                     .path(configs.getHrmsEndPoint())
+                    .queryParam("phone", mobileNumber)
+                    .queryParam("tenantId", tenantId)
+                    .queryParam("isActive", true)
                     .toUriString();
 
+            // Request body should only contain RequestInfo (Criteria goes in query params)
+            Map<String, Object> searchRequest = new HashMap<>();
+            searchRequest.put("RequestInfo", requestInfo);
+
             // Call HRMS search API
-            @SuppressWarnings("unchecked")
             Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchResult(
                     new StringBuilder(uri), searchRequest
             );
 
             // Parse response to check if employee exists
             if (response != null && response.containsKey("Employees")) {
-                @SuppressWarnings("unchecked")
                 List<Map<String, Object>> employees = (List<Map<String, Object>>) response.get("Employees");
                 return employees != null && !employees.isEmpty();
             }
