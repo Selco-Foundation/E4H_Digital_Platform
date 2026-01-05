@@ -149,6 +149,7 @@ public class HRMSService {
             if (facilityDetails.getPocDesignation() != null && !facilityDetails.getPocDesignation().isBlank()) {
                 String designationCode = facilityDetails.getPocDesignation();
                 assignment.put("designation", designationCode);
+                log.info("HRMS Create - Setting designation: '{}' for facility {}", designationCode, sanitizeForLog(facility.getFacilityId()));
             }
             assignment.put("department", configs.getHrmsDefaultDepartmentCode());
             assignment.put("fromDate", currentTimestamp);
