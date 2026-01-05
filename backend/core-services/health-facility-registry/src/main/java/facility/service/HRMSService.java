@@ -141,16 +141,16 @@ public class HRMSService {
                 employee.put("jurisdictions", jurisdictions);
             }
 
-            // Add assignments with designation
+            // Add assignments with designation and department
             List<Map<String, Object>> assignments = new ArrayList<>();
             Map<String, Object> assignment = new HashMap<>();
             
             // Add designation code if available
             if (facilityDetails.getPocDesignation() != null && !facilityDetails.getPocDesignation().isBlank()) {
-                String designationCode = facilityDetails.getPocDesignation().toUpperCase().replaceAll("\\s+", "_");
+                String designationCode = facilityDetails.getPocDesignation();
                 assignment.put("designation", designationCode);
             }
-            
+            assignment.put("department", configs.getHrmsDefaultDepartmentCode());
             assignment.put("fromDate", currentTimestamp);
             assignment.put("toDate", null);
             assignment.put("tenantid", facility.getTenantId());
