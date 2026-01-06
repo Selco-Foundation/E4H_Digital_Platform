@@ -171,7 +171,7 @@ async def get_facility_ingestion_template_with_data(
         logger.error(f"Unhandled error in get_facility_ingestion_template: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
-@router.get('/boundaryIngestionTemplate',
+@router.post('/boundaryIngestionTemplate',
             summary='Generate empty boundary ingestion template Excel file',
             response_description="Returns an empty Excel template for boundary ingestion")
 async def get_boundary_ingestion_template(
