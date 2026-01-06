@@ -346,7 +346,7 @@ async def get_facility_ingestion_template(
         output_file_path = create_temp_file(suffix=".xlsx")
         try:
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info, 'data-ingestion.FacilityIngestionSchema')
-            boundary_data = facility_service.get_all_boundaries(request_info)
+            boundary_data = facility_service.get_all_boundaries()
             vendor_data = facility_service.get_all_vendor_codes(request_info)
         except Exception as e:
             logger.error(f"Error fetching data from external services: {e}")
