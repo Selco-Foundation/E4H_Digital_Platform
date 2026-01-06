@@ -89,5 +89,7 @@ public class Asset {
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails = null;
 
-
+    @JsonProperty("serialNumberSearch")
+    @NotNull
+    private List<String> serialNumberSearch = null; // Used as asset search criteria
 }

@@ -126,12 +126,14 @@ public class V1ApiController {
                 .assetId(criteria.getAssetID())
                 .wfStatus(criteria.getWfStatus())
                 .facilityID(criteria.getFacilityID())
+                .assetTypeID(criteria.getAssetType())
                 .activityFacilityID(criteria.getActivityFacilityID())
-                .serialNumber(criteria.getSerialNumber())
+                .serialNumberSearch(criteria.getSerialNumber())
                 .modelNumber(criteria.getModelNumber())
                 .brandID(criteria.getBrandID())
                 .build();
         List<Asset> searchResponse = assetService.fetchAssetsWithDocuments(asset,limit, offset);
+        Integer count = assetService.getAssetsCount(asset);
         return new ResponseEntity<>(searchResponse, HttpStatus.OK);
     }
 
