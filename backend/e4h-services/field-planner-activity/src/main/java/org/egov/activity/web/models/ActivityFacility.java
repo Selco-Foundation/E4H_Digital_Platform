@@ -53,6 +53,9 @@ public class ActivityFacility {
     @JsonProperty("activityId")
     protected String activityId;
 
+    @JsonProperty("activityType")
+    protected String activityType;
+
     @JsonProperty("scheduledAt")
     private Long scheduledAt = null;
 

@@ -30,9 +30,9 @@ public class ActivityQueryBuilder {
             "fa.last_modified_time as fa_lastModifiedTime, fac.id AS facilityId, fac.tenant_id AS fac_tenantId, fac.facility_category AS fac_facilityCategory, fac.facility_type AS fac_facilityType, " +
             "fac.facility_subtype AS fac_facilitySubtype, fac.facility_name AS fac_facilityName, fac.facility_ownership AS fac_facilityOwnership, fac.facility_region AS fac_facilityRegion, " +
             "fac.addressid, fac.facility_details AS fac_facilityDetails, fac.wf_status AS fac_status, fac.is_active AS fac_isActive, fac.additional_details AS fac_additionalDetails, fac.created_by AS fac_createdBy, " +
-            "fac.created_at, fac.updated_by, fac.updated_at, fac.boundary_code AS fac_boundaryCode" +
+            "fac.created_at, fac.updated_by, fac.updated_at, fac.boundary_code AS fac_boundaryCode, ac.name AS activity_type " +
             " " +
-            "from facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id";
+            "from facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id LEFT JOIN public.activities AS ac ON fa.activity_id = ac.id";
 
     private static final String STATUS_COUNT_QUERY = "SELECT status, COUNT(*) AS occurrences " +
             "FROM facility_activities fa where fa.status is not null AND fa.isdeleted = false ";
