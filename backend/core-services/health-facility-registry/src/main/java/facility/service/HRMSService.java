@@ -61,8 +61,7 @@ public class HRMSService {
 
             return false;
         } catch (Exception e) {
-            log.warn("Error checking if employee exists by mobile number {}: {}. Assuming not present.", 
-                    mobileNumber, e.getMessage());
+            log.warn("Error checking if employee exists by mobile number.");
             // If check fails, return false to allow creation (fail open approach)
             return false;
         }
@@ -149,7 +148,6 @@ public class HRMSService {
             if (facilityDetails.getPocDesignation() != null && !facilityDetails.getPocDesignation().isBlank()) {
                 String designationCode = facilityDetails.getPocDesignation();
                 assignment.put("designation", designationCode);
-                log.info("HRMS Create - Setting designation: '{}' for facility {}", designationCode, sanitizeForLog(facility.getFacilityId()));
             }
             assignment.put("department", configs.getHrmsDefaultDepartmentCode());
             assignment.put("fromDate", currentTimestamp);
