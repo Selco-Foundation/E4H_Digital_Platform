@@ -17,7 +17,7 @@ const FACard = () => {
   const userType = "employee";
 
   const handleManageFacilitiesRedirection = () => {
-    history.push(`/#`);
+    history.push(`/${window?.contextPath}/employee/fa/facilities`);
   };
 
   const handleManageBoundariesRedirection = () => {
