@@ -140,10 +140,10 @@ public class FacilityKibanaMapper {
         // Log boundary object for debugging
         if (boundaryInfo != null) {
             log.info("Boundary object built for facility {}: facilityCode={}, blockCode={}, districtCode={}, stateCode={}, countryCode={}",
-                    facility.getFacilityId(), boundaryInfo.getFacilityCode(), boundaryInfo.getBlockCode(), 
-                    boundaryInfo.getDistrictCode(), boundaryInfo.getStateCode(), boundaryInfo.getCountryCode());
+                    sanitizeForLog(facility.getFacilityId()), sanitizeForLog(boundaryInfo.getFacilityCode()), sanitizeForLog(boundaryInfo.getBlockCode()), 
+                    sanitizeForLog(boundaryInfo.getDistrictCode()), sanitizeForLog(boundaryInfo.getStateCode()), sanitizeForLog(boundaryInfo.getCountryCode()));
         } else {
-            log.warn("Boundary object is null for facility {}", facility.getFacilityId());
+            log.warn("Boundary object is null for facility {}", sanitizeForLog(facility.getFacilityId()));
         }
 
         FacilityKibanaIndex result = builder.build();
@@ -151,7 +151,7 @@ public class FacilityKibanaMapper {
         if (result.getBoundary() != null) {
             log.info("Boundary in FacilityKibanaIndex: {}", result.getBoundary());
         } else {
-            log.warn("Boundary is null in FacilityKibanaIndex for facility {}", facility.getFacilityId());
+            log.warn("Boundary is null in FacilityKibanaIndex for facility {}", sanitizeForLog(facility.getFacilityId()));
         }
         return result;
     }
@@ -188,7 +188,7 @@ public class FacilityKibanaMapper {
 
         } catch (Exception e) {
             log.error("Error fetching boundary hierarchy for facility {}: {}", 
-                     facility.getFacilityId(), e.getMessage(), e);
+                     sanitizeForLog(facility.getFacilityId()), e.getMessage(), e);
             return null;
         }
     }
@@ -366,7 +366,7 @@ public class FacilityKibanaMapper {
 
         } catch (Exception e) {
             log.warn("Error checking if facility {} exists in Kibana: {}. Assuming not present.", 
-                    facilityId, e.getMessage(), e);
+                    sanitizeForLog(facilityId), e.getMessage(), e);
             // If check fails, return false to allow push (fail open approach)
             return false;
         }
@@ -431,6 +431,20 @@ public class FacilityKibanaMapper {
             log.error("Error parsing search response: {}", e.getMessage(), e);
             return false;
         }
+    }
+
+    /**
+     * Sanitizes a string value for safe logging by removing control characters
+     * that could be used for log injection attacks (newlines, carriage returns).
+     * 
+     * @param value The string value to sanitize
+     * @return null if input is null, otherwise the sanitized string with \r and \n replaced by spaces
+     */
+    private String sanitizeForLog(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replace('\r', ' ').replace('\n', ' ');
     }
 }
 
