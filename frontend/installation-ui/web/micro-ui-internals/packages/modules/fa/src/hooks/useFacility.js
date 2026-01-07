@@ -10,7 +10,7 @@ const fetchFacilities = async (queryFilter) => {
       facilityResponse?.facilities?.map((facility) => ({
         id: facility?.facility_id,
         facilityName: facility?.facility_name,
-        pocName: facility?.facility_details?.pocName,
+        pocName: facility?.facility_poc_name,
       })) || [],
     total: facilityResponse?.totalCount,
   };

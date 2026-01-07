@@ -3,6 +3,7 @@ import { DownloadIcon, Toast, PopUp, Button } from "@egovernments/digit-ui-react
 import CustomUploadIcon from "../Custom/CustomUploadIcon";
 import { FacilityService } from "../../services/Facility";
 import FacilityForm from "../FacilityForm";
+import FacilityModal from "../FacilityModal";
 
 const FacilityAdminActions = ({ t }) => {
 
@@ -177,44 +178,12 @@ const FacilityAdminActions = ({ t }) => {
           />
         )}
         {showAddFacilityModal && (
-          <PopUp>
-            <div
-              style={{
-                backgroundColor: "white",
-                position: "fixed",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: "700px",
-                maxWidth: "95%",
-                maxHeight: "90vh",
-                overflowY: "auto",
-                borderRadius: "5px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "20px 30px 0px",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "Roboto",
-                    fontWeight: 700,
-                    fontSize: "24px",
-                    color: "#0B0C0C",
-                  }}
-                >
-                  {t("ADD_FACILITY")}
-                </div>
-                <Button variation="secondary" label={t("CORE_COMMON_CLOSE")} onButtonClick={() => setShowAddFacilityModal(false)} />
-              </div>
-              <FacilityForm t={t} handleFormSubmit={handleAddFacilitySubmit} wrapperStyle={{ paddingTop: "0px" }} />
-            </div>
-          </PopUp>
+          <FacilityModal
+            t={t}
+            title={"ADD_FACILITY"}
+            onSubmit={handleAddFacilitySubmit}
+            onClose={() => setShowAddFacilityModal(false)}
+          />
         )}
       </div>
     </React.Fragment>

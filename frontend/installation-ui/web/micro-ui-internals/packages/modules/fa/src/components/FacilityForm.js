@@ -2,9 +2,9 @@ import React, { useCallback, useMemo } from "react";
 import { FormComposerV2, Loader } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../hooks/useBoundary";
 
-const FacilityForm = ({ t, createdFacility, handleFormSubmit, wrapperStyle = {} }) => {
+const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {} }) => {
 
-  const tenantId = Digit.ULBService.getStateId ? Digit.ULBService.getStateId() : Digit.ULBService.getCurrentTenantId();
+  const tenantId = Digit.ULBService.getCurrentTenantId();
 
   const { data: boundaryData, isLoading: boundaryLoading } = useBoundary();
 
@@ -234,18 +234,21 @@ const FacilityForm = ({ t, createdFacility, handleFormSubmit, wrapperStyle = {} 
   return (
     <div
       style={{
-        padding: "16px",
         position: "relative",
+        paddingBottom: "30px",
         ...wrapperStyle,
       }}
     >
       <FormComposerV2
+        key={JSON.stringify(createdFacility)}
+        defaultValues={createdFacility}
         config={addFacilityFormConfig}
-        onSubmit={handleFormSubmit}
+        onSubmit={onFormSubmit}
         label={t("CORE_COMMON_SUBMIT")}
         onFormValueChange={handleFormValueChange}
         heading={""}
         cardStyle={{ boxShadow: "none" }}
+        submitInForm={false}
         actionClassName={"reverse-actionbar-absolute"}
       />
     </div>

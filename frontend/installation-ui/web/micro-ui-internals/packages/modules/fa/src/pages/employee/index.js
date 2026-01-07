@@ -4,6 +4,7 @@ import { Route, Switch, useRouteMatch } from "react-router-dom";
 import { BreadCrumb } from "@egovernments/digit-ui-components";
 import { useSelector } from "react-redux";
 import FacilityTable from "./FacilityTable";
+import FacilityDetails from "./FacilityDetails";
 
 const FAApp = () => {
   const { t } = useTranslation();
@@ -22,6 +23,11 @@ const FAApp = () => {
       internalLink: `/${window.contextPath}/employee/fa/facilities`,
       show: true,
     },
+    facilityDetails: {
+      content: navigator.workingFacility?.facilityName || "",
+      internalLink: `/${window.contextPath}/employee/fa/facilities/:facilityId`,
+      show: true,
+    },
   };
 
   useEffect(() => {
@@ -37,6 +43,13 @@ const FAApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities]}
           />
           <FacilityTable />
+        </Route>
+        <Route path={`${path}/facilities/:facilityId`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities, breadCrumbsConfig.facilityDetails]}
+          />
+          <FacilityDetails />
         </Route>
       </Switch>
     </div>

@@ -896,3 +896,15 @@ input[type="number"] {
     }
   }
 }
+
+.employeeCard {
+  margin-bottom: 0 !important;
+}
+
+.digit-toast-success {
+  position: absolute;
+  min-width: fit-content;
+  max-width: 200px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
