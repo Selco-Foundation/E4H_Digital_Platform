@@ -176,7 +176,7 @@ async def get_facility_ingestion_template_with_data(
             response_description="Returns an empty Excel template for boundary ingestion")
 async def get_boundary_ingestion_template(
         background_tasks: BackgroundTasks,
-        request_info: str = Form(default="")
+        payload: dict = Body(..., description="Payload object")
 ):
     """
     Generate an empty boundary ingestion template with the required columns.
@@ -184,7 +184,7 @@ async def get_boundary_ingestion_template(
     Columns: Country, State, District, Block, BoundaryCode
     """
     output_file_path = None
-    request_info = request_info_from_json(request_info)
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
     get_authorized_request_info(request_info)
 
     try:
