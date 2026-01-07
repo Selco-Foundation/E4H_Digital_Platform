@@ -3,6 +3,8 @@ package org.egov.amc.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.amc.repository.AssetAmcRepository;
+import org.egov.amc.repository.ScheduledVisitRepository;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
@@ -28,10 +30,13 @@ public class AmcConfigurationService {
     private final AmcConfigurationValidator amcConfigurationValidator;
     private final AmcConfigurationRepository amcConfigurationRepository;
     private final Producer producer;
+    private final ScheduledVisitRepository scheduledVisitRepository;
     private final AmcConfigurationEnrichment amcConfigurationEnrichment;
 
     private final AmcConfigurationServiceUtil amcConfigurationServiceUtil;
     private final AMCServiceConfiguration amcServiceConfiguration;
+    private final ServiceRequestRepository requestRepository;
+    private final AssetAmcRepository assetAmcRepository;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -39,14 +44,17 @@ public class AmcConfigurationService {
 
     @Autowired
     public AmcConfigurationService(
-            AmcConfigurationRepository amcConfigurationRepository, AmcConfigurationValidator amcConfigurationValidator, AmcConfigurationEnrichment amcConfigurationEnrichment, AMCServiceConfiguration amcConfigurationConfiguration,
-            Producer producer, AmcConfigurationServiceUtil amcConfigurationServiceUtil) {
+            AmcConfigurationRepository amcConfigurationRepository, AmcConfigurationValidator amcConfigurationValidator, ScheduledVisitRepository scheduledVisitRepository, AmcConfigurationEnrichment amcConfigurationEnrichment, AMCServiceConfiguration amcConfigurationConfiguration,
+            Producer producer, AmcConfigurationServiceUtil amcConfigurationServiceUtil, ServiceRequestRepository requestRepository, AssetAmcRepository assetAmcRepository) {
             this.amcConfigurationValidator = amcConfigurationValidator;
-            this.producer = producer;
+        this.scheduledVisitRepository = scheduledVisitRepository;
+        this.producer = producer;
             this.amcServiceConfiguration = amcConfigurationConfiguration;
             this.amcConfigurationRepository = amcConfigurationRepository;
             this.amcConfigurationEnrichment = amcConfigurationEnrichment;
             this.amcConfigurationServiceUtil = amcConfigurationServiceUtil;
+        this.requestRepository = requestRepository;
+        this.assetAmcRepository = assetAmcRepository;
     }
 
     public AmcConfigurationRequest createAmcConfiguration(AmcConfigurationRequest request) {
@@ -125,6 +133,7 @@ public class AmcConfigurationService {
     public List<AmcConfiguration> searchAmcConfiguration(AmcConfigurationSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
         amcConfigurationValidator.validateSearchAmcConfigurationRequest(request, limit, offset, tenantId);
         List<AmcConfiguration> amcConfigurationList = amcConfigurationRepository.getAmcConfiguration(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        enrichAmcConfiguration(request.getRequestInfo(), amcConfigurationList);
         return amcConfigurationList;
     }
 
@@ -258,16 +267,56 @@ public class AmcConfigurationService {
                 .orElse(null);
     }
 
-//    public Employee getUserById(Object request, String userId) {
-//
-//        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
-//        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
-//
-//        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
-//        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
-//            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
-//        }
-//        return employeeResponse.getEmployees().get(0);
-//    }
+    private void enrichAmcConfiguration(RequestInfo requestInfo, List<AmcConfiguration> amcConfigurationList){
+        for (AmcConfiguration amcConfiguration : amcConfigurationList){
+            // Enrich amc configuration with vendor details
+            Organisation organisation = getVendorById(requestInfo, amcConfiguration.getVendorId());
+            if(organisation != null){
+                amcConfiguration.setVendor(organisation);
+            }
+
+            // Enrich amc configuration with total visit
+            Integer totalVisit = amcConfiguration.getDurationMonths()/amcConfiguration.getVisitFrequencyMonths();
+            amcConfiguration.setTotalVisits(totalVisit);
+
+            // Enrich amc configuration with completed visit
+            Integer count = getCompletedVisits(amcConfiguration);
+            amcConfiguration.setCompletedVisits(count);
+
+            // Enrich amc configuration with linked assets amc
+            List<AssetAmc> assetAmcs = getLinkedAssets(amcConfiguration);
+            amcConfiguration.setAssetsAmc(assetAmcs);
+        }
+    }
+
+    private Integer getCompletedVisits(AmcConfiguration amcConfiguration) {
+        ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder().facilityIds(List.of(amcConfiguration.getFacilityId())).statuses(List.of("APPROVED")).build();
+        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder().searchCriteria(searchCriteria).build();
+        Integer count = scheduledVisitRepository.getScheduledVisitCount(searchRequest, amcConfiguration.getTenantId(), null, null);
+        return count;
+    }
+
+    private List<AssetAmc> getLinkedAssets(AmcConfiguration amcConfiguration) {
+        AssetAmcSearchCriteria searchCriteria = AssetAmcSearchCriteria.builder().amcConfigurationIds(List.of(amcConfiguration.getId())).build();
+        AssetAmcSearchRequest searchRequest = AssetAmcSearchRequest.builder().searchCriteria(searchCriteria).build();
+        List<AssetAmc> assetAmcs = assetAmcRepository.getAssetAmc(searchRequest, 1000, 0, amcConfiguration.getTenantId(), null, null);
+        return assetAmcs;
+    }
+
+    public Organisation getVendorById(RequestInfo requestInfo, String vendorId) {
+        OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder().id(vendorId).build();
+        OrgSearchRequest searchRequest = OrgSearchRequest.builder().requestInfo(requestInfo).searchCriteria(searchCriteria).build();
+        String url = amcServiceConfiguration.getVendorHost() + amcServiceConfiguration.getVendorSearchUrl()+ "?tenantId=in&limit=1";
+
+        Object response = requestRepository.fetchResult(new StringBuilder(url), searchRequest);
+
+        OrgServiceResponse orgServiceResponse = mapper.convertValue(response, OrgServiceResponse.class);
+        if (orgServiceResponse != null && !orgServiceResponse.getOrganisations().isEmpty()) {
+            return orgServiceResponse.getOrganisations().get(0);
+        }
+        return null;
+    }
+
+
 
 }

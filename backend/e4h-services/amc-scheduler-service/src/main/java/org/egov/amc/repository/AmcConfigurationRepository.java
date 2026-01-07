@@ -52,7 +52,6 @@ public class AmcConfigurationRepository extends GenericRepository<AmcConfigurati
 
         String query = queryBuilder.getAmcConfigurationSearchQuery(criteria, urlParams, preparedStmtList);
         List<AmcConfiguration> amcConfigurationList = jdbcTemplate.query(query, amcConfigurationRowMapper, preparedStmtList.toArray());
-
         log.info("Fetched amc configuration list based on given search criteria");
         return amcConfigurationList;
     }
