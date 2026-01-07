@@ -304,7 +304,7 @@ public class AmcConfigurationService {
     }
 
     public Organisation getVendorById(RequestInfo requestInfo, String vendorId) {
-        OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder().id(vendorId).build();
+        OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder().tenantId("in").id(vendorId).build();
         OrgSearchRequest searchRequest = OrgSearchRequest.builder().requestInfo(requestInfo).searchCriteria(searchCriteria).build();
         String url = amcServiceConfiguration.getVendorHost() + amcServiceConfiguration.getVendorSearchUrl()+ "?tenantId=in&limit=1";
 
