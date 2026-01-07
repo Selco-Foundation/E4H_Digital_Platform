@@ -185,7 +185,6 @@ async def get_boundary_ingestion_template(
     """
     output_file_path = None
     request_info = request_info_from_json(payload.get("RequestInfo", {}))
-    get_authorized_request_info(request_info)
 
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
