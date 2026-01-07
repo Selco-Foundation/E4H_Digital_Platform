@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import {Loader, Table} from "@egovernments/digit-ui-react-components";
 import Filter from "../../components/FacilityTable/Filter";
-import { Link, useHistory, useLocation } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import FacilityAdminActions from "../../components/FacilityTable/FacilityAdminActions";
 import useFacility from "../../hooks/useFacility";
 import { useTranslation } from "react-i18next";
@@ -166,7 +166,7 @@ const FacilityTable = () => {
         <div
           className={"admin-facility-table-wrapper"}
           style={{
-            margin: "0px 20px",
+            margin: "20px",
             overflow: "auto",
           }}
         >
@@ -198,7 +198,7 @@ const FacilityTable = () => {
   }
 
   return (
-    <div style={{marginTop: "20px", padding: "0px 10px", overflow: "auto"}}>
+    <div style={{ marginTop: "20px", padding: "0px 10px", overflow: "auto" }}>
       {updatingWorkflow && (
         <div
           style={{
@@ -218,29 +218,22 @@ const FacilityTable = () => {
           <Loader />
         </div>
       )}
+      <div style={{ padding: "20px" }}>
+        <FacilityAdminActions
+          t={t}
+          mainCheckBox={mainCheck}
+          selectedFacilities={selectedFacilities}
+          projectQueryFilter={projectQueryFilter}
+          onSearch={handleFilterChange}
+          revalidateData={revalidateData}
+          setUpdatingWorkflow={setUpdatingWorkflow}
+        />
+      </div>
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
         <div style={{ minWidth: "300px" }}>
-          <Filter
-            t={t}
-            type="desktop"
-            projectQueryFilter={projectQueryFilter}
-            onFilterChange={handleFilterChange}
-          />
+          <Filter t={t} type="desktop" projectQueryFilter={projectQueryFilter} onFilterChange={handleFilterChange} />
         </div>
-        <div style={{ width: "83%", minWidth: "750px", backgroundColor: "white" }}>
-          <div style={{ padding: "20px" }}>
-            <FacilityAdminActions
-              t={t}
-              mainCheckBox={mainCheck}
-              selectedFacilities={selectedFacilities}
-              projectQueryFilter={projectQueryFilter}
-              onSearch={handleFilterChange}
-              revalidateData={revalidateData}
-              setUpdatingWorkflow={setUpdatingWorkflow}
-            />
-          </div>
-          {renderFacilities()}
-        </div>
+        <div style={{ width: "83%", minWidth: "750px", backgroundColor: "white" }}>{renderFacilities()}</div>
       </div>
     </div>
   );

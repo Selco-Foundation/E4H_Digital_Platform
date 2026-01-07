@@ -84,76 +84,88 @@ const FacilityAdminActions = ({ t }) => {
       <div
         style={{
           display: "flex",
-          justifyContent: "end",
+          justifyContent: "space-between",
           alignItems: "center",
-          gap: "16px",
           minWidth: "fit-content",
         }}
       >
-        <button
-          id={"faAddFacilityBtn"}
+        <h1
           style={{
-            backgroundColor: "white",
-            border: "1px solid #d35400",
-            color: "#d35400",
-            padding: "8px 20px",
-            cursor: "pointer",
+            fontSize: "40px",
             fontWeight: "bold",
-            fontSize: "16px",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "5px",
-            height: "40px",
+            fontFamily: "Roboto Condensed",
+            margin: "0",
+            color: "#0B0C0C",
           }}
-          onClick={handleAddFacility}
         >
-          <span>{t("ADD_FACILITY")}</span>
-        </button>
-        <button
-          id={"faBulkAddTemplateDownloadBtn"}
-          style={{
-            backgroundColor: "white",
-            border: "1px solid #d35400",
-            color: "#d35400",
-            padding: "8px 20px",
-            cursor: "pointer",
-            fontWeight: "bold",
-            fontSize: "16px",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "5px",
-            height: "40px",
-          }}
-          onClick={handleBulkAddTemplateDownload}
-        >
-          <div style={{ height: "14px", marginBottom: "auto", transform: "scale(0.7)" }}>
-            <DownloadIcon fill={"#d35400"} />
-          </div>
-          <span>{t("BULK_ADD_TEMPLATE")}</span>
-        </button>
-        <button
-          id={"faBulkAddUploadBtn"}
-          style={{
-            backgroundColor: "white",
-            border: "1px solid #d35400",
-            color: "#d35400",
-            padding: "8px 20px",
-            cursor: "pointer",
-            fontWeight: "bold",
-            fontSize: "16px",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: "5px",
-            height: "40px",
-          }}
-          onClick={handleBulkAddUpload}
-        >
-          <CustomUploadIcon fill={"#C84C0E"} height={"20"} width={"20"} />
-          <span>{t("BULK_ADD")}</span>
-        </button>
+          {t("FACILITIES")}
+        </h1>
+        <div style={{ display: "flex", gap: "16px" }}>
+          <button
+            id={"faAddFacilityBtn"}
+            style={{
+              backgroundColor: "white",
+              border: "1px solid #d35400",
+              color: "#d35400",
+              padding: "8px 20px",
+              cursor: "pointer",
+              fontWeight: "bold",
+              fontSize: "16px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "5px",
+              height: "40px",
+            }}
+            onClick={handleAddFacility}
+          >
+            <span>{t("ADD_FACILITY")}</span>
+          </button>
+          <button
+            id={"faBulkAddTemplateDownloadBtn"}
+            style={{
+              backgroundColor: "white",
+              border: "1px solid #d35400",
+              color: "#d35400",
+              padding: "8px 20px",
+              cursor: "pointer",
+              fontWeight: "bold",
+              fontSize: "16px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "5px",
+              height: "40px",
+            }}
+            onClick={handleBulkAddTemplateDownload}
+          >
+            <div style={{ height: "14px", marginBottom: "auto", transform: "scale(0.7)" }}>
+              <DownloadIcon fill={"#d35400"} />
+            </div>
+            <span>{t("BULK_ADD_TEMPLATE")}</span>
+          </button>
+          <button
+            id={"faBulkAddUploadBtn"}
+            style={{
+              backgroundColor: "white",
+              border: "1px solid #d35400",
+              color: "#d35400",
+              padding: "8px 20px",
+              cursor: "pointer",
+              fontWeight: "bold",
+              fontSize: "16px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "5px",
+              height: "40px",
+            }}
+            onClick={handleBulkAddUpload}
+          >
+            <CustomUploadIcon fill={"#C84C0E"} height={"20"} width={"20"} />
+            <span>{t("BULK_ADD")}</span>
+          </button>
+        </div>
         {toast && (
           <Toast
             error={toast.key === "error"}
@@ -200,7 +212,7 @@ const FacilityAdminActions = ({ t }) => {
                 </div>
                 <Button variation="secondary" label={t("CORE_COMMON_CLOSE")} onButtonClick={() => setShowAddFacilityModal(false)} />
               </div>
-              <FacilityForm t={t} handleFormSubmit={handleAddFacilitySubmit} wrapperStyle={{paddingTop: "0px"}} />
+              <FacilityForm t={t} handleFormSubmit={handleAddFacilitySubmit} wrapperStyle={{ paddingTop: "0px" }} />
             </div>
           </PopUp>
         )}
