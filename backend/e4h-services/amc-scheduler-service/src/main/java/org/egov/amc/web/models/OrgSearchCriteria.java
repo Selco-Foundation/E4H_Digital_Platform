@@ -29,4 +29,9 @@ public class OrgSearchCriteria {
     @JsonProperty("id")
     private String id = null;
 
+    @JsonProperty("tenantId")
+    @Size(min = 2, max = 64)
+    @NotNull
+    private String tenantId = null;
+
 }

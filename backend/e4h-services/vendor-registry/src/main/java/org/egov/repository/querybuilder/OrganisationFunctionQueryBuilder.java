@@ -64,7 +64,7 @@ public class OrganisationFunctionQueryBuilder {
         if (StringUtils.isNotBlank(searchCriteria.getId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.id=? ");
-            preparedStmtList.add(searchCriteria.getOrgType());
+            preparedStmtList.add(searchCriteria.getId());
         }
 
         if (searchCriteria.getIds() != null && !searchCriteria.getIds().isEmpty()) {
