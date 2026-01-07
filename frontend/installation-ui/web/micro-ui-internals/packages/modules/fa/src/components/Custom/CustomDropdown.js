@@ -10,7 +10,8 @@ const CustomDropdown = ({
   style = {},
   placeholder = "",
   disable = false,
-  t = (key) => key
+  t = (key) => key,
+  optionsCardStyle = {},
 }) => {
 
   const [isOpen, setIsOpen] = useState(false);
@@ -144,7 +145,8 @@ const CustomDropdown = ({
             color: "black",
             boxShadow: "0 8px 10px 1px rgba(0, 0, 0, 0.14)",
             zIndex: 10000,
-            marginTop: "2px"
+            marginTop: "2px",
+            ...optionsCardStyle,
           }}
         >
           {filteredOptions.length === 0 ? (

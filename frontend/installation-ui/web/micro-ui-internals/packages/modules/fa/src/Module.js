@@ -3,6 +3,9 @@ import getRootReducer from "./redux/reducers";
 import EmployeeApp from "./App";
 import { Loader } from "@egovernments/digit-ui-react-components";
 import FACard from "./components/FACard";
+import StateSelector from "./components/FormComposer/StateSelector";
+import DistrictSelector from "./components/FormComposer/DistrictSelector";
+import BlockSelector from "./components/FormComposer/BlockSelector";
 
 export const FAReducers = getRootReducer;
 
@@ -26,6 +29,9 @@ const FAModule = ({ stateCode, userType, tenants }) => {
 const componentsToRegister = {
   FAModule,
   FACard,
+  FAStateSelector: StateSelector,
+  FADistrictSelector: DistrictSelector,
+  FABlockSelector: BlockSelector,
 };
 
 export const initFAComponents = () => {

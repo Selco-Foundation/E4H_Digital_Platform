@@ -1,24 +1,38 @@
 import { Request } from "@egovernments/digit-ui-libraries";
 
 export const FacilityService = {
-
-  fetchFacilities : async (queryFilter) => {
+  fetchFacilities: async (queryFilter) => {
     const endpoint = "/facility-service/v2/facility/_bulk-search";
     const headers = {
-      "Content-Type" : "application/json"
-    }
+      "Content-Type": "application/json",
+    };
     const data = {
-      "Facility": queryFilter,
-    }
+      Facility: queryFilter,
+    };
 
     return await Request({
-      url : endpoint,
-      userService : true,
-      method : "POST",
-      auth : true,
-      data : data,
-      headers : headers,
+      url: endpoint,
+      userService: true,
+      method: "POST",
+      auth: true,
+      data: data,
+      headers: headers,
     });
   },
 
-}
+  createFacility: async (facilityPayload) => {
+    const endpoint = "/facility-service/v2/facility/create";
+    const headers = {
+      "Content-Type": "application/json",
+    };
+
+    return await Request({
+      url: endpoint,
+      userService: true,
+      method: "POST",
+      auth: true,
+      data: facilityPayload,
+      headers: headers,
+    });
+  },
+};
