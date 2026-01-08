@@ -226,13 +226,15 @@ class FacilityTemplateService:
                                ) -> None:
         try:
             create_empty_excel_file(output_path)
-
+            allow_blank_map = {}
             output_list = []
             dropdowns_map = {}
             for col in facility_schema:
                 mandatory_indicator = "(Mandatory)" if col.get("required") else ""
                 header_name = f"{col.get('name')} {mandatory_indicator}".strip()
                 output_list.append(header_name)
+
+                allow_blank_map[header_name] = not col.get("required", False)
 
                 mdms_values = col.get("mdms_values")
                 if mdms_values:
@@ -250,7 +252,9 @@ class FacilityTemplateService:
             add_dropdowns_to_excel(
                 file_path=output_path,
                 sheet_name="FacilityIngestionTemplate",
-                dropdowns=dropdowns_map
+                dropdowns=dropdowns_map,
+                allow_blank_map=allow_blank_map
+
             )
 
             boundary_records = self._format_boundary_data(boundary_data)
@@ -408,6 +412,7 @@ class FacilityTemplateService:
         if response_json and 'organisations' in response_json:
             for vendor in response_json['organisations']:
                 vendors.append({
+                    "Vendor Id": vendor.get('id', ''),
                     "Vendor Code": vendor.get('code', ''),
                     "Vendor Name": vendor.get('name', ''),
                     "Vendor Application Number": vendor.get('applicationNumber', ''),

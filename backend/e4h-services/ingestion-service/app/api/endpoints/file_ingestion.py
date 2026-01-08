@@ -226,7 +226,8 @@ async def upload_facilities_excel_sheet(
         facility_file: UploadFile = File(description="Excel file containing facility data"),
         facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
                                         description="Name of the sheet containing facility data"),
-        request_info: str = Form(default="")
+        request_info: str = Form(default=""),
+        are_facilities_onm_ready: bool = Form(description="FieldPlan ID")
 ):
     input_temp_file = None
     output_temp_file = None
@@ -262,7 +263,7 @@ async def upload_facilities_excel_sheet(
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
             for index, row in df[df['status'] != 'success'].iterrows():
                 try:
-                    facility_data_payload = create_facility_payload(request_info, row, facility_schema)
+                    facility_data_payload = create_facility_payload(request_info, row, are_facilities_onm_ready, facility_schema)
                     response = facility_client.create_facility(facility_data_payload)
                     if response.status_code in (200, 201):
                         df.at[index, 'status'] = 'success'
@@ -2109,7 +2110,7 @@ async def create_facilities_and_update_project(
 
                 # Create facility payload and call service
                 try:
-                    facility_payload = create_facility_payload(request_info, row, facility_schema)
+                    facility_payload = create_facility_payload(request_info, row, False, facility_schema)
                     create_resp = facility_client.create_facility(facility_payload)
                 except Exception as e:
                     df.at[index, 'Facility Creation Status'] = f"Exception during create: {str(e)}"
