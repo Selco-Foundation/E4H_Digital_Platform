@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { Loader } from "@egovernments/digit-ui-react-components";
-import { Button } from "@egovernments/digit-ui-react-components";
+import { Loader, Button } from "@egovernments/digit-ui-react-components";
+import { Tab } from "@egovernments/digit-ui-components";
 import useFacilityDetails from "../../hooks/useFacilityDetails";
 import { populateWorkingFacility } from "../../redux/actions";
 import { useDispatch } from "react-redux";
 import { useTranslation } from "react-i18next";
 import Section from "../../components/FacilityDetails/Section";
 import FacilityModal from "../../components/FacilityModal";
+import ActivityTable from "../../components/FacilityDetails/ActivityTable";
+import AssetTable from "../../components/FacilityDetails/AssetTable";
+import AMCTable from "../../components/FacilityDetails/AMCTable";
 
 const FacilityDetails = () => {
 
@@ -18,6 +21,7 @@ const FacilityDetails = () => {
   const [createdFacility, setCreatedFacility] = useState({});
   const [showEditFacilityModal, setShowEditFacilityModal] = useState(false);
   const dispatch = useDispatch();
+  const [activeTab, setActiveTab] = useState("ACTIVITY");
 
   const { isLoading, data: facilityData} = useFacilityDetails(facilityId);
   const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
@@ -134,6 +138,37 @@ const FacilityDetails = () => {
           onClose={() => setShowEditFacilityModal(false)}
         />
       )}
+      <Tab
+        activeLink={activeTab}
+        configItemKey="code"
+        configNavItems={[
+          {
+            code: "ACTIVITY",
+            name: "Activity",
+          },
+          {
+            code: "ASSET",
+            name: "Asset",
+          },
+          {
+            code: "AMC",
+            name: "AMC",
+          },
+        ]}
+        itemStyle={{}}
+        navStyles={{}}
+        setActiveLink={(tabCode) => {
+          setActiveTab(tabCode);
+        }}
+        showNav
+        style={{}}
+      >
+        <div className="tab-content-wrapper">
+          {activeTab === "ACTIVITY" && <ActivityTable t={t} facilityId={facilityId} />}
+          {activeTab === "ASSET" && <AssetTable />}
+          {activeTab === "AMC" && <AMCTable />}
+        </div>
+      </Tab>
     </div>
   );
 };
