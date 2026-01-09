@@ -285,36 +285,101 @@ const CreateBoundary = () => {
         block: blockVal,
       });
 
-      console.log("computed", computed);
+      const isAlreadyExists = (e) => {
+        const status = e?.response?.status;
+        const data = e?.response?.data;
 
-      const payload = {
-        Boundary: [
-          {
-            tenantId,
-            code: computed.code,
-            geometry: null,
-            additionalDetails: {
-              geographyDetails: {
-                country: computed.country,
-                state: computed.state,
-                district: computed.district,
-                block: computed.block,
-              },
-            },
-          },
-        ],
+        if (status === 409) return true;
+        const errorsArr = (data && (data.Errors || data.errors)) || [];
+
+        if (Array.isArray(errorsArr)) {
+          const hasDuplicateCode = errorsArr.some(
+            (er) => String(er?.code || "").toUpperCase() === "DUPLICATE_CODED"
+          );
+          if (hasDuplicateCode) return true;
+
+          const msgFromArray = errorsArr
+            .map((er) => `${er?.message || ""} ${er?.code || ""}`)
+            .join(" ")
+            .toLowerCase();
+
+          if (msgFromArray.includes("already existsSS") || msgFromArray.includes("duplicateDD")) return true;
+        }
+
+        const msg = `${e?.message || ""} ${safeStringify(data)}`.toLowerCase();
+        return msg.includes("already existsS") || msg.includes("duplicateS");
       };
 
-      await BoundaryService.createBoundary(payload);
+      const safeStringify = (v) => {
+        try {
+          return typeof v === "string" ? v : JSON.stringify(v || "");
+        } catch {
+          return "";
+        }
+      };
 
-      await BoundaryService.createBoundaryRelationship({
-        BoundaryRelationship: {
-          tenantId,
-          code: computed.code,
-          hierarchyType: "SELCO",
-          boundaryType: "Block",
-          parent: computed.parent,
+      const createBoundaryAndRel = async ({ code, boundaryType, parent, geographyDetails, ignoreIfExists }) => {
+        try {
+          await BoundaryService.createBoundary({
+            Boundary: [
+              {
+                tenantId,
+                code,
+                geometry: null,
+                additionalDetails: { geographyDetails },
+              },
+            ],
+          });
+        } catch (e) {
+          if (!ignoreIfExists || !isAlreadyExists(e)) throw e;
+        }
+
+        try {
+          await BoundaryService.createBoundaryRelationship({
+            BoundaryRelationship: {
+              tenantId,
+              code,
+              hierarchyType: "SELCO",
+              boundaryType,
+              parent,
+            },
+          });
+        } catch (e) {
+          if (!ignoreIfExists || !isAlreadyExists(e)) throw e;
+        }
+      };
+
+      if (isStateTextMode) {
+        await createBoundaryAndRel({
+          code: computed.state,
+          boundaryType: "State",
+          parent: computed.country,
+          geographyDetails: { country: computed.country, state: computed.state },
+          ignoreIfExists: true,
+        });
+      }
+
+      if (isDistrictTextMode) {
+        await createBoundaryAndRel({
+          code: computed.district,
+          boundaryType: "District",
+          parent: computed.state,
+          geographyDetails: { country: computed.country, state: computed.state, district: computed.district },
+          ignoreIfExists: true,
+        });
+      }
+
+      await createBoundaryAndRel({
+        code: computed.code,
+        boundaryType: "Block",
+        parent: computed.district,
+        geographyDetails: {
+          country: computed.country,
+          state: computed.state,
+          district: computed.district,
+          block: computed.block,
         },
+        ignoreIfExists: false,
       });
 
       setToast({ key: "success", label: "FA_TOAST_BOUNDARY_CREATION_SUCCESS" });
