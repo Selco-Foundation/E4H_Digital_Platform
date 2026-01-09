@@ -34,7 +34,7 @@ const requestInfo = () => ({
   authToken: Digit.UserService.getUser()?.access_token || null,
 });
 
-const authHeaders = () => ({
+export const authHeaders = () => ({
   "auth-token": Digit.UserService.getUser()?.access_token || null,
 });
 
@@ -57,6 +57,7 @@ export const CustomRequest = ({
   userDownload = false,
   noRequestInfo = false,
   reqTimestamp = false,
+  responseType = null,
 }) => {
 
   const ts = new Date().getTime();
@@ -113,5 +114,5 @@ export const CustomRequest = ({
     })
     .join("/");
 
-  return Axios({ method, url: _url, data, params, headers });
+  return Axios({ method, url: _url, data, params, headers, responseType: responseType });
 };
