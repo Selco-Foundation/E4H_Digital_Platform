@@ -74,7 +74,7 @@ const FacilityDetails = () => {
     return <Loader />;
   }
 
-  const AssetInfoItem = ({ title, value }) => (
+  const InfoItem = ({ title, value }) => (
     <div
       style={{
         display: "flex",
@@ -108,22 +108,40 @@ const FacilityDetails = () => {
         >
           {facilityId} {t("DETAILS")}
         </h1>
-        <Button variation="secondary" label={t("CORE_COMMON_EDIT")} onButtonClick={() => setShowEditFacilityModal(true)} />
+        <Button
+          variation="secondary"
+          label={t("CORE_COMMON_EDIT")}
+          onButtonClick={() => setShowEditFacilityModal(true)}
+          style={{
+            backgroundColor: "white",
+            border: "1px solid #d35400",
+            color: "#d35400",
+            padding: "8px 20px",
+            cursor: "pointer",
+            fontWeight: "bold",
+            fontSize: "16px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "5px",
+            height: "40px",
+          }}
+        />
       </div>
       <div>
-        <AssetInfoItem title={t("FACILITY_NAME")} value={createdFacility?.facilityName} />
-        <AssetInfoItem title={t("FACILITY_TYPE")} value={createdFacility?.facilityType?.name} />
-        <AssetInfoItem title={t("FACILITY_SOLAR_SOLUTION_DESIGN_TYPE")} value={createdFacility?.solarSolutionDesignType?.name} />
-        <AssetInfoItem title={t("FACILITY_POC_NAME")} value={createdFacility?.facilityPocName} />
-        <AssetInfoItem title={t("FACILITY_POC_PHONE")} value={createdFacility?.facilityPocPhone} />
-        <AssetInfoItem title={t("FACILITY_POC_EMAIL")} value={createdFacility?.facilityPocEmail} />
-        <AssetInfoItem title={t("FACILITY_HFR_ID")} value={createdFacility?.hfrId} />
-        <AssetInfoItem title={t("FACILITY_NIN_ID")} value={createdFacility?.ninId} />
-        <AssetInfoItem title={t("FACILITY_PINCODE")} value={createdFacility?.pincode} />
+        <InfoItem title={t("FACILITY_NAME")} value={createdFacility?.facilityName} />
+        <InfoItem title={t("FACILITY_TYPE")} value={createdFacility?.facilityType?.name} />
+        <InfoItem title={t("FACILITY_SOLAR_SOLUTION_DESIGN_TYPE")} value={createdFacility?.solarSolutionDesignType?.name} />
+        <InfoItem title={t("FACILITY_POC_NAME")} value={createdFacility?.facilityPocName} />
+        <InfoItem title={t("FACILITY_POC_PHONE")} value={createdFacility?.facilityPocPhone} />
+        <InfoItem title={t("FACILITY_POC_EMAIL")} value={createdFacility?.facilityPocEmail} />
+        <InfoItem title={t("FACILITY_HFR_ID")} value={createdFacility?.hfrId} />
+        <InfoItem title={t("FACILITY_NIN_ID")} value={createdFacility?.ninId} />
+        <InfoItem title={t("FACILITY_PINCODE")} value={createdFacility?.pincode} />
         <Section title={t("GEOGRAPHY_DETAILS")}>
-          <AssetInfoItem title={t("CS_STATE")} value={createdFacility?.state?.name} />
-          <AssetInfoItem title={t("CS_DISTRICT")} value={createdFacility?.district?.name} />
-          <AssetInfoItem title={t("CS_BLOCK")} value={createdFacility?.block?.name} />
+          <InfoItem title={t("CS_STATE")} value={createdFacility?.state?.name} />
+          <InfoItem title={t("CS_DISTRICT")} value={createdFacility?.district?.name} />
+          <InfoItem title={t("CS_BLOCK")} value={createdFacility?.block?.name} />
         </Section>
       </div>
       {showEditFacilityModal && (
@@ -140,7 +158,8 @@ const FacilityDetails = () => {
       )}
       <Tab
         activeLink={activeTab}
-        configItemKey="code"
+        configItemKey={"code"}
+        configDisplayKey={"name"}
         configNavItems={[
           {
             code: "ACTIVITY",
@@ -155,18 +174,15 @@ const FacilityDetails = () => {
             name: "AMC",
           },
         ]}
-        itemStyle={{}}
-        navStyles={{}}
         setActiveLink={(tabCode) => {
           setActiveTab(tabCode);
         }}
         showNav
-        style={{}}
       >
         <div className="tab-content-wrapper">
           {activeTab === "ACTIVITY" && <ActivityTable t={t} facilityId={facilityId} />}
-          {activeTab === "ASSET" && <AssetTable />}
-          {activeTab === "AMC" && <AMCTable />}
+          {activeTab === "ASSET" && <AssetTable t={t} facilityId={facilityId} />}
+          {activeTab === "AMC" && <AMCTable t={t} facilityId={facilityId} />}
         </div>
       </Tab>
     </div>
