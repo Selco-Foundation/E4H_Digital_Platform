@@ -1,15 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FormComposerV2, Loader, Toast, TextInput } from "@egovernments/digit-ui-react-components";
-import { Stepper } from "@egovernments/digit-ui-components";
 import { useTranslation } from "react-i18next";
-import { useHistory, useLocation } from "react-router-dom";
+import { useHistory } from "react-router-dom";
 
-import CommonUtils from "../../utilities/CommonUtils";
-import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 import useBoundary from "../../hooks/useBoundary";
-import { BoundaryService } from "../../services/Boundary";
 import CustomDropdown from "../../components/Custom/CustomDropdown";
 import CustomSwapHorizontalCircle from "../../components/Custom/CustomSwapHorizontalCircle";
+import { BoundaryService } from "../../services/Boundary";
 
 const safeOnSelect = (onSelect, key, value) => {
   if (typeof onSelect === "function") onSelect(key, value);
@@ -41,10 +38,10 @@ const ToggleLink = ({ label, onClick }) => {
         fontWeight: 600,
         whiteSpace: "nowrap",
         flexShrink: 0,
-        transform: "translateY(-4px)"
+        transform: "translateY(-4px)",
       }}
     >
-      <CustomSwapHorizontalCircle size={28} color="#0B0C0C" style={{opacity: 0.6}}/>
+      <CustomSwapHorizontalCircle size={28} color="#0B0C0C" style={{ opacity: 0.6 }} />
       <span style={{ opacity: 0.6 }}>{label}</span>
     </button>
   );
@@ -107,10 +104,7 @@ const FAStateToggleField = (props) => {
         )}
       </div>
 
-      <ToggleLink
-        label={isTextMode ? t("FA_TOGGLE_SELECT_STATE"): t("FA_TOGGLE_ADD_NEW_STATE")}
-        onClick={toggleMode}
-      />
+      <ToggleLink label={isTextMode ? t("FA_TOGGLE_SELECT_STATE") : t("FA_TOGGLE_ADD_NEW_STATE")} onClick={toggleMode} />
     </div>
   );
 };
@@ -185,9 +179,7 @@ const FADistrictToggleField = (props) => {
       </div>
 
       <ToggleLink
-        label={
-          isTextMode ? t("FA_TOGGLE_SELECT_DISTRICT") : t("FA_TOGGLE_ADD_NEW_DISTRICT")
-        }
+        label={isTextMode ? t("FA_TOGGLE_SELECT_DISTRICT") : t("FA_TOGGLE_ADD_NEW_DISTRICT")}
         onClick={toggleMode}
       />
     </div>
@@ -199,26 +191,21 @@ const CreateBoundary = () => {
   const history = useHistory();
 
   const tenantId = Digit.ULBService.getStateId();
-  const [currentKey, setCurrentKey] = useState(1);
-  const [persistedFormData, setPersistedFormData] = useState({});
-  const [defaultFormData, setDefaultFormData] = useState({});
+
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [toast, setToast] = useState(null);
-  const [blockUI, setBlockUI] = useState(null);
-  const [getFormData, setGetFormData] = useState(null);
-  const [backAlert, setBackAlert] = useState(null);
+  const [blockUI, setBlockUI] = useState(false);
 
   const [isStateTextMode, setIsStateTextMode] = useState(false);
   const [isDistrictTextMode, setIsDistrictTextMode] = useState(false);
 
   const { data: boundaryData, isLoading: isBoundaryLoading } = useBoundary("State");
 
-  useEffect(() => {
+
     if (Digit && Digit.ComponentRegistryService && Digit.ComponentRegistryService.setComponent) {
       Digit.ComponentRegistryService.setComponent("FAStateToggleField", FAStateToggleField);
       Digit.ComponentRegistryService.setComponent("FADistrictToggleField", FADistrictToggleField);
     }
-  }, []);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -237,19 +224,6 @@ const CreateBoundary = () => {
         body: [
           {
             inline: true,
-            label: "FA_BOUNDARY_CODE",
-            isMandatory: true,
-            key: "code",
-            type: "text",
-            populators: { name: "code", error: t("CORE_COMMON_REQUIRED") },
-          },
-        ],
-      },
-      {
-        key: "2",
-        body: [
-          {
-            inline: true,
             label: "CS_STATE",
             isMandatory: true,
             key: "state",
@@ -259,9 +233,7 @@ const CreateBoundary = () => {
               t,
               boundaryData,
               isTextMode: isStateTextMode,
-              setIsTextMode: (next) => {
-                setIsStateTextMode(!!next);
-              },
+              setIsTextMode: (next) => setIsStateTextMode(!!next),
             },
             populators: { name: "state", error: t("CORE_COMMON_REQUIRED") },
           },
@@ -277,9 +249,7 @@ const CreateBoundary = () => {
               boundaryData,
               stateIsTextMode: isStateTextMode,
               isTextMode: isDistrictTextMode,
-              setIsTextMode: (next) => {
-                setIsDistrictTextMode(!!next);
-              },
+              setIsTextMode: (next) => setIsDistrictTextMode(!!next),
             },
             populators: { name: "district", error: t("CORE_COMMON_REQUIRED") },
           },
@@ -296,75 +266,40 @@ const CreateBoundary = () => {
     ];
   }, [t, boundaryData, isStateTextMode, isDistrictTextMode]);
 
-  const filterConfig = (cfg, key) => cfg.filter((step) => parseInt(step.key) === key);
-  const [filteredConfig, setFilteredConfig] = useState(filterConfig(config, currentKey));
+  const handleSubmit = async (data) => {
+    const stateVal = getCode(data?.state);
+    const districtVal = getCode(data?.district);
+    const blockVal = getCode(data?.block);
 
-  useEffect(() => {
-    setFilteredConfig(filterConfig(config, currentKey));
-  }, [config, currentKey]);
-
-  useEffect(() => {
-    switch (currentKey) {
-      case 1:
-        setDefaultFormData(persistedFormData.boundaryDetails || {});
-        break;
-      case 2:
-        setDefaultFormData(persistedFormData.geographyDetails || {});
-        break;
-      default:
-        setDefaultFormData({});
-    }
-  }, [persistedFormData, currentKey]);
-
-  const setFormAccessors = ({ getValues }) => setGetFormData(() => getValues);
-
-  const getNextActionLabel = () => (currentKey === 1 ? t("CORE_COMMON_NEXT") : t("CORE_COMMON_SUBMIT"));
-
-  const getHeading = () => (currentKey === 1 ? t("FA_CREATE_BOUNDARY_HEAD_BOUNDARY_DETAILS") : t("FA_CREATE_BOUNDARY_HEAD_GEOGRAPHY_DETAILS"));
-
-  const getDescription = () => {
-    if (currentKey === 1) return t("FA_CREATE_BOUNDARY_HEAD_BOUNDARY_DETAILS_DESC");
-    return t("FA_CREATE_BOUNDARY_HEAD_GEOGRAPHY_DETAILS_DESC");
-  };
-
-  const getDefaultValues = () => {
-    if (currentKey === 1) return persistedFormData.boundaryDetails || {};
-    if (currentKey === 2) return persistedFormData.geographyDetails || {};
-    return {};
-  };
-
-  const onStepClick = (key) => {
-    if (key + 1 >= currentKey) return;
-
-    if (currentKey === 2) {
-      const geographyDetails = {
-        state: getFormData && getFormData("state"),
-        district: getFormData && getFormData("district"),
-        block: getFormData && getFormData("block"),
-      };
-      setPersistedFormData((prev) => ({ ...prev, geographyDetails }));
-    }
-
-    setCurrentKey(key + 1);
-  };
-
-  const createBoundary = async (finalData) => {
-    const code = (finalData && finalData.boundaryDetails && finalData.boundaryDetails.code && finalData.boundaryDetails.code.trim()) || "";
-    if (!code) {
+    if (!stateVal || !districtVal || !blockVal) {
       setToast({ key: "error", label: "CORE_COMMON_REQUIRED" });
       return;
     }
 
     setBlockUI(true);
     try {
+      const computed = BoundaryService.computeGeographyCodes({
+        country: "India",
+        state: stateVal,
+        district: districtVal,
+        block: blockVal,
+      });
+
+      console.log("computed", computed);
+
       const payload = {
         Boundary: [
           {
             tenantId,
-            code,
+            code: computed.code,
             geometry: null,
             additionalDetails: {
-              geographyDetails: finalData.geographyDetails,
+              geographyDetails: {
+                country: computed.country,
+                state: computed.state,
+                district: computed.district,
+                block: computed.block,
+              },
             },
           },
         ],
@@ -372,71 +307,31 @@ const CreateBoundary = () => {
 
       await BoundaryService.createBoundary(payload);
 
+      await BoundaryService.createBoundaryRelationship({
+        BoundaryRelationship: {
+          tenantId,
+          code: computed.code,
+          hierarchyType: "SELCO",
+          boundaryType: "Block",
+          parent: computed.parent,
+        },
+      });
+
       setToast({ key: "success", label: "FA_TOAST_BOUNDARY_CREATION_SUCCESS" });
       history.goBack();
     } catch (e) {
-      console.error("Error creating boundary", e);
+      console.error("Error creating boundary / relationship", e);
       setToast({ key: "error", label: "FA_TOAST_BOUNDARY_CREATION_ERROR" });
     } finally {
       setBlockUI(false);
     }
   };
 
-  const handleFormSubmit = async (data) => {
-    if (currentKey === 1) {
-      setPersistedFormData((prev) => ({ ...prev, boundaryDetails: data }));
-      setCurrentKey((prev) => prev + 1);
-      return;
-    }
-
-    if (currentKey === 2) {
-      const finalData = {
-        boundaryDetails: persistedFormData.boundaryDetails,
-        geographyDetails: data,
-      };
-      setPersistedFormData((prev) => ({ ...prev, geographyDetails: data }));
-      await createBoundary(finalData);
-    }
-  };
-
-  const handleBackNavigation = () => {
-    if (currentKey === 1) {
-      const saved = { boundaryDetails: persistedFormData.boundaryDetails || {} };
-      const current = { boundaryDetails: { code: getFormData && getFormData("code") } };
-
-      if (CommonUtils.isNotEqual(saved, current)) {
-        setBackAlert({ continueAction: () => window.history.back() });
-      } else {
-        window.history.back();
-      }
-      return;
-    }
-
-    if (currentKey === 2) {
-      const geographyDetails = {
-        state: getFormData && getFormData("state"),
-        district: getFormData && getFormData("district"),
-        block: getFormData && getFormData("block"),
-      };
-      setPersistedFormData((prev) => ({ ...prev, geographyDetails }));
-      setCurrentKey((prev) => prev - 1);
-      return;
-    }
-
-    window.history.back();
-  };
-
-  // IMPORTANT: force remount when toggles change so dropdown <-> text swap works immediately
-  const formComposerKey = [
-    currentKey,
-    JSON.stringify(defaultFormData || {}),
-    isStateTextMode ? "S1" : "S0",
-    isDistrictTextMode ? "D1" : "D0",
-  ].join("|");
+  const formComposerKey = ["GEO", isStateTextMode ? "S1" : "S0", isDistrictTextMode ? "D1" : "D0"].join("|");
 
   return (
     <div className="create-project-wrapper" style={{ padding: mobileView ? "15px" : "0px" }}>
-      {(blockUI || (currentKey === 2 && isBoundaryLoading)) && (
+      {(blockUI || isBoundaryLoading) && (
         <div
           style={{
             display: "flex",
@@ -456,24 +351,17 @@ const CreateBoundary = () => {
         </div>
       )}
 
-      <Stepper
-        customSteps={["FA_CREATE_BOUNDARY_HEAD_BOUNDARY_DETAILS", "FA_CREATE_BOUNDARY_HEAD_GEOGRAPHY_DETAILS"]}
-        onStepClick={onStepClick}
-        currentStep={currentKey}
-        style={{ marginBottom: "20px" }}
-      />
-
       <FormComposerV2
         key={formComposerKey}
-        config={filteredConfig}
-        onSubmit={handleFormSubmit}
-        label={getNextActionLabel()}
+        config={config}
+        onSubmit={handleSubmit}
+        label={t("CORE_COMMON_SUBMIT")}
         showSecondaryLabel={true}
         secondaryLabel={t("CORE_COMMON_BACK")}
-        onSecondayActionClick={handleBackNavigation}
-        heading={getHeading()}
+        onSecondayActionClick={() => history.goBack()}
+        heading={t("FA_CREATE_BOUNDARY_HEAD_GEOGRAPHY_DETAILS")}
         headingStyle={{ fontSize: "32px", marginBottom: "20px" }}
-        description={getDescription()}
+        description={t("FA_CREATE_BOUNDARY_HEAD_GEOGRAPHY_DETAILS_DESC")}
         descriptionStyle={{
           fontSize: "14px",
           fontFamily: "Roboto",
@@ -481,8 +369,7 @@ const CreateBoundary = () => {
           color: "#0B0C0C",
         }}
         isDescriptionBold={true}
-        getFormAccessors={setFormAccessors}
-        defaultValues={getDefaultValues()}
+        defaultValues={{}}
         showMultipleCardsWithoutNavs={true}
         noBreakLine={true}
         cardStyle={{ padding: "20px" }}
@@ -502,8 +389,6 @@ const CreateBoundary = () => {
           onClose={() => setToast(null)}
         />
       )}
-
-      {backAlert && <UnsavedDataAlert t={t} alert={backAlert} setAlert={setBackAlert} />}
     </div>
   );
 };
