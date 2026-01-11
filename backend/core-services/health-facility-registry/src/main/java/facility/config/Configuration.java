@@ -69,7 +69,13 @@ public class Configuration {
     private String hrmsHost;
 
     @Value("${egov.hrms.search.endpoint}")
-    private String hrmsEndPoint;
+    private String hrmsSearchEndPoint;
+
+    @Value("${egov.hrms.update.endpoint}")
+    private String hrmsUpdateEndPoint;
+
+    @Value("${egov.hrms.create.endpoint}")
+    private String hrmsCreateEndPoint;
 
 
     //URLShortening

@@ -31,6 +31,15 @@ public class Boundary {
     @NotNull
     private String code = null;
 
+    @JsonProperty("state")
+    private String state = null;
+
+    @JsonProperty("district")
+    private String district = null;
+
+    @JsonProperty("block")
+    private String block = null;
+
     @JsonProperty("geometry")
     @Valid
     private JsonNode geometry = null;

@@ -30,10 +30,13 @@ public class AssetSearchCriteria {
     private String assetID = null;
 
     @JsonProperty("assetType")
-    private String assetType = null;
+    private List<String> assetType = null;
 
     @JsonProperty("facilityID")
     private String facilityID = null;
+
+    @JsonProperty("isOperational")
+    private boolean isOperational;
 
     @JsonProperty("activityFacilityID")
     private String activityFacilityID = null;

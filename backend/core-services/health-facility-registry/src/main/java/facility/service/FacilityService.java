@@ -1,21 +1,16 @@
 package facility.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import digit.models.coremodels.user.User;
 import facility.config.Configuration;
 import facility.repository.FacilityRepository;
-import facility.util.EncryptionDecryptionUtil;
-import facility.util.IdgenUtil;
-import facility.util.QueryBuilderResult;
-import facility.util.QueryBuilderUtil;
+import facility.util.*;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import static facility.config.ServiceConstants.FACILITY_ADMIN;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,6 +30,9 @@ public class FacilityService {
     private final Configuration configs;
     private final FacilityKibanaMapper facilityKibanaMapper;
     private EncryptionDecryptionUtil encryptionDecryptionUtil;
+    private BoundaryUtil boundaryUtil;
+
+    private final HRMSUtils hrmsUtils;
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -47,7 +45,7 @@ public class FacilityService {
             BoundaryService boundaryService,
             Configuration configs,
             FacilityKibanaMapper facilityKibanaMapper,
-            EncryptionDecryptionUtil encryptionDecryptionUtil) {
+            EncryptionDecryptionUtil encryptionDecryptionUtil, BoundaryUtil boundaryUtil, HRMSUtils hrmsUtils) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.facilityRowMapper = facilityRowMapper;
@@ -59,6 +57,8 @@ public class FacilityService {
         this.configs = configs;
         this.facilityKibanaMapper = facilityKibanaMapper;
         this.encryptionDecryptionUtil = encryptionDecryptionUtil;
+        this.boundaryUtil = boundaryUtil;
+        this.hrmsUtils = hrmsUtils;
     }
 
     /**
@@ -254,11 +254,28 @@ public class FacilityService {
             throw new IllegalArgumentException("facilityId and tenantId must be provided for update");
         }
 
+        var userInfo = request.getRequestInfo().getUserInfo();
+        if (userInfo.getRoles() != null) {
+            boolean isFacilityAdmin = userInfo.getRoles().stream().anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
+            if(!isFacilityAdmin)
+                throw new IllegalArgumentException("Only FACILITY_ADMIN role can edit facilities");
+        }
+
         // Check if the facility exists in DB before attempting an update
-        String checkSql = "SELECT COUNT(*) FROM facility WHERE id = ? AND tenant_id = ?";
-        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, update.getFacilityId(), update.getTenantId());
-        if (count == null || count == 0) {
-            return null; // facility not found
+//        String checkSql = "SELECT COUNT(*) FROM facility WHERE id = ? AND tenant_id = ?";
+//        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, update.getFacilityId(), update.getTenantId());
+//        if (count == null || count == 0) {
+//            return null; // facility not found
+//        }
+
+        // Check if the facility exists in DB before attempting an update
+        String fetchFullFacilitySql = "SELECT * FROM facility WHERE id = ? AND tenant_id = ?";
+        Facility existingFacility;
+        try {
+            existingFacility = jdbcTemplate.queryForObject(fetchFullFacilitySql, new Object[]{update.getFacilityId(), update.getTenantId()}, facilityRowMapper.rowMapper);
+        } catch (EmptyResultDataAccessException e) {
+            log.warn("Facility not found for update: {}", update.getFacilityId());
+            return null;
         }
 
         Facility facility = new Facility();
@@ -291,6 +308,12 @@ public class FacilityService {
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
         if (facility.getIsActive() == null) facility.setIsActive(true);
 
+        // If POC details are updated AND facility is isOnmReady=true
+        boolean isPocDetailsUpdated = checkPOCDetailsUpdated(existingFacility, facility);
+        if(isPocDetailsUpdated){
+            updatedHRMSUser(request, existingFacility, facility);
+        }
+
         facilityRepository.pushUpdateFacility(request);
         
         // If user sent isOnmReady = true, check if facility exists in Kibana, if not then push
@@ -306,16 +329,8 @@ public class FacilityService {
                 log.info("Facility {} already exists in Kibana, skipping push", update.getFacilityId());
                 return facility;
             }
-            
+
             // Fetch full facility from DB only to get missing fields not in update request (like facilityCategory, facilityOwnership, etc.)
-            String fetchFullFacilitySql = "SELECT * FROM facility WHERE id = ? AND tenant_id = ?";
-            Facility existingFacility;
-            try {
-                existingFacility = jdbcTemplate.queryForObject(fetchFullFacilitySql, new Object[]{update.getFacilityId(), update.getTenantId()}, facilityRowMapper.rowMapper);
-            } catch (EmptyResultDataAccessException e) {
-                log.warn("Facility not found when trying to push to Kibana: {}", update.getFacilityId());
-                return facility;
-            }
             
             // Merge update request data with existing facility data (prioritize update values)
             Facility facilityForKibana = Facility.builder()
@@ -367,10 +382,22 @@ public class FacilityService {
         allParams.add(request.getOffset());
 
         List<Facility> facilityList = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
+        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         for (Facility facility: facilityList){
             String decryptedMobileNumber = decryptMobileNumber(facility.getFacilityPocPhone());
             if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
                 facility.setFacilityPocPhone(decryptedMobileNumber);
+            }
+            String boundaryCode = facility.getBoundaryCode();
+            if (boundaryCode != null && listBlock != null) {
+                Boundary boundary = listBlock.get(boundaryCode);
+                if (boundary != null) {
+                    log.debug("✨ Enriching facility={} with state={}, district={} and block={}", facility.getFacilityId(), boundary.getState(), boundary.getDistrict(), boundary.getBlock());
+                    boundary.setCode(boundaryCode);
+                    facility.setBoundary(boundary);
+                } else {
+                    log.warn("⚠️ No boundary found for code={} in facility boundary={}", boundaryCode, facility.getFacilityId());
+                }
             }
         }
 
@@ -384,6 +411,12 @@ public class FacilityService {
      * @return List of facilities matching the filter
      */
     public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request) {
+        List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(request.getFacilityBulkSearchCriteria().getState(),
+                request.getFacilityBulkSearchCriteria().getDistrict(), request.getFacilityBulkSearchCriteria().getBlock());
+        if (request.getFacilityBulkSearchCriteria().getBoundaryCodes() == null) {
+            request.getFacilityBulkSearchCriteria().setBoundaryCodes(new ArrayList<>());
+        }
+        request.getFacilityBulkSearchCriteria().getBoundaryCodes().addAll(listFacilityCodes);
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
@@ -401,10 +434,24 @@ public class FacilityService {
         log.info("Bulk Search Query: {}", query);
         log.info("Bulk Search Params: {}", allParams);
         List<Facility> facilityList = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
+        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         for (Facility facility: facilityList){
-            String decryptedMobileNumber = decryptMobileNumber(facility.getFacilityPocPhone());
-            if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
-                facility.setFacilityPocPhone(decryptedMobileNumber);
+            if (facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isEmpty()){
+                String decryptedMobileNumber = decryptMobileNumber(facility.getFacilityPocPhone());
+                if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                    facility.setFacilityPocPhone(decryptedMobileNumber);
+                }
+            }
+            String boundaryCode = facility.getBoundaryCode();
+            if (boundaryCode != null && listBlock != null) {
+                Boundary boundary = listBlock.get(boundaryCode);
+                if (boundary != null) {
+                    log.debug("✨ Enriching facility={} with state={}, district={} and block={}", facility.getFacilityId(), boundary.getState(), boundary.getDistrict(), boundary.getBlock());
+                    boundary.setCode(boundaryCode);
+                    facility.setBoundary(boundary);
+                } else {
+                    log.warn("⚠️ No boundary found for code={} in facility boundary={}", boundaryCode, facility.getFacilityId());
+                }
             }
         }
         return facilityList;
@@ -543,6 +590,33 @@ public class FacilityService {
             }
         }
         return decryptedMobileNumber;
+    }
+
+    public boolean checkPOCDetailsUpdated(Facility existingFacilityDetails, Facility requestFacilityDetails) {
+        boolean isOnmReady = existingFacilityDetails.getIsOnmReady();
+        boolean pocDetailsUpdated = (!Objects.equals(existingFacilityDetails.getFacilityPocPhone(), requestFacilityDetails.getFacilityPocPhone()) ||
+                !Objects.equals(existingFacilityDetails.getFacilityPocName(), requestFacilityDetails.getFacilityPocName()) ||
+                !Objects.equals(existingFacilityDetails.getFacilityPocEmail(), requestFacilityDetails.getFacilityPocEmail()));
+        return isOnmReady && pocDetailsUpdated;
+    }
+
+    public void updatedHRMSUser(FacilityUpdateRequest request, Facility existingFacilityDetails, Facility requestFacilityDetails){
+        if(existingFacilityDetails.getUserId()!=null && !existingFacilityDetails.getUserId().isEmpty()){
+            Employee employee = hrmsUtils.getUserById(request, existingFacilityDetails.getUserId());
+            if (employee != null) {
+                User existingUser = employee.getUser();
+                existingUser.setName(requestFacilityDetails.getFacilityPocName());
+                existingUser.setMobileNumber(requestFacilityDetails.getFacilityPocPhone());
+                existingUser.setEmailId(requestFacilityDetails.getFacilityPocEmail());
+                EmployeeRequest employeeRequest = EmployeeRequest.builder().requestInfo(request.getRequestInfo()).employees(List.of(employee)).build();
+                List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+                if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
+                    // User updated successfully
+                    Employee employeeResp = updatedEmployees.get(0);
+                    log.info("User with userId {} updated successfully", existingFacilityDetails.getUserId());
+                }
+            }
+        }
     }
 
 }

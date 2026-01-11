@@ -119,14 +119,19 @@ public class AssetService {
             params.add(asset.getAssetId());
         }
 
-        if (asset.getAssetTypeID() != null && !asset.getAssetTypeID().isBlank()) {
-            query.append(" AND asset_type_id = ?");
-            params.add(asset.getAssetTypeID());
+        if (!CollectionUtils.isEmpty(asset.getAssetTypeSearch())) {
+            query.append(" AND asset_type_id IN (").append(createQuery(asset.getAssetTypeSearch())).append(")");
+            params.addAll(asset.getAssetTypeSearch());
         }
 
         if (asset.getWfStatus() != null && !asset.getWfStatus().isBlank()) {
             query.append(" AND wf_status = ?");
             params.add(asset.getWfStatus());
+        }
+
+        if (asset.getIsOperational() != null) {
+            query.append(" AND is_operational = ?");
+            params.add(asset.getIsOperational());
         }
 
         if (asset.getFacilityID() != null && !asset.getFacilityID().isBlank()) {
