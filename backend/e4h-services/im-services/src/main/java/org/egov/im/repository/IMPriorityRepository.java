@@ -30,11 +30,14 @@ public class IMPriorityRepository {
     }
 
     public Priority getPriority(IMPrioritySearchCriteria criteria) {
+        log.trace("IMPriorityRepository::getPriority method invoked");
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getSearchQuery(criteria, preparedStmtList);
-        log.info("Executing IMPriority Query: {} | Params: {}", query, preparedStmtList);
+        log.debug("Executing priority query with {} parameters", preparedStmtList.size());
         List<Priority> priorityList = jdbcTemplate.query(query, rowMapper, preparedStmtList.toArray());
-        return priorityList.isEmpty() ? Priority.MEDIUM : getMaxPriority(priorityList);
+        Priority result = priorityList.isEmpty() ? Priority.MEDIUM : getMaxPriority(priorityList);
+        log.debug("Priority query completed, result: {}", result);
+        return result;
     }
 
     public Priority getMaxPriority(List<Priority> priorities) {

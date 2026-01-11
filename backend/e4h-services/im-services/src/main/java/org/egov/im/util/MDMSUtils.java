@@ -1,5 +1,6 @@
 package org.egov.im.util;
 
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.mdms.model.MasterDetail;
 import org.egov.mdms.model.MdmsCriteria;
@@ -16,6 +17,7 @@ import java.util.*;
 import static org.egov.im.util.IMConstants.MDMS_MODULE_NAME;
 import static org.egov.im.util.IMConstants.MDMS_SERVICEDEF;
 
+@Slf4j
 @Component
 public class MDMSUtils {
 
@@ -37,8 +39,10 @@ public class MDMSUtils {
      * @return
      */
     public Object mDMSCall(IncidentRequest request){
+        log.trace("MDMSUtils::mDMSCall method invoked");
         RequestInfo requestInfo = request.getRequestInfo();
         String tenantId = request.getIncident().getTenantId();
+        log.debug("Fetching MDMS data for tenantId: {}", tenantId);
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo,tenantId);
         Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
         return result;
@@ -99,6 +103,8 @@ public class MDMSUtils {
     }
 
     public Object fetchMDMSData(RequestInfo requestInfo, String tenantId, String moduleName, List<String> masterNames, String filter) {
+        log.trace("MDMSUtils::fetchMDMSData method invoked");
+        log.debug("Fetching MDMS data for tenantId: {}, module: {}, masters: {}", tenantId, moduleName, masterNames);
         List<MasterDetail> masterDetails = masterNames.stream()
                 .map(name -> {
                     MasterDetail.MasterDetailBuilder builder = MasterDetail.builder().name(name);

@@ -33,7 +33,7 @@ public class V20251014140000__populate_im_services_priority_from_mdms extends Ba
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("🚀 Starting migration: inserting im_services_priority data from MDMS");
+        log.info("Starting migration: inserting im_services_priority data from MDMS");
 
         String insertSQL = """
                 INSERT INTO im_services_priority (tenantId, incidentType, incidentSubType, systemFunctional, priority)

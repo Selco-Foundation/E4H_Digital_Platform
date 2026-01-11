@@ -58,7 +58,7 @@ public class StorageUtil {
                                                                      ProcessingContext context) throws IOException {
 
         final String URL = getFileStoreURL(configuration.getFileStoreHlsUploadEndpoint()).toString();
-        log.info("uploading {} to file-store service at {}", filesToStore, URL);
+        log.info("Uploading {} files to HLS file-store service at {}", filesToStore.size(), URL);
         return serviceRequestRepository.uploadFiles(
                 filesToStore, context, URL);
     }

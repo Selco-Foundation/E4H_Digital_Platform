@@ -127,7 +127,9 @@ public class MigrationService {
      *
      * */
     public Map<String, Object> migrate(ServiceResponse serviceResponse) {
-
+        log.trace("MigrationService::migrate method invoked");
+        log.info("Starting migration for {} services", 
+                serviceResponse.getServices() != null ? serviceResponse.getServices().size() : 0);
 
         List<Service> servicesV1 = serviceResponse.getServices();
         List<ActionHistory> actionHistories = serviceResponse.getActionHistory();
@@ -150,6 +152,7 @@ public class MigrationService {
             });
         });
 
+        log.trace("Fetching ID to UUID mapping for {} IDs", ids.size());
         Map<Long, String> idToUuidMap = migrationUtils.getIdtoUUIDMap(new LinkedList<>(ids));
 
         /*############### FOR LOCAL TESTING ONLY ###########################################
@@ -160,7 +163,9 @@ public class MigrationService {
         }
         //##################################################################################*/
 
+        log.trace("Transforming services and action histories");
         Map<String, Object> response = transform(servicesV1, actionHistories, idToUuidMap);
+        log.info("Migration transformation completed successfully");
 
         return response;
 
@@ -173,15 +178,18 @@ public class MigrationService {
      * @return
      */
     private Map<String, Object> transform(List<Service> servicesV1, List<ActionHistory> actionHistories, Map<Long, String> idToUuidMap) {
-
+        log.trace("MigrationService::transform method invoked");
+        log.debug("Transforming {} services and {} action histories", servicesV1.size(),actionHistories.size());
 
         Map<String, List<ActionInfo>> idToActionMap = new HashMap<>();
 
         for (ActionHistory actionHistory : actionHistories) {
             List<ActionInfo> actions = actionHistory.getActions();
 
-            if (CollectionUtils.isEmpty(actions))
-                log.error("Skiping record with empty actionHistory");
+            if (CollectionUtils.isEmpty(actions)) {
+                log.warn("Skipping record with empty actionHistory");
+                continue;
+            }
 
             String id = actions.get(0).getBusinessKey();
             idToActionMap.put(id, actions);
@@ -212,7 +220,7 @@ public class MigrationService {
             incident.setApplicationStatus(oldToNewStatus.get(serviceV1.getStatus().toString()));
             ProcessInstanceRequest processInstanceRequest = ProcessInstanceRequest.builder().processInstances(workflows).build();
             IncidentRequest incidentRequest = IncidentRequest.builder().incident(incident).build();
-            //log.info("Pushing service request: " + serviceRequest);
+            log.trace("Pushing migrated incident and workflow to Kafka topics");
             /*#################### TEMPORARY FOR TESTING, REMOVE THE COMMENTS*/
                producer.push(tenantId,config.getBatchCreateTopic(),incidentRequest);
                producer.push(tenantId,config.getBatchWorkflowSaveTopic(),processInstanceRequest);

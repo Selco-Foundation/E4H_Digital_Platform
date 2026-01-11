@@ -69,15 +69,17 @@ public class NotificationService {
     }
 
     public void process(IncidentRequest request, String topic) {
+        log.trace("NotificationService::process method invoked");
         try {
-            log.info("request for notification :" + request);
+            log.info("Processing notification request for incidentId={}, tenantId={}, topic={}", 
+                    request.getIncident().getIncidentId(), request.getIncident().getTenantId(), topic);
             String tenantId = request.getIncident().getTenantId();
             IncidentWrapper incidentWrapper = IncidentWrapper.builder().incident(request.getIncident()).workflow(request.getWorkflow()).build();
             String applicationStatus = request.getIncident().getApplicationStatus();
             String action = request.getWorkflow().getAction();
 
             if (!(NOTIFICATION_ENABLE_FOR_STATUS.contains(action + "_" + applicationStatus))) {
-                log.info("Notification Disabled For State :" + applicationStatus);
+                log.debug("Notification disabled for state: {}, action: {}", applicationStatus, action);
                 return;
             }
 
@@ -182,7 +184,7 @@ public class NotificationService {
             }
 
         } catch (Exception ex) {
-            log.error("Error occured while processing the record from topic : " + topic, ex);
+            log.error("Error occurred while processing notification from topic: {}", topic, ex);
         }
     }
 
@@ -193,6 +195,7 @@ public class NotificationService {
      * @return Returns list of SMSRequest
      */
     private Map<String, List<String>> getFinalMessage(IncidentRequest request, String topic, String applicationStatus) {
+        log.trace("NotificationService::getFinalMessage method invoked");
         String tenantId = request.getIncident().getTenantId();
         String localizationMessage = notificationUtil.getLocalizationMessages(tenantId, request.getRequestInfo(), IM_MODULE);
 
@@ -223,7 +226,7 @@ public class NotificationService {
                 messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
 
             if (messageForEmployee == null) {
-                log.info("No message Found For Employee On Topic : " + topic);
+                log.warn("No message found for employee on topic: {}", topic);
                 return null;
             }
 
@@ -234,13 +237,13 @@ public class NotificationService {
         if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDINGATVENDOR) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(ASSIGN)) {
             messageForCitizen = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, CITIZEN, localizationMessage);
             if (messageForCitizen == null) {
-                log.info("No message Found For Citizen On Topic : " + topic);
+                log.warn("No message found for citizen on topic: {}", topic);
                 return null;
             }
 
             messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
-                log.info("No message Found For Employee On Topic : " + topic);
+                log.warn("No message found for employee on topic: {}", topic);
                 return null;
             }
 
@@ -290,13 +293,13 @@ public class NotificationService {
 //        if(incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDING_FOR_REASSIGNMENT) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(REASSIGN)){
 //            messageForCitizen = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, CITIZEN, localizationMessage);
 //            if (messageForCitizen == null) {
-//                log.info("No message Found For Citizen On Topic : " + topic);
+//                log.warn("No message found for citizen on topic: {}", topic);
 //                return null;
 //            }
 //
 //            messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
 //            if (messageForEmployee == null) {
-//                log.info("No message Found For Employee On Topic : " + topic);
+//                log.warn("No message found for employee on topic: {}", topic);
 //                return null;
 //            }
 //
@@ -351,7 +354,7 @@ public class NotificationService {
         if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(REJECTED) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(REJECT)) {
             messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
-                log.info("No message Found For Employee On Topic : " + topic);
+                log.warn("No message found for employee on topic: {}", topic);
                 return null;
             }
 //
@@ -374,13 +377,13 @@ public class NotificationService {
         if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDINGFORASSIGNMENT) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(IM_WF_REOPEN)) {
             messageForCitizen = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, CITIZEN, localizationMessage);
             if (messageForCitizen == null) {
-                log.info("No message Found For Citizen On Topic : " + topic);
+                log.warn("No message found for citizen on topic: {}", topic);
                 return null;
             }
 
             messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
-                log.info("No message Found For Employee On Topic : " + topic);
+                log.warn("No message found for employee on topic: {}", topic);
                 return null;
             }
 
@@ -412,18 +415,18 @@ public class NotificationService {
         if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(RESOLVED) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(IM_WF_RESOLVE)) {
             messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
-                log.info("No message Found For Employee On Topic : " + topic);
+                log.warn("No message found for employee on topic: {}", topic);
                 return null;
             }
             messageForCitizen = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, CITIZEN, localizationMessage);
             if (messageForCitizen == null) {
-                log.info("No message Found For Citizen On Topic : " + topic);
+                log.warn("No message found for citizen on topic: {}", topic);
                 return null;
             }
 
             messageForCRM = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, CRM, localizationMessage);
             if (messageForCRM == null) {
-                log.info("No message Found For CRM On Topic : " + topic);
+                log.warn("No message found for CRM on topic: {}", topic);
                 return null;
             }
 
@@ -449,14 +452,13 @@ public class NotificationService {
             messageForEmployee
                     = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
 
-            log.info("sendback with resolver: {}, time:{}, ticketid:{}, comment: {}",
+            log.info("Processing sendback action - resolver: {}, incidentId: {}, reason: {}",
                     request.getRequestInfo().getUserInfo().getUserName(),
-                    System.currentTimeMillis(),
                     request.getIncident().getIncidentId(),
                     request.getWorkflow().getSendBackReason().getReason()
                     );
             if (messageForEmployee == null) {
-                log.info("No message Found For Employee On Topic : " + topic);
+                log.warn("No message found for employee on topic: {}", topic);
                 return null;
             }
 
@@ -469,13 +471,13 @@ public class NotificationService {
         if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(CLOSED_AFTER_RESOLUTION)) {
             messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
-                log.info("No message Found For Employee On Topic : " + topic);
+                log.warn("No message found for employee on topic: {}", topic);
                 return null;
             }
 
             messageForCitizen = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, CITIZEN, localizationMessage);
             if (messageForCitizen == null) {
-                log.info("No message Found For Citizen On Topic : " + topic);
+                log.warn("No message found for citizen on topic: {}", topic);
                 return null;
             }
 
@@ -502,7 +504,7 @@ public class NotificationService {
                         tenantId,
                         tenantId);
 
-                log.info("derived survey hyperlink link: {} for tenant {}", hyerplink, tenantId);
+                log.debug("Derived survey hyperlink: {} for tenant {}", hyerplink, tenantId);
                 messageForEmployee = messageForEmployee.replace("{survey_link}", hyerplink);
             }
         }
@@ -513,19 +515,19 @@ public class NotificationService {
         if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDINGATVENDOR) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(REASSIGN)) {
             messageForCitizen = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, CITIZEN, localizationMessage);
             if (messageForCitizen == null) {
-                log.info("No message Found For Citizen On Topic : " + topic);
+                log.warn("No message found for citizen on topic: {}", topic);
                 return null;
             }
 
             messageForEmployee = notificationUtil.getCustomizedMsg(request.getWorkflow().getAction(), applicationStatus, EMPLOYEE, localizationMessage);
             if (messageForEmployee == null) {
-                log.info("No message Found For Employee On Topic : " + topic);
+                log.warn("No message found for employee on topic: {}", topic);
                 return null;
             }
 
             defaultMessage = notificationUtil.getDefaultMsg(CITIZEN, localizationMessage);
             if (defaultMessage == null) {
-                log.info("No default message Found For Topic : " + topic);
+                log.warn("No default message found for topic: {}", topic);
                 return null;
             }
 
@@ -619,7 +621,10 @@ public class NotificationService {
         if (messageForCRM != null)
             message.put(CRM, Arrays.asList(messageForCRM));
 
-        log.info("message being sent is  " + messageForEmployee + " , " + messageForCitizen + " , " + messageForCRM);
+        log.debug("Notification messages prepared - employee: {}, citizen: {}, crm: {}", 
+                messageForEmployee != null ? "present" : "null",
+                messageForCitizen != null ? "present" : "null",
+                messageForCRM != null ? "present" : "null");
         return message;
     }
 
@@ -632,6 +637,8 @@ public class NotificationService {
      * @return - Returns User object with given UUID
      */
     public User fetchUserByUUID(String uuidstring, RequestInfo requestInfo, String tenantId) {
+        log.trace("NotificationService::fetchUserByUUID method invoked");
+        log.debug("Fetching user by UUID: {}", uuidstring);
         User userInfoCopy = requestInfo.getUserInfo();
 
         User userInfo = getInternalMicroserviceUser(tenantId);
@@ -656,7 +663,7 @@ public class NotificationService {
             user = mapper.convertValue(users.get(0), User.class);
 
         } catch (Exception e) {
-            log.error("Exception while trying parse user object: ", e);
+            log.error("Exception while parsing user object", e);
         }
 
         requestInfo.setUserInfo(userInfoCopy);
@@ -669,6 +676,7 @@ public class NotificationService {
      * @param responeMap LinkedHashMap got from user api response
      */
     private void parseResponse(LinkedHashMap responeMap, String dobFormat) {
+        log.trace("NotificationService::parseResponse method invoked");
         List<LinkedHashMap> users = (List<LinkedHashMap>) responeMap.get("user");
         String formatForDate = "dd-MM-yyyy HH:mm:ss";
         if (users != null) {
@@ -693,17 +701,21 @@ public class NotificationService {
      * @return Long value of date
      */
     private Long dateTolong(String date, String format) {
+        log.trace("NotificationService::dateTolong method invoked");
         SimpleDateFormat simpleDateFormatObject = new SimpleDateFormat(format);
         Date returnDate = null;
         try {
             returnDate = simpleDateFormatObject.parse(date);
         } catch (ParseException e) {
-            e.printStackTrace();
+            log.error("Failed to parse date: {} with format: {}", date, format, e);
+            throw new CustomException("DATE_PARSE_ERROR", "Failed to parse date: " + date);
         }
         return returnDate.getTime();
     }
 
     public ProcessInstance getEmployeeName(String tenantId, String IncidentId, RequestInfo requestInfo, String action) {
+        log.trace("NotificationService::getEmployeeName method invoked");
+        log.debug("Fetching employee name for tenantId: {}, incidentId: {}, action: {}", tenantId, IncidentId, action);
         ProcessInstance processInstanceToReturn = new ProcessInstance();
         User userInfoCopy = requestInfo.getUserInfo();
 
@@ -720,10 +732,13 @@ public class NotificationService {
         try {
             processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
         } catch (IllegalArgumentException e) {
+            log.error("Failed to parse process instance response", e);
             throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
         }
-        if (CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances()))
+        if (CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())) {
+            log.warn("No process instances found for tenantId: {}, incidentId: {}, action: {}", tenantId, IncidentId, action);
             throw new CustomException("WORKFLOW_NOT_FOUND", "The workflow object is not found");
+        }
 
         for (ProcessInstance processInstance : processInstanceResponse.getProcessInstances()) {
             if (processInstance.getAction().equalsIgnoreCase(action))
@@ -734,6 +749,8 @@ public class NotificationService {
     }
 
     public String getDepartment(IncidentRequest request) {
+        log.trace("NotificationService::getDepartment method invoked");
+        log.debug("Fetching department for incident type: {}", request.getIncident().getIncidentType());
         Object mdmsData = mdmsUtils.mDMSCall(request);
         String serviceCode = request.getIncident().getIncidentType();
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}", serviceCode);
@@ -754,6 +771,8 @@ public class NotificationService {
     }
 
     public Map<String, String> getHRMSEmployee(IncidentRequest request, String role) {
+        log.trace("NotificationService::getHRMSEmployee method invoked");
+        log.debug("Fetching HRMS employee for role: {}, tenantId: {}", role, request.getIncident().getTenantId());
         Map<String, String> reassigneeDetails = new HashMap<>();
 
         List<String> employeeName = null;
@@ -797,26 +816,31 @@ public class NotificationService {
 //
 //        try{
 //            designation = JsonPath.read(response, designationJsonPath);
-        employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
-        employeeMobile = JsonPath.read(response, HRMS_EMP_MOBILE_JSONPATH);
-        employeeUUID = JsonPath.read(response, HRMS_EMP_UUID_JSONPATH);
-        //}
-//        catch (Exception e){
-//            throw new CustomException("JSONPATH_ERROR","Failed to parse mdms response for department");
-//        }
-//
-//        String localisedDesignation = notificationUtil.getCustomizedMsgForPlaceholder(localisationMessageForPlaceholder,"COMMON_MASTERS_DESIGNATION_"+designation.get(0));
-//
-//        reassigneeDetails.put("designation",localisedDesignation);
+        try {
+            employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
+            employeeMobile = JsonPath.read(response, HRMS_EMP_MOBILE_JSONPATH);
+            employeeUUID = JsonPath.read(response, HRMS_EMP_UUID_JSONPATH);
+        } catch (Exception e) {
+            log.error("Failed to parse HRMS response for employee details", e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse HRMS response for employee");
+        }
+
+        if (CollectionUtils.isEmpty(employeeName) || CollectionUtils.isEmpty(employeeMobile) || CollectionUtils.isEmpty(employeeUUID)) {
+            log.warn("Empty employee details returned from HRMS for role: {}", role);
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee details not found for role: " + role);
+        }
+
         reassigneeDetails.put("employeeName", employeeName.get(0));
         reassigneeDetails.put("employeeMobile", employeeMobile.get(0));
-
         reassigneeDetails.put("employeeUUID", employeeUUID.get(0));
+        log.debug("Successfully fetched HRMS employee details for role: {}", role);
 
         return reassigneeDetails;
     }
 
     public Map<String, String> getHRMSEmployeeForIndexing(IncidentRequest request, List<String> uuids, String role) {
+        log.trace("NotificationService::getHRMSEmployeeForIndexing method invoked");
+        log.debug("Fetching HRMS employee for indexing - role: {}, tenantId: {}", role, request.getIncident().getTenantId());
         Map<String, String> employeeDetails = new HashMap<>();
 
         String tenantId = request.getIncident().getTenantId();
@@ -844,6 +868,7 @@ public class NotificationService {
 
 
     private List<SMSRequest> enrichSmsRequest(String mobileNumber, String finalMessage) {
+        log.trace("NotificationService::enrichSmsRequest method invoked");
         List<SMSRequest> smsRequest = new ArrayList<>();
         SMSRequest req = SMSRequest.builder().mobileNumber(mobileNumber).message(finalMessage).build();
         smsRequest.add(req);
@@ -851,13 +876,14 @@ public class NotificationService {
     }
 
     private EventRequest enrichEventRequest(IncidentRequest request, String finalMessage) {
+        log.trace("NotificationService::enrichEventRequest method invoked");
         String tenantId = request.getIncident().getTenantId();
         String mobileNumber = request.getIncident().getReporter().getMobileNumber();
 
         Map<String, String> mapOfPhoneNoAndUUIDs = fetchUserUUIDs(mobileNumber, request.getRequestInfo(), tenantId);
 
         if (CollectionUtils.isEmpty(mapOfPhoneNoAndUUIDs.keySet())) {
-            log.info("UUID search failed!");
+            log.warn("UUID search failed for mobileNumber: {}", mobileNumber);
         }
 
         List<Event> events = new ArrayList<>();
@@ -904,6 +930,8 @@ public class NotificationService {
      * @return Returns List of MobileNumbers and UUIDs
      */
     public Map<String, String> fetchUserUUIDs(String mobileNumber, RequestInfo requestInfo, String tenantId) {
+        log.trace("NotificationService::fetchUserUUIDs method invoked");
+        log.debug("Fetching user UUIDs for mobileNumber: {}, tenantId: {}", mobileNumber, tenantId);
         Map<String, String> mapOfPhoneNoAndUUIDs = new HashMap<>();
         StringBuilder uri = new StringBuilder();
         uri.append(config.getUserHost()).append(config.getUserSearchEndpoint());
@@ -918,17 +946,17 @@ public class NotificationService {
                 String uuid = JsonPath.read(user, "$.user[0].uuid");
                 mapOfPhoneNoAndUUIDs.put(mobileNumber, uuid);
             } else {
-                log.error("Service returned null while fetching user for username - " + mobileNumber);
+                log.error("Service returned null while fetching user for username: {}", mobileNumber);
             }
         } catch (Exception e) {
-            log.error("Exception while fetching user for username - " + mobileNumber);
-            log.error("Exception trace: ", e);
+            log.error("Exception while fetching user for username: {}", mobileNumber, e);
         }
 
         return mapOfPhoneNoAndUUIDs;
     }
 
     private User getInternalMicroserviceUser(String tenantId) {
+        log.trace("NotificationService::getInternalMicroserviceUser method invoked");
         //Creating role with INTERNAL_MICROSERVICE_ROLE
         Role role = Role.builder()
                 .name("Internal Microservice Role").code("INTERNAL_MICROSERVICE_ROLE")
@@ -944,8 +972,11 @@ public class NotificationService {
     }
 
     public String getUiAppHost(String tenantId) {
+        log.trace("NotificationService::getUiAppHost method invoked");
         String stateLevelTenantId = centralInstanceUtil.getStateLevelTenant(tenantId);
-        return config.getUiAppHostMap().get(stateLevelTenantId);
+        String uiAppHost = config.getUiAppHostMap().get(stateLevelTenantId);
+        log.debug("Retrieved UI app host for tenantId: {}, stateLevelTenantId: {}", tenantId, stateLevelTenantId);
+        return uiAppHost;
     }
 
 }

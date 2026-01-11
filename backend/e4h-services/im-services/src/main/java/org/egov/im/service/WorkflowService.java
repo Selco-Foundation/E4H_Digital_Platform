@@ -68,10 +68,12 @@ public class WorkflowService {
      *
      * */
     public BusinessService getBusinessService(IncidentRequest incidentRequest, Priority priority) {
+        log.trace("WorkflowService::getBusinessService method invoked");
         String tenantId = incidentRequest.getIncident().getTenantId();
         String businessService = PRIORITY_BUSINESS_SERVICE_MAP.getOrDefault(priority, IM_BUSINESSSERVICE);
         log.info("Fetching business service for tenant: {}, priority: {}, businessService: {}",
                 tenantId, priority, businessService);
+        log.trace("Building search URL and fetching business service");
         StringBuilder url = getSearchURLWithParams(tenantId, businessService);
         RequestInfoWrapper requestInfoWrapper
                 = RequestInfoWrapper.builder().requestInfo(incidentRequest.getRequestInfo()).build();
@@ -80,12 +82,16 @@ public class WorkflowService {
         try {
             response = mapper.convertValue(result, BusinessServiceResponse.class);
         } catch (IllegalArgumentException e) {
+            log.error("Failed to parse business service response", e);
             throw new CustomException("PARSING ERROR", "Failed to parse response of workflow business service search");
         }
 
-        if (CollectionUtils.isEmpty(response.getBusinessServices()))
+        if (CollectionUtils.isEmpty(response.getBusinessServices())) {
+            log.error("Business service not found for tenant: {}, businessService: {}", tenantId, IM_BUSINESSSERVICE);
             throw new CustomException("BUSINESSSERVICE_NOT_FOUND", "The businessService " + IM_BUSINESSSERVICE + " is not found");
+        }
 
+        log.debug("Business service fetched successfully");
         return response.getBusinessServices().get(0);
     }
 
@@ -96,8 +102,11 @@ public class WorkflowService {
      *
      * */
     public ProcessInstance updateWorkflowStatus(IncidentRequestWrapper wrapper, Object mdmsData) {
+        log.trace("WorkflowService::updateWorkflowStatus method invoked");
         IncidentRequest incidentRequest = wrapper.getIncidentRequest();
+        log.trace("Fetching priority from IM priority table");
         Priority priority = slaService.getPriorityFromIMPriorityTable(incidentRequest.getIncident());
+        log.trace("Creating process instance for workflow");
         ProcessInstance processInstance = getProcessInstanceForIM(incidentRequest, priority);
         log.info("Updating workflow status for incident: {}, tenant: {}",
                 incidentRequest.getIncident().getIncidentId(), incidentRequest.getIncident().getTenantId());
@@ -105,13 +114,16 @@ public class WorkflowService {
         log.debug("Calling workflow transition for incident: {} with action: {}",
                 incidentRequest.getIncident().getIncidentId(), incidentRequest.getWorkflow().getAction());
         ProcessInstance updatedProcessInstance = callWorkFlow(workflowRequest);
-        incidentRequest.getIncident().setApplicationStatus(updatedProcessInstance.getState().getApplicationStatus());
-        log.info("Workflow status updated for incident: {}. New status: {}", incidentRequest.getIncident().getIncidentId(), updatedProcessInstance.getState().getApplicationStatus());
+        String newStatus = updatedProcessInstance.getState().getApplicationStatus();
+        incidentRequest.getIncident().setApplicationStatus(newStatus);
+        log.info("Workflow status updated for incident: {}. New status: {}", incidentRequest.getIncident().getIncidentId(), newStatus);
+        log.trace("Enriching total SLA");
         enrichTotalSla(wrapper, updatedProcessInstance);
         return updatedProcessInstance;
     }
 
     private void enrichTotalSla(IncidentRequestWrapper wrapper, ProcessInstance processInstance) {
+        log.trace("WorkflowService::enrichTotalSla method invoked");
         IncidentRequest request = wrapper.getIncidentRequest();
         log.debug("Enriching SLA for incident: {}", request.getIncident().getIncidentId());
         String applicationStatus = request.getIncident().getApplicationStatus();
@@ -120,6 +132,7 @@ public class WorkflowService {
         String IncidentId = request.getIncident().getIncidentId();
 
         // Step 1: Fetch MDMS BusinessHours data
+        log.trace("Fetching BusinessHours from MDMS");
         Object mdmsData = mdmsUtils.fetchMDMSData(
                 request.getRequestInfo(),
                 request.getIncident().getTenantId(),
@@ -136,22 +149,28 @@ public class WorkflowService {
                     "$.MdmsRes['common-masters'].BusinessHours[0].BusinessHours"
             );
         } catch (Exception e) {
+            log.error("Failed to parse BusinessHours from MDMS", e);
             throw new CustomException("MDMS_PARSE_ERROR", "Unable to parse BusinessHours from MDMS");
         }
 
         if (businessHourList == null || businessHourList.isEmpty()) {
+            log.error("BusinessHours config missing from MDMS for tenant: {}", tenantId);
             throw new CustomException("MDMS_MISSING", "BusinessHours config missing from MDMS");
         }
 
         //get all process instances
+        log.trace("Fetching all process instances for SLA calculation");
         List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
         Collections.reverse(processInstances);
 
         // Step 3: Use BusinessHoursUtil
+        log.trace("Calculating business hours elapsed and total SLA");
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
         long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
         long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), processInstances);
         long totalSlaRemaining = definedTotalSla - businessHoursElapsed;
+        log.debug("SLA calculation completed: definedTotalSla={}, businessHoursElapsed={}, totalSlaRemaining={}", 
+                definedTotalSla, businessHoursElapsed, totalSlaRemaining);
 
         wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
         processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
@@ -177,9 +196,11 @@ public class WorkflowService {
 
 
     public List<IncidentWrapper> enrichWorkflow(RequestInfo requestInfo, List<IncidentWrapper> incidentWrappers) {
+        log.trace("WorkflowService::enrichWorkflow method invoked");
         log.info("Enriching workflow for {} incident wrappers", incidentWrappers.size());
 
         // FIX ME FOR BULK SEARCH
+        log.trace("Grouping incident wrappers by tenantId");
         Map<String, List<IncidentWrapper>> tenantIdToServiceWrapperMap = getTenantIdToServiceWrapperMap(incidentWrappers);
 
         List<IncidentWrapper> enrichedServiceWrappers = new ArrayList<>();
@@ -196,6 +217,7 @@ public class WorkflowService {
 
             RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
 
+            log.trace("Fetching process instances for tenant: {} with {} incident IDs", tenantId, serviceRequestIds.size());
             StringBuilder searchUrl = getprocessInstanceSearchURL(tenantId, StringUtils.join(serviceRequestIds, ','));
             Object result = repository.fetchResult(searchUrl, requestInfoWrapper);
 
@@ -204,6 +226,7 @@ public class WorkflowService {
             try {
                 processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
             } catch (IllegalArgumentException e) {
+                log.error("Failed to parse process instance response", e);
                 throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
             }
 
@@ -243,7 +266,7 @@ public class WorkflowService {
      * @param request
      */
     private ProcessInstance getProcessInstanceForIM(IncidentRequest request, Priority priority) {
-
+        log.trace("WorkflowService::getProcessInstanceForIM method invoked");
         Incident incident = request.getIncident();
         Workflow workflow = request.getWorkflow();
         String action = request.getWorkflow().getAction();
@@ -284,11 +307,13 @@ public class WorkflowService {
     }
 
     private void reassignWorkflow(Workflow workflow, IncidentRequest request, String role) {
+        log.trace("WorkflowService::reassignWorkflow method invoked for role: {}", role);
         workflow.setAssignes(null);
         log.debug("Fetching employee details for role: {}", role);
         Map<String, String> reassigneeDetails = notificationService.getHRMSEmployee(request, role);
         List<String> assignee = Arrays.asList(reassigneeDetails.get("employeeUUID"));
         workflow.setAssignes(assignee);
+        log.debug("Workflow reassigned to employee with UUID: {}", reassigneeDetails.get("employeeUUID"));
     }
 
     /**
@@ -320,23 +345,27 @@ public class WorkflowService {
     }
 
     private List<ProcessInstance> getAllProcessInstances(String tenantId, String IncidentId, RequestInfo requestInfo){
-
+        log.trace("WorkflowService::getAllProcessInstances method invoked");
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
 
         StringBuilder URL = getprocessInstanceSearchURL(tenantId, IncidentId);
         URL.append("&").append("history=true");
 
+        log.trace("Fetching process instance history");
         Object result = repository.fetchResult(URL, requestInfoWrapper);
         ProcessInstanceResponse processInstanceResponse = null;
         try {
             processInstanceResponse = mapper.convertValue(result, ProcessInstanceResponse.class);
         } catch (IllegalArgumentException e) {
+            log.error("Failed to parse process instance history response", e);
             throw new CustomException("PARSING ERROR", "Failed to parse response of workflow processInstance search");
         }
         if (processInstanceResponse == null || CollectionUtils.isEmpty(processInstanceResponse.getProcessInstances())) {
+            log.debug("No process instances found in history for incident: {}", IncidentId);
             return Collections.emptyList();
         }
 
+        log.debug("Found {} process instances in history", processInstanceResponse.getProcessInstances().size());
         return processInstanceResponse.getProcessInstances();
     }
 
@@ -349,12 +378,20 @@ public class WorkflowService {
      * and return wf-response to sets the resultant status
      */
     private ProcessInstance callWorkFlow(ProcessInstanceRequest workflowReq) {
+        log.trace("WorkflowService::callWorkFlow method invoked");
         log.info("Calling workflow transition service");
 
         ProcessInstanceResponse response = null;
         StringBuilder url = new StringBuilder(imConfiguration.getWfHost().concat(imConfiguration.getWfTransitionPath()));
+        log.trace("Calling workflow service at URL: {}", url);
         Object optional = repository.fetchResult(url, workflowReq);
-        response = mapper.convertValue(optional, ProcessInstanceResponse.class);
+        try {
+            response = mapper.convertValue(optional, ProcessInstanceResponse.class);
+        } catch (IllegalArgumentException e) {
+            log.error("Failed to parse workflow transition response", e);
+            throw new CustomException("PARSING_ERROR", "Failed to parse workflow transition response");
+        }
+        log.debug("Workflow transition completed successfully");
         return response.getProcessInstances().get(0);
     }
 
