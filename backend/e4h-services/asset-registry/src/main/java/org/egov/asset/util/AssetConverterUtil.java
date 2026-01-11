@@ -14,10 +14,12 @@ import java.util.Map;
 public class AssetConverterUtil {
 
     public static InverterDetails convertMapToInverterDetails(Map<String, Object> map) {
-        log.debug("AssetConverterUtil::convertMapToInverterDetails called | keys={}", map != null ? map.keySet() : "null");
+        log.trace("AssetConverterUtil::convertMapToInverterDetails called");
         if (map == null) {
+            log.debug("Map is null, returning null");
             return null;
         }
+        log.debug("Converting map to inverter details | keysCount={}", map.keySet().size());
         InverterDetails inverterDetails = new InverterDetails();
 
         inverterDetails.setCurrentUnit((String) map.get("currentUnit"));
@@ -35,17 +37,18 @@ public class AssetConverterUtil {
         inverterDetails.setChargeControllerCurrent(getDoubleValue(map.get("chargeControllerCurrent")));
         inverterDetails.setChargeControllerVoltage(getDoubleValue(map.get("chargeControllerVoltage")));
         inverterDetails.setTotalCapacity(getDoubleValue(map.get("totalCapacity")));
-        log.info("convertMapToInverterDetails | created InverterDetails with inverterCapacity={} capacityUOM={}",
+        log.debug("Inverter details converted | inverterCapacity={} capacityUOM={}",
                 inverterDetails.getInverterCapacity(), inverterDetails.getTotalCapacityUOM());
         return inverterDetails;
     }
 
     public static BatteryDetails convertMapToBatteryDetails(Map<String, Object> map) {
-        log.debug("AssetConverterUtil::convertMapToBatteryDetails called | keys={}",
-                map != null ? map.keySet() : "null");
+        log.trace("AssetConverterUtil::convertMapToBatteryDetails called");
         if (map == null) {
+            log.debug("Map is null, returning null");
             return null;
         }
+        log.debug("Converting map to battery details | keysCount={}", map.keySet().size());
 
         BatteryDetails batteryDetails = new BatteryDetails();
 
@@ -57,17 +60,18 @@ public class AssetConverterUtil {
         batteryDetails.setVoltageUnit((String) map.get("voltageUnit"));
         batteryDetails.setCapacityUnit((String) map.get("capacityUnit"));
         batteryDetails.setBatteryType((String) map.get("batteryType"));
-        log.info("convertMapToBatteryDetails | created BatteryDetails with totalCapacity={} capacityUnit={}",
+        log.debug("Battery details converted | totalCapacity={} capacityUnit={}",
                 batteryDetails.getTotalCapacity(), batteryDetails.getCapacityUnit());
         return batteryDetails;
     }
 
     public static PanelDetails convertMapToPanelDetails(Map<String, Object> map) {
-        log.debug("AssetConverterUtil::convertMapToPanelDetails called | keys={}",
-                map != null ? map.keySet() : "null");
+        log.trace("AssetConverterUtil::convertMapToPanelDetails called");
         if (map == null) {
+            log.debug("Map is null, returning null");
             return null;
         }
+        log.debug("Converting map to panel details | keysCount={}", map.keySet().size());
 
         PanelDetails panelDetails = new PanelDetails();
         panelDetails.setTotalCapacity(getDoubleValue(map.get("totalCapacity")));
@@ -75,7 +79,7 @@ public class AssetConverterUtil {
 
         panelDetails.setTotalCapacityUnit((String) map.get("totalCapacityUnit"));
         panelDetails.setCapacityUnit((String) map.get("capacityUnit"));
-        log.info("convertMapToPanelDetails | created PanelDetails with totalCapacity={} panelCapacity={}",
+        log.debug("Panel details converted | totalCapacity={} panelCapacity={}",
                 panelDetails.getTotalCapacity(), panelDetails.getPanelCapacity());
         return panelDetails;
     }
