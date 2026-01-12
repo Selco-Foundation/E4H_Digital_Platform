@@ -68,6 +68,7 @@ public class IdGenService {
 	 * @return
 	 */
 	public IdGenerationResponse getId(RequestInfo requestInfo, String tenantId, Integer count, String name, String format) {
+		log.trace("IdGenService.getId invoked for tenant: {}, count: {}, name: {}", tenantId, count, name);
 		StringBuilder uri = new StringBuilder();
 		ObjectMapper mapper = new ObjectMapper();
 		uri.append(properties.getIdGenHost()).append(properties.getIdGenEndpoint());
@@ -78,10 +79,11 @@ public class IdGenService {
 		IdGenerationRequest request = IdGenerationRequest.builder().idRequests(reqList).requestInfo(requestInfo).build();
 		IdGenerationResponse response = null;
 		try {
+			log.debug("Generating {} ID(s) for tenant: {}, name: {}, format: {}", count, tenantId, name, format);
 			response = mapper.convertValue(repository.fetchResult(uri, request), IdGenerationResponse.class);
+			log.debug("ID generation completed successfully for tenant: {}, count: {}", tenantId, count);
 		}catch(Exception e) {
-			log.error("Exception while generating ids: ",e);
-			log.error("Request: "+request);
+			log.error("Exception while generating IDs for tenant: {}, count: {}, name: {}", tenantId, count, name, e);
 			throw new CustomException(ErrorConstants.HRMS_GENERATE_ID_ERROR_CODE,ErrorConstants.HRMS_GENERATE_ID_ERROR_MSG);
 
 		}

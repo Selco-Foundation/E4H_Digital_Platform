@@ -83,14 +83,16 @@ public class MDMSService {
 	 * @return
 	 */
 	public MdmsResponse fetchMDMSData(RequestInfo requestInfo, String tenantId) {
+		log.trace("MDMSService.fetchMDMSData invoked for tenant: {}", tenantId);
 		StringBuilder uri = new StringBuilder();
 		MdmsCriteriaReq request = prepareMDMSRequest(uri, requestInfo, tenantId);
 		MdmsResponse response = null;
 		try {
+			log.debug("Fetching MDMS data for tenant: {}, endpoint: {}", tenantId, uri.toString());
 			response = restTemplate.postForObject(uri.toString(), request, MdmsResponse.class);
+			log.debug("MDMS data fetched successfully for tenant: {}", tenantId);
 		}catch(Exception e) {
-			log.info("Exception while fetching from MDMS: ",e);
-			log.info("Request: "+ request);
+			log.warn("Exception while fetching MDMS data for tenant: {}", tenantId, e);
 		}
 		return response;
 	}
@@ -103,14 +105,16 @@ public class MDMSService {
 	 * @return
 	 */
 	public MdmsResponse fetchMDMSDataLoc(RequestInfo requestInfo, String tenantId) {
+		log.trace("MDMSService.fetchMDMSDataLoc invoked for tenant: {}", tenantId);
 		StringBuilder uri = new StringBuilder();
 		MdmsCriteriaReq request = prepareMDMSRequestLoc(uri, requestInfo, tenantId);
 		MdmsResponse response = null;
 		try {
+			log.debug("Fetching MDMS location data for tenant: {}, endpoint: {}", tenantId, uri.toString());
 			response = restTemplate.postForObject(uri.toString(), request, MdmsResponse.class);
+			log.debug("MDMS location data fetched successfully for tenant: {}", tenantId);
 		}catch(Exception e) {
-			log.info("Exception while fetching from MDMS: ",e);
-			log.info("Request: "+ request);
+			log.warn("Exception while fetching MDMS location data for tenant: {}", tenantId, e);
 		}
 		return response;
 	}

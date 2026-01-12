@@ -69,33 +69,41 @@ public class NotificationService {
 	 * @param pwdMap
 	 */
 	public void sendNotification(EmployeeRequest request, Map<String, String> pwdMap) {
-		
+		log.trace("NotificationService.sendNotification invoked");
 		String message = getMessage(request,HRMSConstants.HRMS_EMP_CREATE_LOCLZN_CODE);
 		String tenantId = request.getEmployees().get(0).getTenantId(); 
+		int employeeCount = request.getEmployees().size();
+		log.info("Sending notifications to {} employee(s) for tenant: {}", employeeCount, tenantId);
 				
 		if(StringUtils.isEmpty(message)) {
-			log.info("SMS content has not been configured for this case");
+			log.warn("SMS content has not been configured for employee creation notification");
 			return;
 		}
 		for(Employee employee: request.getEmployees()) {
-			
+			log.debug("Building notification message for employee code: {}", employee.getCode());
 			message = buildMessage(employee, message, pwdMap);
 			SMSRequest smsRequest = SMSRequest.builder().mobileNumber(employee.getUser().getMobileNumber()).message(message).build();
+			log.debug("Pushing SMS notification to Kafka topic: {}", smsTopic);
 			producer.push(tenantId, smsTopic, smsRequest);
 		}
+		log.info("Notifications sent successfully to {} employee(s)", employeeCount);
 	}
 
 	public void sendReactivationNotification(EmployeeRequest request){
-		
+		log.trace("NotificationService.sendReactivationNotification invoked");
 		String message = getMessage(request,HRMSConstants.HRMS_EMP_REACTIVATE_LOCLZN_CODE);
 		String tenantId = request.getEmployees().get(0).getTenantId(); 
+		int employeeCount = request.getEmployees().size();
+		log.info("Sending reactivation notifications to {} employee(s) for tenant: {}", employeeCount, tenantId);
 		if(StringUtils.isEmpty(message)) {
-			log.info("SMS content has not been configured for this case");
+			log.warn("SMS content has not been configured for reactivation notification");
 			return;
 		}
 		RequestInfo requestInfo = request.getRequestInfo();
+		int notificationCount = 0;
 		for(Employee employee: request.getEmployees()) {
 			if(employee.getReactivationDetails()!=null && employee.getReActivateEmployee()){
+				log.debug("Processing reactivation notification for employee code: {}", employee.getCode());
 				String OTP = getOTP(employee,requestInfo);
 				String link = envHost + "employee/user/otp";
 
@@ -104,15 +112,17 @@ public class NotificationService {
 				message = message.replace("{password}",OTP).replace("{link}",link);
 
 				SMSRequest smsRequest = SMSRequest.builder().mobileNumber(employee.getUser().getMobileNumber()).message(message).build();
-				log.info(message);
+				log.debug("Pushing reactivation SMS notification to Kafka topic: {}", smsTopic);
 				producer.push(tenantId, smsTopic, smsRequest);
+				notificationCount++;
 			}
 
 		}
-
+		log.info("Reactivation notifications sent successfully to {} employee(s)", notificationCount);
 	}
 
 	public String getOTP(Employee employee,RequestInfo requestInfo){
+		log.trace("NotificationService.getOTP invoked for employee code: {}", employee.getCode());
 		Map<String, Object> OTPRequest= new HashMap<>();
 		Map<String, Object> otp= new HashMap<>();
 		otp.put("mobileNumber",employee.getUser().getMobileNumber());
@@ -128,9 +138,12 @@ public class NotificationService {
 		StringBuilder url = new StringBuilder();
 		url.append(otpHost).append(otpCreateEndpoint);
 		try {
+			log.debug("Requesting OTP for employee code: {}, tenant: {}", employee.getCode(), employee.getTenantId());
 			response = restTemplate.postForObject(url.toString(), OTPRequest, Map.class);
+			log.debug("OTP request completed successfully for employee code: {}", employee.getCode());
 		}catch(Exception e) {
-			log.error("Exception while creating user: ", e);
+			log.error("Exception while creating OTP for employee code: {}, tenant: {}", 
+					employee.getCode(), employee.getTenantId(), e);
 			return null;
 		}
 		String result = JsonPath.read(response, "$.otp.otp");
@@ -175,7 +188,8 @@ public class NotificationService {
 	 * @return
 	 */
 	public Map<String, Map<String, String>> getLocalisedMessages(RequestInfo requestInfo, String tenantId, String locale, String module) {
-		
+		log.trace("NotificationService.getLocalisedMessages invoked for tenant: {}, locale: {}, module: {}", 
+				tenantId, locale, module);
 		Map<String, Map<String, String>> localizedMessageMap = new HashMap<>();
 		Map<String, String> mapOfCodesAndMessages = new HashMap<>();
 		StringBuilder uri = new StringBuilder();
@@ -188,11 +202,14 @@ public class NotificationService {
 		List<String> messages = null;
 		Object result = null;
 		try {
+			log.debug("Fetching localized messages from localization service, endpoint: {}", uri.toString());
 			result = repository.fetchResult(uri, requestInfoWrapper);
 			codes = JsonPath.read(result, HRMSConstants.HRMS_LOCALIZATION_CODES_JSONPATH);
 			messages = JsonPath.read(result, HRMSConstants.HRMS_LOCALIZATION_MSGS_JSONPATH);
+			log.debug("Localized messages fetched successfully");
 		} catch (Exception e) {
-			log.error("Exception while fetching from localization: " + e);
+			log.error("Exception while fetching localized messages for tenant: {}, locale: {}, module: {}", 
+					tenantId, locale, module, e);
 		}
 		if (null != result) {
 			for (int i = 0; i < codes.size(); i++) {

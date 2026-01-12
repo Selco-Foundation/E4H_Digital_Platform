@@ -30,10 +30,12 @@ public class HRMSUtils {
 	 * @return
 	 */
 	public String generatePassword(List<String> params) {
+		log.trace("HRMSUtils.generatePassword invoked");
 		StringBuilder password = new StringBuilder();
 		SecureRandom random = new SecureRandom();
 		params.add(allowedPasswordSpecialCharacters);
 		try {
+			log.debug("Generating password of length: {}", pwdLength);
 			for(int i = 0; i < params.size(); i++) {
 				String param = params.get(i);
 				String val;
@@ -52,7 +54,9 @@ public class HRMSUtils {
 						i = 0;
 				}
 			}
+			log.debug("Password generated successfully");
 		}catch(Exception e) {
+			log.error("Exception while generating password, using fallback password", e);
 			password.append("123456");
 		}
 
