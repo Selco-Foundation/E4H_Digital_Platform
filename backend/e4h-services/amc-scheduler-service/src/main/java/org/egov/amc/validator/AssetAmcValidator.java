@@ -61,6 +61,9 @@ public class AssetAmcValidator {
     }
 
     public void validateCreateAssetAmcRequest(AssetAmcRequest request) {
+        log.trace("Entering validateCreateAssetAmcRequest method");
+        log.info("Validating create asset AMC request, record count: {}", 
+                request.getAssetAmcs() != null ? request.getAssetAmcs().size() : 0);
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
@@ -71,16 +74,19 @@ public class AssetAmcValidator {
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
+        log.debug("Create asset AMC request validation completed successfully");
     }
 
     private void validateAssetAmcRequest(AssetAmcRequest request) {
+        log.trace("Entering validateAssetAmcRequest method");
         Map<String, String> errorMap = new HashMap<>();
 
         if (request.getAssetAmcs() == null || request.getAssetAmcs().size() == 0) {
-            log.error("Field Plans list is empty. Field Plans is mandatory");
+            log.error("Asset AMC list is empty. Asset AMCs are mandatory");
             throw new CustomException("ASSETAMC", "Field Plans are mandatory");
         }
 
+        log.debug("Validating {} asset AMC record(s)", request.getAssetAmcs().size());
         for (AssetAmc assetAmc : request.getAssetAmcs()) {
             if (assetAmc == null) {
                 log.error("AssetAmc is mandatory in AssetAmcs");
@@ -92,9 +98,10 @@ public class AssetAmcValidator {
                 throw new CustomException("AssetAmc", "Project ID is mandatory");
             }
             // Get existing assetAmc with projectID from assetAmc service
+            log.debug("Validating asset ID: {} for tenantId: {}", assetAmc.getAssetId(), assetAmc.getTenantId());
             Asset existingAsset = getAssetById(request, assetAmc);
             if (existingAsset == null) {
-                log.error("Asset ID do not exist");
+                log.error("Asset ID {} does not exist for tenantId: {}", assetAmc.getAssetId(), assetAmc.getTenantId());
                 throw new CustomException("AssetAmc", "Asset ID do not exist");
             }
 
@@ -104,12 +111,13 @@ public class AssetAmcValidator {
             }
 
             // Get existing amcConfiguration from amcConfiguration service
+            log.debug("Validating AMC configuration ID: {} for tenantId: {}", assetAmc.getAmcConfigurationId(), assetAmc.getTenantId());
             String amcConfigurationIds = assetAmc.getAmcConfigurationId();
             AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder().ids(new ArrayList<>(List.of(amcConfigurationIds))).tenantId(assetAmc.getTenantId()).build();
             AmcConfigurationSearchRequest searchRequest = AmcConfigurationSearchRequest.builder().RequestInfo(request.getRequestInfo()).searchCriteria(criteria).build();
             List<AmcConfiguration> amcConfigurationList = amcConfigurationService.searchAmcConfiguration(searchRequest, 10, 0, assetAmc.getTenantId(), false, null );
             if (amcConfigurationList ==null || amcConfigurationList.isEmpty()){
-                log.error("AMC Configuration ID do not exist");
+                log.error("AMC Configuration ID {} does not exist for tenantId: {}", assetAmc.getAmcConfigurationId(), assetAmc.getTenantId());
                 throw new CustomException("Asset Amc", "AMC Configuration do not exist");
             }
 
@@ -138,6 +146,7 @@ public class AssetAmcValidator {
     }
 
     private void validateRequestInfo(RequestInfo requestInfo) {
+        log.trace("Entering validateRequestInfo method");
         if (requestInfo == null) {
             log.error("Request info is mandatory");
             throw new CustomException("REQUEST_INFO", "Request info is mandatory");
@@ -150,17 +159,22 @@ public class AssetAmcValidator {
             log.error("UUID is mandatory in UserInfo");
             throw new CustomException("USERINFO_UUID", "UUID is mandatory");
         }
+        log.debug("RequestInfo validation successful");
     }
 
     public Asset getAssetById(AssetAmcRequest request, AssetAmc assetAmc) {
+        log.trace("Entering getAssetById method for assetId: {}, tenantId: {}", assetAmc.getAssetId(), assetAmc.getTenantId());
         String assetId = assetAmc.getAssetId();
         AssetSearchCriteria criteria = AssetSearchCriteria.builder().assetID(assetId).tenantId(assetAmc.getTenantId()).build();
         AssetSearchRequest assetSearchRequest = AssetSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(criteria).build();
         String url = config.getAssetServiceHost() + config.getAssetServiceSearchUrl()+ "?tenantId="+assetAmc.getTenantId()+"&offset=0&limit=100";
+        log.debug("Calling asset service to fetch asset at URL: {}", url);
         List<Asset> assetList = requestRepository.fetchResult(new StringBuilder(url), assetSearchRequest, new TypeReference<List<Asset>>() {});
         if(assetList != null && !assetList.isEmpty()){
+            log.debug("Asset found for assetId: {}", assetId);
             return assetList.get(0);
         }
+        log.debug("Asset not found for assetId: {}", assetId);
         return null;
     }
 
@@ -208,6 +222,9 @@ public class AssetAmcValidator {
 
     /* Validates Update Project request body */
     public void validateUpdateAssetAmcRequest(AssetAmcRequest request) {
+        log.trace("Entering validateUpdateAssetAmcRequest method");
+        log.info("Validating update asset AMC request, record count: {}", 
+                request.getAssetAmcs() != null ? request.getAssetAmcs().size() : 0);
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
@@ -221,10 +238,11 @@ public class AssetAmcValidator {
         //Verify if AssetAmc id is present
         for (AssetAmc assetAmc : request.getAssetAmcs()) {
             if (StringUtils.isBlank(assetAmc.getId())) {
-                log.error("AMC_Id is mandatory");
+                log.error("Asset AMC ID is mandatory for update");
                 throw new CustomException("UPDATE_AMC_Configuration", "Amc Configuration Id is mandatory");
             }
         }
+        log.debug("Update asset AMC request validation completed successfully");
 
 
         if (!errorMap.isEmpty())
@@ -234,6 +252,7 @@ public class AssetAmcValidator {
 
     /* Validates search AssetAmc request body and parameters*/
     public void validateSearchAssetAmcRequest(AssetAmcSearchRequest request, Integer limit, Integer offset, String tenantId) {
+        log.trace("Entering validateSearchAssetAmcRequest method, tenantId: {}, limit: {}, offset: {}", tenantId, limit, offset);
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
@@ -243,6 +262,7 @@ public class AssetAmcValidator {
         validateSearchAssetAmcRequestParams(limit, offset, tenantId);
         //Verify if search AssetAmc request is valid
         validateSearchAssetAmc(request.getSearchCriteria(), tenantId);
+        log.debug("Search asset AMC request validation completed successfully");
         //Verify MDMS Data
         // TODO: Uncomment and fix as per HCM once we get clarity
         // validateRequestMDMSData(project, tenantId, errorMap);
@@ -327,8 +347,12 @@ public class AssetAmcValidator {
 
     /* Validates projects data in update request against projects data fetched from database */
     public void validateUpdateAgainstDB(List<AssetAmc> assetAmcsFromRequest, List<AssetAmc> assetAmcsFromDB) {
+        log.trace("Entering validateUpdateAgainstDB method, request count: {}, DB count: {}", 
+                assetAmcsFromRequest != null ? assetAmcsFromRequest.size() : 0,
+                assetAmcsFromDB != null ? assetAmcsFromDB.size() : 0);
         if (CollectionUtils.isEmpty(assetAmcsFromDB)) {
-            log.error("The assetAmc records that you are trying to update does not exists in the system");
+            log.error("The asset AMC records that you are trying to update do not exist in the system, request count: {}", 
+                    assetAmcsFromRequest != null ? assetAmcsFromRequest.size() : 0);
             throw new CustomException("INVALID_ASSETAMC_MODIFY", "The records that you are trying to update does not exists in the system");
         }
         Long currentTimestamp = Instant.now().toEpochMilli();
@@ -346,9 +370,10 @@ public class AssetAmcValidator {
             AssetAmc assetAmcFromDB = assetAmcsFromDB.stream().filter(p -> p.getId().equals(assetAmc.getId())).findFirst().orElse(null);
 
             if (assetAmcFromDB == null) {
-                log.error("The assetAmc id " + assetAmc.getId() + " that you are trying to update does not exists for the assetAmc");
+                log.error("Asset AMC ID {} does not exist in the system", assetAmc.getId());
                 throw new CustomException("INVALID_ASSETAMC_MODIFY", "The assetAmc id " + assetAmc.getId() + " that you are trying to update does not exists for the assetAmc");
             }
+        log.debug("Update against DB validation completed successfully for {} asset AMC record(s)", assetAmcsFromRequest.size());
 
             validateStartDateAndEndDateAgainstDB(assetAmc, assetAmcFromDB, currentTimestamp, nextDateTimestampUTC);
 

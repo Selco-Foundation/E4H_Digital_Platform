@@ -64,11 +64,11 @@ public class AssetAmcQueryBuilder {
         if (StringUtils.isNotBlank(tenantId)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             if (!tenantId.contains(DOT)) {
-                log.info("State level tenant");
+                log.debug("Adding state level tenant clause for tenantId: {}", tenantId);
                 queryBuilder.append(" aa.tenant_id like ? ");
                 preparedStmtList.add(tenantId + '%');
             } else {
-                log.info("City level tenant");
+                log.debug("Adding city level tenant clause for tenantId: {}", tenantId);
                 queryBuilder.append(" aa.tenant_id=? ");
                 preparedStmtList.add(tenantId);
             }
@@ -76,9 +76,11 @@ public class AssetAmcQueryBuilder {
     }
 
     public String getAssetAmcSearchQuery(AssetAmcSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
+        log.trace("Entering getAssetAmcSearchQuery method, isCountQuery: {}", criteria.isCountQuery());
         //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         String query = criteria.isCountQuery() ? ASSET_AMC_COUNT_QUERY : FETCH_ASSET_AMC_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
+        log.debug("Building asset AMC search query, tenantId: {}", criteria.getTenantId());
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);
