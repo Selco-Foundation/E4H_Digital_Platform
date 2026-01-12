@@ -36,7 +36,7 @@ public class ActivityQueryBuilder {
 
     private static final String STATUS_COUNT_QUERY = "SELECT status, COUNT(*) AS occurrences " +
             "FROM facility_activities fa where fa.status is not null AND fa.isdeleted = false ";
-    private static final String ACTIVITY_COUNT_QUERY = "SELECT COUNT(*) FROM facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id";
+    private static final String ACTIVITY_COUNT_QUERY = "SELECT COUNT(*) FROM facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id LEFT JOIN public.activities AS ac ON fa.activity_id = ac.id";
 
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (ORDER BY fa_lastModifiedTime DESC , fa_facilityactivityid) offset_ FROM " +
@@ -121,6 +121,12 @@ public class ActivityQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fa.activity_id IN (").append(createQuery(activityFacility.getActivityId())).append(")");
             preparedStmtList.addAll(activityFacility.getActivityId());
+        }
+
+        if (!CollectionUtils.isEmpty(activityFacility.getActivityCodes())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" ac.code IN (").append(createQuery(activityFacility.getActivityCodes())).append(")");
+            preparedStmtList.addAll(activityFacility.getActivityCodes());
         }
 
         if (!CollectionUtils.isEmpty(activityFacility.getFacilityId())) {
