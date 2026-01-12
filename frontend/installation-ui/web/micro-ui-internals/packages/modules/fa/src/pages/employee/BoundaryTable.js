@@ -52,7 +52,7 @@ const BoundaryTable = () => {
     <span style={{color: "#0B0C0C", fontSize: "16px"}}>{label}</span>
   );
 
-  const displayNameOrCode = (name, code) => name || code || "-";
+  const displayNameOrCode = (name, code)  => t(`Boundary_${name || code || "-"}`);
 
   const CellText = ({value}) => (
     <span className="cell-text" style={{color: "#0B0C0C"}}>

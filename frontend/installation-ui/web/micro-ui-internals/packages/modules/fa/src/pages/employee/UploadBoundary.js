@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
@@ -16,6 +16,8 @@ const UploadBoundaryData = () => {
 
   const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
+
+  const uploadSeqRef = useRef(0);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -43,29 +45,26 @@ const UploadBoundaryData = () => {
     }
   };
 
-  const handleBoundaryFileSelect = async (uploaded) => {
-    if (!uploaded) return;
-    setFile({ name: uploaded?.name, data: uploaded });
-    setInvalidDataError(null);
-    setToast({ key: "success", label: "FA_TOAST_BOUNDARY_DATA_FILE_SELECTED" });
-  };
+  const uploadBoundaryNow = async (pickedFile, pickedFileName) => {
+    if (!pickedFile) return;
 
-  const handleSubmit = async () => {
-    if (!file?.data) {
-      setToast({ key: "error", label: "FA_TOAST_BOUNDARY_DATA_NO_FILE" });
-      return;
-    }
+    const seq = ++uploadSeqRef.current;
 
     setBlockUI(true);
     try {
       const formData = new FormData();
-      formData.append("boundary_file", file.data);
+      formData.append("boundary_file", pickedFile);
       formData.append("boundary_sheet_name", DEFAULT_SHEET_NAME);
+
       const res = await IngestionService.uploadBoundaryData(formData);
+
+      if (seq !== uploadSeqRef.current) return;
 
       if (res?.errorCode === "INVALID_TEMPLATE") {
         setToast({ key: "error", label: t("FA_TOAST_BOUNDARY_DATA_UPLOAD_TEMPLATE_ERROR") });
         setInvalidDataError(null);
+
+        setFile({ name: pickedFileName, data: pickedFile });
         return;
       }
 
@@ -75,8 +74,8 @@ const UploadBoundaryData = () => {
         });
 
         setFile({
-          name: res?.file?.name || file.name,
-          data: res?.file?.data || file.data,
+          name: res?.file?.name || pickedFileName,
+          data: res?.file?.data || pickedFile,
           errorCodes: ["INVALID_DATA"],
         });
 
@@ -85,19 +84,36 @@ const UploadBoundaryData = () => {
       }
 
       setInvalidDataError(null);
+      setFile({
+        name: res?.file?.name || pickedFileName,
+        data: res?.file?.data || pickedFile,
+      });
+
       setToast({ key: "success", label: t("FA_TOAST_BOUNDARY_DATA_UPLOAD_SUCCESS") });
-      history.goBack();
     } catch (e) {
+      if (seq !== uploadSeqRef.current) return;
       console.error("Error uploading boundary data", e);
       setToast({ key: "error", label: t("FA_TOAST_BOUNDARY_DATA_UPLOAD_ERROR") });
+      setFile({ name: pickedFileName, data: pickedFile });
     } finally {
-      setBlockUI(false);
+      if (seq === uploadSeqRef.current) setBlockUI(false);
     }
   };
 
+  const handleBoundaryFileSelect = async (uploaded) => {
+    if (!uploaded) return;
+
+    const pickedFileName = uploaded?.name || "boundary.xlsx";
+
+    setFile({ name: pickedFileName, data: uploaded });
+    setInvalidDataError(null);
+
+    await uploadBoundaryNow(uploaded, pickedFileName);
+  };
+  const handleSubmit = () => history.goBack();
+
   const config = useMemo(
     () => [
-      // Card 1: Download template
       {
         key: "1",
         body: [
@@ -114,14 +130,10 @@ const UploadBoundaryData = () => {
               setToast,
               setBlockUI,
 
-              // card content
               heading: "FA_DOWNLOAD_BOUNDARY_TEMPLATE_PAGE_TITLE",
               description: "FA_DOWNLOAD_BOUNDARY_TEMPLATE_PAGE_DESC",
 
-              // action
               handleDownload: handleDownloadTemplate,
-
-              // button label inside card
               downloadLabel: "PM_DOWNLOAD_TEMPLATE",
             },
             populators: {
@@ -194,19 +206,27 @@ const UploadBoundaryData = () => {
         </div>
       )}
 
-      <FormComposerV2
-        config={config}
-        onSubmit={handleSubmit}
-        label={t("CORE_COMMON_SUBMIT")}
-        showSecondaryLabel={true}
-        secondaryLabel={t("CORE_COMMON_BACK")}
-        onSecondayActionClick={() => history.goBack()}
-        showMultipleCardsWithoutNavs={true}
-        noBreakLine={true}
-        cardStyle={{ padding: "20px" }}
-        actionClassName={"reverse-actionbar"}
-        isDisabled={!!blockUI}
-      />
+      <style>
+        {`
+      .fa-boundary-upload-cards form > div:not(:last-child) {
+        margin-bottom: 20px !important;
+      }
+    `}
+      </style>
+
+      <div className="fa-boundary-upload-cards">
+        <FormComposerV2
+          config={config}
+          onSubmit={handleSubmit}
+          label={t("CORE_COMMON_BACK")}
+          showSecondaryLabel={false}
+          showMultipleCardsWithoutNavs={true}
+          noBreakLine={true}
+          cardStyle={{ padding: "20px", marginBottom: "20px" }}
+          actionClassName={"reverse-actionbar"}
+          isDisabled={!!blockUI}
+        />
+      </div>
 
       {toast && (
         <Toast

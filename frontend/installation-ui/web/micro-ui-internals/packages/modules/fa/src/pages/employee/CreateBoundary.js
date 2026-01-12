@@ -59,10 +59,11 @@ const FAStateToggleField = (props) => {
 
   const stateValue = getCode(formData?.state);
 
+  const boundaryLabel = (code) => t(`Boundary_${code}`);
   const states = (boundaryData && boundaryData.states) || [];
   const stateOptions = (states || []).map((s) => ({
     code: s.code,
-    name: s.code,
+    name: boundaryLabel(s.code),
   }));
 
   const selectedState = stateOptions.find((o) => o.code === stateValue) || null;
@@ -88,10 +89,10 @@ const FAStateToggleField = (props) => {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%" }}>
-      <div style={{ flex: 1 }}>
+    <div style={{ position: "relative", width: "100%", overflow: "visible" }}>
+      <div style={{ width: "100%" }}>
         {isTextMode ? (
-          <TextInput value={stateValue} onChange={onStateTextChange} placeholder={t("CS_STATE")} />
+          <TextInput value={stateValue} onChange={onStateTextChange} placeholder={t("CS_STATE")} style={{ width: "100%" }} />
         ) : (
           <CustomDropdown
             t={t}
@@ -104,7 +105,17 @@ const FAStateToggleField = (props) => {
         )}
       </div>
 
-      <ToggleLink label={isTextMode ? t("FA_TOGGLE_SELECT_STATE") : t("FA_TOGGLE_ADD_NEW_STATE")} onClick={toggleMode} />
+      <div
+        style={{
+          position: "absolute",
+          left: "calc(90%)",
+          top: "50%",
+          transform: "translateY(-4px)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <ToggleLink label={isTextMode ? t("FA_TOGGLE_SELECT_STATE") : t("FA_TOGGLE_ADD_NEW_STATE")} onClick={toggleMode} />
+      </div>
     </div>
   );
 };
@@ -124,12 +135,13 @@ const FADistrictToggleField = (props) => {
   const stateValue = getCode(formData?.state);
   const districtValue = getCode(formData?.district);
 
+  const boundaryLabel = (code) => t(`Boundary_${code}`);
   const districts = (boundaryData && boundaryData.districts) || [];
   const districtOptions = (districts || [])
     .filter((d) => !!stateValue && d.stateCode === stateValue)
     .map((d) => ({
       code: d.code,
-      name: d.code,
+      name: boundaryLabel(d.code),
     }));
 
   const selectedDistrict = districtOptions.find((o) => o.code === districtValue) || null;
@@ -156,16 +168,21 @@ const FADistrictToggleField = (props) => {
   const dropdownDisabled = !stateValue || stateIsTextMode;
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%" }}>
+    <div style={{ position: "relative", width: "100%", overflow: "visible" }}>
       <div
         style={{
-          flex: 1,
+          width: "100%",
           opacity: !isTextMode && dropdownDisabled ? 0.6 : 1,
           pointerEvents: !isTextMode && dropdownDisabled ? "none" : "auto",
         }}
       >
         {isTextMode ? (
-          <TextInput value={districtValue} onChange={onDistrictTextChange} placeholder={t("CS_DISTRICT")} />
+          <TextInput
+            value={districtValue}
+            onChange={onDistrictTextChange}
+            placeholder={t("CS_DISTRICT")}
+            style={{ width: "100%" }}
+          />
         ) : (
           <CustomDropdown
             t={t}
@@ -178,10 +195,21 @@ const FADistrictToggleField = (props) => {
         )}
       </div>
 
-      <ToggleLink
-        label={isTextMode ? t("FA_TOGGLE_SELECT_DISTRICT") : t("FA_TOGGLE_ADD_NEW_DISTRICT")}
-        onClick={toggleMode}
-      />
+      {/* Keep toggle OUTSIDE the input width so input matches Block width */}
+      <div
+        style={{
+          position: "absolute",
+          left: "90%",
+          top: "50%",
+          transform: "translateY(-4px)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <ToggleLink
+          label={isTextMode ? t("FA_TOGGLE_SELECT_DISTRICT") : t("FA_TOGGLE_ADD_NEW_DISTRICT")}
+          onClick={toggleMode}
+        />
+      </div>
     </div>
   );
 };
@@ -201,11 +229,10 @@ const CreateBoundary = () => {
 
   const { data: boundaryData, isLoading: isBoundaryLoading } = useBoundary("State");
 
-
-    if (Digit && Digit.ComponentRegistryService && Digit.ComponentRegistryService.setComponent) {
-      Digit.ComponentRegistryService.setComponent("FAStateToggleField", FAStateToggleField);
-      Digit.ComponentRegistryService.setComponent("FADistrictToggleField", FADistrictToggleField);
-    }
+  if (Digit && Digit.ComponentRegistryService && Digit.ComponentRegistryService.setComponent) {
+    Digit.ComponentRegistryService.setComponent("FAStateToggleField", FAStateToggleField);
+    Digit.ComponentRegistryService.setComponent("FADistrictToggleField", FADistrictToggleField);
+  }
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -233,7 +260,11 @@ const CreateBoundary = () => {
               t,
               boundaryData,
               isTextMode: isStateTextMode,
-              setIsTextMode: (next) => setIsStateTextMode(!!next),
+              setIsTextMode: (next) => {
+                const n = !!next;
+                setIsStateTextMode(n);
+                if (n) setIsDistrictTextMode(true);
+              },
             },
             populators: { name: "state", error: t("CORE_COMMON_REQUIRED") },
           },
@@ -293,9 +324,7 @@ const CreateBoundary = () => {
         const errorsArr = (data && (data.Errors || data.errors)) || [];
 
         if (Array.isArray(errorsArr)) {
-          const hasDuplicateCode = errorsArr.some(
-            (er) => String(er?.code || "").toUpperCase() === "DUPLICATE_CODED"
-          );
+          const hasDuplicateCode = errorsArr.some((er) => String(er?.code || "").toUpperCase() === "DUPLICATE_CODED");
           if (hasDuplicateCode) return true;
 
           const msgFromArray = errorsArr
