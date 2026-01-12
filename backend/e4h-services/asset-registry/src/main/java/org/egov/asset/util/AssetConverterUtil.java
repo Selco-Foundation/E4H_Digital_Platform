@@ -85,6 +85,7 @@ public class AssetConverterUtil {
     }
 
     private static Double getDoubleValue(Object value) {
+        log.trace("AssetConverterUtil::getDoubleValue called");
         if (value == null) {
             return null;
         }
@@ -101,6 +102,7 @@ public class AssetConverterUtil {
             try {
                 return Double.parseDouble((String) value);
             } catch (NumberFormatException e) {
+                log.debug("Failed to parse string to double | value={}", value);
                 return null;
             }
         }

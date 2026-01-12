@@ -179,14 +179,17 @@ public class AssetAmcValidator {
     }
 
     public Facility getFacilityById(String facilityId) {
-
+        log.trace("Entering getFacilityById method for facilityId: {}", facilityId);
         String url = config.getFacilityServiceHost() + config.getFacilityServiceSearchUrlV2()+ "?facilityId="+facilityId;
+        log.debug("Calling facility service to fetch facility details, URL: {}", url);
         Object response = requestRepository.fetchResult(new StringBuilder(url));
 
         FacilitySearchResponse facilityList = mapper.convertValue(response, FacilitySearchResponse.class);
         if(facilityList != null && facilityList.getFacilities() !=null && facilityList.getFacilities().size() > 0){
+            log.debug("Found facility with ID: {}", facilityId);
             return facilityList.getFacilities().get(0);
         }
+        log.debug("Facility not found for facilityId: {}", facilityId);
         return null;
     }
 

@@ -77,7 +77,8 @@ public class HRMSUtil {
      */
 
     public StringBuilder getHRMSURI(List<String> uuids, String tenantId, String role, String boundaryCodes) {
-
+        log.trace("HRMSUtil::getHRMSURI method invoked");
+        log.debug("Building HRMS URI for tenantId: {}, role: {}, uuids: {}", tenantId, role, uuids != null ? uuids.size() : 0);
         StringBuilder builder = new StringBuilder(config.getHrmsHost());
         builder.append(config.getHrmsEndPoint());
         if (uuids != null) {

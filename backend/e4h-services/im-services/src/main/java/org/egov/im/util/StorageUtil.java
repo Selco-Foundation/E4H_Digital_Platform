@@ -69,6 +69,7 @@ public class StorageUtil {
      * @return url for filestore upload endpoint
      */
     public StringBuilder getFileStoreURL() {
+        log.trace("StorageUtil::getFileStoreURL method invoked");
         return new StringBuilder().append(configuration.getFileStoreHost())
                 .append(configuration.getFileStoreUploadEndpoint());
     }
@@ -79,6 +80,7 @@ public class StorageUtil {
      * @return url for filestore upload endpoint
      */
     public StringBuilder getFileStoreURL(String endPoint) {
+        log.trace("StorageUtil::getFileStoreURL method invoked with endpoint");
         String host = configuration.getFileStoreHost();
         if (configuration.getFileStoreHost().endsWith("/")) {
             host = configuration.getFileStoreHost().substring(0, configuration.getFileStoreHost().length() - 1);
@@ -94,11 +96,15 @@ public class StorageUtil {
      * @return the fetched file as a Resource
      */
     public Resource getFile(String tenantId, String fileStoreId) {
+        log.trace("StorageUtil::getFile method invoked");
+        log.debug("Fetching file for tenantId: {}, fileStoreId: {}", tenantId, fileStoreId);
         ResponseEntity<Resource> response =
                 serviceRequestRepository.fetchFile(getFileStoreURL().toString(), tenantId, fileStoreId);
         if (response.getStatusCode().is2xxSuccessful()) {
+            log.debug("File fetched successfully");
             return response.getBody();
         }
+        log.error("Failed to fetch file, status: {}", response.getStatusCode());
         throw new CustomException("Error fetching file", fileStoreId);
     }
 
@@ -147,6 +153,7 @@ public class StorageUtil {
 
     // file extension
     public String getFileExtension(Resource resource) {
+        log.trace("StorageUtil::getFileExtension method invoked");
         String originalFilename = resource.getFilename();
         return (originalFilename != null && originalFilename.contains("."))
                 ? originalFilename.substring(originalFilename.lastIndexOf("."))
@@ -156,9 +163,11 @@ public class StorageUtil {
 
     // file extension
     public File createTempFile(File tempDir, Resource resource) {
+        log.trace("StorageUtil::createTempFile method invoked");
         String extension = getFileExtension(resource);
         // Create custom temp file using the pre-initialized temp directory
         String uniqueFileName = String.format("%s_%s%s", "video", UUID.randomUUID(), extension);
+        log.debug("Creating temp file: {}", uniqueFileName);
         return new File(tempDir, uniqueFileName);
     }
 
@@ -168,6 +177,7 @@ public class StorageUtil {
      */
     @Async
     public void cleanupTemporaryFiles(String videoId, File tempFile, Path outputPath) {
+        log.trace("StorageUtil::cleanupTemporaryFiles method invoked");
         log.info("Deleting temporary files for videoId: {}", videoId);
 
         Path videoDirectory = outputPath.resolve(videoId);
@@ -188,6 +198,7 @@ public class StorageUtil {
      * Deletes the temp file if it exists.
      */
     private void cleanTempFile(File tempFile) {
+        log.trace("StorageUtil::cleanTempFile method invoked");
         if (tempFile.exists()) {
             try {
                 Files.delete(tempFile.toPath());
@@ -202,6 +213,7 @@ public class StorageUtil {
      * Deletes all files and subdirectories in the video directory in reverse order.
      */
     private void cleanVideoDirectory(Path videoDirectory) {
+        log.trace("StorageUtil::cleanVideoDirectory method invoked");
         if (Files.exists(videoDirectory)) {
             try (Stream<Path> paths = Files.walk(videoDirectory)) {
                 paths.sorted(Comparator.reverseOrder()) // Sorting paths in reverse order
@@ -218,6 +230,7 @@ public class StorageUtil {
      * Deletes the given file and logs the result.
      */
     private void deleteFile(Path path) {
+        log.trace("StorageUtil::deleteFile method invoked");
         try {
             Files.delete(path);
             log.debug("Deleted: {}", path);
@@ -230,6 +243,7 @@ public class StorageUtil {
      * Deletes the master playlist if it exists.
      */
     private void deleteMasterPlaylist(String videoId, Path outputPath) {
+        log.trace("StorageUtil::deleteMasterPlaylist method invoked");
         Path masterPlaylist = outputPath.resolve(videoId + "_master.m3u8");
         try {
             if (Files.exists(masterPlaylist)) {
@@ -246,6 +260,7 @@ public class StorageUtil {
      * Logs a message for each file deleted and handles any deletion errors.
      */
     public void deleteFiles(List<File> files) {
+        log.trace("StorageUtil::deleteFiles method invoked");
         if (files == null || files.isEmpty()) {
             log.warn("No files to delete.");
             return;

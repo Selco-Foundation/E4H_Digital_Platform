@@ -84,8 +84,12 @@ public class MigrationService {
 
     @PostConstruct
     private void setStatusToUUIDMap(){
+        log.trace("MigrationService::setStatusToUUIDMap method invoked");
+        log.info("Initializing status to UUID map and service code to SLA map for tenant: {}", statelevelTenantIdForMigration);
         this.statusToUUIDMap = migrationUtils.getStatusToUUIDMap(statelevelTenantIdForMigration);
         this.serviceCodeToSLA = migrationUtils.getServiceCodeToSLAMap(statelevelTenantIdForMigration);
+        log.debug("Initialized {} status mappings and {} service code to SLA mappings", 
+                statusToUUIDMap.size(), serviceCodeToSLA.size());
     }
 
 
@@ -242,7 +246,8 @@ public class MigrationService {
 
 
     private org.egov.im.web.models.Incident transformService(Service serviceV1, Map<Long, String> idToUuidMap) {
-
+        log.trace("MigrationService::transformService method invoked");
+        log.debug("Transforming service with incidentId: {}", serviceV1.getIncidentId());
         String tenantId = serviceV1.getTenantId();
         String incidentType = serviceV1.getIssueType();
         String incidentId = serviceV1.getIncidentId();
@@ -344,7 +349,8 @@ public class MigrationService {
 
 
     private ProcessInstance transformAction(ActionInfo actionInfo, Map<Long, String> idToUuidMap, Map<String, Long> actionUuidToSlaMap) {
-
+        log.trace("MigrationService::transformAction method invoked");
+        log.debug("Transforming action with uuid: {}", actionInfo.getUuid());
         String uuid = actionInfo.getUuid();
 
         // FIXME Should the role be stored
@@ -419,11 +425,15 @@ public class MigrationService {
     }
 
     private Map<String, Long> getActionUUidToSLAMap(List<ActionInfo> actionInfos, String serviceCode){
-
+        log.trace("MigrationService::getActionUUidToSLAMap method invoked");
+        log.debug("Calculating SLA map for {} actions with serviceCode: {}", 
+                actionInfos != null ? actionInfos.size() : 0, serviceCode);
         Map<String, Long> uuidTOSLAMap = new HashMap<>();
 
-        if(CollectionUtils.isEmpty(actionInfos))
+        if(CollectionUtils.isEmpty(actionInfos)) {
+            log.debug("No action infos provided, returning empty SLA map");
             return uuidTOSLAMap;
+        }
 
         actionInfos.sort(Comparator.comparing(ActionInfo::getWhen));
         int totalCount = actionInfos.size();
@@ -438,6 +448,7 @@ public class MigrationService {
             Long slaLeft = uuidTOSLAMap.get(previousActionInfo.getUuid()) - timeSpent;
             uuidTOSLAMap.put(actionInfo.getUuid(), slaLeft);
         }
+        log.debug("Calculated SLA map for {} actions", uuidTOSLAMap.size());
         return uuidTOSLAMap;
     }
 

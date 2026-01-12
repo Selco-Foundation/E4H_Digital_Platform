@@ -239,6 +239,7 @@ public class UserService {
 	}
 
 	private User getEncrichedandCopiedUserInfo(String tenantId){
+		log.trace("UserService.getEncrichedandCopiedUserInfo invoked for tenant: {}", tenantId);
 		//Creating role with INTERNAL_MICROSERVICE_ROLE
 		Role role = Role.builder()
 				.name(INTERNALMICROSERVICEROLE_NAME).code(INTERNALMICROSERVICEROLE_CODE)
@@ -290,6 +291,7 @@ public class UserService {
 	 */
 	@SuppressWarnings("all")
 	private void parseResponse(LinkedHashMap responeMap,String dobFormat){
+		log.trace("UserService.parseResponse invoked");
 		List<LinkedHashMap> users = (List<LinkedHashMap>)responeMap.get("user");
 		String format1 = "dd-MM-yyyy HH:mm:ss";
 		if(users!=null){
@@ -313,12 +315,13 @@ public class UserService {
 	 * @return Long value of date
 	 */
 	private Long dateTolong(String date,String format){
+		log.trace("UserService.dateTolong invoked");
 		SimpleDateFormat f = new SimpleDateFormat(format);
 		Date d = null;
 		try {
 			d = f.parse(date);
 		} catch (ParseException e) {
-			e.printStackTrace();
+			log.error("Exception while parsing date: {}, format: {}", date, format, e);
 		}
 		return  d.getTime();
 	}

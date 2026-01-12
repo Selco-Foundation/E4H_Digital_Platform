@@ -184,7 +184,7 @@ public class WorkflowService {
      * @return The search url
      */
     private StringBuilder getSearchURLWithParams(String tenantId, String businessService) {
-
+        log.trace("WorkflowService::getSearchURLWithParams method invoked");
         StringBuilder url = new StringBuilder(imConfiguration.getWfHost());
         url.append(imConfiguration.getWfBusinessServiceSearchPath());
         url.append("?tenantId=");
@@ -247,6 +247,7 @@ public class WorkflowService {
     }
 
     private Map<String, List<IncidentWrapper>> getTenantIdToServiceWrapperMap(List<IncidentWrapper> incidentWrappers) {
+        log.trace("WorkflowService::getTenantIdToServiceWrapperMap method invoked");
         Map<String, List<IncidentWrapper>> resultMap = new HashMap<>();
         for (IncidentWrapper incidentWrapper : incidentWrappers) {
             if (resultMap.containsKey(incidentWrapper.getIncident().getTenantId())) {
@@ -257,6 +258,7 @@ public class WorkflowService {
                 resultMap.put(incidentWrapper.getIncident().getTenantId(), incidentWrapperList);
             }
         }
+        log.debug("Grouped {} incident wrappers into {} tenant groups", incidentWrappers.size(), resultMap.size());
         return resultMap;
     }
 
@@ -320,7 +322,8 @@ public class WorkflowService {
      * @param processInstances
      */
     public Map<String, Workflow> getWorkflow(List<ProcessInstance> processInstances) {
-
+        log.trace("WorkflowService::getWorkflow method invoked");
+        log.debug("Converting {} process instances to workflow map", processInstances.size());
         Map<String, Workflow> businessIdToWorkflow = new HashMap<>();
 
         processInstances.forEach(processInstance -> {
@@ -341,6 +344,7 @@ public class WorkflowService {
             businessIdToWorkflow.put(processInstance.getBusinessId(), workflow);
         });
 
+        log.debug("Successfully converted {} process instances to workflow map", businessIdToWorkflow.size());
         return businessIdToWorkflow;
     }
 
@@ -396,7 +400,7 @@ public class WorkflowService {
     }
 
     public StringBuilder getprocessInstanceSearchURL(String tenantId, String IncidentId) {
-
+        log.trace("WorkflowService::getprocessInstanceSearchURL method invoked");
         StringBuilder url = new StringBuilder(imConfiguration.getWfHost());
         url.append(imConfiguration.getWfProcessInstanceSearchPath());
         url.append("?tenantId=");

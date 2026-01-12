@@ -70,7 +70,7 @@ public class EmployeeQueryBuilder {
 	 * @param preparedStmtList
 	 */
 	public void addWhereClause(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList) {
-		
+		log.trace("EmployeeQueryBuilder.addWhereClause invoked");
 		if(!StringUtils.isEmpty(criteria.getTenantId())) {
 			builder.append(" employee.tenantid = ?");
 			preparedStmtList.add(criteria.getTenantId());
@@ -106,6 +106,7 @@ public class EmployeeQueryBuilder {
 	}
 	
 	public String paginationClause(EmployeeSearchCriteria criteria, StringBuilder builder) {
+		log.trace("EmployeeQueryBuilder.paginationClause invoked");
 		String pagination = EmployeeQueries.HRMS_PAGINATION_WRAPPER;
 		pagination = pagination.replace("{}", builder.toString());
 		if(null != criteria.getOffset())
@@ -132,6 +133,7 @@ public class EmployeeQueryBuilder {
 	}
 
 	private void addWhereClauseAssignment(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList) {
+		log.trace("EmployeeQueryBuilder.addWhereClauseAssignment invoked");
 		if(!CollectionUtils.isEmpty(criteria.getDepartments())){
 			builder.append(" and assignment.department IN (").append(createQuery(criteria.getDepartments())).append(")");
 			addToPreparedStatement(preparedStmtList, criteria.getDepartments());
@@ -163,6 +165,7 @@ public class EmployeeQueryBuilder {
 	}
 
 	private void addWhereClauseJurisdiction(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList, RequestInfo requestInfo, String tenantId) {
+		log.trace("EmployeeQueryBuilder.addWhereClauseJurisdiction invoked");
 		if(!CollectionUtils.isEmpty(criteria.getBoundaryCodes())){
 			List<String> boundariesToSearch;
 			

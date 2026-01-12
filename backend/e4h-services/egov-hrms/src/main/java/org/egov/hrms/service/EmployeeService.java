@@ -455,6 +455,7 @@ public class EmployeeService {
 	 * @param existingEmployeesData
 	 */
 	private void enrichUpdateRequest(Employee employee, RequestInfo requestInfo, List<Employee> existingEmployeesData) {
+		log.trace("EmployeeService.enrichUpdateRequest invoked for employee uuid: {}", employee.getUuid());
 		AuditDetails auditDetails = AuditDetails.builder()
 				.createdBy(requestInfo.getUserInfo().getUserName())
 				.createdDate(new Date().getTime())
@@ -625,6 +626,7 @@ public class EmployeeService {
 	}
 
 	private EmployeeResponse generateResponse(EmployeeRequest employeeRequest) {
+		log.trace("EmployeeService.generateResponse invoked");
 		return EmployeeResponse.builder()
 				.responseInfo(factory.createResponseInfoFromRequestInfo(employeeRequest.getRequestInfo(), true))
 				.employees(employeeRequest.getEmployees()).build();

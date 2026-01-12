@@ -56,6 +56,8 @@ public class MDMSUtils {
      * @return
      */
     public MdmsCriteriaReq getMDMSRequest(RequestInfo requestInfo,String tenantId){
+        log.trace("MDMSUtils::getMDMSRequest method invoked");
+        log.debug("Building MDMS request for tenantId: {}", tenantId);
         List<ModuleDetail> pgrModuleRequest = getIMModuleRequest();
 
         List<ModuleDetail> moduleDetails = new LinkedList<>();
@@ -75,7 +77,7 @@ public class MDMSUtils {
      * @return request to search UOM from MDMS
      */
     private List<ModuleDetail> getIMModuleRequest() {
-
+        log.trace("MDMSUtils::getIMModuleRequest method invoked");
         // master details for TL module
         List<MasterDetail> pgrMasterDetails = new ArrayList<>();
 
@@ -99,6 +101,7 @@ public class MDMSUtils {
      * @return url for mdms search endpoint
      */
     public StringBuilder getMdmsSearchUrl() {
+        log.trace("MDMSUtils::getMdmsSearchUrl method invoked");
         return new StringBuilder().append(config.getMdmsHost()).append(config.getMdmsEndPoint());
     }
 

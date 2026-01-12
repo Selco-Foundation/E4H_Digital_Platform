@@ -153,7 +153,7 @@ public class MigrationUtils {
 
 
     private StringBuilder getSearchURLWithParams(String tenantId, String businessService) {
-
+        log.trace("MigrationUtils::getSearchURLWithParams method invoked");
         StringBuilder url = new StringBuilder(config.getWfHost());
         url.append(config.getWfBusinessServiceSearchPath());
         url.append("?tenantId=");

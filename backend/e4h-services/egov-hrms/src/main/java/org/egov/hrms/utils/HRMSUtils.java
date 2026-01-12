@@ -64,11 +64,13 @@ public class HRMSUtils {
 	}
 
 	public boolean isAssignmentSearchReqd(EmployeeSearchCriteria criteria) {
+		log.trace("HRMSUtils.isAssignmentSearchReqd invoked");
 		return (! CollectionUtils.isEmpty(criteria.getPositions()) || null != criteria.getAsOnDate()
 				|| !CollectionUtils.isEmpty(criteria.getDepartments()) || !CollectionUtils.isEmpty(criteria.getDesignations()));
 	}
 
 	public boolean isJurisdictionSearchReqd(EmployeeSearchCriteria criteria) {
+		log.trace("HRMSUtils.isJurisdictionSearchReqd invoked");
 		return (!CollectionUtils.isEmpty(criteria.getBoundaryCodes()));
 	}
 

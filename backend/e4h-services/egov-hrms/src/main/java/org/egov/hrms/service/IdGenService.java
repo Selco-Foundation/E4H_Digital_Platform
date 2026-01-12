@@ -39,11 +39,14 @@ public class IdGenService {
 	 * @param employeeRequest
 	 */
 	public void setIds(EmployeeRequest employeeRequest) {
+		log.trace("IdGenService.setIds invoked");
 		String tenantId = employeeRequest.getEmployees().get(0).getTenantId();
 		Integer employeesWithCode = employeeRequest.getEmployees().stream()
 				.filter(employee -> !StringUtils.isEmpty(employee.getCode())).collect(Collectors.toList()).size();
-		if(employeesWithCode == employeeRequest.getEmployees().size())
+		if(employeesWithCode == employeeRequest.getEmployees().size()) {
+			log.debug("All employees already have codes, skipping ID generation");
 			return;
+		}
 		IdGenerationResponse response = getId(employeeRequest.getRequestInfo(), tenantId, employeeRequest.getEmployees().size() - employeesWithCode,
 				properties.getHrmsIdGenKey(), properties.getHrmsIdGenFormat());
 		if(null != response) {

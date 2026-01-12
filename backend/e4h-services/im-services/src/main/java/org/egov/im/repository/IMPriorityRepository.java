@@ -41,12 +41,14 @@ public class IMPriorityRepository {
     }
 
     public Priority getMaxPriority(List<Priority> priorities) {
+        log.trace("IMPriorityRepository::getMaxPriority method invoked");
         return priorities.stream()
                 .max((p1, p2) -> Integer.compare(getPriorityRank(p1), getPriorityRank(p2)))
                 .orElse(null);
     }
 
     private int getPriorityRank(Priority priority) {
+        log.trace("IMPriorityRepository::getPriorityRank method invoked");
         if (priority == null) return 0;
         switch (priority) {
             case HIGH: return 3;

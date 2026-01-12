@@ -147,10 +147,14 @@ public class UserUtil {
      * @param userInfo
      */
     public void addUserDefaultFields(String mobileNumber, String tenantId, User userInfo, UserType userType) {
+        log.trace("UserUtil::addUserDefaultFields called");
+        log.debug("Adding default user fields | mobileNumber={} tenantId={}", mobileNumber, tenantId);
         if (userInfo == null) {
+            log.error("User info is null");
             throw new CustomException("INVALID_USER_INFO", "User info cannot be null");
         }
         if (userType == null) {
+            log.error("User type is null");
             throw new CustomException("INVALID_USER_TYPE", "User type cannot be null");
         }
         Role role = getCitizenRole(tenantId);
@@ -159,6 +163,7 @@ public class UserUtil {
         userInfo.setUsername(mobileNumber);
         userInfo.setTenantId(getStateLevelTenant(tenantId));
         userInfo.setActive(true);
+        log.debug("Default user fields added successfully");
     }
 
     /**

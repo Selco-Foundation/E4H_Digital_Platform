@@ -157,6 +157,7 @@ public class NotificationService {
 	 * @return
 	 */
 	public String getMessage(EmployeeRequest request,String msgCode) {
+		log.trace("NotificationService.getMessage invoked for msgCode: {}", msgCode);
 		String tenantId = request.getEmployees().get(0).getTenantId().split("\\.")[0];
 		Map<String, Map<String, String>> localizedMessageMap = getLocalisedMessages(request.getRequestInfo(), tenantId, 
 				HRMSConstants.HRMS_LOCALIZATION_ENG_LOCALE_CODE, HRMSConstants.HRMS_LOCALIZATION_MODULE_CODE);
@@ -172,6 +173,7 @@ public class NotificationService {
 	 * @return
 	 */
 	public String buildMessage(Employee employee, String message, Map<String, String> pwdMap) {
+		log.trace("NotificationService.buildMessage invoked for employee code: {}", employee.getCode());
 		message = message.replace("$username", employee.getCode()).replace("$password", pwdMap.get(employee.getUuid()))
 				.replace("$employeename", employee.getUser().getName());
 		message = message.replace("$applink", appLink);

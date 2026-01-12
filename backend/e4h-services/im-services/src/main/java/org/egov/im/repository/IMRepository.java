@@ -115,14 +115,18 @@ public class IMRepository {
 
 
 	public Map<String, Integer> fetchDynamicData(String tenantId) {
+		log.trace("IMRepository::fetchDynamicData method invoked");
+		log.debug("Fetching dynamic data for tenantId: {}", tenantId);
 		List<Object> preparedStmtListCompalintsResolved = new ArrayList<>();
 		String query = queryBuilder.getResolvedComplaints(tenantId,preparedStmtListCompalintsResolved );
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
         } catch (Exception e) {
+            log.error("Failed to replace schema placeholder for dynamic data query, tenantId: {}", tenantId, e);
             throw new CustomException("PGR_SEARCH_ERROR",
                     "TenantId length is not sufficient to replace query schema in a multi state instance");
         }
+		log.trace("Executing resolved complaints query");
 		int complaintsResolved = jdbcTemplate.queryForObject(query,preparedStmtListCompalintsResolved.toArray(),Integer.class);
 
 		List<Object> preparedStmtListAverageResolutionTime = new ArrayList<>();
@@ -130,14 +134,18 @@ public class IMRepository {
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
         } catch (Exception e) {
+            log.error("Failed to replace schema placeholder for average resolution time query, tenantId: {}", tenantId, e);
             throw new CustomException("PGR_SEARCH_ERROR",
                     "TenantId length is not sufficient to replace query schema in a multi state instance");
         }
+		log.trace("Executing average resolution time query");
 		int averageResolutionTime = jdbcTemplate.queryForObject(query, preparedStmtListAverageResolutionTime.toArray(),Integer.class);
 
 		Map<String, Integer> dynamicData = new HashMap<String,Integer>();
 		dynamicData.put(IMConstants.COMPLAINTS_RESOLVED, complaintsResolved);
 		dynamicData.put(IMConstants.AVERAGE_RESOLUTION_TIME, averageResolutionTime);
+		log.debug("Dynamic data fetched successfully - complaintsResolved: {}, averageResolutionTime: {}", 
+				complaintsResolved, averageResolutionTime);
 
 		return dynamicData;
 	}

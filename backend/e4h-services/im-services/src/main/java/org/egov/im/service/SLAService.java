@@ -124,6 +124,7 @@ public class SLAService {
     }
 
     private String getStringValue(Map<String, Object> map, String key) {
+        log.trace("SLAService::getStringValue method invoked");
         Object value = map.get(key);
         return value != null ? String.valueOf(value) : null;
     }
