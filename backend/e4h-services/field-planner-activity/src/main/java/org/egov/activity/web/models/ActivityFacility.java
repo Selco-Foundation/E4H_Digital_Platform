@@ -44,6 +44,9 @@ public class ActivityFacility {
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
 
+    @JsonProperty("fieldPlan")
+    private FieldPlan fieldPlan = null;
+
     @JsonProperty("id")
     protected String id;
 

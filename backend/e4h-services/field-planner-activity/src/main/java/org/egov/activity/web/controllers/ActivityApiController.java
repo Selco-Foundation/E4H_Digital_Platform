@@ -38,9 +38,7 @@ public class ActivityApiController {
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Autowired
-    public ActivityApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
-                                 Producer producer,
-                                 ActivityConfiguration fieldPlannerConfiguration,
+    public ActivityApiController(HttpServletRequest httpServletRequest,
                                  ActivityService activityService, ActivityFacilityUsersService facilityUsersService, FacilityWorkflowService facilityWorkflowService, KafkaTemplate<String, Object> kafkaTemplate) {
         this.httpServletRequest = httpServletRequest;
         this.activityService = activityService;
