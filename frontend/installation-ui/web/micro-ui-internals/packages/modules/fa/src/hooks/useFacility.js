@@ -11,6 +11,9 @@ const fetchFacilities = async (queryFilter) => {
         id: facility?.facility_id,
         facilityName: facility?.facility_name,
         pocName: facility?.facility_poc_name,
+        state: facility?.boundary?.state,
+        district: facility?.boundary?.district,
+        block: facility?.boundary?.block,
       })) || [],
     total: facilityResponse?.totalCount,
   };
@@ -26,8 +29,20 @@ const useFacility = (filter, limit = 10, offset = 0) => {
     offset,
   };
 
-  if (facilityFilterQuery?.boundary?.length) {
-    queryFilter.boundaryCodes = facilityFilterQuery.boundary;
+  if (facilityFilterQuery?.state?.length) {
+    queryFilter.state = facilityFilterQuery.state;
+  }
+
+  if (facilityFilterQuery?.district?.length) {
+    queryFilter.district = facilityFilterQuery.district;
+  }
+
+  if (facilityFilterQuery?.block?.length) {
+    queryFilter.block = facilityFilterQuery.block;
+  }
+
+  if (facilityFilterQuery?.facility?.length) {
+    queryFilter.boundaryCodes = facilityFilterQuery.facility;
   }
 
   const queryClient = useQueryClient();

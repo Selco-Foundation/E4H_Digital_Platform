@@ -40,13 +40,16 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
     const facilityFilterQuery = {};
 
     if (currentFilter.facility.length > 0) {
-      facilityFilterQuery.boundary = currentFilter.facility.map(facility => facility.code);
-    } else if (currentFilter.block.length > 0) {
-      facilityFilterQuery.boundary = currentFilter.block.map(block => block.code);
-    } else if (currentFilter.district.length > 0) {
-      facilityFilterQuery.boundary = currentFilter.district.map((district) => district.code);
-    } else if (currentFilter.state.length > 0) {
-      facilityFilterQuery.boundary = currentFilter.state.map((state) => state.code);
+      facilityFilterQuery.facility = currentFilter.facility.map((facility) => facility.code);
+    }
+    if (currentFilter.block.length > 0) {
+      facilityFilterQuery.block = currentFilter.block.map((block) => block.code);
+    }
+    if (currentFilter.district.length > 0) {
+      facilityFilterQuery.district = currentFilter.district.map((district) => district.code);
+    }
+    if (currentFilter.state.length > 0) {
+      facilityFilterQuery.state = currentFilter.state.map((state) => state.code);
     }
 
     onFilterChange({
