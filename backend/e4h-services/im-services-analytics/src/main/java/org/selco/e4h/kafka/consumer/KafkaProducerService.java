@@ -21,8 +21,15 @@ public class KafkaProducerService {
     }
 
     public void sendIncident(String topic, Object incident) {
-        kafkaTemplate.send(topic, incident);
-        log.info("Received incident object: {} ", incident);
+        log.trace("Sending incident to Kafka topic: {}", topic);
+        try {
+            kafkaTemplate.send(topic, incident);
+            log.debug("Incident sent to Kafka topic: {}, incident type: {}", topic, incident != null ? incident.getClass().getSimpleName() : "null");
+            log.info("Successfully sent incident to Kafka topic: {}", topic);
+        } catch (Exception e) {
+            log.error("Failed to send incident to Kafka topic: {}", topic, e);
+            throw e;
+        }
     }
 }
 

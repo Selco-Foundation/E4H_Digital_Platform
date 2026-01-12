@@ -40,7 +40,7 @@ public class StorageUtil {
      */
     public StorageResponse uploadToFileStorage(List<MultipartFile> filesToStore,
                                                ProcessingContext context) throws IOException {
-
+        log.trace("Uploading files to file storage, file count: {}", filesToStore != null ? filesToStore.size() : 0);
         final String URL = getFileStoreURL().toString();
         log.info("uploading to filestore service at {}", URL);
         return serviceRequestRepository.uploadFiles(
