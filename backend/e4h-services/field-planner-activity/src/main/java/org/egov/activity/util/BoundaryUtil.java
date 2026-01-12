@@ -2,6 +2,7 @@ package org.egov.activity.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.activity.web.models.Boundary;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
@@ -16,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class BoundaryUtil {
     @Autowired
     private RestTemplate restTemplate;
@@ -31,6 +33,8 @@ public class BoundaryUtil {
 
 //    @Cacheable(value="boundaryConfiguration")
     public Map<String, Boundary> getBoundaryByCode() {
+        log.trace("getBoundaryByCode method invoked");
+        log.debug("Fetching boundaries from boundary service");
         Map<String, Boundary> listBlock = null;
         String params = "?boundaryType=State&includeChildren=true&tenantId=in&hierarchyType=SELCO";
         StringBuilder uri = new StringBuilder();
@@ -40,11 +44,15 @@ public class BoundaryUtil {
         try {
             response = restTemplate.postForObject(uri.toString(), requestInfo, Map.class);
             if (response == null) {
+              log.error("Boundary service returned null response");
               throw new CustomException("CONFIG_ERROR", "Boundary service returned null response");
             }
             String jsonString = objectMapper.writeValueAsString(response);
             listBlock = extractBlockToDistrictMapping(jsonString);
+            int boundaryCount = listBlock != null ? listBlock.size() : 0;
+            log.debug("Successfully loaded {} boundaries from boundary service", boundaryCount);
         }catch(Exception e) {
+            log.error("Error fetching boundaries from boundary service", e);
             throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
         }
 
@@ -52,12 +60,15 @@ public class BoundaryUtil {
     }
 
     public static Map<String, Boundary> extractBlockToDistrictMapping(String json) throws IOException {
+        log.trace("extractBlockToDistrictMapping method invoked");
         Map<String, Boundary> blockToDistrictMap = new HashMap<>();
         if (json == null || json.trim().isEmpty()) {
+            log.error("JSON input is null or empty");
             throw new IllegalArgumentException("JSON input cannot be null or empty");
         }
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode root = objectMapper.readTree(json);
+        log.debug("Parsing boundary JSON structure");
 
         JsonNode tenantBoundaryArray = root.get("TenantBoundary");
         if (tenantBoundaryArray != null && tenantBoundaryArray.isArray()) {
