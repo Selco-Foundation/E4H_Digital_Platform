@@ -44,7 +44,7 @@ const useActivity = (projectQueryFilter, pageSize, pageOffset) => {
 
   const queryClient = useQueryClient();
   const { isLoading, isFetching, isError, error, data } = useQuery(
-    ["FACILITY", filter, limit, offset],
+    ["ACTIVITY", filter, limit, offset],
     () => fetchFacilities(filter, limit, offset)
   );
 
