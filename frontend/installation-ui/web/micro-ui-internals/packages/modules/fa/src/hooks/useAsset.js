@@ -71,7 +71,7 @@ const fetchFacilityDetails = async (filter) => {
 
 const useAsset = (assetQueryFilter) => {
 
-  const { facility } = assetQueryFilter;
+  const { facility, assetFilterQuery } = assetQueryFilter;
 
   const filter = {
     criteria: {
@@ -81,6 +81,18 @@ const useAsset = (assetQueryFilter) => {
 
   if (facility?.facilityId) {
     filter.criteria.facilityId = facility.facilityId;
+  }
+
+  if (assetFilterQuery?.assetType?.length) {
+    filter.criteria.assetType = assetFilterQuery.assetType;
+  }
+
+  if (assetFilterQuery?.serialNumber?.length) {
+    filter.criteria.serialNumber = assetFilterQuery.serialNumber;
+  }
+
+  if (assetFilterQuery?.isOperational?.length) {
+    filter.criteria.isOperational = assetFilterQuery.isOperational[0];
   }
 
   const queryClient = useQueryClient();

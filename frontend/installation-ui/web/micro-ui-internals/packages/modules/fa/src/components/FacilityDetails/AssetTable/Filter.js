@@ -42,25 +42,25 @@ const Filter = ({ t, onFilterChange, assetQueryFilter, serialNumberList }) => {
   ]
 
   useEffect(() => {
-    const facilityFilterQuery = {};
+    const assetFilterQuery = {};
 
     if (currentFilter.assetType.length > 0) {
-      facilityFilterQuery.assetType = currentFilter.assetType.map((assetType) => assetType.code);
+      assetFilterQuery.assetType = currentFilter.assetType.map((assetType) => assetType.code);
     }
 
     if (currentFilter.isOperational.length > 0) {
-      facilityFilterQuery.isOperational = currentFilter.isOperational.map((assetStatus) => assetStatus.code === "OPERATIONAL");
+      assetFilterQuery.isOperational = currentFilter.isOperational.map((assetStatus) => assetStatus.code === "OPERATIONAL");
     }
 
     if (currentFilter.serialNumber.length > 0) {
-      facilityFilterQuery.serialNumber = currentFilter.serialNumber.map((serialNumber) => serialNumber.code);
+      assetFilterQuery.serialNumber = currentFilter.serialNumber.map((serialNumber) => serialNumber.code);
     }
 
     onFilterChange({
-      facilityFilter: {
+      assetFilter: {
         ...currentFilter
       },
-      facilityFilterQuery
+      assetFilterQuery
     });
   }, [currentFilter]);
 
