@@ -52,11 +52,11 @@ const UploadBoundaryData = () => {
 
     setBlockUI(true);
     try {
-      const formData = new FormData();
-      formData.append("boundary_file", pickedFile);
-      formData.append("boundary_sheet_name", DEFAULT_SHEET_NAME);
-
-      const res = await IngestionService.uploadBoundaryData(formData);
+      const res = await IngestionService.uploadBoundaryDataAndGetDisplayFile({
+        boundaryFile: pickedFile,
+        boundarySheetName: DEFAULT_SHEET_NAME,
+        fallbackFileName: pickedFileName,
+      });
 
       if (seq !== uploadSeqRef.current) return;
 

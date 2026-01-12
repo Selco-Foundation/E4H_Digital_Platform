@@ -1,12 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { FormComposerV2, Loader, Toast, TextInput } from "@egovernments/digit-ui-react-components";
-import { useTranslation } from "react-i18next";
-import { useHistory } from "react-router-dom";
+import React, {useEffect, useMemo, useState} from "react";
+import {FormComposerV2, Loader, Toast, TextInput} from "@egovernments/digit-ui-react-components";
+import {useTranslation} from "react-i18next";
+import {useHistory} from "react-router-dom";
 
 import useBoundary from "../../hooks/useBoundary";
 import CustomDropdown from "../../components/Custom/CustomDropdown";
 import CustomSwapHorizontalCircle from "../../components/Custom/CustomSwapHorizontalCircle";
-import { BoundaryService } from "../../services/Boundary";
+import {BoundaryService} from "../../services/Boundary";
 
 const safeOnSelect = (onSelect, key, value) => {
   if (typeof onSelect === "function") onSelect(key, value);
@@ -19,7 +19,7 @@ const getCode = (val) => {
   return "";
 };
 
-const ToggleLink = ({ label, onClick }) => {
+const ToggleLink = ({label, onClick}) => {
   return (
     <button
       type="button"
@@ -41,8 +41,8 @@ const ToggleLink = ({ label, onClick }) => {
         transform: "translateY(-4px)",
       }}
     >
-      <CustomSwapHorizontalCircle size={28} color="#0B0C0C" style={{ opacity: 0.6 }} />
-      <span style={{ opacity: 0.6 }}>{label}</span>
+      <CustomSwapHorizontalCircle size={28} color="#0B0C0C" style={{opacity: 0.6}}/>
+      <span style={{opacity: 0.6}}>{label}</span>
     </button>
   );
 };
@@ -73,9 +73,15 @@ const FAStateToggleField = (props) => {
     safeOnSelect(onSelect, "block", "");
   };
 
+  const clearAll = () => {
+    safeOnSelect(onSelect, "state", "");
+    safeOnSelect(onSelect, "district", "");
+    safeOnSelect(onSelect, "block", "");
+  };
+
   const toggleMode = () => {
     const next = !isTextMode;
-    clearBelow();
+    clearAll();
     if (typeof setIsTextMode === "function") setIsTextMode(next);
   };
 
@@ -85,14 +91,21 @@ const FAStateToggleField = (props) => {
   };
 
   const onStateTextChange = (e) => {
-    safeOnSelect(onSelect, "state", (e && e.target && e.target.value) || "");
+    // safeOnSelect(onSelect, "state", (e && e.target && e.target.value) || "");
+    const next = (e && e.target && e.target.value) || "";
+    safeOnSelect(onSelect, "state", next);
+    // if ((getCode(formData?.district) || getCode(formData?.block)) && next !== stateValue) {
+    //   clearBelow();
+    // }
+    if (next !== stateValue) clearBelow();
   };
 
   return (
-    <div style={{ position: "relative", width: "100%", overflow: "visible" }}>
-      <div style={{ width: "100%" }}>
+    <div style={{position: "relative", width: "100%", overflow: "visible"}}>
+      <div style={{width: "100%"}}>
         {isTextMode ? (
-          <TextInput value={stateValue} onChange={onStateTextChange} placeholder={t("CS_STATE")} style={{ width: "100%" }} />
+          <TextInput value={stateValue} onChange={onStateTextChange} placeholder={t("CS_STATE")}
+                     style={{width: "100%"}}/>
         ) : (
           <CustomDropdown
             t={t}
@@ -100,7 +113,7 @@ const FAStateToggleField = (props) => {
             optionKey={"name"}
             selected={selectedState}
             select={onStateDropdownSelect}
-            style={{ width: "100%" }}
+            style={{width: "100%"}}
           />
         )}
       </div>
@@ -114,7 +127,8 @@ const FAStateToggleField = (props) => {
           whiteSpace: "nowrap",
         }}
       >
-        <ToggleLink label={isTextMode ? t("FA_TOGGLE_SELECT_STATE") : t("FA_TOGGLE_ADD_NEW_STATE")} onClick={toggleMode} />
+        <ToggleLink label={isTextMode ? t("FA_TOGGLE_SELECT_STATE") : t("FA_TOGGLE_ADD_NEW_STATE")}
+                    onClick={toggleMode}/>
       </div>
     </div>
   );
@@ -150,9 +164,14 @@ const FADistrictToggleField = (props) => {
     safeOnSelect(onSelect, "block", "");
   };
 
+  const clearSelfAndBelow = () => {
+    safeOnSelect(onSelect, "district", "");
+    safeOnSelect(onSelect, "block", "");
+  };
+
   const toggleMode = () => {
     const next = !isTextMode;
-    clearBelow();
+    clearSelfAndBelow();
     if (typeof setIsTextMode === "function") setIsTextMode(next);
   };
 
@@ -162,13 +181,15 @@ const FADistrictToggleField = (props) => {
   };
 
   const onDistrictTextChange = (e) => {
-    safeOnSelect(onSelect, "district", (e && e.target && e.target.value) || "");
+    const next = (e && e.target && e.target.value) || "";
+     safeOnSelect(onSelect, "district", next);
+     if (next !== districtValue) clearBelow();
   };
 
   const dropdownDisabled = !stateValue || stateIsTextMode;
 
   return (
-    <div style={{ position: "relative", width: "100%", overflow: "visible" }}>
+    <div style={{position: "relative", width: "100%", overflow: "visible"}}>
       <div
         style={{
           width: "100%",
@@ -181,7 +202,7 @@ const FADistrictToggleField = (props) => {
             value={districtValue}
             onChange={onDistrictTextChange}
             placeholder={t("CS_DISTRICT")}
-            style={{ width: "100%" }}
+            style={{width: "100%"}}
           />
         ) : (
           <CustomDropdown
@@ -190,12 +211,11 @@ const FADistrictToggleField = (props) => {
             optionKey={"name"}
             selected={selectedDistrict}
             select={onDistrictDropdownSelect}
-            style={{ width: "100%" }}
+            style={{width: "100%"}}
           />
         )}
       </div>
 
-      {/* Keep toggle OUTSIDE the input width so input matches Block width */}
       <div
         style={{
           position: "absolute",
@@ -215,7 +235,7 @@ const FADistrictToggleField = (props) => {
 };
 
 const CreateBoundary = () => {
-  const { t } = useTranslation();
+  const {t} = useTranslation();
   const history = useHistory();
 
   const tenantId = Digit.ULBService.getStateId();
@@ -227,7 +247,7 @@ const CreateBoundary = () => {
   const [isStateTextMode, setIsStateTextMode] = useState(false);
   const [isDistrictTextMode, setIsDistrictTextMode] = useState(false);
 
-  const { data: boundaryData, isLoading: isBoundaryLoading } = useBoundary("State");
+  const {data: boundaryData, isLoading: isBoundaryLoading} = useBoundary("State");
 
   if (Digit && Digit.ComponentRegistryService && Digit.ComponentRegistryService.setComponent) {
     Digit.ComponentRegistryService.setComponent("FAStateToggleField", FAStateToggleField);
@@ -266,7 +286,7 @@ const CreateBoundary = () => {
                 if (n) setIsDistrictTextMode(true);
               },
             },
-            populators: { name: "state", error: t("CORE_COMMON_REQUIRED") },
+            populators: {name: "state", error: t("CORE_COMMON_REQUIRED")},
           },
           {
             inline: true,
@@ -282,7 +302,7 @@ const CreateBoundary = () => {
               isTextMode: isDistrictTextMode,
               setIsTextMode: (next) => setIsDistrictTextMode(!!next),
             },
-            populators: { name: "district", error: t("CORE_COMMON_REQUIRED") },
+            populators: {name: "district", error: t("CORE_COMMON_REQUIRED")},
           },
           {
             inline: true,
@@ -290,7 +310,7 @@ const CreateBoundary = () => {
             isMandatory: true,
             key: "block",
             type: "text",
-            populators: { name: "block", error: t("CORE_COMMON_REQUIRED") },
+            populators: {name: "block", error: t("CORE_COMMON_REQUIRED")},
           },
         ],
       },
@@ -303,7 +323,7 @@ const CreateBoundary = () => {
     const blockVal = getCode(data?.block);
 
     if (!stateVal || !districtVal || !blockVal) {
-      setToast({ key: "error", label: "CORE_COMMON_REQUIRED" });
+      setToast({key: "error", label: "CORE_COMMON_REQUIRED"});
       return;
     }
 
@@ -332,11 +352,11 @@ const CreateBoundary = () => {
             .join(" ")
             .toLowerCase();
 
-          if (msgFromArray.includes("already existsSS") || msgFromArray.includes("duplicateDD")) return true;
+          if (msgFromArray.includes("already exists") || msgFromArray.includes("duplicate")) return true;
         }
 
         const msg = `${e?.message || ""} ${safeStringify(data)}`.toLowerCase();
-        return msg.includes("already existsS") || msg.includes("duplicateS");
+        return msg.includes("already exists") || msg.includes("duplicate");
       };
 
       const safeStringify = (v) => {
@@ -347,7 +367,7 @@ const CreateBoundary = () => {
         }
       };
 
-      const createBoundaryAndRel = async ({ code, boundaryType, parent, geographyDetails, ignoreIfExists }) => {
+      const createBoundaryAndRel = async ({code, boundaryType, parent, geographyDetails, ignoreIfExists}) => {
         try {
           await BoundaryService.createBoundary({
             Boundary: [
@@ -355,7 +375,7 @@ const CreateBoundary = () => {
                 tenantId,
                 code,
                 geometry: null,
-                additionalDetails: { geographyDetails },
+                additionalDetails: {geographyDetails},
               },
             ],
           });
@@ -383,7 +403,7 @@ const CreateBoundary = () => {
           code: computed.state,
           boundaryType: "State",
           parent: computed.country,
-          geographyDetails: { country: computed.country, state: computed.state },
+          geographyDetails: {country: computed.country, state: computed.state},
           ignoreIfExists: true,
         });
       }
@@ -393,7 +413,7 @@ const CreateBoundary = () => {
           code: computed.district,
           boundaryType: "District",
           parent: computed.state,
-          geographyDetails: { country: computed.country, state: computed.state, district: computed.district },
+          geographyDetails: {country: computed.country, state: computed.state, district: computed.district},
           ignoreIfExists: true,
         });
       }
@@ -411,20 +431,17 @@ const CreateBoundary = () => {
         ignoreIfExists: false,
       });
 
-      setToast({ key: "success", label: "FA_TOAST_BOUNDARY_CREATION_SUCCESS" });
-      history.goBack();
+      setToast({key: "success", label: "FA_TOAST_BOUNDARY_CREATION_SUCCESS"});
     } catch (e) {
       console.error("Error creating boundary / relationship", e);
-      setToast({ key: "error", label: "FA_TOAST_BOUNDARY_CREATION_ERROR" });
+      setToast({key: "error", label: "FA_TOAST_BOUNDARY_CREATION_ERROR"});
     } finally {
       setBlockUI(false);
     }
   };
 
-  const formComposerKey = ["GEO", isStateTextMode ? "S1" : "S0", isDistrictTextMode ? "D1" : "D0"].join("|");
-
   return (
-    <div className="create-project-wrapper" style={{ padding: mobileView ? "15px" : "0px" }}>
+    <div className="create-project-wrapper" style={{padding: mobileView ? "15px" : "0px"}}>
       {(blockUI || isBoundaryLoading) && (
         <div
           style={{
@@ -441,12 +458,11 @@ const CreateBoundary = () => {
             left: 0,
           }}
         >
-          <Loader />
+          <Loader/>
         </div>
       )}
 
       <FormComposerV2
-        key={formComposerKey}
         config={config}
         onSubmit={handleSubmit}
         label={t("CORE_COMMON_SUBMIT")}
@@ -454,7 +470,7 @@ const CreateBoundary = () => {
         secondaryLabel={t("CORE_COMMON_BACK")}
         onSecondayActionClick={() => history.goBack()}
         heading={t("FA_CREATE_BOUNDARY_HEAD_GEOGRAPHY_DETAILS")}
-        headingStyle={{ fontSize: "32px", marginBottom: "20px" }}
+        headingStyle={{fontSize: "32px", marginBottom: "20px"}}
         description={t("FA_CREATE_BOUNDARY_HEAD_GEOGRAPHY_DETAILS_DESC")}
         descriptionStyle={{
           fontSize: "14px",
@@ -466,7 +482,7 @@ const CreateBoundary = () => {
         defaultValues={{}}
         showMultipleCardsWithoutNavs={true}
         noBreakLine={true}
-        cardStyle={{ padding: "20px" }}
+        cardStyle={{padding: "20px"}}
         actionClassName={"reverse-actionbar"}
       />
 
@@ -475,8 +491,8 @@ const CreateBoundary = () => {
           error={toast.key === "error"}
           warning={toast.key === "warning"}
           style={{
-            ...(toast.key === "error" ? { backgroundColor: "#B91900" } : {}),
-            ...(mobileView ? { bottom: "120px" } : {}),
+            ...(toast.key === "error" ? {backgroundColor: "#B91900"} : {}),
+            ...(mobileView ? {bottom: "120px"} : {}),
           }}
           label={t(toast.label)}
           isDleteBtn={true}
