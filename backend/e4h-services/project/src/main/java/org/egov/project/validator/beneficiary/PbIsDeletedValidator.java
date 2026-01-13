@@ -22,13 +22,17 @@ public class PbIsDeletedValidator implements Validator<BeneficiaryBulkRequest, P
 
     @Override
     public Map<ProjectBeneficiary, List<Error>> validate(BeneficiaryBulkRequest request) {
-        log.info("validating isDeleted field");
+        log.trace("Entering validate (PbIsDeletedValidator)");
+        log.info("Validating isDeleted field");
+        log.debug("Validating {} beneficiaries for isDeleted field", request.getProjectBeneficiaries() != null ? request.getProjectBeneficiaries().size() : 0);
         HashMap<ProjectBeneficiary, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectBeneficiary> validProjectBeneficiaries = request.getProjectBeneficiaries();
         validProjectBeneficiaries.stream().filter(ProjectBeneficiary::getIsDeleted).forEach(projectBeneficiary -> {
             Error error = getErrorForIsDelete();
             populateErrorDetails(projectBeneficiary, error, errorDetailsMap);
         });
+        log.debug("IsDeleted validation completed - found {} errors", errorDetailsMap.size());
+        log.trace("Exiting validate (PbIsDeletedValidator)");
         return errorDetailsMap;
     }
 }

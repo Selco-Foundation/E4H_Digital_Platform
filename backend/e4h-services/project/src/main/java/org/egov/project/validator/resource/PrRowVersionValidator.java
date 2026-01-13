@@ -33,7 +33,9 @@ public class PrRowVersionValidator implements Validator<ProjectResourceBulkReque
 
     @Override
     public Map<ProjectResource, List<Error>> validate(ProjectResourceBulkRequest request) {
-        log.info("validating row version");
+        log.trace("Entering validate (PrRowVersionValidator)");
+        log.info("Validating row version");
+        log.debug("Validating {} resources for row version", request.getProjectResource() != null ? request.getProjectResource().size() : 0);
         Map<ProjectResource, List<Error>> errorDetailsMap = new HashMap<>();
         Method idMethod = getIdMethod(request.getProjectResource());
         Map<String, ProjectResource> eMap = getIdToObjMap(request.getProjectResource().stream()
@@ -41,15 +43,22 @@ public class PrRowVersionValidator implements Validator<ProjectResourceBulkReque
                 .toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
+            log.debug("Checking row version for {} resource IDs", entityIds.size());
             List<ProjectResource> existingEntities = projectResourceRepository
                     .findById(entityIds, false, getIdFieldName(idMethod));
+            log.debug("Found {} existing resource entities", existingEntities != null ? existingEntities.size() : 0);
             List<ProjectResource> entitiesWithMismatchedRowVersion =
                     getEntitiesWithMismatchedRowVersion(eMap, existingEntities, idMethod);
+            if (!entitiesWithMismatchedRowVersion.isEmpty()) {
+                log.warn("Found {} resources with mismatched row version", entitiesWithMismatchedRowVersion.size());
+            }
             entitiesWithMismatchedRowVersion.forEach(individual -> {
                 Error error = getErrorForRowVersionMismatch();
                 populateErrorDetails(individual, error, errorDetailsMap);
             });
         }
+        log.debug("Row version validation completed - found {} errors", errorDetailsMap.size());
+        log.trace("Exiting validate (PrRowVersionValidator)");
         return errorDetailsMap;
     }
 }

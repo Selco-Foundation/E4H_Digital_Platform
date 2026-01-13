@@ -34,15 +34,22 @@ public class MDMSUtils {
     private final ProjectConfiguration config;
 
     public Object mDMSCall(ProjectRequest request, String tenantId) {
+        log.trace("Entering mDMSCall for tenantId: {}", tenantId);
+        log.info("Calling MDMS service for tenantId: {}", tenantId);
         RequestInfo requestInfo = request.getRequestInfo();
+        log.debug("Building MDMS request criteria");
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId, request);
         Object result = null;
         try {
+            log.debug("Fetching MDMS data from URL: {}", getMdmsSearchUrl());
             result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
+            log.debug("Successfully received MDMS response");
+            log.info("MDMS call completed successfully for tenantId: {}", tenantId);
         } catch (Exception e) {
-            log.error("error while calling mdms", ExceptionUtils.getStackTrace(e));
+            log.error("Error while calling MDMS for tenantId: {}", tenantId, e);
             throw new CustomException("MDMS_ERROR", "error while calling mdms");
         }
+        log.trace("Exiting mDMSCall");
         return result;
     }
 

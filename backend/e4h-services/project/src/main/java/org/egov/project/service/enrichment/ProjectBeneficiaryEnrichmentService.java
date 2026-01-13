@@ -37,48 +37,60 @@ public class ProjectBeneficiaryEnrichmentService {
 
     public void create(List<ProjectBeneficiary> validProjectBeneficiaries,
                        BeneficiaryBulkRequest beneficiaryRequest) throws Exception {
-        log.info("starting the enrichment for create project beneficiaries");
+        log.trace("Entering create (ProjectBeneficiaryEnrichmentService)");
+        log.info("Starting enrichment for create project beneficiaries");
+        log.debug("Enriching {} beneficiaries", validProjectBeneficiaries != null ? validProjectBeneficiaries.size() : 0);
 
-        log.info("get tenant id");
+        log.debug("Extracting tenant ID");
         String tenantId = getTenantId(validProjectBeneficiaries);
+        log.debug("Tenant ID: {}", tenantId);
 
-        log.info("generating IDs using IdGenService");
+        log.debug("Generating IDs using IdGenService");
         List<String> idList = idGenService.getIdList(beneficiaryRequest.getRequestInfo(),
                 tenantId,
                 projectConfiguration.getProjectBeneficiaryIdFormat(),
                 "",
                 validProjectBeneficiaries.size());
-        log.info("ids generated");
+        log.debug("Generated {} IDs", idList != null ? idList.size() : 0);
 
         enrichForCreate(validProjectBeneficiaries, idList, beneficiaryRequest.getRequestInfo());
-        log.info(ENRICHMENT_DONE);
+        log.info("Successfully completed enrichment for create project beneficiaries");
+        log.trace("Exiting create (ProjectBeneficiaryEnrichmentService)");
     }
 
     public void update(List<ProjectBeneficiary> validProjectBeneficiaries,
                        BeneficiaryBulkRequest beneficiaryRequest) {
-        log.info("starting the enrichment for update project beneficiaries");
+        log.trace("Entering update (ProjectBeneficiaryEnrichmentService)");
+        log.info("Starting enrichment for update project beneficiaries");
+        log.debug("Enriching {} beneficiaries", validProjectBeneficiaries != null ? validProjectBeneficiaries.size() : 0);
         Method idMethod = getIdMethod(validProjectBeneficiaries);
         Map<String, ProjectBeneficiary> projectBeneficiaryMap = getIdToObjMap(validProjectBeneficiaries, idMethod);
         List<String> projectBeneficiaryIds = new ArrayList<>(projectBeneficiaryMap.keySet());
+        log.debug("Fetching {} existing beneficiaries from repository", projectBeneficiaryIds.size());
         List<ProjectBeneficiary> existingProjectBeneficiaryIds = projectBeneficiaryRepository.findById(
                 projectBeneficiaryIds,
                 getIdFieldName(idMethod),
                 false
         ).getResponse();
+        log.debug("Found {} existing beneficiaries", existingProjectBeneficiaryIds != null ? existingProjectBeneficiaryIds.size() : 0);
 
-        log.info("updating Ids from existing entities");
+        log.debug("Updating IDs from existing entities");
         enrichIdsFromExistingEntities(projectBeneficiaryMap, existingProjectBeneficiaryIds, idMethod);
 
-        log.info("updating lastModifiedTime and lastModifiedBy");
+        log.debug("Updating lastModifiedTime and lastModifiedBy");
         enrichForUpdate(projectBeneficiaryMap, existingProjectBeneficiaryIds, beneficiaryRequest, idMethod);
 
-        log.info(ENRICHMENT_DONE);
+        log.info("Successfully completed enrichment for update project beneficiaries");
+        log.trace("Exiting update (ProjectBeneficiaryEnrichmentService)");
     }
 
     public void delete(List<ProjectBeneficiary> validProjectBeneficiaries,
                        BeneficiaryBulkRequest beneficiaryRequest) {
-        log.info("starting the enrichment for delete project beneficiaries");
+        log.trace("Entering delete (ProjectBeneficiaryEnrichmentService)");
+        log.info("Starting enrichment for delete project beneficiaries");
+        log.debug("Enriching {} beneficiaries for delete", validProjectBeneficiaries != null ? validProjectBeneficiaries.size() : 0);
         enrichForDelete(validProjectBeneficiaries, beneficiaryRequest.getRequestInfo(), true);
-        log.info(ENRICHMENT_DONE);
+        log.info("Successfully completed enrichment for delete project beneficiaries");
+        log.trace("Exiting delete (ProjectBeneficiaryEnrichmentService)");
     }
 }

@@ -35,7 +35,9 @@ public class PfRowVersionValidator implements Validator<ProjectFacilityBulkReque
 
     @Override
     public Map<ProjectFacility, List<Error>> validate(ProjectFacilityBulkRequest request) {
-        log.info("validating row version");
+        log.trace("Entering validate (PfRowVersionValidator)");
+        log.info("Validating row version");
+        log.debug("Validating {} facilities for row version", request.getProjectFacilities() != null ? request.getProjectFacilities().size() : 0);
         Map<ProjectFacility, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors())
@@ -45,16 +47,23 @@ public class PfRowVersionValidator implements Validator<ProjectFacilityBulkReque
             Map<String, ProjectFacility> eMap = getIdToObjMap(validEntities, idMethod);
             if (!eMap.isEmpty()) {
                 List<String> entityIds = new ArrayList<>(eMap.keySet());
+                log.debug("Checking row version for {} facility IDs", entityIds.size());
                 List<ProjectFacility> existingEntities = repository.findById(entityIds, false,
                         getIdFieldName(idMethod));
+                log.debug("Found {} existing facility entities", existingEntities != null ? existingEntities.size() : 0);
                 List<ProjectFacility> entitiesWithMismatchedRowVersion =
                         getEntitiesWithMismatchedRowVersion(eMap, existingEntities, idMethod);
+                if (!entitiesWithMismatchedRowVersion.isEmpty()) {
+                    log.warn("Found {} facilities with mismatched row version", entitiesWithMismatchedRowVersion.size());
+                }
                 entitiesWithMismatchedRowVersion.forEach(projectFacility -> {
                     Error error = getErrorForRowVersionMismatch();
                     populateErrorDetails(projectFacility, error, errorDetailsMap);
                 });
             }
         }
+        log.debug("Row version validation completed - found {} errors", errorDetailsMap.size());
+        log.trace("Exiting validate (PfRowVersionValidator)");
         return errorDetailsMap;
     }
 }
