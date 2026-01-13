@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "react-query";
-import { AMCService } from "../services/AMCService";
+import { AMCService } from "../services/AMC";
 import { FAService } from "../services/FA";
 import { FilestoreService } from "../services/Filestore";
 
