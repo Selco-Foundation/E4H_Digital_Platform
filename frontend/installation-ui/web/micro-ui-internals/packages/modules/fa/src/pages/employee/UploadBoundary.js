@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import { IngestionService } from "../../services/Injestion";
 
-const DEFAULT_SHEET_NAME = "Boundary Data";
+const DEFAULT_SHEET_NAME = "BoundaryTable Data";
 
 const UploadBoundaryData = () => {
   const { t } = useTranslation();

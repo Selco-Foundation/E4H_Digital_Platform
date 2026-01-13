@@ -144,7 +144,7 @@ export const IngestionService = {
 
     const formData = new FormData();
     formData.append("boundary_file", boundaryFile);
-    formData.append("boundary_sheet_name", boundarySheetName || "Boundary Data");
+    formData.append("boundary_sheet_name", boundarySheetName || "BoundaryTable Data");
 
     const fd = ensureRequestInfoInFormData(formData);
 

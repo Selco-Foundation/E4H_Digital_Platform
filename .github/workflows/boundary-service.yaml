@@ -1,4 +1,4 @@
-name: Boundary Service V2 Image Build workflow
+name: BoundaryTable Service V2 Image Build workflow
 on:
   push:
     branches:
