@@ -80,7 +80,7 @@ const useAsset = (assetQueryFilter) => {
   }
 
   if (facility?.facilityId) {
-    filter.criteria.facilityId = facility.facilityId;
+    filter.criteria.facilityID = facility.facilityId;
   }
 
   if (assetFilterQuery?.assetType?.length) {
