@@ -58,6 +58,8 @@ const FAStateToggleField = (props) => {
   const boundaryData = customProps?.boundaryData;
   const isTextMode = !!customProps?.isTextMode;
   const setIsTextMode = customProps?.setIsTextMode;
+  const isMobile = !!customProps?.mobileView;
+
 
   const stateValue = getCode(formData?.state);
 
@@ -116,18 +118,27 @@ const FAStateToggleField = (props) => {
         )}
       </div>
 
-      <div
-        style={{
-          position: "absolute",
-          left: "calc(90%)",
-          top: "50%",
-          transform: "translateY(-4px)",
-          whiteSpace: "nowrap",
-        }}
-      >
+      {isMobile ? (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "0" }}>
+          <ToggleLink
+            label={isTextMode ? t("FA_TOGGLE_SELECT_STATE") : t("FA_TOGGLE_ADD_NEW_STATE")}
+            onClick={toggleMode}
+          />
+        </div>
+      ) : (
+        <div
+          style={{
+            position: "absolute",
+            left: "calc(90%)",
+            top: "50%",
+            transform: "translateY(-4px)",
+            whiteSpace: "nowrap",
+          }}
+        >
         <ToggleLink label={isTextMode ? t("FA_TOGGLE_SELECT_STATE") : t("FA_TOGGLE_ADD_NEW_STATE")}
                     onClick={toggleMode}/>
       </div>
+      )}
     </div>
   );
 };
@@ -143,6 +154,8 @@ const FADistrictToggleField = (props) => {
   const isTextMode = !!customProps?.isTextMode;
   const setIsTextMode = customProps?.setIsTextMode;
   const stateIsTextMode = !!customProps?.stateIsTextMode;
+  const isMobile = !!customProps?.mobileView;
+
 
   const stateValue = getCode(formData?.state);
   const districtValue = getCode(formData?.district);
@@ -213,21 +226,29 @@ const FADistrictToggleField = (props) => {
           />
         )}
       </div>
-
-      <div
-        style={{
-          position: "absolute",
-          left: "90%",
-          top: "50%",
-          transform: "translateY(-4px)",
-          whiteSpace: "nowrap",
-        }}
-      >
+      {isMobile ? (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "6px" }}>
+          <ToggleLink
+            label={isTextMode ? t("FA_TOGGLE_SELECT_DISTRICT") : t("FA_TOGGLE_ADD_NEW_DISTRICT")}
+            onClick={toggleMode}
+          />
+        </div>
+      ) : (
+        <div
+          style={{
+            position: "absolute",
+            left: "calc(90%)",
+            top: "50%",
+            transform: "translateY(-4px)",
+            whiteSpace: "nowrap",
+          }}
+        >
         <ToggleLink
           label={isTextMode ? t("FA_TOGGLE_SELECT_DISTRICT") : t("FA_TOGGLE_ADD_NEW_DISTRICT")}
           onClick={toggleMode}
         />
       </div>
+      )}
     </div>
   );
 };
@@ -239,7 +260,7 @@ const CreateBoundary = () => {
 
   const tenantId = Digit.ULBService.getStateId();
 
-  const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 836);
   const [toast, setToast] = useState(null);
   const [blockUI, setBlockUI] = useState(false);
 
@@ -278,6 +299,7 @@ const CreateBoundary = () => {
             customProps: {
               t,
               boundaryData,
+              mobileView,
               isTextMode: isStateTextMode,
               setIsTextMode: (next) => {
                 const n = !!next;
@@ -297,6 +319,7 @@ const CreateBoundary = () => {
             customProps: {
               t,
               boundaryData,
+              mobileView,
               stateIsTextMode: isStateTextMode,
               isTextMode: isDistrictTextMode,
               setIsTextMode: (next) => setIsDistrictTextMode(!!next),
@@ -314,7 +337,7 @@ const CreateBoundary = () => {
         ],
       },
     ];
-  }, [t, boundaryData, isStateTextMode, isDistrictTextMode]);
+  }, [t, boundaryData, isStateTextMode, isDistrictTextMode, mobileView]);
 
   const handleSubmit = async (data) => {
     const stateVal = getCode(data?.state);
@@ -330,8 +353,7 @@ const CreateBoundary = () => {
       const data = e?.response?.data;
 
       const direct =
-        data?.message
-        data?.error?.message;
+        data?.message || data?.error?.message;
 
       if (typeof direct === "string" && direct.trim()) return direct.trim();
       const errorsArr = (data && (data.Errors || data.errors)) || [];

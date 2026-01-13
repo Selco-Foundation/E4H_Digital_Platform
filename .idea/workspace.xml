@@ -2,12 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="61909870-4927-4785-9e4d-f5d337369612" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/pages/employee/Response.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/constants/ReduxActions.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/constants/ReduxActions.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/pages/employee/CreateBoundary.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/pages/employee/CreateBoundary.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/pages/employee/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/pages/employee/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/redux/actions/index.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/redux/actions/index.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/redux/reducers/commonreducer.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/installation-ui/web/micro-ui-internals/packages/modules/fa/src/redux/reducers/commonreducer.js" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -57,7 +53,7 @@
       <updated>1767344392088</updated>
       <workItem from="1767344396000" duration="89019000" />
       <workItem from="1767955088609" duration="5877000" />
-      <workItem from="1768186940751" duration="32127000" />
+      <workItem from="1768186940751" duration="35419000" />
     </task>
     <servers />
   </component>
