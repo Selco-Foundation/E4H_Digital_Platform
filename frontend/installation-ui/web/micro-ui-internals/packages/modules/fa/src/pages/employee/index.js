@@ -6,6 +6,7 @@ import { useSelector } from "react-redux";
 import FacilityTable from "./FacilityTable";
 import FacilityDetails from "./FacilityDetails";
 import ActivityDetails from "./ActivityDetails";
+import BulkAddFacilities from "./BulkAddFacilities";
 
 const FAApp = () => {
   const { t } = useTranslation();
@@ -24,6 +25,11 @@ const FAApp = () => {
       internalLink: `/${window.contextPath}/employee/fa/facilities`,
       show: true,
     },
+    bulkAddFacilities: {
+      content: t("BULK_ADD"),
+      internalLink: `/${window.contextPath}/employee/fa/facilities/bulk-add`,
+      show: true,
+    },
     facilityDetails: {
       content: navigator.workingFacility?.facilityName || "",
       internalLink: `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(navigator.workingFacility?.facilityId)}`,
@@ -31,7 +37,9 @@ const FAApp = () => {
     },
     activityDetails: {
       content: navigator.workingActivity?.activityType || "",
-      internalLink: `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(navigator.workingFacility?.facilityId)}/activities/${navigator.workingActivity?.activityFacilityId}`,
+      internalLink: `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(navigator.workingFacility?.facilityId)}/activities/${
+        navigator.workingActivity?.activityFacilityId
+      }`,
       show: true,
     },
   };
@@ -49,6 +57,13 @@ const FAApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities]}
           />
           <FacilityTable />
+        </Route>
+        <Route path={`${path}/facilities/bulk-add`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities, breadCrumbsConfig.bulkAddFacilities]}
+          />
+          <BulkAddFacilities />
         </Route>
         <Route path={`${path}/facilities/:facilityId`} exact={true}>
           <BreadCrumb
