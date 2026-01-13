@@ -7,6 +7,11 @@ from openpyxl.styles import Protection, Alignment, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
+from app.core.logging import AppLogger
+
+logger = AppLogger().get_logger()
+
+
 def add_dropdowns_to_excel(
         file_path: str,
         sheet_name: str,
@@ -14,11 +19,13 @@ def add_dropdowns_to_excel(
         allow_blank_map: Optional[Dict[str, bool]],
         max_extra_rows: int = 1000
 ):
+    logger.trace(f"Adding dropdowns to Excel: file={file_path}, sheet={sheet_name}")
     wb = load_workbook(file_path)
     ws = wb[sheet_name]
     header_row = 1
     max_row = ws.max_row + max_extra_rows  # extend range
 
+    dropdown_count = 0
     for column_header, options in dropdowns.items():
         if not options:
             continue
@@ -31,10 +38,13 @@ def add_dropdowns_to_excel(
             if cell.value == column_header:
                 col_letter = cell.column_letter
                 dv.add(f"{col_letter}2:{col_letter}{max_row}")
+                dropdown_count += 1
+                logger.debug(f"Added dropdown to column '{column_header}' with {len(options)} options")
                 break
         ws.add_data_validation(dv)
 
     wb.save(file_path)
+    logger.info(f"Added {dropdown_count} dropdowns to sheet '{sheet_name}'")
 
 
 def lock_excel_columns(
