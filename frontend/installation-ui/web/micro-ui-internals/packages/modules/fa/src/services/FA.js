@@ -1,7 +1,7 @@
 import axios from "axios";
+import { IngestionService } from "./Ingestion";
 
 export const FAService = {
-
   fetchDocumentDetails: async (fileUrl) => {
     const response = await axios.get(fileUrl);
 
@@ -42,4 +42,54 @@ export const FAService = {
     };
   },
 
+  uploadFacilityDataTemplate: async (file) => {
+
+    const extractBlobFile = (response) => {
+      const disposition = response.headers["content-disposition"];
+      const filename = disposition?.split("filename=")[1]?.replace(/"/g, "");
+
+      const blobData = new Blob([response.data], {
+        type: response.headers["content-type"],
+      });
+
+      return {
+        name: filename,
+        data: blobData,
+      };
+    };
+
+    let uploadedFile;
+
+    try {
+      const uploadRequest = new FormData();
+      uploadRequest.append("facility_file", file);
+      const uploadResponse = await IngestionService.uploadFacilityData(uploadRequest);
+
+      uploadedFile = extractBlobFile(uploadResponse);
+      const errorCount = parseInt(uploadResponse.headers["x-error-count"] || "0", 10);
+      if (errorCount) {
+        return {
+          errorCode: "INVALID_DATA",
+          file: uploadedFile,
+          errorCount: errorCount,
+        };
+      }
+
+      return {
+        file: uploadedFile,
+      };
+
+    } catch (error) {
+      console.error("Error validating facility data", error);
+
+      if (error?.response?.status === 400) {
+        return {
+          errorCode: "INVALID_TEMPLATE",
+        };
+      }
+
+      throw error;
+    }
+
+  },
 };

@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
+import { IngestionService } from "../../services/Ingestion";
+import { FAService } from "../../services/FA";
 
 const BulkAddFacilities = () => {
 
@@ -18,12 +20,74 @@ const BulkAddFacilities = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const handleFacilityTemplateDownload = async () => {
+  useEffect(() => {
+    if (toast) {
+      setTimeout(() => {
+        setToast(null);
+      }, 2500);
+    }
+  }, [toast]);
 
+  const handleFacilityTemplateDownload = async () => {
+    try {
+      setBlockUI(true);
+      await IngestionService.downloadFacilityDataTemplate();
+      setBlockUI(false);
+      setToast({ key: "success", label: "FACILITY_TEMPLATE_DOWNLOAD_SUCCESS" });
+
+    } catch (e) {
+      console.log("Failed to download facility template", e);
+      setBlockUI(false);
+      setToast({ key: "error", label: "FACILITY_TEMPLATE_DOWNLOAD_ERROR" });
+    }
   };
 
   const handleFacilityDataUpload = async () => {
+    let uploadedFile;
+    try {
+      setBlockUI(true);
+      const response = await FAService.uploadFacilityDataTemplate(file);
+      setBlockUI(false);
 
+      if (response.errorCode === "INVALID_TEMPLATE") {
+        setToast({
+          key: "error",
+          label: t("FACILITY_DATA_UPLOAD_TEMPLATE_ERROR"),
+        });
+        setInvalidDataError(null);
+
+      } else if (response.errorCode === "INVALID_DATA") {
+        setInvalidDataError({
+          label: `${response.errorCount} ${t("HEALTH_FACILITIES_VALIDATION_FAILED")}`,
+        });
+        uploadedFile = {
+          name: response.file.name || file.name,
+          data: response.file.data,
+          errorCodes: ["INVALID_DATA"],
+        };
+
+      } else {
+        setToast({
+          key: "success",
+          label: t("FACILITY_DATA_UPLOAD_SUCCESS"),
+        });
+        setInvalidDataError(null);
+        uploadedFile = {
+          name: response.file.name || file.name,
+          data: response.file.data,
+        };
+      }
+
+    } catch (e) {
+      console.error("Error uploading template", e);
+      setBlockUI(false);
+      setToast({
+        key: "error",
+        label: t("FACILITY_DATA_UPLOAD_ERROR"),
+      });
+    }
+
+    setFile(uploadedFile);
   }
 
   const config = useMemo(
