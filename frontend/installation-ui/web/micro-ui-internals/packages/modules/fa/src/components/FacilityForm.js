@@ -236,6 +236,8 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
       style={{
         position: "relative",
         paddingBottom: "30px",
+        maxHeight: "70vh",
+        overflow: "auto",
         ...wrapperStyle,
       }}
     >
@@ -249,7 +251,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
         heading={""}
         cardStyle={{ boxShadow: "none" }}
         submitInForm={false}
-        actionClassName={"reverse-actionbar-absolute"}
+        actionClassName={"reverse-actionbar-fixed"}
       />
     </div>
   );

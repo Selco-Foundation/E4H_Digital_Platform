@@ -14,8 +14,6 @@ const FacilityModal = ({ t, title, onClose, onSubmit, createdFacility }) => {
           transform: "translate(-50%, -50%)",
           width: "700px",
           maxWidth: "95%",
-          maxHeight: "90vh",
-          overflowY: "auto",
           borderRadius: "5px",
         }}
       >
@@ -37,7 +35,25 @@ const FacilityModal = ({ t, title, onClose, onSubmit, createdFacility }) => {
           >
             {t(title)}
           </div>
-          <Button variation="secondary" label={t("CORE_COMMON_CLOSE")} onButtonClick={onClose} />
+          <Button
+            variation="secondary"
+            label={t("CORE_COMMON_CLOSE")}
+            onButtonClick={onClose}
+            style={{
+              backgroundColor: "white",
+              border: "1px solid #d35400",
+              color: "#d35400",
+              padding: "8px 20px",
+              cursor: "pointer",
+              fontWeight: "bold",
+              fontSize: "16px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "5px",
+              height: "40px",
+            }}
+          />
         </div>
         <FacilityForm t={t} createdFacility={createdFacility} onFormSubmit={onSubmit} />
       </div>
