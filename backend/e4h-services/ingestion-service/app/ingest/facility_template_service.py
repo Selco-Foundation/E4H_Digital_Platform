@@ -23,7 +23,7 @@ vendor_service_url = os.getenv("VENDOR_SERVICE_URL")
 
 class FacilityTemplateService:
 
-    def get_all_boundaries(self, request_info: RequestInfo) -> List[Boundary]:
+    def get_all_boundaries(self) -> List[Boundary]:
         url = f"{boundary_service_url}/boundary-service/boundary/getAllBoundaries"
         params = {
             "page": 0,
@@ -32,22 +32,7 @@ class FacilityTemplateService:
             "hierarchyType": "SELCO",
             "boundaryType": "Block"
         }
-        payload = {
-            "apiId": "org.egov.boundary",
-            "ver": "1.0",
-            "ts": "",
-            "action": "search",
-            "did": "",
-            "key": "",
-            "msgId": "",
-            "authToken": request_info.auth_token
-        }
-
-        headers = {
-            "Content-Type": "application/json",
-            "Accept": "application/json, text/plain, */*"
-        }
-        response = requests.get(url, params=params, headers=headers, json=payload)
+        response = requests.get(url, params=params)
         return convert_json_to_boundary(response.text)
 
 
@@ -229,6 +214,7 @@ class FacilityTemplateService:
 
             output_list = []
             dropdowns_map = {}
+            allow_blank_map = {}
             for col in facility_schema:
                 mandatory_indicator = "(Mandatory)" if col.get("required") else ""
                 header_name = f"{col.get('name')} {mandatory_indicator}".strip()
@@ -250,7 +236,8 @@ class FacilityTemplateService:
             add_dropdowns_to_excel(
                 file_path=output_path,
                 sheet_name="FacilityIngestionTemplate",
-                dropdowns=dropdowns_map
+                dropdowns=dropdowns_map,
+                allow_blank_map=allow_blank_map
             )
 
             boundary_records = self._format_boundary_data(boundary_data)

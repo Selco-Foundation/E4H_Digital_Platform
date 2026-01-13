@@ -171,6 +171,44 @@ async def get_facility_ingestion_template_with_data(
         logger.error(f"Unhandled error in get_facility_ingestion_template: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
+@router.post('/boundaryIngestionTemplate',
+            summary='Generate empty boundary ingestion template Excel file',
+            response_description="Returns an empty Excel template for boundary ingestion")
+async def get_boundary_ingestion_template(
+        background_tasks: BackgroundTasks,
+        payload: dict = Body(..., description="Payload object")
+):
+    """
+    Generate an empty boundary ingestion template with the required columns.
+    Sheet name: 'Boundary Data'
+    Columns: Country, State, District, Block, BoundaryCode
+    """
+    output_file_path = None
+    request_info = request_info_from_json(payload.get("RequestInfo", {}))
+
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_filename = f"boundary_ingestion_template_{timestamp}.xlsx"
+        output_file_path = create_temp_file(suffix=".xlsx")
+
+        # Create an empty DataFrame with the expected boundary columns
+        df = pd.DataFrame(columns=["Country", "State", "District", "Block", "BoundaryCode"])
+        df.to_excel(output_file_path, sheet_name="Boundary Data", index=False)
+
+        logger.info(f"Successfully created boundary ingestion template at {output_file_path}")
+
+        background_tasks.add_task(cleanup_temp_file, output_file_path)
+        return FileResponse(
+            path=output_file_path,
+            filename=output_filename,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception as e:
+        logger.error(f"Unhandled error in get_boundary_ingestion_template: {e}")
+        if output_file_path:
+            cleanup_temp_file(output_file_path)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+
 
 @router.post('/fieldplanFacilityIngestionTemplate',
             summary='Generate facility ingestion template Excel file with schema, already present data and boundary codes',
@@ -330,7 +368,7 @@ async def get_facility_ingestion_template_with_data(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
-@router.get('/facilityIngestion',
+@router.post('/facilityIngestion',
             summary='Generate facility ingestion template Excel file with schema and boundary codes',
             response_description="Returns Excel template with facility schema and boundary codes")
 async def get_facility_ingestion_template(
@@ -338,7 +376,6 @@ async def get_facility_ingestion_template(
         request_info: str = Form(default="")
 ):
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
     mdms_client = MDMSClient(mdms_url)
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -346,7 +383,7 @@ async def get_facility_ingestion_template(
         output_file_path = create_temp_file(suffix=".xlsx")
         try:
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info, 'data-ingestion.FacilityIngestionSchema')
-            boundary_data = facility_service.get_all_boundaries(request_info)
+            boundary_data = facility_service.get_all_boundaries()
             vendor_data = facility_service.get_all_vendor_codes(request_info)
         except Exception as e:
             logger.error(f"Error fetching data from external services: {e}")
