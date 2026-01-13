@@ -1,13 +1,14 @@
 import React, {useEffect, useMemo} from "react";
-import { useTranslation } from "react-i18next";
-import { Route, Switch, useRouteMatch } from "react-router-dom";
-import { BreadCrumb } from "@egovernments/digit-ui-components";
-import { useSelector } from "react-redux";
+import {useTranslation} from "react-i18next";
+import {Route, Switch, useRouteMatch} from "react-router-dom";
+import {BreadCrumb} from "@egovernments/digit-ui-components";
+import {useSelector} from "react-redux";
 import FacilityTable from "./FacilityTable";
 import FacilityDetails from "./FacilityDetails";
 import BoundaryTable from "./BoundaryTable";
 import CreateBoundary from "./CreateBoundary";
 import UploadBoundary from "./UploadBoundary";
+import Response from "@selco/digit-ui-module-pm/src/pages/employee/Response";
 
 const FAApp = () => {
   const {t} = useTranslation();
@@ -31,21 +32,26 @@ const FAApp = () => {
       internalLink: `/${window.contextPath}/employee/fa/facilities/:facilityId`,
       show: true,
     },
-          boundaries: {
-        content: t("FA_LABEL_BOUNDARIES"),
-        internalLink: match.url + `/boundaries`,
-        show: true,
-      },
-      boundaryCreation: {
-        content: t("FA_ACTION_CREATE_BOUNDARY"),
-        internalLink: match.url + `/boundary/create`,
-        show: true,
-      },
-      uploadBoundaryData: {
-        content: t("FA_ACTION_UPLOAD_BOUNDARY"),
-        internalLink: match.url + `/boundary/upload`,
-        show: true,
-      },
+    boundaries: {
+      content: t("FA_LABEL_BOUNDARIES"),
+      internalLink: match.url + `/boundaries`,
+      show: true,
+    },
+    boundaryCreation: {
+      content: t("FA_ACTION_CREATE_BOUNDARY"),
+      internalLink: match.url + `/boundary/create`,
+      show: true,
+    },
+    uploadBoundaryData: {
+      content: t("FA_ACTION_UPLOAD_BOUNDARY"),
+      internalLink: match.url + `/boundary/upload`,
+      show: true,
+    },
+    response: {
+      content: t("CORE_COMMON_RESPONSE"),
+      internalLink: match.url + `/response`,
+      show: true,
+    },
   };
 
   useEffect(() => {
@@ -57,18 +63,18 @@ const FAApp = () => {
       <Switch>
         <Route path={`${path}/facilities`} exact={true}>
           <BreadCrumb
-            spanStyle={{ color: "#0B0C0C" }}
+            spanStyle={{color: "#0B0C0C"}}
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities]}
           />
-          <FacilityTable />
+          <FacilityTable/>
         </Route>
         <Route path={`${path}/facilities/:facilityId`} exact={true}>
           <BreadCrumb
-            spanStyle={{ color: "#0B0C0C" }}
+            spanStyle={{color: "#0B0C0C"}}
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities, breadCrumbsConfig.facilityDetails]}
           />
-          <FacilityDetails />
-          </Route>
+          <FacilityDetails/>
+        </Route>
         <Route path={`${path}/boundaries`} exact={true}>
           <BreadCrumb
             spanStyle={{color: "#0B0C0C"}}
@@ -88,6 +94,13 @@ const FAApp = () => {
             spanStyle={{color: "#0B0C0C"}}
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.boundaries, breadCrumbsConfig.uploadBoundaryData]}/>
           <UploadBoundary/>
+        </Route>
+        <Route path={`${path}/response`} exact={true}>
+          <BreadCrumb
+            spanStyle={{color: "#0B0C0C"}}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.response]}
+          />
+          <Response/>
         </Route>
       </Switch>
     </div>

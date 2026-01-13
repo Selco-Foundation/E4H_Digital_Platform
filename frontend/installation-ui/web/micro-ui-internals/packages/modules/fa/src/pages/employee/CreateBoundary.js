@@ -2,7 +2,9 @@ import React, {useEffect, useMemo, useState} from "react";
 import {FormComposerV2, Loader, Toast, TextInput} from "@egovernments/digit-ui-react-components";
 import {useTranslation} from "react-i18next";
 import {useHistory} from "react-router-dom";
+import { useDispatch } from "react-redux";
 
+import { populateResponsePage } from "../../redux/actions";
 import useBoundary from "../../hooks/useBoundary";
 import CustomDropdown from "../../components/Custom/CustomDropdown";
 import CustomSwapHorizontalCircle from "../../components/Custom/CustomSwapHorizontalCircle";
@@ -91,12 +93,8 @@ const FAStateToggleField = (props) => {
   };
 
   const onStateTextChange = (e) => {
-    // safeOnSelect(onSelect, "state", (e && e.target && e.target.value) || "");
     const next = (e && e.target && e.target.value) || "";
     safeOnSelect(onSelect, "state", next);
-    // if ((getCode(formData?.district) || getCode(formData?.block)) && next !== stateValue) {
-    //   clearBelow();
-    // }
     if (next !== stateValue) clearBelow();
   };
 
@@ -237,6 +235,7 @@ const FADistrictToggleField = (props) => {
 const CreateBoundary = () => {
   const {t} = useTranslation();
   const history = useHistory();
+  const dispatch = useDispatch();
 
   const tenantId = Digit.ULBService.getStateId();
 
@@ -326,6 +325,28 @@ const CreateBoundary = () => {
       setToast({key: "error", label: "CORE_COMMON_REQUIRED"});
       return;
     }
+
+    const getServerErrorMessage = (e) => {
+      const data = e?.response?.data;
+
+      const direct =
+        data?.message
+        data?.error?.message;
+
+      if (typeof direct === "string" && direct.trim()) return direct.trim();
+      const errorsArr = (data && (data.Errors || data.errors)) || [];
+      if (Array.isArray(errorsArr) && errorsArr.length) {
+        const msg = errorsArr
+          .map((er) => er?.message || er?.description || er?.code)
+          .filter(Boolean)
+          .join(" | ")
+          .trim();
+        if (msg) return msg;
+      }
+      if (typeof data === "string" && data.trim()) return data.trim();
+      if (typeof e?.message === "string" && e.message.trim()) return e.message.trim();
+      return "";
+    };
 
     setBlockUI(true);
     try {
@@ -431,10 +452,23 @@ const CreateBoundary = () => {
         ignoreIfExists: false,
       });
 
-      setToast({key: "success", label: "FA_TOAST_BOUNDARY_CREATION_SUCCESS"});
+      dispatch(
+        populateResponsePage({
+          response: { created: true },
+          message: t("FA_TOAST_BOUNDARY_CREATION_SUCCESS"),
+          createdId: computed.code,
+          info: t("CS_BLOCK"),
+          secondaryRedirectionLabel: t("FA_LABEL_CREATE_ANOTHER_BOUNDARY"),
+          onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/fa/boundary/create`),
+        })
+      );
+
+      history.push(`/${window?.contextPath}/employee/fa/response`);
+      return;
     } catch (e) {
       console.error("Error creating boundary / relationship", e);
-      setToast({key: "error", label: "FA_TOAST_BOUNDARY_CREATION_ERROR"});
+      const serverMsg = getServerErrorMessage(e);
+      setToast({ key: "error", label: serverMsg || "FA_TOAST_BOUNDARY_CREATION_ERROR" });
     } finally {
       setBlockUI(false);
     }

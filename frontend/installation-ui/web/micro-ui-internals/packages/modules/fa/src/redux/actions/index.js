@@ -1,4 +1,4 @@
-import { POPULATE_WORKING_FACILITY } from "../../constants/ReduxActions";
+import { POPULATE_RESPONSE, POPULATE_WORKING_FACILITY } from "../../constants/ReduxActions";
 
 const populateWorkingFacility = (facility) => (dispatch) => {
   dispatch({
@@ -7,6 +7,13 @@ const populateWorkingFacility = (facility) => (dispatch) => {
   });
 };
 
+const populateResponsePage = (responseData) => (dispatch) => {
+  dispatch({
+    type: POPULATE_RESPONSE,
+    payload: responseData,
+  });
+};
+
 export {
-  populateWorkingFacility
+  populateWorkingFacility, populateResponsePage
 };
