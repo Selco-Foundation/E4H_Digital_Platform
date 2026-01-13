@@ -36,7 +36,7 @@ public class AssetSearchCriteria {
     private String facilityID = null;
 
     @JsonProperty("isOperational")
-    private boolean isOperational;
+    private Boolean isOperational = null;
 
     @JsonProperty("activityFacilityID")
     private String activityFacilityID = null;
