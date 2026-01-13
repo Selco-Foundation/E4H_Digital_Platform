@@ -214,6 +214,7 @@ class FacilityTemplateService:
 
             output_list = []
             dropdowns_map = {}
+            allow_blank_map = {}
             for col in facility_schema:
                 mandatory_indicator = "(Mandatory)" if col.get("required") else ""
                 header_name = f"{col.get('name')} {mandatory_indicator}".strip()
@@ -235,7 +236,8 @@ class FacilityTemplateService:
             add_dropdowns_to_excel(
                 file_path=output_path,
                 sheet_name="FacilityIngestionTemplate",
-                dropdowns=dropdowns_map
+                dropdowns=dropdowns_map,
+                allow_blank_map=allow_blank_map
             )
 
             boundary_records = self._format_boundary_data(boundary_data)
