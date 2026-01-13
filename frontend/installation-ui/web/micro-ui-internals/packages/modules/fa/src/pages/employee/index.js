@@ -5,6 +5,7 @@ import { BreadCrumb } from "@egovernments/digit-ui-components";
 import { useSelector } from "react-redux";
 import FacilityTable from "./FacilityTable";
 import FacilityDetails from "./FacilityDetails";
+import ActivityDetails from "./ActivityDetails";
 
 const FAApp = () => {
   const { t } = useTranslation();
@@ -25,7 +26,12 @@ const FAApp = () => {
     },
     facilityDetails: {
       content: navigator.workingFacility?.facilityName || "",
-      internalLink: `/${window.contextPath}/employee/fa/facilities/:facilityId`,
+      internalLink: `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(navigator.workingFacility?.facilityId)}`,
+      show: true,
+    },
+    activityDetails: {
+      content: navigator.workingActivity?.activityType || "",
+      internalLink: `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(navigator.workingFacility?.facilityId)}/activities/${navigator.workingActivity?.activityFacilityId}`,
       show: true,
     },
   };
@@ -50,6 +56,13 @@ const FAApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities, breadCrumbsConfig.facilityDetails]}
           />
           <FacilityDetails />
+        </Route>
+        <Route path={`${path}/facilities/:facilityId/activities/:activityId`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities, breadCrumbsConfig.facilityDetails, breadCrumbsConfig.activityDetails]}
+          />
+          <ActivityDetails />
         </Route>
       </Switch>
     </div>

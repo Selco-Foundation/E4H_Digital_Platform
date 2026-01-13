@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import useActivity from "../../../hooks/useActivity";
 import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import Filter from "./Filter";
+import { setSelectedFacility } from "@selco/digit-ui-module-qc/src/redux/actions";
+import { Link } from "react-router-dom";
 
 const ActivityTable = ({ t, facilityId }) => {
 
@@ -34,33 +36,50 @@ const ActivityTable = ({ t, facilityId }) => {
 
   const columns = [
     {
-      Header: t("CS_HEALTH_FACILITY"),
+      Header: t("CS_ACTIVITY_TYPE"),
       Cell: ({ row }) => {
-        return GetCell(row.original["facilityName"] ? row.original["facilityName"] : "-");
+        return GetCell(row.original["activityType"] ? row.original["activityType"] : "-");
       },
     },
     {
-      Header: t("CS_BLOCK"),
+      Header: t("PROJECT_ID"),
       Cell: ({ row }) => {
-        return GetCell(row.original["block"] ? t(`Boundary_${row.original["block"]}`) : "-");
+        return GetCell(row.original["projectCode"] ? row.original["projectCode"] : "-");
       },
     },
     {
-      Header: t("CS_DISTRICT"),
+      Header: t("FIELD_PLAN_ID"),
       Cell: ({ row }) => {
-        return GetCell(row.original["district"] ? t(`Boundary_${row.original["district"]}`) : "-");
+        return GetCell(row.original["fieldPlanCode"] ? row.original["fieldPlanCode"] : "-");
       },
     },
     {
-      Header: t("CS_ASSIGNED_TO"),
+      Header: t("ACTIVITY_START_DATE"),
       Cell: ({ row }) => {
-        return GetCell(row.original["assigned"] ? `${row.original["assigned"]}` : "-");
+        return GetCell(row.original["activityStartDate"] ? row.original["activityStartDate"] : "-");
       },
     },
     {
-      Header: t("CS_STATUS"),
+      Header: t("ACTIVITY_END_DATE"),
       Cell: ({ row }) => {
-        return GetCell(row.original["status"] ? t(`CS_${row.original["status"]}`) : "-");
+        return GetCell(row.original["activityEndDate"] ? row.original["activityEndDate"] : "-");
+      },
+    },
+    {
+      Header: t("ACTIVITY_REPORT"),
+      Cell: ({ row }) => {
+        return (
+          <div>
+            <span className="link">
+              <Link
+                to={`/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(facilityId)}/activities/${row.original["id"]}`}
+                style={{ color: "#C84C0E" }}
+              >
+                {t("VIEW_REPORTS")}
+              </Link>
+            </span>
+          </div>
+        );
       },
     },
   ];
@@ -92,8 +111,8 @@ const ActivityTable = ({ t, facilityId }) => {
 
     if (fetchedData.length === 0) {
       return (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "70%" }}>
-          <div style={{ fontSize: "20px", fontWeight: "bold" }}>{t("CS_NO_FACILITIES_FOUND")}</div>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "70%", minHeight: "300px" }}>
+          <div style={{ fontSize: "20px", fontWeight: "bold" }}>{t("CS_NO_ACTIVITIES_FOUND")}</div>
         </div>
       );
     }
@@ -114,7 +133,7 @@ const ActivityTable = ({ t, facilityId }) => {
         >
           <Table
             t={t}
-            customTableWrapperClassName={"health-facility-table"}
+            customTableWrapperClassName={"facility-details-table"}
             data={fetchedData}
             columns={columns}
             getCellProps={() => {
