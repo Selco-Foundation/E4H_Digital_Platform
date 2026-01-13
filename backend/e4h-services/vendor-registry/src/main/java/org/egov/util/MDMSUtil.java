@@ -43,9 +43,12 @@ public class MDMSUtil {
      * @return
      */
     public Object mDMSCall(RequestInfo requestInfo, String tenantId) {
-        log.info("MDMSUtil::mDMSCall");
+        log.trace("MDMSUtil::mDMSCall entry");
+        log.info("Calling MDMS service for tenant: {}", tenantId);
         MdmsCriteriaReq mdmsCriteriaReq = prepareMDMSRequest(requestInfo, tenantId);
-        return serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
+        Object result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq);
+        log.debug("MDMS call completed successfully");
+        return result;
     }
 
     /**
@@ -55,7 +58,7 @@ public class MDMSUtil {
      * @return the mdms search request
      */
     public MdmsCriteriaReq prepareMDMSRequest(RequestInfo requestInfo, String tenantId) {
-        log.info("MDMSUtil::prepareMDMSRequest");
+        log.trace("MDMSUtil::prepareMDMSRequest entry");
         ModuleDetail commonMasterModuleDetails = prepareCommonMasterModuleDetails();
         ModuleDetail organizationModuleDetails = prepareOrganizationModuleDetails();
         ModuleDetail tenantModuleDetail = getTenantModuleRequestData();
@@ -64,6 +67,7 @@ public class MDMSUtil {
         moduleDetails.add(commonMasterModuleDetails);
         moduleDetails.add(organizationModuleDetails);
         moduleDetails.add(tenantModuleDetail);
+        log.debug("Prepared MDMS request with {} module details", moduleDetails.size());
 
         MdmsCriteria mdmsCriteria = MdmsCriteria.builder().moduleDetails(moduleDetails).tenantId(tenantId)
                 .build();
@@ -77,7 +81,7 @@ public class MDMSUtil {
      * @return the mdms search request for common master module
      */
     private ModuleDetail prepareCommonMasterModuleDetails(){
-        log.info("MDMSUtil::prepareCommonMasterModuleDetails");
+        log.trace("MDMSUtil::prepareCommonMasterModuleDetails entry");
         List<MasterDetail> commonMasterModulesDetails = new ArrayList<>();
         MasterDetail orgFuncMaster = MasterDetail.builder().name(MASTER_ORG_FUNC_CLASS)
                 .filter(ACTIVE_CODE_FILTER).build();
@@ -101,7 +105,7 @@ public class MDMSUtil {
      * @return the mdms search request for organization module
      */
     private ModuleDetail prepareOrganizationModuleDetails(){
-        log.info("MDMSUtil::prepareOrganizationModuleDetails");
+        log.trace("MDMSUtil::prepareOrganizationModuleDetails entry");
         List<MasterDetail> organizationModulesDetails = new ArrayList<>();
         MasterDetail orgTypeMaster = MasterDetail.builder().name(MASTER_ORG_TYPE)
                 .filter(ACTIVE_TYPE_FILTER).build();
@@ -116,7 +120,7 @@ public class MDMSUtil {
      * @return the mdms search request for tenant module
      */
     private ModuleDetail getTenantModuleRequestData() {
-        log.info("MDMSUtil::getTenantModuleRequestData");
+        log.trace("MDMSUtil::getTenantModuleRequestData entry");
         List<MasterDetail> orgTenantMasterDetails = new ArrayList<>();
 
         MasterDetail tenantMasterDetails = MasterDetail.builder().name(MASTER_TENANTS)

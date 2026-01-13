@@ -25,6 +25,8 @@ public class UrlShortenerUtil {
 	}
 
 	public String getShortenedUrl(String url) {
+		log.trace("UrlShortenerUtil::getShortenedUrl entry");
+		log.debug("Attempting to shorten URL: {}", url);
 
 		HashMap<String, String> body = new HashMap<>();
 		body.put("url", url);
@@ -33,11 +35,12 @@ public class UrlShortenerUtil {
 		String res = restTemplate.postForObject(builder.toString(), body, String.class);
 
 		if (StringUtils.isEmpty(res)) {
-			log.error("URL_SHORTENING_ERROR", "Unable to shorten url: " + url);
-
+			log.warn("Unable to shorten URL, returning original URL: {}", url);
 			return url;
-		} else
+		} else {
+			log.debug("URL shortened successfully");
 			return res;
+		}
 	}
 
 }

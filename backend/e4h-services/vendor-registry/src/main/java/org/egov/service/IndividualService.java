@@ -57,8 +57,12 @@ public class IndividualService {
      * @param request OrgRequest received for creating org registry
      */
     public void createIndividual(OrgRequest request) {
-        log.info("UserService::createIndividual");
+        log.trace("IndividualService::createIndividual entry");
         List<Organisation> organisationList = request.getOrganisations();
+        String tenantId = organisationList != null && !organisationList.isEmpty() 
+                ? organisationList.get(0).getTenantId() : "unknown";
+        log.info("Starting individual creation for organisation in tenant: {}", tenantId);
+        
         StringBuilder uri = new StringBuilder(config.getIndividualHost());
         String stateLevelTenantId = multiStateInstanceUtil.getStateLevelTenant(organisationList.get(0).getTenantId());
         RequestInfo requestInfo = request.getRequestInfo();
@@ -70,6 +74,7 @@ public class IndividualService {
                 contactDetailsList.addAll(organisation.getContactDetails());
             }
         }
+        log.debug("Total contact details to process: {}", contactDetailsList.size());
 
         for (ContactDetails contactDetails : contactDetailsList) {
 
@@ -83,23 +88,26 @@ public class IndividualService {
                 existingRoleCode = existingIndividualFromService.get(0).getUserDetails().getRoles().stream().map(Role::getCode).collect(Collectors.toList());
 
             if (CollectionUtils.isEmpty(existingIndividualFromService)) {
-
+                log.debug("Creating new individual for mobile number: {}", contactDetails.getContactMobileNumber());
                 contactDetails.setId(UUID.randomUUID().toString());
                 individualResponse = createIndividualFromIndividualService(requestInfo, newUser, contactDetails);
 
             } else if (!existingRoleCode.contains(getOrgAdminRole().getCode())) {
+                log.debug("Updating existing individual for mobile number: {}", contactDetails.getContactMobileNumber());
                 Individual newIndividual = Individual.builder().build();
                 addIndividualDefaultFields(stateLevelTenantId, role, newIndividual, contactDetails, false, existingIndividualFromService.get(0));
                 uri = uri.append(config.getIndividualUpdateEndpoint());
                 IndividualRequest individualRequest = IndividualRequest.builder().requestInfo(requestInfo).individual(newIndividual).build();
                 individualResponse = individualUpdateCall(individualRequest, uri);
             } else {
+                log.error("Individual with mobile number {} already exists with org admin role", contactDetails.getContactMobileNumber());
                 throw new CustomException("INDIVIDUAL.MOBILE_NUMBER",
                         "Individual's mobile number : " + contactDetails.getContactMobileNumber() + " already exists in the system");
             }
             // Assigns value of fields from user got from userDetailResponse to contact detail object
             setContactFields(contactDetails, individualResponse, requestInfo);
         }
+        log.info("Individual creation process completed for tenant: {}", tenantId);
     }
 
     public void updateContactDetails(ContactDetails contactDetails, String tenantId, RequestInfo requestInfo, Role role) {
@@ -125,10 +133,12 @@ public class IndividualService {
      * @param request OrgRequest received from update
      */
     public void updateIndividual(OrgRequest request) {
-        log.info("IndividualService::updateIndividual");
+        log.trace("IndividualService::updateIndividual entry");
         List<Organisation> organisationList = request.getOrganisations();
         RequestInfo requestInfo = request.getRequestInfo();
         String tenantId = organisationList.get(0).getTenantId();
+        log.info("Starting individual update for tenant: {}", tenantId);
+        
         String stateLevelTenantId = multiStateInstanceUtil.getStateLevelTenant(organisationList.get(0).getTenantId());
         Role role = getOrgAdminRole();
 
@@ -182,12 +192,12 @@ public class IndividualService {
                 orgContactUpdateDiff.setNewContacts(newMembers);
                 organizationProducer.push(config.getOrganisationContactDetailsUpdateTopic(), orgContactUpdateDiff);
 
-                log.info("For Organisation Id: " + organisation.getId() + ": Number of members to be removed: " + toBeRemovedMembers.size()
-                        + "\n" + "Number of members to be added: " + newMembers.size()
-                        + "\nMessage pushed to kafka");
+                log.info("Organisation contact update - Organisation ID: {}, members to be removed: {}, members to be added: {}", 
+                        organisation.getId(), toBeRemovedMembers.size(), newMembers.size());
+                log.debug("Contact update message pushed to Kafka topic: {}", config.getOrganisationContactDetailsUpdateTopic());
             }
         }
-
+        log.info("Individual update process completed for tenant: {}", tenantId);
     }
 
     private void addContactAsOrgMember(ContactDetails contactDetails, String tenantId, RequestInfo requestInfo, Role role) {
@@ -220,7 +230,7 @@ public class IndividualService {
     }
 
     private IndividualResponse createIndividualFromIndividualService(RequestInfo requestInfo, Individual newIndividual, ContactDetails contactDetails) {
-        log.info("IndividualService::createIndividualFromIndividualService");
+        log.trace("IndividualService::createIndividualFromIndividualService entry");
         StringBuilder uri = new StringBuilder(config.getIndividualHost())
                 .append(config.getIndividualCreateEndpoint());
 
@@ -229,9 +239,11 @@ public class IndividualService {
         IndividualResponse individualResponse = individualCreateCall(individualRequest, uri);
 
         if (ObjectUtils.isEmpty(individualResponse)) {
+            log.error("Individual creation failed for mobile number: {}", contactDetails.getContactMobileNumber());
             throw new CustomException("INVALID Individual RESPONSE",
                     "The individual create has failed for the mobileNumber : " + contactDetails.getContactMobileNumber());
         }
+        log.debug("Individual created successfully for mobile number: {}", contactDetails.getContactMobileNumber());
         return individualResponse;
     }
 
@@ -243,11 +255,13 @@ public class IndividualService {
      * @return UserDetailResponse containing the user if present and the responseInfo
      */
     private IndividualBulkResponse individualExists(ContactDetails contactDetails, RequestInfo requestInfo, boolean isCreate, String tenantId) {
-        log.info("IndividualService::Individual Exists");
+        log.trace("IndividualService::individualExists entry");
         IndividualSearchRequest searchRequest = getIndividualSearchRequest(requestInfo);
         if (isCreate) {
+            log.debug("Checking if individual exists by mobile number: {}", contactDetails.getContactMobileNumber());
             searchRequest.getIndividual().setMobileNumber(Collections.singletonList(contactDetails.getContactMobileNumber()));
         } else {
+            log.debug("Checking if individual exists by ID: {}", contactDetails.getIndividualId());
             searchRequest.getIndividual().setId(Collections.singletonList(contactDetails.getIndividualId()));
         }
         StringBuilder uri = new StringBuilder(config.getIndividualHost()).append(config.getIndividualSearchEndpoint());
@@ -264,7 +278,7 @@ public class IndividualService {
      * @param contactDetails
      */
     private void addIndividualDefaultFields(String tenantId, Role role, Individual individual, ContactDetails contactDetails, boolean isCreate, Individual existingIndividual) {
-        log.info("IndividualService::addUserDefaultFields");
+        log.trace("IndividualService::addIndividualDefaultFields entry");
         UserDetails userDetails = UserDetails.builder().roles(Collections.singletonList(role))
                 .tenantId(tenantId).username(contactDetails.getContactMobileNumber())
                 .userType(UserType.fromValue("CITIZEN")).build();
@@ -321,7 +335,7 @@ public class IndividualService {
      * @return
      */
     public IndividualSearchRequest getIndividualSearchRequest(RequestInfo requestInfo) {
-        log.info("IndividualService::getIndividualSearchRequest");
+        log.trace("IndividualService::getIndividualSearchRequest entry");
         IndividualSearchRequest searchRequest = new IndividualSearchRequest();
         IndividualSearch individualSearch = new IndividualSearch();
         searchRequest.setRequestInfo(requestInfo);
@@ -337,7 +351,7 @@ public class IndividualService {
      * @return Response from user service parsed as individualResponse
      */
     private IndividualBulkResponse individualSearchCall(Object userRequest, StringBuilder url, String tenantId) {
-        log.info("IndividualService::individualSearchCall");
+        log.trace("IndividualService::individualSearchCall entry");
         try {
             tenantId = multiStateInstanceUtil.getStateLevelTenant(tenantId);
             UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url.toString())
@@ -348,18 +362,22 @@ public class IndividualService {
 
             if (response != null) {
                 LinkedHashMap<String, Object> responseMap = (LinkedHashMap<String, Object>) response;
-                return mapper.convertValue(responseMap, IndividualBulkResponse.class);
+                IndividualBulkResponse result = mapper.convertValue(responseMap, IndividualBulkResponse.class);
+                log.debug("Individual search returned {} results", result.getIndividual() != null ? result.getIndividual().size() : 0);
+                return result;
             } else {
+                log.debug("Individual search returned empty result");
                 return new IndividualBulkResponse(ResponseInfo.builder().build(), 0L, new ArrayList<>());
             }
         }
         catch (Exception e) {
+            log.error("Error occurred during individual search call", e);
             throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR);
         }
     }
 
     private IndividualResponse individualCreateCall(Object userRequest, StringBuilder url) {
-        log.info("IndividualService::individualCreateCall");
+        log.trace("IndividualService::individualCreateCall entry");
         try {
             UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(url.toString())
                     .queryParam("isSystemUser","true");
@@ -368,30 +386,38 @@ public class IndividualService {
 
             if (response != null) {
                 LinkedHashMap<String, Object> responseMap = (LinkedHashMap<String, Object>) response;
-                return mapper.convertValue(responseMap, IndividualResponse.class);
+                IndividualResponse result = mapper.convertValue(responseMap, IndividualResponse.class);
+                log.debug("Individual created successfully via individual service");
+                return result;
             } else {
+                log.warn("Individual create call returned null response");
                 return new IndividualResponse(ResponseInfo.builder().build(), new Individual());
             }
         }
         catch (Exception e) {
+            log.error("Error occurred during individual create call", e);
             throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR);
         }
     }
 
     private IndividualResponse individualUpdateCall(Object userRequest, StringBuilder url) {
-        log.info("IndividualService::individualUpdateCall");
+        log.trace("IndividualService::individualUpdateCall entry");
         try {
 
             Object response = serviceRequestRepository.fetchResult(url, userRequest);
 
             if (response != null) {
                 LinkedHashMap<String, Object> responseMap = (LinkedHashMap<String, Object>) response;
-                return mapper.convertValue(responseMap, IndividualResponse.class);
+                IndividualResponse result = mapper.convertValue(responseMap, IndividualResponse.class);
+                log.debug("Individual updated successfully via individual service");
+                return result;
             } else {
+                log.warn("Individual update call returned null response");
                 return new IndividualResponse(ResponseInfo.builder().build(), new Individual());
             }
         }
         catch (Exception e) {
+            log.error("Error occurred during individual update call", e);
             throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR);
         }
     }
@@ -403,7 +429,7 @@ public class IndividualService {
      * @param response IndividualResponse from the individual Service corresponding to the given contact details
      */
     private void setContactFields(ContactDetails contactDetails, IndividualResponse response, RequestInfo requestInfo) {
-        log.info("IndividualService::setContactFields");
+        log.trace("IndividualService::setContactFields entry");
         if (response != null && response.getIndividual() != null) {
             contactDetails.setIndividualId(response.getIndividual().getId());
             contactDetails.setContactName(response.getIndividual().getName().getGivenName());
@@ -411,6 +437,9 @@ public class IndividualService {
             contactDetails.setCreatedDate(System.currentTimeMillis());
             contactDetails.setLastModifiedBy(requestInfo.getUserInfo().getUuid());
             contactDetails.setLastModifiedDate(System.currentTimeMillis());
+            log.debug("Contact fields set for individual ID: {}", response.getIndividual().getId());
+        } else {
+            log.warn("Cannot set contact fields: response or individual is null");
         }
     }
 
