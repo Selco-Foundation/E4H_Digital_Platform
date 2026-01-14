@@ -21,12 +21,15 @@ public class VideoUploaderServiceImpl implements VideoUploaderService {
     private final StorageUtil storageUtil;
 
     public StorageResponse uploadProcessedFile(ProcessingContext context, List<MultipartFile> multipartFiles) {
+        log.trace("Method invoked: uploadProcessedFile, videoId: {}, file count: {}", context.getVideoId(), multipartFiles != null ? multipartFiles.size() : 0);
         try {
-            // Upload files to HLS storage
-            return storageUtil.uploadToHLSFileStorage(multipartFiles, context);
+            log.info("Uploading {} processed files to HLS storage for videoId: {}", multipartFiles.size(), context.getVideoId());
+            StorageResponse response = storageUtil.uploadToHLSFileStorage(multipartFiles, context);
+            log.info("Successfully uploaded files to HLS storage for videoId: {}", context.getVideoId());
+            return response;
 
         } catch (IOException e) {
-            log.error("Error uploading processed files: {}", e.getMessage(), e);
+            log.error("Error uploading processed files for videoId: {}", context.getVideoId(), e);
             throw new CustomException("Error uploading files", e.getMessage());
         }
     }
