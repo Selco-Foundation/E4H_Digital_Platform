@@ -57,7 +57,7 @@ public class HealthFacilityDetails {
 
     @JsonProperty("pocDesignation")
     @Pattern(
-            regexp = "^[a-zA-Z\\s]+$",
+            regexp = "^[a-zA-Z0-9_]+$",
             message = "POC Designation pattern is incorrect"
     )
     private String pocDesignation;

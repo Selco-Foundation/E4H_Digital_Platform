@@ -5,6 +5,7 @@ import facility.repository.FacilityRepository;
 import facility.util.*;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -33,6 +34,7 @@ public class FacilityService {
     private BoundaryUtil boundaryUtil;
 
     private final HRMSUtils hrmsUtils;
+    private final HRMSService hrmsService;
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -45,7 +47,7 @@ public class FacilityService {
             BoundaryService boundaryService,
             Configuration configs,
             FacilityKibanaMapper facilityKibanaMapper,
-            EncryptionDecryptionUtil encryptionDecryptionUtil, BoundaryUtil boundaryUtil, HRMSUtils hrmsUtils) {
+            EncryptionDecryptionUtil encryptionDecryptionUtil, BoundaryUtil boundaryUtil, HRMSUtils hrmsUtils, HRMSService hrmsService) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.facilityRowMapper = facilityRowMapper;
@@ -59,6 +61,7 @@ public class FacilityService {
         this.encryptionDecryptionUtil = encryptionDecryptionUtil;
         this.boundaryUtil = boundaryUtil;
         this.hrmsUtils = hrmsUtils;
+        this.hrmsService = hrmsService;
     }
 
     /**
@@ -191,8 +194,12 @@ public class FacilityService {
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
                 
-                // If facility is ONM ready, push to Kibana for indexing
+                // If facility is ONM ready, create POC user and push to Kibana for indexing
                 if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+                    // Create POC user if not exists (check by phone number uniqueness)
+                    createFacilityPOCUserIfNotExists(facility, tenantId, request.getRequestInfo());
+
+                    // Push to Kibana for indexing
                     FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
                     facilityRepository.pushToKibana(kibanaIndex);
                 }
@@ -237,6 +244,46 @@ public class FacilityService {
                             "Facility with same HFR ID or NIN ID already exists in tenant " + tenantId);
                 }
             }
+        }
+    }
+
+    /**
+     * Creates POC user as HRMS employee if not exists (checks by phone number uniqueness).
+     * Validates required fields (HFR ID, POC contact, POC name) before attempting creation.
+     *
+     * @param facility The facility for which to create POC user
+     * @param requestInfo RequestInfo for API calls
+     */
+    private void createFacilityPOCUserIfNotExists(Facility facility, String tenantId, RequestInfo requestInfo) {
+        HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
+
+        if (facilityDetails == null || facilityDetails.getHfrId() == null ||
+            facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null ||
+            facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
+            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name",
+                    sanitizeForLog(facility.getFacilityId()));
+            return;
+        }
+
+        // Check if employee already exists by mobile number
+        boolean employeeExists = hrmsService.employeeExistsByMobileNumber(
+                facilityDetails.getPocContact(),
+                tenantId,
+                requestInfo
+        );
+
+        if (!employeeExists) {
+            // Create POC user as HRMS employee with COMPLAINANT and EMPLOYEE roles
+            boolean created = hrmsService.createFacilityPOCEmployee(facility, requestInfo);
+            if (created) {
+                log.info("Successfully created POC user for facility {} with HFR ID {}",
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
+            } else {
+                log.warn("Failed to create POC user for facility {}", sanitizeForLog(facility.getFacilityId()));
+            }
+        } else {
+            log.info("POC user with mobile number {} already exists for facility {}, skipping creation",
+                    sanitizeForLog(facilityDetails.getPocContact()), sanitizeForLog(facility.getFacilityId()));
         }
     }
 
@@ -316,9 +363,30 @@ public class FacilityService {
 
         facilityRepository.pushUpdateFacility(request);
         
-        // If user sent isOnmReady = true, check if facility exists in Kibana, if not then push
+        // If user sent isOnmReady = true, handle POC user creation and Kibana push
         if (Boolean.TRUE.equals(update.getIsOnmReady())) {
-            // Check if facility already exists in Kibana
+            // Merge update request data with existing facility data to get complete facility info
+            Facility facilityForProcessing = Facility.builder()
+                    .facilityId(facility.getFacilityId())
+                    .tenantId(facility.getTenantId())
+                    .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
+                    .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
+                    .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
+                    .facilityCategory(existingFacility.getFacilityCategory())
+                    .facilityOwnership(existingFacility.getFacilityOwnership())
+                    .facilityRegion(existingFacility.getFacilityRegion())
+                    .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
+                    .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
+                    .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
+                    .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
+                    .isOnmReady(true)
+                    .build();
+
+            // Always check/create POC user when isOnmReady is true (whether transitioning or already true)
+            // This ensures POC user is created if missing, even if facility was already ONM ready
+            createFacilityPOCUserIfNotExists(facilityForProcessing, update.getTenantId(), request.getRequestInfo());
+
+            // Check if facility already exists in Kibana, if not then push
             boolean existsInKibana = facilityKibanaMapper.existsInKibana(
                     update.getFacilityId(), 
                     update.getTenantId(), 
@@ -326,12 +394,12 @@ public class FacilityService {
             );
             
             if (existsInKibana) {
-                log.info("Facility {} already exists in Kibana, skipping push", update.getFacilityId());
+                log.info("Facility {} already exists in Kibana, skipping push", sanitizeForLog(update.getFacilityId()));
                 return facility;
             }
 
             // Fetch full facility from DB only to get missing fields not in update request (like facilityCategory, facilityOwnership, etc.)
-            
+
             // Merge update request data with existing facility data (prioritize update values)
             Facility facilityForKibana = Facility.builder()
                     .facilityId(facility.getFacilityId())
@@ -358,7 +426,7 @@ public class FacilityService {
             // Transform to Kibana index format and push
             FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facilityForKibana, request.getRequestInfo());
             facilityRepository.pushToKibana(kibanaIndex);
-            log.info("Facility {} pushed to Kibana successfully", update.getFacilityId());
+            log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
         }
         
         return facility;
@@ -468,13 +536,13 @@ public class FacilityService {
     public FacilitySummary getFacilitySummary(String facilityId) {
         String sql = "SELECT facility_name, facility_type FROM facility WHERE facility_id = ?";
         try {
-            return jdbcTemplate.queryForObject(sql, new Object[]{facilityId}, (rs, rowNum) -> {
+            return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
                 String name = rs.getString("facility_name");
                 String type = rs.getString("facility_type");
                 FacilitySummary summary = new FacilitySummary();
                 summary.setSummary("Facility '" + name + "' is of type '" + type + "'.");
                 return summary;
-            });
+            }, facilityId);
         } catch (EmptyResultDataAccessException e) {
             return null;
         }
@@ -483,7 +551,7 @@ public class FacilityService {
     public int countFacilities(FacilitySearchRequest request) {
         QueryBuilderResult result = QueryBuilderUtil.buildWhereClause(request);
         String query = "SELECT COUNT(*) FROM facility" + result.getWhereClause();
-        return jdbcTemplate.queryForObject(query, result.getParams().toArray(), Integer.class);
+        return jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
     }
 
     public int countFacilitiesForBulkSearch(FacilityBulkSearchRequest request) {
@@ -491,9 +559,22 @@ public class FacilityService {
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
         String query = "SELECT COUNT(*) FROM facility" + result.getWhereClause();
-        return jdbcTemplate.queryForObject(query, result.getParams().toArray(), Integer.class);
+        return jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
     }
 
+    /**
+     * Sanitizes a string value for safe logging by removing control characters
+     * that could be used for log injection attacks (newlines, carriage returns).
+     *
+     * @param value The string value to sanitize
+     * @return null if input is null, otherwise the sanitized string with \r and \n replaced by spaces
+     */
+    private String sanitizeForLog(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replace('\r', ' ').replace('\n', ' ');
+    }
     public void migrateFacilityData() {
         StringBuilder query = new StringBuilder("SELECT * FROM facility");
         List<Object> allParams = new ArrayList<>();

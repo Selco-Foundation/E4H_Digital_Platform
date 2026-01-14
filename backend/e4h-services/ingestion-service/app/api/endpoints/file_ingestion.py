@@ -172,7 +172,6 @@ async def upload_boundaries_excel_sheet(
     input_temp_file = None
     output_temp_file = None
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
 
     try:
         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -232,7 +231,6 @@ async def upload_facilities_excel_sheet(
     input_temp_file = None
     output_temp_file = None
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
     mdms_client = MDMSClient(mdms_url)
 
     try:

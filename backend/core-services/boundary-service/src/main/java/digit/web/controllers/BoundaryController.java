@@ -83,8 +83,7 @@ public class BoundaryController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam String tenantId,
             @RequestParam String hierarchyType,
-            @RequestParam String boundaryType,
-            @RequestBody RequestInfo requestInfo) {
+            @RequestParam String boundaryType) {
 
         BoundaryRelationshipSearchCriteria criteria = new BoundaryRelationshipSearchCriteria();
         criteria.setTenantId(tenantId);
@@ -93,7 +92,7 @@ public class BoundaryController {
         criteria.setIncludeParents(true);
         criteria.setBoundaryType(boundaryType);
 
-        BoundarySearchResponse response = boundaryRelationshipService.getBoundaryRelationships(criteria, requestInfo);
+        BoundarySearchResponse response = boundaryRelationshipService.getBoundaryRelationships(criteria, null);
         log.info(String.valueOf(response));
 
         List<FlatBoundaryResponse> flatList = new ArrayList<>();
