@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FormComposerV2, Loader } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../hooks/useBoundary";
 
@@ -180,7 +180,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           {
             inline: true,
             label: "FACILITY_HFR_ID",
-            isMandatory: false,
+            isMandatory: true,
             disable: !!createdFacility?.id,
             key: "hfrId",
             type: "text",
@@ -191,7 +191,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           {
             inline: true,
             label: "FACILITY_NIN_ID",
-            isMandatory: false,
+            isMandatory: true,
             disable: !!createdFacility?.id,
             key: "ninId",
             type: "text",
@@ -255,23 +255,6 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
     [t, mdmsResponse, createdFacility, boundaryData, solarSolutionDesignTypes, facilityTypes]
   );
 
-  const handleFormValueChange = useCallback(
-    (setValue, formData, formState, reset, setError, clearErrors) => {
-      // const hasHfrId = formData?.hfrId && `${formData.hfrId}`.trim().length > 0;
-      // const hasNinId = formData?.ninId && `${formData.ninId}`.trim().length > 0;
-      //
-      // if (!hasHfrId && !hasNinId) {
-      //   const errorMessage = t("FACILITY_HFR_OR_NIN_REQUIRED");
-      //   setError("hfrId", { type: "manual", message: errorMessage });
-      //   setError("ninId", { type: "manual", message: errorMessage });
-      // } else {
-      //   clearErrors("hfrId");
-      //   clearErrors("ninId");
-      // }
-    },
-    [t]
-  );
-
   if (isFormLoading) {
     return (
       <div
@@ -303,7 +286,6 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
         config={addFacilityFormConfig}
         onSubmit={onFormSubmit}
         label={t("CORE_COMMON_SUBMIT")}
-        onFormValueChange={handleFormValueChange}
         heading={""}
         cardStyle={{ boxShadow: "none" }}
         submitInForm={false}

@@ -174,6 +174,7 @@ const FacilityAdminActions = ({ t }) => {
             error={toast.key === "error"}
             warning={toast.key === "warning"}
             style={{
+              zIndex: 100000000,
               ...(toast.key === "error" ? { backgroundColor: "#B91900" } : {}),
               ...(mobileView ? { bottom: "120px" } : {}),
             }}
