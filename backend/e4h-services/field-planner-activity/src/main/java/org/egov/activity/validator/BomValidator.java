@@ -174,9 +174,12 @@ public class BomValidator {
         List<Object> bomsNameRes = null;
         try {
             bomsNameRes = JsonPath.read(mdmsData, jsonPathForBom);
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
+        } catch (com.jayway.jsonpath.PathNotFoundException e) {
+            log.error("Path not found while parsing MDMS response: {}", e.getMessage());
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: Path not found");
+        } catch (RuntimeException e) {
+            log.error("Error parsing MDMS response with JsonPath", e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: " + e.getMessage());
         }
 
         for (BillOfMaterial billOfMaterial : billOfMaterials) {

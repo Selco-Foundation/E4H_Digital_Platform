@@ -13,6 +13,7 @@ import org.egov.common.models.project.ProjectFacility;
 import org.egov.common.models.project.ProjectFacilityBulkRequest;
 import org.egov.common.validator.Validator;
 import org.egov.project.config.ProjectConfiguration;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -93,8 +94,15 @@ public class PfFacilityIdValidator implements Validator<ProjectFacilityBulkReque
                     facilitySearchRequest,
                     FacilityBulkResponse.class);
             return response.getFacilities().stream().map(Facility::getId).toList();
+        } catch (ServiceCallException e) {
+            log.error("Service call exception while fetching facility list: {}", e.getMessage(), e);
+            projectFacilities.forEach(b -> {
+                Error error = getErrorForEntityWithNetworkError();
+                populateErrorDetails(b, error, errorDetailsMap);
+            });
+            return entityIds;
         } catch (Exception e) {
-            log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
+            log.error("Unexpected exception while fetching facility list: {}", ExceptionUtils.getStackTrace(e), e);
             projectFacilities.forEach(b -> {
                 Error error = getErrorForEntityWithNetworkError();
                 populateErrorDetails(b, error, errorDetailsMap);

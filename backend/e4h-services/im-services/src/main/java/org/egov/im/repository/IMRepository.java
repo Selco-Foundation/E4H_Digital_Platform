@@ -10,7 +10,6 @@ import org.egov.im.web.models.RequestSearchCriteria;
 import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.Workflow;
 import org.egov.tracer.model.CustomException;
-import org.egov.common.exception.InvalidTenantIdException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -76,9 +75,9 @@ public class IMRepository {
         String query = queryBuilder.getPGRSearchQuery(criteria, preparedStmtList);
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
-        } catch (Exception e) {
+        } catch (CustomException e) {
             throw new CustomException("PGR_UPDATE_ERROR",
-                    "TenantId length is not sufficient to replace query schema in a multi state instance");
+                    "TenantId length is not sufficient to replace query schema in a multi state instance: " + e.getMessage());
         }
         
         List<Incident> services =  jdbcTemplate.query(query, preparedStmtList.toArray(), rowMapper);
@@ -97,9 +96,9 @@ public class IMRepository {
         String query = queryBuilder.getCountQuery(criteria, preparedStmtList);
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
-        } catch (Exception e) {
+        } catch (CustomException e) {
             throw new CustomException("PGR_REQUEST_COUNT_ERROR",
-                    "TenantId length is not sufficient to replace query schema in a multi state instance");
+                    "TenantId length is not sufficient to replace query schema in a multi state instance: " + e.getMessage());
         }
         Integer count =  jdbcTemplate.queryForObject(query, preparedStmtList.toArray(), Integer.class);
         return count;
@@ -111,9 +110,9 @@ public class IMRepository {
 		String query = queryBuilder.getResolvedComplaints(tenantId,preparedStmtListCompalintsResolved );
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
-        } catch (Exception e) {
+        } catch (CustomException e) {
             throw new CustomException("PGR_SEARCH_ERROR",
-                    "TenantId length is not sufficient to replace query schema in a multi state instance");
+                    "TenantId length is not sufficient to replace query schema in a multi state instance: " + e.getMessage());
         }
 		int complaintsResolved = jdbcTemplate.queryForObject(query,preparedStmtListCompalintsResolved.toArray(),Integer.class);
 
@@ -121,9 +120,9 @@ public class IMRepository {
 		query = queryBuilder.getAverageResolutionTime(tenantId, preparedStmtListAverageResolutionTime);
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
-        } catch (Exception e) {
+        } catch (CustomException e) {
             throw new CustomException("PGR_SEARCH_ERROR",
-                    "TenantId length is not sufficient to replace query schema in a multi state instance");
+                    "TenantId length is not sufficient to replace query schema in a multi state instance: " + e.getMessage());
         }
 		int averageResolutionTime = jdbcTemplate.queryForObject(query, preparedStmtListAverageResolutionTime.toArray(),Integer.class);
 

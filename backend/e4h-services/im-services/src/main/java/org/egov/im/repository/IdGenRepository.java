@@ -6,11 +6,15 @@ import org.egov.im.config.IMConfiguration;
 import org.egov.im.web.models.Idgen.IdGenerationRequest;
 import org.egov.im.web.models.Idgen.IdGenerationResponse;
 import org.egov.im.web.models.Idgen.IdRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
 import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -19,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 @Repository
+@Slf4j
 public class IdGenRepository {
 
 
@@ -54,10 +59,22 @@ public class IdGenRepository {
         try {
             response = restTemplate.postForObject( config.getIdGenHost()+ config.getIdGenPath(), req, IdGenerationResponse.class);
         } catch (HttpClientErrorException e) {
+            log.error("HTTP client error while generating ID: ", e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
+        } catch (HttpServerErrorException e) {
+            log.error("HTTP server error while generating ID: status={} body={}", e.getStatusCode(), e.getResponseBodyAsString(), e);
             Map<String, String> map = new HashMap<>();
-            map.put(e.getCause().getClass().getName(),e.getMessage());
+            map.put("ID_GEN_SERVER_ERROR", "Server error while generating ID: " + e.getMessage());
+            throw new CustomException(map);
+        } catch (ResourceAccessException e) {
+            log.error("Network error while generating ID: ", e);
+            Map<String, String> map = new HashMap<>();
+            map.put("ID_GEN_NETWORK_ERROR", "Network error while generating ID: " + e.getMessage());
+            throw new CustomException(map);
+        } catch (RestClientException e) {
+            log.error("Error while generating ID: ", e);
+            Map<String, String> map = new HashMap<>();
+            map.put("ID_GEN_ERROR", "Error while generating ID: " + e.getMessage());
             throw new CustomException(map);
         }
         return response;

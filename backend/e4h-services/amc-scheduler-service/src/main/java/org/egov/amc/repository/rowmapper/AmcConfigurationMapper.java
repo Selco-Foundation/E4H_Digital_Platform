@@ -108,7 +108,7 @@ public class AmcConfigurationMapper implements RowMapper<AmcConfiguration> {
                                 new TypeReference<List<AmcConfigurationAssignment>>() {}
                         );
 
-            } catch (Exception e) {
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
                 throw new SQLException("Error parsing assignments JSONB array", e);
             }
         }

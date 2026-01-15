@@ -14,6 +14,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -52,9 +56,15 @@ public class FacilityUtil {
             });
 
             return Collections.singletonList(response.getBody().get("facilities"));
-        } catch (Exception e) {
-            log.error("Exception while fetching from facility: ", e);
-            throw new CustomException(ErrorConstants.FACILITY_SERVICE_ERROR_CODE, ErrorConstants.FACILITY_SERVICE_ERROR_MSG);
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("HTTP error while fetching from facility service: {}", e.getResponseBodyAsString(), e);
+            throw new CustomException(ErrorConstants.FACILITY_SERVICE_ERROR_CODE, ErrorConstants.FACILITY_SERVICE_ERROR_MSG + ": " + e.getMessage());
+        } catch (ResourceAccessException e) {
+            log.error("Connection error while fetching from facility service", e);
+            throw new CustomException(ErrorConstants.FACILITY_SERVICE_ERROR_CODE, ErrorConstants.FACILITY_SERVICE_ERROR_MSG + ": Connection failed");
+        } catch (RestClientException e) {
+            log.error("Error while fetching from facility service", e);
+            throw new CustomException(ErrorConstants.FACILITY_SERVICE_ERROR_CODE, ErrorConstants.FACILITY_SERVICE_ERROR_MSG + ": " + e.getMessage());
         }
     }
 

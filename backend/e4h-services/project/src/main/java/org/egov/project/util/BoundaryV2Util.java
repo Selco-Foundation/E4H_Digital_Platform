@@ -1,5 +1,6 @@
 package org.egov.project.util;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import org.egov.common.models.core.Boundary;
 import org.egov.project.web.models.BoundaryV2;
 import org.egov.project.web.models.boundary.BoundaryResponse;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
@@ -91,10 +93,15 @@ public class BoundaryV2Util {
                 throw new CustomException("INVALID_BOUNDARY_DATA", "The boundary data for the code "
                         + invalidBoundaryCodes + " is not available");
             }
-        } catch (Exception e) {
-            log.error("Exception while searching boundaries for tenantId: {}", tenantId, e);
-            // Throw a custom exception if an error occurs during boundary search
-            throw new CustomException("BOUNDARY_SERVICE_SEARCH_ERROR", "Error in while fetching boundaries from Boundary Service : " + e.getMessage());
+        } catch (ServiceCallException e) {
+            log.error("Service call error while searching boundaries for tenantId: {}", tenantId, e);
+            throw new CustomException("BOUNDARY_SERVICE_SEARCH_ERROR", "Error while fetching boundaries from Boundary Service: " + e.getMessage());
+        } catch (CustomException e) {
+            // Re-throw CustomException as-is
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("Unexpected error while searching boundaries for tenantId: {}", tenantId, e);
+            throw new CustomException("BOUNDARY_SERVICE_SEARCH_ERROR", "Error while fetching boundaries from Boundary Service: " + e.getMessage());
         }
     }
 
@@ -114,8 +121,21 @@ public class BoundaryV2Util {
             log.debug("Boundary details fetched successfully for tenantId: {}", TENANTID);
             String jsonString = objectMapper.writeValueAsString(boundarySearchResponse);
             listBlock = extractBlockToDistrictMapping(jsonString);
-        }catch(Exception e) {
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+        } catch (ServiceCallException e) {
+            log.error("Service call error fetching boundary configuration for tenantId: {}", TENANTID, e);
+            throw new CustomException("CONFIG_ERROR", "Error fetching boundary configuration: " + e.getMessage());
+        } catch (JsonProcessingException e) {
+            log.error("JSON processing error fetching boundary configuration for tenantId: {}", TENANTID, e);
+            throw new CustomException("CONFIG_ERROR", "Error processing boundary configuration: " + e.getMessage());
+        } catch (IOException e) {
+            log.error("IO error extracting boundary mapping for tenantId: {}", TENANTID, e);
+            throw new CustomException("CONFIG_ERROR", "Error extracting boundary mapping: " + e.getMessage());
+        } catch (CustomException e) {
+            // Re-throw CustomException as-is
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("Unexpected error fetching boundary configuration for tenantId: {}", TENANTID, e);
+            throw new CustomException("CONFIG_ERROR", "Error fetching boundary configuration: " + e.getMessage());
         }
 
         return listBlock;

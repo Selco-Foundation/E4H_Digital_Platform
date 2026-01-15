@@ -353,8 +353,12 @@ public class IndividualService {
                 return new IndividualBulkResponse(ResponseInfo.builder().build(), 0L, new ArrayList<>());
             }
         }
-        catch (Exception e) {
-            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR);
+        catch (IllegalArgumentException e) {
+            log.error("Illegal argument exception while converting response to IndividualBulkResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected exception while converting response to IndividualBulkResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
         }
     }
 
@@ -373,8 +377,12 @@ public class IndividualService {
                 return new IndividualResponse(ResponseInfo.builder().build(), new Individual());
             }
         }
-        catch (Exception e) {
-            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR);
+        catch (IllegalArgumentException e) {
+            log.error("Illegal argument exception while converting response to IndividualResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected exception while converting response to IndividualResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
         }
     }
 
@@ -391,8 +399,12 @@ public class IndividualService {
                 return new IndividualResponse(ResponseInfo.builder().build(), new Individual());
             }
         }
-        catch (Exception e) {
-            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR);
+        catch (IllegalArgumentException e) {
+            log.error("Illegal argument exception while converting response to IndividualResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected exception while converting response to IndividualResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
         }
     }
 

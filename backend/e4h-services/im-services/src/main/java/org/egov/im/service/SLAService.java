@@ -84,7 +84,14 @@ public class SLAService {
         List<Object> res;
         try {
             res = JsonPath.read(mdmsData, jsonPath);
-        } catch (Exception e) {
+        } catch (com.jayway.jsonpath.PathNotFoundException e) {
+            log.error("Path not found while parsing MDMS response for service code: {}", serviceCode, e);
+            throw new CustomException(
+                "JSONPATH_ERROR",
+                "Failed to parse MDMS response for service code: " + serviceCode + ". Path not found"
+            );
+        } catch (RuntimeException e) {
+            log.error("Error parsing MDMS response for service code: {}", serviceCode, e);
             throw new CustomException(
                 "JSONPATH_ERROR",
                 "Failed to parse MDMS response for service code: " + serviceCode + ". Error: " + e.getMessage()
@@ -108,7 +115,20 @@ public class SLAService {
                         return Priority.fromString(priorityStr);
                     }
                 }
-            } catch (Exception e) {
+            } catch (IllegalArgumentException e) {
+                log.error("Invalid argument while processing MDMS data", e);
+                throw new CustomException(
+                    "MDMS_DATA_ERROR",
+                    "Error processing MDMS data: " + e.getMessage()
+                );
+            } catch (ClassCastException e) {
+                log.error("Type cast error while processing MDMS data", e);
+                throw new CustomException(
+                    "MDMS_DATA_ERROR",
+                    "Error processing MDMS data: Invalid data type"
+                );
+            } catch (RuntimeException e) {
+                log.error("Error processing MDMS data", e);
                 throw new CustomException(
                     "MDMS_DATA_ERROR",
                     "Error processing MDMS data: " + e.getMessage()

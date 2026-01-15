@@ -15,6 +15,8 @@ import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.service.UserActionService;
+import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -80,8 +82,13 @@ public class UserActionController {
             // Send the request to the Kafka topic for bulk creation.
             producer.push(projectConfiguration.getBulkCreateUserActionTopic(), request);
             log.info("Successfully pushed user action bulk create request to Kafka");
+        } catch (RuntimeException e) {
+            log.error("Kafka runtime exception while pushing user action bulk create request: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), false)
+            );
         } catch (Exception e) {
-            log.error("Failed to push user action bulk create request to Kafka", e);
+            log.error("Unexpected exception while pushing user action bulk create request: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), false)
             );
@@ -114,8 +121,14 @@ public class UserActionController {
             // Perform the search using the userActionService.
             userActions = userActionService.search(request, urlParams);
             log.info("Successfully searched for user actions: {}", userActions.getResponse().size());
+        } catch (CustomException e) {
+            log.error("Custom exception while searching for user actions: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        } catch (ServiceCallException e) {
+            log.error("Service call exception while searching for user actions: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         } catch (Exception e) {
-            log.error("Failed to search for user actions", e);
+            log.error("Unexpected exception while searching for user actions: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
 
@@ -147,8 +160,13 @@ public class UserActionController {
         try {
             // Send the request to the Kafka topic for bulk update.
             producer.push(projectConfiguration.getBulkUpdateUserActionTopic(), request);
+        } catch (RuntimeException e) {
+            log.error("Kafka runtime exception while pushing user action bulk update request: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), false)
+            );
         } catch (Exception e) {
-            log.error("Failed to push user action bulk update request to Kafka", e);
+            log.error("Unexpected exception while pushing user action bulk update request: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), false)
             );

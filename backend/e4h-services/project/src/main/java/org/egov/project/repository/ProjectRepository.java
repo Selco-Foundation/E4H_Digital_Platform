@@ -17,6 +17,7 @@ import org.egov.project.web.models.ProjectSearchCriteria;
 import org.egov.project.web.models.ProjectSortCriteria;
 import org.egov.project.web.models.ProjectStatusAgregation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -213,7 +214,7 @@ public class ProjectRepository extends GenericRepository<Project> {
             String sql = queryBuilder.getCheckProjectNameExistsQuery();
             Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectName, tenantId);
             return count != null && count > 0;
-        } catch (Exception e) {
+        } catch (DataAccessException e) {
             log.error("Error checking for existing project name: {}", projectName, e);
             // If we can't check, assume it exists to be safe
             return true;
@@ -233,8 +234,12 @@ public class ProjectRepository extends GenericRepository<Project> {
             String sql = queryBuilder.getCheckProjectNameExistsExcludingProjectQuery();
             Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectName, tenantId, excludeProjectId);
             return count != null && count > 0;
+        } catch (DataAccessException e) {
+            log.error("Data access error checking for existing project name excluding project {}: {}", excludeProjectId, projectName, e);
+            // If we can't check, assume it exists to be safe
+            return true;
         } catch (Exception e) {
-            log.error("Error checking for existing project name excluding project {}: {}", excludeProjectId, projectName, e);
+            log.error("Unexpected error checking for existing project name excluding project {}: {}", excludeProjectId, projectName, e);
             // If we can't check, assume it exists to be safe
             return true;
         }
@@ -285,7 +290,7 @@ public class ProjectRepository extends GenericRepository<Project> {
             }
             
             return highestName;
-        } catch (Exception e) {
+        } catch (DataAccessException e) {
             log.error("Error finding highest existing name for base: {}", baseName, e);
             return null;
         }

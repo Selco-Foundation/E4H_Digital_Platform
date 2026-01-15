@@ -17,6 +17,7 @@ import org.egov.mdms.model.MdmsCriteria;
 import org.egov.mdms.model.MdmsCriteriaReq;
 import org.egov.mdms.model.ModuleDetail;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
@@ -329,7 +330,13 @@ public class UserService {
                 }
                 producer.push(userInfo.getTenantId(), config.getSaveTopicIndexer(), userLoginReport);
             }
-        } catch (Exception e) {
+        } catch (ServiceCallException e) {
+            log.error("Service call error while processing login report for user", e);
+            throw new CustomException("LOGIN_REPORT_ERROR", "Unable to process login report: " + e.getMessage());
+        } catch (org.springframework.kafka.KafkaException e) {
+            log.error("Kafka error while processing login report for user", e);
+            throw new CustomException("LOGIN_REPORT_ERROR", "Unable to process login report: Kafka error: " + e.getMessage());
+        } catch (RuntimeException e) {
             log.error("Error while processing login report for user", e);
             throw new CustomException("LOGIN_REPORT_ERROR", "Unable to process login report: " + e.getMessage());
         }

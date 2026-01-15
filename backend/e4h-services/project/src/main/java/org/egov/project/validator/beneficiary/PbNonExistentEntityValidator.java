@@ -10,6 +10,7 @@ import org.egov.project.repository.ProjectBeneficiaryRepository;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
@@ -64,10 +65,12 @@ public class PbNonExistentEntityValidator implements Validator<BeneficiaryBulkRe
                 // Query the repository to find existing entities
                 existingProjectBeneficiaries = projectBeneficiaryRepository.find(projectBeneficiarySearch, projectBeneficiaries.size(), 0,
                         projectBeneficiaries.get(0).getTenantId(), null, false).getResponse();
+            } catch (DataAccessException e) {
+                log.error("Data access exception while searching for ProjectBeneficiary: {}", e.getMessage(), e);
+                throw new CustomException("PROJECT_BENEFICIARY_SEARCH_FAILED", "Search failed for ProjectBeneficiary. Database error: " + e.getMessage());
             } catch (Exception e) {
-                // Handle query builder exception
-                log.error("Search failed for ProjectBeneficiary with error: {}", e.getMessage(), e);
-                throw new CustomException("PROJECT_BENEFICIARY_SEARCH_FAILED", "Search Failed for ProjectBeneficiary, " + e.getMessage());
+                log.error("Unexpected exception while searching for ProjectBeneficiary: {}", e.getMessage(), e);
+                throw new CustomException("PROJECT_BENEFICIARY_SEARCH_FAILED", "Search failed for ProjectBeneficiary: " + e.getMessage());
             }
 
             List<ProjectBeneficiary> nonExistentIndividuals = checkNonExistentEntities(iMap,

@@ -3,6 +3,7 @@ package org.egov.util;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.RequestInfoWrapper;
 import org.egov.common.contract.request.RequestInfo;
@@ -51,8 +52,15 @@ public class HRMSUtils {
             userNames = JsonPath.read(res, HRMS_USER_USERNAME_CODE);
             mobileNumbers = JsonPath.read(res, HRMS_USER_MOBILE_NO);
 
+        } catch (PathNotFoundException e) {
+            log.error("Path not found while parsing HRMS response: {}", e.getMessage(), e);
+            throw new CustomException("PARSING_ERROR", "Failed to parse HRMS response: Path not found");
+        } catch (RuntimeException e) {
+            log.error("Runtime error while parsing HRMS response: {}", e.getMessage(), e);
+            throw new CustomException("PARSING_ERROR", "Failed to parse HRMS response: " + e.getMessage());
         } catch (Exception e) {
-            throw new CustomException("PARSING_ERROR", "Failed to parse HRMS response");
+            log.error("Unexpected error while parsing HRMS response: {}", e.getMessage(), e);
+            throw new CustomException("PARSING_ERROR", "Failed to parse HRMS response: " + e.getMessage());
         }
 
         userDetailsForSMS.put("userName", userNames.get(0));

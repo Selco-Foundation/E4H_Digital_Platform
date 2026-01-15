@@ -8,7 +8,9 @@ import digit.models.coremodels.user.enums.UserType;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.config.Configuration;
 import org.egov.asset.repository.ServiceRequestRepository;
+import org.egov.asset.util.ErrorConstants;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -67,9 +69,11 @@ public class UserUtil {
             UserDetailResponse userDetailResponse = mapper.convertValue(responseMap, UserDetailResponse.class);
             return userDetailResponse;
         } catch (IllegalArgumentException e) {
+            log.error("Error while converting user service response", e);
             throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION_CODE, OBJECTMAPPER_UNABLE_TO_CONVERT);
-        } catch (Exception e) {
-            throw new CustomException();
+        } catch (ServiceCallException e) {
+            log.error("Error while calling user service", e);
+            throw new CustomException(ErrorConstants.USER_SERVICE_CALL_ERROR_CODE, ErrorConstants.USER_SERVICE_CALL_ERROR_MSG + ": " + e.getMessage());
         }
     }
 
@@ -118,9 +122,8 @@ public class UserUtil {
         try {
             d = f.parse(date);
         } catch (ParseException e) {
+            log.error("Error parsing date: {} with format: {}", date, format, e);
             throw new CustomException(INVALID_DATE_FORMAT_CODE, INVALID_DATE_FORMAT_MESSAGE);
-        } catch (Exception e) {
-            throw new CustomException("DATE_PROCESSING_ERROR", "Error processing date: " + e.getMessage());
         }
         return d.getTime();
     }
@@ -170,7 +173,8 @@ public class UserUtil {
         }
         String[] tenantParts = tenantId.split("\\.");
         if (tenantParts.length == 0) {
-            throw new CustomException();
+            log.error("Error parsing tenant ID: {}", tenantId);
+            throw new CustomException(ErrorConstants.TENANT_PARSING_ERROR_CODE, ErrorConstants.TENANT_PARSING_ERROR_MSG);
         }
         return tenantParts[0];
     }

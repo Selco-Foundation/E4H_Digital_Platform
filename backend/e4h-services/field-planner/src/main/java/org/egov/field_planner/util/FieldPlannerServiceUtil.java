@@ -173,9 +173,12 @@ public class FieldPlannerServiceUtil {
             log.info("Published email to Kafka topic: {} for user: {} (no attachments - download buttons used instead)",
                     topic, emailId);
 
-        } catch (Exception e) {
+        } catch (org.springframework.kafka.KafkaException e) {
+            log.error("Kafka error sending email for user: {}", emailId, e);
+            throw new RuntimeException("Failed to send email via Kafka: " + e.getMessage(), e);
+        } catch (RuntimeException e) {
             log.error("Error sending email via Kafka for user: {}", emailId, e);
-            throw new RuntimeException("Failed to send email via Kafka", e);
+            throw new RuntimeException("Failed to send email via Kafka: " + e.getMessage(), e);
         }
     }
 }

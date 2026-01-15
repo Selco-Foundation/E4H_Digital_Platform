@@ -1,6 +1,7 @@
 package org.egov.validator;
 
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
@@ -144,9 +145,15 @@ public class OrganisationServiceValidator {
             orgSubTypeRes = JsonPath.read(mdmsData, jsonPathForOrgSubType);
             orgStatusRes = JsonPath.read(mdmsData, jsonPathForOrgStatus);
             orgIdentifierRes = JsonPath.read(mdmsData, jsonPathForOrgIdentifier);
+        } catch (PathNotFoundException e) {
+            log.error("Path not found while parsing MDMS response: {}", e.getMessage(), e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: Path not found");
+        } catch (RuntimeException e) {
+            log.error("Runtime error while parsing MDMS response: {}", e.getMessage(), e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: " + e.getMessage());
         } catch (Exception e) {
-            log.error(e.getMessage());
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
+            log.error("Unexpected error while parsing MDMS response: {}", e.getMessage(), e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: " + e.getMessage());
         }
 
         //org type

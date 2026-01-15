@@ -14,6 +14,9 @@ import org.springframework.stereotype.Repository;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -36,10 +39,17 @@ public class ServiceRequestRepository {
         try {
             response = restTemplate.postForObject(uri.toString(), request, Map.class);
         } catch (HttpClientErrorException e) {
-            log.error("External Service threw an Exception: ", e);
+            log.error("HTTP client error during service call: ", e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
-            log.error("Exception while fetching from searcher: ", e);
+        } catch (HttpServerErrorException e) {
+            log.error("HTTP server error during service call: ", e);
+            throw new ServiceCallException("Server error while fetching from service: " + e.getResponseBodyAsString());
+        } catch (ResourceAccessException e) {
+            log.error("Network error during service call: ", e);
+            throw new ServiceCallException("Network error while fetching from service: " + e.getMessage());
+        } catch (RestClientException e) {
+            log.error("Error during service call: ", e);
+            throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
         }
         return response;
     }
@@ -80,8 +90,14 @@ public class ServiceRequestRepository {
         } catch (HttpClientErrorException e) {
             log.error("File upload failed: {}", e.getResponseBodyAsString());
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
-            log.error("Unexpected error during file upload: ", e);
+        } catch (HttpServerErrorException e) {
+            log.error("HTTP server error during file upload: status={} body={}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new ServiceCallException("Server error during file upload: " + e.getResponseBodyAsString());
+        } catch (ResourceAccessException e) {
+            log.error("Network error during file upload: ", e);
+            throw new ServiceCallException("Network error during file upload: " + e.getMessage());
+        } catch (RestClientException e) {
+            log.error("Error during file upload: ", e);
             throw new ServiceCallException("File upload failed: " + e.getMessage());
         }
     }

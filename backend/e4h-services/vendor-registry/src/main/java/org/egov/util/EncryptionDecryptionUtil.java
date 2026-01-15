@@ -50,11 +50,11 @@ public class EncryptionDecryptionUtil {
             }
             return encryptedObject;
         } catch (IOException | HttpClientErrorException | HttpServerErrorException | ResourceAccessException e) {
-            log.error("Error occurred while encrypting", e);
-            throw new CustomException("ENCRYPTION_ERROR", "Error occurred in encryption process");
+            log.error("Error occurred while encrypting: {}", e.getMessage(), e);
+            throw new CustomException("ENCRYPTION_ERROR", "Error occurred in encryption process: " + e.getMessage());
         } catch (Exception e) {
-            log.error("Unknown Error occurred while encrypting", e);
-            throw new CustomException("UNKNOWN_ERROR", "Unknown error occurred in encryption process");
+            log.error("Unexpected error occurred while encrypting: {}", e.getMessage(), e);
+            throw new CustomException("ENCRYPTION_ERROR", "Unexpected error occurred in encryption process: " + e.getMessage());
         }
     }
 
@@ -91,11 +91,11 @@ public class EncryptionDecryptionUtil {
             }
             return decryptedObject;
         } catch (IOException | HttpClientErrorException | HttpServerErrorException | ResourceAccessException e) {
-            log.error("Error occurred while decrypting", e);
-            throw new CustomException("DECRYPTION_SERVICE_ERROR", "Error occurred in decryption process");
+            log.error("Error occurred while decrypting: {}", e.getMessage(), e);
+            throw new CustomException("DECRYPTION_SERVICE_ERROR", "Error occurred in decryption process: " + e.getMessage());
         } catch (Exception e) {
-            log.error("Unknown Error occurred while decrypting", e);
-            throw new CustomException("UNKNOWN_ERROR", "Unknown error occurred in decryption process");
+            log.error("Unexpected error occurred while decrypting: {}", e.getMessage(), e);
+            throw new CustomException("DECRYPTION_SERVICE_ERROR", "Unexpected error occurred in decryption process: " + e.getMessage());
         }
     }
 

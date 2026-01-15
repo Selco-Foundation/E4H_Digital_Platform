@@ -14,6 +14,7 @@ import org.egov.common.validator.Validator;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.repository.ProjectRepository;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -95,9 +96,9 @@ public class PtProductVariantIdValidator implements Validator<TaskBulkRequest, T
         ProductVariantResponse response;
         try {
             response = serviceRequestClient.fetchResult(url, request, ProductVariantResponse.class);
-        } catch (Exception e) {
-            throw new CustomException("PRODUCT_VARIANT",
-                    String.format("Something went wrong: %s", e.getMessage()));
+        } catch (ServiceCallException e) {
+            throw new CustomException("PRODUCT_VARIANT_ERROR",
+                    "Error while fetching product variant: " + e.getMessage());
         }
         return response.getProductVariant();
     }

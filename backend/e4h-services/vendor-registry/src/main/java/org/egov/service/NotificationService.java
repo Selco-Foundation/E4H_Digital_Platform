@@ -1,6 +1,7 @@
 package org.egov.service;
 
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.models.RequestInfoWrapper;
@@ -9,6 +10,7 @@ import org.egov.config.Configuration;
 import org.egov.kafka.OrganizationProducer;
 import org.egov.repository.OrganisationRepository;
 import org.egov.repository.ServiceRequestRepository;
+import org.egov.tracer.model.ServiceCallException;
 import org.egov.util.OrganisationConstant;
 import org.egov.web.models.*;
 import org.egov.works.services.common.models.estimate.SMSRequest;
@@ -224,8 +226,14 @@ public class NotificationService {
             result = repository.fetchResult(uri, requestInfoWrapper);
             codes = JsonPath.read(result, OrganisationConstant.ORGANISATION_LOCALIZATION_CODES_JSONPATH);
             messages = JsonPath.read(result, OrganisationConstant.ORGANISATION_LOCALIZATION_MSGS_JSONPATH);
+        } catch (ServiceCallException e) {
+            log.error("Service call exception while fetching from localization: {}", e.getMessage(), e);
+        } catch (PathNotFoundException e) {
+            log.error("Path not found while parsing localization response: {}", e.getMessage(), e);
+        } catch (RuntimeException e) {
+            log.error("Runtime error while processing localization response: {}", e.getMessage(), e);
         } catch (Exception e) {
-            log.error("Exception while fetching from localization: " + e);
+            log.error("Unexpected exception while fetching from localization: {}", e.getMessage(), e);
         }
         if (null != result) {
             for (int i = 0; i < codes.size(); i++) {

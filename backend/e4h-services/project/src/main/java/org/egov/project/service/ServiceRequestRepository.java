@@ -1,14 +1,17 @@
 package org.egov.project.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -31,11 +34,17 @@ public class ServiceRequestRepository {
         try {
             response = restTemplate.postForObject(uri.toString(), request, Map.class);
         } catch (HttpClientErrorException e) {
-            log.error("External Service threw an Exception: ", e);
+            log.error("HTTP client error during service call: ", e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
+        } catch (HttpServerErrorException e) {
+            log.error("HTTP server error during service call: ", e);
+            throw new ServiceCallException("Server error while fetching from service: " + e.getResponseBodyAsString());
+        } catch (ResourceAccessException e) {
+            log.error("Network error during service call: ", e);
+            throw new ServiceCallException("Network error while fetching from service: " + e.getMessage());
+        } catch (RestClientException e) {
             log.error("Error during service call: ", e);
-            throw new ServiceCallException();
+            throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
         }
         return response;
     }
@@ -45,12 +54,21 @@ public class ServiceRequestRepository {
         try {
             String jsonResponse = restTemplate.postForObject(uri.toString(), request, String.class);
             return mapper.readValue(jsonResponse, responseType);
+        } catch (JsonProcessingException e) {
+            log.error("JSON processing error during service call: ", e);
+            throw new ServiceCallException("Error parsing response: " + e.getMessage());
         } catch (HttpClientErrorException e) {
-            log.error("External Service threw an Exception: ", e);
+            log.error("HTTP client error during service call: ", e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
+        } catch (HttpServerErrorException e) {
+            log.error("HTTP server error during service call: ", e);
+            throw new ServiceCallException("Server error while fetching from service: " + e.getResponseBodyAsString());
+        } catch (ResourceAccessException e) {
+            log.error("Network error during service call: ", e);
+            throw new ServiceCallException("Network error while fetching from service: " + e.getMessage());
+        } catch (RestClientException e) {
             log.error("Error during service call: ", e);
-            throw new ServiceCallException();
+            throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
         }
     }
 
@@ -60,11 +78,17 @@ public class ServiceRequestRepository {
         try {
             response = restTemplate.getForObject(uri.toString(), Map.class);
         } catch (HttpClientErrorException e) {
-            log.error("External Service threw an Exception: ", e);
+            log.error("HTTP client error during service call: ", e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
+        } catch (HttpServerErrorException e) {
+            log.error("HTTP server error during service call: ", e);
+            throw new ServiceCallException("Server error while fetching from service: " + e.getResponseBodyAsString());
+        } catch (ResourceAccessException e) {
+            log.error("Network error during service call: ", e);
+            throw new ServiceCallException("Network error while fetching from service: " + e.getMessage());
+        } catch (RestClientException e) {
             log.error("Error during service call: ", e);
-            throw new ServiceCallException();
+            throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
         }
         return response;
     }

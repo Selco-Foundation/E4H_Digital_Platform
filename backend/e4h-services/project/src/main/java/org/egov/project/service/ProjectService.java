@@ -1,5 +1,6 @@
 package org.egov.project.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +30,7 @@ import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
@@ -166,9 +168,12 @@ public class ProjectService {
                         // For non-skipped project types, this indicates an error
                         throw new CustomException("PROJECT_NAME_NULL_OR_EMPTY", "Generated project name is null or empty for project: " + project.getId());
                     }
-                } catch (Exception e) {
+                } catch (CustomException e) {
+                    // Re-throw CustomException as-is
+                    throw e;
+                } catch (RuntimeException e) {
                     log.error("Error generating name for project: {}", project.getId(), e);
-                    throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name for project: " + project.getId());
+                    throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name for project: " + project.getId() + ". Error: " + e.getMessage());
                 }
             } else {
                 // If name is already set, add it to the batch tracking to prevent conflicts
@@ -235,8 +240,11 @@ public class ProjectService {
             } else {
                 next = 1;
             }
-        } catch (Exception e) {
-            log.warn("Falling back to batch-only uniquing for base '{}': {}", baseRoot, e.getMessage());
+        } catch (DataAccessException e) {
+            log.warn("Database error while finding highest existing name for base '{}': {}", baseRoot, e.getMessage());
+            next = 1;
+        } catch (RuntimeException e) {
+            log.warn("Error while finding highest existing name for base '{}': {}", baseRoot, e.getMessage());
             next = 1;
         }
 
@@ -438,7 +446,7 @@ public class ProjectService {
 
                 log.debug("Project {} enriched with HLS count: {}", project.getId(), hlsCount);
 
-            } catch (Exception e) {
+            } catch (ServiceCallException | CustomException e) {
                 log.error("Error enriching project {} with HLS count: {}", project.getId(), e.getMessage(), e);
                 // Continue processing other projects even if one fails
                 // Set HLS count to 0 for this project
@@ -670,8 +678,11 @@ public class ProjectService {
                 log.info("Project name unchanged. Existing: {}, New base: {}", existingName, newBaseName);
             }
             
-        } catch (Exception e) {
+        } catch (CustomException e) {
             log.error("Error handling project name update for project: {}", project.getId(), e);
+            // Don't throw exception - continue with update even if name generation fails
+        } catch (RuntimeException e) {
+            log.error("Unexpected error handling project name update for project: {}", project.getId(), e);
             // Don't throw exception - continue with update even if name generation fails
         }
     }
@@ -771,8 +782,8 @@ public class ProjectService {
 
             return true;
 
-        } catch (Exception e) {
-            log.error("Error validating additionalDetails update", e);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid argument error validating additionalDetails update", e);
             return false;
         }
     }
@@ -825,8 +836,11 @@ public class ProjectService {
             } else {
                 log.debug("Geography details unchanged for project: {} - no facility unlinking needed", project.getId());
             }
-        } catch (Exception e) {
+        } catch (ServiceCallException | CustomException e) {
             log.error("Error handling facility unlinking for project: {}", project.getId(), e);
+            // Don't throw exception - continue with update even if facility unlinking fails
+        } catch (RuntimeException e) {
+            log.error("Unexpected error handling facility unlinking for project: {}", project.getId(), e);
             // Don't throw exception - continue with update even if facility unlinking fails
         }
     }
@@ -845,8 +859,8 @@ public class ProjectService {
             // Return true if the key is explicitly present in payload (even if null)
             return additionalDetailsNode != null && !additionalDetailsNode.isNull()
                     && additionalDetailsNode.has("geographyDetails");
-        } catch (Exception e) {
-            log.error("Error checking for geographyDetails in request", e);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid argument error checking for geographyDetails in request", e);
             return false;
         }
     }
@@ -871,8 +885,8 @@ public class ProjectService {
             
             JsonNode statusNode = additionalDetailsNode.get("status");
             return (statusNode != null && !statusNode.isNull()) ? statusNode.asText() : null;
-        } catch (Exception e) {
-            log.error("Error getting project status for project: {}", project.getId(), e);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid argument error getting project status for project: {}", project.getId(), e);
             return null; // Default to Draft on error
         }
     }
@@ -911,8 +925,8 @@ public class ProjectService {
                     }
                 }
             }
-        } catch (Exception e) {
-            log.error("Error extracting boundary codes from geography details", e);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid argument error extracting boundary codes from geography details", e);
         }
 
         return boundaryCodes;
@@ -982,8 +996,15 @@ public class ProjectService {
             
             log.info("Successfully unlinked {} facilities for project: {} by setting isDeleted=true", facilitiesToUpdate.size(), projectId);
             
-        } catch (Exception e) {
-            log.error("Error unlinking facilities for project: {}", projectId, e);
+        } catch (ServiceCallException e) {
+            log.error("Service call error unlinking facilities for project: {}", projectId, e);
+            throw new CustomException("FACILITY_UNLINKING_FAILED", 
+                    "Failed to unlink facilities for project: " + projectId + ". Error: " + e.getMessage());
+        } catch (CustomException e) {
+            // Re-throw CustomException as-is
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("Unexpected error unlinking facilities for project: {}", projectId, e);
             throw new CustomException("FACILITY_UNLINKING_FAILED", 
                     "Failed to unlink facilities for project: " + projectId + ". Error: " + e.getMessage());
         }
@@ -1020,8 +1041,11 @@ public class ProjectService {
                     ? searchResponse.getResponse()
                     : new ArrayList<>();
 
-        } catch (Exception e) {
+        } catch (ServiceCallException | CustomException e) {
             log.error("Error getting facilities linked to project: {}", projectId, e);
+            return new ArrayList<>();
+        } catch (RuntimeException e) {
+            log.error("Unexpected error getting facilities linked to project: {}", projectId, e);
             return new ArrayList<>();
         }
     }
@@ -1045,8 +1069,10 @@ public class ProjectService {
 
             log.info("Found {} unique facilities across {} boundary codes", facilityIds.size(), boundaryCodes.size());
 
-        } catch (Exception e) {
+        } catch (ServiceCallException | CustomException e) {
             log.error("Error getting facilities by boundary codes: {}", boundaryCodes, e);
+        } catch (RuntimeException e) {
+            log.error("Unexpected error getting facilities by boundary codes: {}", boundaryCodes, e);
         }
 
         return facilityIds;
@@ -1086,8 +1112,12 @@ public class ProjectService {
                 }
             }
 
-        } catch (Exception e) {
-            log.error("Error searching facilities for boundary code: {}", boundaryCode, e);
+        } catch (ServiceCallException e) {
+            log.error("Service call error searching facilities for boundary code: {}", boundaryCode, e);
+        } catch (IllegalArgumentException e) {
+            log.error("Error converting facility response for boundary code: {}", boundaryCode, e);
+        } catch (RuntimeException e) {
+            log.error("Unexpected error searching facilities for boundary code: {}", boundaryCode, e);
         }
 
         return facilityIds;
@@ -1223,9 +1253,17 @@ public class ProjectService {
                     request.getRequestInfo(),
                     request.getWorkflow().getComments()
             );
-        } catch (Exception e) {
+        } catch (ServiceCallException e) {
+            log.error("Service call error transitioning workflow for project: {}", request.getProjectId(), e);
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
-                    "Failed to transition workflow for project: " + request.getProjectId());
+                    "Failed to transition workflow for project: " + request.getProjectId() + ". Error: " + e.getMessage());
+        } catch (CustomException e) {
+            // Re-throw CustomException as-is
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("Unexpected error transitioning workflow for project: {}", request.getProjectId(), e);
+            throw new CustomException("WORKFLOW_TRANSITION_FAILED",
+                    "Failed to transition workflow for project: " + request.getProjectId() + ". Error: " + e.getMessage());
         }
 
         if(request.getTransactions() != null && !request.getTransactions().isEmpty()) {
@@ -1304,9 +1342,17 @@ public class ProjectService {
                         null,
                         false
                 );
-            } catch (Exception e) {
+            } catch (ServiceCallException e) {
+                log.error("Service call error fetching facilities for project: {}", existingProject.getId(), e);
                 throw new CustomException("FACILITY_FETCH_FAILED",
-                        "Failed to fetch facilities for project: " + existingProject.getId());
+                        "Failed to fetch facilities for project: " + existingProject.getId() + ". Error: " + e.getMessage());
+            } catch (CustomException e) {
+                // Re-throw CustomException as-is
+                throw e;
+            } catch (RuntimeException e) {
+                log.error("Unexpected error fetching facilities for project: {}", existingProject.getId(), e);
+                throw new CustomException("FACILITY_FETCH_FAILED",
+                        "Failed to fetch facilities for project: " + existingProject.getId() + ". Error: " + e.getMessage());
             }
 
             // once facility is fetched we need to fetch assets for that facility
@@ -1359,10 +1405,13 @@ public class ProjectService {
             }
         } catch (ServiceCallException e) {
             log.error("Service call failed while processing assets for project {}: {}", existingProject.getId(), e.getMessage());
-            throw new CustomException("ASSET_UPDATE_FAILED", "Failed to update asset operational status");
-        } catch (Exception e) {
+            throw new CustomException("ASSET_UPDATE_FAILED", "Failed to update asset operational status: " + e.getMessage());
+        } catch (JsonProcessingException e) {
+            log.error("JSON processing error while processing assets for project {}: {}", existingProject.getId(), e.getMessage(), e);
+            throw new CustomException("ASSET_PROCESSING_ERROR", "Error processing asset data: " + e.getMessage());
+        } catch (RuntimeException e) {
             log.error("Unexpected error while processing assets for project {}: {}", existingProject.getId(), e.getMessage(), e);
-            throw new CustomException("ASSET_PROCESSING_ERROR", "An error occurred while processing assets");
+            throw new CustomException("ASSET_PROCESSING_ERROR", "An error occurred while processing assets: " + e.getMessage());
         }
     }
 
@@ -1386,8 +1435,12 @@ public class ProjectService {
                     .build();
 
             serviceRequestRepository.fetchResult(assetUpdateUri, createRequest);
-        } catch (Exception e) {
-            log.error("Failed to update asset {}: {}", asset.getAssetId(), e.getMessage());
+        } catch (ServiceCallException e) {
+            log.error("Service call failed to update asset {}: {}", asset.getAssetId(), e.getMessage());
+        } catch (JsonProcessingException e) {
+            log.error("JSON processing error updating asset {}: {}", asset.getAssetId(), e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Unexpected error updating asset {}: {}", asset.getAssetId(), e.getMessage());
         }
     }
 
@@ -1542,8 +1595,11 @@ public class ProjectService {
                 ProjectStatusWrapper updatedProject = updateProjectWorkflow(workflowRequest);
                 log.info("Successfully updated workflow for project: {}", projectId);
                 succeededProjectIDs.add(projectId);
-            } catch (Exception e) {
-                log.error("Failed to update workflow for project {}: {}", projectId, e.getMessage());
+            } catch (ServiceCallException | CustomException e) {
+                log.error("Error updating workflow for project {}: {}", projectId, e.getMessage());
+                failedProjectIDs.add(projectId);
+            } catch (RuntimeException e) {
+                log.error("Unexpected error updating workflow for project {}: {}", projectId, e.getMessage());
                 failedProjectIDs.add(projectId);
             }
         }

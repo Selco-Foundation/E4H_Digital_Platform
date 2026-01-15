@@ -10,6 +10,7 @@ import org.egov.common.validator.Validator;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.web.models.boundary.BoundaryResponse;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -108,10 +109,12 @@ public class UaBoundaryValidator implements Validator<UserActionBulkRequest, Use
                         populateErrorDetails(userAction, error, errorDetailsMap);
                     });
 
+                } catch (ServiceCallException e) {
+                    log.error("Service call exception while searching boundaries for tenantId: {}", tenantId, e);
+                    throw new CustomException("BOUNDARY_SERVICE_SEARCH_ERROR", "Error while fetching boundaries from Boundary Service: " + e.getMessage());
                 } catch (Exception e) {
-                    log.error("Exception while searching boundaries for tenantId: {}", tenantId, e);
-                    // Throw a custom exception if an error occurs during boundary search
-                    throw new CustomException("BOUNDARY_SERVICE_SEARCH_ERROR", "Error in while fetching boundaries from Boundary Service : " + e.getMessage());
+                    log.error("Unexpected exception while searching boundaries for tenantId: {}", tenantId, e);
+                    throw new CustomException("BOUNDARY_SERVICE_SEARCH_ERROR", "Unexpected error while fetching boundaries from Boundary Service: " + e.getMessage());
                 }
             }
         });

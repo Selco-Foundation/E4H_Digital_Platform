@@ -26,6 +26,7 @@ import org.egov.mdms.model.ModuleDetail;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.service.ProjectService;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
@@ -167,8 +168,14 @@ public class BeneficiaryValidator implements Validator<BeneficiaryBulkRequest, P
                             getMethod(GET_CLIENT_REFERENCE_ID, Household.class), clientReferenceIdMethod);
                 }
             }
+        } catch (ServiceCallException e) {
+            log.error("Service call exception while fetching households list: {}", e.getMessage(), e);
+            beneficiaryList.forEach(b -> {
+                Error error = getErrorForEntityWithNetworkError();
+                populateErrorDetails(b, error, errorDetailsMap);
+            });
         } catch (Exception e) {
-            log.error("error while fetching households list", ExceptionUtils.getStackTrace(e));
+            log.error("Unexpected exception while fetching households list: {}", ExceptionUtils.getStackTrace(e), e);
             beneficiaryList.forEach(b -> {
                 Error error = getErrorForEntityWithNetworkError();
                 populateErrorDetails(b, error, errorDetailsMap);
@@ -262,8 +269,14 @@ public class BeneficiaryValidator implements Validator<BeneficiaryBulkRequest, P
                             getMethod(GET_CLIENT_REFERENCE_ID, Individual.class), clientReferenceIdMethod);
                 }
             }
+        } catch (ServiceCallException e) {
+            log.error("Service call exception while fetching individuals list: {}", e.getMessage(), e);
+            beneficiaryList.forEach(b -> {
+                Error error = getErrorForEntityWithNetworkError();
+                populateErrorDetails(b, error, errorDetailsMap);
+            });
         } catch (Exception exception) {
-            log.error("error while fetching individuals list", exception);
+            log.error("Unexpected exception while fetching individuals list: {}", exception.getMessage(), exception);
             beneficiaryList.forEach(b -> {
                 Error error = getErrorForEntityWithNetworkError();
                 populateErrorDetails(b, error, errorDetailsMap);
@@ -282,8 +295,12 @@ public class BeneficiaryValidator implements Validator<BeneficiaryBulkRequest, P
         MdmsCriteriaReq serviceRegistry = getMdmsRequest(requestInfo, tenantId, name, moduleName);
         try {
             return mdmsService.fetchConfig(serviceRegistry, JsonNode.class).get(MDMS_RESPONSE);
+        } catch (ServiceCallException e) {
+            log.error("Service call exception while fetching MDMS config for project types: {}", e.getMessage(), e);
+            throw new CustomException(INTERNAL_SERVER_ERROR, "Error while fetching MDMS config: " + e.getMessage());
         } catch (Exception e) {
-            throw new CustomException(INTERNAL_SERVER_ERROR, "Error while fetching mdms config");
+            log.error("Unexpected exception while fetching MDMS config for project types: {}", e.getMessage(), e);
+            throw new CustomException(INTERNAL_SERVER_ERROR, "Unexpected error while fetching MDMS config: " + e.getMessage());
         }
     }
 

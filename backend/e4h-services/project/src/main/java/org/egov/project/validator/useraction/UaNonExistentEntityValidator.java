@@ -11,6 +11,7 @@ import org.egov.project.repository.UserActionRepository;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
@@ -72,9 +73,12 @@ public class UaNonExistentEntityValidator implements Validator<UserActionBulkReq
             try {
                 // Query the repository to find existing entities
                 existingEntities = userActionRepository.find(taskSearch, urlParams).getResponse();
+            } catch (DataAccessException e) {
+                log.error("Data access exception while searching for ProjectUserAction: {}", e.getMessage(), e);
+                throw new CustomException("PROJECT_USER_ACTION_SEARCH_FAILED", "Search failed for ProjectUserAction with clientReferenceId(s): "
+                        + clientReferenceIdList + " and id(s): " + idList + ". Database error: " + e.getMessage());
             } catch (Exception e) {
-                // Handle query builder exception
-                log.error("Search failed for ProjectUserAction with error: {}", e.getMessage(), e);
+                log.error("Unexpected exception while searching for ProjectUserAction: {}", e.getMessage(), e);
                 throw new CustomException("PROJECT_USER_ACTION_SEARCH_FAILED", "Search failed for ProjectUserAction with clientReferenceId(s): "
                         + clientReferenceIdList + " and id(s): " + idList + ". Error: " + e.getMessage());
             }

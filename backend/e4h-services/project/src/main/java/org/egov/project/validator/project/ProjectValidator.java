@@ -1,8 +1,10 @@
 package org.egov.project.validator.project;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -345,9 +347,12 @@ public class ProjectValidator {
             if (projects.stream().anyMatch(p -> StringUtils.isNotBlank(p.getNatureOfWork()))) {
                 natureOfWorkRes = JsonPath.read(mdmsData, jsonPathForMDMSNatureOfWorkList);
             }
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
+        } catch (PathNotFoundException e) {
+            log.error("Path not found while parsing MDMS response: {}", e.getMessage());
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: Path not found");
+        } catch (RuntimeException e) {
+            log.error("Error parsing MDMS response: {}", e.getMessage());
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: " + e.getMessage());
         }
 
         for (Project project : projects) {
@@ -388,9 +393,12 @@ public class ProjectValidator {
         List<Object> attendanceRes = null;
         try {
             attendanceRes = JsonPath.read(mdmsData, jsonPathForAttendanceSession);
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
+        } catch (PathNotFoundException e) {
+            log.error("Path not found while parsing MDMS response: {}", e.getMessage());
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: Path not found");
+        } catch (RuntimeException e) {
+            log.error("Error parsing MDMS response: {}", e.getMessage());
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: " + e.getMessage());
         }
 
         for (Project project : projectRequest.getProjects()) {
@@ -410,8 +418,10 @@ public class ProjectValidator {
 
             } catch (ClassCastException e) {
                 log.error("Not able to parse additional details object", e);
-            } catch (Exception e) {
-                log.error("An unexpected error occurred while getting AdditionalDetails", e);
+            } catch (JsonProcessingException e) {
+                log.error("JSON processing error while getting AdditionalDetails", e);
+            } catch (RuntimeException e) {
+                log.error("Unexpected error occurred while getting AdditionalDetails", e);
             }
 
             // Validate numberOfSessions

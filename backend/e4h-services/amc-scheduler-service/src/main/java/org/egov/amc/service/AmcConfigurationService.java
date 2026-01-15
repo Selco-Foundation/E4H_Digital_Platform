@@ -251,7 +251,7 @@ public class AmcConfigurationService {
 
             return true;
 
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             log.error("Error validating geographyDetails update", e);
             return false;
         }

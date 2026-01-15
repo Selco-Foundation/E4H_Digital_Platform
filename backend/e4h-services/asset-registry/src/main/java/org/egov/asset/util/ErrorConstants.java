@@ -172,4 +172,22 @@ public class ErrorConstants {
 
     public static final String ASSET_NOT_FOUND_CODE = "ERR_ASSET_NOT_FOUND";
     public static final String ASSET_NOT_FOUND_MSG = "Provided asset does not exist or invalid";
+
+    public static final String WF_SERVICE_CALL_ERROR_CODE = "ERR_WF_SERVICE_CALL";
+    public static final String WF_SERVICE_CALL_ERROR_MSG = "Error while calling workflow service";
+
+    public static final String WF_TRANSITION_ERROR_CODE = "ERR_WF_TRANSITION";
+    public static final String WF_TRANSITION_ERROR_MSG = "Error while processing workflow transition";
+
+    public static final String WF_RESPONSE_PARSING_ERROR_CODE = "ERR_WF_RESPONSE_PARSING";
+    public static final String WF_RESPONSE_PARSING_ERROR_MSG = "Error while parsing workflow response";
+
+    public static final String WF_BUSINESS_SERVICE_ERROR_CODE = "ERR_WF_BUSINESS_SERVICE";
+    public static final String WF_BUSINESS_SERVICE_ERROR_MSG = "Error while processing business service";
+
+    public static final String USER_SERVICE_CALL_ERROR_CODE = "ERR_USER_SERVICE_CALL";
+    public static final String USER_SERVICE_CALL_ERROR_MSG = "Error while calling user service";
+
+    public static final String TENANT_PARSING_ERROR_CODE = "ERR_TENANT_PARSING";
+    public static final String TENANT_PARSING_ERROR_MSG = "Error while parsing tenant ID";
 }

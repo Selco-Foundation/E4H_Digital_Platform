@@ -47,7 +47,7 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
             try {
                 VisitReport report = objectMapper.readValue(visitReportJson, VisitReport.class);
                 visit.setVisitReport(report);
-            } catch (Exception e) {
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
                 throw new SQLException("Error parsing visit_report JSON", e);
             }
         }
@@ -94,7 +94,7 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         if (facilityDetailsJson != null) {
             try {
                 facility.setFacilityDetails(objectMapper.readValue(facilityDetailsJson, Map.class));
-            } catch (Exception e) {
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
                 throw new SQLException("Error parsing facility_details JSON", e);
             }
         }
@@ -115,7 +115,7 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
                         );
 
                 visit.setAssignments(assignments);
-            } catch (Exception e) {
+            } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
                 throw new SQLException("Error parsing assignments JSONB array", e);
             }
         } else {

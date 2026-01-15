@@ -23,16 +23,16 @@ public class AssetRepository {
     public void pushCreateAsset(Asset asset) {
         try {
             producer.push(configuration.getCreateAssetTopic(), asset);
-        }catch (Exception e){
-            throw new CustomException(ErrorConstants.KAFKA_PUSH_ERROR_CODE,ErrorConstants.KAFKA_PUSH_ERROR_MSG);
+        } catch (RuntimeException e) {
+            throw new CustomException(ErrorConstants.KAFKA_PUSH_ERROR_CODE, ErrorConstants.KAFKA_PUSH_ERROR_MSG + ": " + e.getMessage());
         }
     }
 
     public void pushUpdateAsset(Asset asset) {
         try {
             producer.push(configuration.getUpdateAssetTopic(), asset);
-        } catch (Exception e) {
-            throw new CustomException(ErrorConstants.UPDATE_ASSET_ERROR_CODE, ErrorConstants.UPDATE_ASSET_ERROR_MSG);
+        } catch (RuntimeException e) {
+            throw new CustomException(ErrorConstants.UPDATE_ASSET_ERROR_CODE, ErrorConstants.UPDATE_ASSET_ERROR_MSG + ": " + e.getMessage());
         }
     }
 }

@@ -9,6 +9,9 @@ import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import static org.egov.asset.config.ServiceConstants.EXTERNAL_SERVICE_EXCEPTION;
@@ -37,7 +40,13 @@ public class ServiceRequestRepository {
         } catch (HttpClientErrorException e) {
             log.error(EXTERNAL_SERVICE_EXCEPTION, e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
+        } catch (HttpServerErrorException e) {
+            log.error(SEARCHER_SERVICE_EXCEPTION, e);
+            throw new ServiceCallException("Server error while fetching from service: " + e.getResponseBodyAsString());
+        } catch (ResourceAccessException e) {
+            log.error(SEARCHER_SERVICE_EXCEPTION, e);
+            throw new ServiceCallException("Connection error while fetching from service: " + e.getMessage());
+        } catch (RestClientException e) {
             log.error(SEARCHER_SERVICE_EXCEPTION, e);
             throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
         }

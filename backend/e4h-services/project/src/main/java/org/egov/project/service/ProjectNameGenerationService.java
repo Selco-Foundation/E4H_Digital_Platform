@@ -66,8 +66,11 @@ public class ProjectNameGenerationService {
             log.info("Using default project code: {}", projectConfiguration.getProjectNameDefaultCode());
             return projectConfiguration.getProjectNameDefaultCode();
             
-        } catch (Exception e) {
-            log.error("Error getting project code for project: {}, using default", project.getId(), e);
+        } catch (CustomException e) {
+            log.error("Custom error getting project code for project: {}, using default", project.getId(), e);
+            return projectConfiguration.getProjectNameDefaultCode();
+        } catch (RuntimeException e) {
+            log.error("Unexpected error getting project code for project: {}, using default", project.getId(), e);
             return projectConfiguration.getProjectNameDefaultCode();
         }
     }
@@ -133,8 +136,11 @@ public class ProjectNameGenerationService {
             log.warn("State code not found in MDMS, using fallback mapping");
             return getStateCodeFromFallback(project);
             
-        } catch (Exception e) {
-            log.error("Error getting state code for project: {}, using fallback", project.getId(), e);
+        } catch (CustomException e) {
+            log.error("Custom error getting state code for project: {}, using fallback", project.getId(), e);
+            return getStateCodeFromFallback(project);
+        } catch (RuntimeException e) {
+            log.error("Unexpected error getting state code for project: {}, using fallback", project.getId(), e);
             return getStateCodeFromFallback(project);
         }
     }
@@ -161,8 +167,11 @@ public class ProjectNameGenerationService {
             
             return extractCodeFromMDMSResponse(mdmsResponse, masterType, searchName);
             
-        } catch (Exception e) {
-            log.error("Error getting {} code from MDMS for {}: {}", masterType, searchName, e.getMessage());
+        } catch (CustomException e) {
+            log.error("Custom error getting {} code from MDMS for {}: {}", masterType, searchName, e.getMessage());
+            return null;
+        } catch (RuntimeException e) {
+            log.error("Unexpected error getting {} code from MDMS for {}: {}", masterType, searchName, e.getMessage());
             return null;
         }
     }
@@ -408,9 +417,12 @@ public class ProjectNameGenerationService {
                     .build();
             }
             
-        } catch (Exception e) {
-            log.error("Error generating project name for project: {}", project.getId(), e);
-            throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name: " + e);
+        } catch (CustomException e) {
+            // Re-throw CustomException as-is
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("Unexpected error generating project name for project: {}", project.getId(), e);
+            throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name: " + e.getMessage());
         }
     }
 }

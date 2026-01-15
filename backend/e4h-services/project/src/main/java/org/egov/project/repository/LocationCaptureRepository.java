@@ -13,6 +13,7 @@ import org.egov.common.producer.Producer;
 import org.egov.common.utils.CommonUtils;
 import org.egov.project.repository.rowmapper.LocationCaptureRowMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -80,8 +81,11 @@ public class LocationCaptureRepository extends GenericRepository<UserAction> {
 
             log.info("Successfully fetched user locations: {}", locationCaptureList.size());
             return SearchResponse.<UserAction>builder().response(locationCaptureList).totalCount(totalCount).build();
+        } catch (DataAccessException e) {
+            log.error("Data access exception while finding user locations: {}", e.getMessage(), e);
+            return SearchResponse.<UserAction>builder().response(Collections.emptyList()).totalCount(0L).build();
         } catch (Exception e) {
-            log.error("Failed to execute query for finding user locations", e);
+            log.error("Unexpected exception while finding user locations: {}", e.getMessage(), e);
             return SearchResponse.<UserAction>builder().response(Collections.emptyList()).totalCount(0L).build();
         }
     }
@@ -124,8 +128,11 @@ public class LocationCaptureRepository extends GenericRepository<UserAction> {
 
             log.info("Successfully fetched user locations by ID: {}", locationCaptureList.size());
             return SearchResponse.<UserAction>builder().response(objFound).build();
+        } catch (DataAccessException e) {
+            log.error("Data access exception while finding user locations by ID: {}", e.getMessage(), e);
+            return SearchResponse.<UserAction>builder().response(Collections.emptyList()).totalCount(0L).build();
         } catch (Exception e) {
-            log.error("Failed to execute query for finding user locations by ID", e);
+            log.error("Unexpected exception while finding user locations by ID: {}", e.getMessage(), e);
             return SearchResponse.<UserAction>builder().response(Collections.emptyList()).totalCount(0L).build();
         }
     }

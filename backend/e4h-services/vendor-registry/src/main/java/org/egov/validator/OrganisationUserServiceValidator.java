@@ -1,7 +1,9 @@
 package org.egov.validator;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
@@ -445,7 +447,11 @@ public class OrganisationUserServiceValidator {
                         .blockingAssignments(activityAssignmentList)
                         .build();
                 throw new ResponseStatusException(HttpStatus.CONFLICT, mapper.writeValueAsString((errorResponse))); // Ici on renvoie l'objet comme message JSON
+            } catch (JsonProcessingException e) {
+                log.error("JSON processing error while serializing error response: {}", e.getMessage(), e);
+                throw new CustomException("Organization", "User cannot be deleted because they have active or pending assignments.");
             } catch (Exception e) {
+                log.error("Unexpected error while serializing error response: {}", e.getMessage(), e);
                 throw new CustomException("Organization", "User cannot be deleted because they have active or pending assignments.");
             }
         }
@@ -477,10 +483,15 @@ public class OrganisationUserServiceValidator {
                     .toList();
             Map<String, List<Role>> rolesByOrgType = orgRolesList.stream().collect(Collectors.groupingBy(Role::getOrgType));
             return rolesByOrgType;
+        } catch (PathNotFoundException e) {
+            log.error("Path not found while parsing MDMS response for org roles: {}", e.getMessage(), e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: Path not found");
+        } catch (RuntimeException e) {
+            log.error("Runtime error while parsing MDMS response for org roles: {}", e.getMessage(), e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: " + e.getMessage());
         } catch (Exception e) {
-            e.printStackTrace();
-            log.error(e.getMessage());
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
+            log.error("Unexpected error while parsing MDMS response for org roles: {}", e.getMessage(), e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: " + e.getMessage());
         }
     }
 

@@ -4,11 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import digit.models.coremodels.*;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.config.Configuration;
+import org.egov.asset.util.ErrorConstants;
 import org.egov.asset.repository.ServiceRequestRepository;
 import org.egov.asset.web.models.Workflow;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.User;
+import org.egov.asset.repository.ServiceRequestRepository;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -53,8 +56,9 @@ public class WorkflowUtil {
         try {
             log.debug("getBusinessService | fetching business service from WF service url={}", url);
             result = repository.fetchResult(url, requestInfoWrapper, String.class);
-        } catch (Exception e) {
-            throw new CustomException("WF_SERVICE_CALL_FAILED", "Failed to fetch business service: "+ e.getMessage());
+        } catch (ServiceCallException e) {
+            log.error("Error while fetching business service from workflow service", e);
+            throw new CustomException(ErrorConstants.WF_SERVICE_CALL_ERROR_CODE, ErrorConstants.WF_SERVICE_CALL_ERROR_MSG + ": " + e.getMessage());
         }
 
         BusinessServiceResponse response = null;
@@ -62,9 +66,8 @@ public class WorkflowUtil {
             response = mapper.convertValue(result, BusinessServiceResponse.class);
             log.debug("getBusinessService | response successfully parsed for businessServiceCode={}", businessServiceCode);
         } catch (IllegalArgumentException e) {
+            log.error("Error while parsing business service response", e);
             throw new CustomException(PARSING_ERROR, FAILED_TO_PARSE_BUSINESS_SERVICE_SEARCH);
-        } catch (Exception e) {
-            throw new CustomException("BUSINESS_SERVICE_PROCESSING_ERROR", "Error processing business service: "+e.getMessage());
         }
 
         if (CollectionUtils.isEmpty(response.getBusinessServices()))
@@ -138,14 +141,8 @@ public class WorkflowUtil {
         processInstance.setModuleName(wfModuleName);
         processInstance.setTenantId(tenantId);
         BusinessService businessService;
-        try {
-            businessService = getBusinessService(requestInfo, tenantId, businessServiceCode);
-            processInstance.setBusinessService(businessService.getBusinessService());
-        } catch (CustomException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new CustomException();
-        }
+        businessService = getBusinessService(requestInfo, tenantId, businessServiceCode);
+        processInstance.setBusinessService(businessService.getBusinessService());
         processInstance.setDocuments(workflow.getVerificationDocuments());
         processInstance.setComment(workflow.getComments());
 
@@ -212,15 +209,17 @@ public class WorkflowUtil {
         try {
             log.debug("callWorkFlow | invoking WF transition API url={}", url);
             result = repository.fetchResult(url, workflowReq, String.class);
-        } catch (Exception e) {
-            throw new CustomException();
+        } catch (ServiceCallException e) {
+            log.error("Error while calling workflow transition API", e);
+            throw new CustomException(ErrorConstants.WF_TRANSITION_ERROR_CODE, ErrorConstants.WF_TRANSITION_ERROR_MSG + ": " + e.getMessage());
         }
 
         try {
             response = mapper.convertValue(result, ProcessInstanceResponse.class);
             log.debug("callWorkFlow | response parsed successfully");
-        } catch (Exception e) {
-            throw new CustomException();
+        } catch (IllegalArgumentException e) {
+            log.error("Error while parsing workflow transition response", e);
+            throw new CustomException(ErrorConstants.WF_RESPONSE_PARSING_ERROR_CODE, ErrorConstants.WF_RESPONSE_PARSING_ERROR_MSG);
         }
 
         if (response == null || CollectionUtils.isEmpty(response.getProcessInstances())) {

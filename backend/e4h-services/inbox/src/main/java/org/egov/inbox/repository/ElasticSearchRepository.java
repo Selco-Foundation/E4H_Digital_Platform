@@ -3,6 +3,7 @@ package org.egov.inbox.repository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.egov.inbox.config.InboxConfiguration;
 import org.egov.inbox.web.model.InboxSearchCriteria;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -10,11 +11,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
 @Component
+@Slf4j
 public class ElasticSearchRepository {
 
     private InboxConfiguration config;
@@ -55,9 +61,18 @@ public class ElasticSearchRepository {
         try {
             response = restTemplate.postForEntity(url, requestEntity, Object.class);
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new CustomException("WNS_ES_SEARCH_ERROR", "Failed to fetch data from ES for W&S");
+        } catch (HttpClientErrorException e) {
+            log.error("HTTP client error while searching ES: status={} body={}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new CustomException("ES_SEARCH_ERROR", "Failed to fetch data from ES: " + e.getMessage());
+        } catch (HttpServerErrorException e) {
+            log.error("HTTP server error while searching ES: status={} body={}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new CustomException("ES_SEARCH_ERROR", "Failed to fetch data from ES: " + e.getMessage());
+        } catch (ResourceAccessException e) {
+            log.error("Network error while searching ES: ", e);
+            throw new CustomException("ES_SEARCH_ERROR", "Network error while fetching data from ES: " + e.getMessage());
+        } catch (RestClientException e) {
+            log.error("Error while searching ES: ", e);
+            throw new CustomException("ES_SEARCH_ERROR", "Failed to fetch data from ES: " + e.getMessage());
         }
 
         return response.getBody();

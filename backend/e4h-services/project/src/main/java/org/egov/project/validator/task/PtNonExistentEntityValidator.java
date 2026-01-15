@@ -10,6 +10,7 @@ import org.egov.project.repository.ProjectTaskRepository;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ReflectionUtils;
 
@@ -63,10 +64,12 @@ public class PtNonExistentEntityValidator implements Validator<TaskBulkRequest, 
                 // Query the repository to find existing entities
                 existingEntities = projectTaskRepository.find(taskSearch, entities.size(), 0,
                         entities.get(0).getTenantId(), null, false).getResponse();
+            } catch (DataAccessException e) {
+                log.error("Data access exception while searching for ProjectTask: {}", e.getMessage(), e);
+                throw new CustomException("SEARCH_FAILED", "Search failed for given ProjectTask. Database error: " + e.getMessage());
             } catch (Exception e) {
-                // Handle query builder exception
-                log.error("Search failed for ProjectTask with error: {}", e.getMessage(), e);
-                throw new CustomException("SEARCH_FAILED", "Search Failed for given ProjectTask, " + e.getMessage());
+                log.error("Unexpected exception while searching for ProjectTask: {}", e.getMessage(), e);
+                throw new CustomException("SEARCH_FAILED", "Search failed for given ProjectTask: " + e.getMessage());
             }
             List<Task> nonExistentEntities = checkNonExistentEntities(eMap,
                     existingEntities, idMethod);

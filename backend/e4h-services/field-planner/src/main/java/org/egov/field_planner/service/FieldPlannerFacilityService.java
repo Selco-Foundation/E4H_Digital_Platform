@@ -16,6 +16,7 @@ import org.egov.field_planner.util.MDMSUtils;
 import org.egov.field_planner.validator.FieldPlannerValidator;
 import org.egov.field_planner.web.models.*;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -171,9 +172,12 @@ public class FieldPlannerFacilityService {
                         errorMap.put("INVALID_FACILITY"+i, "FacilityId does not exist: " + facility.getFacilityId());
                     }
 
-                } catch (Exception e) {
-                    log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
-                    throw new CustomException("FACILITY_ERROR", "error while calling facility service");
+                } catch (ServiceCallException e) {
+                    log.error("Service call error while fetching facility: {}", facility.getFacilityId(), e);
+                    throw new CustomException("FACILITY_ERROR", "Error while calling facility service: " + e.getMessage());
+                } catch (RuntimeException e) {
+                    log.error("Error while fetching facility: {}", facility.getFacilityId(), e);
+                    throw new CustomException("FACILITY_ERROR", "Error while calling facility service: " + e.getMessage());
                 }
             }
         }
@@ -198,9 +202,9 @@ public class FieldPlannerFacilityService {
                         })
                         .toList();
 
-            } catch (Exception e) {
-                log.error("error while fetching facility list", ExceptionUtils.getStackTrace(e));
-                throw new CustomException("FIELDPLAN_ERROR", "error while calling fieldplan");
+            } catch (RuntimeException e) {
+                log.error("Error while validating field plan IDs", e);
+                throw new CustomException("FIELDPLAN_ERROR", "Error while calling fieldplan: " + e.getMessage());
             }
         }
     }
@@ -251,7 +255,9 @@ public class FieldPlannerFacilityService {
                 }
             }
 
-        } catch (Exception e) {
+        } catch (ServiceCallException e) {
+            log.error("Service call error searching facilities for boundary code: {}", boundaryCode, e);
+        } catch (RuntimeException e) {
             log.error("Error searching facilities for boundary code: {}", boundaryCode, e);
         }
 

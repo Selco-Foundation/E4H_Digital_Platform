@@ -217,9 +217,12 @@ public class FieldPlannerService {
 //                    break; // on s’arrête dès qu’on trouve
 //                }
 //            }
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
+        } catch (com.jayway.jsonpath.PathNotFoundException e) {
+            log.error("Path not found while parsing MDMS response: {}", e.getMessage());
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: Path not found");
+        } catch (RuntimeException e) {
+            log.error("Error parsing MDMS response with JsonPath", e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: " + e.getMessage());
         }
 
 
@@ -470,9 +473,12 @@ public class FieldPlannerService {
                     createFacilityActivity(request.getRequestInfo(), activityFacilities);
 
                 }
+            } catch (CustomException e) {
+                log.error("Error creating facility activities", e);
+                throw e;
             } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
+                log.error("Error creating facility activities", e);
+                throw new RuntimeException("Failed to create facility activities: " + e.getMessage(), e);
             }
         }
 
@@ -523,7 +529,7 @@ public class FieldPlannerService {
 
             return true;
 
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             log.error("Error validating geographyDetails update", e);
             return false;
         }
@@ -630,6 +636,12 @@ public class FieldPlannerService {
                     ? searchResponse.getResponse()
                     : new ArrayList<>();
 
+        } catch (CustomException e) {
+            log.error("Error getting facilities linked to project: {}", fieldPlanId, e);
+            return new ArrayList<>();
+        } catch (RuntimeException e) {
+            log.error("Error getting facilities linked to project: {}", fieldPlanId, e);
+            return new ArrayList<>();
         } catch (Exception e) {
             log.error("Error getting facilities linked to project: {}", fieldPlanId, e);
             return new ArrayList<>();
@@ -711,7 +723,7 @@ public class FieldPlannerService {
                     }
                 }
             }
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             log.error("Error extracting boundary codes from geography details", e);
         }
 
@@ -782,7 +794,10 @@ public class FieldPlannerService {
 
             log.info("Successfully unlinked {} facilities for project: {} by setting isDeleted=true", facilitiesToUpdate.size(), fieldPlanId);
 
-        } catch (Exception e) {
+        } catch (CustomException e) {
+            log.error("Error unlinking facilities for project: {}", fieldPlanId, e);
+            throw e;
+        } catch (RuntimeException e) {
             log.error("Error unlinking facilities for project: {}", fieldPlanId, e);
             throw new CustomException("FACILITY_UNLINKING_FAILED",
                     "Failed to unlink facilities for project: " + fieldPlanId + ". Error: " + e.getMessage());
@@ -808,7 +823,7 @@ public class FieldPlannerService {
 
             log.info("Found {} unique facilities across {} boundary codes", facilityIds.size(), boundaryCodes.size());
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error getting facilities by boundary codes: {}", boundaryCodes, e);
         }
 

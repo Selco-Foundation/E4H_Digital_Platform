@@ -47,16 +47,10 @@ public class V1ApiController {
         // TODO: Implement the actual bulk asset creation logic
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
-            try {
-                // Create a proper response object instead of using a hardcoded JSON string
-                BulkAssetCreateResponse response = new BulkAssetCreateResponse();
-                // Set appropriate fields in the response
-                return new ResponseEntity<BulkAssetCreateResponse>(response, HttpStatus.NOT_IMPLEMENTED);
-            } catch (Exception e) {
-                // Log the error
-                // log.error("Error creating bulk assets", e);
-                return new ResponseEntity<BulkAssetCreateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
-            }
+            // Create a proper response object instead of using a hardcoded JSON string
+            BulkAssetCreateResponse response = new BulkAssetCreateResponse();
+            // Set appropriate fields in the response
+            return new ResponseEntity<BulkAssetCreateResponse>(response, HttpStatus.NOT_IMPLEMENTED);
         }
 
         return new ResponseEntity<BulkAssetCreateResponse>(HttpStatus.NOT_IMPLEMENTED);

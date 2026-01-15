@@ -5,6 +5,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.egov.asset.config.Configuration;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -34,11 +38,17 @@ public class UrlShortenerUtil {
             String res = restTemplate.postForObject(configs.getUrlShortnerHost() + configs.getUrlShortnerEndpoint(), body, String.class);
 
             if (StringUtils.isEmpty(res)) {
-                log.error(URL_SHORTENING_ERROR_CODE, URL_SHORTENING_ERROR_MESSAGE + url);
+                log.error("{}: {}", URL_SHORTENING_ERROR_CODE, URL_SHORTENING_ERROR_MESSAGE + url);
                 return url;
             } else return res;
-        } catch (Exception e) {
-            log.error(URL_SHORTENING_ERROR_CODE, URL_SHORTENING_ERROR_MESSAGE, url, e);
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("{}: {} - HTTP error: {}", URL_SHORTENING_ERROR_CODE, URL_SHORTENING_ERROR_MESSAGE, url, e);
+            return url;
+        } catch (ResourceAccessException e) {
+            log.error("{}: {} - Connection error: {}", URL_SHORTENING_ERROR_CODE, URL_SHORTENING_ERROR_MESSAGE, url, e);
+            return url;
+        } catch (RestClientException e) {
+            log.error("{}: {} - Error: {}", URL_SHORTENING_ERROR_CODE, URL_SHORTENING_ERROR_MESSAGE, url, e);
             return url;
         }
     }

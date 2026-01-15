@@ -15,6 +15,7 @@ import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.producer.Producer;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -247,11 +248,13 @@ public class ScheduledVisitService {
                     request.getRequestInfo(),
                     request.getWorkflow().getComment()
             );
-        } catch (Exception e) {
-//            e.printStackTrace();
-            log.error(e.getMessage());
+        } catch (CustomException e) {
+            log.error("Workflow transition failed: {}", e.getMessage());
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("Error during workflow transition", e);
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
-                    "Failed to transition workflow for facility: " + request.getVisitId());
+                    "Failed to transition workflow for facility: " + request.getVisitId() + ": " + e.getMessage());
         }
 
         if(request.getVisitReport() != null) {
@@ -400,8 +403,8 @@ public class ScheduledVisitService {
                         assignment.setUser(employee.getUser());
                     }
                 }
-                catch(Exception e){
-                    log.error("error while calling hrms {} ", e.getMessage());
+                catch(CustomException | ServiceCallException e){
+                    log.error("error while calling hrms for user {}: {}", assignment.getAssignedUser(), e.getMessage());
                 }
             }
         }
@@ -560,11 +563,13 @@ public class ScheduledVisitService {
                     } else {
                         log.warn("Workflow transition succeeded but returned null state for visit: {}", visit.getId());
                     }
-                } catch (Exception e) {
+                } catch (CustomException e) {
+                    log.error("Error applying SCHEDULE workflow action on visit: {}", visit.getId(), e);
+                } catch (RuntimeException e) {
                     log.error("Error applying SCHEDULE workflow action on visit: {}", visit.getId(), e);
                 }
             }
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error checking if visit needs scheduling: {}", visit.getId(), e);
         }
     }
@@ -632,7 +637,7 @@ public class ScheduledVisitService {
             log.info("Fetched notice period from MDMS for tenant {}: {} days", tenantId, noticePeriod);
             return noticePeriod;
 
-        } catch (Exception e) {
+        } catch (ClassCastException e) {
             log.error("Error parsing AMCThresholds from MDMS response for tenant: {}", tenantId, e);
             return null;
         }

@@ -2,12 +2,17 @@ package org.egov.amc.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.web.models.Boundary;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
@@ -15,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class BoundaryUtil {
     @Autowired
     private RestTemplate restTemplate;
@@ -49,8 +55,15 @@ public class BoundaryUtil {
             }
             String jsonString = objectMapper.writeValueAsString(response);
             listBlock = extractBlockToDistrictMapping(jsonString);
-        }catch(Exception e) {
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("HTTP error while fetching boundary data: {}", e.getResponseBodyAsString(), e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query boundary: " + e.getMessage());
+        } catch (ResourceAccessException e) {
+            log.error("Connection error while fetching boundary data", e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query boundary: Connection failed");
+        } catch (RestClientException | IOException e) {
+            log.error("Error while fetching or processing boundary data", e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query boundary: " + e.getMessage());
         }
 
         return listBlock;
