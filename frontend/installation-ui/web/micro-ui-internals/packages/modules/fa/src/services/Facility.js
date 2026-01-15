@@ -1,4 +1,5 @@
 import { Request } from "@egovernments/digit-ui-libraries";
+import { CustomRequest } from "../components/Custom/CustomRequest";
 
 export const FacilityService = {
   fetchFacilities: async (queryFilter) => {
@@ -26,7 +27,7 @@ export const FacilityService = {
       "Content-Type": "application/json",
     };
 
-    return await Request({
+    return await CustomRequest({
       url: endpoint,
       userService: true,
       method: "POST",

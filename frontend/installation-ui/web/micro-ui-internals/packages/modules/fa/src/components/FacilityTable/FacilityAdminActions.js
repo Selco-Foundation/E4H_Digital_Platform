@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { DownloadIcon, Toast, PopUp, Button } from "@egovernments/digit-ui-react-components";
-import CustomUploadIcon from "../Custom/CustomUploadIcon";
+import { Toast, Loader } from "@egovernments/digit-ui-react-components";
 import { FacilityService } from "../../services/Facility";
-import FacilityForm from "../FacilityForm";
 import FacilityModal from "../FacilityModal";
 import { useHistory } from "react-router-dom";
 
@@ -11,6 +9,7 @@ const FacilityAdminActions = ({ t }) => {
   const [toast, setToast] = useState(null);
   const [showAddFacilityModal, setShowAddFacilityModal] = useState(false);
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+  const [blockUI, setBlockUI] = useState(null);
   const history = useHistory();
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
@@ -32,6 +31,7 @@ const FacilityAdminActions = ({ t }) => {
 
   const handleAddFacilitySubmit = async (formData) => {
     try {
+      setBlockUI(true);
       const facilityTypeValue = formData?.facilityType;
       const solarDesignValue = formData?.solarSolutionDesignType;
       const block = formData?.block;
@@ -45,11 +45,13 @@ const FacilityAdminActions = ({ t }) => {
             tenant_id: tenantId,
             facility_name: formData?.facilityName,
             facility_type: facilityTypeCode,
-            isActive: true,
+            isActive: formData?.isActive?.code === "YES",
+            isOnmReady: formData?.isOnmReady?.code === "YES",
             blockBoundaryCode: block?.code,
             address: {
               tenantId: tenantId,
-              ...(formData?.pincode ? { pincode: formData.pincode } : {}),
+              ...(formData?.latitude ? { latitude: formData.latitude } : {}),
+              ...(formData?.longitude ? { longitude: formData.longitude } : {}),
             },
             facility_poc_name: formData?.facilityPocName,
             facility_poc_phone: formData?.facilityPocPhone,
@@ -65,12 +67,15 @@ const FacilityAdminActions = ({ t }) => {
 
       await FacilityService.createFacility(payload);
 
+      setBlockUI(false);
       setShowAddFacilityModal(false);
       setToast({
         key: "success",
         label: t("FACILITY_CREATION_SUCCESS"),
       });
     } catch (e) {
+      console.error("Failed to create facility", e);
+      setBlockUI(false);
       setToast({
         key: "error",
         label: t("FACILITY_CREATION_FAILED"),
@@ -92,6 +97,25 @@ const FacilityAdminActions = ({ t }) => {
           minWidth: "fit-content",
         }}
       >
+        {blockUI && (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              height: "100%",
+              width: "100%",
+              zIndex: 10000005,
+              backgroundColor: "gray",
+              opacity: 0.5,
+              position: "fixed",
+              top: 0,
+              left: 0,
+            }}
+          >
+            <Loader />
+          </div>
+        )}
         <h1
           style={{
             fontSize: "40px",

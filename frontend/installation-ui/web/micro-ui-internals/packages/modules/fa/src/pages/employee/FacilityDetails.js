@@ -25,6 +25,7 @@ const FacilityDetails = () => {
   const [toast, setToast] = useState(null);
   const [activeTab, setActiveTab] = useState("ACTIVITY");
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+  const [blockUI, setBlockUI] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -82,6 +83,8 @@ const FacilityDetails = () => {
           parentCode: facilityData?.districtCode,
           name: facilityData?.blockCode ? t(`Boundary_${facilityData?.blockCode}`) : "",
         },
+        isOperational: facilityData?.isActive ? { code: "YES", name: t("TL_COMMON_YES") } : { code: "NO", name: t("TL_COMMON_NO") },
+        isOnmReady: facilityData?.isOnmReady ? { code: "YES", name: t("TL_COMMON_YES") } : { code: "NO", name: t("TL_COMMON_NO") },
         solarSolutionDesignType: solarSolutionDesignTypes.find((type) => type.code === facilityData?.solarDesignCode) || {},
         facilityType: facilityTypes.find((type) => type.code === facilityData?.facilityTypeCode) || {},
       });
@@ -90,6 +93,7 @@ const FacilityDetails = () => {
 
   const handleFacilityUpdate = async (formData) => {
     try {
+      setBlockUI(true);
       const facilityTypeValue = formData?.facilityType;
       const solarDesignValue = formData?.solarSolutionDesignType;
 
@@ -102,10 +106,12 @@ const FacilityDetails = () => {
           tenant_id: tenantId,
           facility_name: formData?.facilityName,
           facility_type: facilityTypeCode,
-          isActive: true,
+          isActive: formData?.isActive?.code === "YES",
+          isOnmReady: formData?.isOnmReady?.code === "YES",
           address: {
             tenantId: tenantId,
-            ...(formData?.pincode ? { pincode: formData.pincode } : {}),
+            ...(formData?.latitude ? { latitude: formData.latitude } : {}),
+            ...(formData?.longitude ? { longitude: formData.longitude } : {}),
           },
           facility_poc_name: formData?.facilityPocName,
           facility_poc_phone: formData?.facilityPocPhone,
@@ -118,12 +124,15 @@ const FacilityDetails = () => {
 
       await FacilityService.updateFacility(payload);
 
+      setBlockUI(false);
       setShowEditFacilityModal(false);
       setToast({
         key: "success",
         label: t("FACILITY_UPDATION_SUCCESS"),
       });
     } catch (e) {
+      console.error("Failed to upload facility", e);
+      setBlockUI(false);
       setToast({
         key: "error",
         label: t("FACILITY_UPDATION_FAILED"),
@@ -157,6 +166,25 @@ const FacilityDetails = () => {
 
   return (
     <div style={{ marginTop: "20px", padding: "16px", overflow: "auto", backgroundColor: "white" }}>
+      {blockUI && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+            zIndex: 10000005,
+            backgroundColor: "gray",
+            opacity: 0.5,
+            position: "fixed",
+            top: 0,
+            left: 0,
+          }}
+        >
+          <Loader />
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
         <h1
           style={{
