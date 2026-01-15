@@ -164,6 +164,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             populators: {
               name: "facilityPocPhone",
               error: t("CORE_COMMON_REQUIRED"),
+              validation: { minlength: 10, maxlength: 10, pattern: { value: /^[0-9]\d{9}$/, message: "Enter a valid mobile number" } },
             },
           },
           {
@@ -237,6 +238,14 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             type: "text",
             populators: {
               name: "latitude",
+              validation: {
+                min: -180,
+                max: 180,
+                pattern: {
+                  value: /^-?(180(\.0+)?|1[0-7]\d(\.\d+)?|\d{1,2}(\.\d+)?)$/,
+                  message: "Enter a valid longitude (-180 to 180)",
+                },
+              },
             },
           },
           {
@@ -247,6 +256,14 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             type: "text",
             populators: {
               name: "longitude",
+              validation: {
+                min: -180,
+                max: 180,
+                pattern: {
+                  value: /^-?(180(\.0+)?|1[0-7]\d(\.\d+)?|\d{1,2}(\.\d+)?)$/,
+                  message: "Enter a valid longitude (-180 to 180)",
+                },
+              },
             },
           },
         ],
