@@ -83,7 +83,7 @@ public class FieldPlannerQueryBuilder {
         StringBuilder queryBuilder = new StringBuilder(FETCH_FIELDPLAN_QUERY);
         if (StringUtils.isNotBlank(fieldPlan.getName())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" LOWER(name) LIKE ? ");
+            queryBuilder.append(" LOWER(fp.name) LIKE ? ");
             preparedStmtList.add(fieldPlan.getName().toLowerCase() + "%");
         }
         if (StringUtils.isNotBlank(fieldPlan.getTenantId())) {
