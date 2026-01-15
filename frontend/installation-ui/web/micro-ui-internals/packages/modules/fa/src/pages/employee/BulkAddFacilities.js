@@ -42,11 +42,11 @@ const BulkAddFacilities = () => {
     }
   };
 
-  const handleFacilityDataUpload = async () => {
+  const handleFacilityDataUpload = async (chosenFile) => {
     let uploadedFile;
     try {
       setBlockUI(true);
-      const response = await FAService.uploadFacilityDataTemplate(file);
+      const response = await FAService.uploadFacilityDataTemplate(chosenFile);
       setBlockUI(false);
 
       if (response.errorCode === "INVALID_TEMPLATE") {
@@ -153,7 +153,7 @@ const BulkAddFacilities = () => {
         ],
       },
     ],
-    [t]
+    [t, file, invalidDataError]
   );
 
   return (
