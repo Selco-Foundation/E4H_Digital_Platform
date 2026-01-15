@@ -1,9 +1,9 @@
-.reverse-actionbar-absolute {
+.reverse-actionbar-fixed {
   display: flex;
   flex-direction: column;
   gap: 15px;
   max-width: 100%;
-  position: absolute;
+  position: fixed;
 
   .submit-bar,
   .submit-bar-disabled {
@@ -20,12 +20,12 @@
   }
 }
 @media (min-width: 640px) {
-  .reverse-actionbar-absolute {
+  .reverse-actionbar-fixed {
     display: flex;
     flex-direction: row-reverse;
     justify-content: space-between;
     max-width: 100%;
-    position: absolute;
+    position: fixed;
 
     .submit-bar,
     .submit-bar-disabled {
@@ -43,7 +43,7 @@
 }
 
 @media (min-width: 48rem) {
-  .reverse-actionbar-absolute {
+  .reverse-actionbar-fixed {
     .previous-button{
       margin-left: 4rem;
       width: 240px;

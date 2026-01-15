@@ -1,15 +1,25 @@
 import { useQuery, useQueryClient } from "react-query";
 import { ActivityService } from "../services/Activity";
 
+const formatDate = (timestamp) => {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // months are 0-based
+  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${month}/${day}/${year}`;
+};
+
 const formatFacilities = (facilities) => {
   return facilities?.map((row) => ({
     id: row?.activityFacility?.id,
-    facilityName: row?.activityFacility?.facility?.facility_name,
-    facilityId: row?.activityFacility?.facilityId,
-    status: row?.activityFacility?.status,
-    block: row?.activityFacility?.facility?.boundaryCode,
-    district: row?.activityFacility?.facility?.additionalDetails?.district,
-    assigned: row?.activityFacility?.assignedEmployeeUser?.name,
+    activityType: row?.activityFacility?.activityType,
+    projectId: row?.activityFacility?.fieldPlan?.project?.id,
+    projectCode: row?.activityFacility?.fieldPlan?.project?.name,
+    fieldPlanId: row?.activityFacility?.fieldPlan?.id,
+    fieldPlanCode: row?.activityFacility?.fieldPlan?.name,
+    activityStartDate: formatDate(row?.activityFacility?.activatedAt),
+    activityEndDate: formatDate(row?.activityFacility?.completedAt),
   }));
 };
 
@@ -44,7 +54,7 @@ const useActivity = (projectQueryFilter, pageSize, pageOffset) => {
 
   const queryClient = useQueryClient();
   const { isLoading, isFetching, isError, error, data } = useQuery(
-    ["FACILITY", filter, limit, offset],
+    ["ACTIVITY", filter, limit, offset],
     () => fetchFacilities(filter, limit, offset)
   );
 

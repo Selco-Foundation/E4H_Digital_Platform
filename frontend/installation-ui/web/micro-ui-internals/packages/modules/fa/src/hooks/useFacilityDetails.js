@@ -15,12 +15,13 @@ const fetchFacilityDetails = async (queryFilter) => {
     facilityPocEmail: facility?.facility_poc_email,
     hfrId: facility?.hfr_id,
     ninId: facility?.nin_id,
-    pincode: facility?.address?.pincode,
+    latitude: facility?.address?.latitude,
+    longitude: facility?.address?.longitude,
     isActive: facility?.isActive,
     isOnmReady: facility?.isOnmReady,
-    stateCode: "India_Karnataka",
-    districtCode: "India_Karnataka_Raichur",
-    blockCode: "India_Karnataka_Raichur_Raichur",
+    stateCode: facility?.boundary?.state,
+    districtCode: facility?.boundary?.district,
+    blockCode: facility?.boundary?.block,
     facility: facility,
   };
 };

@@ -1,8 +1,28 @@
 import React from "react";
 import { PopUp, Button } from "@egovernments/digit-ui-react-components";
-import FacilityForm from "./FacilityForm";
 
-const FacilityModal = ({ t, title, onClose, onSubmit, createdFacility }) => {
+const AssetSpecsModal = ({ t, assetSpecs, onClose }) => {
+
+  const InfoItem = ({ title, value }) => (
+    <div
+      style={{
+        display: "flex",
+        marginBottom: "10px",
+        gap: "15px",
+      }}
+    >
+      <div
+        style={{
+          fontWeight: "bold",
+          width: "50%",
+        }}
+      >
+        {title}
+      </div>
+      <div>{value || t("CORE_COMMON_NOT_APPLICABLE")}</div>
+    </div>
+  );
+
   return (
     <PopUp>
       <div
@@ -12,8 +32,10 @@ const FacilityModal = ({ t, title, onClose, onSubmit, createdFacility }) => {
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: "700px",
+          width: "500px",
           maxWidth: "95%",
+          maxHeight: "90vh",
+          overflowY: "auto",
           borderRadius: "5px",
         }}
       >
@@ -33,7 +55,7 @@ const FacilityModal = ({ t, title, onClose, onSubmit, createdFacility }) => {
               color: "#0B0C0C",
             }}
           >
-            {t(title)}
+            {t("ASSET_SPECS")}
           </div>
           <Button
             variation="secondary"
@@ -55,10 +77,14 @@ const FacilityModal = ({ t, title, onClose, onSubmit, createdFacility }) => {
             }}
           />
         </div>
-        <FacilityForm t={t} createdFacility={createdFacility} onFormSubmit={onSubmit} />
+        <div style={{ padding: "30px" }}>
+          {Object.keys(assetSpecs)?.map((key) => (
+            <InfoItem title={t(key)} value={assetSpecs[key]} />
+          ))}
+        </div>
       </div>
     </PopUp>
   );
 };
 
-export default FacilityModal;
+export default AssetSpecsModal;

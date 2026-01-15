@@ -9,6 +9,8 @@ import BoundaryTable from "./BoundaryTable";
 import CreateBoundary from "./CreateBoundary";
 import UploadBoundary from "./UploadBoundary";
 import Response from "@selco/digit-ui-module-pm/src/pages/employee/Response";
+import ActivityDetails from "./ActivityDetails";
+import BulkAddFacilities from "./BulkAddFacilities";
 
 const FAApp = () => {
   const {t} = useTranslation();
@@ -27,9 +29,21 @@ const FAApp = () => {
       internalLink: `/${window.contextPath}/employee/fa/facilities`,
       show: true,
     },
+    bulkAddFacilities: {
+      content: t("BULK_ADD"),
+      internalLink: `/${window.contextPath}/employee/fa/facilities/bulk-add`,
+      show: true,
+    },
     facilityDetails: {
       content: navigator.workingFacility?.facilityName || "",
-      internalLink: `/${window.contextPath}/employee/fa/facilities/:facilityId`,
+      internalLink: `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(navigator.workingFacility?.facilityId)}`,
+      show: true,
+    },
+    activityDetails: {
+      content: navigator.workingActivity?.activityType || "",
+      internalLink: `/${window.contextPath}/employee/fa/facilities/${encodeURIComponent(navigator.workingFacility?.facilityId)}/activities/${
+        navigator.workingActivity?.activityFacilityId
+      }`,
       show: true,
     },
     boundaries: {
@@ -68,6 +82,13 @@ const FAApp = () => {
           />
           <FacilityTable/>
         </Route>
+        <Route path={`${path}/facilities/bulk-add`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities, breadCrumbsConfig.bulkAddFacilities]}
+          />
+          <BulkAddFacilities />
+        </Route>
         <Route path={`${path}/facilities/:facilityId`} exact={true}>
           <BreadCrumb
             spanStyle={{color: "#0B0C0C"}}
@@ -101,6 +122,13 @@ const FAApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.response]}
           />
           <Response/>
+        </Route>
+        <Route path={`${path}/facilities/:facilityId/activities/:activityId`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.facilities, breadCrumbsConfig.facilityDetails, breadCrumbsConfig.activityDetails]}
+          />
+          <ActivityDetails />
         </Route>
       </Switch>
     </div>

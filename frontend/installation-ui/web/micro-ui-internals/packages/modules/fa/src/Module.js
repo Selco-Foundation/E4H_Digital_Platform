@@ -6,6 +6,8 @@ import FACard from "./components/FACard";
 import StateSelector from "./components/FormComposer/StateSelector";
 import DistrictSelector from "./components/FormComposer/DistrictSelector";
 import BlockSelector from "./components/FormComposer/BlockSelector";
+import DownloadTemplate from "./components/File/DownloadTemplate";
+import CustomUploadFile from "./components/File/CustomUploadFile";
 
 export const FAReducers = getRootReducer;
 
@@ -32,6 +34,8 @@ const componentsToRegister = {
   FAStateSelector: StateSelector,
   FADistrictSelector: DistrictSelector,
   FABlockSelector: BlockSelector,
+  FADownloadTemplate: DownloadTemplate,
+  FAUploadFacilityData: CustomUploadFile,
 };
 
 export const initFAComponents = () => {

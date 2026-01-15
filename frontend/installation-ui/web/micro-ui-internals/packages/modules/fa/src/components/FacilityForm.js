@@ -1,10 +1,19 @@
-import React, { useCallback, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FormComposerV2, Loader } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../hooks/useBoundary";
 
 const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {} }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
+  const [defaultValues, setDefaultValues] = useState({});
+
+  useEffect(() => {
+    if (createdFacility?.id) {
+      setDefaultValues({ ...createdFacility });
+    } else {
+      setDefaultValues({ ...createdFacility, isOperational: { code: "YES", name: t("TL_COMMON_YES") } });
+    }
+  }, []);
 
   const { data: boundaryData, isLoading: boundaryLoading } = useBoundary();
 
@@ -24,6 +33,11 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
       enabled: !!tenantId,
     }
   );
+
+  const booleanChoiceMenu = [
+    { code: "YES", name: t("TL_COMMON_YES") },
+    { code: "NO", name: t("TL_COMMON_NO") },
+  ];
 
   const solarSolutionDesignTypes = mdmsResponse?.facility?.SolarSolutionDesignType || [];
   const facilityTypes = mdmsResponse?.facility?.FacilityType || [];
@@ -46,7 +60,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               name: "state",
               t,
               boundaryData,
-              disable: false,
+              disable: !!createdFacility?.id,
             },
             populators: {
               name: "state",
@@ -65,7 +79,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               stateIdentifier: "state",
               t,
               boundaryData,
-              disable: false,
+              disable: !!createdFacility?.id,
             },
             populators: {
               name: "district",
@@ -84,7 +98,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               districtIdentifier: "district",
               t,
               boundaryData,
-              disable: false,
+              disable: !!createdFacility?.id,
             },
             populators: {
               name: "block",
@@ -155,7 +169,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           {
             inline: true,
             label: "FACILITY_POC_EMAIL",
-            isMandatory: true,
+            isMandatory: false,
             key: "facilityPocEmail",
             type: "text",
             populators: {
@@ -166,7 +180,8 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           {
             inline: true,
             label: "FACILITY_HFR_ID",
-            isMandatory: false,
+            isMandatory: true,
+            disable: !!createdFacility?.id,
             key: "hfrId",
             type: "text",
             populators: {
@@ -176,7 +191,8 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           {
             inline: true,
             label: "FACILITY_NIN_ID",
-            isMandatory: false,
+            isMandatory: true,
+            disable: !!createdFacility?.id,
             key: "ninId",
             type: "text",
             populators: {
@@ -185,35 +201,58 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           },
           {
             inline: true,
-            label: "FACILITY_PINCODE",
+            label: "FACILITY_IS_OPERATIONAL",
             isMandatory: false,
-            key: "pincode",
+            disable: !createdFacility?.id,
+            key: "isOperational",
+            type: "dropdown",
+            populators: {
+              name: "isOperational",
+              options: booleanChoiceMenu,
+              optionsKey: "name",
+              required: true,
+              error: t("CORE_COMMON_REQUIRED"),
+            },
+          },
+          {
+            inline: true,
+            label: "FACILITY_IS_ONM_READY",
+            isMandatory: false,
+            disable: false,
+            key: "isOnmReady",
+            type: "dropdown",
+            populators: {
+              name: "isOnmReady",
+              options: booleanChoiceMenu,
+              optionsKey: "name",
+              required: true,
+              error: t("CORE_COMMON_REQUIRED"),
+            },
+          },
+          {
+            inline: true,
+            label: "FACILITY_LATITUDE",
+            isMandatory: false,
+            key: "latitude",
             type: "text",
             populators: {
-              name: "pincode",
+              name: "latitude",
+            },
+          },
+          {
+            inline: true,
+            label: "FACILITY_LONGITUDE",
+            isMandatory: false,
+            key: "longitude",
+            type: "text",
+            populators: {
+              name: "longitude",
             },
           },
         ],
       },
     ],
-    [t, mdmsResponse, boundaryData, solarSolutionDesignTypes, facilityTypes]
-  );
-
-  const handleFormValueChange = useCallback(
-    (setValue, formData, formState, reset, setError, clearErrors) => {
-      // const hasHfrId = formData?.hfrId && `${formData.hfrId}`.trim().length > 0;
-      // const hasNinId = formData?.ninId && `${formData.ninId}`.trim().length > 0;
-      //
-      // if (!hasHfrId && !hasNinId) {
-      //   const errorMessage = t("FACILITY_HFR_OR_NIN_REQUIRED");
-      //   setError("hfrId", { type: "manual", message: errorMessage });
-      //   setError("ninId", { type: "manual", message: errorMessage });
-      // } else {
-      //   clearErrors("hfrId");
-      //   clearErrors("ninId");
-      // }
-    },
-    [t]
+    [t, mdmsResponse, createdFacility, boundaryData, solarSolutionDesignTypes, facilityTypes]
   );
 
   if (isFormLoading) {
@@ -236,20 +275,21 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
       style={{
         position: "relative",
         paddingBottom: "30px",
+        maxHeight: "70vh",
+        overflow: "auto",
         ...wrapperStyle,
       }}
     >
       <FormComposerV2
-        key={JSON.stringify(createdFacility)}
-        defaultValues={createdFacility}
+        key={JSON.stringify(defaultValues)}
+        defaultValues={defaultValues}
         config={addFacilityFormConfig}
         onSubmit={onFormSubmit}
         label={t("CORE_COMMON_SUBMIT")}
-        onFormValueChange={handleFormValueChange}
         heading={""}
         cardStyle={{ boxShadow: "none" }}
         submitInForm={false}
-        actionClassName={"reverse-actionbar-absolute"}
+        actionClassName={"reverse-actionbar-fixed"}
       />
     </div>
   );

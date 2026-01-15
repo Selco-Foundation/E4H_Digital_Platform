@@ -97,7 +97,13 @@ const CustomDropdown = ({
         className={"select"}
         ref={triggerRef}
         style={{
-          ...style
+          ...(disable && {
+            opacity: "0.5",
+            cursor: "not-allowed",
+            borderColor: "rgba(158, 158, 158)",
+            backgroundColor: "#EEE",
+          }),
+          ...style,
         }}
       >
         <input
