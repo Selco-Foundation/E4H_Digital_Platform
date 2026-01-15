@@ -35,4 +35,20 @@ export const FacilityService = {
       headers: headers,
     });
   },
+
+  updateFacility: async (facilityPayload) => {
+    const endpoint = "/facility-service/v2/facility/update";
+    const headers = {
+      "Content-Type": "application/json",
+    };
+
+    return await Request({
+      url: endpoint,
+      userService: true,
+      method: "POST",
+      auth: true,
+      data: facilityPayload,
+      headers: headers,
+    });
+  },
 };

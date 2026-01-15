@@ -10,9 +10,17 @@ const FacilityAdminActions = ({ t }) => {
 
   const [toast, setToast] = useState(null);
   const [showAddFacilityModal, setShowAddFacilityModal] = useState(false);
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const history = useHistory();
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
+
+  useEffect(() => {
+    const handleResize = () => setMobileView(window.innerWidth <= 640);
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     if (toast) {
@@ -60,12 +68,12 @@ const FacilityAdminActions = ({ t }) => {
       setShowAddFacilityModal(false);
       setToast({
         key: "success",
-        message: t("FACILITY_SUCCESS"),
+        label: t("FACILITY_CREATION_SUCCESS"),
       });
     } catch (e) {
       setToast({
         key: "error",
-        message: t("FACILITY_FAILED"),
+        label: t("FACILITY_CREATION_FAILED"),
       });
     }
   };
@@ -141,19 +149,17 @@ const FacilityAdminActions = ({ t }) => {
           <Toast
             error={toast.key === "error"}
             warning={toast.key === "warning"}
-            label={toast.message}
-            onClose={() => setToast(null)}
-            style={{ maxWidth: "670px" }}
+            style={{
+              ...(toast.key === "error" ? { backgroundColor: "#B91900" } : {}),
+              ...(mobileView ? { bottom: "120px" } : {}),
+            }}
+            label={toast.label}
             isDleteBtn={true}
+            onClose={() => setToast(null)}
           />
         )}
         {showAddFacilityModal && (
-          <FacilityModal
-            t={t}
-            title={"ADD_FACILITY"}
-            onSubmit={handleAddFacilitySubmit}
-            onClose={() => setShowAddFacilityModal(false)}
-          />
+          <FacilityModal t={t} title={"ADD_FACILITY"} onSubmit={handleAddFacilitySubmit} onClose={() => setShowAddFacilityModal(false)} />
         )}
       </div>
     </React.Fragment>

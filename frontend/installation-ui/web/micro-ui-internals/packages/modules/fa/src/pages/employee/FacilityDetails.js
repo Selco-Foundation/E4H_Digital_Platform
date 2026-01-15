@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Loader, Button } from "@egovernments/digit-ui-react-components";
+import { Loader, Button, Toast } from "@egovernments/digit-ui-react-components";
 import { Tab } from "@egovernments/digit-ui-components";
 import useFacilityDetails from "../../hooks/useFacilityDetails";
 import { populateWorkingFacility } from "../../redux/actions";
@@ -10,6 +10,7 @@ import FacilityModal from "../../components/FacilityModal";
 import ActivityTable from "../../components/FacilityDetails/ActivityTable";
 import AssetTable from "../../components/FacilityDetails/AssetTable";
 import AMCTable from "../../components/FacilityDetails/AMCTable";
+import { FacilityService } from "../../services/Facility";
 
 const FacilityDetails = () => {
 
@@ -21,7 +22,24 @@ const FacilityDetails = () => {
   const [createdFacility, setCreatedFacility] = useState({});
   const [showEditFacilityModal, setShowEditFacilityModal] = useState(false);
   const dispatch = useDispatch();
+  const [toast, setToast] = useState(null);
   const [activeTab, setActiveTab] = useState("ACTIVITY");
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+
+  useEffect(() => {
+    const handleResize = () => setMobileView(window.innerWidth <= 640);
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (toast) {
+      setTimeout(() => {
+        setToast(null);
+      }, 2500);
+    }
+  }, [toast]);
 
   const { isLoading, data: facilityData} = useFacilityDetails(facilityId);
   const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
@@ -69,6 +87,49 @@ const FacilityDetails = () => {
       });
     }
   }, [facilityData, mdmsResponse, t]);
+
+  const handleFacilityUpdate = async (formData) => {
+    try {
+      const facilityTypeValue = formData?.facilityType;
+      const solarDesignValue = formData?.solarSolutionDesignType;
+
+      const facilityTypeCode = facilityTypeValue?.code;
+      const solarDesignCode = solarDesignValue?.code;
+
+      const payload = {
+        FacilityUpdate: {
+          ...facilityData?.facility,
+          tenant_id: tenantId,
+          facility_name: formData?.facilityName,
+          facility_type: facilityTypeCode,
+          isActive: true,
+          address: {
+            tenantId: tenantId,
+            ...(formData?.pincode ? { pincode: formData.pincode } : {}),
+          },
+          facility_poc_name: formData?.facilityPocName,
+          facility_poc_phone: formData?.facilityPocPhone,
+          facility_poc_email: formData?.facilityPocEmail,
+          facility_details: {
+            solar_solution_design_type: solarDesignCode,
+          },
+        },
+      };
+
+      await FacilityService.updateFacility(payload);
+
+      setShowEditFacilityModal(false);
+      setToast({
+        key: "success",
+        label: t("FACILITY_UPDATION_SUCCESS"),
+      });
+    } catch (e) {
+      setToast({
+        key: "error",
+        label: t("FACILITY_UPDATION_FAILED"),
+      });
+    }
+  }
 
   if (isLoading || mdmsLoading) {
     return <Loader />;
@@ -149,10 +210,7 @@ const FacilityDetails = () => {
           t={t}
           title={"EDIT_FACILITY"}
           createdFacility={createdFacility}
-          onSubmit={(data) => {
-            console.debug("data", data);
-            setShowEditFacilityModal(false);
-          }}
+          onSubmit={handleFacilityUpdate}
           onClose={() => setShowEditFacilityModal(false)}
         />
       )}
@@ -185,6 +243,20 @@ const FacilityDetails = () => {
           {activeTab === "AMC" && <AMCTable t={t} facilityId={facilityId} />}
         </div>
       </Tab>
+      {toast && (
+        <Toast
+          error={toast.key === "error"}
+          warning={toast.key === "warning"}
+          style={{
+            zIndex: 100000000,
+            ...(toast.key === "error" ? { backgroundColor: "#B91900" } : {}),
+            ...(mobileView ? { bottom: "120px" } : {}),
+          }}
+          label={toast.label}
+          isDleteBtn={true}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 };

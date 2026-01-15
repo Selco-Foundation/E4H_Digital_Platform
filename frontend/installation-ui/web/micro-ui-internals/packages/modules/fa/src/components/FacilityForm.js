@@ -46,7 +46,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               name: "state",
               t,
               boundaryData,
-              disable: false,
+              disable: !!createdFacility?.state,
             },
             populators: {
               name: "state",
@@ -65,7 +65,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               stateIdentifier: "state",
               t,
               boundaryData,
-              disable: false,
+              disable: !!createdFacility?.district,
             },
             populators: {
               name: "district",
@@ -84,7 +84,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               districtIdentifier: "district",
               t,
               boundaryData,
-              disable: false,
+              disable: !!createdFacility?.block,
             },
             populators: {
               name: "block",
@@ -155,7 +155,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           {
             inline: true,
             label: "FACILITY_POC_EMAIL",
-            isMandatory: true,
+            isMandatory: false,
             key: "facilityPocEmail",
             type: "text",
             populators: {
@@ -167,6 +167,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             inline: true,
             label: "FACILITY_HFR_ID",
             isMandatory: false,
+            disable: !!createdFacility?.hfrId,
             key: "hfrId",
             type: "text",
             populators: {
@@ -177,6 +178,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             inline: true,
             label: "FACILITY_NIN_ID",
             isMandatory: false,
+            disable: !!createdFacility?.ninId,
             key: "ninId",
             type: "text",
             populators: {
