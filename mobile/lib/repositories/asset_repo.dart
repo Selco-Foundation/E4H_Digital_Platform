@@ -127,10 +127,17 @@ class AssetRepository {
       if (isCreate && isDuplicate) {
         AppLogger.instance.info(
             "Fetching Duplicate isCreate: $isCreate isDuplicate: $isDuplicate");
-        final remote = await _fetchAssetBySerial(
-          activityFacilityId: asset.activityFacilityID! ?? '',
+
+        final remoteBySerial = await _fetchAssetBySerialOrModel(
+          activityFacilityId: asset.activityFacilityID ?? '',
           serialNumber: asset.serialNumber ?? '',
         );
+
+        final remote = remoteBySerial ??
+            await _fetchAssetBySerialOrModel(
+              activityFacilityId: asset.activityFacilityID ?? '',
+              modelNumber: asset.modelNumber ?? '',
+            );
 
         final remoteAssetId =
             (remote?['assetId'] ?? remote?['assetID'] ?? '').toString();
@@ -403,30 +410,55 @@ class AssetRepository {
     }
   }
 
-  Future<Map<String, dynamic>?> _fetchAssetBySerial({
+  Future<Map<String, dynamic>?> _fetchAssetBySerialOrModel({
     required String activityFacilityId,
-    required String serialNumber,
+    String? serialNumber,
+    String? modelNumber,
   }) async {
+    final sn = (serialNumber ?? '').trim();
+    final mn = (modelNumber ?? '').trim();
+
+    if (sn.isEmpty && mn.isEmpty) return null;
+
+    final criteria = <String, dynamic>{
+      'tenantId': envConfig.variables.tenantId,
+      'activityFacilityID': activityFacilityId,
+    };
+
+    if (sn.isNotEmpty) {
+      criteria['serialNumber'] = [sn];
+    }
+
+    if (mn.isNotEmpty) {
+      criteria['modelNumber'] = mn;
+    }
+
     final resp = await _dio.post(
       '/asset-registry/v1/asset/_search?tenantId=${envConfig.variables.tenantId}',
-      data: {
-        'criteria': {
-          'tenantId': envConfig.variables.tenantId,
-          'activityFacilityID': activityFacilityId,
-          'serialNumber': serialNumber,
-        }
-      },
+      data: {'criteria': criteria},
     );
 
     if (resp.statusCode == 200 || resp.statusCode == 201) {
       final data = resp.data;
+
       if (data is List) {
-        return data.cast<Map<String, dynamic>?>().firstWhere(
-              (m) => (m?['serialNumber'] ?? '') == serialNumber,
-              orElse: () => null,
-            );
+        if (sn.isNotEmpty) {
+          return data.cast<Map<String, dynamic>?>().firstWhere(
+                (m) => (m?['serialNumber'] ?? '').toString() == sn,
+                orElse: () => null,
+              );
+        }
+
+        if (mn.isNotEmpty) {
+          return data.cast<Map<String, dynamic>?>().firstWhere(
+                (m) => (m?['modelNumber'] ?? '').toString() == mn,
+                orElse: () => null,
+              );
+        }
+        return null;
       }
     }
+
     return null;
   }
 
