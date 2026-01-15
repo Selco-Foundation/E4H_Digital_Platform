@@ -30,10 +30,14 @@ public class HRMSService {
      * @return true if an employee with the given mobile number exists, false otherwise
      */
     public boolean employeeExistsByMobileNumber(String mobileNumber, String tenantId, RequestInfo requestInfo) {
+        log.trace("Entering employeeExistsByMobileNumber method");
         if (mobileNumber == null || mobileNumber.isBlank()) {
+            log.debug("Mobile number is null or blank, returning false");
             return false;
         }
 
+        log.info("Checking if employee exists by mobile number for tenant {}", tenantId);
+        log.debug("Searching for employee with mobile number (last 4 digits only for privacy)");
         try {
             // Build HRMS search request
             String uri = UriComponentsBuilder
@@ -43,6 +47,7 @@ public class HRMSService {
                     .queryParam("tenantId", tenantId)
                     .queryParam("isActive", true)
                     .toUriString();
+            log.debug("HRMS search URI constructed");
 
             // Request body should only contain RequestInfo (Criteria goes in query params)
             Map<String, Object> searchRequest = new HashMap<>();
@@ -56,12 +61,16 @@ public class HRMSService {
             // Parse response to check if employee exists
             if (response != null && response.containsKey("Employees")) {
                 List<Map<String, Object>> employees = (List<Map<String, Object>>) response.get("Employees");
-                return employees != null && !employees.isEmpty();
+                boolean exists = employees != null && !employees.isEmpty();
+                log.info("Employee {} by mobile number for tenant {}", exists ? "exists" : "does not exist", tenantId);
+                log.trace("Exiting employeeExistsByMobileNumber method");
+                return exists;
             }
 
+            log.debug("No employees found in HRMS response");
             return false;
         } catch (Exception e) {
-            log.warn("Error checking if employee exists by mobile number.");
+            log.warn("Error checking if employee exists by mobile number for tenant {}: {}", tenantId, e.getMessage(), e);
             // If check fails, return false to allow creation (fail open approach)
             return false;
         }
@@ -75,6 +84,7 @@ public class HRMSService {
      * @return true if employee was created successfully, false otherwise
      */
     public boolean createFacilityPOCEmployee(Facility facility, RequestInfo requestInfo) {
+        log.trace("Entering createFacilityPOCEmployee method");
         HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
         
         if (facilityDetails == null || facilityDetails.getHfrId() == null || 
@@ -85,6 +95,8 @@ public class HRMSService {
             return false;
         }
 
+        log.info("Creating POC employee for facility {} with HFR ID {}", 
+                sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
         try {
             // Build employee object
             Map<String, Object> user = new HashMap<>();
@@ -174,11 +186,13 @@ public class HRMSService {
             );
 
             if (response != null) {
-                log.info("Successfully created POC employee for facility {} with mobile number {}", 
-                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getPocContact()));
+                log.info("Successfully created POC employee for facility {} with HFR ID {}", 
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
+                log.trace("Exiting createFacilityPOCEmployee method");
                 return true;
             }
 
+            log.warn("HRMS create employee response was null for facility {}", sanitizeForLog(facility.getFacilityId()));
             return false;
         } catch (Exception e) {
             log.error("Error creating POC employee for facility {}: {}", 
