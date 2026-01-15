@@ -29,7 +29,10 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
 
   useEffect(() => {
     if (data) {
-      setStateMenu(data.states?.map(state => ({...state, name: t(`Boundary_${state.code}`)})));
+      setStateMenu(
+        data.states?.map(state => ({...state, name: t(`Boundary_${state.code}`)}))
+        .sort((a, b) => a?.name?.localeCompare(b?.name))
+      );
       setDistrictOptions(data.districts?.map(district => ({...district, name: t(`Boundary_${district.code}`)})));
       setBlockOptions(data.blocks?.map(block => ({...block, name: t(`Boundary_${block.code}`)})));
       setFacilityOptions(data.facilities?.map(facility => ({...facility, name: t(`Boundary_${facility.code}`)})));
@@ -60,56 +63,59 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
     });
   }, [currentFilter, blockOptions]);
 
-  const handleStateChange = (selectedState) => {
-    if (currentFilter.state.every(state => state.code !== selectedState.code)) {
-
-      const newSelectedStates = [...currentFilter.state, selectedState];
-      const selectedStateCodes = newSelectedStates.map((district) => district.code);
-      const newDistrictMenu = districtOptions.filter((district) => selectedStateCodes.includes(district.parentCode));
-      const newDistrictMenuCodes = newDistrictMenu.map((district) => district.code);
-      const newBlockMenu = blockOptions.filter((block) => newDistrictMenuCodes.includes(block.parentCode));
-      const newBlockMenuCodes = newBlockMenu.map((block) => block.code);
-      const newFacilityMenu = facilityOptions.filter((facility) => newBlockMenuCodes.includes(facility.parentCode));
+  useEffect(() => {
+    if (!data) return
+    const selectedStateCodes = currentFilter.state.map((state) => state.code);
+    if (selectedStateCodes?.length) {
+      const newDistrictMenu = districtOptions
+        .filter((district) => selectedStateCodes.includes(district?.parentCode))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
 
       setDistrictMenu(newDistrictMenu);
+    }
+
+    const selectedDistrictCodes = currentFilter.district.map((district) => district.code);
+    if (selectedDistrictCodes?.length) {
+      const newBlockMenu = blockOptions
+        .filter((block) => selectedDistrictCodes.includes(block?.parentCode))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
+
       setBlockMenu(newBlockMenu);
+    }
+
+    const newSelectedBlockCodes = currentFilter.block.map((block) => block.code);
+    if (newSelectedBlockCodes?.length) {
+      const newFacilityMenu = facilityOptions
+        .filter((facility) => newSelectedBlockCodes.includes(facility?.parentCode))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
+
       setFacilityMenu(newFacilityMenu);
+    }
+  }, [currentFilter, data, districtOptions, blockOptions, facilityOptions, t]);
+
+  const handleStateChange = (selectedState) => {
+    if (currentFilter.state.every(state => state.code !== selectedState.code)) {
       setCurrentFilter({
         ...currentFilter,
-        state: newSelectedStates,
+        state: [...currentFilter.state, selectedState],
       });
     }
   }
 
   const handleDistrictChange = (selectedDistrict) => {
     if (currentFilter.district.every(district => district.code !== selectedDistrict.code)) {
-
-      const newSelectedDistricts = [...currentFilter.district, selectedDistrict];
-      const selectedDistrictCodes = newSelectedDistricts.map((district) => district.code);
-      const newBlockMenu = blockOptions.filter((block) => selectedDistrictCodes.includes(block.parentCode));
-      const newSelectedBlockCodes = newBlockMenu.map((block) => block.code);
-      const newFacilityMenu = facilityOptions.filter((facility) => newSelectedBlockCodes.includes(facility.parentCode));
-
-      setBlockMenu(newBlockMenu);
-      setFacilityMenu(newFacilityMenu);
       setCurrentFilter({
         ...currentFilter,
-        district: newSelectedDistricts
+        district: [...currentFilter.district, selectedDistrict]
       });
     }
   }
 
   const handleBlockChange = (selectedBlock) => {
     if (currentFilter.block.every(block => block.code !== selectedBlock.code)) {
-
-      const newSelectedBlocks = [...currentFilter.block, selectedBlock];
-      const newSelectedBlockCodes = newSelectedBlocks.map((block) => block.code);
-      const newFacilityMenu = facilityOptions.filter((facility) => newSelectedBlockCodes.includes(facility.parentCode));
-
-      setFacilityMenu(newFacilityMenu);
       setCurrentFilter({
         ...currentFilter,
-        block: newSelectedBlocks,
+        block: [...currentFilter.block, selectedBlock],
       });
     }
   };
@@ -210,7 +216,6 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
       block: [],
       facility: [],
     });
-    setStateMenu([]);
     setDistrictMenu([]);
     setBlockMenu([]);
     setFacilityMenu([]);
