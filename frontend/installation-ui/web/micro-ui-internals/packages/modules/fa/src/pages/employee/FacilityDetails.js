@@ -226,7 +226,8 @@ const FacilityDetails = () => {
         <InfoItem title={t("FACILITY_POC_EMAIL")} value={createdFacility?.facilityPocEmail} />
         <InfoItem title={t("FACILITY_HFR_ID")} value={createdFacility?.hfrId} />
         <InfoItem title={t("FACILITY_NIN_ID")} value={createdFacility?.ninId} />
-        <InfoItem title={t("FACILITY_PINCODE")} value={createdFacility?.pincode} />
+        <InfoItem title={t("FACILITY_LATITUDE")} value={createdFacility?.latitude} />
+        <InfoItem title={t("FACILITY_LONGITUDE")} value={createdFacility?.longitude} />
         <Section title={t("GEOGRAPHY_DETAILS")}>
           <InfoItem title={t("CS_STATE")} value={createdFacility?.state?.name} />
           <InfoItem title={t("CS_DISTRICT")} value={createdFacility?.district?.name} />
