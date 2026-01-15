@@ -330,7 +330,12 @@ class FacilityTemplateService:
 
             df_facility = pd.DataFrame(records, columns=column_names)
 
-            df_facility.to_excel(output_path, sheet_name="Facility Selection Template", index=False)
+            # Use ExcelDataWriter instead of pandas to_excel for better compatibility
+            facility_writer = create_excel_data_writer(
+                output_path,
+                "Facility Selection Template"
+            )
+            facility_writer.write_data(df_facility)
 
             dropdowns_map = {'Selection?': ['Yes', 'No']}
 
@@ -343,8 +348,15 @@ class FacilityTemplateService:
             lock_excel_columns(
                 file_path=output_path,
                 sheet_name="Facility Selection Template",
-                column_headers_to_unlock=[ "Selection?"]
+                column_headers_to_unlock=["Selection?"]
             )
+
+            autofit_columns(
+                file_path=output_path,
+                sheet_name="Facility Selection Template"
+            )
+
+            remove_default_empty_sheet(output_path)
 
             logger.info(f"Successfully created template file at {output_path}")
         except Exception as e:
