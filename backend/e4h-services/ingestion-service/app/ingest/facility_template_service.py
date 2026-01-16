@@ -257,6 +257,7 @@ class FacilityTemplateService:
             )
             vendor_writer.write_data(df_vendor)
 
+            remove_default_empty_sheet(output_path)
             logger.info(f"Successfully created template file at {output_path}")
         except Exception as e:
             logger.error(f"Error generating template file: {e}")

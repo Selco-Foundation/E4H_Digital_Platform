@@ -171,9 +171,10 @@ async def get_facility_ingestion_template_with_data(
         logger.error(f"Unhandled error in get_facility_ingestion_template: {e}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
+
 @router.post('/boundaryIngestionTemplate',
-            summary='Generate empty boundary ingestion template Excel file',
-            response_description="Returns an empty Excel template for boundary ingestion")
+             summary='Generate empty boundary ingestion template Excel file',
+             response_description="Returns an empty Excel template for boundary ingestion")
 async def get_boundary_ingestion_template(
         background_tasks: BackgroundTasks,
         payload: dict = Body(..., description="Payload object")
@@ -181,7 +182,7 @@ async def get_boundary_ingestion_template(
     """
     Generate an empty boundary ingestion template with the required columns.
     Sheet name: 'Boundary Data'
-    Columns: Country, State, District, Block, BoundaryCode
+    Columns: Country, State, District, Block
     """
     output_file_path = None
     request_info = request_info_from_json(payload.get("RequestInfo", {}))
@@ -192,7 +193,7 @@ async def get_boundary_ingestion_template(
         output_file_path = create_temp_file(suffix=".xlsx")
 
         # Create an empty DataFrame with the expected boundary columns
-        df = pd.DataFrame(columns=["Country", "State", "District", "Block", "BoundaryCode"])
+        df = pd.DataFrame(columns=["Country", "State", "District", "Block"])
         df.to_excel(output_file_path, sheet_name="Boundary Data", index=False)
 
         logger.info(f"Successfully created boundary ingestion template at {output_file_path}")
