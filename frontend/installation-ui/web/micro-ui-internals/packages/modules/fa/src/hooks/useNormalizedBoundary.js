@@ -13,7 +13,7 @@ const asArrayKey = (arr) => {
 };
 
 const fetchBoundaryHierarchy = async (boundaryType, codes) => {
-  const boundaryResponse = await BoundaryService.fetchBoundaryRelations(boundaryType, codes);
+  const boundaryResponse = await BoundaryService.fetchNormalizedBoundaryRelations(boundaryType, codes);
 
   const states = [];
   const districts = [];
