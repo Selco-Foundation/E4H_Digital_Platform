@@ -635,7 +635,7 @@ definitions:
         minLength: 2
         maxLength: 64
       locality:
-        $ref: '#/definitions/Boundary'
+        $ref: '#/definitions/BoundaryTable'
       geoLocation:
         $ref: '#/definitions/GeoLocation'
     required:
@@ -661,7 +661,7 @@ definitions:
         type: integer
         format: int64
   Boundary:
-    title: Boundary
+    title: BoundaryTable
     type: object
     properties:
       code:
@@ -682,7 +682,7 @@ definitions:
       children:
         type: array
         items:
-          $ref: '#/definitions/Boundary'
+          $ref: '#/definitions/BoundaryTable'
       materializedPath:
         description: materialized path of the boundary - this would be of the format tenantid.[code] from parentt till teh current boundary
         readOnly: true

@@ -21,7 +21,7 @@ const FACard = () => {
   };
 
   const handleManageBoundariesRedirection = () => {
-    history.push(`/#`);
+    history.push(`/${window?.contextPath}/employee/fa/boundaries`)
   };
 
   return (
