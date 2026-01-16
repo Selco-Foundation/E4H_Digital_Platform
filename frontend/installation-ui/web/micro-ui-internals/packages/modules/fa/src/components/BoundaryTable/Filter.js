@@ -56,9 +56,6 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
   const stateCodesKey = codesKey(currentFilter.state);
   const districtCodesKey = codesKey(currentFilter.district);
 
-  // ✅ Keep dropdown options consistent with selected tags:
-  // - District options depend on State
-  // - Block options depend ONLY on District (no fallback to all districts under state)
   useEffect(() => {
     if (!districtOptions?.length && !blockOptions?.length) return;
 
@@ -76,11 +73,9 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     const nextDistrictMenu = (districtOptions || []).filter((d) => selectedStateCodes.includes(d.parentCode));
     setDistrictMenu(nextDistrictMenu);
 
-    // IMPORTANT: block must reflect CURRENT district tags only
     if (!selectedDistricts.length) {
       setBlockMenu([]);
 
-      // defensive: if URL had blocks but no districts, clear blocks
       if ((currentFilter.block || []).length > 0) {
         setCurrentFilter((prev) => ({ ...prev, block: [] }));
       }
@@ -137,7 +132,6 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
       const newDistrictMenu = districtOptions.filter((d) => selectedStateCodes.includes(d.parentCode));
       setDistrictMenu(newDistrictMenu);
 
-      // ✅ block should NOT show anything until a district is selected
       const selectedDistrictCodes = (currentFilter.district || []).map((d) => d.code);
       const newBlockMenu =
         selectedDistrictCodes.length > 0 ? blockOptions.filter((b) => selectedDistrictCodes.includes(b.parentCode)) : [];
@@ -206,7 +200,6 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     if (key === "district") {
       const remainingDistrictCodes = afterRemove.map((d) => d.code);
 
-      // ✅ if no district tags remain, block options must be empty + selected blocks cleared
       if (!remainingDistrictCodes.length) {
         setBlockMenu([]);
         setCurrentFilter({
