@@ -34,7 +34,7 @@ const requestInfo = () => ({
   authToken: Digit.UserService.getUser()?.access_token || null,
 });
 
-const authHeaders = () => ({
+export const authHeaders = () => ({
   "auth-token": Digit.UserService.getUser()?.access_token || null,
   tenantId: Digit.ULBService.getCurrentTenantId(),
 });
