@@ -389,7 +389,7 @@ async def get_facility_ingestion_template_with_data(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
-@router.get('/facilityIngestion',
+@router.post('/facilityIngestion',
             summary='Generate facility ingestion template Excel file with schema and boundary codes',
             response_description="Returns Excel template with facility schema and boundary codes")
 async def get_facility_ingestion_template(
@@ -397,7 +397,6 @@ async def get_facility_ingestion_template(
         request_info: str = Form(default="")
 ):
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
     mdms_client = MDMSClient(mdms_url)
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
