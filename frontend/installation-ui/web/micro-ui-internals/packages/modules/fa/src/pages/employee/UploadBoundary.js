@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
-import { IngestionService } from "../../services/Injestion";
+import { IngestionService } from "../../services/Ingestion";
 
-const DEFAULT_SHEET_NAME = "BoundaryTable Data";
+const DEFAULT_SHEET_NAME = "Boundary Data";
 
 const UploadBoundaryData = () => {
   const { t } = useTranslation();

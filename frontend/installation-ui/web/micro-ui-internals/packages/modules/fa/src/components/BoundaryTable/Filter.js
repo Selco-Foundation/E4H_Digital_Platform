@@ -5,6 +5,13 @@ import useBoundary from "../../hooks/useBoundary";
 import CustomFilterIcon from "../Custom/CustomFilterIcon";
 import CustomDropdown from "../Custom/CustomDropdown";
 
+const codesKey = (arr = []) =>
+  (arr || [])
+    .map((x) => x?.code)
+    .filter(Boolean)
+    .sort()
+    .join("|");
+
 const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
   const [stateMenu, setStateMenu] = useState([]);
   const [districtOptions, setDistrictOptions] = useState([]);
@@ -20,10 +27,8 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     }
   );
 
-  // Guard: prevents sending same filter payload repeatedly
   const lastSentRef = useRef("");
 
-  // ✅ IMPORTANT: start hierarchy from State (not Country)
   const { isLoading, data } = useBoundary("State");
 
   useEffect(() => {
@@ -31,7 +36,6 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
 
     setStateMenu((data.states || []).map((state) => ({ ...state, name: t(`Boundary_${state.code}`) })));
 
-    // Ensure parentCode exists (we use it to filter dependent dropdown menus)
     setDistrictOptions(
       (data.districts || []).map((district) => ({
         ...district,
@@ -49,10 +53,40 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     );
   }, [data, t]);
 
+  const stateCodesKey = codesKey(currentFilter.state);
+  const districtCodesKey = codesKey(currentFilter.district);
+
+  useEffect(() => {
+    if (!districtOptions?.length && !blockOptions?.length) return;
+
+    const selectedStates = currentFilter.state || [];
+    const selectedDistricts = currentFilter.district || [];
+
+    if (!selectedStates.length) {
+      setDistrictMenu([]);
+      setBlockMenu([]);
+      return;
+    }
+
+    const selectedStateCodes = selectedStates.map((s) => s.code);
+
+    const nextDistrictMenu = (districtOptions || []).filter((d) => selectedStateCodes.includes(d.parentCode));
+    setDistrictMenu(nextDistrictMenu);
+
+    const nextDistrictCodes = nextDistrictMenu.map((d) => d.code);
+
+    const districtCodesForBlocks =
+      selectedDistricts.length > 0
+        ? selectedDistricts.map((d) => d.code)
+        : nextDistrictCodes;
+
+    const nextBlockMenu = (blockOptions || []).filter((b) => districtCodesForBlocks.includes(b.parentCode));
+    setBlockMenu(nextBlockMenu);
+  }, [stateCodesKey, districtCodesKey, districtOptions, blockOptions]); // do NOT depend on whole objects/functions
+
   useEffect(() => {
     const boundaryFilterQuery = {};
 
-    // precedence: Block > District > State
     if (currentFilter.block.length > 0) {
       boundaryFilterQuery.boundary = currentFilter.block.map((b) => b.code);
     } else if (currentFilter.district.length > 0) {
@@ -72,7 +106,6 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
       if (typeof onFilterChange === "function") onFilterChange(payload);
     }
 
-    // Do NOT include onFilterChange in deps (it may change identity per render)
   }, [currentFilter]);
 
   const handleStateChange = (selectedState) => {
@@ -166,7 +199,6 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     setCurrentFilter({ ...currentFilter, [key]: afterRemove });
   };
 
-  // ✅ Your fixed refresh: clear selections, don’t wipe option lists
   const onClearAll = () => {
     setCurrentFilter({ state: [], district: [], block: [] });
     setDistrictMenu([]);
@@ -182,7 +214,13 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     return (
       <div>
         <div className="filter-label">{label}</div>
-        <CustomDropdown t={t} option={options} selected={selected} select={(value) => select(value, key)} optionKey={optionKey} />
+        <CustomDropdown
+          t={t}
+          option={options}
+          selected={selected}
+          select={(value) => select(value, key)}
+          optionKey={optionKey}
+        />
 
         <div className="tag-container">
           {(currentFilter[key] || []).length > 0 &&

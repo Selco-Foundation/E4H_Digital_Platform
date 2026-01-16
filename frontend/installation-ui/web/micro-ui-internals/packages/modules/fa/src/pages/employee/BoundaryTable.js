@@ -192,7 +192,6 @@ const BoundaryTable = () => {
         </div>
       )}
 
-      {/* ✅ RESTORED HEADER + ACTIONS (same as your old code) */}
       <div
         style={{
           display: "flex",
@@ -233,7 +232,6 @@ const BoundaryTable = () => {
         </div>
       </div>
 
-      {/* ✅ CURRENT LAYOUT: left filter + right table */}
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
         <div style={{ minWidth: "300px" }}>
           <Filter t={t} type="desktop" boundaryQueryFilter={boundaryQueryFilter} onFilterChange={handleFilterChange} />
