@@ -218,7 +218,7 @@ const UploadBoundaryData = () => {
         <FormComposerV2
           config={config}
           onSubmit={handleSubmit}
-          label={t("CORE_COMMON_BACK")}
+          label={""}
           showSecondaryLabel={false}
           showMultipleCardsWithoutNavs={true}
           noBreakLine={true}
