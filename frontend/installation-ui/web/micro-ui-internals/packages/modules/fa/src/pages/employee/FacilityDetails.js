@@ -42,7 +42,11 @@ const FacilityDetails = () => {
     }
   }, [toast]);
 
-  const { isLoading, data: facilityData} = useFacilityDetails(facilityId);
+  const {
+    isLoading, data: facilityData,
+    revalidate: invalidateFacilityDetails
+  } = useFacilityDetails(facilityId);
+
   const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
     tenantId,
     "facility",
@@ -110,8 +114,8 @@ const FacilityDetails = () => {
           isOnmReady: formData?.isOnmReady?.code === "YES",
           address: {
             tenantId: tenantId,
-            ...(formData?.latitude ? { latitude: formData.latitude } : {}),
-            ...(formData?.longitude ? { longitude: formData.longitude } : {}),
+            ...(formData?.latitude ? { latitude: parseFloat(formData.latitude) } : {}),
+            ...(formData?.longitude ? { longitude: parseFloat(formData.longitude) } : {}),
           },
           facility_poc_name: formData?.facilityPocName,
           facility_poc_phone: formData?.facilityPocPhone,
@@ -123,6 +127,7 @@ const FacilityDetails = () => {
       };
 
       await FacilityService.updateFacility(payload);
+      await invalidateFacilityDetails();
 
       setBlockUI(false);
       setShowEditFacilityModal(false);

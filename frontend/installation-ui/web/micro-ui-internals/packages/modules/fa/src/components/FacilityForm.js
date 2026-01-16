@@ -239,11 +239,11 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             populators: {
               name: "latitude",
               validation: {
-                min: -180,
-                max: 180,
+                min: -90,
+                max: 90,
                 pattern: {
-                  value: /^-?(180(\.0+)?|1[0-7]\d(\.\d+)?|\d{1,2}(\.\d+)?)$/,
-                  message: "Enter a valid longitude (-180 to 180)",
+                  value: /^-?(90(\.0+)?|[1-8]?\d(\.\d+)?)$/,
+                  message: "Enter a valid latitude (-90 to 90)",
                 },
               },
             },

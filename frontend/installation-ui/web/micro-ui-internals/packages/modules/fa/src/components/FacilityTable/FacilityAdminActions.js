@@ -3,6 +3,7 @@ import { Toast, Loader } from "@egovernments/digit-ui-react-components";
 import { FacilityService } from "../../services/Facility";
 import FacilityModal from "../FacilityModal";
 import { useHistory } from "react-router-dom";
+import { useQueryClient } from "react-query";
 
 const FacilityAdminActions = ({ t }) => {
 
@@ -11,7 +12,7 @@ const FacilityAdminActions = ({ t }) => {
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [blockUI, setBlockUI] = useState(null);
   const history = useHistory();
-
+  const queryClient = useQueryClient();
   const tenantId = Digit.ULBService.getCurrentTenantId();
 
   useEffect(() => {
@@ -50,8 +51,8 @@ const FacilityAdminActions = ({ t }) => {
             blockBoundaryCode: block?.code,
             address: {
               tenantId: tenantId,
-              ...(formData?.latitude ? { latitude: formData.latitude } : {}),
-              ...(formData?.longitude ? { longitude: formData.longitude } : {}),
+              ...(formData?.latitude ? { latitude: parseFloat(formData.latitude) } : {}),
+              ...(formData?.longitude ? { longitude: parseFloat(formData.longitude) } : {}),
             },
             facility_poc_name: formData?.facilityPocName,
             facility_poc_phone: formData?.facilityPocPhone,
@@ -66,6 +67,8 @@ const FacilityAdminActions = ({ t }) => {
       };
 
       await FacilityService.createFacility(payload);
+      await queryClient.invalidateQueries(["FACILITY"]);
+      await queryClient.invalidateQueries(["BOUNDARY"]);
 
       setBlockUI(false);
       setShowAddFacilityModal(false);

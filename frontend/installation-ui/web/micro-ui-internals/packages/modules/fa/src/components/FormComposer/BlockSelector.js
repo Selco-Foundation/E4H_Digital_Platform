@@ -18,7 +18,8 @@ const BlockSelector = ({ data = {}, setValue, props }) => {
         .map((block) => ({
           ...block,
           name: t(`Boundary_${block.code}`),
-        }));
+        }))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
       setBlockMenu(newBlockMenu);
 
       if (selectedBlock && selectedBlock.parentCode !== selectedDistrict.code) {

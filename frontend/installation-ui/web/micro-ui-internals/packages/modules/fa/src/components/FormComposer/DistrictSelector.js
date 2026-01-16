@@ -18,7 +18,8 @@ const DistrictSelector = ({ data = {}, setValue, props }) => {
         .map((district) => ({
           ...district,
           name: t(`Boundary_${district.code}`),
-        }));
+        }))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
       setDistrictMenu(newDistrictMenu);
 
       if (selectedDistrict && selectedDistrict.parentCode !== selectedState.code) {
