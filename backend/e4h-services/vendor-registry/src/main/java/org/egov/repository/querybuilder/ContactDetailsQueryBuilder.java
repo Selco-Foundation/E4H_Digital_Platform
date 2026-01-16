@@ -17,6 +17,9 @@ public class ContactDetailsQueryBuilder {
             "c.contact_email as contactDetail_contactEmail, c.individual_id as contactDetail_contactIndividualId " +
             "FROM eg_org_contact_detail c ";
     public String getContactDetailsSearchQuery(Set<String> organisationIds, List<Object> preparedStmtList) {
+        log.trace("ContactDetailsQueryBuilder::getContactDetailsSearchQuery entry");
+        log.debug("Building contact details search query for {} organisation IDs", organisationIds != null ? organisationIds.size() : 0);
+        
         StringBuilder queryBuilder = null;
         queryBuilder = new StringBuilder(FETCH_CONTACT_DETAILS_QUERY);
 
@@ -30,6 +33,9 @@ public class ContactDetailsQueryBuilder {
     }
 
     public String getContactDetailsSearchQueryBasedOnCriteria(String contactMobileNumber, List<Object> preparedStmtList) {
+        log.trace("ContactDetailsQueryBuilder::getContactDetailsSearchQueryBasedOnCriteria entry");
+        log.debug("Building contact details search query based on mobile number");
+        
         StringBuilder queryBuilder = null;
         queryBuilder = new StringBuilder(FETCH_CONTACT_DETAILS_QUERY);
 

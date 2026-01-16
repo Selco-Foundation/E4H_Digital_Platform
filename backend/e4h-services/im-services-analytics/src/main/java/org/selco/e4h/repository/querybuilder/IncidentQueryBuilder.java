@@ -44,10 +44,12 @@ public class IncidentQueryBuilder {
                     ")";
 
     public String getStatusIncidentOccurence(String boundaryCode, List<Object> preparedStmtList) {
+        log.trace("Building status incident occurrence query for boundaryCode: {}", boundaryCode);
         StringBuilder queryBuilder = new StringBuilder(STATUS_COUNT_QUERY);
         if (boundaryCode != null && !boundaryCode.isEmpty()) {
             queryBuilder.append(" WHERE boundarycode =? ");
             preparedStmtList.add(boundaryCode);
+            log.debug("Added boundary code filter to query");
         }
         queryBuilder.append("GROUP BY boundarycode;");
 
@@ -55,10 +57,12 @@ public class IncidentQueryBuilder {
     }
 
     public String getStatusSystemFunctionalIncident(String boundaryCode, List<Object> preparedStmtList) {
+        log.trace("Building system functional incident query for boundaryCode: {}", boundaryCode);
         StringBuilder queryBuilder = new StringBuilder(SYSTEM_FUNCTIONAL_STATUS);
         if (boundaryCode != null && !boundaryCode.isEmpty()) {
             queryBuilder.append(" AND boundarycode =? ");
             preparedStmtList.add(boundaryCode);
+            log.debug("Added boundary code filter to system functional query");
         }
 
         return queryBuilder.toString();

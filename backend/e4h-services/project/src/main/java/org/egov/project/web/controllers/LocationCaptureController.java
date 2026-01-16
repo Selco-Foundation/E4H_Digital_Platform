@@ -71,20 +71,27 @@ public class LocationCaptureController {
     @RequestMapping(value = "/v1/_create", method = RequestMethod.POST)
     public ResponseEntity<ResponseInfo> locationCaptureTaskV1BulkCreatePost(
             @ApiParam(value = "Create Location Capture LocationCapture.", required = true) @Valid @RequestBody UserActionBulkRequest request) {
+        log.trace("Entering locationCaptureTaskV1BulkCreatePost");
+        log.info("Received bulk create request for location captures");
+        log.debug("Request URI: {}, Location captures count: {}", httpServletRequest.getRequestURI(), request.getUserActions() != null ? request.getUserActions().size() : 0);
         // Set the API ID in the request info using the current request URI.
         request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
 
         try {
+            log.debug("Pushing location capture bulk create request to Kafka topic");
             // Send the request to the Kafka topic for bulk creation.
             producer.push(projectConfiguration.getBulkCreateLocationCaptureTopic(), request);
+            log.info("Successfully pushed location capture bulk create request to Kafka");
         } catch (Exception e) {
-            log.error("Error sending bulk create request for location captures to Kafka: {}", e.getMessage(), e);
+            log.error("Error sending bulk create request for location captures to Kafka", e);
+            log.trace("Exiting locationCaptureTaskV1BulkCreatePost with error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), false)
             );
         }
 
         // Create and return a ResponseInfo object with HTTP status ACCEPTED.
+        log.trace("Exiting locationCaptureTaskV1BulkCreatePost");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(
                 ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true)
         );
@@ -104,10 +111,14 @@ public class LocationCaptureController {
             @Valid @ModelAttribute URLParams urlParams,
             @ApiParam(value = "Search details of Location Capture.", required = true) @Valid @RequestBody UserActionSearchRequest locationCaptureSearchRequest
     ) throws Exception {
+        log.trace("Entering locationCaptureTaskV2SearchPost");
+        log.info("Received search request for location captures");
+        log.debug("Search parameters - limit: {}, offset: {}, tenantId: {}", urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());
 
         try {
             // Perform the search using the locationCaptureService.
             SearchResponse<UserAction> locationCaptureSearchResponse = locationCaptureService.search(locationCaptureSearchRequest, urlParams);
+            log.debug("Found {} location captures", locationCaptureSearchResponse.getResponse() != null ? locationCaptureSearchResponse.getResponse().size() : 0);
 
             // Build the response object with the search results and response info.
             UserActionBulkResponse response = UserActionBulkResponse.builder()
@@ -117,9 +128,12 @@ public class LocationCaptureController {
                     .build();
 
             // Return the response with HTTP status OK.
+            log.info("Successfully completed location capture search");
+            log.trace("Exiting locationCaptureTaskV2SearchPost");
             return ResponseEntity.status(HttpStatus.OK).body(response);
         } catch (Exception e) {
-            log.error("Error occurred during search operation for location captures: {}", e.getMessage(), e);
+            log.error("Error occurred during search operation for location captures", e);
+            log.trace("Exiting locationCaptureTaskV2SearchPost with error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     UserActionBulkResponse.builder()
                             .responseInfo(ResponseInfoFactory.createResponseInfo(locationCaptureSearchRequest.getRequestInfo(), false))

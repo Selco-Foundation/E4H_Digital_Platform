@@ -33,10 +33,15 @@ public class OrganisationUserRepository {
     }
 
     public List<OrgUser> getOrgUsers(OrgUserSearchRequest orgSearchRequest, URLParams urlParams) {
+        log.trace("OrganisationUserRepository::getOrgUsers entry");
+        String tenantId = urlParams != null ? urlParams.getTenantId() : "unknown";
+        log.info("Starting organisation user search query for tenant: {}", tenantId);
+        
         List<Object> preparedStmtListTarget = new ArrayList<>();
         String queryDocument = queryBuilder.getOrganisationUserSearchQuery(orgSearchRequest, urlParams, preparedStmtListTarget, false);
         List<OrgUser> orgUserList = jdbcTemplate.query(queryDocument, orgUserRowMapper, preparedStmtListTarget.toArray());
-        log.info("Fetched documents based on organisation Ids");
+        
+        log.info("Organisation user search completed, found {} users", orgUserList != null ? orgUserList.size() : 0);
         return orgUserList;
     }
 

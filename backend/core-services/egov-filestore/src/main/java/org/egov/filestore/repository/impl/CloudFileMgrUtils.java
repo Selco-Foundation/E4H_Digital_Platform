@@ -48,6 +48,8 @@ public class CloudFileMgrUtils {
 	 * @return
 	 */
 	public Map<String, BufferedImage> createVersionsOfImage(InputStream inputStream, String fileName) {
+		log.trace("Entering createVersionsOfImage method for fileName: {}", fileName);
+		log.info("Creating thumbnail versions of image: {}", fileName);
 		
 		Map<String, BufferedImage> mapOfImagesAndPaths = new HashMap<>();
 		BufferedImage largeImage = null;
@@ -57,17 +59,22 @@ public class CloudFileMgrUtils {
 			BufferedImage originalImage = ImageIO.read(inputStream);
 			
 			if (null == originalImage) {
-				
+				log.error("Image source unavailable for fileName: {}", fileName);
 				Map<String, String> map = new HashMap<>();
 				map.put("Image Source Unavailable", "Image File present in upload request is Invalid/Not Readable");
 				throw new CustomException(map);
 			}
+			log.debug("Original image read successfully, dimensions: {}x{}", 
+					originalImage.getWidth(), originalImage.getHeight());
 			
-			 largeImage = Scalr.resize(originalImage, Method.QUALITY, Mode.AUTOMATIC, fileStoreConfig.getLargeWidth(), null,
+			log.debug("Resizing image to large version: {}px width", fileStoreConfig.getLargeWidth());
+			largeImage = Scalr.resize(originalImage, Method.QUALITY, Mode.AUTOMATIC, fileStoreConfig.getLargeWidth(), null,
 					Scalr.OP_ANTIALIAS);
-			 mediumImg = Scalr.resize(originalImage, Method.QUALITY, Mode.AUTOMATIC, fileStoreConfig.getMediumWidth(), null,
+			log.debug("Resizing image to medium version: {}px width", fileStoreConfig.getMediumWidth());
+			mediumImg = Scalr.resize(originalImage, Method.QUALITY, Mode.AUTOMATIC, fileStoreConfig.getMediumWidth(), null,
 					Scalr.OP_ANTIALIAS);
-			 smallImg = Scalr.resize(originalImage, Method.QUALITY, Mode.AUTOMATIC, fileStoreConfig.getSmallWidth(), null,
+			log.debug("Resizing image to small version: {}px width", fileStoreConfig.getSmallWidth());
+			smallImg = Scalr.resize(originalImage, Method.QUALITY, Mode.AUTOMATIC, fileStoreConfig.getSmallWidth(), null,
 					Scalr.OP_ANTIALIAS);
 
 			int lastIndex = fileName.length();
@@ -77,13 +84,13 @@ public class CloudFileMgrUtils {
 			mapOfImagesAndPaths.put(fileName.replace(replaceString, fileStoreConfig.get_medium() + replaceString), mediumImg);
 			mapOfImagesAndPaths.put(fileName.replace(replaceString, fileStoreConfig.get_small() + replaceString), smallImg);
 
-			log.info("Different versions of the image created!");
+			log.info("Successfully created {} thumbnail versions of image: {}", mapOfImagesAndPaths.size(), fileName);
 		} catch (Exception e) {
-			log.error("Error while creating different versions of the image: ", e);
+			log.error("Error while creating different versions of the image for fileName: {}", fileName, e);
 		} finally {
-			largeImage.flush();
-			mediumImg.flush();
-			smallImg.flush();
+			if (largeImage != null) largeImage.flush();
+			if (mediumImg != null) mediumImg.flush();
+			if (smallImg != null) smallImg.flush();
 		}
 
 		return mapOfImagesAndPaths;
@@ -105,11 +112,13 @@ public class CloudFileMgrUtils {
 	 * @return
 	 */
 	public String generateSASToken(CloudBlobClient azureBlobClient, String absolutePath) {
+		log.trace("Entering generateSASToken method for absolutePath: {}", absolutePath);
 		String sasUrl = null;
 		try {
 			int index = absolutePath.indexOf('/');
 			String containerName = absolutePath.substring(0, index);
 			String fileNameWithPath = absolutePath.substring(index + 1, absolutePath.length());
+			log.debug("Generating SAS token for container: {}, fileName: {}", containerName, fileNameWithPath);
 			CloudBlobContainer container = azureBlobClient.getContainerReference(containerName);
 			CloudBlockBlob blob = (CloudBlockBlob) container.getBlobReferenceFromServer(fileNameWithPath);
 			SharedAccessBlobPolicy sasConstraints = new SharedAccessBlobPolicy();
@@ -117,11 +126,12 @@ public class CloudFileMgrUtils {
 			sasConstraints
 					.setSharedAccessExpiryTime(new Date(System.currentTimeMillis() + (azureSASExpiryinSecs * 1000)));
 			sasConstraints.setPermissionsFromString("r");
+			log.debug("SAS token expiry set to {} seconds", azureSASExpiryinSecs);
 			String sasBlobToken = blob.generateSharedAccessSignature(sasConstraints, null);
 			sasUrl = sasBlobToken;
+			log.debug("SAS token generated successfully for absolutePath: {}", absolutePath);
 		} catch (Exception e) {
-			log.error("Error while generating sas token: ", e);
-			log.error("Exception while generating SAS token: ", e);
+			log.error("Error while generating SAS token for absolutePath: {}", absolutePath, e);
 		}
 		return sasUrl;
 	}
@@ -134,6 +144,7 @@ public class CloudFileMgrUtils {
 	 * @return
 	 */
 	private static String getHMAC256(String key, String input) {
+		log.trace("Entering getHMAC256 method");
 		Mac sha256_HMAC = null;
 		String hash = null;
 		try {
@@ -142,8 +153,9 @@ public class CloudFileMgrUtils {
 			sha256_HMAC.init(secret_key);
 			Encoder encoder = Base64.getEncoder();
 			hash = new String(encoder.encode(sha256_HMAC.doFinal(input.getBytes("UTF-8"))));
+			log.debug("HMAC256 hash generated successfully");
 		} catch (Exception e) {
-			log.error("Exception while generating hash for the SAS token: ", e);
+			log.error("Exception while generating hash for the SAS token", e);
 		}
 
 		return hash;
@@ -157,11 +169,14 @@ public class CloudFileMgrUtils {
 	 * @return
 	 */
 	public Boolean isFileAnImage(String filePath) {
+		log.trace("Entering isFileAnImage method for filePath: {}", filePath);
 		Boolean isFileAnImage = false;
 		if (filePath.split("[\\.]").length > 1) {
 			String extension = filePath.substring(filePath.lastIndexOf('.') + 1, filePath.length());
-			if (fileStoreConfig.getImageFormats().contains(extension))
-				isFileAnImage = true;
+			isFileAnImage = fileStoreConfig.getImageFormats().contains(extension);
+			log.debug("File isImage: {} for extension: {}", isFileAnImage, extension);
+		} else {
+			log.debug("File path does not contain extension: {}", filePath);
 		}
 		return isFileAnImage;
 	}

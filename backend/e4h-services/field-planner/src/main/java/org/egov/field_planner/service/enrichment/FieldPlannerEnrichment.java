@@ -40,46 +40,57 @@ public class FieldPlannerEnrichment {
 
     /* Enrich Project on Create Request */
     public void enrichFieldPlanOnCreate(FieldPlan fieldPlan, RequestInfo requestInfo) {
-        //Enrich Project id and audit details
+        log.trace("Entering enrichFieldPlanOnCreate method");
         enrichFieldPlanRequestOnCreate(fieldPlan, requestInfo);
-        log.info("Enriched FieldPlan request with id and Audit details");
-
+        log.info("Field plan enriched with ID and audit details, field plan ID: {}", fieldPlan.getId());
+        log.trace("Exiting enrichFieldPlanOnCreate method");
     }
 
     /* Enrich FieldPlan with id and audit details */
     private void enrichFieldPlanRequestOnCreate(FieldPlan fieldPlan, RequestInfo requestInfo) {
+        log.trace("Entering enrichFieldPlanRequestOnCreate method");
         fieldPlan.setId(UUID.randomUUID().toString());
         fieldPlan.setStatus(DRAFT_STATUS);
-        log.info("fieldPlan id set to " + fieldPlan.getId());
+        log.debug("Field plan ID generated: {}, status set to: {}", fieldPlan.getId(), DRAFT_STATUS);
+        
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         fieldPlan.setAuditDetails(auditDetails);
+        log.debug("Audit details set for field plan ID: {}", fieldPlan.getId());
+        log.trace("Exiting enrichFieldPlanRequestOnCreate method");
     }
 
     public void enrichFieldPlanFacilityOnCreate(List<FieldPlanFacility> entities, FieldPlanFacilityBulkRequest request) throws Exception {
-        log.info("starting the enrichment for create project facility");
+        log.trace("Entering enrichFieldPlanFacilityOnCreate method");
+        log.info("Starting enrichment for field plan facility creation, entity count: {}", entities.size());
 
-        log.info("generating IDs using IdGenService");
+        log.debug("Generating IDs using IdGenService for {} entities", entities.size());
         List<String> idList = idGenService.getIdList(request.getRequestInfo(),
                 getTenantId(entities),
                 fieldPlannerConfiguration.getFieldPlanFacilityIdFormat(), "", entities.size());
+        log.debug("Generated {} IDs for field plan facilities", idList.size());
 
         enrichForCreate(entities, idList, request.getRequestInfo());
-        log.info("enrichment done");
+        log.info("Field plan facility enrichment completed successfully");
+        log.trace("Exiting enrichFieldPlanFacilityOnCreate method");
     }
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichFieldPlanRequestOnUpdate(FieldPlan fieldPlan, FieldPlan fieldPlanFromDB, RequestInfo requestInfo) {
+        log.trace("Entering enrichFieldPlanRequestOnUpdate method for field plan ID: {}", fieldPlan.getId());
         fieldPlan.setAuditDetails(fieldPlanFromDB.getAuditDetails());
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), fieldPlanFromDB.getAuditDetails(), false);
         fieldPlan.setAuditDetails(auditDetails);
-        log.info("Enriched project audit details for project " + fieldPlan.getId());
+        log.info("Field plan audit details enriched for field plan ID: {}", fieldPlan.getId());
+        log.trace("Exiting enrichFieldPlanRequestOnUpdate method");
     }
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichFieldPlanFacilityRequestOnDelete(FieldPlanFacility fieldPlan, RequestInfo requestInfo) {
+        log.trace("Entering enrichFieldPlanFacilityRequestOnDelete method for field plan facility ID: {}", fieldPlan.getId());
         AuditDetails auditDetails = AuditDetails.builder().lastModifiedBy(requestInfo.getUserInfo().getUuid()).lastModifiedTime(System.currentTimeMillis()).build();
         fieldPlan.setAuditDetails(auditDetails);
-        log.info("Enriched project audit details for project " + fieldPlan.getId());
+        log.info("Field plan facility audit details enriched for facility ID: {}", fieldPlan.getId());
+        log.trace("Exiting enrichFieldPlanFacilityRequestOnDelete method");
     }
 
 

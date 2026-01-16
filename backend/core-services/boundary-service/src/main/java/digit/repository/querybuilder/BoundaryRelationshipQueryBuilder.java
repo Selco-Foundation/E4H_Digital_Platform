@@ -2,6 +2,7 @@ package digit.repository.querybuilder;
 
 import digit.util.QueryUtil;
 import digit.web.models.BoundaryRelationshipSearchCriteria;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -9,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 
 @Component
+@Slf4j
 public class BoundaryRelationshipQueryBuilder {
 
     private static String BOUNDARY_RELATIONSHIP_BASE_SEARCH_QUERY = "SELECT id, tenantid, code, hierarchytype, boundarytype, parent, ancestralmaterializedpath, createdtime, createdby, lastmodifiedtime, lastmodifiedby" +
@@ -17,12 +19,18 @@ public class BoundaryRelationshipQueryBuilder {
     private static String ORDER_BY_CLAUSE = " order by createdtime desc ";
 
     public String getBoundaryRelationshipSearchQuery(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria, List<Object> preparedStmtList) {
+        log.trace("getBoundaryRelationshipSearchQuery method invoked");
+        log.debug("Building boundary relationship search query, tenantId={}, hierarchyType={}", 
+                boundaryRelationshipSearchCriteria.getTenantId(),
+                boundaryRelationshipSearchCriteria.getHierarchyType());
         String query = buildQuery(boundaryRelationshipSearchCriteria, preparedStmtList);
         query += ORDER_BY_CLAUSE;
+        log.debug("Boundary relationship search query built, parameters count={}", preparedStmtList.size());
         return query;
     }
 
     private String buildQuery(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria, List<Object> preparedStmtList) {
+        log.trace("buildQuery method invoked");
         StringBuilder builder = new StringBuilder(BOUNDARY_RELATIONSHIP_BASE_SEARCH_QUERY);
 
         if (!ObjectUtils.isEmpty(boundaryRelationshipSearchCriteria.getTenantId())) {

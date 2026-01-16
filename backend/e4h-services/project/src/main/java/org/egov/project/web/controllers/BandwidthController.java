@@ -23,11 +23,16 @@ public class BandwidthController {
 
     @RequestMapping(value = "/check/bandwidth", method = RequestMethod.POST)
     public ResponseEntity<BandwidthCheckResponse> checkBandwidth(@ApiParam(value = "Captures dummy json data", required = true) @Valid @RequestBody BandwidthCheckRequest request) {
-        log.info("Request received: {}", request);
-        return ResponseEntity.status(HttpStatus.OK).body(BandwidthCheckResponse.builder()
+        log.trace("Entering checkBandwidth");
+        log.info("Received bandwidth check request");
+        log.debug("Building bandwidth check response");
+        ResponseEntity<BandwidthCheckResponse> response = ResponseEntity.status(HttpStatus.OK).body(BandwidthCheckResponse.builder()
                 .responseInfo(ResponseInfoFactory
                         .createResponseInfo(request.getRequestInfo(), true))
                 .additionalFields(request.getAdditionalFields())
                 .build());
+        log.info("Successfully processed bandwidth check request");
+        log.trace("Exiting checkBandwidth");
+        return response;
     }
 }

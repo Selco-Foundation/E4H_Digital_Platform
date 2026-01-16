@@ -33,18 +33,22 @@ public class MigrationConsumer {
 
     @KafkaListener(topics = { "${im.kafka.migration.topic}"})
     public void listen(final HashMap<String, Object> record, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
-
+        log.trace("MigrationConsumer::listen method invoked");
         try {
-            log.info("Received migration request " + record);
+            log.info("Received migration request from topic: {}", topic);
             ServiceResponse serviceResponse = mapper.convertValue(record,ServiceResponse.class);
             
-         // Adding in MDC so that tracer can add it in header
-            MDC.put(IMConstants.TENANTID_MDC_STRING, serviceResponse.getServices().get(0).getTenantId());
+            // Adding in MDC so that tracer can add it in header
+            if (serviceResponse.getServices() != null && !serviceResponse.getServices().isEmpty()) {
+                MDC.put(IMConstants.TENANTID_MDC_STRING, serviceResponse.getServices().get(0).getTenantId());
+                log.debug("Processing migration for {} services", serviceResponse.getServices().size());
+            }
             
             migrationService.migrate(serviceResponse);
+            log.info("Migration completed successfully for topic: {}", topic);
         }
         catch (Exception e){
-            log.error("Error occured while processing the record from topic : " + topic, e);
+            log.error("Error occurred while processing migration record from topic: {}", topic, e);
         }
 
     }

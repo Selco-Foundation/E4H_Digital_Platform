@@ -15,11 +15,13 @@ import org.springframework.util.ObjectUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 import static org.egov.wf.util.WorkflowConstants.*;
 
 
 @Component
+@Slf4j
 public class WorkflowValidator {
 
 
@@ -42,12 +44,21 @@ public class WorkflowValidator {
      * @param processStateAndActions The processStateAndActions containing processInstances to be validated
      */
     public void validateRequest(RequestInfo requestInfo, List<ProcessStateAndAction> processStateAndActions){
+        log.trace("Entering validateRequest method");
+        int processStateAndActionsCount = processStateAndActions != null ? processStateAndActions.size() : 0;
+        log.info("Validating request for {} process state and action(s)", processStateAndActionsCount);
+        
         String tenantId = processStateAndActions.get(0).getProcessInstanceFromRequest().getTenantId();
         String businessServiceCode = processStateAndActions.get(0).getProcessInstanceFromRequest().getBusinessService();
+        log.debug("Validating for tenantId: {}, businessService: {}", tenantId, businessServiceCode);
+        
         BusinessService businessService = businessUtil.getBusinessService(tenantId,businessServiceCode);
         validateAction(requestInfo,processStateAndActions,businessService);
         validateDocuments(processStateAndActions);
         validateAssignes(requestInfo, processStateAndActions);
+        
+        log.info("Request validation completed successfully");
+        log.trace("Exiting validateRequest method");
     }
 
 
@@ -79,15 +90,22 @@ public class WorkflowValidator {
      * @param processStateAndActions ProcessStateAndAction to be validated
      */
     private void validateDocuments(List<ProcessStateAndAction> processStateAndActions){
+        log.trace("Entering validateDocuments method");
         Map<String,String> errorMap = new HashMap<>();
         for (ProcessStateAndAction processStateAndAction : processStateAndActions){
             if(processStateAndAction.getResultantState().getDocUploadRequired()){
-                if(CollectionUtils.isEmpty(processStateAndAction.getProcessInstanceFromRequest().getDocuments()))
-                    errorMap.put("INVALID DOCUMENT","Documents cannot be null for status: "+processStateAndAction.getResultantState().getState());
+                if(CollectionUtils.isEmpty(processStateAndAction.getProcessInstanceFromRequest().getDocuments())) {
+                    String status = processStateAndAction.getResultantState().getState();
+                    log.error("Documents are required but not provided for status: {}, businessId: {}", 
+                            status, processStateAndAction.getProcessInstanceFromRequest().getBusinessId());
+                    errorMap.put("INVALID DOCUMENT","Documents cannot be null for status: "+status);
+                }
             }
         }
-        if(!errorMap.isEmpty())
+        if(!errorMap.isEmpty()) {
             throw new CustomException(errorMap);
+        }
+        log.trace("Exiting validateDocuments method");
     }
 
 
@@ -98,6 +116,7 @@ public class WorkflowValidator {
      */
     private void validateAction(RequestInfo requestInfo,List<ProcessStateAndAction> processStateAndActions
             ,BusinessService businessService){
+        log.trace("Entering validateAction method");
 
         Map<String,List<String>> tenantIdToRoles = util.getTenantIdToUserRolesMap(requestInfo);
 
@@ -117,9 +136,12 @@ public class WorkflowValidator {
             }
 
             Action action = processStateAndAction.getAction();
-            if(action==null && !processStateAndAction.getCurrentState().getIsTerminateState())
+            if(action==null && !processStateAndAction.getCurrentState().getIsTerminateState()) {
+                String businessId = processStateAndAction.getProcessInstanceFromRequest().getBusinessId();
+                log.error("Action not found for businessId: {}, current state is not terminate state", businessId);
                 throw new CustomException("INVALID ACTION","Action not found for businessIds: "+
                         processStateAndAction.getCurrentState().getBusinessServiceId());
+            }
 
             Integer rating = null;
 
@@ -127,6 +149,8 @@ public class WorkflowValidator {
                 rating = processStateAndAction.getProcessInstanceFromRequest().getRating();
 
             if(rating != null && !action.getAction().equalsIgnoreCase(RATE_ACTION)){
+                log.error("Rating provided but action is not RATE action for businessId: {}", 
+                        processStateAndAction.getProcessInstanceFromRequest().getBusinessId());
                 throw new CustomException("INVALID_ACTION", "Rating can be given only upon taking RATE action.");
             }
 
@@ -137,10 +161,16 @@ public class WorkflowValidator {
             Boolean isAssigneeUserInfo = false;
 
             /*Checks if the user has role to take action*/
-            if(action!=null && isStateChanging && !isRoleAvailable)
+            if(action!=null && isStateChanging && !isRoleAvailable) {
+                log.error("User is not authorized to perform state-changing action for businessId: {}", 
+                        processStateAndAction.getProcessInstanceFromRequest().getBusinessId());
                 throw new CustomException("INVALID ROLE","User is not authorized to perform action");
-            if(action!=null && !isStateChanging && !util.isRoleAvailable(roles,util.rolesAllowedInService(businessService)))
+            }
+            if(action!=null && !isStateChanging && !util.isRoleAvailable(roles,util.rolesAllowedInService(businessService))) {
+                log.error("User is not authorized to perform non-state-changing action for businessId: {}", 
+                        processStateAndAction.getProcessInstanceFromRequest().getBusinessId());
                 throw new CustomException("INVALID ROLE","User is not authorized to perform action");
+            }
 
 
 
@@ -166,8 +196,11 @@ public class WorkflowValidator {
                 processStateAndAction.getProcessInstanceFromRequest().getAssignes().forEach(assignee -> {
                     List<Role> assigneeRoles = assignee.getRoles();
                     Boolean isRoleAvailableInNextState = util.isRoleAvailable(tenantId,assigneeRoles,nextStateRoles);
-                    if(!isRoleAvailableInNextState)
+                    if(!isRoleAvailableInNextState) {
+                        log.error("Assignee {} does not have required role for next state, businessId: {}", 
+                                assignee.getUuid(), processStateAndAction.getProcessInstanceFromRequest().getBusinessId());
                         throw new CustomException("INVALID_ASSIGNEE","Cannot assign to the user: "+ assignee.getUuid());
+                    }
 
                 });
             }
@@ -180,8 +213,11 @@ public class WorkflowValidator {
                 ProcessInstance processInstanceFromDB = processStateAndAction.getProcessInstanceFromDb();
                 if(processInstanceFromDB!=null && processInstanceFromDB.getAction().equalsIgnoreCase(SENDBACKTOCITIZEN)){
                     List<String> assignes = processInstanceFromDB.getAssignes().stream().map(User::getUuid).collect(Collectors.toList());
-                    if(!assignes.contains(requestInfo.getUserInfo().getUuid()))
+                    if(!assignes.contains(requestInfo.getUserInfo().getUuid())) {
+                        log.error("Citizen user {} is not authorized to take action on businessId: {}", 
+                                requestInfo.getUserInfo().getUuid(), processInstanceFromDB.getBusinessId());
                         throw new CustomException("INVALID_USER","The user: "+requestInfo.getUserInfo().getUuid()+" is not authorized to take action");
+                    }
                 }
             }
 
@@ -208,6 +244,7 @@ public class WorkflowValidator {
      * @param processStateAndActions
      */
     private void validateAssignes(RequestInfo requestInfo, List<ProcessStateAndAction> processStateAndActions){
+        log.trace("Entering validateAssignes method");
 
         if(requestInfo.getUserInfo().getType().equalsIgnoreCase(CITIZEN_TYPE)){
 
@@ -241,6 +278,7 @@ public class WorkflowValidator {
                 throw new CustomException(errorMap);
 
         }
+        log.trace("Exiting validateAction method");
 
     }
 

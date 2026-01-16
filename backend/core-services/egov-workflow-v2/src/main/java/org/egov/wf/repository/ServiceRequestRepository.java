@@ -28,17 +28,20 @@ public class ServiceRequestRepository {
 
 
 	public Object fetchResult(StringBuilder uri, Object request) {
+		log.trace("Entering fetchResult method");
+		log.debug("Calling external service: {}", uri.toString());
 		mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 		Object response = null;
 		try {
 			response = restTemplate.postForObject(uri.toString(), request, Map.class);
+			log.debug("Successfully received response from external service: {}", uri.toString());
 		}catch(HttpClientErrorException e) {
-			log.error("External Service threw an Exception: ",e);
+			log.error("External service threw an exception for URI: {}", uri.toString(), e);
 			throw new ServiceCallException(e.getResponseBodyAsString());
 		}catch(Exception e) {
-			log.error("Exception while fetching from searcher: ",e);
+			log.error("Exception while fetching from external service: {}", uri.toString(), e);
 		}
-
+		log.trace("Exiting fetchResult method");
 		return response;
 	}
 }

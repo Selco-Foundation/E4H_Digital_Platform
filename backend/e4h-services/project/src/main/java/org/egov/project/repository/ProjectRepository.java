@@ -154,16 +154,22 @@ public class ProjectRepository extends GenericRepository<Project> {
                                                              List<String> workflowStatuses,
                                                              ProjectSortCriteria sortCriteria
     ) {
+        log.trace("Entering getProjectsBasedOnV2SearchCriteria");
+        log.debug("Building search query for v2 search criteria");
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getProjectSearchAndSortQuery(projectSearchRequest, urlParams, preparedStmtList, Boolean.FALSE, workflowStatuses, sortCriteria);
+        log.debug("Executing search query");
         List<Project> projects = jdbcTemplate.query(query, addressRowMapper, preparedStmtList.toArray());
 
-        log.info("Fetched project list based on given search criteria");
+        log.info("Fetched {} projects based on given search criteria", projects != null ? projects.size() : 0);
+        log.trace("Exiting getProjectsBasedOnV2SearchCriteria");
         return projects;
     }
 
     /* Fetch Projects based on search criteria */
     private List<Project> getProjectsBasedOnSearchCriteria(List<Project> projectsRequest, Integer limit, Integer offset, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo, boolean isAncestorProjectId) {
+        log.trace("Entering getProjectsBasedOnSearchCriteria");
+        log.debug("Building search criteria - limit: {}, offset: {}, tenantId: {}, isAncestorProjectId: {}", limit, offset, tenantId, isAncestorProjectId);
         List<Object> preparedStmtList = new ArrayList<>();
         ProjectSearchCriteria criteria = ProjectSearchCriteria.builder()
                 .projects(projectsRequest)
@@ -179,26 +185,39 @@ public class ProjectRepository extends GenericRepository<Project> {
                 .isCountQuery(false) // change as needed
                 .build();
 
+        log.debug("Generating search query");
         String query = queryBuilder.getProjectSearchQuery(criteria);
+        log.debug("Executing search query");
         List<Project> projects = jdbcTemplate.query(query, addressRowMapper, preparedStmtList.toArray());
 
-        log.info("Fetched project list based on given search criteria");
+        log.info("Fetched {} projects based on given search criteria", projects != null ? projects.size() : 0);
+        log.trace("Exiting getProjectsBasedOnSearchCriteria");
         return projects;
     }
 
     /* Fetch Projects based on Project ids */
     public List<Project> getProjectsBasedOnProjectIds(List<String> projectIds, List<Object> preparedStmtList) {
+        log.trace("Entering getProjectsBasedOnProjectIds for {} project IDs", projectIds != null ? projectIds.size() : 0);
+        log.info("Fetching projects by project IDs");
+        log.debug("Building query for project IDs");
         String query = queryBuilder.getProjectSearchQueryBasedOnIds(projectIds, preparedStmtList);
+        log.debug("Executing query");
         List<Project> projects = jdbcTemplate.query(query, addressRowMapper, preparedStmtList.toArray());
-        log.info("Fetched project list based on given Project Ids");
+        log.info("Fetched {} projects based on given Project IDs", projects != null ? projects.size() : 0);
+        log.trace("Exiting getProjectsBasedOnProjectIds");
         return projects;
     }
 
     public List<ProjectStatusAgregation> getStatusProjectsAgregation(String parentId) {
+        log.trace("Entering getStatusProjectsAgregation for parentId: {}", parentId);
+        log.info("Fetching project status aggregations for parentId: {}", parentId);
+        log.debug("Building query for status aggregations");
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getStatusProjectOccurence(parentId, preparedStmtList);
+        log.debug("Executing query");
         List<ProjectStatusAgregation> statusAgregations = jdbcTemplate.query(query, projectStatusRowMapper, preparedStmtList.toArray());
-        log.info("Fetched project status agregation list based on given Parent Ids");
+        log.info("Fetched {} project status aggregations based on given Parent ID", statusAgregations != null ? statusAgregations.size() : 0);
+        log.trace("Exiting getStatusProjectsAgregation");
         return statusAgregations;
     }
 
@@ -209,13 +228,20 @@ public class ProjectRepository extends GenericRepository<Project> {
      * @return true if the project name exists, false otherwise
      */
     public boolean isProjectNameExists(String projectName, String tenantId) {
+        log.trace("Entering isProjectNameExists for projectName: {}, tenantId: {}", projectName, tenantId);
+        log.debug("Checking if project name exists in database");
         try {
             String sql = queryBuilder.getCheckProjectNameExistsQuery();
             Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectName, tenantId);
-            return count != null && count > 0;
+            boolean exists = count != null && count > 0;
+            log.debug("Project name exists check result: {} (count: {})", exists, count);
+            log.trace("Exiting isProjectNameExists");
+            return exists;
         } catch (Exception e) {
-            log.error("Error checking for existing project name: {}", projectName, e);
+            log.error("Error checking for existing project name: {} for tenantId: {}", projectName, tenantId, e);
             // If we can't check, assume it exists to be safe
+            log.warn("Assuming project name exists due to error");
+            log.trace("Exiting isProjectNameExists with error");
             return true;
         }
     }
@@ -229,13 +255,20 @@ public class ProjectRepository extends GenericRepository<Project> {
      * @return true if the project name exists (excluding the specified project), false otherwise
      */
     public boolean isProjectNameExistsExcludingProject(String projectName, String tenantId, String excludeProjectId) {
+        log.trace("Entering isProjectNameExistsExcludingProject for projectName: {}, tenantId: {}, excludeProjectId: {}", projectName, tenantId, excludeProjectId);
+        log.debug("Checking if project name exists excluding project: {}", excludeProjectId);
         try {
             String sql = queryBuilder.getCheckProjectNameExistsExcludingProjectQuery();
             Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectName, tenantId, excludeProjectId);
-            return count != null && count > 0;
+            boolean exists = count != null && count > 0;
+            log.debug("Project name exists check result: {} (count: {})", exists, count);
+            log.trace("Exiting isProjectNameExistsExcludingProject");
+            return exists;
         } catch (Exception e) {
-            log.error("Error checking for existing project name excluding project {}: {}", excludeProjectId, projectName, e);
+            log.error("Error checking for existing project name excluding project {}: {} for tenantId: {}", excludeProjectId, projectName, tenantId, e);
             // If we can't check, assume it exists to be safe
+            log.warn("Assuming project name exists due to error");
+            log.trace("Exiting isProjectNameExistsExcludingProject with error");
             return true;
         }
     }
@@ -247,15 +280,22 @@ public class ProjectRepository extends GenericRepository<Project> {
      * @return The highest existing name or null if none found
      */
     public String findHighestExistingProjectName(String baseName, String tenantId) {
+        log.trace("Entering findHighestExistingProjectName for baseName: {}, tenantId: {}", baseName, tenantId);
+        log.debug("Finding highest existing project name with base pattern");
         try {
             // Escape LIKE wildcards in baseName to prevent SQL injection and incorrect matching
             String escapedBaseName = queryBuilder.escapeLikeWildcards(baseName);
+            log.debug("Escaped base name for SQL query");
             
             // Get all names that match the pattern to find the highest numeric suffix
             String sql = queryBuilder.getFindHighestExistingProjectNameQuery();
+            log.debug("Executing query to find existing names");
             List<String> existingNames = jdbcTemplate.queryForList(sql, String.class, escapedBaseName + "%", tenantId);
+            log.debug("Found {} existing names matching pattern", existingNames != null ? existingNames.size() : 0);
             
             if (existingNames.isEmpty()) {
+                log.debug("No existing names found, returning null");
+                log.trace("Exiting findHighestExistingProjectName");
                 return null;
             }
             
@@ -268,6 +308,7 @@ public class ProjectRepository extends GenericRepository<Project> {
                     // Exact match - this is the base name
                     highestName = name;
                     highestSuffix = 0;
+                    log.debug("Found exact base name match: {}", name);
                 } else if (name.startsWith(baseName + "-")) {
                     // Name with suffix like "Base-1", "Base-2", etc.
                     try {
@@ -276,6 +317,7 @@ public class ProjectRepository extends GenericRepository<Project> {
                         if (suffix > highestSuffix) {
                             highestSuffix = suffix;
                             highestName = name;
+                            log.debug("Found higher suffix: {} for name: {}", suffix, name);
                         }
                     } catch (NumberFormatException e) {
                         // Skip names with non-numeric suffixes
@@ -284,36 +326,51 @@ public class ProjectRepository extends GenericRepository<Project> {
                 }
             }
             
+            log.info("Highest existing name found: {} (suffix: {})", highestName, highestSuffix);
+            log.trace("Exiting findHighestExistingProjectName");
             return highestName;
         } catch (Exception e) {
-            log.error("Error finding highest existing name for base: {}", baseName, e);
+            log.error("Error finding highest existing name for base: {} and tenantId: {}", baseName, tenantId, e);
+            log.trace("Exiting findHighestExistingProjectName with error");
             return null;
         }
     }
 
     /* Fetch Project descendants based on Project ids */
     private List<Project> getProjectsDescendantsBasedOnProjectIds(List<String> projectIds, List<Object> preparedStmtListDescendants) {
+        log.trace("Entering getProjectsDescendantsBasedOnProjectIds for {} project IDs", projectIds != null ? projectIds.size() : 0);
+        log.debug("Building query for project descendants");
         String query = queryBuilder.getProjectDescendantsSearchQueryBasedOnIds(projectIds, preparedStmtListDescendants);
+        log.debug("Executing query");
         List<Project> projects = jdbcTemplate.query(query, addressRowMapper, preparedStmtListDescendants.toArray());
-        log.info("Fetched project descendants list based on given Project Ids");
+        log.info("Fetched {} project descendants based on given Project IDs", projects != null ? projects.size() : 0);
+        log.trace("Exiting getProjectsDescendantsBasedOnProjectIds");
         return projects;
     }
 
     /* Fetch targets based on Project Ids */
     private List<Target> getTargetsBasedOnProjectIds(Set<String> projectIds) {
+        log.trace("Entering getTargetsBasedOnProjectIds for {} project IDs", projectIds != null ? projectIds.size() : 0);
+        log.debug("Building query for targets");
         List<Object> preparedStmtListTarget = new ArrayList<>();
         String queryTarget = targetQueryBuilder.getTargetSearchQuery(projectIds, preparedStmtListTarget);
+        log.debug("Executing query for targets");
         List<Target> targets = jdbcTemplate.query(queryTarget, targetRowMapper, preparedStmtListTarget.toArray());
-        log.info("Fetched targets based on project Ids");
+        log.info("Fetched {} targets based on project IDs", targets != null ? targets.size() : 0);
+        log.trace("Exiting getTargetsBasedOnProjectIds");
         return targets;
     }
 
     /* Fetch documents based on Project Ids */
     private List<Document> getDocumentsBasedOnProjectIds(Set<String> projectIds) {
+        log.trace("Entering getDocumentsBasedOnProjectIds for {} project IDs", projectIds != null ? projectIds.size() : 0);
+        log.debug("Building query for documents");
         List<Object> preparedStmtListDocument = new ArrayList<>();
         String queryDocument = documentQueryBuilder.getDocumentSearchQuery(projectIds, preparedStmtListDocument);
+        log.debug("Executing query for documents");
         List<Document> documents = jdbcTemplate.query(queryDocument, documentRowMapper, preparedStmtListDocument.toArray());
-        log.info("Fetched documents based on project Ids");
+        log.info("Fetched {} documents based on project IDs", documents != null ? documents.size() : 0);
+        log.trace("Exiting getDocumentsBasedOnProjectIds");
         return documents;
     }
 

@@ -83,68 +83,86 @@ public class ProjectBeneficiaryService {
     }
 
     public List<ProjectBeneficiary> create(BeneficiaryRequest request) {
-        log.info("received request to create project beneficiaries");
+        log.trace("Entering create (single beneficiary)");
+        log.info("Received request to create project beneficiary");
         BeneficiaryBulkRequest bulkRequest = BeneficiaryBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectBeneficiaries(Collections.singletonList(request.getProjectBeneficiary())).build();
-        log.info(CREATING_BULK_REQUEST);
-        return create(bulkRequest, false);
+        log.debug(CREATING_BULK_REQUEST);
+        List<ProjectBeneficiary> result = create(bulkRequest, false);
+        log.trace("Exiting create (single beneficiary)");
+        return result;
     }
 
     public List<ProjectBeneficiary> create(BeneficiaryBulkRequest beneficiaryRequest, boolean isBulk) {
-        log.info("received request to create bulk project beneficiaries");
+        log.trace("Entering create (bulk beneficiaries)");
+        log.info("Received request to create bulk project beneficiaries");
         Tuple<List<ProjectBeneficiary>, Map<ProjectBeneficiary, ErrorDetails>> tuple = validate(validators,
                 isApplicableForCreate, beneficiaryRequest, isBulk);
         Map<ProjectBeneficiary, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectBeneficiary> validProjectBeneficiaries = tuple.getX();
+        log.debug("Validation completed - {} valid beneficiaries, {} errors", validProjectBeneficiaries.size(), errorDetailsMap.size());
 
         try {
             if (!validProjectBeneficiaries.isEmpty()) {
                 log.info(PROCESSING_VALID_ENTITIES, validProjectBeneficiaries.size());
+                log.debug("Enriching beneficiaries before save");
                 projectBeneficiaryEnrichmentService.create(validProjectBeneficiaries, beneficiaryRequest);
+                log.debug("Saving beneficiaries to repository");
                 projectBeneficiaryRepository.save(validProjectBeneficiaries,
                         projectConfiguration.getCreateProjectBeneficiaryTopic());
-                log.info("successfully created project beneficiaries");
+                log.info("Successfully created {} project beneficiaries", validProjectBeneficiaries.size());
+            } else {
+                log.warn("No valid beneficiaries to create after validation");
             }
         } catch (Exception exception) {
-            log.error("error occurred while creating project beneficiaries: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating project beneficiaries", exception);
             populateErrorDetails(beneficiaryRequest, errorDetailsMap, validProjectBeneficiaries,
                     exception, SET_PROJECT_BENEFICIARIES);
         }
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting create (bulk beneficiaries)");
         return validProjectBeneficiaries;
     }
 
     public List<ProjectBeneficiary> update(BeneficiaryRequest request) {
-        log.info("received request to update project beneficiary");
+        log.trace("Entering update (single beneficiary)");
+        log.info("Received request to update project beneficiary");
         BeneficiaryBulkRequest bulkRequest = BeneficiaryBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectBeneficiaries(Collections.singletonList(request.getProjectBeneficiary())).build();
-        log.info(CREATING_BULK_REQUEST);
-        return update(bulkRequest, false);
+        log.debug(CREATING_BULK_REQUEST);
+        List<ProjectBeneficiary> result = update(bulkRequest, false);
+        log.trace("Exiting update (single beneficiary)");
+        return result;
     }
 
     public List<ProjectBeneficiary> update(BeneficiaryBulkRequest beneficiaryRequest, boolean isBulk) {
-        log.info("received request to update bulk project beneficiary");
+        log.trace("Entering update (bulk beneficiaries)");
+        log.info("Received request to update bulk project beneficiaries");
         Tuple<List<ProjectBeneficiary>, Map<ProjectBeneficiary, ErrorDetails>> tuple = validate(validators,
                 isApplicableForUpdate, beneficiaryRequest, isBulk);
         Map<ProjectBeneficiary, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectBeneficiary> validProjectBeneficiaries = tuple.getX();
+        log.debug("Validation completed - {} valid beneficiaries, {} errors", validProjectBeneficiaries.size(), errorDetailsMap.size());
 
         try {
             if (!validProjectBeneficiaries.isEmpty()) {
                 log.info(PROCESSING_VALID_ENTITIES, validProjectBeneficiaries.size());
+                log.debug("Enriching beneficiaries before update");
                 projectBeneficiaryEnrichmentService.update(validProjectBeneficiaries, beneficiaryRequest);
+                log.debug("Saving updated beneficiaries to repository");
                 projectBeneficiaryRepository.save(validProjectBeneficiaries,
                         projectConfiguration.getUpdateProjectBeneficiaryTopic());
-                log.info("successfully updated bulk project beneficiaries");
+                log.info("Successfully updated {} project beneficiaries", validProjectBeneficiaries.size());
+            } else {
+                log.warn("No valid beneficiaries to update after validation");
             }
         } catch (Exception exception) {
-            log.error("error occurred while updating project beneficiaries", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while updating project beneficiaries", exception);
             populateErrorDetails(beneficiaryRequest, errorDetailsMap, validProjectBeneficiaries,
                     exception, SET_PROJECT_BENEFICIARIES);
         }
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting update (bulk beneficiaries)");
         return validProjectBeneficiaries;
     }
 
@@ -154,16 +172,18 @@ public class ProjectBeneficiaryService {
                                                      String tenantId,
                                                      Long lastChangedSince,
                                                      Boolean includeDeleted) throws Exception {
-        log.info("received request to search project beneficiaries");
+        log.trace("Entering search");
+        log.info("Received request to search project beneficiaries");
         String idFieldName = getIdFieldName(beneficiarySearchRequest.getProjectBeneficiary());
         if (isSearchByIdOnly(beneficiarySearchRequest.getProjectBeneficiary(), idFieldName)) {
-            log.info("searching project beneficiaries by id");
+            log.info("Searching project beneficiaries by ID");
             List<String> ids = (List<String>) ReflectionUtils.invokeMethod(getIdMethod(Collections
                             .singletonList(beneficiarySearchRequest.getProjectBeneficiary())),
                     beneficiarySearchRequest.getProjectBeneficiary());
-            log.info("fetching project beneficiaries with ids: {}", ids);
+            log.debug("Fetching project beneficiaries with {} IDs", ids != null ? ids.size() : 0);
 
             SearchResponse<ProjectBeneficiary> searchResponse = projectBeneficiaryRepository.findById(ids, idFieldName, includeDeleted);
+            log.debug("Found {} beneficiaries before filtering", searchResponse.getResponse() != null ? searchResponse.getResponse().size() : 0);
 
             List<ProjectBeneficiary> projectBeneficiaries = searchResponse.getResponse().stream()
                     .filter(lastChangedSince(lastChangedSince))
@@ -171,65 +191,84 @@ public class ProjectBeneficiaryService {
                     .filter(includeDeleted(includeDeleted))
                     .toList();
             searchResponse.setResponse(projectBeneficiaries);
-
+            log.info("Search by ID completed - found {} beneficiaries", projectBeneficiaries.size());
+            log.trace("Exiting search");
             return searchResponse;
         }
-        log.info("searching project beneficiaries using criteria");
-        return projectBeneficiaryRepository.find(beneficiarySearchRequest.getProjectBeneficiary(),
+        log.info("Searching project beneficiaries using criteria");
+        log.debug("Search parameters - limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
+        SearchResponse<ProjectBeneficiary> result = projectBeneficiaryRepository.find(beneficiarySearchRequest.getProjectBeneficiary(),
                 limit, offset, tenantId, lastChangedSince, includeDeleted);
+        log.info("Search by criteria completed - found {} beneficiaries", result.getResponse() != null ? result.getResponse().size() : 0);
+        log.trace("Exiting search");
+        return result;
     }
 
     public List<ProjectBeneficiary> delete(BeneficiaryRequest beneficiaryRequest) {
-        log.info("received request to delete a project beneficiary");
+        log.trace("Entering delete (single beneficiary)");
+        log.info("Received request to delete a project beneficiary");
         BeneficiaryBulkRequest bulkRequest = BeneficiaryBulkRequest.builder().requestInfo(beneficiaryRequest.getRequestInfo())
                 .projectBeneficiaries(Collections.singletonList(beneficiaryRequest.getProjectBeneficiary())).build();
-        log.info(CREATING_BULK_REQUEST);
-        return delete(bulkRequest, false);
+        log.debug(CREATING_BULK_REQUEST);
+        List<ProjectBeneficiary> result = delete(bulkRequest, false);
+        log.trace("Exiting delete (single beneficiary)");
+        return result;
     }
 
     public List<ProjectBeneficiary> delete(BeneficiaryBulkRequest beneficiaryRequest, boolean isBulk) {
+        log.trace("Entering delete (bulk beneficiaries)");
+        log.info("Received request to delete bulk project beneficiaries");
         Tuple<List<ProjectBeneficiary>, Map<ProjectBeneficiary, ErrorDetails>> tuple = validate(validators,
                 isApplicableForDelete, beneficiaryRequest, isBulk);
         Map<ProjectBeneficiary, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectBeneficiary> validProjectBeneficiaries = tuple.getX();
+        log.debug("Validation completed - {} valid beneficiaries, {} errors", validProjectBeneficiaries.size(), errorDetailsMap.size());
 
         try {
             if (!validProjectBeneficiaries.isEmpty()) {
                 log.info(PROCESSING_VALID_ENTITIES, validProjectBeneficiaries.size());
+                log.debug("Enriching beneficiaries before delete");
                 projectBeneficiaryEnrichmentService.delete(validProjectBeneficiaries, beneficiaryRequest);
+                log.debug("Saving deleted beneficiaries to repository");
                 projectBeneficiaryRepository.save(validProjectBeneficiaries,
                         projectConfiguration.getDeleteProjectBeneficiaryTopic());
-                log.info("successfully deleted entities");
+                log.info("Successfully deleted {} project beneficiaries", validProjectBeneficiaries.size());
+            } else {
+                log.warn("No valid beneficiaries to delete after validation");
             }
         } catch (Exception exception) {
-            log.error("error occurred while deleting entities: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while deleting project beneficiaries", exception);
             populateErrorDetails(beneficiaryRequest, errorDetailsMap, validProjectBeneficiaries,
                     exception, SET_PROJECT_BENEFICIARIES);
         }
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting delete (bulk beneficiaries)");
         return validProjectBeneficiaries;
     }
 
     public void putInCache(List<ProjectBeneficiary> projectBeneficiaries) {
-        log.info("putting {} project beneficiaries in cache", projectBeneficiaries.size());
+        log.trace("Entering putInCache for {} beneficiaries", projectBeneficiaries != null ? projectBeneficiaries.size() : 0);
+        log.info("Putting {} project beneficiaries in cache", projectBeneficiaries != null ? projectBeneficiaries.size() : 0);
         projectBeneficiaryRepository.putInCache(projectBeneficiaries);
-        log.info("successfully put project beneficiaries in cache");
+        log.info("Successfully put project beneficiaries in cache");
+        log.trace("Exiting putInCache");
     }
 
     private Tuple<List<ProjectBeneficiary>, Map<ProjectBeneficiary, ErrorDetails>> validate(List<Validator<BeneficiaryBulkRequest,
                                                                                                     ProjectBeneficiary>> validators,
                                                                                             Predicate<Validator<BeneficiaryBulkRequest,
                                                                                                     ProjectBeneficiary>> isApplicable, BeneficiaryBulkRequest request, boolean isBulk) {
-        log.info("validating request");
+        log.trace("Entering validate for {} beneficiaries", request.getProjectBeneficiaries() != null ? request.getProjectBeneficiaries().size() : 0);
+        log.debug("Validating request with {} validators", validators.size());
         Map<ProjectBeneficiary, ErrorDetails> errorDetailsMap = new HashMap<>();
         if (!errorDetailsMap.isEmpty() && !isBulk) {
-            log.error("validation error occurred. error details: {}", errorDetailsMap.values().toString());
+            log.error("Validation error occurred. Error details: {}", errorDetailsMap.values());
             throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());
         }
         List<ProjectBeneficiary> validProjectBeneficiaries = request.getProjectBeneficiaries().stream()
                 .filter(notHavingErrors()).toList();
-        log.info("validation successful, found valid project beneficiaries");
+        log.debug("Validation completed - {} valid beneficiaries out of {}", validProjectBeneficiaries.size(), request.getProjectBeneficiaries().size());
+        log.trace("Exiting validate");
         return new Tuple<>(validProjectBeneficiaries, errorDetailsMap);
     }
 }

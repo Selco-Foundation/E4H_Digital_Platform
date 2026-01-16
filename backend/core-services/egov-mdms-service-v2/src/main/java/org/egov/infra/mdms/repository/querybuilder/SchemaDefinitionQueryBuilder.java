@@ -6,10 +6,12 @@ import org.egov.infra.mdms.utils.QueryUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ObjectUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 
 @Component
+@Slf4j
 public class SchemaDefinitionQueryBuilder {
 
     @Autowired
@@ -28,9 +30,14 @@ public class SchemaDefinitionQueryBuilder {
      * @return
      */
     public String getSchemaSearchQuery(SchemaDefCriteria schemaDefCriteria, List<Object> preparedStmtList) {
+        log.trace("SchemaDefinitionQueryBuilder.getSchemaSearchQuery: method invoked");
+        String tenantId = schemaDefCriteria != null ? schemaDefCriteria.getTenantId() : "null";
+        log.debug("Building schema definition search query for tenant: {}", tenantId);
+        
         String query = buildQuery(schemaDefCriteria, preparedStmtList);
         query = QueryUtil.addOrderByClause(query, SEARCH_SCHEMA_DEF_ORDER_BY_CLAUSE);
         query = getPaginatedQuery(query, schemaDefCriteria, preparedStmtList);
+        log.debug("Schema definition search query built with {} parameters", preparedStmtList != null ? preparedStmtList.size() : 0);
         return query;
     }
 
@@ -41,33 +48,43 @@ public class SchemaDefinitionQueryBuilder {
      * @return
      */
     private String buildQuery(SchemaDefCriteria schemaDefCriteria, List<Object> preparedStmtList) {
+        log.trace("SchemaDefinitionQueryBuilder.buildQuery: method invoked");
         StringBuilder builder = new StringBuilder(SchemaDefinitionQueryBuilder.SEARCH_SCHEMA_DEF_QUERY);
 
+        int clauseCount = 0;
         if (!Objects.isNull(schemaDefCriteria.getTenantId())) {
             QueryUtil.addClauseIfRequired(builder, preparedStmtList);
             builder.append(" schema.tenantid = ? ");
             preparedStmtList.add(schemaDefCriteria.getTenantId());
+            clauseCount++;
         }
         if (!Objects.isNull(schemaDefCriteria.getCodes())) {
             QueryUtil.addClauseIfRequired(builder, preparedStmtList);
             builder.append(" schema.code IN ( ").append(QueryUtil.createQuery(schemaDefCriteria.getCodes().size())).append(" )");
             QueryUtil.addToPreparedStatement(preparedStmtList, new HashSet<>(schemaDefCriteria.getCodes()));
+            clauseCount++;
+            log.debug("Added schema code filter with {} codes", schemaDefCriteria.getCodes().size());
         }
 
+        log.debug("Query built with {} WHERE clauses", clauseCount);
         return builder.toString();
     }
 
     private String getPaginatedQuery(String query, SchemaDefCriteria schemaDefCriteria, List<Object> preparedStmtList) {
+        log.trace("SchemaDefinitionQueryBuilder.getPaginatedQuery: method invoked");
         StringBuilder paginatedQuery = new StringBuilder(query);
 
         // Append offset
+        Integer offset = ObjectUtils.isEmpty(schemaDefCriteria.getOffset()) ? config.getDefaultOffset() : schemaDefCriteria.getOffset();
         paginatedQuery.append(" OFFSET ? ");
-        preparedStmtList.add(ObjectUtils.isEmpty(schemaDefCriteria.getOffset()) ? config.getDefaultOffset() : schemaDefCriteria.getOffset());
+        preparedStmtList.add(offset);
 
         // Append limit
+        Integer limit = ObjectUtils.isEmpty(schemaDefCriteria.getLimit()) ? config.getDefaultLimit() : schemaDefCriteria.getLimit();
         paginatedQuery.append(" LIMIT ? ");
-        preparedStmtList.add(ObjectUtils.isEmpty(schemaDefCriteria.getLimit()) ? config.getDefaultLimit() : schemaDefCriteria.getLimit());
+        preparedStmtList.add(limit);
 
+        log.debug("Added pagination with offset: {}, limit: {}", offset, limit);
         return paginatedQuery.toString();
     }
 

@@ -33,8 +33,8 @@ public class StorageController {
                                       @RequestParam(value = "module", required = true) String module,
                                       @RequestParam(value = "tag", required = false) String tag,
                                       @RequestParam(value = "requestInfo", required = false) String requestInfo) {
-
-        log.info("Received upload request for jurisdiction: {}, module: {}, tag: {} with file count: {}",
+        log.trace("StorageController::storeFiles method invoked");
+        log.info("Received upload request for tenantId: {}, module: {}, tag: {} with file count: {}",
                 tenantId, module, tag, files.size());
 
         List<java.io.File> tempFiles = null;
@@ -61,9 +61,10 @@ public class StorageController {
                     .context(context)
                     .build();
 
-            log.info("Done creating master files: {}", storageResponse);
+            log.info("Master files created successfully, fileCount={}", storageResponse.getFiles() != null ? storageResponse.getFiles().size() : 0);
+            log.trace("Pushing storage response to Kafka topic: {}", configuration.getVideoProcessorTopic());
             producer.push(tenantId, configuration.getVideoProcessorTopic(),storageProcessingContext);
-            log.info("Pushed storage response to kafka topic.");
+            log.info("Storage response pushed to Kafka topic successfully");
 
             return storageResponse;
 
@@ -71,7 +72,7 @@ public class StorageController {
             log.error("ERROR_UPLOADING_TO_FILESTORE: {}", e.getMessage());
             throw new CustomException("ERROR_UPLOADING_TO_FILESTORE", e.getMessage());
         }finally {
-            log.info("deleting all temporary files ");
+            log.debug("Deleting {} temporary files", tempFiles != null ? tempFiles.size() : 0);
             storageUtil.deleteFiles(tempFiles);
         }
     }

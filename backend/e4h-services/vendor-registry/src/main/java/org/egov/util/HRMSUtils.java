@@ -32,6 +32,9 @@ public class HRMSUtils {
 
 
     public Map<String, String> getEmployeeDetailsByUuid(RequestInfo requestInfo, String tenantId, String uuid) {
+        log.trace("HRMSUtils::getEmployeeDetailsByUuid entry");
+        log.info("Fetching employee details from HRMS for UUID: {}, tenant: {}", uuid, tenantId);
+        
         StringBuilder url = getHRMSURIWithUUid(tenantId, uuid);
 
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
@@ -45,8 +48,9 @@ public class HRMSUtils {
         try {
             userNames = JsonPath.read(res, HRMS_USER_USERNAME_CODE);
             mobileNumbers = JsonPath.read(res, HRMS_USER_MOBILE_NO);
-
+            log.debug("Successfully parsed HRMS response for UUID: {}", uuid);
         } catch (Exception e) {
+            log.error("Failed to parse HRMS response for UUID: {}", uuid, e);
             throw new CustomException("PARSING_ERROR", "Failed to parse HRMS response");
         }
 

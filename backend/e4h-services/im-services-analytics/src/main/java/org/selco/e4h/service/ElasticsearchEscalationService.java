@@ -33,6 +33,8 @@ public class ElasticsearchEscalationService {
      * Update escalations for tickets using Elasticsearch bulk API
      */
     public void updateEscalationsForTickets(List<EscalationTicket> tickets, String escalationRecipientId, String escalationLevel) {
+        log.trace("Updating escalations for tickets, count: {}, escalationRecipientId: {}, escalationLevel: {}", 
+            tickets != null ? tickets.size() : 0, escalationRecipientId, escalationLevel);
         try {
             log.info("Updating escalations for {} tickets with escalation ID: {} and level: {}", tickets.size(), escalationRecipientId, escalationLevel);
             
@@ -43,9 +45,11 @@ public class ElasticsearchEscalationService {
             
             // Build bulk request
             String bulkRequest = buildBulkUpdateRequest(tickets, escalationRecipientId, escalationLevel);
+            log.debug("Built bulk update request, size: {} bytes", bulkRequest.length());
             
             // Send bulk request to Elasticsearch
             String url = getBaseUrl() + "/" + BULK_ENDPOINT;
+            log.debug("Sending bulk update request to: {}", url);
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.add("Authorization", indexerUtils.getESEncodedCredentials());
@@ -58,6 +62,7 @@ public class ElasticsearchEscalationService {
                 entity,
                 Map.class
             );
+            log.debug("Received response with status: {}", response.getStatusCode());
             
             if (response.getStatusCode().is2xxSuccessful()) {
                 log.info("Successfully updated escalations for {} tickets", tickets.size());
@@ -75,6 +80,7 @@ public class ElasticsearchEscalationService {
      * Build bulk update request for Elasticsearch
      */
     private String buildBulkUpdateRequest(List<EscalationTicket> tickets, String escalationRecipientId, String escalationLevel) {
+        log.trace("Building bulk update request for {} tickets", tickets.size());
         StringBuilder bulkRequest = new StringBuilder();
         long currentTime = System.currentTimeMillis();
         
@@ -124,8 +130,11 @@ public class ElasticsearchEscalationService {
      * Convert object to JSON string
      */
     private String convertToJson(Object obj) {
+        log.trace("Converting object to JSON");
         try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
+            String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
+            log.debug("Converted object to JSON, length: {}", json.length());
+            return json;
         } catch (Exception e) {
             log.error("Error converting object to JSON", e);
             return "{}";
@@ -136,11 +145,13 @@ public class ElasticsearchEscalationService {
      * Log bulk response for debugging
      */
     private void logBulkResponse(Map<String, Object> response) {
+        log.trace("Logging bulk response");
         try {
             if (response != null && response.containsKey("items")) {
                 List<Map<String, Object>> items = (List<Map<String, Object>>) response.get("items");
                 int successCount = 0;
                 int errorCount = 0;
+                log.debug("Processing {} items from bulk response", items.size());
                 
                 for (Map<String, Object> item : items) {
                     if (item.containsKey("update")) {
@@ -155,6 +166,8 @@ public class ElasticsearchEscalationService {
                 }
                 
                 log.info("Bulk update completed - Success: {}, Errors: {}", successCount, errorCount);
+            } else {
+                log.debug("Bulk response does not contain items or is null");
             }
         } catch (Exception e) {
             log.warn("Error parsing bulk response", e);

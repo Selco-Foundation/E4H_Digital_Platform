@@ -28,22 +28,28 @@ public class FFMpegServiceImpl implements FFMpegService {
 
     public String processQuality(
             ProcessingContext context, String inputPath, Path outputPath, VideoQualitySettings videoQuality) {
+        log.trace("Method invoked: processQuality, videoId: {}, quality: {}", context.getVideoId(), videoQuality.getLabel());
 
+        log.trace("Creating output directory for quality level");
         Path path = directoryUtil.createDirectory(String.format("%s/%s/hls/%s",
                 outputPath.toString(), context.getVideoId(), videoQuality.getLabel()));
+        log.debug("Output directory created: {}", path);
 
         String file = String.format("%s/playlist.m3u8", path);
+        log.trace("Generating FFmpeg command, isOriginal: {}", videoQuality.isOriginal());
         String command = videoQuality.isOriginal()
                 ? fFmpegCommandGenerator.getBaseCommand(inputPath, file)
                 : fFmpegCommandGenerator.getOptimizedCommand(inputPath,
                 "veryfast", videoQuality.getCrf(), videoQuality.getResolution(), videoQuality.getAudioBitRate(), file);
 
-        log.info("Executing FFmpeg command for {}: {}", videoQuality.getLabel(), command);
+        log.info("Executing FFmpeg command for quality: {}", videoQuality.getLabel());
+        log.debug("FFmpeg command: {}", command);
         ffMpegExecutor.executeCommand(command);
 
         String baseFileName = path.toString().split("output")[1];
+        log.debug("Base filename extracted: {}", baseFileName);
 
-        log.info("Successfully processed quality: {}", videoQuality.getLabel());
+        log.info("Successfully processed quality level: {} for videoId: {}", videoQuality.getLabel(), context.getVideoId());
 
         return baseFileName;
     }

@@ -34,15 +34,19 @@ public class ServiceRequestRepository {
     private final RestTemplate restTemplate;
 
     public Object fetchResult(StringBuilder uri, Object request) {
+        log.trace("Fetching result from URI: {}", uri);
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         Object response = null;
         try {
+            log.debug("Sending POST request to: {}", uri);
             response = restTemplate.postForObject(uri.toString(), request, Map.class);
+            log.debug("Received response from external service");
+            log.info("Successfully fetched result from external service");
         } catch (HttpClientErrorException e) {
-            log.error("External Service threw an Exception: ", e);
+            log.error("External service returned error, status: {}, message: {}", e.getStatusCode(), e.getMessage());
             throw new ServiceCallException(e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("Exception while fetching from searcher: ", e);
+            log.error("Exception while fetching from external service, URI: {}", uri, e);
         }
         return response;
     }
@@ -98,12 +102,14 @@ public class ServiceRequestRepository {
     }
 
     public ResponseEntity<Resource> fetchFile(String baseUrl, String tenantId, String fileStoreId) {
+        log.trace("Fetching file from file store, fileStoreId: {}, tenantId: {}", fileStoreId, tenantId);
         String url = UriComponentsBuilder.fromHttpUrl(baseUrl + "/id")
                 .queryParam("tenantId", tenantId)
                 .queryParam("fileStoreId", fileStoreId)
                 .toUriString();
 
-        log.info("fetching file from {} ", url);
+        log.info("Fetching file from file store, URL: {}", url);
+        log.debug("File store request parameters: tenantId={}, fileStoreId={}", tenantId, fileStoreId);
 
         return restTemplate.exchange(
                 url,

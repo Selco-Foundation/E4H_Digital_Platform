@@ -33,13 +33,17 @@ public class MDMSUtils {
     private final ActivityConfiguration config;
 
     public Object mDMSCall(RequestInfo request, String tenantId) {
+        log.trace("mDMSCall method invoked for tenantId: {}", tenantId);
+        log.info("Calling MDMS service for tenantId: {}", tenantId);
         RequestInfo requestInfo = request;
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId);
         Object result = null;
         try {
+            log.debug("Fetching MDMS data from URL: {}", getMdmsSearchUrl());
             result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
+            log.debug("Successfully retrieved MDMS data for tenantId: {}", tenantId);
         } catch (Exception e) {
-            log.error("error while calling mdms", ExceptionUtils.getStackTrace(e));
+            log.error("Error while calling MDMS service for tenantId: {}", tenantId, e);
             throw new CustomException("MDMS_ERROR", "error while calling mdms");
         }
         return result;

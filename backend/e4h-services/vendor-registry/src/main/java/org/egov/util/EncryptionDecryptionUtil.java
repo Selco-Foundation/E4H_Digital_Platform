@@ -38,33 +38,38 @@ public class EncryptionDecryptionUtil {
     }
 
     public <T> T encryptObject(Object objectToEncrypt, String stateLevelTenantId, String key, Class<T> classType) {
-        log.info("EncryptionDecryptionUtil::encryptObject");
+        log.trace("EncryptionDecryptionUtil::encryptObject entry");
         try {
             if (objectToEncrypt == null) {
+                log.debug("Object to encrypt is null, returning null");
                 return null;
             }
             T encryptedObject = encryptionService.encryptJson(objectToEncrypt, key, stateLevelTenantId, classType);
 
             if (encryptedObject == null) {
+                log.error("Encryption service returned null object");
                 throw new CustomException("ENCRYPTION_NULL_ERROR", "Null object found on performing encryption");
             }
+            log.debug("Object encrypted successfully");
             return encryptedObject;
         } catch (IOException | HttpClientErrorException | HttpServerErrorException | ResourceAccessException e) {
-            log.error("Error occurred while encrypting", e);
+            log.error("Error occurred while encrypting object", e);
             throw new CustomException("ENCRYPTION_ERROR", "Error occurred in encryption process");
         } catch (Exception e) {
-            log.error("Unknown Error occurred while encrypting", e);
+            log.error("Unknown error occurred while encrypting object", e);
             throw new CustomException("UNKNOWN_ERROR", "Unknown error occurred in encryption process");
         }
     }
 
     public <E, P> P decryptObject(Object objectToDecrypt, String key, Class<E> classType, RequestInfo requestInfo) {
-        log.info("EncryptionDecryptionUtil::decryptObject");
+        log.trace("EncryptionDecryptionUtil::decryptObject entry");
         try {
             boolean objectToDecryptNotList = false;
             if (objectToDecrypt == null) {
+                log.debug("Object to decrypt is null, returning null");
                 return null;
             } else if (requestInfo == null || requestInfo.getUserInfo() == null) {
+                log.debug("RequestInfo or UserInfo is null, creating default user info");
                 User userInfo = User.builder().uuid("no uuid").type("EMPLOYEE").build();
                 requestInfo = RequestInfo.builder().userInfo(userInfo).build();
             }
@@ -83,18 +88,20 @@ public class EncryptionDecryptionUtil {
 
             P decryptedObject = (P) encryptionService.decryptJson(requestInfo, objectToDecrypt, key, purpose, classType);
             if (decryptedObject == null) {
+                log.error("Decryption service returned null object");
                 throw new CustomException("DECRYPTION_NULL_ERROR", "Null object found on performing decryption");
             }
 
             if (objectToDecryptNotList) {
                 decryptedObject = (P) ((List<E>) decryptedObject).get(0);
             }
+            log.debug("Object decrypted successfully");
             return decryptedObject;
         } catch (IOException | HttpClientErrorException | HttpServerErrorException | ResourceAccessException e) {
-            log.error("Error occurred while decrypting", e);
+            log.error("Error occurred while decrypting object", e);
             throw new CustomException("DECRYPTION_SERVICE_ERROR", "Error occurred in decryption process");
         } catch (Exception e) {
-            log.error("Unknown Error occurred while decrypting", e);
+            log.error("Unknown error occurred while decrypting object", e);
             throw new CustomException("UNKNOWN_ERROR", "Unknown error occurred in decryption process");
         }
     }

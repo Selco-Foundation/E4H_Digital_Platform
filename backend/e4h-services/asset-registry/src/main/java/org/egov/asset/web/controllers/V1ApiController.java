@@ -44,17 +44,15 @@ public class V1ApiController {
 
     @RequestMapping(value = "/v1/asset/bulk/_create", method = RequestMethod.POST)
     public ResponseEntity<BulkAssetCreateResponse> bulkCreateAsset(@Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be added to the registry", required = true, schema = @Schema()) @Valid @RequestBody BulkAssetCreateRequest body) {
-        // TODO: Implement the actual bulk asset creation logic
+        log.trace("V1ApiController::bulkCreateAsset called");
+        log.warn("Bulk create asset endpoint called but not implemented");
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
             try {
-                // Create a proper response object instead of using a hardcoded JSON string
                 BulkAssetCreateResponse response = new BulkAssetCreateResponse();
-                // Set appropriate fields in the response
                 return new ResponseEntity<BulkAssetCreateResponse>(response, HttpStatus.NOT_IMPLEMENTED);
             } catch (Exception e) {
-                // Log the error
-                // log.error("Error creating bulk assets", e);
+                log.error("Error in bulk create asset | error={}", e.getMessage(), e);
                 return new ResponseEntity<BulkAssetCreateResponse>(HttpStatus.INTERNAL_SERVER_ERROR);
             }
         }
@@ -64,7 +62,8 @@ public class V1ApiController {
 
     @RequestMapping(value = "/v1/asset/amc/visit/_create", method = RequestMethod.POST)
     public ResponseEntity<Void> createAMCVisit(@Parameter(in = ParameterIn.DEFAULT, description = "AMC visit details to be logged", required = true, schema = @Schema()) @Valid @RequestBody AssetAMCVisitRequest body) {
-        String accept = request.getHeader("Accept");
+        log.trace("V1ApiController::createAMCVisit called");
+        log.warn("Create AMC visit endpoint called but not implemented");
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 
@@ -73,19 +72,33 @@ public class V1ApiController {
     public ResponseEntity<AssetCreateResponse> createAsset(
             @Parameter(in = ParameterIn.DEFAULT, description = "Asset data to be added to the registry", required = true, schema = @Schema())
             @Valid @RequestBody AssetCreateRequest assetCreateRequest) {
-        validator.validateCreateAsset(assetCreateRequest);
-        AssetCreateResponse asset = assetService.createAsset(assetCreateRequest);
-        return new ResponseEntity<>(asset, HttpStatus.CREATED);
+        log.trace("V1ApiController::createAsset called");
+        String tenantId = assetCreateRequest.getAssetDetail().getAsset().getTenantId();
+        log.info("Received create asset request | tenantId={}", tenantId);
+        try {
+            validator.validateCreateAsset(assetCreateRequest);
+            log.info("Asset validation successful | tenantId={}", tenantId);
+            AssetCreateResponse asset = assetService.createAsset(assetCreateRequest);
+            log.info("Asset created successfully | assetId={} tenantId={}", 
+                    asset.getAsset().getAssetId(), tenantId);
+            return new ResponseEntity<>(asset, HttpStatus.CREATED);
+        } catch (Exception e) {
+            log.error("Error creating asset | tenantId={} error={}", tenantId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @RequestMapping(value = "/v1/asset/amc/_create", method = RequestMethod.POST)
     public ResponseEntity<Void> createAssetAMC(@Parameter(in = ParameterIn.DEFAULT, description = "AMC contract details and visit history", required = true, schema = @Schema()) @Valid @RequestBody AssetAMCRequest body) {
-        String accept = request.getHeader("Accept");
+        log.trace("V1ApiController::createAssetAMC called");
+        log.warn("Create asset AMC endpoint called but not implemented");
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 
     @RequestMapping(value = "/v1/asset/amc/visit/_search", method = RequestMethod.GET)
     public ResponseEntity<Object> searchAMCVisits(@Parameter(in = ParameterIn.QUERY, description = "", schema = @Schema()) @Valid @RequestParam(value = "assetID", required = false) Object assetID, @Parameter(in = ParameterIn.QUERY, description = "", schema = @Schema()) @Valid @RequestParam(value = "facilityID", required = false) Object facilityID, @Parameter(in = ParameterIn.QUERY, description = "", schema = @Schema()) @Valid @RequestParam(value = "visitDate", required = false) Object visitDate) {
+        log.trace("V1ApiController::searchAMCVisits called");
+        log.warn("Search AMC visits endpoint called but not implemented");
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
             try {
@@ -100,6 +113,8 @@ public class V1ApiController {
 
     @RequestMapping(value = "/v1/asset/amc/_search", method = RequestMethod.GET)
     public ResponseEntity<Object> searchAssetAMC(@Parameter(in = ParameterIn.QUERY, description = "Filter AMC records for a specific asset", schema = @Schema()) @Valid @RequestParam(value = "assetID", required = false) Object assetID, @Parameter(in = ParameterIn.QUERY, description = "Filter by AMC contract number", schema = @Schema()) @Valid @RequestParam(value = "contractNumber", required = false) Object contractNumber) {
+        log.trace("V1ApiController::searchAssetAMC called");
+        log.warn("Search asset AMC endpoint called but not implemented");
         String accept = request.getHeader("Accept");
         if (accept != null && accept.contains("application/json")) {
             try {
@@ -120,24 +135,34 @@ public class V1ApiController {
             @RequestParam(value = "offset", defaultValue = "0") Integer offset,
             @Parameter(in = ParameterIn.QUERY, description = "Limit for pagination", schema = @Schema(type = "integer", format = "int32"))
             @RequestParam(value = "limit", defaultValue = "10") Integer limit) {
+        log.trace("V1ApiController::searchAssets called");
         AssetSearchCriteria criteria = searchRequest.getCriteria();
-        Asset asset = Asset.builder()
-                .tenantId(criteria.getTenantId())
-                .assetId(criteria.getAssetID())
-                .wfStatus(criteria.getWfStatus())
-                .facilityID(criteria.getFacilityID())
-                .activityFacilityID(criteria.getActivityFacilityID())
-                .serialNumber(criteria.getSerialNumber())
-                .modelNumber(criteria.getModelNumber())
-                .brandID(criteria.getBrandID())
-                .build();
-        List<Asset> searchResponse = assetService.fetchAssetsWithDocuments(asset,limit, offset);
-        return new ResponseEntity<>(searchResponse, HttpStatus.OK);
+        String tenantId = criteria.getTenantId();
+        log.info("Received search assets request | tenantId={} limit={} offset={}", tenantId, limit, offset);
+        try {
+            Asset asset = Asset.builder()
+                    .tenantId(criteria.getTenantId())
+                    .assetId(criteria.getAssetID())
+                    .wfStatus(criteria.getWfStatus())
+                    .facilityID(criteria.getFacilityID())
+                    .activityFacilityID(criteria.getActivityFacilityID())
+                    .serialNumber(criteria.getSerialNumber())
+                    .modelNumber(criteria.getModelNumber())
+                    .brandID(criteria.getBrandID())
+                    .build();
+            List<Asset> searchResponse = assetService.fetchAssetsWithDocuments(asset, limit, offset);
+            log.info("Search assets completed | tenantId={} resultsCount={}", tenantId, searchResponse.size());
+            return new ResponseEntity<>(searchResponse, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error searching assets | tenantId={} error={}", tenantId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @RequestMapping(value = "/v1/asset/amc/visit/{visitID}/_update", method = RequestMethod.POST)
     public ResponseEntity<Void> updateAMCVisit(@Parameter(in = ParameterIn.DEFAULT, description = "Updated AMC visit information", required = true, schema = @Schema()) @Valid @RequestBody AssetAMCVisitRequest body, @Parameter(in = ParameterIn.PATH, description = "Unique identifier of the AMC visit record", required = true, schema = @Schema()) @PathVariable("visitID") Object visitID) {
-        String accept = request.getHeader("Accept");
+        log.trace("V1ApiController::updateAMCVisit called");
+        log.warn("Update AMC visit endpoint called but not implemented | visitID={}", visitID);
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 
@@ -146,23 +171,33 @@ public class V1ApiController {
         @Valid @RequestBody AssetCreateRequest body,
         @Parameter(in = ParameterIn.QUERY, description = "Unique identifier of the asset", required = true, schema = @Schema())
         @RequestParam("assetID") String assetID) {
-        validator.validateAsset(assetID, body);
-        Asset updatedAsset = assetService.updateAsset(assetID, body);
-        AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
-        response.setAsset(updatedAsset);
-        return new ResponseEntity<>(response, HttpStatus.OK);
+        log.trace("V1ApiController::updateAsset called");
+        log.info("Received update asset request | assetID={}", assetID);
+        try {
+            validator.validateAsset(assetID, body);
+            log.info("Asset validation successful | assetID={}", assetID);
+            Asset updatedAsset = assetService.updateAsset(assetID, body);
+            AssetCreateUpdateResponse response = new AssetCreateUpdateResponse();
+            response.setAsset(updatedAsset);
+            log.info("Asset updated successfully | assetID={}", assetID);
+            return new ResponseEntity<>(response, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error updating asset | assetID={} error={}", assetID, e.getMessage(), e);
+            throw e;
+        }
     }
 
     @RequestMapping(value = "/v1/asset/amc/_update", method = RequestMethod.POST)
     public ResponseEntity<Void> updateAssetAMC(@Parameter(in = ParameterIn.DEFAULT, description = "Updated AMC contract or visit information", required = true, schema = @Schema()) @Valid @RequestBody AssetAMCRequest body, @Parameter(in = ParameterIn.PATH, description = "System-generated unique identifier for the AMC", required = true, schema = @Schema()) @PathVariable("amcId") Object amcId) {
-        String accept = request.getHeader("Accept");
+        log.trace("V1ApiController::updateAssetAMC called");
+        log.warn("Update asset AMC endpoint called but not implemented | amcId={}", amcId);
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 
     @RequestMapping(value = "/v1/asset/workflow/{assetID}/_update", method = RequestMethod.POST)
     public ResponseEntity<Void> updateAssetWorkflow(@Parameter(in = ParameterIn.DEFAULT, description = "Workflow status update for an asset", required = true, schema = @Schema()) @Valid @RequestBody AssetWorkflowRequest body, @Parameter(in = ParameterIn.PATH, description = "System-generated unique identifier for the asset", required = true, schema = @Schema()) @PathVariable("assetID") Object assetID) {
-        // TODO: Implement the actual asset workflow update logic
-        String accept = request.getHeader("Accept");
+        log.trace("V1ApiController::updateAssetWorkflow called");
+        log.warn("Update asset workflow endpoint called but not implemented | assetID={}", assetID);
         return new ResponseEntity<Void>(HttpStatus.NOT_IMPLEMENTED);
     }
 

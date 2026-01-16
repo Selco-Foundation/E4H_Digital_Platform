@@ -46,11 +46,18 @@ public class TransitionService {
      * the Action object for the given action
      */
     public List<ProcessStateAndAction> getProcessStateAndActions(List<ProcessInstance> processInstances,Boolean isTransitionCall){
-        List<ProcessStateAndAction> processStateAndActions = new LinkedList<>();
+        log.trace("Entering getProcessStateAndActions method");
+        int processInstanceCount = processInstances != null ? processInstances.size() : 0;
+        log.info("Creating process state and actions for {} process instance(s), isTransitionCall: {}", 
+                processInstanceCount, isTransitionCall);
 
         BusinessService businessService = getBusinessService(processInstances);
+        log.debug("Retrieved business service: {}", businessService != null ? businessService.getBusiness() : null);
         Map<String,ProcessInstance> idToProcessInstanceFromDbMap = prepareProcessStateAndAction(processInstances,businessService);
         List<String> allowedRoles = workflowUtil.rolesAllowedInService(businessService);
+        log.debug("Retrieved {} process instance(s) from DB, {} allowed role(s)", 
+                idToProcessInstanceFromDbMap.size(), allowedRoles != null ? allowedRoles.size() : 0);
+        
         for(ProcessInstance processInstance: processInstances){
 
             ProcessStateAndAction processStateAndAction = new ProcessStateAndAction();
@@ -72,6 +79,7 @@ public class TransitionService {
 
 
             if(currentState==null){
+                log.debug("Current state is null for businessId: {}, searching for start state", processInstance.getBusinessId());
                 for (State state : businessService.getStates()) {
                     if(StringUtils.isEmpty(state.getState())) {
                         processStateAndAction.setCurrentState(state);
@@ -79,6 +87,7 @@ public class TransitionService {
                     }
                 }
                 if (processStateAndAction.getCurrentState() == null) {
+                    log.error("No start state found in business service config for businessId: {}", processInstance.getBusinessId());
                     throw new CustomException("START_STATE_NOT_FOUND", "No start state found in business service config");
                 }
             }
@@ -97,14 +106,19 @@ public class TransitionService {
 
 
             if(isTransitionCall){
-                if(processStateAndAction.getAction()==null)
-                    throw new CustomException("INVALID ACTION","Action "+processStateAndAction.getProcessInstanceFromRequest().getAction()
-                            + " not found in config for the businessId: "
-                            +processStateAndAction.getProcessInstanceFromRequest().getBusinessId());
+                if(processStateAndAction.getAction()==null) {
+                    String action = processStateAndAction.getProcessInstanceFromRequest().getAction();
+                    String businessId = processStateAndAction.getProcessInstanceFromRequest().getBusinessId();
+                    log.error("Invalid action: {} not found in config for businessId: {}", action, businessId);
+                    throw new CustomException("INVALID ACTION","Action "+action
+                            + " not found in config for the businessId: " + businessId);
+                }
 
                 for(State state : businessService.getStates()){
                     if(state.getUuid().equalsIgnoreCase(processStateAndAction.getAction().getNextState())){
                         processStateAndAction.setResultantState(state);
+                        log.debug("Set resultant state for businessId: {}, action: {}", 
+                                processInstance.getBusinessId(), processInstance.getAction());
                         break;
                     }
                 }
@@ -114,7 +128,8 @@ public class TransitionService {
 
         }
 
-
+        log.info("Successfully created {} process state and action(s)", processStateAndActions.size());
+        log.trace("Exiting getProcessStateAndActions method");
         return processStateAndActions;
     }
 
@@ -131,6 +146,7 @@ public class TransitionService {
      * @param processInstances The list of ProcessInstance to be created
      */
     private Map<String,ProcessInstance> prepareProcessStateAndAction(List<ProcessInstance> processInstances,BusinessService businessService) {
+        log.trace("Entering prepareProcessStateAndAction method");
 
         /*
          * preparing the criteria to search the process instances from DB
@@ -147,22 +163,28 @@ public class TransitionService {
          * object
          */
         List<ProcessInstance> processInstancesFromDB = repository.getProcessInstances(criteria);
+        log.debug("Retrieved {} process instance(s) from DB for business IDs", processInstancesFromDB.size());
 
         Map<String, ProcessInstance> businessStateMap = new LinkedHashMap<>();
         for(ProcessInstance processInstance : processInstancesFromDB){
             businessStateMap.put(processInstance.getBusinessId(), processInstance);
         }
 
+        log.trace("Exiting prepareProcessStateAndAction method");
         return businessStateMap;
     }
 
 
 
     private BusinessService getBusinessService(List<ProcessInstance> processInstances){
+        log.trace("Entering getBusinessService method");
         ProcessInstanceSearchCriteria pInsSearchCriteria = new ProcessInstanceSearchCriteria();
         String tenantId = processInstances.get(0).getTenantId();
+        String businessId = processInstances.get(0).getBusinessId();
+        log.debug("Fetching business service for tenantId: {}, businessId: {}", tenantId, businessId);
+        
         pInsSearchCriteria.setTenantId(tenantId);
-        pInsSearchCriteria.setBusinessIds(Collections.singletonList(processInstances.get(0).getBusinessId()));
+        pInsSearchCriteria.setBusinessIds(Collections.singletonList(businessId));
         List<ProcessInstance> fetchedProcessInstances = repository.getProcessInstances(pInsSearchCriteria);
         
         BusinessServiceSearchCriteria criteria = new BusinessServiceSearchCriteria();
@@ -170,16 +192,23 @@ public class TransitionService {
         if (fetchedProcessInstances.size()>0) {
             businessService = fetchedProcessInstances.get(0).getBusinessService();
             processInstances.get(0).setBusinessService(businessService);
+            log.debug("Updated business service from fetched process instance: {}", businessService);
         }
         criteria.setTenantId(tenantId);
         criteria.setBusinessServices(Collections.singletonList(businessService));
         List<BusinessService> businessServices = businessServiceRepository.getBusinessServices(criteria);
-        if(CollectionUtils.isEmpty(businessServices))
+        if(CollectionUtils.isEmpty(businessServices)) {
+            log.error("No business service found for businessService: {} and tenantId: {}", businessService, tenantId);
             throw new CustomException("BUSINESSSERVICE ERROR","No bussinessService object found for businessSerice: "+
                     businessService + " and tenantId: "+tenantId);
-        if(businessServices.size()!=1)
+        }
+        if(businessServices.size()!=1) {
+            log.error("Multiple business services found for businessService: {} and tenantId: {}, count: {}", 
+                    businessService, tenantId, businessServices.size());
             throw new CustomException("BUSINESSSERVICE ERROR","Multiple bussinessService object found for businessSerice: "+
                     businessService + " and tenantId: "+tenantId);
+        }
+        log.trace("Exiting getBusinessService method");
         return businessServices.get(0);
     }
 }

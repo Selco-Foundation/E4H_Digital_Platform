@@ -42,6 +42,7 @@ abstract public class BaseSMSService implements SMSService, SMSBodyBuilder {
 
     @PostConstruct
     public void init() {
+        log.trace("Initializing BaseSMSService message converters");
         List<HttpMessageConverter<?>> converters = restTemplate.getMessageConverters();
         converters.remove(converters.stream().filter(c -> c.getClass().equals(MappingJackson2HttpMessageConverter.class)).findFirst().get());
         converters.add(new MappingJackson2HttpMessageConverter() {
@@ -54,69 +55,97 @@ abstract public class BaseSMSService implements SMSService, SMSBodyBuilder {
                 super.writeInternal(object, type, outputMessage);
             }
         });
+        log.debug("BaseSMSService message converters initialized");
     }
 
     @Override
     public void sendSMS(Sms sms) {
+        log.trace("sendSMS method invoked");
+        log.info("Processing SMS send request for mobile number: {}", sms.getMobileNumber() != null ? sms.getMobileNumber().substring(0, Math.min(3, sms.getMobileNumber().length())) + "****" : "null");
+        
         if (!sms.isValid()) {
-            log.error(String.format("Sms %s is not valid", sms));
+            log.error("SMS validation failed - mobile number or message is empty");
             return;
         }
 
-        if (smsProperties.isNumberBlacklisted(sms.getMobileNumber())) {
-            log.error(String.format("Sms to %s is blacklisted", sms.getMobileNumber()));
+        String mobileNumber = sms.getMobileNumber();
+        if (smsProperties.isNumberBlacklisted(mobileNumber)) {
+            log.warn("SMS request rejected - mobile number is blacklisted");
             return;
         }
 
-        if (!smsProperties.isNumberWhitelisted(sms.getMobileNumber())) {
-            log.error(String.format("Sms to %s is not in whitelist", sms.getMobileNumber()));
+        if (!smsProperties.isNumberWhitelisted(mobileNumber)) {
+            log.warn("SMS request rejected - mobile number is not in whitelist");
             return;
         }
 
+        log.debug("SMS validation passed, proceeding to submit to external service");
         submitToExternalSmsService(sms);
+        log.info("SMS send request processed successfully");
     }
 
     protected abstract void submitToExternalSmsService(Sms sms);
 
     protected <T> ResponseEntity<T> executeAPI(URI uri, HttpMethod method, HttpEntity<?> requestEntity, Class<T> type) {
+        log.trace("executeAPI method invoked for URI: {}", uri);
+        log.info("Executing {} request to SMS provider", method);
+        
         ResponseEntity<T> res = (ResponseEntity<T>) restTemplate.exchange(uri, method, requestEntity, String.class);
-        String responseString = res.getBody().toString();
+        int statusCode = res.getStatusCodeValue();
+        log.debug("Received response from SMS provider with status code: {}", statusCode);
+        
         if (!isResponseValidated(res)) {
-            log.error("Response from API - " + responseString);
+            log.error("SMS provider response validation failed - response does not contain expected content");
             throw new RuntimeException(SMS_RESPONSE_NOT_SUCCESSFUL);
         }
 
         if (smsProperties.getSmsErrorCodes().size() > 0 && isResponseCodeInKnownErrorCodeList(res)) {
+            log.error("SMS provider returned known error code: {}", statusCode);
             throw new RuntimeException(SMS_RESPONSE_NOT_SUCCESSFUL);
         }
 
         if (smsProperties.getSmsSuccessCodes().size() > 0 && !isResponseCodeInKnownSuccessCodeList(res)) {
+            log.warn("SMS provider response code {} not in known success codes list", statusCode);
             throw new RuntimeException(SMS_RESPONSE_NOT_SUCCESSFUL);
         }
 
+        log.info("SMS provider API call completed successfully");
         return res;
     }
 
     protected boolean isResponseValidated(ResponseEntity<?> response) {
+        log.trace("isResponseValidated method invoked");
         String responseString = response.getBody().toString();
         if (smsProperties.isVerifyResponse() && !responseString.contains(smsProperties.getVerifyResponseContains())) {
+            log.debug("Response validation failed - expected content not found");
             return false;
         }
+        log.debug("Response validation passed");
         return true;
     }
 
     protected boolean isResponseCodeInKnownErrorCodeList(ResponseEntity<?> response) {
+        log.trace("isResponseCodeInKnownErrorCodeList method invoked");
         final String responseCode = Integer.toString(response.getStatusCodeValue());
-        return smsProperties.getSmsErrorCodes().stream().anyMatch(errorCode -> errorCode.equals(responseCode));
+        boolean isErrorCode = smsProperties.getSmsErrorCodes().stream().anyMatch(errorCode -> errorCode.equals(responseCode));
+        log.debug("Response code {} is in error codes list: {}", responseCode, isErrorCode);
+        return isErrorCode;
     }
 
     protected boolean isResponseCodeInKnownSuccessCodeList(ResponseEntity<?> response) {
+        log.trace("isResponseCodeInKnownSuccessCodeList method invoked");
         final String responseCode = Integer.toString(response.getStatusCodeValue());
-        return smsProperties.getSmsSuccessCodes().stream().anyMatch(successCode -> successCode.equals(responseCode));
+        boolean isSuccessCode = smsProperties.getSmsSuccessCodes().stream().anyMatch(successCode -> successCode.equals(responseCode));
+        log.debug("Response code {} is in success codes list: {}", responseCode, isSuccessCode);
+        return isSuccessCode;
     }
 
     public MultiValueMap<String, String> getSmsRequestBody(Sms sms) {
+        log.trace("getSmsRequestBody method invoked");
         MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+        int configMapSize = smsProperties.getConfigMap().keySet().size();
+        log.debug("Building SMS request body with {} configuration entries", configMapSize);
+        
         for (String key : smsProperties.getConfigMap().keySet()) {
             String value = smsProperties.getConfigMap().get(key);
             if (value.startsWith("$")) {
@@ -126,15 +155,19 @@ abstract public class BaseSMSService implements SMSService, SMSBodyBuilder {
                         break;
                     case "$password":
                         map.add(key, smsProperties.getPassword());
+                        log.debug("Password placeholder resolved for key: {}", key);
                         break;
                     case "$senderid":
                         map.add(key, smsProperties.getSenderid());
                         break;
                     case "$mobileno":
-                        map.add(key, smsProperties.getMobileNumberPrefix() + sms.getMobileNumber());
+                        String mobileNumber = smsProperties.getMobileNumberPrefix() + sms.getMobileNumber();
+                        map.add(key, mobileNumber);
+                        log.debug("Mobile number placeholder resolved");
                         break;
                     case "$message":
                         map.add(key, sms.getMessage());
+                        log.debug("Message placeholder resolved, message length: {}", sms.getMessage() != null ? sms.getMessage().length() : 0);
                         break;
                     default:
                         if (env.containsProperty(value.substring(1))) {
@@ -164,41 +197,50 @@ abstract public class BaseSMSService implements SMSService, SMSBodyBuilder {
 
         }
 
+        log.debug("SMS request body built with {} entries", map.size());
         return map;
     }
 
     protected HttpEntity<MultiValueMap<String, String>> getRequest(Sms sms) {
+        log.trace("getRequest method invoked");
         final MultiValueMap<String, String> requestBody = getSmsRequestBody(sms);
-        return new HttpEntity<>(requestBody, getHttpHeaders());
+        HttpHeaders headers = getHttpHeaders();
+        log.debug("HTTP request entity created with {} headers", headers.size());
+        return new HttpEntity<>(requestBody, headers);
     }
 
     protected HttpHeaders getHttpHeaders() {
+        log.trace("getHttpHeaders method invoked");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.valueOf(smsProperties.getContentType()));
         headers.setBasicAuth(smsProperties.getUsername(), smsProperties.getPassword());
+        log.debug("HTTP headers created with content type: {}", smsProperties.getContentType());
         return headers;
     }
 
     @PostConstruct
     protected void setupSSL() {
+        log.trace("setupSSL method invoked");
         if (!smsProperties.isVerifySSL()) {
-
+            log.warn("SSL verification is disabled - using non-verifying SSL context");
             SSLContext ctx = null;
             try {
-
                 ctx =  SSLContext.getInstance("SSL");
                 ctx.init(null, null, SecureRandom.getInstance("SHA1PRNG"));
-
+                log.debug("SSL context initialized without verification");
             } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
+                log.error("Failed to initialize SSL context - NoSuchAlgorithmException", e);
             } catch (KeyManagementException e) {
-                e.printStackTrace();
+                log.error("Failed to initialize SSL context - KeyManagementException", e);
             }
             SSLConnectionSocketFactory csf = new SSLConnectionSocketFactory(ctx, new NoopHostnameVerifier());
             CloseableHttpClient httpClient = HttpClients.custom().setSSLSocketFactory(csf).build();
             HttpComponentsClientHttpRequestFactory requestFactory = new HttpComponentsClientHttpRequestFactory();
             requestFactory.setHttpClient(httpClient);
             restTemplate.setRequestFactory(requestFactory);
+            log.info("SSL setup completed with verification disabled");
+        } else {
+            log.debug("SSL verification is enabled - using default SSL context");
         }
     }
 

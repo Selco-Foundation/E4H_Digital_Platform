@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import lombok.extern.slf4j.Slf4j;
 import org.egov.id.config.PropertiesManager;
 import org.egov.id.model.Error;
 import org.egov.id.model.ErrorRes;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 	
 	@Autowired
@@ -39,11 +41,15 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	@ResponseStatus(HttpStatus.BAD_REQUEST)
 	public ErrorRes processValidationError(MethodArgumentNotValidException ex) {
+		log.trace("processValidationError method invoked");
+		
 		Map<String, String> errors = new HashMap<String, String>();
 		for (final FieldError error : ex.getBindingResult().getFieldErrors()) {
 			errors.put(error.getField(), error.getDefaultMessage());
 		}
 
+		log.warn("Validation error occurred with {} field errors: {}", errors.size(), errors.keySet());
+		
 		Error error = new Error(HttpStatus.BAD_REQUEST.toString(), propertiesManager.getInvalidInput(), null, errors);
 		List<Error> errorList = new ArrayList<Error>();
 		errorList.add(error);
@@ -61,7 +67,10 @@ public class GlobalExceptionHandler {
 	 */
 	@ExceptionHandler(value = { Exception.class })
 	public ErrorRes unknownException(Exception ex, WebRequest req) {
+		log.trace("unknownException method invoked");
+		
 		if (ex instanceof InvalidIDFormatException) {
+			log.error("InvalidIDFormatException occurred: {}", ((InvalidIDFormatException) ex).getCustomMsg(), ex);
 			Error error = new Error(HttpStatus.BAD_REQUEST.toString(), ((InvalidIDFormatException) ex).getCustomMsg(),
 					null, new HashMap<String, String>());
 			ResponseInfo responseInfo = new ResponseInfo();
@@ -74,6 +83,7 @@ public class GlobalExceptionHandler {
 			errorList.add(error);
 			return new ErrorRes(responseInfo, errorList);
 		} else if (ex instanceof IDSeqOverflowException) {
+			log.error("IDSeqOverflowException occurred: {}", ((IDSeqOverflowException) ex).getCustomMsg(), ex);
 			Error error = new Error(HttpStatus.BAD_REQUEST.toString(), ((IDSeqOverflowException) ex).getCustomMsg(),
 					null, new HashMap<String, String>());
 			ResponseInfo responseInfo = new ResponseInfo();
@@ -86,6 +96,7 @@ public class GlobalExceptionHandler {
 			errorList.add(error);
 			return new ErrorRes(responseInfo, errorList);
 		} else if (ex instanceof IDSeqNotFoundException) {
+			log.error("IDSeqNotFoundException occurred: {}", ((IDSeqNotFoundException) ex).getCustomMsg(), ex);
 			Error error = new Error(HttpStatus.BAD_REQUEST.toString(), ((IDSeqNotFoundException) ex).getCustomMsg(),
 					null, new HashMap<String, String>());
 			ResponseInfo responseInfo = new ResponseInfo();
@@ -98,6 +109,7 @@ public class GlobalExceptionHandler {
 			errorList.add(error);
 			return new ErrorRes(responseInfo, errorList);
 		} else {
+			log.error("Unhandled exception occurred: {}", ex.getMessage(), ex);
 			Error error = new Error(HttpStatus.BAD_REQUEST.toString(), ex.getMessage(), null,
 					new HashMap<String, String>());
 			ResponseInfo responseInfo = new ResponseInfo();
