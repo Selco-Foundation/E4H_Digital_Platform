@@ -123,7 +123,7 @@ const fetchBoundaryTableRows = async (boundaryType = "Block", limit = 10, offset
   };
 };
 
-const useBoundary = (boundaryType, codes, limit, offset, queryOptions = {}) => {
+const useNormalizedBoundary = (boundaryType, codes, limit, offset, queryOptions = {}) => {
   const queryClient = useQueryClient();
   const isTableMode = typeof limit === "number" && typeof offset === "number";
 
@@ -161,4 +161,4 @@ const useBoundary = (boundaryType, codes, limit, offset, queryOptions = {}) => {
   };
 };
 
-export default useBoundary;
+export default useNormalizedBoundary;

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Loader, Table, Button } from "@egovernments/digit-ui-react-components";
 import { useHistory, useLocation } from "react-router-dom";
 
-import useBoundary from "../../hooks/useBoundary";
+import useNormalizedBoundary from "../../hooks/useNormalizedBoundary";
 import Filter from "../../components/BoundaryTable/Filter";
 
 const ROOT_BOUNDARY_TYPE = "Block";
@@ -70,7 +70,7 @@ const BoundaryTable = () => {
     blockCodes: (boundaryFilter.block || []).map((b) => b.code),
   };
 
-  const { isLoading, data } = useBoundary(ROOT_BOUNDARY_TYPE, undefined, pageSize, pageOffset, {
+  const { isLoading, data } = useNormalizedBoundary(ROOT_BOUNDARY_TYPE, undefined, pageSize, pageOffset, {
     _tableFilter: tableFilter,
   });
 
