@@ -7,48 +7,48 @@ serviceMaps:
       isTransaction: true
       queryMaps:
         - query: INSERT INTO boundary (id, tenantId, code, geometry, additionalDetails, createdBy, lastModifiedBy, createdTime, lastModifiedTime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
-          basePath: $.BoundaryTable.*
+          basePath: $.Boundary.*
           jsonMaps:
-            - jsonPath: $.BoundaryTable.*.id
+            - jsonPath: $.Boundary.*.id
 
-            - jsonPath: $.BoundaryTable.*.tenantId
+            - jsonPath: $.Boundary.*.tenantId
 
-            - jsonPath: $.BoundaryTable.*.code
+            - jsonPath: $.Boundary.*.code
 
-            - jsonPath: $.BoundaryTable.*.geometry
+            - jsonPath: $.Boundary.*.geometry
               type: JSON
               dbType: JSONB
 
-            - jsonPath: $.BoundaryTable.*.additionalDetails
+            - jsonPath: $.Boundary.*.additionalDetails
               type: JSON
               dbType: JSONB
 
-            - jsonPath: $.BoundaryTable.*.auditDetails.createdBy
+            - jsonPath: $.Boundary.*.auditDetails.createdBy
 
-            - jsonPath: $.BoundaryTable.*.auditDetails.lastModifiedBy
+            - jsonPath: $.Boundary.*.auditDetails.lastModifiedBy
 
-            - jsonPath: $.BoundaryTable.*.auditDetails.createdTime
+            - jsonPath: $.Boundary.*.auditDetails.createdTime
 
-            - jsonPath: $.BoundaryTable.*.auditDetails.lastModifiedTime
+            - jsonPath: $.Boundary.*.auditDetails.lastModifiedTime
     - version: 1.0
       description: Persists the boundary entity data
       fromTopic: update-boundary-entity
       isTransaction: true
       queryMaps:
         - query: UPDATE boundary SET geometry = ? , lastModifiedBy = ? , lastModifiedTime = ? WHERE code = ? AND tenantId = ?;
-          basePath: $.BoundaryTable.*
+          basePath: $.Boundary.*
           jsonMaps:
-            - jsonPath: $.BoundaryTable.*.geometry
+            - jsonPath: $.Boundary.*.geometry
               type: JSON
               dbType: JSONB
 
-            - jsonPath: $.BoundaryTable.*.auditDetails.lastModifiedBy
+            - jsonPath: $.Boundary.*.auditDetails.lastModifiedBy
 
-            - jsonPath: $.BoundaryTable.*.auditDetails.lastModifiedTime
+            - jsonPath: $.Boundary.*.auditDetails.lastModifiedTime
 
-            - jsonPath: $.BoundaryTable.*.code
+            - jsonPath: $.Boundary.*.code
 
-            - jsonPath: $.BoundaryTable.*.tenantId
+            - jsonPath: $.Boundary.*.tenantId
     - version: 1.0
       description: Persists the boundary hierarchy definition data
       fromTopic: save-boundary-hierarchy-definition

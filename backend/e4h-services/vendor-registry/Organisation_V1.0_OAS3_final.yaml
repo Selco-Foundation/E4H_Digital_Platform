@@ -546,7 +546,7 @@ components:
           type: integer
           format: int64
     Boundary:
-      title: BoundaryTable
+      title: Boundary
       type: object
       properties:
         code:
@@ -567,7 +567,7 @@ components:
         children:
           type: array
           items:
-            $ref: '#/components/schemas/BoundaryTable'
+            $ref: '#/components/schemas/Boundary'
         materializedPath:
           description: materialized path of the boundary - this would be of the format tenantid.[code] from parentt till teh current boundary
           readOnly: true
