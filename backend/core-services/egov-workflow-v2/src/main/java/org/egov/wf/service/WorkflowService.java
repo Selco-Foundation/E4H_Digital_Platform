@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.egov.tracer.model.CustomException;
 import org.springframework.util.ObjectUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import static java.util.Objects.isNull;
 
@@ -20,6 +21,7 @@ import java.util.*;
 
 
 @Service
+@Slf4j
 public class WorkflowService {
 
     private WorkflowConfig config;
@@ -67,12 +69,23 @@ public class WorkflowService {
      * @return The list of processInstanceFromRequest objects after taking action
      */
     public List<ProcessInstance> transition(ProcessInstanceRequest request){
+        log.trace("Entering transition method");
         RequestInfo requestInfo = request.getRequestInfo();
+        int processInstanceCount = request.getProcessInstances() != null ? request.getProcessInstances().size() : 0;
+        log.info("Processing workflow transition request for {} process instance(s)", processInstanceCount);
 
         List<ProcessStateAndAction> processStateAndActions = transitionService.getProcessStateAndActions(request.getProcessInstances(),true);
+        log.debug("Retrieved processStateAndActions: {}", processStateAndActions.size());
+        
         enrichmentService.enrichProcessRequest(requestInfo,processStateAndActions);
+        log.debug("Enriched process request with user and SLA information");
+        
         workflowValidator.validateRequest(requestInfo,processStateAndActions);
+        log.debug("Validated transition request");
+        
         statusUpdateService.updateStatus(requestInfo,processStateAndActions);
+        log.info("Successfully completed workflow transition for {} process instance(s)", processInstanceCount);
+        log.trace("Exiting transition method");
         return request.getProcessInstances();
     }
 
@@ -84,41 +97,74 @@ public class WorkflowService {
      * @return List of processInstances based on search criteria
      */
     public List<ProcessInstance> search(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering search method");
+        log.info("Searching process instances with criteria - businessService: {}, tenantId: {}", 
+                criteria.getBusinessService(), criteria.getTenantId());
+        
         List<ProcessInstance> processInstances;
-        if(criteria.isNull())
+        if(criteria.isNull()) {
+            log.debug("Search criteria is null, fetching user-based process instances");
             processInstances = getUserBasedProcessInstances(requestInfo, criteria);
-        else processInstances = workflowRepository.getProcessInstances(criteria);
-        if(CollectionUtils.isEmpty(processInstances))
+        } else {
+            log.debug("Searching process instances from repository");
+            processInstances = workflowRepository.getProcessInstances(criteria);
+        }
+        
+        if(CollectionUtils.isEmpty(processInstances)) {
+            log.info("No process instances found for search criteria");
+            log.trace("Exiting search method - empty result");
             return processInstances;
+        }
 
+        log.debug("Found {} process instance(s), enriching with user data", processInstances.size());
         enrichmentService.enrichUsersFromSearch(requestInfo,processInstances);
+        
+        log.debug("Enriching next actions for search results");
         List<ProcessStateAndAction> processStateAndActions = enrichmentService.enrichNextActionForSearch(requestInfo,processInstances);
     //    workflowValidator.validateSearch(requestInfo,processStateAndActions);
+        
+        log.debug("Enriching and updating SLA for search results");
         enrichmentService.enrichAndUpdateSlaForSearch(processInstances);
+        
+        log.info("Search completed successfully, returning {} process instance(s)", processInstances.size());
+        log.trace("Exiting search method");
         return processInstances;
     }
 
 
     public Integer count(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering count method");
         Integer count;
         
      // Enrich slot sla limit in case of nearingSla count
         if(criteria.getIsNearingSlaCount()){
-
-            if(ObjectUtils.isEmpty(criteria.getBusinessService()))
+            log.info("Processing nearing SLA count request");
+            
+            if(ObjectUtils.isEmpty(criteria.getBusinessService())) {
+                log.error("Business service is mandatory for nearing SLA count but was not provided");
                 throw new CustomException("EG_WF_BUSINESSSRV_ERR", "Providing business service is mandatory for nearing escalation count");
+            }
 
+            log.debug("Fetching slot percentage and max business service SLA");
             Integer slotPercentage = mdmsService.fetchSlotPercentageForNearingSla(requestInfo);
             Long maxBusinessServiceSla = businessMasterService.getMaxBusinessServiceSla(criteria);
-            criteria.setSlotPercentageSlaLimit(maxBusinessServiceSla - slotPercentage * (maxBusinessServiceSla/100));
+            Long slotPercentageSlaLimit = maxBusinessServiceSla - slotPercentage * (maxBusinessServiceSla/100);
+            criteria.setSlotPercentageSlaLimit(slotPercentageSlaLimit);
+            log.debug("Calculated slot percentage SLA limit: {}", slotPercentageSlaLimit);
         }
         
         if(criteria.isNull()){
+            log.debug("Criteria is null, enriching from user and getting inbox count");
             enrichSearchCriteriaFromUser(requestInfo, criteria);
             count = workflowRepository.getInboxCount(criteria);
         }
-        else count = workflowRepository.getProcessInstancesCount(criteria);
+        else {
+            log.debug("Getting process instances count from repository");
+            count = workflowRepository.getProcessInstancesCount(criteria);
+        }
 
+        log.info("Count query completed, result: {}", count);
+        log.trace("Exiting count method");
         return count;
     }
 
@@ -134,18 +180,28 @@ public class WorkflowService {
      */
     private List<ProcessInstance> getUserBasedProcessInstances(RequestInfo requestInfo,
                                        ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering getUserBasedProcessInstances method");
 
         enrichSearchCriteriaFromUser(requestInfo, criteria);
+        log.debug("Enriched search criteria from user");
+        
         List<ProcessInstance> processInstances = workflowRepository.getProcessInstancesForUserInbox(criteria);
+        log.debug("Retrieved {} process instance(s) from user inbox", 
+                processInstances != null ? processInstances.size() : 0);
 
         processInstances = filterDuplicates(processInstances);
+        int finalCount = processInstances != null ? processInstances.size() : 0;
+        log.debug("After filtering duplicates: {} process instance(s)", finalCount);
+        log.trace("Exiting getUserBasedProcessInstances method");
 
         return processInstances;
 
     }
     public Integer getUserBasedProcessInstancesCount(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
-        Integer count;
-        count = workflowRepository.getProcessInstancesForUserInboxCount(criteria);
+        log.trace("Entering getUserBasedProcessInstancesCount method");
+        Integer count = workflowRepository.getProcessInstancesForUserInboxCount(criteria);
+        log.debug("User-based process instances count: {}", count);
+        log.trace("Exiting getUserBasedProcessInstancesCount method");
         return count;
     }
 
@@ -155,22 +211,36 @@ public class WorkflowService {
      * @return
      */
     private List<ProcessInstance> filterDuplicates(List<ProcessInstance> processInstances){
+        log.trace("Entering filterDuplicates method");
 
-        if(CollectionUtils.isEmpty(processInstances))
+        if(CollectionUtils.isEmpty(processInstances)) {
+            log.trace("Exiting filterDuplicates method - empty input");
             return processInstances;
+        }
 
+        int originalSize = processInstances.size();
         Map<String,ProcessInstance> businessIdToProcessInstanceMap = new LinkedHashMap<>();
 
         for(ProcessInstance processInstance : processInstances){
             businessIdToProcessInstanceMap.put(processInstance.getBusinessId(), processInstance);
         }
 
-        return new LinkedList<>(businessIdToProcessInstanceMap.values());
+        List<ProcessInstance> filtered = new LinkedList<>(businessIdToProcessInstanceMap.values());
+        int filteredSize = filtered.size();
+        if(originalSize != filteredSize) {
+            log.debug("Filtered duplicates: {} duplicate(s) removed", originalSize - filteredSize);
+        }
+        log.trace("Exiting filterDuplicates method");
+        return filtered;
     }
     
     public List statusCount(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering statusCount method");
+        log.info("Fetching status count for businessService: {}", criteria.getBusinessService());
+        
         List result;
         if(criteria.isNull() && !isNull(criteria.getBusinessService()) && !criteria.getBusinessService().equalsIgnoreCase(WorkflowConstants.FSM_MODULE)){
+        	log.debug("Criteria is null and not FSM module, enriching from user and getting inbox status count");
         	enrichSearchCriteriaFromUser(requestInfo, criteria);
             result = workflowRepository.getInboxStatusCount(criteria);
         }
@@ -188,6 +258,9 @@ public class WorkflowService {
         	result = workflowRepository.getProcessInstancesStatusCount(criteria);
         }
 
+        int resultSize = result != null ? result.size() : 0;
+        log.info("Status count query completed, returning {} status count(s)", resultSize);
+        log.trace("Exiting statusCount method");
         return result;
     }
 
@@ -197,6 +270,7 @@ public class WorkflowService {
      * @param criteria
      */
     private void enrichSearchCriteriaFromUser(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering enrichSearchCriteriaFromUser method");
 
         /*BusinessServiceSearchCriteria businessServiceSearchCriteria = new BusinessServiceSearchCriteria();
 
@@ -217,13 +291,20 @@ public class WorkflowService {
         criteria.setStatus(actionableStatuses);*/
 
         util.enrichStatusesInSearchCriteria(requestInfo, criteria);
+        log.debug("Enriched statuses in search criteria");
+        
         criteria.setAssignee(requestInfo.getUserInfo().getUuid());
-
+        log.debug("Set assignee in criteria to user UUID");
+        log.trace("Exiting enrichSearchCriteriaFromUser method");
 
     }
 
 
     public List<ProcessInstance> escalatedApplicationsSearch(RequestInfo requestInfo, ProcessInstanceSearchCriteria criteria) {
+        log.trace("Entering escalatedApplicationsSearch method");
+        log.info("Searching for escalated applications - businessService: {}, tenantId: {}", 
+                criteria.getBusinessService(), criteria.getTenantId());
+        
         List<String> escalatedApplicationsBusinessIds;
         List<ProcessInstance> escalatedApplications = new ArrayList<>();
         criteria.setIsEscalatedCount(false);
@@ -231,8 +312,12 @@ public class WorkflowService {
         //Set<String> statesToIgnore = enrichmentService.fetchStatesToIgnoreFromMdms(requestInfo, criteria.getTenantId());
         escalatedApplicationsBusinessIds = workflowRepository.fetchEscalatedApplicationsBusinessIdsFromDb(requestInfo,criteria);
         if(CollectionUtils.isEmpty(escalatedApplicationsBusinessIds)){
+            log.info("No escalated applications found");
+            log.trace("Exiting escalatedApplicationsSearch method - empty result");
             return escalatedApplications;
         }
+        
+        log.debug("Found {} escalated application business ID(s)", escalatedApplicationsBusinessIds.size());
         // SEARCH BASED ON FILTERED BUSINESS IDs DONE HERE
         ProcessInstanceSearchCriteria searchCriteria =  new ProcessInstanceSearchCriteria();
         searchCriteria.setBusinessIds(escalatedApplicationsBusinessIds);
@@ -271,13 +356,18 @@ public class WorkflowService {
 //                }
 //            }
 //        }
+        log.info("Escalated applications search completed, returning {} process instance(s)", 
+                escalatedApplications != null ? escalatedApplications.size() : 0);
+        log.trace("Exiting escalatedApplicationsSearch method");
         return escalatedApplications;
     }
 
     public Integer countEscalatedApplications(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
-        Integer count;
+        log.trace("Entering countEscalatedApplications method");
         criteria.setIsEscalatedCount(true);
-        count = workflowRepository.getEscalatedApplicationsCount(requestInfo,criteria);
+        Integer count = workflowRepository.getEscalatedApplicationsCount(requestInfo,criteria);
+        log.info("Escalated applications count: {}", count);
+        log.trace("Exiting countEscalatedApplications method");
         return count;
     }
 }
