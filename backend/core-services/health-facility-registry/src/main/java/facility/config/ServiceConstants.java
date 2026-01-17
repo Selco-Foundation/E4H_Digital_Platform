@@ -16,11 +16,11 @@ public class ServiceConstants {
 
     public static final String ERROR_WHILE_FETCHING_FROM_MDMS = "Exception occurred while fetching category lists from mdms: ";
 
-    public static final String RES_MSG_ID = "uief87324";
-    public static final String SUCCESSFUL = "successful";
-    public static final String FAILED = "failed";
+    public static final String BOUNDARY_CODE = "boundaryCodes";
+    public static final String BLOCK_CODE = "block";
+    public static final String STATE_CODE = "state";
 
-    public static final String URL = "url";
+    public static final String DISTRICT_CODE = "url";
     public static final String URL_SHORTENING_ERROR_CODE = "URL_SHORTENING_ERROR";
     public static final String URL_SHORTENING_ERROR_MESSAGE = "Unable to shorten url: ";
 

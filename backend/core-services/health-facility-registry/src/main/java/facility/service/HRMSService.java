@@ -38,7 +38,7 @@ public class HRMSService {
             // Build HRMS search request
             String uri = UriComponentsBuilder
                     .fromUriString(configs.getHrmsHost())
-                    .path(configs.getHrmsEndPoint())
+                    .path(configs.getHrmsSearchEndPoint())
                     .queryParam("phone", mobileNumber)
                     .queryParam("tenantId", tenantId)
                     .queryParam("isActive", true)
@@ -165,7 +165,7 @@ public class HRMSService {
             // Construct the URI
             String uri = UriComponentsBuilder
                     .fromUriString(configs.getHrmsHost())
-                    .path(configs.getHrmsCreateEndpoint())
+                    .path(configs.getHrmsCreateEndPoint())
                     .toUriString();
 
             // Call HRMS create API

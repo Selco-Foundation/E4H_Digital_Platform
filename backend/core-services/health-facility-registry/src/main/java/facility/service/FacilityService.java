@@ -479,22 +479,21 @@ public class FacilityService {
      * @return List of facilities matching the filter
      */
     public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request) {
-        List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(request.getFacilityBulkSearchCriteria().getState(),
-                request.getFacilityBulkSearchCriteria().getDistrict(), request.getFacilityBulkSearchCriteria().getBlock());
-        if (request.getFacilityBulkSearchCriteria().getBoundaryCodes() == null) {
-            request.getFacilityBulkSearchCriteria().setBoundaryCodes(new ArrayList<>());
-        }
+        List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(request.getFacilityBulkSearchCriteria());
+        request.getFacilityBulkSearchCriteria().setBoundaryCodes(new ArrayList<>());
         request.getFacilityBulkSearchCriteria().getBoundaryCodes().addAll(listFacilityCodes);
+
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
 
         StringBuilder query = new StringBuilder("SELECT * FROM facility");
         query.append(result.getWhereClause());
+        query.append(" ORDER BY created_at DESC ");
 
         List<Object> allParams = new ArrayList<>(result.getParams());
         if (!Boolean.TRUE.equals(request.getFacilityBulkSearchCriteria().getSendNonPaginatedResponse())) {
-            query.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+            query.append(" LIMIT ? OFFSET ?");
             allParams.add(request.getFacilityBulkSearchCriteria().getLimit());
             allParams.add(request.getFacilityBulkSearchCriteria().getOffset());
         }
