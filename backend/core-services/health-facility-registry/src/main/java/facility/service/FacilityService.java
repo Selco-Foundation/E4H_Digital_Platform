@@ -187,10 +187,13 @@ public class FacilityService {
             }
 
             for (Facility facility : tenantFacilities) {
-                String encryptedPocMobileNumber = encryptMobileNumber(facility.getFacilityPocPhone());
-                if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                    facility.setFacilityPocPhone(encryptedPocMobileNumber);
+                try {
+                    String encryptedPocMobileNumber = encryptMobileNumber(facility.getFacilityPocPhone());
+                    if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                        facility.setFacilityPocPhone(encryptedPocMobileNumber);
+                    }
                 }
+                catch (Exception e){}
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
                 
@@ -504,10 +507,13 @@ public class FacilityService {
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         for (Facility facility: facilityList){
             if (facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isEmpty()){
-                String decryptedMobileNumber = decryptMobileNumber(facility.getFacilityPocPhone());
-                if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
-                    facility.setFacilityPocPhone(decryptedMobileNumber);
+                try {
+                    String decryptedMobileNumber = decryptMobileNumber(facility.getFacilityPocPhone());
+                    if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                        facility.setFacilityPocPhone(decryptedMobileNumber);
+                    }
                 }
+                catch (Exception e){}
             }
             String boundaryCode = facility.getBoundaryCode();
             if (boundaryCode != null && listBlock != null) {
