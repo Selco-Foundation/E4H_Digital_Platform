@@ -13,7 +13,7 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 
 from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
 from app.utils.excel_utils import autofit_columns
-from app.utils.facility_validator import project_facility_validation
+from app.utils.facility_validator import project_facility_validation, facility_validation
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
 from openpyxl import load_workbook
 from openpyxl.styles import Protection
@@ -217,6 +217,127 @@ async def upload_boundaries_excel_sheet(
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
             os.unlink(input_temp_file.name)
+
+
+@router.post('/addFacilitiesValidateData',
+             summary='Validate add bulk facility Excel file before processing',
+             response_description='Returns validation report Excel with PASSED/FAILED rows')
+async def validate_facilities_excel_sheet(
+        background_tasks: BackgroundTasks,
+        facility_file: UploadFile = File(..., description="Excel file containing facility data"),
+        facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
+                                        description="Name of the sheet containing facility data"),
+        request_info: str = Form(default="")
+):
+    temp_input_file = None
+    request_info_obj = request_info_from_json(request_info)
+    mdms_client = MDMSClient(mdms_url)
+    facility_client = FacilityServiceClient(facility_service_url)
+
+    try:
+        # Save uploaded Excel to a temp file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_input_file:
+            content = await facility_file.read()
+            temp_input_file.write(content)
+            temp_input_file.flush()
+
+        # Load workbook to preserve everything
+        wb = load_workbook(temp_input_file.name)
+
+        # ----------------- Read Facility Sheet ----------------- #
+        if facility_sheet_name not in wb.sheetnames:
+            raise HTTPException(status_code=400, detail=f"Facility sheet '{facility_sheet_name}' not found")
+
+        df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
+
+        # ----------------- Read Facility Column ----------------- #
+        if 'Facility Id' not in df.columns:
+            raise HTTPException(status_code=400, detail=f"Facility Column in '{facility_sheet_name}' not found")
+
+        # Ensure status/error columns exist
+        if 'status' not in df.columns:
+            df['status'] = ''
+        if 'error' not in df.columns:
+            df['error'] = ''
+
+        # ----------------- Run Validation ----------------- #
+        validation_errors = facility_validation(
+            df,
+            mdms_client,
+            request_info_obj,
+            facility_client,
+            'data-ingestion.FacilityIngestionSchema'
+        )
+
+        # Mark rows based on validation results
+        error_count = 0
+        for i, errs in enumerate(validation_errors):
+            if errs:
+                df.at[i, 'status'] = 'FAILED'
+                df.at[i, 'error'] = "; ".join(dict.fromkeys(errs))
+                error_count += 1
+            else:
+                df.at[i, 'status'] = 'PASSED'
+                df.at[i, 'error'] = ''
+
+        # ----------------- Update Facility Sheet In-Place ----------------- #
+        ws = wb[facility_sheet_name]
+        header_values = [cell.value for cell in ws[1]]
+
+        # Add status/error columns if missing
+        for col_name in ["status", "error"]:
+            if col_name not in header_values:
+                new_col_idx = len(header_values) + 1
+                cell = ws.cell(row=1, column=new_col_idx, value=col_name)
+                cell.font = Font(bold=True)
+                header_values.append(col_name)
+
+                # lock header cell
+                # cell.protection = Protection(locked=True)
+
+                # lock all data cells in this new column
+                # for r_idx in range(2, ws.max_row + 1):
+                #     ws.cell(row=r_idx, column=new_col_idx).protection = Protection(locked=True)
+
+        grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+        # Write data rows back (without header row)
+        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+            for c_idx, value in enumerate(row, start=1):
+                cell = ws.cell(row=r_idx, column=c_idx, value=value)
+
+                # force lock for status/error columns
+                # if ws.cell(1, c_idx).value in ["status", "error"]:
+                #     cell.protection = Protection(locked=True)
+                #     cell.fill = grey_fill
+
+        # Ensure sheet protection is ON
+        # ws.protection.sheet = True
+        # ws.protection.enable()
+
+        # ----------------- Save to new temp file ----------------- #
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_temp_file_path = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx").name
+        wb.save(output_temp_file_path)
+
+        autofit_columns(output_temp_file_path, facility_sheet_name, auto_fit=True)
+
+        background_tasks.add_task(cleanup_temp_file, output_temp_file_path)
+
+        response = FileResponse(
+            path=output_temp_file_path,
+            filename=f"facility_validation_results_{timestamp}.xlsx",
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        response.headers["X-Error-Count"] = str(error_count)
+
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+    finally:
+        if temp_input_file and os.path.exists(temp_input_file.name):
+            os.unlink(temp_input_file.name)
 
 @router.post('/facilities',
              summary='Upload and process facility Excel file',
