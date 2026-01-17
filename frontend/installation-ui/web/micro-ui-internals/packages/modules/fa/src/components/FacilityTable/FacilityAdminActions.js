@@ -8,6 +8,7 @@ import { useQueryClient } from "react-query";
 const FacilityAdminActions = ({ t }) => {
 
   const [toast, setToast] = useState(null);
+  const [formToast, setFormToast] = useState(null);
   const [showAddFacilityModal, setShowAddFacilityModal] = useState(false);
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [blockUI, setBlockUI] = useState(null);
@@ -29,6 +30,14 @@ const FacilityAdminActions = ({ t }) => {
       }, 2500);
     }
   }, [toast]);
+
+  useEffect(() => {
+    if (formToast) {
+      setTimeout(() => {
+        setFormToast(null);
+      }, 2500);
+    }
+  }, [formToast]);
 
   const handleAddFacilitySubmit = async (formData) => {
     try {
@@ -79,7 +88,7 @@ const FacilityAdminActions = ({ t }) => {
     } catch (e) {
       console.error("Failed to create facility", e);
       setBlockUI(false);
-      setToast({
+      setFormToast({
         key: "error",
         label: t("FACILITY_CREATION_FAILED"),
       });
@@ -187,7 +196,14 @@ const FacilityAdminActions = ({ t }) => {
           />
         )}
         {showAddFacilityModal && (
-          <FacilityModal t={t} title={"ADD_FACILITY"} onSubmit={handleAddFacilitySubmit} onClose={() => setShowAddFacilityModal(false)} />
+          <FacilityModal
+            t={t}
+            title={"ADD_FACILITY"}
+            onSubmit={handleAddFacilitySubmit}
+            onClose={() => setShowAddFacilityModal(false)}
+            formToast={formToast}
+            setFormToast={setFormToast}
+          />
         )}
       </div>
     </React.Fragment>

@@ -23,6 +23,7 @@ const FacilityDetails = () => {
   const [showEditFacilityModal, setShowEditFacilityModal] = useState(false);
   const dispatch = useDispatch();
   const [toast, setToast] = useState(null);
+  const [formToast, setFormToast] = useState(null);
   const [activeTab, setActiveTab] = useState("ACTIVITY");
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [blockUI, setBlockUI] = useState(null);
@@ -41,6 +42,14 @@ const FacilityDetails = () => {
       }, 2500);
     }
   }, [toast]);
+
+  useEffect(() => {
+    if (formToast) {
+      setTimeout(() => {
+        setFormToast(null);
+      }, 2500);
+    }
+  }, [formToast]);
 
   const {
     isLoading, data: facilityData,
@@ -138,7 +147,7 @@ const FacilityDetails = () => {
     } catch (e) {
       console.error("Failed to upload facility", e);
       setBlockUI(false);
-      setToast({
+      setFormToast({
         key: "error",
         label: t("FACILITY_UPDATION_FAILED"),
       });
@@ -246,6 +255,8 @@ const FacilityDetails = () => {
           createdFacility={createdFacility}
           onSubmit={handleFacilityUpdate}
           onClose={() => setShowEditFacilityModal(false)}
+          formToast={formToast}
+          setFormToast={setFormToast}
         />
       )}
       <Tab
