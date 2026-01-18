@@ -91,17 +91,17 @@ public class QueryBuilderUtil {
         List<Object> params = new ArrayList<>();
 
         if (!CollectionUtils.isEmpty(criteria.getTenantIds())) {
-            whereClause.append(" AND tenant_id in ( ").append(createQuery(criteria.getTenantIds().size())).append(" )");
+            whereClause.append(" AND fac.tenant_id in ( ").append(createQuery(criteria.getTenantIds().size())).append(" )");
             params.addAll(criteria.getTenantIds());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getFacilityIds())) {
-            whereClause.append(" AND id in ( ").append(createQuery(criteria.getFacilityIds().size())).append(" )");
+            whereClause.append(" AND fac.id in ( ").append(createQuery(criteria.getFacilityIds().size())).append(" )");
             params.addAll(criteria.getFacilityIds());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getFacilityNames())) {
-            whereClause.append(" AND facility_name ILIKE ANY ( ARRAY [ ").append(createQuery(criteria.getFacilityNames().size())).append(" ] )");
+            whereClause.append(" AND fac.facility_name ILIKE ANY ( ARRAY [ ").append(createQuery(criteria.getFacilityNames().size())).append(" ] )");
             params.addAll(criteria.getFacilityNames().stream().map((facilityName) -> "%" + facilityName + "%").toList());
         }
 

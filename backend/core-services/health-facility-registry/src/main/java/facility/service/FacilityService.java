@@ -33,6 +33,8 @@ public class FacilityService {
     private EncryptionDecryptionUtil encryptionDecryptionUtil;
     private BoundaryUtil boundaryUtil;
 
+    private FacilityRowMapperV2 facilityRowMapperV2;
+
     private final HRMSUtils hrmsUtils;
     private final HRMSService hrmsService;
 
@@ -47,7 +49,7 @@ public class FacilityService {
             BoundaryService boundaryService,
             Configuration configs,
             FacilityKibanaMapper facilityKibanaMapper,
-            EncryptionDecryptionUtil encryptionDecryptionUtil, BoundaryUtil boundaryUtil, HRMSUtils hrmsUtils, HRMSService hrmsService) {
+            EncryptionDecryptionUtil encryptionDecryptionUtil, BoundaryUtil boundaryUtil, FacilityRowMapperV2 facilityRowMapperV2, HRMSUtils hrmsUtils, HRMSService hrmsService) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.facilityRowMapper = facilityRowMapper;
@@ -60,6 +62,7 @@ public class FacilityService {
         this.facilityKibanaMapper = facilityKibanaMapper;
         this.encryptionDecryptionUtil = encryptionDecryptionUtil;
         this.boundaryUtil = boundaryUtil;
+        this.facilityRowMapperV2 = facilityRowMapperV2;
         this.hrmsUtils = hrmsUtils;
         this.hrmsService = hrmsService;
     }
@@ -496,7 +499,8 @@ public class FacilityService {
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
 
-        StringBuilder query = new StringBuilder("SELECT * FROM facility");
+        StringBuilder query = new StringBuilder("SELECT * FROM facility fac");
+        query.append(" LEFT JOIN facility_address fa ON fac.addressid = fa.id ");
         query.append(result.getWhereClause());
         query.append(" ORDER BY created_at DESC ");
 
@@ -509,7 +513,7 @@ public class FacilityService {
 
         log.info("Bulk Search Query: {}", query);
         log.info("Bulk Search Params: {}", allParams);
-        List<Facility> facilityList = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
+        List<Facility> facilityList = jdbcTemplate.query(query.toString(), facilityRowMapperV2, allParams.toArray());
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         for (Facility facility: facilityList){
             if (facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isEmpty()){
