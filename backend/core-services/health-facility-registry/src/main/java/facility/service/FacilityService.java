@@ -573,7 +573,7 @@ public class FacilityService {
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
-        String query = "SELECT COUNT(*) FROM facility" + result.getWhereClause();
+        String query = "SELECT COUNT(*) FROM facility fac" + result.getWhereClause();
         return jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
     }
 
