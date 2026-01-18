@@ -224,11 +224,15 @@ public class BoundaryUtil {
 
     public List<String> getFacilityCodesFromBoundary(FacilityBulkSearchCriteria criteria) {
         List<String> listBlock = null;
-        try {
-            listBlock = resolveFacilityCodes(criteria);
-        }catch(Exception e) {
-            e.printStackTrace();
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+        if(isNotNullOrEmpty(criteria.getBoundaryCodes()) || isNotNullOrEmpty(criteria.getBlock()) || isNotNullOrEmpty(criteria.getDistrict()) ||
+                isNotNullOrEmpty(criteria.getState())
+        ){
+            try {
+                listBlock = resolveFacilityCodes(criteria);
+            }catch(Exception e) {
+//                e.printStackTrace();
+                throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+            }
         }
 
         return listBlock;
@@ -358,7 +362,9 @@ public class BoundaryUtil {
         }
     }
 
-
+    private boolean isNotNullOrEmpty(Collection<?> c) {
+        return c != null && !c.isEmpty();
+    }
 
 }
 

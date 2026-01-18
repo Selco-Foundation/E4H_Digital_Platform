@@ -483,8 +483,14 @@ public class FacilityService {
      */
     public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request) {
         List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(request.getFacilityBulkSearchCriteria());
-        request.getFacilityBulkSearchCriteria().setBoundaryCodes(new ArrayList<>());
-        request.getFacilityBulkSearchCriteria().getBoundaryCodes().addAll(listFacilityCodes);
+        if(listFacilityCodes !=null && !listFacilityCodes.isEmpty()){
+            if(request.getFacilityBulkSearchCriteria().getBoundaryCodes()==null)
+                request.getFacilityBulkSearchCriteria().setBoundaryCodes(new ArrayList<>());
+
+            // Remove any facility code duplicates
+            List<String> uniqueListFacilityCodes = new ArrayList<>(new LinkedHashSet<>(listFacilityCodes));
+            request.getFacilityBulkSearchCriteria().getBoundaryCodes().addAll(uniqueListFacilityCodes);
+        }
 
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
