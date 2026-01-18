@@ -294,7 +294,7 @@ public class BoundaryUtil {
                         .collect(Collectors.joining(","));
                 String stateJsonString = getBoundaryData(stateBoundaryCodes);
                 JsonNode stateRootNode = objectMapper.readTree(stateJsonString);
-                return extractFacilityCodesByLevel(stateRootNode, criteria.getBlock());
+                return extractFacilityCodesByLevel(stateRootNode, criteria.getState());
 
             default:
                 return Collections.emptyList();
