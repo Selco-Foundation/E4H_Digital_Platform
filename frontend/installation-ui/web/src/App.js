@@ -14,6 +14,7 @@ import { Loader } from "@egovernments/digit-ui-components";
 import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
 import { PMReducers, initPMComponents } from "@selco/digit-ui-module-pm";
 import { AMCReducers, initAMCComponents } from "@selco/digit-ui-module-amc";
+import { ORGReducers, initORGComponents } from "@selco/digit-ui-module-org";
 
 window.contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH");
 
@@ -28,6 +29,7 @@ const enabledModules = [
   "QC",
   "PM",
   "AMC",
+  "ORG",
   "Utilities",
 ];
 
@@ -36,7 +38,11 @@ initLibraries().then(() => {
 });
 
 const moduleReducers = (initData) => ({
-  initData, qc: QCReducers(initData), pm: PMReducers(initData), amc: AMCReducers(initData),
+  initData,
+  qc: QCReducers(initData),
+  pm: PMReducers(initData),
+  amc: AMCReducers(initData),
+  org: ORGReducers(initData)
 });
 
 const initDigitUI = () => {
@@ -50,7 +56,7 @@ const initDigitUI = () => {
   initQCComponents();
   initPMComponents();
   initAMCComponents();
-
+  initORGComponents();
 };
 
 function App() {
