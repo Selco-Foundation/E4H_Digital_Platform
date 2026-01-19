@@ -49,9 +49,20 @@ def project_facility_validation(
 
 
 def facility_validation(
-    df, mdms_client, request_info, facility_client, schemaName
+    df, mdms_client, request_info, facility_client, boundary_data, schemaName
 ):
     """Main function that orchestrates all facility file validations."""
+    # Ensure boundary_data is provided
+    if boundary_data is None or boundary_data.empty:
+        raise HTTPException(status_code=400, detail="Boundary data is missing or empty")
+
+    if "BoundaryCode" not in boundary_data.columns:
+        raise HTTPException(status_code=400, detail="Boundary data missing 'BoundaryCode' column")
+
+    allowed_boundary_codes = set(
+        str(x).strip() for x in boundary_data["BoundaryCode"] if pd.notna(x)
+    )
+
     # Reset index so we always work with 0-based positional indices
     df = df.reset_index(drop=True)
 
@@ -72,6 +83,7 @@ def facility_validation(
 
     # Use positional index mapping to reference errors in original df
     validate_columns(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
+    validate_boundary_codes(new_rows, allowed_boundary_codes, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_unique_ids(df, schema, add_err)
     validate_row_constraints(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client)

@@ -227,6 +227,8 @@ async def validate_facilities_excel_sheet(
         facility_file: UploadFile = File(..., description="Excel file containing facility data"),
         facility_sheet_name: str = Form(default="FacilityIngestionTemplate",
                                         description="Name of the sheet containing facility data"),
+        boundary_sheet_name: str = Form(default="BlockBoundaryCodes",
+                                        description="Name of the sheet containing boundary data"),
         request_info: str = Form(default="")
 ):
     temp_input_file = None
@@ -243,6 +245,12 @@ async def validate_facilities_excel_sheet(
 
         # Load workbook to preserve everything
         wb = load_workbook(temp_input_file.name)
+
+        # ----------------- Read Boundary Sheet ----------------- #
+        if boundary_sheet_name not in wb.sheetnames:
+            raise HTTPException(status_code=400, detail=f"Boundary sheet '{boundary_sheet_name}' not found")
+
+        boundary_data_df = pd.read_excel(temp_input_file.name, sheet_name=boundary_sheet_name)
 
         # ----------------- Read Facility Sheet ----------------- #
         if facility_sheet_name not in wb.sheetnames:
@@ -267,6 +275,7 @@ async def validate_facilities_excel_sheet(
             mdms_client,
             request_info_obj,
             facility_client,
+            boundary_data_df,
             'data-ingestion.FacilityIngestionSchema'
         )
 
