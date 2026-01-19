@@ -5,6 +5,7 @@ import facility.repository.FacilityRepository;
 import facility.util.*;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -197,6 +198,10 @@ public class FacilityService {
                     }
                 }
                 catch (Exception e){}
+
+                Long time = System.currentTimeMillis();
+                facility.setAuditDetails(AuditDetails.builder().createdBy(request.getRequestInfo().getUserInfo().getUuid()).lastModifiedBy(request.getRequestInfo().getUserInfo().getUuid()).createdTime(time).lastModifiedTime(time).build());
+
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
                 
@@ -330,7 +335,8 @@ public class FacilityService {
             log.warn("Facility not found for update: {}", update.getFacilityId());
             return null;
         }
-
+        FacilityAddress address = update.getAddress();
+        address.setAddressId(existingFacility.getAddress().getAddressId());
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
         facility.setTenantId(update.getTenantId());
