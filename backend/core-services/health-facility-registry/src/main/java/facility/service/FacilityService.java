@@ -126,7 +126,7 @@ public class FacilityService {
                         .facilityDetails(facilityCreate.getFacilityDetails())
                         .wfStatus(facilityCreate.getWfStatus())
                         .additionalDetails(facilityCreate.getAdditionalDetails())
-                        .isActive(facilityCreate.getIsActive())
+                        .isActive(true)
                         .isOnmReady(facilityCreate.getIsOnmReady())
                         .build();
 
@@ -458,10 +458,13 @@ public class FacilityService {
         List<Facility> facilityList = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         for (Facility facility: facilityList){
-            String decryptedMobileNumber = decryptMobileNumber(facility.getFacilityPocPhone());
-            if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
-                facility.setFacilityPocPhone(decryptedMobileNumber);
+            try{
+                String decryptedMobileNumber = decryptMobileNumber(facility.getFacilityPocPhone());
+                if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                    facility.setFacilityPocPhone(decryptedMobileNumber);
+                }
             }
+            catch(Exception e){}
             String boundaryCode = facility.getBoundaryCode();
             if (boundaryCode != null && listBlock != null) {
                 Boundary boundary = listBlock.get(boundaryCode);
