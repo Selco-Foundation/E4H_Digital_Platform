@@ -15,6 +15,7 @@ import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
 import { PMReducers, initPMComponents } from "@selco/digit-ui-module-pm";
 import { AMCReducers, initAMCComponents } from "@selco/digit-ui-module-amc";
 import { FAReducers, initFAComponents } from "@selco/digit-ui-module-fa";
+import { ORGReducers, initORGComponents } from "@selco/digit-ui-module-org";
 
 window.contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH");
 
@@ -30,6 +31,7 @@ const enabledModules = [
   "PM",
   "AMC",
   "FA",
+  "ORG",
   "Utilities",
 ];
 
@@ -42,6 +44,7 @@ const moduleReducers = (initData) => ({
   pm: PMReducers(initData),
   amc: AMCReducers(initData),
   fa: FAReducers(initData),
+  org: ORGReducers(initData),
 });
 
 const initDigitUI = () => {
@@ -56,7 +59,7 @@ const initDigitUI = () => {
   initPMComponents();
   initAMCComponents();
   initFAComponents();
-
+  initORGComponents();
 };
 
 function App() {
