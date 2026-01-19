@@ -1,6 +1,20 @@
 import axios from "axios";
 import { IngestionService } from "./Ingestion";
 
+const extractBlobFile = (response) => {
+  const disposition = response.headers["content-disposition"];
+  const filename = disposition?.split("filename=")[1]?.replace(/"/g, "");
+
+  const blobData = new Blob([response.data], {
+    type: response.headers["content-type"],
+  });
+
+  return {
+    name: filename,
+    data: blobData,
+  };
+};
+
 export const FAService = {
   fetchDocumentDetails: async (fileUrl) => {
     const response = await axios.get(fileUrl);
@@ -44,40 +58,21 @@ export const FAService = {
 
   uploadFacilityDataTemplate: async (file) => {
 
-    const extractBlobFile = (response) => {
-      const disposition = response.headers["content-disposition"];
-      const filename = disposition?.split("filename=")[1]?.replace(/"/g, "");
-
-      const blobData = new Blob([response.data], {
-        type: response.headers["content-type"],
-      });
-
-      return {
-        name: filename,
-        data: blobData,
-      };
-    };
-
-    let uploadedFile;
-
+    let validatedFile;
     try {
-      const uploadRequest = new FormData();
-      uploadRequest.append("facility_file", file);
-      const uploadResponse = await IngestionService.uploadFacilityData(uploadRequest);
+      const validationRequest = new FormData();
+      validationRequest.append("facility_file", file);
+      const validationResponse = await IngestionService.validateFacilityData(validationRequest);
 
-      uploadedFile = extractBlobFile(uploadResponse);
-      const errorCount = parseInt(uploadResponse.headers["x-error-count"] || "0", 10);
+      validatedFile = extractBlobFile(validationResponse);
+      const errorCount = parseInt(validationResponse.headers["x-error-count"] || "0", 10);
       if (errorCount) {
         return {
           errorCode: "INVALID_DATA",
-          file: uploadedFile,
+          file: validatedFile,
           errorCount: errorCount,
         };
       }
-
-      return {
-        file: uploadedFile,
-      };
 
     } catch (error) {
       console.error("Error validating facility data", error);
@@ -91,5 +86,19 @@ export const FAService = {
       throw error;
     }
 
+    try {
+      const uploadRequest = new FormData();
+      uploadRequest.append("facility_file", validatedFile);
+      const uploadResponse = await IngestionService.uploadFacilityData(uploadRequest);
+
+      const uploadedFile = extractBlobFile(uploadResponse);
+      return {
+        file: uploadedFile,
+      };
+
+    } catch (error) {
+      console.error("Error validating facility data", error);
+      throw error;
+    }
   },
 };
