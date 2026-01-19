@@ -88,7 +88,8 @@ export const FAService = {
 
     try {
       const uploadRequest = new FormData();
-      uploadRequest.append("facility_file", validatedFile);
+      uploadRequest.append("facility_file", validatedFile.data);
+      uploadRequest.append("are_facilities_onm_ready", false);
       const uploadResponse = await IngestionService.uploadFacilityData(uploadRequest);
 
       const uploadedFile = extractBlobFile(uploadResponse);
