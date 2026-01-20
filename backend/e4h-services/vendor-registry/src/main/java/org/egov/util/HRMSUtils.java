@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.egov.util.OrganisationConstant.HRMS_USER_MOBILE_NO;
 import static org.egov.util.OrganisationConstant.HRMS_USER_USERNAME_CODE;
@@ -130,12 +129,12 @@ public class HRMSUtils {
                 .IsActive(true)
                 .reActivateEmployee(false)
                 .assignments(buildAssignments())
-                .jurisdictions(buildJurisdictions(user.getJurisdiction()))
+                .jurisdictions(buildJurisdictions(user.getJurisdictions()))
                 .user(user)
 //                .auditDetails(source.getAuditDetails())
                 .build();
         if (orgType != null && !orgType.isEmpty() && orgType.trim().equals("PLATFORM")){
-            employee.setJurisdictions(buildJurisdictions(user.getJurisdiction()));
+            employee.setJurisdictions(buildJurisdictions(user.getJurisdictions()));
         }
         return employee;
     }
