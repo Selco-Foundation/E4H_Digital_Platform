@@ -165,6 +165,6 @@ public class User {
     private String tenantId;
 
     @JsonProperty("jurisdiction")
-    private List<String> jurisdiction = new ArrayList<>();
+    private List<Jurisdiction> jurisdiction = new ArrayList<>();
 
 }

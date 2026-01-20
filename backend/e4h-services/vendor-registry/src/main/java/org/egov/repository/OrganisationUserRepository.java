@@ -40,14 +40,7 @@ public class OrganisationUserRepository {
         log.info("Fetched documents based on organisation Ids");
         List<OrgUser> orgUserEnricheds = new ArrayList<>();
         for (OrgUser orgUser: orgUserList){
-            Employee employee = hrmsUtils.getUserById(orgSearchRequest, orgUser.getUserId());
-            if(employee == null)
-                continue;
-            List<String> jurisdiction = employee.getJurisdictions().stream().map(Jurisdiction::getBoundary).collect(Collectors.toList());
-            User user = employee.getUser();
-            user.setJurisdiction(jurisdiction);
             OrgUser enriched = OrgUser.builder()
-                    .user(employee.getUser())
                     .userId(orgUser.getUserId())
                     .tenantId(orgUser.getTenantId())
                     .organizationId(orgUser.getOrganizationId())
@@ -57,6 +50,10 @@ public class OrganisationUserRepository {
                     .isDeleted(orgUser.getIsDeleted())
                     .build();
             orgUserEnricheds.add(enriched);
+            Employee employee = hrmsUtils.getUserById(orgSearchRequest, orgUser.getUserId());
+            if(employee != null){
+                enriched.setUser(employee.getUser());
+            }
         }
         return orgUserEnricheds;
     }

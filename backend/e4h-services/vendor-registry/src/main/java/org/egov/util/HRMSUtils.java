@@ -79,7 +79,8 @@ public class HRMSUtils {
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
-            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
+            log.info("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
+            return null;
         }
         return employeeResponse.getEmployees().get(0);
     }
@@ -129,6 +130,7 @@ public class HRMSUtils {
                 .IsActive(true)
                 .reActivateEmployee(false)
                 .assignments(buildAssignments())
+                .jurisdictions(buildJurisdictions(user.getJurisdiction()))
                 .user(user)
 //                .auditDetails(source.getAuditDetails())
                 .build();
@@ -138,29 +140,44 @@ public class HRMSUtils {
         return employee;
     }
 
-    public List<Jurisdiction> buildJurisdictions(List<String> boundaryCodes) {
-        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
-            Jurisdiction jurisdiction = Jurisdiction.builder()
+//    public List<Jurisdiction> buildJurisdictions(List<String> boundaryCodes) {
+//        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
+//            Jurisdiction jurisdiction = Jurisdiction.builder()
+//                    .hierarchy("ADMIN")
+//                    .boundary("in")
+//                    .boundaryType("Country")
+//                    .tenantId("in")
+//                    .isActive(true)
+//                    .build();
+//            return Collections.singletonList(jurisdiction);
+//        }
+//
+//        return boundaryCodes.stream()
+//                .map(boundaryCode ->
+//                        Jurisdiction.builder()
+//                                .hierarchy("ADMIN")
+//                                .boundary(boundaryCode)
+//                                .boundaryType("Block")
+//                                .tenantId("in")
+//                                .isActive(true)
+//                                .build()
+//                )
+//                .collect(Collectors.toList());
+//    }
+
+    public List<Jurisdiction> buildJurisdictions(List<Jurisdiction> jurisdiction) {
+        if (jurisdiction == null || jurisdiction.isEmpty()) {
+            Jurisdiction jurisdiction1 = Jurisdiction.builder()
                     .hierarchy("ADMIN")
                     .boundary("in")
-                    .boundaryType("City")
+                    .boundaryType("Country")
                     .tenantId("in")
                     .isActive(true)
                     .build();
-            return Collections.singletonList(jurisdiction);
+            return Collections.singletonList(jurisdiction1);
         }
 
-        return boundaryCodes.stream()
-                .map(boundaryCode ->
-                        Jurisdiction.builder()
-                                .hierarchy("ADMIN")
-                                .boundary(boundaryCode)
-                                .boundaryType("Block")
-                                .tenantId("in")
-                                .isActive(true)
-                                .build()
-                )
-                .collect(Collectors.toList());
+        return jurisdiction;
     }
 
     public List<Assignment> buildAssignments() {
