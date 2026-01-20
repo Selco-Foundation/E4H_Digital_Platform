@@ -16,8 +16,8 @@ const ORGCard = () => {
 
   const userType = "employee";
 
-  const handleManageFacilitiesRedirection = () => {
-    history.push(`/#`);
+  const handleManageVendorsRedirection = () => {
+    history.push(`/${window?.contextPath}/employee/org/vendors`);
   };
 
   const handleManageBoundariesRedirection = () => {
@@ -81,7 +81,7 @@ const ORGCard = () => {
             background: "transparent",
             border: "none",
           }}
-          onClick={handleManageFacilitiesRedirection}
+          onClick={handleManageVendorsRedirection}
         >
           <ListAlt />
           <span>{t("ORG_ACTION_MANAGE_VENDOR_ORGANIZATION")}</span>
