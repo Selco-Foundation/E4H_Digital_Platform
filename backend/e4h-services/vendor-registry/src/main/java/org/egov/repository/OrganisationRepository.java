@@ -3,7 +3,6 @@ package org.egov.repository;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.repository.querybuilder.*;
 import org.egov.repository.rowmapper.*;
-import org.egov.service.EncryptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.util.OrganisationUtil;
 import org.egov.web.models.*;
@@ -34,14 +33,12 @@ public class OrganisationRepository {
     private final TaxIdentifierOrgIdsRowMapper taxIdentifierOrgIdsRowMapper;
 
     private final ContactDetailsOrgIdsRowMapper contactDetailsOrgIdsRowMapper;
-
-    private final EncryptionService encryptionService;
     private final JdbcTemplate jdbcTemplate;
 
     private final OrganisationUtil organisationUtil;
 
     @Autowired
-    public OrganisationRepository(AddressQueryBuilder addressQueryBuilder, OrganisationFunctionQueryBuilder organisationFunctionQueryBuilder, OrganisationFunctionRowMapper organisationFunctionRowMapper, AddressOrgIdsRowMapper addressOrgIdsRowMapper, AddressRowMapper addressRowMapper, DocumentQueryBuilder documentQueryBuilder, DocumentRowMapper documentRowMapper, ContactDetailsQueryBuilder contactDetailsQueryBuilder, TaxIdentifierRowMapper taxIdentifierRowMapper, ContactDetailsRowMapper contactDetailsRowMapper, ContactDetailsOrgIdsRowMapper contactDetailsOrgIdsRowMapper, JdbcTemplate jdbcTemplate, JurisdictionQueryBuilder jurisdictionQueryBuilder, TaxIdentifierOrgIdsRowMapper taxIdentifierOrgIdsRowMapper, JurisdictionRowMapper jurisdictionRowMapper, TaxIdentifierQueryBuilder taxIdentifierQueryBuilder, EncryptionService encryptionService, OrganisationUtil organisationUtil) {
+    public OrganisationRepository(AddressQueryBuilder addressQueryBuilder, OrganisationFunctionQueryBuilder organisationFunctionQueryBuilder, OrganisationFunctionRowMapper organisationFunctionRowMapper, AddressOrgIdsRowMapper addressOrgIdsRowMapper, AddressRowMapper addressRowMapper, DocumentQueryBuilder documentQueryBuilder, DocumentRowMapper documentRowMapper, ContactDetailsQueryBuilder contactDetailsQueryBuilder, TaxIdentifierRowMapper taxIdentifierRowMapper, ContactDetailsRowMapper contactDetailsRowMapper, ContactDetailsOrgIdsRowMapper contactDetailsOrgIdsRowMapper, JdbcTemplate jdbcTemplate, JurisdictionQueryBuilder jurisdictionQueryBuilder, TaxIdentifierOrgIdsRowMapper taxIdentifierOrgIdsRowMapper, JurisdictionRowMapper jurisdictionRowMapper, TaxIdentifierQueryBuilder taxIdentifierQueryBuilder, OrganisationUtil organisationUtil) {
         this.addressQueryBuilder = addressQueryBuilder;
         this.organisationFunctionQueryBuilder = organisationFunctionQueryBuilder;
         this.organisationFunctionRowMapper = organisationFunctionRowMapper;
@@ -58,7 +55,6 @@ public class OrganisationRepository {
         this.taxIdentifierOrgIdsRowMapper = taxIdentifierOrgIdsRowMapper;
         this.jurisdictionRowMapper = jurisdictionRowMapper;
         this.taxIdentifierQueryBuilder = taxIdentifierQueryBuilder;
-        this.encryptionService = encryptionService;
         this.organisationUtil = organisationUtil;
     }
 

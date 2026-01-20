@@ -99,9 +99,10 @@ public class OrganisationApiController {
                 request,
                 urlParams
         );
+        Integer count = userService.countOrganisationUsers(request);
         OrgUserResponseSearch response = OrgUserResponseSearch.builder()
                 .orgUsers(orgUserList)
-                .totalCount(0)
+                .totalCount(count)
                 .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
                 .build();
 

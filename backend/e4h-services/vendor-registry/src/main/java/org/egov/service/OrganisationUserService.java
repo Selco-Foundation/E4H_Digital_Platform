@@ -69,6 +69,10 @@ public class OrganisationUserService {
         return orgUserList;
     }
 
+    public Integer countOrganisationUsers(OrgUserSearchRequest request) {
+        return userRepository.getOrganisationsCount(request);
+    }
+
     public OrgUserRequest updateOrgUser(OrgUserRequest request) {
         log.info("received request to create org user {} ", request );
 

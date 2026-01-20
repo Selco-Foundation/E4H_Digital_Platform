@@ -1,6 +1,7 @@
 package org.egov.repository;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.egov.common.models.core.URLParams;
 import org.egov.repository.querybuilder.*;
 import org.egov.repository.rowmapper.*;
@@ -58,6 +59,18 @@ public class OrganisationUserRepository {
             orgUserEnricheds.add(enriched);
         }
         return orgUserEnricheds;
+    }
+
+    public Integer getOrganisationsCount(OrgUserSearchRequest orgSearchRequest) {
+        List<Object> preparedStatement = new ArrayList<>();
+        URLParams urlParams = URLParams.builder().build();
+        String queryDocument = queryBuilder.getOrganisationUserSearchQuery(orgSearchRequest, urlParams, preparedStatement, true);
+        if (queryDocument == null)
+            return 0;
+
+        Integer count = jdbcTemplate.queryForObject(queryDocument, preparedStatement.toArray(), Integer.class);
+        log.info("Total organisation user count is : " + count);
+        return count;
     }
 
 
