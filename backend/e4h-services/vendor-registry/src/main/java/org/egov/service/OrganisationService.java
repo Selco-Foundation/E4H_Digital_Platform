@@ -36,12 +36,10 @@ public class OrganisationService {
 
     private final NotificationService notificationService;
 
-    private final EncryptionService encryptionService;
-
     private final ObjectMapper mapper;
 
     @Autowired
-    public OrganisationService(OrganisationServiceValidator organisationServiceValidator, OrganisationRepository organisationRepository, OrganisationEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, IndividualService individualService, NotificationService notificationService, EncryptionService encryptionService, ObjectMapper mapper) {
+    public OrganisationService(OrganisationServiceValidator organisationServiceValidator, OrganisationRepository organisationRepository, OrganisationEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, IndividualService individualService, NotificationService notificationService, ObjectMapper mapper) {
         this.organisationServiceValidator = organisationServiceValidator;
         this.organisationRepository = organisationRepository;
         this.organisationEnrichmentService = organisationEnrichmentService;
@@ -49,7 +47,6 @@ public class OrganisationService {
         this.configuration = configuration;
         this.individualService = individualService;
         this.notificationService = notificationService;
-        this.encryptionService = encryptionService;
         this.mapper = mapper;
     }
 
