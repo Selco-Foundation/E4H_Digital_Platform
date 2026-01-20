@@ -29,8 +29,7 @@ public class OrganisationUserQueryBuilder {
             " result) result_offset " +
             "WHERE offset_ > ? AND offset_ <= ?";
 
-    private static final String ORGANISATIONS_USERS_COUNT_QUERY = "SELECT DISTINCT(org.id) from eg_org org " +
-            "LEFT JOIN eg_org_function orgFunction ON org.id = orgFunction.org_id";
+    private static final String ORGANISATIONS_USERS_COUNT_QUERY = "SELECT COUNT(*) from eg_org_user ou ";
 
     private static final String COUNT_WRAPPER = "SELECT COUNT(*) FROM ({INTERNAL_QUERY}) as count";
 
