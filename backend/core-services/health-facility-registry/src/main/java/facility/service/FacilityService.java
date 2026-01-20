@@ -336,7 +336,10 @@ public class FacilityService {
             return null;
         }
         FacilityAddress address = update.getAddress();
-        address.setAddressId(existingFacility.getAddress().getAddressId());
+        if(address !=null && existingFacility!=null && existingFacility.getAddress()!=null){
+            address.setAddressId(existingFacility.getAddress().getAddressId());
+        }
+
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
         facility.setTenantId(update.getTenantId());
