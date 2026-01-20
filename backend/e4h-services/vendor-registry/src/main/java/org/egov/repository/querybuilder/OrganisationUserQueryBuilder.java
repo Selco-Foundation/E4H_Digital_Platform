@@ -61,6 +61,9 @@ public class OrganisationUserQueryBuilder {
             preparedStmtList.addAll(searchCriteria.getOrganizationId());
         }
 
+        //Add clause if includeDeleted is true in request parameter
+        addIsDeletedCondition(preparedStmtList, queryBuilder, urlParams.getIncludeDeleted());
+
         if (Boolean.TRUE.equals(isCountQuery)) {
             return queryBuilder.toString();
         }
@@ -68,6 +71,13 @@ public class OrganisationUserQueryBuilder {
         Pagination pagination = Pagination.builder().limit(Double.valueOf(urlParams.getLimit()+"")).offset(Double.valueOf(urlParams.getOffset()+"")).build();
         addOrderByClause(queryBuilder, pagination);
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, pagination);
+    }
+
+    private void addIsDeletedCondition(List<Object> preparedStmtList, StringBuilder queryBuilder, Boolean includeDeleted) {
+        if (!includeDeleted) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" ou.isdeleted = false ");
+        }
     }
 
     private static void addClauseIfRequired(List<Object> values, StringBuilder queryString) {
