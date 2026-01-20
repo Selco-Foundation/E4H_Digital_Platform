@@ -62,4 +62,36 @@ export const VendorService = {
     });
   },
 
+  editOrganizationUser: async (queryObject) => {
+    const endpoint = "/vendor/organisation/v1/user/_update";
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    return await Request({
+      url : endpoint,
+      data: queryObject,
+      userService : true,
+      method : "POST",
+      auth : true,
+      headers : headers,
+    });
+  },
+
+  deleteOrganizationUser: async (queryObject) => {
+    const endpoint = "/vendor/organisation/v1/user/_delete";
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    return await Request({
+      url : endpoint,
+      data: queryObject,
+      userService : true,
+      method : "POST",
+      auth : true,
+      headers : headers,
+    });
+  },
+
 }

@@ -1,7 +1,8 @@
 import React, {useCallback, useEffect, useMemo, useState } from "react";
-import { FormComposerV2, DustbinIcon, Loader, Toast, Button } from "@egovernments/digit-ui-react-components";
+import { FormComposerV2, Loader, Toast, Button } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../../../hooks/useBoundary";
 import CommonUtils from "../../../utilities/CommonUtils";
+import CustomDustbinIcon from "../../Custom/CustomDustbinIcon";
 
 const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, formToast, setFormToast }) => {
 
@@ -15,12 +16,6 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     window.addEventListener("resize", handleResize);
 
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (createdUser?.id) {
-      setDefaultValues({ ...createdUser });
-    }
   }, []);
 
   const { data: boundaryData, isLoading: boundaryLoading } = useBoundary();
@@ -40,6 +35,62 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   );
 
   const roles = (mdmsResponse?.Organisation?.OrgRoles || []).filter((role) => role.orgType === organizationType);
+
+  const fetchBoundaryHierarchy = useCallback((boundaryCode, boundaryType) => {
+    if (!boundaryData) return;
+    const states = boundaryData.states || [];
+    const districts = boundaryData.districts || [];
+    const blocks = boundaryData.blocks || [];
+    if (boundaryType === "Block") {
+      const block = blocks.find((block) => block.code === boundaryCode);
+      const district = districts.find((district) => district.code === block?.parentCode);
+      const state = states.find((state) => state.code === district?.parentCode);
+      if (!state) return;
+      return {
+        state: { ...state, name: t(`Boundary_${state.code}`) },
+        district: { ...district, name: t(`Boundary_${district.code}`) },
+        block: { ...block, name: t(`Boundary_${block.code}`) }
+      };
+    } else if (boundaryType === "District") {
+      const district = districts.find((district) => district.code === boundaryCode);
+      const state = states.find((state) => state.code === district?.parentCode);
+      if (!state) return;
+      return {
+        state: { ...state, name: t(`Boundary_${state.code}`) },
+        district: { ...district, name: t(`Boundary_${district.code}`) }
+      };
+    } else if (boundaryType === "State") {
+      const state = states.find((state) => state.code === boundaryCode);
+      if (!state) return;
+      return {
+        state: { ...state, name: t(`Boundary_${state.code}`) }
+      };
+    }
+  }, [boundaryData])
+
+  useEffect(() => {
+    if (createdUser?.orgUserId && mdmsResponse) {
+      const roleCodes = createdUser.roles.map(role => role.code);
+      setDefaultValues({
+        name: createdUser.name,
+        userName: createdUser.userName,
+        contact: createdUser.mobileNumber,
+        email: createdUser.emailId,
+        roles: roles.filter(role => roleCodes.includes(role.code))
+      });
+    }
+  }, [mdmsResponse]);
+
+  useEffect(() => {
+    const createdAssessments = [];
+    (createdUser?.jurisdiction || []).forEach(jurisdiction => {
+      const assignment = fetchBoundaryHierarchy(jurisdiction.boundary, jurisdiction.boundaryType);
+      if (assignment) {
+        createdAssessments.push({ ...assignment, isSaved: true });
+      }
+    })
+    setAssignments(createdAssessments);
+  }, [fetchBoundaryHierarchy]);
 
   const isFormLoading = boundaryLoading || mdmsLoading;
 
@@ -113,71 +164,69 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     [t, mdmsResponse, createdUser, roles]
   );
 
-  const assignmentsConfig = useMemo(
-    () => [
-      {
-        key: "FACILITY_CREATE",
-        body: [
-          {
-            inline: true,
-            label: "CS_STATE",
-            isMandatory: false,
-            key: "state",
-            type: "component",
-            component: "ORGStateSelector",
-            customProps: {
-              name: "state",
-              t,
-              boundaryData,
-              disable: false,
-            },
-            populators: {
-              name: "state",
-              error: t("CORE_COMMON_REQUIRED"),
-            },
+  const assignmentsConfig = useCallback((disable) => [
+    {
+      key: "FACILITY_CREATE",
+      body: [
+        {
+          inline: true,
+          label: "CS_STATE",
+          isMandatory: false,
+          key: "state",
+          type: "component",
+          component: "ORGStateSelector",
+          customProps: {
+            name: "state",
+            t,
+            boundaryData,
+            disable: disable,
           },
-          {
-            inline: true,
-            label: "CS_DISTRICT",
-            isMandatory: false,
-            key: "district",
-            type: "component",
-            component: "ORGDistrictSelector",
-            customProps: {
-              name: "district",
-              stateIdentifier: "state",
-              t,
-              boundaryData,
-              disable: false,
-            },
-            populators: {
-              name: "district",
-              error: t("CORE_COMMON_REQUIRED"),
-            },
+          populators: {
+            name: "state",
+            error: t("CORE_COMMON_REQUIRED"),
           },
-          {
-            inline: true,
-            label: "CS_BLOCK",
-            isMandatory: false,
-            key: "block",
-            type: "component",
-            component: "ORGBlockSelector",
-            customProps: {
-              name: "block",
-              districtIdentifier: "district",
-              t,
-              boundaryData,
-              disable: false,
-            },
-            populators: {
-              name: "block",
-              error: t("CORE_COMMON_REQUIRED"),
-            },
+        },
+        {
+          inline: true,
+          label: "CS_DISTRICT",
+          isMandatory: false,
+          key: "district",
+          type: "component",
+          component: "ORGDistrictSelector",
+          customProps: {
+            name: "district",
+            stateIdentifier: "state",
+            t,
+            boundaryData,
+            disable: disable,
           },
-        ],
-      },
-    ],
-    [boundaryData]
+          populators: {
+            name: "district",
+            error: t("CORE_COMMON_REQUIRED"),
+          },
+        },
+        {
+          inline: true,
+          label: "CS_BLOCK",
+          isMandatory: false,
+          key: "block",
+          type: "component",
+          component: "ORGBlockSelector",
+          customProps: {
+            name: "block",
+            districtIdentifier: "district",
+            t,
+            boundaryData,
+            disable: disable,
+          },
+          populators: {
+            name: "block",
+            error: t("CORE_COMMON_REQUIRED"),
+          },
+        },
+      ],
+    },
+  ], [boundaryData]
   )
 
   const handleFormSubmit = useCallback((formData) => {
@@ -221,8 +270,8 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   }, [assignments]);
 
   const handleAssignmentFormChange = useCallback((index, _, formData) => {
-    if (CommonUtils.isNotEqual(assignments[index], formData)) {
-      setAssignments((prevAssignments) => prevAssignments.map((assignment, i) => (i === index ? formData : assignment)));
+    if (CommonUtils.isNotEqual(assignments[index].state, formData.state) || CommonUtils.isNotEqual(assignments[index].district, formData.district) || CommonUtils.isNotEqual(assignments[index].block, formData.block)) {
+      setAssignments((prevAssignments) => prevAssignments.map((assignment, i) => (i === index ? {...assignment, ...formData} : assignment)));
     }
   }, [assignments]);
 
@@ -234,7 +283,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     setAssignments((prevAssignments) => prevAssignments.reduce(
       (aggregate, assignment, i) => {
         if (i === index) {
-          if (assignment.id) {
+          if (assignment.isSaved) {
             aggregate.push({ ...assignment, isDeleted: true });
           }
         } else {
@@ -326,14 +375,14 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                     {t("ASSIGNMENT") + " " + (index + 1) + ":"}
                   </h2>
                   <button onClick={() => deleteAssignment(index)} style={{background: 'none', border: 'none', fontSize: 18, cursor: 'pointer'}}>
-                    <DustbinIcon />
+                    <CustomDustbinIcon colourFill={"#bc210a"} />
                   </button>
                 </div>
                 <FormComposerV2
                   key={JSON.stringify(assignment)}
                   defaultValues={assignment}
-                  config={assignmentsConfig}
-                  onFormValueChange={handleAssignmentFormChange.bind(this, index)}
+                  config={assignmentsConfig(assignment.isSaved)}
+                  onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
                   label={""}
                   heading={""}
                   cardStyle={{ boxShadow: "none" }}
