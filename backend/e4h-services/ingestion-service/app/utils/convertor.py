@@ -532,6 +532,7 @@ def create_facility_payload(request_info: RequestInfo, row: Series, are_faciliti
                 },
                 'facility_poc_name': safe_get(row, 'HC PoC Name (Mandatory)'),
                 'facility_poc_phone': safe_get(row, 'HC PoC Contact number (Mandatory)'),
+                'facility_poc_email': safe_get(row, 'HC PoC Email'),
                 'hfr_id': safe_get(row, 'HFR ID'),
                 'nin_id': safe_get(row, 'NIN ID'),
                 'isOnmReady': are_facilities_onm_ready,
