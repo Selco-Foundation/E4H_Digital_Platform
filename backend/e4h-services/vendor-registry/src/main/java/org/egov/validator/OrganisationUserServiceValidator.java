@@ -141,7 +141,7 @@ public class OrganisationUserServiceValidator {
                         .type(orgUser.getType())
                         .tenantId(orgUser.getTenantId())
                         .roles(orgUser.getRoles())
-                        .jurisdiction(orgUser.getJurisdiction())
+                        .jurisdictions(orgUser.getJurisdictions())
                         .build();
 
                 Employee employee1 = hrmsUtils.buildEmployee(user, orgType);
@@ -348,7 +348,7 @@ public class OrganisationUserServiceValidator {
                 validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
                 // Call HRMS service to update user
                 employee.getUser().setRoles(orgUser.getRoles());
-                employee.setJurisdictions(hrmsUtils.buildJurisdictions(orgUser.getJurisdiction()));
+                employee.setJurisdictions(hrmsUtils.buildJurisdictions(orgUser.getJurisdictions()));
                 EmployeeRequest employeeRequest = EmployeeRequest.builder().requestInfo(request.getRequestInfo()).employees(List.of(employee)).build();
                 List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
                 if (updatedEmployees != null && !updatedEmployees.isEmpty()) {

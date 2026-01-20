@@ -49,11 +49,12 @@ public class OrganisationUserRepository {
                     .additionalDetails(orgUser.getAdditionalDetails())
                     .isDeleted(orgUser.getIsDeleted())
                     .build();
-            orgUserEnricheds.add(enriched);
             Employee employee = hrmsUtils.getUserById(orgSearchRequest, orgUser.getUserId());
             if(employee != null){
                 enriched.setUser(employee.getUser());
+                enriched.getUser().setJurisdictions(employee.getJurisdictions());
             }
+            orgUserEnricheds.add(enriched);
         }
         return orgUserEnricheds;
     }
