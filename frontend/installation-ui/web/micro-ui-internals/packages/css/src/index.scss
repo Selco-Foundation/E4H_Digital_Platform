@@ -120,6 +120,7 @@
 @import "./pages/employee/activitydetailstable.scss";
 @import "./pages/employee/qc/facilitytable.scss";
 @import "./pages/employee/amc/visittable.scss";
+@import "./pages/employee/org/orguserstable.scss";
 
 .wbh-header-container {
   display: flex !important;
@@ -892,5 +893,12 @@ input[type="number"] {
     .options-card {
       margin-top: 40px;
     }
+  }
+}
+
+.org-user-assignment {
+  .employeeCard {
+    margin-bottom: 0 !important;
+    padding: 0 !important;
   }
 }

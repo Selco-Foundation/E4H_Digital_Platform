@@ -46,4 +46,20 @@ export const VendorService = {
     });
   },
 
+  createOrganizationUser: async (queryObject) => {
+    const endpoint = "/vendor/organisation/v1/user/_create";
+    const headers = {
+      "Content-Type" : "application/json"
+    }
+
+    return await Request({
+      url : endpoint,
+      data: queryObject,
+      userService : true,
+      method : "POST",
+      auth : true,
+      headers : headers,
+    });
+  },
+
 }

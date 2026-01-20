@@ -89,7 +89,7 @@ const OrganizationDetails = () => {
         <InfoItem title={t("ORGANIZATION_POC_USERNAME")} value={organizationData?.orgPocUsername} />
         <InfoItem title={t("ORGANIZATION_STATUS")} value={organizationData?.orgStatus} />
       </div>
-      <OrganizationUserTable t={t} organizationId={organizationId} />
+      <OrganizationUserTable t={t} organizationId={organizationId} organizationType={organizationData?.orgType} />
     </div>
   );
 };

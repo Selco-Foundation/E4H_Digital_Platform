@@ -4,6 +4,7 @@ import { VendorService } from "../services/Vendor";
 const formatOrganizationUsers = (organizationUsers) => {
   return organizationUsers.map((organizationUser) => ({
     ...organizationUser.user,
+    roles: (organizationUser.user.roles || []).filter((role) => (role.code && role.name)),
     organizationId: organizationUser.organizationId,
   }))
 }
