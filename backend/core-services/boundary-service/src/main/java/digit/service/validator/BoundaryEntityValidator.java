@@ -2,19 +2,25 @@ package digit.service.validator;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
+import digit.config.ApplicationProperties;
 import digit.constants.BoundaryConstants;
 import digit.errors.ErrorCodes;
 import digit.repository.impl.BoundaryRepositoryImpl;
+import digit.service.ServiceRequestRepository;
 import digit.util.GeoUtil;
+import digit.util.HierarchyUtil;
+import digit.util.MDMSUtils;
 import digit.web.models.*;
 import org.egov.tracer.model.CustomException;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.ObjectUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static digit.constants.BoundaryConstants.MASTER_STATE_INFO;
+import static digit.constants.BoundaryConstants.MDMS_COMMON_MASTERS_MODULE_NAME;
 
 @Component
 public class BoundaryEntityValidator {
@@ -22,10 +28,21 @@ public class BoundaryEntityValidator {
     private final ObjectMapper objectMapper;
 
     private final BoundaryRepositoryImpl boundaryRepository;
+    private final MDMSUtils mdmsUtils;
+    private final ApplicationProperties config;
+    private final ObjectMapper mapper;
+    private final ServiceRequestRepository serviceRequestRepository;
 
-    public BoundaryEntityValidator(ObjectMapper objectMapper, BoundaryRepositoryImpl boundaryRepository) {
+    private HierarchyUtil hierarchyUtil;
+
+    public BoundaryEntityValidator(ObjectMapper objectMapper, BoundaryRepositoryImpl boundaryRepository, MDMSUtils mdmsUtils, ApplicationProperties config, ObjectMapper mapper, ServiceRequestRepository serviceRequestRepository, HierarchyUtil hierarchyUtil) {
         this.objectMapper = objectMapper;
         this.boundaryRepository = boundaryRepository;
+        this.mdmsUtils = mdmsUtils;
+        this.config = config;
+        this.mapper = mapper;
+        this.serviceRequestRepository = serviceRequestRepository;
+        this.hierarchyUtil = hierarchyUtil;
     }
 
     /**
@@ -36,6 +53,8 @@ public class BoundaryEntityValidator {
      * @param boundaryRequest
      */
     public void validateCreateBoundaryRequest(BoundaryRequest boundaryRequest) {
+        // Check if new state code code or state boundary code already exist in MDMS common-master.StateInfo module. Only call for state
+        validateStateCode(boundaryRequest);
 
         // validate the geometry
         validateBoundaryGeometry(boundaryRequest.getBoundary());
@@ -162,5 +181,43 @@ public class BoundaryEntityValidator {
         if (boundarySet.size() != boundaryRequest.getBoundary().size()) {
             throw new CustomException(ErrorCodes.DUPLICATE_BOUNDARY_CODE, ErrorCodes.DUPLICATE_BOUNDARY_MSG);
         }
+    }
+
+    private void validateStateCode(BoundaryRequest request){
+        for (Boundary boundary : request.getBoundary()){
+            boolean isStateBoundaryType = hierarchyUtil.hasOnlyCountryAndState(boundary.getAdditionalDetails());
+            if(!isStateBoundaryType)
+                continue;
+
+            String stateBoundaryCode = boundary.getCode();
+            String stateCode = boundary.getStateCode()!=null && !boundary.getStateCode().isEmpty() ? boundary.getStateCode() : hierarchyUtil.boundaryCodeToCode(boundary.getCode());
+            Object mdmsData = mdmsUtils.mDMSCall(request.getRequestInfo(), boundary.getTenantId());
+            String mdmsRes = "$.MdmsRes.";
+            final String jsonPathForStateInfo = mdmsRes + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_STATE_INFO;
+            List<Object> stateInfoRes = null;
+            stateInfoRes = JsonPath.read(mdmsData, jsonPathForStateInfo);
+            for (Object map : stateInfoRes) {
+                LinkedHashMap<String, Object> stateInfo = (LinkedHashMap<String, Object>) map;
+                String boundaryCode = (String) stateInfo.get("boundaryCode");
+                String code = (String) stateInfo.get("code");
+                if ((stateBoundaryCode!=null && stateBoundaryCode.equalsIgnoreCase(boundaryCode))) {
+                    throw new CustomException("STATE_BOUNDARY_CODE_EXIST", "The State boundary code already exist: " + boundary.getCode());
+                }
+                if ((stateBoundaryCode!=null && stateBoundaryCode.equalsIgnoreCase(boundaryCode)) || (stateCode!=null && stateCode.equalsIgnoreCase(code))) {
+                    throw new CustomException("STATE_BOUNDARY_CODE_EXIST", "The State code already exist: " + boundary.getStateCode());
+                }
+            }
+        }
+    }
+
+
+    public MdmsResponseV2 createStateInfoData(Object request) {
+        String url = config.getMdmsHost() + config.getMdmsCreateEndPoint();
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        MdmsResponseV2 mdmsResponse = mapper.convertValue(response, MdmsResponseV2.class);
+        if (mdmsResponse == null || mdmsResponse.getMdms() == null || mdmsResponse.getMdms().isEmpty()) {
+            return null;
+        }
+        return mdmsResponse;
     }
 }

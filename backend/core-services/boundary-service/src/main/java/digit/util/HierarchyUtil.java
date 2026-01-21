@@ -1,5 +1,6 @@
 package digit.util;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import digit.repository.BoundaryHierarchyRepository;
 import digit.repository.querybuilder.BoundaryHierarchyTypeQueryBuilder;
 import digit.web.models.BoundaryTypeHierarchy;
@@ -11,10 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.IntStream;
 
 @Component
@@ -92,4 +90,112 @@ public class HierarchyUtil {
         String query = boundaryHierarchyTypeQueryBuilder.getBoundaryHierarchyTypeCountQuery(boundaryTypeHierarchySearchCriteria, preparedStmtList);
         return jdbcTemplate.queryForObject(query, preparedStmtList.toArray(), Integer.class);
     }
+
+    // Output India_AndamanandNicobarIslands: → AN, India_Telangana → TE, India_Assam_Biswanath → AB
+    public static String boundaryCodeToCode(String input) {
+        if (input == null || input.isBlank()) {
+            return "";
+        }
+
+        // Nettoyage
+        String cleaned = input.trim();
+
+        // Supprimer "India_" si présent
+        if (cleaned.startsWith("India_")) {
+            cleaned = cleaned.substring("India_".length());
+        }
+
+        // Supprimer ":" et tout ce qui suit
+        int colonIndex = cleaned.indexOf(":");
+        if (colonIndex >= 0) {
+            cleaned = cleaned.substring(0, colonIndex);
+        }
+
+        // Enlever underscores
+        cleaned = cleaned.replace("_", "");
+
+        // Split CamelCase
+        String[] words = cleaned.split("(?=[A-Z])");
+
+        // Construire le code
+        StringBuilder code = new StringBuilder();
+
+        if (words.length >= 2) {
+            code.append(Character.toUpperCase(words[0].charAt(0)));
+            code.append(Character.toUpperCase(words[1].charAt(0)));
+        } else if (words.length == 1 && words[0].length() >= 2) {
+            code.append(Character.toUpperCase(words[0].charAt(0)));
+            code.append(Character.toUpperCase(words[0].charAt(1)));
+        } else if (words.length == 1) {
+            code.append(Character.toUpperCase(words[0].charAt(0)));
+        }
+
+        return code.toString();
+    }
+
+    public String boundaryCodeToName(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return "";
+        }
+
+        // Nettoyage
+        String cleaned = boundaryCode.trim();
+
+        // Supprimer "India_" si présent
+        if (cleaned.startsWith("India_")) {
+            cleaned = cleaned.substring("India_".length());
+        }
+
+        // Remplacer _ par espace
+        cleaned = cleaned.replace("_", " ");
+
+        // Ajouter des espaces avant les majuscules (CamelCase)
+        cleaned = cleaned.replaceAll("(?<=[a-z])(?=[A-Z])", " ");
+
+        // Normaliser les espaces multiples
+        cleaned = cleaned.replaceAll("\\s+", " ").trim();
+
+        // Mettre en forme (Majuscule au début de chaque mot)
+        String[] words = cleaned.split(" ");
+        StringBuilder result = new StringBuilder();
+
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                        .append(word.substring(1).toLowerCase())
+                        .append(" ");
+            }
+        }
+
+        return result.toString().trim();
+    }
+
+    public boolean hasOnlyCountryAndState(JsonNode boundaryNode) {
+
+        if (boundaryNode == null) {
+            return false;
+        }
+
+        JsonNode geographyDetails = boundaryNode
+                .path("geographyDetails");
+
+        if (geographyDetails.isMissingNode() || !geographyDetails.isObject()) {
+            return false;
+        }
+
+        Set<String> allowedFields = Set.of("country", "state");
+
+        Iterator<String> fieldNames = geographyDetails.fieldNames();
+        while (fieldNames.hasNext()) {
+            String field = fieldNames.next();
+            if (!allowedFields.contains(field)) {
+                return false; // ex: district, block, etc.
+            }
+        }
+
+        // Vérifie aussi que country et state existent bien
+        return geographyDetails.hasNonNull("country")
+                && geographyDetails.hasNonNull("state");
+    }
+
 }
