@@ -31,12 +31,12 @@ const ORGApp = () => {
       show: true,
     },
     vendorOrganizations: {
-      content: t("CS_COMMON_ORGANIZATION"),
+      content: t("ORGANIZATIONS"),
       internalLink: `/${window.contextPath}/employee/org/vendors`,
       show: true,
     },
     platformOrganizations: {
-      content: t("CS_COMMON_ORGANIZATION"),
+      content: t("ORGANIZATIONS"),
       internalLink: `/${window.contextPath}/employee/org/platforms`,
       show: true,
     },

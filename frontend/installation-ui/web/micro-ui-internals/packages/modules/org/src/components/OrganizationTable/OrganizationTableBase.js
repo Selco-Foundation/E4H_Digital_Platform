@@ -49,7 +49,7 @@ const OrganizationTableBase = ({ orgType }) => {
       pathname: location.pathname,
       search: `filter=${encodedFilter}&pageSize=${pageSize}&pageOffset=${pageOffset}`,
     });
-  }, [projectQueryFilter, pageSize, pageOffset]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [projectQueryFilter, pageSize, pageOffset]);
 
   useEffect(() => {
     const prevSearchParams = prevSearchParamsRef.current;
@@ -115,7 +115,7 @@ const OrganizationTableBase = ({ orgType }) => {
       return (
         <div style={{ padding: "20px" }}>
           <div style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "8px" }}>
-            {t("ORG_FETCH_FAILED") || "Failed to load organizations"}
+            {t("ORG_FETCH_FAILED")}
           </div>
           <div style={{ color: "#B91900" }}>{msg}</div>
         </div>
@@ -126,7 +126,7 @@ const OrganizationTableBase = ({ orgType }) => {
       return (
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "70%" }}>
           <div style={{ fontSize: "20px", fontWeight: "bold" }}>
-            {t("CS_NO_ORGANIZATIONS_FOUND") || "No organizations found"}
+            {t("CS_NO_ORGANIZATIONS_FOUND")}
           </div>
         </div>
       );
@@ -151,7 +151,7 @@ const OrganizationTableBase = ({ orgType }) => {
             pageSizeLimit={pageSize}
             onClickRow={(row) => {
               const id = row && row.original && row.original.id ? String(row.original.id) : "";
-              history.push(`/${window.contextPath}/employee/org/organizations/${encodeURIComponent(id)}`);
+              history.push(`/${window.contextPath}/employee/org/organizations/${encodeURIComponent(id)}/details`);
             }}
           />
         </div>
@@ -161,15 +161,6 @@ const OrganizationTableBase = ({ orgType }) => {
 
   return (
     <div style={{ marginTop: "20px", padding: "0px 10px", overflow: "auto" }}>
-      {/*<div style={{ padding: "20px" }}>*/}
-      {/*  <h1 style={{ fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", margin: "0", color: "#0B0C0C" }}>*/}
-      {/*    {orgType === "PLATFORM" ? t("PLATFORM_ORGANIZATIONS") || t("ORGANIZATIONS") : t("VENDOR_ORGANIZATIONS") || t("ORGANIZATIONS")}*/}
-      {/*  </h1>*/}
-
-      {/*  /!* ✅ passes orgType into popup form + payload *!/*/}
-      {/*  <OrganizationAdminActions orgType={orgType} />*/}
-      {/*</div>*/}
-
       <div
         style={{
           padding: "20px",
@@ -186,12 +177,10 @@ const OrganizationTableBase = ({ orgType }) => {
             fontFamily: "Roboto Condensed",
             margin: 0,
             color: "#0B0C0C",
-            flex: 1, // keeps title left and lets button stay right
+            flex: 1,
           }}
         >
-          {orgType === "PLATFORM"
-            ? t("PLATFORM_ORGANIZATIONS") || t("ORGANIZATIONS")
-            : t("VENDOR_ORGANIZATIONS") || t("ORGANIZATIONS")}
+          {orgType === "PLATFORM" ? t("ORG_PLATFORM_ORGANIZATIONS") : t("ORG_VENDOR_ORGANIZATIONS")}
         </h1>
 
         <div style={{ flexShrink: 0 }}>

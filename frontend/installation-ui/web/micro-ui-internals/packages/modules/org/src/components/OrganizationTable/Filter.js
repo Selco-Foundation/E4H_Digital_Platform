@@ -9,7 +9,6 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
 
   const [name, setName] = useState(initialSearch.name || "");
 
-  // If parent restores from URL, reflect it
   useEffect(() => {
     const next =
       (projectQueryFilter &&
@@ -37,7 +36,7 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
     }, 350);
 
     return () => clearTimeout(id);
-  }, [debouncedName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [debouncedName]);
 
   const onClearAll = () => {
     setName("");
@@ -90,11 +89,11 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
         </div>
 
         <div style={{ marginBottom: "16px" }}>
-          <div className="filter-label">{t("ORG_SEARCH_NAME") || "Organization Name"}</div>
+          <div className="filter-label">{t("ORG_SEARCH_NAME")}</div>
           <TextInput
             value={name}
             onChange={(e) => setName((e && e.target && e.target.value) || "")}
-            placeholder={t("ORG_SEARCH_NAME_PLACEHOLDER") || "Search by name"}
+            placeholder={t("ORG_SEARCH_NAME_PLACEHOLDER")}
             style={{ width: "100%" }}
           />
         </div>
