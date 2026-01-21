@@ -80,8 +80,14 @@ def add_dropdowns_to_excel(
         # Write dropdown values to hidden sheet starting from current_hidden_row
         start_row = current_hidden_row
         for idx, option in enumerate(options, start=start_row):
-            # Escape any special characters that might break Excel formulas
-            cell_value = str(option).replace("'", "''")  # Escape single quotes
+            # If a value starts with =, +, -, or @ it can be treated as a formula.
+            # Prefix with an apostrophe so it is always interpreted as plain text.
+            raw_value = str(option)
+            if raw_value and raw_value[0] in ("=", "+", "-", "@"):
+                cell_value = "'" + raw_value
+            else:
+                cell_value = raw_value
+
             hidden_ws.cell(row=idx, column=1).value = cell_value
         
         end_row = start_row + len(options) - 1
@@ -99,10 +105,10 @@ def add_dropdowns_to_excel(
             showErrorMessage=True,
             showInputMessage=True
         )
-        dv.error = 'Please select from the list'
-        dv.errorTitle = 'Invalid Entry'
-        dv.prompt = f'Select a value from the dropdown'
-        dv.promptTitle = 'Select Value'
+        dv.error = "Please select from the list"
+        dv.errorTitle = "Invalid Entry"
+        dv.prompt = "Select a value from the dropdown"
+        dv.promptTitle = "Select Value"
         
         # Apply validation to the column (skip header row)
         dv.add(f"{col_letter}2:{col_letter}{max_row}")
