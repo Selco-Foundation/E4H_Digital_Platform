@@ -31,6 +31,30 @@ public class PanelGraphResponse {
 
         @JsonProperty("facilities")
         private List<PanelFacility> facilities;
+
+        @JsonProperty("pagination")
+        private Pagination pagination;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Pagination {
+        @JsonProperty("page")
+        private Integer page;
+
+        @JsonProperty("size")
+        private Integer size;
+
+        @JsonProperty("noOfRecords")
+        private Integer noOfRecords;
+
+        @JsonProperty("totalPages")
+        private Integer totalPages;
+
+        @JsonProperty("totalRecords")
+        private Integer totalRecords;
     }
 
     @Data
