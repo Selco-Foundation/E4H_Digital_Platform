@@ -63,16 +63,16 @@ public class DataCollectorService {
                 filter.put("compareValue", 10);
                 filters.add(filter);
                 
-                Map<String, Object> pagination = new HashMap<>();
-                pagination.put("page", page);
-                pagination.put("size", pageSize);
-                
                 Map<String, Object> requestBody = new HashMap<>();
                 requestBody.put("graphType", "solarVsGrid_Eb_Diff");
                 requestBody.put("time_range", timeRange);
                 requestBody.put("frequency", "daily");
                 requestBody.put("aggregation", "deltaSum");
                 requestBody.put("filters", filters);
+
+                Map<String, Object> pagination = new HashMap<>();
+                pagination.put("page", page);
+                pagination.put("size", pageSize);
                 requestBody.put("pagination", pagination);
 
                 PanelGraphResponse response = callPanelGraphApi(config.getCenterDetailsEndpoint(), requestBody);
@@ -81,6 +81,7 @@ public class DataCollectorService {
                     response.getData().getFacilities() != null) {
                     
                     List<PanelGraphResponse.PanelFacility> facilities = response.getData().getFacilities();
+                    PanelGraphResponse.Pagination responsePagination = response.getData().getPagination();
                     
                     for (PanelGraphResponse.PanelFacility panelFacility : facilities) {
                         // Convert PanelFacility to RMSFacilityData
@@ -89,11 +90,18 @@ public class DataCollectorService {
                             allFacilities.add(facility);
                         }
                     }
-                    
-                    // Check if there are more pages (if pagination info is available)
-                    if (facilities.size() < pageSize) {
-                        hasMore = false;
+
+                    // Decide if there are more pages based on API pagination metadata when available
+                    if (responsePagination != null && responsePagination.getTotalPages() != null) {
+                        if (page >= responsePagination.getTotalPages()) {
+                            break;
+                        }
+                        page++;
                     } else {
+                        // Fallback to existing behaviour if pagination block is missing
+                        if (facilities.size() < pageSize) {
+                            break;
+                        }
                         page++;
                     }
                 } else {
@@ -464,12 +472,18 @@ public class DataCollectorService {
                 requestBody.put("aggregation", "avg");
                 requestBody.put("filters", filters);
 
+                Map<String, Object> pagination = new HashMap<>();
+                pagination.put("page", page);
+                pagination.put("size", pageSize);
+                requestBody.put("pagination", pagination);
+
                 PanelGraphResponse response = callBatteryVoltageApi(config.getCenterDetailsEndpoint(), requestBody);
                 
                 if (response != null && response.getData() != null && 
                     response.getData().getFacilities() != null) {
                     
                     List<PanelGraphResponse.PanelFacility> facilities = response.getData().getFacilities();
+                    PanelGraphResponse.Pagination responsePagination = response.getData().getPagination();
                     
                     for (PanelGraphResponse.PanelFacility panelFacility : facilities) {
                         // Convert PanelFacility to RMSFacilityData
@@ -478,11 +492,16 @@ public class DataCollectorService {
                             allFacilities.add(facility);
                         }
                     }
-                    
-                    // Check if there are more pages
-                    if (facilities.size() < pageSize) {
-                        hasMore = false;
+
+                    if (responsePagination != null && responsePagination.getTotalPages() != null) {
+                        if (page >= responsePagination.getTotalPages()) {
+                            break;
+                        }
+                        page++;
                     } else {
+                        if (facilities.size() < pageSize) {
+                            break;
+                        }
                         page++;
                     }
                 } else {
@@ -614,15 +633,15 @@ public class DataCollectorService {
                 timeRange.put("time_period", timePeriod);
                 timeRange.put("custom_range", new HashMap<>());
                 
-                Map<String, Object> pagination = new HashMap<>();
-                pagination.put("page", page);
-                pagination.put("size", pageSize);
-                
                 Map<String, Object> requestBody = new HashMap<>();
                 requestBody.put("graphType", "batteryChargeVsDischarge_Eb_Filtered");
                 requestBody.put("time_range", timeRange);
                 requestBody.put("frequency", "daily");
                 requestBody.put("aggregation", "deltaSum");
+
+                Map<String, Object> pagination = new HashMap<>();
+                pagination.put("page", page);
+                pagination.put("size", pageSize);
                 requestBody.put("pagination", pagination);
 
                 PanelGraphResponse response = callBatteryChargeDischargeApi(config.getCenterDetailsEndpoint(), requestBody);
@@ -631,6 +650,7 @@ public class DataCollectorService {
                     response.getData().getFacilities() != null) {
                     
                     List<PanelGraphResponse.PanelFacility> facilities = response.getData().getFacilities();
+                    PanelGraphResponse.Pagination responsePagination = response.getData().getPagination();
                     
                     for (PanelGraphResponse.PanelFacility panelFacility : facilities) {
                         // Convert PanelFacility to RMSFacilityData
@@ -645,11 +665,16 @@ public class DataCollectorService {
                             }
                         }
                     }
-                    
-                    // Check if there are more pages
-                    if (facilities.size() < pageSize) {
-                        hasMore = false;
+
+                    if (responsePagination != null && responsePagination.getTotalPages() != null) {
+                        if (page >= responsePagination.getTotalPages()) {
+                            break;
+                        }
+                        page++;
                     } else {
+                        if (facilities.size() < pageSize) {
+                            break;
+                        }
                         page++;
                     }
                 } else {
