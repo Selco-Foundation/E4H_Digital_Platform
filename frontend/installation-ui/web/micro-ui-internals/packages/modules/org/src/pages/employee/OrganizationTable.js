@@ -4,6 +4,7 @@ import { useHistory, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import Filter from "../../components/OrganizationTable/Filter";
+import OrganizationAdminActions from "../../components/OrganizationTable/OrganizationAdminActions";
 import useOrganizations from "../../hooks/useOrganization";
 
 const normalizeOrgFilter = (raw) => {
@@ -169,6 +170,7 @@ const OrganizationTable = () => {
         <h1 style={{ fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", margin: "0", color: "#0B0C0C" }}>
           {t("ORGANIZATIONS") || "Organizations"}
         </h1>
+        <OrganizationAdminActions />
       </div>
 
       <div style={{ width: "100%", display: "flex", gap: "15px", alignItems: "stretch" }}>
