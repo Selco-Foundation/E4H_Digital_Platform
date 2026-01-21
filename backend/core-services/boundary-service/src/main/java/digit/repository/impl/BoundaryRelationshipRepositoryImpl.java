@@ -6,6 +6,7 @@ import digit.repository.BoundaryRelationshipRepository;
 import digit.repository.querybuilder.BoundaryRelationshipQueryBuilder;
 import digit.repository.rowmapper.BoundaryRelationshipRowMapper;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Repository
+@Slf4j
 public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipRepository {
 
     private Producer producer;
@@ -73,10 +75,21 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
         List<Object> preparedStmtList = new ArrayList<>();
 
         // Get query for searching boundary relationship
-        String query = boundaryRelationshipQueryBuilder.getBoundaryRelationshipSearchQuery(boundaryRelationshipSearchCriteria, preparedStmtList);
+        String query = boundaryRelationshipQueryBuilder.getBoundaryRelationshipSearchQuery(boundaryRelationshipSearchCriteria, preparedStmtList, false);
 
         // Return search response based on provided search criteria
         return jdbcTemplate.query(query, preparedStmtList.toArray(), boundaryRelationshipRowMapper);
+    }
+
+    public Integer getBoundaryCount(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria) {
+        List<Object> preparedStatement = new ArrayList<>();
+        String query = boundaryRelationshipQueryBuilder.getBoundaryRelationshipSearchQuery(boundaryRelationshipSearchCriteria, preparedStatement, true);
+        if (query == null)
+            return 0;
+
+        Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
+        log.info("Total boundary count is : " + count);
+        return count;
     }
 
     /**
