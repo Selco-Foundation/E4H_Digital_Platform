@@ -3,15 +3,16 @@ import { createPortal } from "react-dom";
 import { ArrowDown } from "@egovernments/digit-ui-react-components"
 
 const CustomDropdown = ({
-                          option = [],
-                          optionKey = "name",
-                          selected,
-                          select,
-                          style = {},
-                          placeholder = "",
-                          disable = false,
-                          t = (key) => key
-                        }) => {
+  option = [],
+  optionKey = "name",
+  selected,
+  select,
+  style = {},
+  placeholder = "",
+  disable = false,
+  t = (key) => key,
+  optionsCardStyle = {},
+}) => {
 
   const [isOpen, setIsOpen] = useState(false);
   const [position, setPosition] = useState(null);
@@ -96,7 +97,13 @@ const CustomDropdown = ({
         className={"select"}
         ref={triggerRef}
         style={{
-          ...style
+          ...(disable && {
+            opacity: "0.5",
+            cursor: "not-allowed",
+            borderColor: "rgba(158, 158, 158)",
+            backgroundColor: "#EEE",
+          }),
+          ...style,
         }}
       >
         <input
@@ -144,7 +151,8 @@ const CustomDropdown = ({
             color: "black",
             boxShadow: "0 8px 10px 1px rgba(0, 0, 0, 0.14)",
             zIndex: 10000,
-            marginTop: "2px"
+            marginTop: "2px",
+            ...optionsCardStyle,
           }}
         >
           {filteredOptions.length === 0 ? (

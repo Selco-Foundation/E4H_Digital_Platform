@@ -3,10 +3,12 @@ import { useTranslation } from "react-i18next";
 import { Route, Switch, useRouteMatch } from "react-router-dom";
 import { BreadCrumb } from "@egovernments/digit-ui-components";
 import { useSelector } from "react-redux";
+import OrganizationDetails from "./OrganizationDetails";
 import VendorOrganization from "./VendorOrgTable";
 import PlatformOrganization from "./PlatformOrgTable"
 
 const ORGApp = () => {
+
   const { t } = useTranslation();
   const { path } = useRouteMatch();
   const match = useRouteMatch();
@@ -16,6 +18,16 @@ const ORGApp = () => {
     home: {
       content: t("CS_COMMON_HOME"),
       internalLink: `/${window.contextPath}/employee`,
+      show: true,
+    },
+    organizations: {
+      content: t("ORGANIZATIONS"),
+      internalLink: `/${window.contextPath}/employee/org/${navigator?.workingOrganization?.orgType === "PLATFORM" ? `platforms` : `vendors`}`,
+      show: true,
+    },
+    organizationDetails: {
+      content: navigator?.workingOrganization?.name,
+      internalLink: `/${window.contextPath}/employee/org/organizations/:organizationId/details`,
       show: true,
     },
     vendorOrganizations: {
@@ -50,6 +62,13 @@ const ORGApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.platformOrganizations]}
           />
           <PlatformOrganization />
+        </Route>
+        <Route path={`${path}/organizations/:organizationId/details`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.organizations, breadCrumbsConfig.organizationDetails]}
+          />
+          <OrganizationDetails />
         </Route>
       </Switch>
     </div>
