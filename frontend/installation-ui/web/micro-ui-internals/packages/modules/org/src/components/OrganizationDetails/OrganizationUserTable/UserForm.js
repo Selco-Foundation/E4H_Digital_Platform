@@ -86,7 +86,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     (createdUser?.jurisdiction || []).forEach(jurisdiction => {
       const assignment = fetchBoundaryHierarchy(jurisdiction.boundary, jurisdiction.boundaryType);
       if (assignment) {
-        createdAssessments.push({ ...assignment, isSaved: true });
+        createdAssessments.push({ ...assignment, savedJurisdiction: jurisdiction });
       }
     })
     setAssignments(createdAssessments);
@@ -235,7 +235,12 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
 
       assignments.forEach((assignment) => {
         let jurisdiction;
-        if (assignment.block?.code) {
+        if (assignment.savedJurisdiction) {
+          jurisdiction = {
+            ...assignment.savedJurisdiction,
+            isActive: !assignment.isDeleted,
+          };
+        } else if (assignment.block?.code) {
           jurisdiction = {
             hierarchy: "SELCO",
             boundary: assignment.block.code,
@@ -283,7 +288,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     setAssignments((prevAssignments) => prevAssignments.reduce(
       (aggregate, assignment, i) => {
         if (i === index) {
-          if (assignment.isSaved) {
+          if (assignment.savedJurisdiction) {
             aggregate.push({ ...assignment, isDeleted: true });
           }
         } else {
@@ -381,7 +386,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                 <FormComposerV2
                   key={JSON.stringify(assignment)}
                   defaultValues={assignment}
-                  config={assignmentsConfig(assignment.isSaved)}
+                  config={assignmentsConfig(assignment.savedJurisdiction)}
                   onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
                   label={""}
                   heading={""}

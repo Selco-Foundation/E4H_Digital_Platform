@@ -234,6 +234,10 @@ const OrganizationUserTable = ({ t, organizationId, organizationType }) => {
   const handleOrganizationUserEdit = async (createdUser, userFormData, jurisdictions) => {
     try {
       setBlockUI(true);
+      const modifiedJurisdictionsMap = new Map();
+      jurisdictions.forEach(jurisdiction => jurisdiction.id && modifiedJurisdictionsMap.set(jurisdiction.id, jurisdiction));
+      const modifiedJurisdictions = createdUser.jurisdiction.map((jurisdiction) => ({...jurisdiction, ...(modifiedJurisdictionsMap.get(jurisdiction.id) || {})}))
+      const newJurisdictions = jurisdictions.filter((jurisdiction) => !jurisdiction.id);
       const organizationUser = {
         organizationId: organizationId,
         id: createdUser.orgUserId,
@@ -244,7 +248,7 @@ const OrganizationUserTable = ({ t, organizationId, organizationType }) => {
           emailId: userFormData.email,
           tenantId: Digit.ULBService.getCurrentTenantId(),
           roles: userFormData.roles.map(role => ({...role, tenantId: Digit.ULBService.getCurrentTenantId()})),
-          jurisdiction: jurisdictions
+          jurisdiction: [...modifiedJurisdictions, ...newJurisdictions]
         }
       }
       await VendorService.editOrganizationUser(organizationUser)
