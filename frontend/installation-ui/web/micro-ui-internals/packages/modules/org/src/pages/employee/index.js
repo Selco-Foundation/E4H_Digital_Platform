@@ -22,12 +22,12 @@ const ORGApp = () => {
     },
     organizations: {
       content: t("ORGANIZATIONS"),
-      internalLink: `/${window.contextPath}/org/organizations`,
+      internalLink: `/${window.contextPath}/employee/org/${navigator?.workingOrganization?.orgType === "PLATFORM" ? `platforms` : `vendors`}`,
       show: true,
     },
     organizationDetails: {
       content: navigator?.workingOrganization?.name,
-      internalLink: `/${window.contextPath}/org/organizations/:organizationId/details`,
+      internalLink: `/${window.contextPath}/employee/org/organizations/:organizationId/details`,
       show: true,
     },
     vendorOrganizations: {
