@@ -4,7 +4,7 @@ import useBoundary from "../../../hooks/useBoundary";
 import CommonUtils from "../../../utilities/CommonUtils";
 import CustomDustbinIcon from "../../Custom/CustomDustbinIcon";
 
-const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, formToast, setFormToast }) => {
+const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, organizationSubType, formToast, setFormToast }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const [defaultValues, setDefaultValues] = useState({});
@@ -34,7 +34,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     }
   );
 
-  const roles = (mdmsResponse?.Organisation?.OrgRoles || []).filter((role) => role.orgType === organizationType);
+  const roles = (mdmsResponse?.Organisation?.OrgRoles || []).filter((role) => (role.orgType === organizationType && ((!role.orgSubType && !organizationSubType) || role.orgSubType === organizationSubType)));
 
   const fetchBoundaryHierarchy = useCallback((boundaryCode, boundaryType) => {
     if (!boundaryData) return;

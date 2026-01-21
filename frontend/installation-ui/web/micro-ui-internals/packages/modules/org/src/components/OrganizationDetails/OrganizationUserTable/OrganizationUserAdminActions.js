@@ -4,7 +4,7 @@ import { Toast, Loader } from "@egovernments/digit-ui-react-components";
 import {VendorService} from "../../../services/Vendor";
 import {useQueryClient} from "react-query";
 
-const OrganizationUserAdminActions = ({ t, organizationId, organizationType }) => {
+const OrganizationUserAdminActions = ({ t, organizationId, organizationType, organizationSubType }) => {
 
   const [toast, setToast] = useState(null);
   const [formToast, setFormToast] =  useState(null);
@@ -121,6 +121,7 @@ const OrganizationUserAdminActions = ({ t, organizationId, organizationType }) =
           onClose={() => setShowUserModal(false)}
           onSubmit={handleOrganizationUserCreate}
           organizationType={organizationType}
+          organizationSubType={organizationSubType}
           formToast={formToast}
           setFormToast={setFormToast}
         />

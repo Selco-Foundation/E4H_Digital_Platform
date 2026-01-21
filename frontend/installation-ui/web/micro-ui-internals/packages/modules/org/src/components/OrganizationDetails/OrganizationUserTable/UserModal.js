@@ -2,7 +2,7 @@ import React from "react";
 import { PopUp, Button } from "@egovernments/digit-ui-react-components";
 import UserForm from "./UserForm";
 
-const UserModal = ({ t, title, onClose, onSubmit, createdUser, organizationType, formToast, setFormToast }) => {
+const UserModal = ({ t, title, onClose, onSubmit, createdUser, organizationType, organizationSubType, formToast, setFormToast }) => {
   return (
     <PopUp>
       <div
@@ -62,6 +62,7 @@ const UserModal = ({ t, title, onClose, onSubmit, createdUser, organizationType,
           formToast={formToast}
           setFormToast={setFormToast}
           organizationType={organizationType}
+          organizationSubType={organizationSubType}
         />
       </div>
     </PopUp>

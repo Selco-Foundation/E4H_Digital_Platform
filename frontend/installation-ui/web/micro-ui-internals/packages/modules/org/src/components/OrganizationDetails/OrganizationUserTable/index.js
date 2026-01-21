@@ -9,7 +9,7 @@ import {useQueryClient} from "react-query";
 import UserModal from "./UserModal";
 import {VendorService} from "../../../services/Vendor";
 
-const OrganizationUserTable = ({ t, organizationId, organizationType }) => {
+const OrganizationUserTable = ({ t, organizationId, organizationType, organizationSubType }) => {
 
   const [fetchedData, setFetchedData] = useState([]);
   const [pageSize, setPageSize] = useState(10);
@@ -291,7 +291,7 @@ const OrganizationUserTable = ({ t, organizationId, organizationType }) => {
           <Loader />
         </div>
       )}
-      <OrganizationUserAdminActions t={t} organizationId={organizationId} organizationType={organizationType} />
+      <OrganizationUserAdminActions t={t} organizationId={organizationId} organizationType={organizationType} organizationSubType={organizationSubType} />
       {renderOrganizationUsers()}
       {!!alert && (
         <ConfirmationAlert t={t} alert={alert} setAlert={setAlert} />
@@ -303,6 +303,7 @@ const OrganizationUserTable = ({ t, organizationId, organizationType }) => {
           onClose={() => setUserToEdit(null)}
           onSubmit={(formData, jurisdictions) => handleOrganizationUserEdit(userToEdit, formData, jurisdictions)}
           organizationType={organizationType}
+          organizationSubType={organizationSubType}
           createdUser={userToEdit}
           formToast={formToast}
           setFormToast={setFormToast}
