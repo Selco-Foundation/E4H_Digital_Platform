@@ -178,7 +178,7 @@ const OrganizationUserTable = ({ t, organizationId, organizationType }) => {
     setPageOffset(pageOffset - pageSize);
   };
 
-  const renderFacilities = () => {
+  const renderOrganizationUsers = () => {
     if (organizationUserDataLoading) {
       return <Loader />;
     }
@@ -288,7 +288,7 @@ const OrganizationUserTable = ({ t, organizationId, organizationType }) => {
         </div>
       )}
       <OrganizationUserAdminActions t={t} organizationId={organizationId} organizationType={organizationType} />
-      {renderFacilities()}
+      {renderOrganizationUsers()}
       {!!alert && (
         <ConfirmationAlert t={t} alert={alert} setAlert={setAlert} />
       )}

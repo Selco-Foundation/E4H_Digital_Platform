@@ -47,7 +47,7 @@ const OrganizationDetails = () => {
 
   return (
     <div style={{ marginTop: "20px", padding: "16px", overflow: "auto", backgroundColor: "white" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", padding: "20px" }}>
         <h1
           style={{
             fontSize: "40px",
@@ -79,7 +79,7 @@ const OrganizationDetails = () => {
           }}
         />
       </div>
-      <div>
+      <div style={{padding: "20px"}}>
         <InfoItem title={t("ORGANIZATION_NAME")} value={organizationData?.name} />
         <InfoItem title={t("ORGANIZATION_TYPE")} value={organizationData?.orgType} />
         <InfoItem title={t("ORGANIZATION_SUB_TYPE")} value={organizationData?.orgSubType} />
