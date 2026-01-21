@@ -11,7 +11,21 @@ from app.core.logging import AppLogger
 
 logger = AppLogger().get_logger()
 
+"""
+    Add dropdowns to Excel using hidden sheets for maximum compatibility.
 
+    How it works:
+    1. Creates a hidden sheet named "_DropdownValues" to store dropdown options
+    2. Each dropdown references its values via a range formula (e.g., '_DropdownValues'!$A$1:$A$5)
+    3. Uses standard Excel data validation with type="list" which automatically shows dropdown arrows
+
+    Args:
+        file_path: Path to the Excel file
+        sheet_name: Name of the sheet to add dropdowns to
+        dropdowns: Dictionary mapping column headers to list of dropdown options
+        allow_blank_map: Optional dictionary mapping column headers to allow_blank boolean
+        max_extra_rows: Maximum number of extra rows to apply validation to
+"""
 def add_dropdowns_to_excel(
         file_path: str,
         sheet_name: str,
@@ -26,22 +40,84 @@ def add_dropdowns_to_excel(
     max_row = ws.max_row + max_extra_rows  # extend range
 
     dropdown_count = 0
+    
+    # Create a hidden sheet for dropdown values if it doesn't exist
+    hidden_sheet_name = "_DropdownValues"
+    if hidden_sheet_name not in wb.sheetnames:
+        hidden_ws = wb.create_sheet(hidden_sheet_name)
+        hidden_ws.sheet_state = 'hidden'  # Hide the sheet
+        # Start from row 1
+        current_hidden_row = 1
+    else:
+        hidden_ws = wb[hidden_sheet_name]
+        hidden_ws.sheet_state = 'hidden'
+        # Find the next available row by finding the last non-empty cell in column A
+        # Check from bottom up for efficiency
+        current_hidden_row = 1
+        if hidden_ws.max_row > 0:
+            for row in range(hidden_ws.max_row, 0, -1):
+                if hidden_ws.cell(row=row, column=1).value is not None:
+                    current_hidden_row = row + 2  # Leave a gap of 1 row
+                    break
+    
     for column_header, options in dropdowns.items():
         if not options:
             continue
-        options_str = ",".join(options)
+        
         allow_blank = (allow_blank_map or {}).get(column_header, True)
-        dv = DataValidation(type="list",showErrorMessage=True, formula1=f'"{options_str}"', allow_blank=allow_blank)
-        dv.error = 'Please select from the list'
-        dv.errorTitle = 'Invalid Entry'
+        
+        # Find the column for this header
+        col_letter = None
         for cell in ws[header_row]:
             if cell.value == column_header:
                 col_letter = cell.column_letter
-                dv.add(f"{col_letter}2:{col_letter}{max_row}")
-                dropdown_count += 1
-                logger.debug(f"Added dropdown to column '{column_header}' with {len(options)} options")
                 break
+        
+        if not col_letter:
+            logger.warning(f"Column header '{column_header}' not found in sheet '{sheet_name}'")
+            continue
+        
+        # Write dropdown values to hidden sheet starting from current_hidden_row
+        start_row = current_hidden_row
+        for idx, option in enumerate(options, start=start_row):
+            # If a value starts with =, +, -, or @ it can be treated as a formula.
+            # Prefix with an apostrophe so it is always interpreted as plain text.
+            raw_value = str(option)
+            if raw_value and raw_value[0] in ("=", "+", "-", "@"):
+                cell_value = "'" + raw_value
+            else:
+                cell_value = raw_value
+
+            hidden_ws.cell(row=idx, column=1).value = cell_value
+        
+        end_row = start_row + len(options) - 1
+        
+        # Create the formula reference to the hidden sheet
+        # Format: '_DropdownValues'!$A$start_row:$A$end_row
+        # Use INDIRECT for better compatibility, or direct reference
+        formula = f"'{hidden_sheet_name}'!$A${start_row}:$A${end_row}"
+        
+        # Create data validation with reference to hidden sheet
+        dv = DataValidation(
+            type="list",
+            formula1=formula,
+            allow_blank=allow_blank,
+            showErrorMessage=True,
+            showInputMessage=True
+        )
+        dv.error = "Please select from the list"
+        dv.errorTitle = "Invalid Entry"
+        dv.prompt = "Select a value from the dropdown"
+        dv.promptTitle = "Select Value"
+        
+        # Apply validation to the column (skip header row)
+        dv.add(f"{col_letter}2:{col_letter}{max_row}")
         ws.add_data_validation(dv)
+        
+        # Move to next position in hidden sheet (leave a gap of 1 row)
+        current_hidden_row = end_row + 2
+        dropdown_count += 1
+        logger.debug(f"Added dropdown to column '{column_header}' with {len(options)} options using hidden sheet (rows {start_row}-{end_row})")
 
     wb.save(file_path)
     logger.info(f"Added {dropdown_count} dropdowns to sheet '{sheet_name}'")
