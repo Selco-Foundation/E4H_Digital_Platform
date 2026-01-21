@@ -4,6 +4,8 @@ import { Route, Switch, useRouteMatch } from "react-router-dom";
 import { BreadCrumb } from "@egovernments/digit-ui-components";
 import { useSelector } from "react-redux";
 import OrganizationDetails from "./OrganizationDetails";
+import VendorOrganization from "./VendorOrgTable";
+import PlatformOrganization from "./PlatformOrgTable"
 
 const ORGApp = () => {
 
@@ -28,6 +30,16 @@ const ORGApp = () => {
       internalLink: `/${window.contextPath}/org/organizations/:organizationId/details`,
       show: true,
     },
+    vendorOrganizations: {
+      content: t("CS_COMMON_ORGANIZATION"),
+      internalLink: `/${window.contextPath}/employee/org/vendors`,
+      show: true,
+    },
+    platformOrganizations: {
+      content: t("CS_COMMON_ORGANIZATION"),
+      internalLink: `/${window.contextPath}/employee/org/platforms`,
+      show: true,
+    },
   };
 
   useEffect(() => {
@@ -37,6 +49,20 @@ const ORGApp = () => {
   return (
     <div className="ground-container">
       <Switch>
+        <Route path={`${path}/vendors`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.vendorOrganizations]}
+          />
+          <VendorOrganization />
+        </Route>
+        <Route path={`${path}/platforms`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.platformOrganizations]}
+          />
+          <PlatformOrganization />
+        </Route>
         <Route path={`${path}/organizations/:organizationId/details`} exact={true}>
           <BreadCrumb
             spanStyle={{ color: "#0B0C0C" }}
