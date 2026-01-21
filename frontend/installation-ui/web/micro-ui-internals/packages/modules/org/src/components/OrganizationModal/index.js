@@ -13,7 +13,7 @@ const OrganizationModal = ({
                              orgType,
                            }) => {
   const handleClose = () => {
-    if (isLoading) return; // optional: block close while submitting
+    if (isLoading) return;
     if (typeof onClose === "function") return onClose();
   };
 
