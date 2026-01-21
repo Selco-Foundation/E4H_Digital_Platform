@@ -2,7 +2,6 @@ package digit.repository.querybuilder;
 
 import digit.util.QueryUtil;
 import digit.web.models.BoundaryRelationshipSearchCriteria;
-import digit.web.models.Pagination;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
