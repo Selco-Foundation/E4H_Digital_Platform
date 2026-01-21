@@ -92,14 +92,24 @@ public class ProjectService {
     }
 
     public List<String> validateProjectIds(List<String> productIds) {
-        return projectRepository.validateIds(productIds, "id");
+        log.trace("Entering validateProjectIds with {} project IDs", productIds != null ? productIds.size() : 0);
+        List<String> result = projectRepository.validateIds(productIds, "id");
+        log.debug("Validated {} project IDs", result != null ? result.size() : 0);
+        log.trace("Exiting validateProjectIds");
+        return result;
     }
 
     public List<Project> findByIds(List<String> projectIds) {
-        return projectRepository.findById(projectIds);
+        log.trace("Entering findByIds with {} project IDs", projectIds != null ? projectIds.size() : 0);
+        List<Project> result = projectRepository.findById(projectIds);
+        log.debug("Found {} projects", result != null ? result.size() : 0);
+        log.trace("Exiting findByIds");
+        return result;
     }
 
     public ProjectRequest createProject(ProjectRequest projectRequest) {
+        log.trace("Entering createProject");
+        log.info("Starting project creation for {} projects", projectRequest.getProjects() != null ? projectRequest.getProjects().size() : 0);
         projectValidator.validateCreateProjectRequest(projectRequest);
         RequestInfo requestInfo = projectRequest.getRequestInfo();
         // Check for empty names and generate names with duplicate check
@@ -192,16 +202,23 @@ public class ProjectService {
         }
 
         //Get parent projects if "parent" is present (For enrichment of projectHierarchy)
+        log.debug("Fetching parent projects for enrichment");
         List<Project> parentProjects = getParentProjects(projectRequest);
+        log.debug("Found {} parent projects", parentProjects != null ? parentProjects.size() : 0);
         //Validate Parent in request against projects fetched form database
-        if (parentProjects != null)
+        if (parentProjects != null) {
+            log.debug("Validating parent projects against database");
             projectValidator.validateParentAgainstDB(projectRequest.getProjects(), parentProjects);
+        }
+        log.info("Enriching projects with project number, IDs and audit details");
         projectEnrichment.enrichProjectOnCreate(projectRequest, parentProjects);
         log.info("Enriched with Project Number, Ids and AuditDetails");
+        log.debug("Pushing project request to Kafka topics");
         producer.push(projectConfiguration.getSaveProjectTopic(), projectRequest);
         producer.push(projectConfiguration.getSaveProjectTopicIndexer(), projectRequest);
         log.info("Pushed to kafka");
-
+        log.info("Successfully completed project creation for {} projects", projectRequest.getProjects().size());
+        log.trace("Exiting createProject");
         return projectRequest;
     }
 
@@ -215,8 +232,10 @@ public class ProjectService {
      * @return A unique name that doesn't conflict with existing names in the batch or database
      */
     private String generateUniqueBatchName(String baseName, String tenantId, Set<String> existingNamesInBatch) {
+        log.trace("Entering generateUniqueBatchName with baseName: {}, tenantId: {}", baseName, tenantId);
         // Normalize to root: strip a trailing -digits if present
         String baseRoot = baseName.replaceFirst("-\\d+$", "");
+        log.debug("Normalized base root: {}", baseRoot);
         int next = 0;
 
         try {
@@ -253,6 +272,7 @@ public class ProjectService {
         }
 
         log.info("Generated unique batch name: {} from base: {}", candidate, baseRoot);
+        log.trace("Exiting generateUniqueBatchName");
         return candidate;
     }
 
@@ -275,7 +295,10 @@ public class ProjectService {
             Long createdTo,
             boolean isAncestorProjectId
     ) {
+        log.trace("Entering searchProject with limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
+        log.info("Searching projects with criteria");
         projectValidator.validateSearchProjectRequest(project, limit, offset, tenantId, createdFrom, createdTo);
+        log.debug("Search criteria validated, fetching projects from repository");
         List<Project> projects = projectRepository.getProjects(
                 project,
                 limit,
@@ -289,35 +312,55 @@ public class ProjectService {
                 createdTo,
                 isAncestorProjectId
         );
+        log.debug("Found {} projects matching search criteria", projects != null ? projects.size() : 0);
+        log.info("Project search completed successfully");
+        log.trace("Exiting searchProject");
         return projects;
     }
 
     public List<Project> searchProject(ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
+        log.trace("Entering searchProject (v2)");
+        log.info("Starting project search with v2 API");
         projectValidator.validateSearchV2ProjectRequest(projectSearchRequest, urlParams, sortCriteria);
+        log.debug("Search request validated, fetching projects");
         List<Project> projects = projectRepository.getProjects(projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
+        log.debug("Retrieved {} projects from repository", projects != null ? projects.size() : 0);
+        
         // Get count of project type = Facility for each project type FieldPlan
         if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
-                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FIELDPLAN))
+                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FIELDPLAN)) {
+            log.debug("Enriching FieldPlan projects with facility counts");
             projects = getCountProjectTypeFacilities(projects, projectSearchRequest, urlParams, workflowStatuses, sortCriteria);
+        }
 
         // Get facility of project type = Facility for each project type Facility
         if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
-                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FACILITY))
+                && projectSearchRequest.getProject().getProjectTypeId().equals(PROJECT_TYPE_FACILITY)) {
+            log.debug("Enriching Facility projects with facility details");
             getFacilityProject(projects, projectSearchRequest.getRequestInfo());
+        }
 
         // Enrich all projects with HLS (Health Center) count
         if (projectSearchRequest.getProject() != null
                 && projectSearchRequest.getProject().getSubProjectTypeId() != null
                 && PROJECT_SUB_TYPE.equalsIgnoreCase(projectSearchRequest.getProject().getSubProjectTypeId())) {
+            log.debug("Enriching projects with HLS count");
             projects = enrichProjectsWithHlsCount(projects, projectSearchRequest.getRequestInfo());
         }
 
+        log.info("Project search v2 completed successfully with {} projects", projects != null ? projects.size() : 0);
+        log.trace("Exiting searchProject (v2)");
         return projects;
     }
 
     public List<Project> getFacilityProject(List<Project> listProjects, RequestInfo requestInfo) throws Exception {
+        log.trace("Entering getFacilityProject for {} projects", listProjects != null ? listProjects.size() : 0);
+        log.info("Enriching {} projects with facility details", listProjects != null ? listProjects.size() : 0);
+        log.debug("Fetching boundary data");
         Map<String, BoundaryV2> listBlock = boundaryV2Util.getBoundaryByCode();
+        log.debug("Found {} boundary entries", listBlock != null ? listBlock.size() : 0);
         for (Project project : listProjects) {
+            log.debug("Processing facility enrichment for project: {}", project.getId());
             List<String> listProjectId = new ArrayList<>();
             listProjectId.add(project.getId());
             ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder().projectId(listProjectId).facilityId(null).build();
@@ -331,13 +374,17 @@ public class ProjectService {
                     false);
 
             if (searchResponse != null && searchResponse.getResponse() != null && !searchResponse.getResponse().isEmpty()) {
+                log.debug("Found facility for project: {}, enriching with systemCode", project.getId());
                 ProjectFacility projectFacility = searchResponse.getResponse().get(0);
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "systemCode", "AC_OFF_GRID");
                 project.setAdditionalDetails(enrichedAdditionalDetails);
+            } else {
+                log.debug("No facility found for project: {}", project.getId());
             }
 
             // Get district and state for project type facility
             if(listBlock != null){
+                log.debug("Enriching project: {} with district and state from boundary", project.getId());
                 Object additionalDetails = project.getAdditionalDetails();
                 Address address = project.getAddress();
                 if(address !=null){
@@ -355,12 +402,16 @@ public class ProjectService {
                 }
             }
         }
-
+        log.info("Successfully enriched {} projects with facility details", listProjects.size());
+        log.trace("Exiting getFacilityProject");
         return listProjects;
     }
 
     public List<Project> getCountProjectTypeFacilities(List<Project> listProjects, ProjectSearchRequest projectSearchRequest, @Valid ProjectSearchURLParams urlParams, List<String> workflowStatuses, @Valid ProjectSortCriteria sortCriteria) throws Exception {
+        log.trace("Entering getCountProjectTypeFacilities for {} projects", listProjects != null ? listProjects.size() : 0);
+        log.info("Enriching {} projects with facility counts", listProjects != null ? listProjects.size() : 0);
         for (Project project : listProjects) {
+            log.debug("Processing facility count enrichment for project: {}", project.getId());
             ProjectSearch copyProject = ProjectSearch.builder()
                     .parent(projectSearchRequest.getProject().getParent())
                     .projectTypeId("Facility")
@@ -369,14 +420,19 @@ public class ProjectService {
             ProjectSearchRequest projectSearchRequest1 = ProjectSearchRequest.builder().project(copyProject).requestInfo(projectSearchRequest.getRequestInfo()).build();
             projectSearchRequest1.getProject().setProjectTypeId("Facility");
             projectSearchRequest1.getProject().setParent(project.getId());
+            log.debug("Counting facilities for project: {}", project.getId());
             Integer count = countAllProjects(projectSearchRequest1, urlParams, workflowStatuses);
+            log.debug("Found {} facilities for project: {}", count, project.getId());
             Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(project.getAdditionalDetails(), "countProjectFacilities", count);
             project.setAdditionalDetails(enrichedAdditionalDetails);
+            log.debug("Fetching status aggregations for project: {}", project.getId());
             List<ProjectStatusAgregation> statusAgregations = getStatusProjectsAgregation(project.getId());
+            log.debug("Found {} status aggregations for project: {}", statusAgregations != null ? statusAgregations.size() : 0, project.getId());
             enrichedAdditionalDetails = mergeListIntoAdditionalDetails(project.getAdditionalDetails(), "statusAgregation", statusAgregations);
             project.setAdditionalDetails(enrichedAdditionalDetails);
         }
-
+        log.info("Successfully enriched {} projects with facility counts", listProjects.size());
+        log.trace("Exiting getCountProjectTypeFacilities");
         return listProjects;
     }
 
@@ -456,6 +512,8 @@ public class ProjectService {
     }
 
     public ProjectRequest updateProject(ProjectRequest request) {
+        log.trace("Entering updateProject");
+        log.info("Starting project update for {} projects", request.getProjects() != null ? request.getProjects().size() : 0);
         /*
          * Validate the update project request
          */
@@ -465,41 +523,51 @@ public class ProjectService {
         /*
          * Search for projects based on project IDs provided in the request
          */
+        log.debug("Fetching existing projects from database for update");
         List<Project> projectsFromDB = searchProject(
                 getSearchProjectRequest(request.getProjects(), request.getRequestInfo(), false),
                 projectConfiguration.getMaxLimit(), projectConfiguration.getDefaultOffset(),
                 request.getProjects().get(0).getTenantId(), null, false, false, false, null, null, false
         );
         log.info("Fetched projects for update request");
+        log.debug("Found {} existing projects in database", projectsFromDB != null ? projectsFromDB.size() : 0);
 
         /*
          * Validate the update project request against the projects fetched from the database
          */
+        log.debug("Validating update request against database state");
         projectValidator.validateUpdateAgainstDB(request.getProjects(), projectsFromDB);
 
         /*
          * Process each project in the update request
          */
+        log.info("Processing {} projects for update", request.getProjects().size());
         for (Project project : request.getProjects()) {
             processProjectUpdate(request, project, projectsFromDB);
         }
 
+        log.info("Successfully completed project update for {} projects", request.getProjects().size());
+        log.trace("Exiting updateProject");
         return request;
     }
 
     private void processProjectUpdate(ProjectRequest request, Project project, List<Project> projectsFromDB) {
+        log.trace("Entering processProjectUpdate for project: {}", project.getId());
         /*
          * Convert project ID to string for comparison
          */
         String projectId = String.valueOf(project.getId());
+        log.debug("Processing update for project ID: {}", projectId);
 
         /*
          * Find the project from the database that matches the current project ID
          */
         Project projectFromDB = findProjectById(projectId, projectsFromDB);
         boolean isCascadingProjectDateUpdate = request.isCascadingProjectDateUpdate();
+        log.debug("Cascading project date update flag: {}", isCascadingProjectDateUpdate);
 
         if (projectFromDB != null) {
+            log.debug("Found existing project in database, proceeding with update");
             /*
              * Check if geography details (boundary codes) have changed and unlink facilities if needed
              */
@@ -508,40 +576,52 @@ public class ProjectService {
             /*
              * Merge additional details of the project from the request and project from DB
              */
+            log.debug("Merging additional details from request and database");
             projectServiceUtil.mergeAdditionalDetails(project, projectFromDB);
 
             /*
              * Handle cases where cascading project date update is true
              */
             if (isCascadingProjectDateUpdate) {
+                log.info("Handling cascading project date update");
                 handleUpdateProjectDates(request, project, projectFromDB);
             }
             /*
              * Handle cases for normal update flow
              */
             else {
+                log.info("Handling normal project update");
                 handleNormalUpdate(request, project, projectFromDB);
             }
+        } else {
+            log.warn("Project not found in database for ID: {}", projectId);
         }
+        log.trace("Exiting processProjectUpdate for project: {}", projectId);
     }
 
     private Project findProjectById(String projectId, List<Project> projectsFromDB) {
+        log.trace("Entering findProjectById for project ID: {}", projectId);
         /*
          * Find and return the project with the matching ID from the list of projects fetched from the database
          */
-        return projectsFromDB.stream()
+        Project result = projectsFromDB.stream()
                 .filter(p -> projectId.equals(String.valueOf(p.getId())))
                 .findFirst()
                 .orElse(null);
+        log.debug("Project lookup result: {}", result != null ? "found" : "not found");
+        log.trace("Exiting findProjectById");
+        return result;
     }
 
 
     private void handleNormalUpdate(ProjectRequest request, Project project, Project projectFromDB) {
+        log.trace("Entering handleNormalUpdate for project: {}", project.getId());
         /*
          * Ensure that start and end dates are not being updated when flag is false
          */
         if (!project.getStartDate().equals(projectFromDB.getStartDate()) ||
                 !project.getEndDate().equals(projectFromDB.getEndDate())) {
+            log.error("Attempted to update date range without cascading flag for project: {}", project.getId());
             throw new CustomException("PROJECT_CASCADE_UPDATE_DATE_ERROR",
                     "Can't Update Date Range if Cascade Project Date Update  false");
         }
@@ -549,18 +629,24 @@ public class ProjectService {
         /*
          * Handle project name regeneration if needed
          */
+        log.debug("Checking if project name update is needed");
         handleProjectNameUpdate(request, project, projectFromDB);
 
         /*
          * Enrich the project with values other than the start, end dates, and AdditionalDetails,
          * and push the update to the message broker
          */
+        log.info("Enriching project for update");
         projectEnrichment.enrichProjectOnUpdate(request, project, projectFromDB);
+        log.debug("Pushing project update to Kafka topics");
         producer.push(projectConfiguration.getUpdateProjectTopic(), request);
         producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), request);
+        log.info("Successfully completed normal update for project: {}", project.getId());
+        log.trace("Exiting handleNormalUpdate");
     }
 
     private void handleUpdateProjectDates(ProjectRequest request, Project project, Project projectFromDB) {
+        log.trace("Entering handleUpdateProjectDates for project: {}", project.getId());
         /*
          * Save original values of start date, end date, and additional details
          */
@@ -568,6 +654,7 @@ public class ProjectService {
         Long originalEndDate = projectFromDB.getEndDate();
         Object originalAdditionalDetails = projectFromDB.getAdditionalDetails();
         AuditDetails originalAuditDetails = projectFromDB.getAuditDetails();
+        log.debug("Saved original project dates - start: {}, end: {}", originalStartDate, originalEndDate);
 
 
         /*
@@ -610,9 +697,13 @@ public class ProjectService {
         /*
          * Check and enrich cascading project dates and push the update to the message broker
          */
+        log.debug("Checking and enriching cascading project dates");
         checkAndEnrichCascadingProjectDates(request, project);
+        log.debug("Pushing cascading date update to Kafka topics");
         producer.push(projectConfiguration.getUpdateProjectDateTopic(), request);
         producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), request);
+        log.info("Successfully completed cascading date update for project: {}", project.getId());
+        log.trace("Exiting handleUpdateProjectDates");
     }
 
 
@@ -1169,22 +1260,40 @@ public class ProjectService {
      * @return Count of List of matching projects
      */
     public Integer countAllProjects(ProjectRequest project, String tenantId, Long lastChangedSince, Boolean includeDeleted, Long createdFrom, Long createdTo, boolean isAncestorProjectId) {
-        return projectRepository.getProjectCount(project, tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo, isAncestorProjectId);
+        log.trace("Entering countAllProjects (v1) for tenantId: {}", tenantId);
+        log.debug("Counting projects with criteria");
+        Integer count = projectRepository.getProjectCount(project, tenantId, lastChangedSince, includeDeleted, createdFrom, createdTo, isAncestorProjectId);
+        log.debug("Found {} projects matching criteria", count);
+        log.trace("Exiting countAllProjects (v1)");
+        return count;
     }
 
 
     public Integer countAllProjects(ProjectSearchRequest request,
                                     ProjectSearchURLParams urlParams,
                                     List<String> workflowStatuses) {
-        return projectRepository.getProjectCount(request, urlParams, workflowStatuses);
+        log.trace("Entering countAllProjects (v2)");
+        log.debug("Counting projects with search request criteria");
+        Integer count = projectRepository.getProjectCount(request, urlParams, workflowStatuses);
+        log.debug("Found {} projects matching search criteria", count);
+        log.trace("Exiting countAllProjects (v2)");
+        return count;
     }
 
     public List<ProjectStatusAgregation> getStatusProjectsAgregation(String parentId) {
-        return projectRepository.getStatusProjectsAgregation(parentId);
+        log.trace("Entering getStatusProjectsAgregation for parentId: {}", parentId);
+        log.debug("Fetching status aggregations from repository");
+        List<ProjectStatusAgregation> result = projectRepository.getStatusProjectsAgregation(parentId);
+        log.debug("Found {} status aggregations", result != null ? result.size() : 0);
+        log.trace("Exiting getStatusProjectsAgregation");
+        return result;
     }
 
     public ProjectStatusWrapper updateProjectWorkflow(ProjectWorkflowRequest request) throws Exception {
+        log.trace("Entering updateProjectWorkflow for project: {}", request.getProjectId());
+        log.info("Starting workflow update for project: {}", request.getProjectId());
         // 1. Fetch the existing project
+        log.debug("Fetching existing project from database");
         ProjectSearch searchCriteria = ProjectSearch.builder()
                 .id(List.of(request.getProjectId()))
                 .build();
@@ -1208,14 +1317,17 @@ public class ProjectService {
         List<Project> projects = searchProject(searchRequest, urlParams, workflowStatuses, sortCriteria);
 
         if (projects == null || projects.isEmpty()) {
+            log.error("Project not found for workflow update: {}", request.getProjectId());
             throw new CustomException("PROJECT_NOT_FOUND", "Project not found with ID: " + request.getProjectId());
         }
 
         Project existingProject = projects.get(0);
+        log.debug("Found existing project, proceeding with workflow transition");
 
         // 2. Call workflow transition
         ProcessInstance updatedWorkflow;
         try {
+            log.info("Transitioning workflow with action: {}", request.getWorkflow().getAction());
             updatedWorkflow = workflowService.transitionWorkflow(
                     existingProject,
                     request.getWorkflow().getAction(),
@@ -1223,7 +1335,9 @@ public class ProjectService {
                     request.getRequestInfo(),
                     request.getWorkflow().getComments()
             );
+            log.debug("Workflow transition completed successfully");
         } catch (Exception e) {
+            log.error("Workflow transition failed for project: {}", request.getProjectId(), e);
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
                     "Failed to transition workflow for project: " + request.getProjectId());
         }
@@ -1284,7 +1398,9 @@ public class ProjectService {
 
         // Step 7: After successful workflow transition, if action is APPROVED_BY_QC_SPOC
         if ("APPROVE".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            log.info("Workflow action is APPROVE, processing asset updates for facilities");
             // fetch facility for associated projectId -> facility search api to get associtaed facility
+            log.debug("Searching for facilities associated with project: {}", existingProject.getId());
             ProjectFacilitySearch projectFacilitySearch = ProjectFacilitySearch.builder()
                     .projectId(new ArrayList<>(Arrays.asList(existingProject.getId())))
                     .facilityId(null)
@@ -1304,7 +1420,9 @@ public class ProjectService {
                         null,
                         false
                 );
+                log.debug("Found {} facilities for project", facilitySearchResponse != null && facilitySearchResponse.getResponse() != null ? facilitySearchResponse.getResponse().size() : 0);
             } catch (Exception e) {
+                log.error("Failed to fetch facilities for project: {}", existingProject.getId(), e);
                 throw new CustomException("FACILITY_FETCH_FAILED",
                         "Failed to fetch facilities for project: " + existingProject.getId());
             }
@@ -1315,10 +1433,15 @@ public class ProjectService {
                 facility = facilitySearchResponse.getResponse().get(0);
             }
             if (facility != null) {
+                log.info("Updating assets for facility: {}", facility.getFacilityId());
                 updateAssetsForFacility(existingProject, request.getRequestInfo(), facility.getFacilityId());
+            } else {
+                log.warn("No facility found for project: {}, skipping asset update", existingProject.getId());
             }
         }
 
+        log.info("Successfully completed workflow update for project: {}", request.getProjectId());
+        log.trace("Exiting updateProjectWorkflow");
         return new ProjectStatusWrapper(updatedProject, updatedWorkflow.getState().getState(), null, null);
     }
 
@@ -1482,12 +1605,15 @@ public class ProjectService {
     }
 
     public Map<String, Object> updateBulkProjectWorkflow(ProjectBulkApproveRequest projectBulkApproveRequest) throws Exception {
+        log.trace("Entering updateBulkProjectWorkflow");
+        log.info("Starting bulk workflow update");
 
         List<String> projectIds = new ArrayList<>();
         int totalProjects = 0;
         int finalProjects = 0;
         
         if (projectBulkApproveRequest.getIsAllSelected()) {
+            log.debug("Processing all selected projects based on filters");
             // Case 1: Search all projects using filters
             ExtendedProjectSearchRequest projectSearchRequest = getProjectSearchRequest(projectBulkApproveRequest);
 
@@ -1505,22 +1631,27 @@ public class ProjectService {
             totalProjects = countAllProjects(projectSearchRequest, urlParams, workflowStatuses);
 
             // only those projects whose status is SUBMITTED_BY_SUPERVISOR
+            log.debug("Filtering projects with SUBMITTED_BY_SUPERVISOR status");
             List<Project> projects = allProjects.stream().filter(this::hasSubmittedBySupervisorStatus).toList();
 
             finalProjects = projects.size();
             projectIds = projects.stream().map(Project::getId).collect(Collectors.toList());
+            log.debug("Found {} projects with SUBMITTED_BY_SUPERVISOR status out of {} total", finalProjects, totalProjects);
         } else {
             // Case 2: Use provided project IDs
             if (projectBulkApproveRequest.getProjectIDs() != null && !projectBulkApproveRequest.getProjectIDs().isEmpty()) {
                 projectIds = projectBulkApproveRequest.getProjectIDs();
                 totalProjects = projectIds.size();
+                log.debug("Using {} provided project IDs", totalProjects);
             } else {
+                log.error("Project IDs are required when isAllSelected is false");
                 throw new CustomException("INVALID_REQUEST", "Project IDs are required when isAllSelected is false");
             }
         }
         Map<String, Object> result = new HashMap<>();
         // Validate that we have projects to process
         if (projectIds.isEmpty()) {
+            log.warn("No projects to process for bulk workflow update");
             result.put("failedProjectIDs", new ArrayList<>());
             result.put("succeededProjectIDs", new ArrayList<>());
             result.put("totalProjects", 0);
@@ -1555,6 +1686,8 @@ public class ProjectService {
         } else {
             result.put("totalProjects", totalProjects);
         }
+        log.info("Bulk workflow update completed - succeeded: {}, failed: {}", succeededProjectIDs.size(), failedProjectIDs.size());
+        log.trace("Exiting updateBulkProjectWorkflow");
         return result;
     }
 

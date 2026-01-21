@@ -48,6 +48,7 @@ public class ArtifactMapper {
 
     @PostConstruct
     private void initTempFile() {
+        log.trace("Entering initTempFile method");
         Path customTempDir = Paths.get(System.getProperty("user.dir"), INPUT_DIR);
         tempDir = new File(customTempDir.toAbsolutePath().toString());
         if (!tempDir.exists()) {
@@ -70,13 +71,18 @@ public class ArtifactMapper {
      * @return List of mapped artifacts.
      */
     private List<Artifact> mapFilesToArtifact(List<MultipartFile> files, String module, String tag, String tenantId, boolean isHLS) {
+        log.trace("Entering mapFilesToArtifact method with module: {}, tag: {}, tenantId: {}, fileCount: {}, isHLS: {}", 
+                module, tag, tenantId, files.size(), isHLS);
         String folderName = getFolderName(module, tenantId);
+        log.debug("Generated folderName: {}", folderName);
         List<Artifact> artifacts = new ArrayList<>();
 
         for (MultipartFile file : files) {
             try {
+                log.trace("Processing file: {}", file.getOriginalFilename());
                 String originalFileName = file.getOriginalFilename();
                 if (originalFileName == null) {
+                    log.error("File name is missing for file in module: {}, tag: {}", module, tag);
                     throw new CustomException("INVALID_FILE", "File name is missing");
                 }
 
@@ -84,18 +90,24 @@ public class ArtifactMapper {
                 String fileName = isHLS
                         ? String.format("%s%s", getFolderNameForVideo(tenantId), originalFileName)
                         : folderName + System.currentTimeMillis() + getRandomFileSuffix(originalFileName);
+                log.debug("Generated fileName: {} for originalFileName: {}", fileName, originalFileName);
 
                 // Generate file location
                 String source = isHLS
                         ? storageUtil.createTempFile(tempDir, file.getResource()).getAbsolutePath()
                         : null;
+                if (isHLS) {
+                    log.debug("Created temp file for HLS at: {}", source);
+                }
 
                 String id = idGeneratorService.getId();
+                log.debug("Generated fileStoreId: {} for fileName: {}", id, originalFileName);
                 FileLocation fileLocation =
                         new FileLocation(id, module, tag, tenantId, fileName, source);
 
                 // Read file content
                 String fileContent = IOUtils.toString(file.getInputStream(), fileStoreConfig.getImageCharsetType());
+                log.debug("Read file content, size: {} bytes", fileContent.length());
 
                 // Create artifact
                 Artifact artifact = Artifact.builder()
@@ -108,22 +120,28 @@ public class ArtifactMapper {
                 artifact = !originalFileName.endsWith(".ts") && !originalFileName.endsWith("playlist.m3u8")
                         ? artifact.withInsertable(true)
                         : artifact;
+                log.debug("Artifact insertable flag set to: {}", artifact.isInsertable());
 
                 // Validate artifact
                 storageValidator.validate(artifact);
+                log.trace("Artifact validated successfully for fileName: {}", originalFileName);
 
                 // Set thumbnail if it's an image
                 if (isImageFile(artifact)) {
+                    log.debug("File is an image, generating thumbnails for: {}", originalFileName);
                     setThumbnailImages(artifact);
                 }
 
                 artifacts.add(artifact);
+                log.trace("Successfully mapped file to artifact: {}", originalFileName);
             } catch (IOException e) {
-                log.error("I/O Exception while mapping files to artifact: {}", e.getMessage(), e);
+                log.error("I/O Exception while mapping files to artifact for fileName: {}, module: {}, tag: {}", 
+                        file.getOriginalFilename(), module, tag, e);
                 throw new CustomException("FILE_MAPPING_ERROR", "Error processing file: " + e.getMessage());
             }
         }
 
+        log.info("Successfully mapped {} files to artifacts for module: {}, tag: {}", artifacts.size(), module, tag);
         return artifacts;
     }
 
@@ -131,6 +149,7 @@ public class ArtifactMapper {
      * Maps regular files to Artifact objects.
      */
     public List<Artifact> mapFilesToArtifact(List<MultipartFile> files, String module, String tag, String tenantId) {
+        log.trace("Entering mapFilesToArtifact (regular) method");
         return mapFilesToArtifact(files, module, tag, tenantId, false);
     }
 
@@ -138,6 +157,7 @@ public class ArtifactMapper {
      * Maps HLS files to Artifact objects.
      */
     public List<Artifact> mapHLSArtifact(List<MultipartFile> files, String module, String tag, String tenantId) {
+        log.trace("Entering mapHLSArtifact method");
         return mapFilesToArtifact(files, module, tag, tenantId, true);
     }
 
@@ -145,14 +165,20 @@ public class ArtifactMapper {
      * Sets thumbnail images for an artifact if it's an image.
      */
     private void setThumbnailImages(Artifact artifact) {
+        log.trace("Entering setThumbnailImages method for fileName: {}", 
+                artifact.getFileLocation().getFileName());
         try {
             String inputStreamAsString = artifact.getFileContentInString();
             InputStream ipStreamForImg = IOUtils.toInputStream(inputStreamAsString, fileStoreConfig.getImageCharsetType());
 
             Map<String, BufferedImage> thumbnails = util.createVersionsOfImage(ipStreamForImg,
                     extractFileName(artifact.getFileLocation().getFileName()));
+            log.debug("Generated {} thumbnail versions for fileName: {}", 
+                    thumbnails.size(), artifact.getFileLocation().getFileName());
 
             artifact.setThumbnailImages(thumbnails);
+            log.trace("Thumbnail images set successfully for fileName: {}", 
+                    artifact.getFileLocation().getFileName());
         } catch (Exception e) {
             log.error("Failed to generate thumbnail images for file: {}", artifact.getFileLocation().getFileName(), e);
             throw new CustomException("THUMBNAIL_GENERATION_ERROR", "Error generating thumbnails");
@@ -163,42 +189,57 @@ public class ArtifactMapper {
      * Generates a folder name based on module and tenant.
      */
     private String getFolderName(String module, String tenantId) {
+        log.trace("Entering getFolderName method with module: {}, tenantId: {}", module, tenantId);
         Calendar calendar = Calendar.getInstance();
-        return String.format("%s/%s/%s/%d/",
+        String folderName = String.format("%s/%s/%s/%d/",
                 minioConfig.getBucketName(),
                 tenantId,
                 module,
                 calendar.get(Calendar.DATE));
+        log.debug("Generated folderName: {}", folderName);
+        return folderName;
     }
 
     /**
      * Generates a folder name based on module and tenant.
      */
     private String getFolderNameForVideo(String tenantId) {
-        return String.format("%s/", tenantId);
+        log.trace("Entering getFolderNameForVideo method with tenantId: {}", tenantId);
+        String folderName = String.format("%s/", tenantId);
+        log.debug("Generated video folderName: {}", folderName);
+        return folderName;
     }
 
     /**
-     * Checks if an artifact is an image.s
+     * Checks if an artifact is an image.
      */
     private boolean isImageFile(Artifact artifact) {
-        return fileStoreConfig.getImageFormats()
-                .contains(FilenameUtils.getExtension(artifact.getMultipartFile().getOriginalFilename()));
+        log.trace("Entering isImageFile method");
+        String extension = FilenameUtils.getExtension(artifact.getMultipartFile().getOriginalFilename());
+        boolean isImage = fileStoreConfig.getImageFormats().contains(extension);
+        log.debug("File isImage: {} for extension: {}", isImage, extension);
+        return isImage;
     }
 
     /**
      * Generates a random file suffix.
      */
     private String getRandomFileSuffix(String originalFileName) {
+        log.trace("Entering getRandomFileSuffix method");
         String extension = FilenameUtils.getExtension(originalFileName);
         String randomString = RandomStringUtils.random(props.getFilenameLength(), props.getUseLetters(), props.getUseNumbers());
-        return randomString + "." + extension;
+        String suffix = randomString + "." + extension;
+        log.debug("Generated random file suffix for extension: {}", extension);
+        return suffix;
     }
 
     /**
      * Extracts the file name from a file path.
      */
     private String extractFileName(String fullPath) {
-        return fullPath.substring(fullPath.indexOf('/') + 1);
+        log.trace("Entering extractFileName method with fullPath: {}", fullPath);
+        String fileName = fullPath.substring(fullPath.indexOf('/') + 1);
+        log.debug("Extracted fileName: {} from fullPath", fileName);
+        return fileName;
     }
 }

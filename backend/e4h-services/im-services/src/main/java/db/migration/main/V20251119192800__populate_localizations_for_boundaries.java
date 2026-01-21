@@ -76,7 +76,7 @@ public class V20251119192800__populate_localizations_for_boundaries extends Base
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("🚀 Starting migration: Populating localizations for boundaries");
+        log.info("Starting migration: Populating localizations for boundaries");
 
         RestTemplate restTemplate = createRestTemplateWithTimeouts();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -200,10 +200,10 @@ public class V20251119192800__populate_localizations_for_boundaries extends Base
             migrationLogger.println("========================================\n");
             migrationLogger.flush();
 
-            log.info("✅ Migration completed");
+            log.info("Migration completed");
             log.info("Total boundaries processed: {}", boundaries.size());
             log.info("Total messages created: {}", totalMessagesCreated);
-            log.info("📝 Migration log file: {}", absoluteLogPath);
+            log.info("Migration log file: {}", absoluteLogPath);
         }
     }
 
@@ -721,7 +721,7 @@ public class V20251119192800__populate_localizations_for_boundaries extends Base
     private PrintWriter initializeMigrationLogger(String logFilePath, String absolutePath) throws Exception {
         Files.createDirectories(Paths.get("./logs"));
         FileWriter fileWriter = new FileWriter(logFilePath, true);
-        log.info("📝 Migration log file created: {}", absolutePath);
+        log.info("Migration log file created: {}", absolutePath);
         return new PrintWriter(fileWriter, true);
     }
 

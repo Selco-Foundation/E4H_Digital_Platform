@@ -226,7 +226,7 @@ def check_db_duplicates(cache, facility_client, add_err, df, row_idx, hfr=None, 
                     exists = result.get("totalCount", 0) > 0
                     cache[cache_key] = exists
                 except Exception as e:
-                    # ✅ Instead of letting row pass, flag it
+                    # Instead of letting row pass, flag it
                     add_err(row_idx, f"Could not validate {col_name}='{value}' in DB: {e}")
                     # Stop further checks for this row, to avoid partial validation
                     return

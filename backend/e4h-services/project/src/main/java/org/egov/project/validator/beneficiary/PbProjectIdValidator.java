@@ -35,26 +35,35 @@ public class PbProjectIdValidator implements Validator<BeneficiaryBulkRequest, P
 
     @Override
     public Map<ProjectBeneficiary, List<Error>> validate(BeneficiaryBulkRequest request) {
-        log.info("validating project id");
+        log.trace("Entering validate (PbProjectIdValidator)");
+        log.info("Validating project ID");
         Map<ProjectBeneficiary, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectBeneficiary> entities = request.getProjectBeneficiaries();
+        log.debug("Validating {} beneficiaries for project ID", entities != null ? entities.size() : 0);
         Class<?> objClass = getObjClass(entities);
         Method idMethod = getMethod("getProjectId", objClass);
         Map<String, ProjectBeneficiary> eMap = getIdToObjMap(entities
                 .stream().filter(notHavingErrors()).toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
+            log.debug("Validating {} project IDs against repository", entityIds.size());
             List<String> existingProjectIds = projectRepository.validateIds(entityIds,
                     getIdFieldName(idMethod));
+            log.debug("Found {} existing project IDs", existingProjectIds != null ? existingProjectIds.size() : 0);
             List<ProjectBeneficiary> invalidEntities = entities.stream().filter(notHavingErrors()).filter(entity ->
                             !existingProjectIds.contains(entity.getProjectId()))
                     .toList();
+            if (!invalidEntities.isEmpty()) {
+                log.warn("Found {} beneficiaries with invalid project IDs", invalidEntities.size());
+            }
             invalidEntities.forEach(projectBeneficiary -> {
                 Error error = getErrorForNonExistentEntity();
                 populateErrorDetails(projectBeneficiary, error, errorDetailsMap);
             });
         }
 
+        log.debug("Project ID validation completed - found {} errors", errorDetailsMap.size());
+        log.trace("Exiting validate (PbProjectIdValidator)");
         return errorDetailsMap;
     }
 }

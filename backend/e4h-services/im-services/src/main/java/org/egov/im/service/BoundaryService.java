@@ -33,12 +33,13 @@ public class BoundaryService {
      * @param tenantId The facility boundary's tenant id
      */
     public Boundary fetchBoundaryFromBoundaryCode(RequestInfo requestInfo, String boundaryCode, String tenantId) {
-
+        log.trace("BoundaryService::fetchBoundaryFromBoundaryCode method invoked");
         if (boundaryCode == null || boundaryCode.isEmpty()) {
             log.debug("No boundaryCode provided in incident request, skipping boundary enrichment");
             return null;
         }
 
+        log.debug("Fetching boundary for boundaryCode: {}, tenantId: {}", boundaryCode, tenantId);
         try {
             String url = UriComponentsBuilder.fromHttpUrl(config.getBoundaryHost() + config.getBoundarySearchPath())
                     .queryParam("tenantId", tenantId != null ? tenantId.split("\\.")[0] : "")
@@ -101,6 +102,7 @@ public class BoundaryService {
      * @return Boundary object with hierarchy codes
      */
     private Boundary buildBoundaryHierarchy(List<Map<String, Object>> boundaries) {
+        log.trace("BoundaryService::buildBoundaryHierarchy method invoked");
         Boundary boundary = new Boundary();
 
         for (Map<String, Object> boundaryItem : boundaries) {

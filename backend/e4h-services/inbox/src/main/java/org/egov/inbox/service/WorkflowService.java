@@ -27,6 +27,9 @@ import org.springframework.util.StringUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Service
 public class WorkflowService {
 
@@ -45,9 +48,13 @@ public class WorkflowService {
 	}
 
 	public Integer getProcessCount(String tenantId, RequestInfo requestInfo, ProcessInstanceSearchCriteria criteria) {
+		log.trace("Method invoked: getProcessCount - tenantId: {}", tenantId);
+		log.info("Getting process count - tenantId: {}, businessServiceCount: {}", 
+				tenantId, criteria.getBusinessService() != null ? criteria.getBusinessService().size() : 0);
 		List<String> listOfBusinessServices = new ArrayList<>(criteria.getBusinessService());
 		Integer processCount = 0;
 		for(String businessSrv : listOfBusinessServices) {
+			log.debug("Fetching process count for business service: {}", businessSrv);
 			criteria.setBusinessService(Collections.singletonList(businessSrv));
 			StringBuilder url = new StringBuilder(config.getWorkflowHost());
 			url.append(config.getProcessCountPath());
@@ -59,19 +66,25 @@ public class WorkflowService {
 			Integer response = null;
 			try {
 				response = mapper.convertValue(result, Integer.class);
+				log.debug("Process count for business service {}: {}", businessSrv, response);
 			} catch (IllegalArgumentException e) {
+				log.error("Failed to parse process count response for business service: {}", businessSrv, e);
 				throw new CustomException(ErrorConstants.PARSING_ERROR, "Failed to parse response of ProcessInstance Count");
 			}
 			processCount += response;
 		}
 		criteria.setBusinessService(listOfBusinessServices);
+		log.info("Total process count retrieved: {}", processCount);
 		return processCount;
 	}
 	
 	public Integer getNearingSlaProcessCount(String tenantId, RequestInfo requestInfo, ProcessInstanceSearchCriteria criteria) {
+		log.trace("Method invoked: getNearingSlaProcessCount - tenantId: {}", tenantId);
+		log.info("Getting nearing SLA process count - tenantId: {}", tenantId);
 		List<String> listOfBusinessServices = new ArrayList<>(criteria.getBusinessService());
 		Integer processCount = 0;
 		for(String businessSrv : listOfBusinessServices) {
+			log.debug("Fetching nearing SLA process count for business service: {}", businessSrv);
 			criteria.setBusinessService(Collections.singletonList(businessSrv));
 			StringBuilder url = new StringBuilder(config.getWorkflowHost());
 			url.append(config.getNearingSlaProcessCountPath());
@@ -83,12 +96,15 @@ public class WorkflowService {
 			Integer response = null;
 			try {
 				response = mapper.convertValue(result, Integer.class);
+				log.debug("Nearing SLA process count for business service {}: {}", businessSrv, response);
 			} catch (IllegalArgumentException e) {
+				log.error("Failed to parse nearing SLA process count response for business service: {}", businessSrv, e);
 				throw new CustomException(ErrorConstants.PARSING_ERROR, "Failed to parse response of ProcessInstance Count");
 			}
 			processCount += response;
 		}
 		criteria.setBusinessService(listOfBusinessServices);
+		log.info("Total nearing SLA process count retrieved: {}", processCount);
 		return processCount;
 	}
 	

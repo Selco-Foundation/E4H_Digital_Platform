@@ -44,10 +44,10 @@ public class ActivityEnrichment {
 
     /* Enrich Project on Create Request */
     public void enrichActivityAssignmentOnCreate(ActivityAssignment activityAssignment, RequestInfo requestInfo) {
+        log.trace("enrichActivityAssignmentOnCreate method invoked for activityAssignmentId: {}", activityAssignment.getId());
         //Enrich Project id and audit details
         enrichActivityAssignmentRequestOnCreate(activityAssignment, requestInfo);
-        log.info("Enriched FieldPlan request with id and Audit details");
-
+        log.debug("Enriched activity assignment with id and audit details, id: {}", activityAssignment.getId());
     }
 
     /* Enrich FieldPlan with id and audit details */
@@ -60,32 +60,37 @@ public class ActivityEnrichment {
         activityAssignment.setId(UUID.randomUUID().toString());
         activityAssignment.setStatus(ACTIVE_STATUS);
         activityAssignment.setActivityId(existingActivity.getId());
-        log.info("fieldPlan id set to " + activityAssignment.getId());
+        log.debug("Activity assignment id set to: {}", activityAssignment.getId());
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         activityAssignment.setAuditDetails(auditDetails);
     }
 
     public void enrichActivityFacilityRequestOnCreate(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        log.trace("enrichActivityFacilityRequestOnCreate method invoked");
         activityFacility.setId(UUID.randomUUID().toString());
         activityFacility.setStatus(SCHEDULED_STATUS);
         activityFacility.setIsDeleted(false);
+        log.debug("Setting activity facility id: {}, status: {}", activityFacility.getId(), SCHEDULED_STATUS);
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().code(List.of(activityFacility.getActivityId())).build();
         Activity existingActivity = activityFacilityRepository.getActivityObject(criteria);
         activityFacility.setActivityId(existingActivity.getId());
-        log.info("Activity id set to " + activityFacility.getId());
+        log.debug("Activity facility enriched with activityId: {}", existingActivity.getId());
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         activityFacility.setAuditDetails(auditDetails);
     }
 
     public void enrichActivityAssignmentOnSearch(RequestInfo requestInfo, ActivityAssignment activityAssignment) {
+        log.trace("enrichActivityAssignmentOnSearch method invoked for activityAssignmentId: {}", activityAssignment.getId());
         ActivitySearchCriteria criteria = ActivitySearchCriteria.builder().ids(List.of(activityAssignment.getActivityId())).build();
         Activity existingActivity = activityFacilityRepository.getActivityObject(criteria);
         if(existingActivity !=null) {
+            log.debug("Enriching activity assignment with activity code and name, activityAssignmentId: {}", activityAssignment.getId());
             activityAssignment.setActivityCode(existingActivity.getCode());
             activityAssignment.setActivityName(existingActivity.getName());
         }
 
         if (activityAssignment.getFieldPlanId() != null && !activityAssignment.getFieldPlanId().isEmpty()) {
+            log.debug("Enriching activity assignment with field plan details, fieldPlanId: {}", activityAssignment.getFieldPlanId());
             FieldPlan existingFieldPlan = activityValidator.getFieldPlanById(requestInfo, activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
             if (existingFieldPlan != null) {
                 activityAssignment.setFieldPlan(existingFieldPlan);
@@ -93,6 +98,7 @@ public class ActivityEnrichment {
 
             FieldPlanFacilityBulkResponse fieldPlanFacilityList = activityValidator.getFieldPlanFacilityById(requestInfo, activityAssignment.getFieldPlanId(), activityAssignment.getTenantId());
             if (fieldPlanFacilityList != null) {
+                log.debug("Adding field plan facility count to additional details, count: {}", fieldPlanFacilityList.getTotalCount());
                 Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(activityAssignment.getAdditionalDetails(), "countFieldPlanFacilities", fieldPlanFacilityList.getTotalCount());
                 activityAssignment.setAdditionalDetails((Map<String, Object>) enrichedAdditionalDetails);
             }
@@ -100,7 +106,9 @@ public class ActivityEnrichment {
     }
 
     public void enrichActivityFacilityOnSearch(ActivityFacilitySearchRequest request, ActivityFacility activityFacility) {
+        log.trace("enrichActivityFacilityOnSearch method invoked for activityFacilityId: {}", activityFacility.getId());
         if(activityFacility.getFacilityId() !=null && !activityFacility.getFacilityId().isEmpty()){
+            log.debug("Enriching activity facility with facility details, facilityId: {}", activityFacility.getFacilityId());
             Facility existingfacility = activityValidator.getFacilityById(activityFacility.getFacilityId());
             if (existingfacility != null) {
                 activityFacility.setFacility(existingfacility);
@@ -109,6 +117,7 @@ public class ActivityEnrichment {
 
         // Get Full assigned user Infos from HRMS
         if(activityFacility.getAssignedUser() !=null && !activityFacility.getAssignedUser().isEmpty()){
+            log.debug("Enriching activity facility with assigned user details, userId: {}", activityFacility.getAssignedUser());
             Employee employee =  activityValidator.getUserById(request, activityFacility.getAssignedUser());
             if(employee !=null){
                 activityFacility.setAssignedEmployeeUser(employee.getUser());
@@ -117,34 +126,38 @@ public class ActivityEnrichment {
     }
 
     public void enrichActivityRequestOnCreate(Activity activity, RequestInfo requestInfo) {
+        log.trace("enrichActivityRequestOnCreate method invoked");
         activity.setId(UUID.randomUUID().toString());
-        log.info("Activity id set to " + activity.getId());
+        log.debug("Activity id set to: {}", activity.getId());
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         activity.setAuditDetails(auditDetails);
     }
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichActivityFacilityRequestOnUpdate(ActivityFacility activityFacility, ActivityFacility activityFacilityFromDB, RequestInfo requestInfo) {
+        log.trace("enrichActivityFacilityRequestOnUpdate method invoked for activityFacilityId: {}", activityFacility.getId());
         activityFacility.setAuditDetails(activityFacilityFromDB.getAuditDetails());
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), activityFacilityFromDB.getAuditDetails(), false);
         activityFacility.setAuditDetails(auditDetails);
-        log.info("Enriched activity facility audit details for activity " + activityFacility.getId());
+        log.debug("Enriched activity facility audit details for activityFacilityId: {}", activityFacility.getId());
     }
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichActivityAssignmentRequestOnUpdate(ActivityAssignment activityAssignment, ActivityAssignment activityAssignmentFromDB, RequestInfo requestInfo) {
+        log.trace("enrichActivityAssignmentRequestOnUpdate method invoked for activityAssignmentId: {}", activityAssignment.getId());
         activityAssignment.setAuditDetails(activityAssignmentFromDB.getAuditDetails());
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), activityAssignmentFromDB.getAuditDetails(), false);
         activityAssignment.setAuditDetails(auditDetails);
-        log.info("Enriched activity assignment audit details for project " + activityAssignment.getId());
+        log.debug("Enriched activity assignment audit details for activityAssignmentId: {}", activityAssignment.getId());
     }
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichFieldPlanRequestOnDelete(ActivityAssignment activityAssignment, RequestInfo requestInfo) {
+        log.trace("enrichFieldPlanRequestOnDelete method invoked for activityAssignmentId: {}", activityAssignment.getId());
         activityAssignment.setIsDeleted(true);
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), activityAssignment.getAuditDetails(), false);
         activityAssignment.setAuditDetails(auditDetails);
-        log.info("Enriched activity audit details for project " + activityAssignment.getId());
+        log.debug("Enriched activity assignment audit details for deletion, activityAssignmentId: {}", activityAssignment.getId());
     }
 
     private Object mergeIntoAdditionalDetails(Object additionalDetails, String key, Object value) {

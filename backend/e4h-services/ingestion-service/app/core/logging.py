@@ -5,6 +5,30 @@ from pythonjsonlogger import jsonlogger
 from app.core.singleton import SingletonMeta
 
 
+# ---------------------------------------------------------------------------
+# Custom TRACE log level
+# ---------------------------------------------------------------------------
+TRACE_LEVEL_NUM = 5
+logging.addLevelName(TRACE_LEVEL_NUM, "TRACE")
+
+
+def trace(self: logging.Logger, message: str, *args, **kws) -> None:
+    """
+    Add a lightweight TRACE level below DEBUG.
+
+    This makes existing calls like `logger.trace(...)` work without
+    breaking the standard logging API. By default, basicConfig is set
+    to INFO, so TRACE messages will be suppressed unless the level is
+    lowered explicitly.
+    """
+    if self.isEnabledFor(TRACE_LEVEL_NUM):
+        self._log(TRACE_LEVEL_NUM, message, args, **kws)
+
+
+if not hasattr(logging.Logger, "trace"):
+    logging.Logger.trace = trace  # type: ignore[attr-defined]
+
+
 class AppLogger(metaclass=SingletonMeta):
     _logger = None
 

@@ -31,15 +31,18 @@ public class ServiceRequestRepository {
     private final RestTemplate restTemplate;
 
     public Object fetchResult(StringBuilder uri, Object request) {
+        log.trace("ServiceRequestRepository::fetchResult method invoked");
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         Object response = null;
         try {
+            log.debug("Calling external service at URI: {}", uri);
             response = restTemplate.postForObject(uri.toString(), request, Map.class);
+            log.debug("External service call completed successfully");
         } catch (HttpClientErrorException e) {
-            log.error("External Service threw an Exception: ", e);
+            log.error("External service returned error for URI: {}, status: {}", uri, e.getStatusCode(), e);
             throw new ServiceCallException(e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("Exception while fetching from searcher: ", e);
+            log.error("Exception while calling external service at URI: {}", uri, e);
         }
         return response;
     }
@@ -92,7 +95,8 @@ public class ServiceRequestRepository {
                 .queryParam("fileStoreId", fileStoreId)
                 .toUriString();
 
-        log.info("fetching file from {} ", url);
+        log.trace("ServiceRequestRepository::fetchFile method invoked");
+        log.info("Fetching file from URL: {}", url);
 
         return restTemplate.exchange(
                 url,

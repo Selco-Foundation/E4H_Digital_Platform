@@ -30,18 +30,22 @@ public class IncidentRepository {
     }
 
     public List<IncidentStatusAgregation> getStatusIncidentsAgregation(String boundaryCode) {
+        log.trace("Fetching incident status aggregation for boundary code: {}", boundaryCode);
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getStatusIncidentOccurence(boundaryCode, preparedStmtList);
+        log.debug("Executing query for status aggregation with {} parameters", preparedStmtList.size());
         List<IncidentStatusAgregation> statusAgregations = jdbcTemplate.query(query, incidentStatusRowMapper, preparedStmtList.toArray());
-        log.info("Fetched incident status agregation list based on given tenant Id");
+        log.info("Fetched {} incident status aggregations for boundary code: {}", statusAgregations.size(), boundaryCode);
         return statusAgregations;
     }
 
     public List<IncidentStatusAgregation> getStatusSystemFunctional(String boundaryCode) {
+        log.trace("Fetching system functional status for boundary code: {}", boundaryCode);
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getStatusSystemFunctionalIncident(boundaryCode, preparedStmtList);
+        log.debug("Executing query for system functional status with {} parameters", preparedStmtList.size());
         List<IncidentStatusAgregation> systemFunctionalList = jdbcTemplate.query(query, incidentSystemFunctionalRowMapper, preparedStmtList.toArray());
-        log.info("Fetched system functional list based on given tenant Id");
+        log.info("Fetched {} system functional status records for boundary code: {}", systemFunctionalList.size(), boundaryCode);
         return systemFunctionalList;
     }
 }

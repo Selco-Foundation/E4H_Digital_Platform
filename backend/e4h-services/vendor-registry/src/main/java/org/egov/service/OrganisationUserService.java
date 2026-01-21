@@ -53,29 +53,47 @@ public class OrganisationUserService {
 
 
     public List<OrgUser> createOrgUser(OrgUserRequest request) {
-        log.info("received request to create bulk fieldplan facility");
-
+        log.trace("OrganisationUserService::createOrgUser entry");
+        log.info("Received request to create organisation users");
+        
         validator.validateCreateOrgUserRequest(request);
+        log.debug("Organisation user validation completed");
+        
         List<OrgUser> orgUserList = request.getOrgUsers();
+        log.debug("Processing {} organisation users", orgUserList != null ? orgUserList.size() : 0);
+        
         try {
             for (OrgUser orgUser : orgUserList) {
-                log.info("processing {} valid entities", orgUserList);
+                log.trace("Enriching organisation user: {}", orgUser.getId());
                 organisationEnrichmentService.enrichOrgUserRequestOnCreate(orgUser, request.getRequestInfo());
             }
-            log.info("successfully created org user");
+            log.debug("Organisation user enrichment completed");
+            
             organizationProducer.push(configuration.getCreateOrgUserTopic(), request);
+            log.info("Organisation user creation message pushed to Kafka topic: {}", configuration.getCreateOrgUserTopic());
         } catch (Exception exception) {
-            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating organisation user", exception);
+            throw exception;
         }
 
+        log.info("Organisation user creation completed successfully");
         return orgUserList;
     }
 
     public List<OrgUserEnriched> searchOrganisationUsers(OrgUserSearchRequest request, URLParams urlParams) {
+        log.trace("OrganisationUserService::searchOrganisationUsers entry");
+        String tenantId = urlParams != null ? urlParams.getTenantId() : "unknown";
+        log.info("Starting organisation user search for tenant: {}", tenantId);
+        
         validator.validateSearchOrgUsersRequest(request, urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());
+        log.debug("Search request validation completed");
+        
         List<OrgUser> orgUserList = userRepository.getOrgUsers(request, urlParams);
+        log.debug("Retrieved {} organisation users from repository", orgUserList != null ? orgUserList.size() : 0);
+        
         List<OrgUserEnriched> orgUserEnricheds = new ArrayList<>();
         for (OrgUser orgUser: orgUserList){
+            log.trace("Enriching organisation user with user details: {}", orgUser.getId());
             Employee employee = organisationUtil.getUserById(request, orgUser.getUserId());
             OrgUserEnriched enriched = OrgUserEnriched.builder()
                     .user(employee.getUser())
@@ -89,6 +107,7 @@ public class OrganisationUserService {
                     .build();
             orgUserEnricheds.add(enriched);
         }
+        log.info("Organisation user search completed, returning {} enriched users", orgUserEnricheds.size());
         return orgUserEnricheds;
     }
 }

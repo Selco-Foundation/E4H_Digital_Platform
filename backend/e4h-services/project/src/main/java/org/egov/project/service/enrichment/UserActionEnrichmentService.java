@@ -38,27 +38,37 @@ public class UserActionEnrichmentService {
     }
 
     public void create(List<UserAction> entities, UserActionBulkRequest request) {
-        log.info("starting the enrichment for create UserActions");
-        log.info("generating IDs using UUID");
+        log.trace("Entering create (UserActionEnrichmentService)");
+        log.info("Starting enrichment for create user actions");
+        log.debug("Enriching {} user actions", entities != null ? entities.size() : 0);
+        log.debug("Generating IDs using UUID");
         try {
             List<String> idList = CommonUtils.uuidSupplier().apply(entities.size());
-            log.info("enriching UserActions with generated IDs");
+            log.debug("Generated {} UUIDs", idList != null ? idList.size() : 0);
+            log.debug("Enriching user actions with generated IDs");
             enrichForCreate(entities, idList, request.getRequestInfo(), false);
-            log.info("enrichment done");
+            log.info("Successfully completed enrichment for create user actions");
+            log.trace("Exiting create (UserActionEnrichmentService)");
         } catch (Exception exception) {
-            log.error("Error during enrichment for create UserActions", exception);
+            log.error("Error during enrichment for create user actions", exception);
+            log.trace("Exiting create (UserActionEnrichmentService) with error");
             throw new CustomException(PROJECT_USER_ACTION_ENRICHMENT_ERROR, "Error during enrichment for create UserActions" + exception);
         }
     }
 
     public void update(List<UserAction> entities, UserActionBulkRequest request) {
-        log.info("starting the enrichment for update UserActions");
+        log.trace("Entering update (UserActionEnrichmentService)");
+        log.info("Starting enrichment for update user actions");
+        log.debug("Enriching {} user actions", entities != null ? entities.size() : 0);
         try {
             Map<String, UserAction> userActionMap = getIdToObjMap(entities);
+            log.debug("Created user action map with {} entries", userActionMap.size());
             enrichForUpdate(userActionMap, entities, request);
-            log.info("enrichment done");
+            log.info("Successfully completed enrichment for update user actions");
+            log.trace("Exiting update (UserActionEnrichmentService)");
         } catch (Exception exception) {
-            log.error("Error during enrichment for update UserActions", exception);
+            log.error("Error during enrichment for update user actions", exception);
+            log.trace("Exiting update (UserActionEnrichmentService) with error");
             throw new CustomException(PROJECT_USER_ACTION_ENRICHMENT_ERROR, "Error during enrichment for update UserActions" + exception);
         }
     }

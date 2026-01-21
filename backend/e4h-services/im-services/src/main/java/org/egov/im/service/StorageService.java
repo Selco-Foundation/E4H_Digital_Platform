@@ -45,10 +45,12 @@ public class StorageService {
     }
 
     public StorageResponse saveOriginalFileToS3(List<MultipartFile> filesToStore, ProcessingContext context) {
+        log.trace("StorageService::saveOriginalFileToS3 method invoked");
         storageValidator.validate(filesToStore);
         try {
+            log.debug("Uploading {} files to file storage", filesToStore.size());
             StorageResponse storageResponse = storageUtil.uploadToFileStorage(filesToStore, context);
-            log.info("file store response: {}", storageResponse);
+            log.info("Files uploaded successfully to file storage, fileCount={}", storageResponse.getFiles() != null ? storageResponse.getFiles().size() : 0);
             return storageResponse;
         } catch (IOException e) {
             throw new CustomException("Error saving original file to S3", e.getMessage());
@@ -56,6 +58,8 @@ public class StorageService {
     }
 
     public StorageResponse createAndSaveMasterFiles(StorageResponse storageResponse, List<File> filesToStore, ProcessingContext context) {
+        log.trace("StorageService::createAndSaveMasterFiles method invoked");
+        log.info("Creating and saving master files for {} files", filesToStore.size());
         // Create master files
         List<org.egov.im.web.models.storage.File> updatedFiles = storageResponse.getFiles()
                 .stream()
@@ -97,6 +101,8 @@ public class StorageService {
     }
 
     public List<File> createTempFiles(List<MultipartFile> files) {
+        log.trace("StorageService::createTempFiles method invoked");
+        log.debug("Creating temporary files for {} files", files.size());
         List<File> tempFiles = new ArrayList<>();
         files.forEach(file -> {
             try {

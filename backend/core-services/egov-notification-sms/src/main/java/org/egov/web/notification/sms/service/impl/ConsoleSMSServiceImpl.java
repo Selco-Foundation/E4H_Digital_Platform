@@ -13,8 +13,13 @@ public class ConsoleSMSServiceImpl extends BaseSMSService {
 
     @Override
     protected void submitToExternalSmsService(Sms sms) {
-        log.info(String.format("Sending sms to %s with message '%s'",
-                sms.getMobileNumber(), sms.getMessage()));
-
+        log.trace("submitToExternalSmsService method invoked for Console SMS provider");
+        log.info("Sending SMS to {} with message length: {}",
+                sms.getMobileNumber() != null ? sms.getMobileNumber().substring(0, Math.min(3, sms.getMobileNumber().length())) + "****" : "null",
+                sms.getMessage() != null ? sms.getMessage().length() : 0);
+        log.debug("Console SMS service - message preview: {}", 
+                sms.getMessage() != null && sms.getMessage().length() > 50 
+                    ? sms.getMessage().substring(0, 50) + "..." 
+                    : sms.getMessage());
     }
 }

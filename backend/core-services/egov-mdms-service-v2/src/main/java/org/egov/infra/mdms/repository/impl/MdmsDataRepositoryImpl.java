@@ -53,7 +53,18 @@ public class MdmsDataRepositoryImpl implements MdmsDataRepository {
      */
     @Override
     public void create(MdmsRequest mdmsRequest) {
-        producer.push(applicationConfig.getSaveMdmsDataTopicName(), mdmsRequest);
+        log.trace("MdmsDataRepositoryImpl.create: method invoked");
+        String tenantId = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getTenantId() : "null";
+        String schemaCode = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getSchemaCode() : "null";
+        log.info("Publishing MDMS create request to Kafka for tenant: {}, schemaCode: {}", tenantId, schemaCode);
+        
+        try {
+            producer.push(applicationConfig.getSaveMdmsDataTopicName(), mdmsRequest);
+            log.debug("MDMS create request published successfully to topic: {}", applicationConfig.getSaveMdmsDataTopicName());
+        } catch (Exception e) {
+            log.error("Error publishing MDMS create request to Kafka for tenant: {}, schemaCode: {}", tenantId, schemaCode, e);
+            throw e;
+        }
     }
 
     /**
@@ -61,7 +72,19 @@ public class MdmsDataRepositoryImpl implements MdmsDataRepository {
      */
     @Override
     public void update(MdmsRequest mdmsRequest) {
-        producer.push(applicationConfig.getUpdateMdmsDataTopicName(), mdmsRequest);
+        log.trace("MdmsDataRepositoryImpl.update: method invoked");
+        String tenantId = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getTenantId() : "null";
+        String schemaCode = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getSchemaCode() : "null";
+        String id = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getId() : "null";
+        log.info("Publishing MDMS update request to Kafka for tenant: {}, schemaCode: {}, id: {}", tenantId, schemaCode, id);
+        
+        try {
+            producer.push(applicationConfig.getUpdateMdmsDataTopicName(), mdmsRequest);
+            log.debug("MDMS update request published successfully to topic: {}", applicationConfig.getUpdateMdmsDataTopicName());
+        } catch (Exception e) {
+            log.error("Error publishing MDMS update request to Kafka for tenant: {}, schemaCode: {}, id: {}", tenantId, schemaCode, id, e);
+            throw e;
+        }
     }
 
     /**
@@ -70,10 +93,23 @@ public class MdmsDataRepositoryImpl implements MdmsDataRepository {
      */
     @Override
     public List<Mdms> searchV2(MdmsCriteriaV2 mdmsCriteriaV2) {
+        log.trace("MdmsDataRepositoryImpl.searchV2: method invoked");
+        String tenantId = mdmsCriteriaV2 != null ? mdmsCriteriaV2.getTenantId() : "null";
+        String schemaCode = mdmsCriteriaV2 != null ? mdmsCriteriaV2.getSchemaCode() : "null";
+        log.info("Searching MDMS data from database for tenant: {}, schemaCode: {}", tenantId, schemaCode);
+        
         List<Object> preparedStmtList = new ArrayList<>();
         String query = mdmsDataQueryBuilderV2.getMdmsDataSearchQuery(mdmsCriteriaV2, preparedStmtList);
-        log.info(query);
-        return jdbcTemplate.query(query, preparedStmtList.toArray(), mdmsDataRowMapperV2);
+        log.debug("Generated MDMS data search query with {} parameters", preparedStmtList.size());
+        
+        try {
+            List<Mdms> result = jdbcTemplate.query(query, preparedStmtList.toArray(), mdmsDataRowMapperV2);
+            log.debug("MDMS data search completed, records found: {}", result != null ? result.size() : 0);
+            return result;
+        } catch (Exception e) {
+            log.error("Error searching MDMS data from database for tenant: {}, schemaCode: {}", tenantId, schemaCode, e);
+            throw e;
+        }
     }
 
     /**
@@ -82,9 +118,21 @@ public class MdmsDataRepositoryImpl implements MdmsDataRepository {
      */
     @Override
     public Map<String, Map<String, JSONArray>> search(MdmsCriteria mdmsCriteria) {
+        log.trace("MdmsDataRepositoryImpl.search: method invoked");
+        String tenantId = mdmsCriteria != null ? mdmsCriteria.getTenantId() : "null";
+        log.info("Searching MDMS v1 data from database for tenant: {}", tenantId);
+        
         List<Object> preparedStmtList = new ArrayList<>();
         String query = mdmsDataQueryBuilder.getMdmsDataSearchQuery(mdmsCriteria, preparedStmtList);
-        log.info(query);
-        return jdbcTemplate.query(query, preparedStmtList.toArray(), mdmsDataRowMapper);
+        log.debug("Generated MDMS v1 data search query with {} parameters", preparedStmtList.size());
+        
+        try {
+            Map<String, Map<String, JSONArray>> result = jdbcTemplate.query(query, preparedStmtList.toArray(), mdmsDataRowMapper);
+            log.debug("MDMS v1 data search completed, tenant count: {}", result != null ? result.size() : 0);
+            return result;
+        } catch (Exception e) {
+            log.error("Error searching MDMS v1 data from database for tenant: {}", tenantId, e);
+            throw e;
+        }
     }
 }

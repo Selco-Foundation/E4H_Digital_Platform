@@ -43,17 +43,25 @@ public class WorKflowRepository {
      * @return The parsed response from the search query
      */
     public List<ProcessInstance> getProcessInstances(ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering getProcessInstances method");
         List<Object> preparedStmtList = new ArrayList<>();
 
         List<String> ids = getProcessInstanceIds(criteria);
 
-        if(CollectionUtils.isEmpty(ids))
+        if(CollectionUtils.isEmpty(ids)) {
+            log.debug("No process instance IDs found for criteria");
+            log.trace("Exiting getProcessInstances method - empty result");
             return new LinkedList<>();
+        }
 
+        log.info("Fetching {} process instance(s) from database", ids.size());
         String query = queryBuilder.getProcessInstanceSearchQueryById(ids, preparedStmtList);
-        log.debug("query for status search: "+query+" params: "+preparedStmtList);
+        log.debug("Query for process instance search: {} with params: {}", query, preparedStmtList);
 
-        return jdbcTemplate.query(query, preparedStmtList.toArray(), rowMapper);
+        List<ProcessInstance> result = jdbcTemplate.query(query, preparedStmtList.toArray(), rowMapper);
+        log.debug("Retrieved {} process instance(s) from database", result != null ? result.size() : 0);
+        log.trace("Exiting getProcessInstances method");
+        return result;
     }
 
 
@@ -64,26 +72,43 @@ public class WorKflowRepository {
      * @return
      */
     public List<ProcessInstance> getProcessInstancesForUserInbox(ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering getProcessInstancesForUserInbox method");
+
         List<Object> preparedStmtList = new ArrayList<>();
 
-        if(CollectionUtils.isEmpty(criteria.getStatus()) && CollectionUtils.isEmpty(criteria.getTenantSpecifiStatus()))
+        if(CollectionUtils.isEmpty(criteria.getStatus()) && CollectionUtils.isEmpty(criteria.getTenantSpecifiStatus())) {
+            log.debug("Empty status criteria for user inbox search");
+            log.trace("Exiting getProcessInstancesForUserInbox method - empty criteria");
             return new LinkedList<>();
+        }
 
         List<String> ids = getInboxSearchIds(criteria);
 
-        if(CollectionUtils.isEmpty(ids))
+        if(CollectionUtils.isEmpty(ids)) {
+            log.debug("No IDs found for user inbox search");
+            log.trace("Exiting getProcessInstancesForUserInbox method - empty result");
             return new LinkedList<>();
+        }
 
+        log.info("Fetching {} process instance(s) for user inbox from database", ids.size());
         String query = queryBuilder.getProcessInstanceSearchQueryById(ids, preparedStmtList);
-        log.debug("query for status search: "+query+" params: "+preparedStmtList);
-        return jdbcTemplate.query(query, preparedStmtList.toArray(), rowMapper);
+        log.debug("Query for user inbox search: {} with params: {}", query, preparedStmtList);
+        
+        List<ProcessInstance> result = jdbcTemplate.query(query, preparedStmtList.toArray(), rowMapper);
+        log.debug("Retrieved {} process instance(s) for user inbox", result != null ? result.size() : 0);
+        log.trace("Exiting getProcessInstancesForUserInbox method");
+        return result;
     }
 
     public Integer getProcessInstancesForUserInboxCount(ProcessInstanceSearchCriteria criteria) {
+        log.trace("Entering getProcessInstancesForUserInboxCount method");
         List<Object> preparedStmtList = new ArrayList<>();
         criteria.setIsAssignedToMeCount(true);
         String query = queryBuilder.getInboxIdCount(criteria, (ArrayList<Object>) preparedStmtList);
+        log.debug("Query for user inbox count: {} with params: {}", query, preparedStmtList);
         Integer count =  jdbcTemplate.queryForObject(query, preparedStmtList.toArray(), Integer.class);
+        log.info("User inbox count: {}", count);
+        log.trace("Exiting getProcessInstancesForUserInboxCount method");
         return count;
     }
 
@@ -100,9 +125,14 @@ public class WorKflowRepository {
     }
 
     public Integer getProcessInstancesCount(ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering getProcessInstancesCount method");
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getProcessInstanceCount(criteria, preparedStmtList,Boolean.FALSE);
-        return jdbcTemplate.queryForObject(query, preparedStmtList.toArray(), Integer.class);
+        log.debug("Query for process instances count: {} with params: {}", query, preparedStmtList);
+        Integer count = jdbcTemplate.queryForObject(query, preparedStmtList.toArray(), Integer.class);
+        log.info("Process instances count: {}", count);
+        log.trace("Exiting getProcessInstancesCount method");
+        return count;
     }
 
     /**
@@ -111,16 +141,25 @@ public class WorKflowRepository {
      * @return
      */
     public List getInboxStatusCount(ProcessInstanceSearchCriteria criteria) {
+        log.trace("Entering getInboxStatusCount method");
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getInboxCount(criteria, preparedStmtList,Boolean.TRUE);
-        log.info(query);
-        return jdbcTemplate.queryForList(query, preparedStmtList.toArray());
+        log.debug("Query for inbox status count: {} with params: {}", query, preparedStmtList);
+        List result = jdbcTemplate.queryForList(query, preparedStmtList.toArray());
+        log.info("Inbox status count query completed, returning {} status count(s)", result != null ? result.size() : 0);
+        log.trace("Exiting getInboxStatusCount method");
+        return result;
     }
 
     public List getProcessInstancesStatusCount(ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering getProcessInstancesStatusCount method");
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getProcessInstanceCount(criteria, preparedStmtList,Boolean.TRUE);
-        return  jdbcTemplate.queryForList(query, preparedStmtList.toArray());
+        log.debug("Query for process instances status count: {} with params: {}", query, preparedStmtList);
+        List result = jdbcTemplate.queryForList(query, preparedStmtList.toArray());
+        log.info("Process instances status count query completed, returning {} status count(s)", result != null ? result.size() : 0);
+        log.trace("Exiting getProcessInstancesStatusCount method");
+        return result;
     }
 
 
@@ -133,45 +172,40 @@ public class WorKflowRepository {
     }
 
     private List<String> getProcessInstanceIds(ProcessInstanceSearchCriteria criteria) {
+        log.trace("Entering getProcessInstanceIds method");
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getProcessInstanceIds(criteria,preparedStmtList);
-        log.info(query);
-        log.info(preparedStmtList.toString());
-        return jdbcTemplate.query(query, preparedStmtList.toArray(), new SingleColumnRowMapper<>(String.class));
+        log.debug("Query for process instance IDs: {} with params: {}", query, preparedStmtList);
+        List<String> result = jdbcTemplate.query(query, preparedStmtList.toArray(), new SingleColumnRowMapper<>(String.class));
+        log.debug("Retrieved {} process instance ID(s)", result != null ? result.size() : 0);
+        log.trace("Exiting getProcessInstanceIds method");
+        return result;
     }
 
 
     public List<String> fetchEscalatedApplicationsBusinessIdsFromDb(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria) {
+        log.trace("Entering fetchEscalatedApplicationsBusinessIdsFromDb method");
         ArrayList<Object> preparedStmtList = new ArrayList<>();
 
-        // 1st step is to fetch businessIds based on the assignee and the module.
-        /*
-
-        String query = queryBuilder.getInboxApplicationsBusinessIdsQuery(criteria, preparedStmtList);
-        List<String> inboxApplicationsBusinessIds = jdbcTemplate.query(query, preparedStmtList.toArray(), new SingleColumnRowMapper<>(String.class));
-        log.info(inboxApplicationsBusinessIds.toString());
-        preparedStmtList.clear();
-
-        // (DONE) 2nd step is to fetch businessIds of inbox applications which have been autoEscalated at least once in their wf
-        // (DONE) For this step, fetch AUTO_ESCALATION_EMPLOYEES uuids based on role codes by doing a call to user service
-        // (PENDING) Also, add the call to mdms service for filtering out states which need to be excluded
-
-        criteria.setBusinessIds(inboxApplicationsBusinessIds);
-         */
         String query = queryBuilder.getAutoEscalatedApplicationsFinalQuery(requestInfo,criteria, preparedStmtList);
-        log.info(query);
+        log.debug("Query for escalated applications business IDs: {} with params: {}", query, preparedStmtList);
         List<String> escalatedApplicationsBusinessIds = jdbcTemplate.query(query, preparedStmtList.toArray(), new SingleColumnRowMapper<>(String.class));
         preparedStmtList.clear();
-        log.info(escalatedApplicationsBusinessIds.toString());
-        // 3rd step is to do a simple search on these business ids(DONE IN WORKFLOW SERVICE)
-
+        
+        int businessIdCount = escalatedApplicationsBusinessIds != null ? escalatedApplicationsBusinessIds.size() : 0;
+        log.info("Retrieved {} escalated application business ID(s) from database", businessIdCount);
+        log.trace("Exiting fetchEscalatedApplicationsBusinessIdsFromDb method");
         return escalatedApplicationsBusinessIds;
     }
 
     public Integer getEscalatedApplicationsCount(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria) {
+        log.trace("Entering getEscalatedApplicationsCount method");
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getEscalatedApplicationsCount(requestInfo,criteria, (ArrayList<Object>) preparedStmtList);
+        log.debug("Query for escalated applications count: {} with params: {}", query, preparedStmtList);
         Integer count =  jdbcTemplate.queryForObject(query, preparedStmtList.toArray(), Integer.class);
+        log.info("Escalated applications count: {}", count);
+        log.trace("Exiting getEscalatedApplicationsCount method");
         return count;
     }
 }
