@@ -3,21 +3,14 @@ import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import { useHistory, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import Filter from "../../components/OrganizationTable/Filter";
-import OrganizationAdminActions from "../../components/OrganizationTable/OrganizationAdminActions";
+import Filter from "./Filter";
+import OrganizationAdminActions from "./OrganizationAdminActions";
 import useOrganizations from "../../hooks/useOrganization";
 
 const normalizeOrgFilter = (raw) => {
   const r = raw || {};
-  const n1 =
-    r.organizationSearch && typeof r.organizationSearch.name === "string"
-      ? r.organizationSearch.name
-      : "";
-  const n2 =
-    r.organizationSearchQuery && typeof r.organizationSearchQuery.name === "string"
-      ? r.organizationSearchQuery.name
-      : "";
-
+  const n1 = r.organizationSearch && typeof r.organizationSearch.name === "string" ? r.organizationSearch.name : "";
+  const n2 = r.organizationSearchQuery && typeof r.organizationSearchQuery.name === "string" ? r.organizationSearchQuery.name : "";
   const name = n1 || n2 || "";
   const trimmed = (name || "").trim();
 
@@ -27,13 +20,12 @@ const normalizeOrgFilter = (raw) => {
   };
 };
 
-const OrganizationTable = () => {
+const OrganizationTableBase = ({ orgType }) => {
   const { t } = useTranslation();
   const history = useHistory();
   const location = useLocation();
 
   const queryParams = new URLSearchParams(window.location.search);
-
   const [fetchedData, setFetchedData] = useState([]);
 
   const [projectQueryFilter, setProjectQueryFilter] = useState(() => {
@@ -42,19 +34,16 @@ const OrganizationTable = () => {
       const parsed = filterParam ? JSON.parse(filterParam) : null;
       return normalizeOrgFilter(parsed);
     } catch (error) {
-      // fallback to clean default
       return normalizeOrgFilter(null);
     }
   });
 
   const prevSearchParamsRef = useRef(JSON.stringify(projectQueryFilter));
-
   const [pageSize, setPageSize] = useState(queryParams.get("pageSize") || 10);
   const [pageOffset, setPageOffset] = useState(queryParams.get("pageOffset") || 0);
   const prevPageSizeRef = useRef(pageSize);
 
   useEffect(() => {
-    // keep URL clean: only organizationSearch + organizationSearchQuery
     const encodedFilter = encodeURIComponent(JSON.stringify(projectQueryFilter));
     history.replace({
       pathname: location.pathname,
@@ -76,7 +65,8 @@ const OrganizationTable = () => {
   const { isLoading, isError, error, data: orgData } = useOrganizations(
     projectQueryFilter,
     Number(pageSize),
-    Number(pageOffset)
+    Number(pageOffset),
+    orgType
   );
 
   useEffect(() => {
@@ -84,7 +74,6 @@ const OrganizationTable = () => {
   }, [orgData]);
 
   const handleFilterChange = (filters) => {
-    // IMPORTANT: replace (don’t merge) so old boundary keys can’t “stick” in URL
     setProjectQueryFilter(normalizeOrgFilter(filters));
   };
 
@@ -114,7 +103,13 @@ const OrganizationTable = () => {
 
     if (isError) {
       const msg =
-        (error && (error.message || (error.response && error.response.data && error.response.data.Errors && error.response.data.Errors[0] && error.response.data.Errors[0].message))) ||
+        (error &&
+          (error.message ||
+            (error.response &&
+              error.response.data &&
+              error.response.data.Errors &&
+              error.response.data.Errors[0] &&
+              error.response.data.Errors[0].message))) ||
         "Unknown error";
 
       return (
@@ -166,11 +161,42 @@ const OrganizationTable = () => {
 
   return (
     <div style={{ marginTop: "20px", padding: "0px 10px", overflow: "auto" }}>
-      <div style={{ padding: "20px" }}>
-        <h1 style={{ fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", margin: "0", color: "#0B0C0C" }}>
-          {t("ORGANIZATIONS") || "Organizations"}
+      {/*<div style={{ padding: "20px" }}>*/}
+      {/*  <h1 style={{ fontSize: "40px", fontWeight: "bold", fontFamily: "Roboto Condensed", margin: "0", color: "#0B0C0C" }}>*/}
+      {/*    {orgType === "PLATFORM" ? t("PLATFORM_ORGANIZATIONS") || t("ORGANIZATIONS") : t("VENDOR_ORGANIZATIONS") || t("ORGANIZATIONS")}*/}
+      {/*  </h1>*/}
+
+      {/*  /!* ✅ passes orgType into popup form + payload *!/*/}
+      {/*  <OrganizationAdminActions orgType={orgType} />*/}
+      {/*</div>*/}
+
+      <div
+        style={{
+          padding: "20px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+        }}
+      >
+        <h1
+          style={{
+            fontSize: "40px",
+            fontWeight: "bold",
+            fontFamily: "Roboto Condensed",
+            margin: 0,
+            color: "#0B0C0C",
+            flex: 1, // keeps title left and lets button stay right
+          }}
+        >
+          {orgType === "PLATFORM"
+            ? t("PLATFORM_ORGANIZATIONS") || t("ORGANIZATIONS")
+            : t("VENDOR_ORGANIZATIONS") || t("ORGANIZATIONS")}
         </h1>
-        <OrganizationAdminActions />
+
+        <div style={{ flexShrink: 0 }}>
+          <OrganizationAdminActions orgType={orgType} />
+        </div>
       </div>
 
       <div style={{ width: "100%", display: "flex", gap: "15px", alignItems: "stretch" }}>
@@ -184,4 +210,4 @@ const OrganizationTable = () => {
   );
 };
 
-export default OrganizationTable;
+export default OrganizationTableBase;

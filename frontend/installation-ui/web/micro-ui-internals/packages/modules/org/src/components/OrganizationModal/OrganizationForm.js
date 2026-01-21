@@ -1,15 +1,7 @@
 import React, { useMemo } from "react";
-import { FormComposerV2 } from "@egovernments/digit-ui-react-components";
+import { FormComposerV2, TextInput } from "@egovernments/digit-ui-react-components";
 
-const OrganizationForm = ({ t, onSubmit }) => {
-  const orgTypeOptions = useMemo(
-    () => [
-      { code: "VENDOR", name: t("VENDOR") },
-      { code: "PLATFORM", name: t("PLATFORM") },
-    ],
-    [t]
-  );
-
+const OrganizationForm = ({ t, onSubmit, orgType }) => {
   const orgStatusOptions = useMemo(
     () => [
       { code: "ACTIVE", name: t("ACTIVE") },
@@ -20,10 +12,9 @@ const OrganizationForm = ({ t, onSubmit }) => {
 
   const defaultValues = useMemo(
     () => ({
-      orgType: orgTypeOptions[0],
       orgStatus: orgStatusOptions[0],
     }),
-    [orgTypeOptions, orgStatusOptions]
+    [orgStatusOptions]
   );
 
   const formConfig = useMemo(() => {
@@ -34,7 +25,8 @@ const OrganizationForm = ({ t, onSubmit }) => {
           { inline: true, label: "ORG_NAME", isMandatory: true, key: "orgName", type: "text", populators: { name: "orgName", validation: { required: true }, error: t("CORE_COMMON_REQUIRED") } },
           { inline: true, label: "ORG_CODE", isMandatory: true, key: "orgCode", type: "text", populators: { name: "orgCode", validation: { required: true }, error: t("CORE_COMMON_REQUIRED") } },
 
-          { inline: true, label: "ORG_TYPE", isMandatory: true, key: "orgType", type: "dropdown", populators: { name: "orgType", options: orgTypeOptions, optionsKey: "name", validation: { required: true }, error: t("CORE_COMMON_REQUIRED") } },
+          // ✅ removed ORG_TYPE dropdown completely
+
           { inline: true, label: "ORG_STATUS", isMandatory: true, key: "orgStatus", type: "dropdown", populators: { name: "orgStatus", options: orgStatusOptions, optionsKey: "name", validation: { required: true }, error: t("CORE_COMMON_REQUIRED") } },
 
           { inline: true, label: "ORG_POC_NAME", key: "orgPocName", type: "text", populators: { name: "orgPocName" } },
@@ -47,28 +39,40 @@ const OrganizationForm = ({ t, onSubmit }) => {
         ],
       },
     ];
-  }, [t, orgTypeOptions, orgStatusOptions]);
+  }, [t, orgStatusOptions]);
 
   return (
     <div
       style={{
-        paddingBottom: "90px",     // ✅ leave room for sticky action bar
+        paddingBottom: "90px",
         position: "relative",
-        maxHeight: "70vh",         // ✅ popup scroll area
+        maxHeight: "70vh",
         overflow: "auto",
       }}
     >
+      {/* ✅ Disabled orgType field (visual only; payload is enforced in AdminActions) */}
+      <div style={{ marginTop: "10px", marginBottom: "20px" }}>
+        <TextInput
+          name="orgTypeDisplay"
+          value={orgType || "VENDOR"}
+          onChange={() => {}}
+          disable={true}
+          disabled={true}
+          style={{ width: "100%" }}
+        />
+        <div style={{ fontSize: "12px", marginTop: "6px", opacity: 0.8 }}>
+          {t("ORG_TYPE") || "Org Type"}
+        </div>
+      </div>
+
       <FormComposerV2
-        heading={""}               // ✅ FA style: header handled by modal, not inside form
+        heading={""}
         label={t("CORE_COMMON_SUBMIT")}
         config={formConfig}
         defaultValues={defaultValues}
         submitInForm={false}
         onSubmit={onSubmit}
-
-        // ✅ critical: make popup submit-bar behave like FA
         actionClassName={"reverse-actionbar-absolute"}
-
         noCardStyle={true}
         fieldStyle={{ marginRight: 0 }}
         cardStyle={{ padding: 0, boxShadow: "none" }}

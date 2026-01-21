@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { Route, Switch, useRouteMatch } from "react-router-dom";
 import { BreadCrumb } from "@egovernments/digit-ui-components";
 import { useSelector } from "react-redux";
-import OrganizationTable from "./OrganizationTable";
+import VendorOrganization from "./VendorOrgTable";
+import PlatformOrganization from "./PlatformOrgTable"
 
 const ORGApp = () => {
   const { t } = useTranslation();
@@ -22,7 +23,11 @@ const ORGApp = () => {
       internalLink: `/${window.contextPath}/employee/org/vendors`,
       show: true,
     },
-
+    platformOrganizations: {
+      content: t("CS_COMMON_ORGANIZATION"),
+      internalLink: `/${window.contextPath}/employee/org/platforms`,
+      show: true,
+    },
   };
 
   useEffect(() => {
@@ -37,7 +42,14 @@ const ORGApp = () => {
             spanStyle={{ color: "#0B0C0C" }}
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.vendorOrganizations]}
           />
-          <OrganizationTable />
+          <VendorOrganization />
+        </Route>
+        <Route path={`${path}/platforms`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.platformOrganizations]}
+          />
+          <PlatformOrganization />
         </Route>
       </Switch>
     </div>

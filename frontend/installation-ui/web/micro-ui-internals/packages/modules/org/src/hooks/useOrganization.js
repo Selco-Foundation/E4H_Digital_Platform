@@ -17,7 +17,6 @@ const mapOrganizations = (raw) => {
   return safeArray(raw).map((org) => {
     const address = pickFirst(org && org.orgAddress) || null;
     const boundaryCode = (address && address.boundaryCode) || "";
-
     const parts = extractBoundaryParts(boundaryCode);
 
     return {
@@ -28,6 +27,7 @@ const mapOrganizations = (raw) => {
       orgType: org && org.orgType,
       orgSubType: org && org.orgSubType,
       orgStatus: org && org.orgStatus,
+      pocName: org && org.orgOrgPocName, // keep your old mapping if needed
       pocName: org && org.orgPocName,
       pocPhone: org && org.orgPocPhone,
       pocEmail: org && org.orgPocEmail,
@@ -42,16 +42,13 @@ const mapOrganizations = (raw) => {
 };
 
 const getTotal = (res) => {
-  // DO NOT use ?? here (webpack 4 parser will blow up if it survives build)
   if (!res) return 0;
-
   if (typeof res.TotalCount === "number") return res.TotalCount;
   if (typeof res.totalCount === "number") return res.totalCount;
 
   const pagination = res.pagination;
   if (pagination && typeof pagination.totalCount === "number") return pagination.totalCount;
 
-  // sometimes APIs return strings
   if (res.TotalCount) return Number(res.TotalCount) || 0;
   if (res.totalCount) return Number(res.totalCount) || 0;
   if (pagination && pagination.totalCount) return Number(pagination.totalCount) || 0;
@@ -59,7 +56,10 @@ const getTotal = (res) => {
   return 0;
 };
 
-const useOrganization = (filter, limit, offset) => {
+/**
+ * fixedOrgType: "PLATFORM" | "VENDOR" (required for your split pages)
+ */
+const useOrganization = (filter, limit, offset, fixedOrgType) => {
   const tenantId = Digit.ULBService.getCurrentTenantId();
 
   const f = filter || {};
@@ -70,9 +70,9 @@ const useOrganization = (filter, limit, offset) => {
 
   if (organizationSearchQuery.name) searchCriteria.name = organizationSearchQuery.name;
 
-  if (organizationFilterQuery.orgType && organizationFilterQuery.orgType.length) {
-    searchCriteria.orgType = organizationFilterQuery.orgType;
-  }
+  // ✅ FORCE ORG TYPE PER PAGE (ignore any orgType filters from UI)
+  if (fixedOrgType) searchCriteria.orgType = fixedOrgType;
+
   if (organizationFilterQuery.orgSubType && organizationFilterQuery.orgSubType.length) {
     searchCriteria.orgSubType = organizationFilterQuery.orgSubType;
   }
@@ -80,7 +80,6 @@ const useOrganization = (filter, limit, offset) => {
     searchCriteria.orgStatus = organizationFilterQuery.orgStatus;
   }
 
-  // boundary filters (only if backend supports)
   if (organizationFilterQuery.state && organizationFilterQuery.state.length) {
     searchCriteria.state = organizationFilterQuery.state;
   }
@@ -93,7 +92,8 @@ const useOrganization = (filter, limit, offset) => {
 
   const queryClient = useQueryClient();
 
-  const queryKey = ["ORGANIZATIONS", tenantId, limit, offset, searchCriteria];
+  // ✅ include fixedOrgType so PLATFORM/VENDOR cache never clashes :contentReference[oaicite:0]{index=0}
+  const queryKey = ["ORGANIZATIONS", tenantId, fixedOrgType, limit, offset, searchCriteria];
 
   const queryFn = async () => {
     const res = await OrganizationService.searchOrganizations({
