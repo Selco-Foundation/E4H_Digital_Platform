@@ -11,7 +11,21 @@ from app.core.logging import AppLogger
 
 logger = AppLogger().get_logger()
 
+"""
+    Add dropdowns to Excel using hidden sheets for maximum compatibility.
 
+    How it works:
+    1. Creates a hidden sheet named "_DropdownValues" to store dropdown options
+    2. Each dropdown references its values via a range formula (e.g., '_DropdownValues'!$A$1:$A$5)
+    3. Uses standard Excel data validation with type="list" which automatically shows dropdown arrows
+
+    Args:
+        file_path: Path to the Excel file
+        sheet_name: Name of the sheet to add dropdowns to
+        dropdowns: Dictionary mapping column headers to list of dropdown options
+        allow_blank_map: Optional dictionary mapping column headers to allow_blank boolean
+        max_extra_rows: Maximum number of extra rows to apply validation to
+"""
 def add_dropdowns_to_excel(
         file_path: str,
         sheet_name: str,
@@ -19,26 +33,6 @@ def add_dropdowns_to_excel(
         allow_blank_map: Optional[Dict[str, bool]],
         max_extra_rows: int = 1000
 ):
-    """
-    Add dropdowns to Excel using hidden sheets for maximum compatibility.
-    
-    How it works:
-    1. Creates a hidden sheet named "_DropdownValues" to store dropdown options
-    2. Each dropdown references its values via a range formula (e.g., '_DropdownValues'!$A$1:$A$5)
-    3. Uses standard Excel data validation with type="list" which automatically shows dropdown arrows
-    
-    The dropdown arrow will appear when:
-    - The cell is selected/active
-    - The cell is editable (not locked)
-    - The software supports Excel data validation (all major spreadsheet apps do)
-    
-    Args:
-        file_path: Path to the Excel file
-        sheet_name: Name of the sheet to add dropdowns to
-        dropdowns: Dictionary mapping column headers to list of dropdown options
-        allow_blank_map: Optional dictionary mapping column headers to allow_blank boolean
-        max_extra_rows: Maximum number of extra rows to apply validation to
-    """
     logger.trace(f"Adding dropdowns to Excel: file={file_path}, sheet={sheet_name}")
     wb = load_workbook(file_path)
     ws = wb[sheet_name]
