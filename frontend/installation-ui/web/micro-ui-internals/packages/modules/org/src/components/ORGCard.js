@@ -20,8 +20,8 @@ const ORGCard = () => {
     history.push(`/${window?.contextPath}/employee/org/vendors`);
   };
 
-  const handleManageBoundariesRedirection = () => {
-    history.push(`/#`);
+  const handleManagePlatformsRedirection = () => {
+    history.push(`/${window?.contextPath}/employee/org/platforms`);
   };
 
   return (
@@ -99,7 +99,7 @@ const ORGCard = () => {
             background: "transparent",
             border: "none",
           }}
-          onClick={handleManageBoundariesRedirection}
+          onClick={handleManagePlatformsRedirection}
         >
           <ListAlt />
           <span>{t("ORG_ACTION_MANAGE_PLATFORM_ORGANIZATION")}</span>
