@@ -1,34 +1,26 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "react-query";
-import { Button, Toast } from "@egovernments/digit-ui-react-components";
+import { Button, Toast, Loader } from "@egovernments/digit-ui-react-components";
 
 import OrganizationModal from "../OrganizationModal/index";
 import { OrganizationService } from "../../services/Organization";
 
 const getApiErrorMessage = (e) => {
-  return (
-    (e &&
-      e.response &&
-      e.response.data &&
-      e.response.data.Errors &&
-      e.response.data.Errors[0] &&
-      e.response.data.Errors[0].message) ||
-    (e && e.message) ||
-    "Unknown error"
-  );
+  return (e?.response?.data?.Errors?.[0]?.message)
+    ? e.response.data.Errors[0].message
+    : (e?.message ? e.message : "");
 };
 
 const OrganizationAdminActions = ({ orgType }) => {
+
   const { t } = useTranslation();
+  const tenantId = Digit.ULBService.getCurrentTenantId();
   const queryClient = useQueryClient();
-
   const [showModal, setShowModal] = useState(false);
-
   const [toast, setToast] = useState(null);
   const [formToast, setFormToast] = useState(null);
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [blockUI, setBlockUI] = useState(null);
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
 
   useEffect(() => {
@@ -53,10 +45,8 @@ const OrganizationAdminActions = ({ orgType }) => {
 
   const handleSubmit = async (formData) => {
     try {
-      setIsSubmitting(true);
+      setBlockUI(true);
       setFormToast(null);
-
-      const tenantId = Digit.ULBService.getCurrentTenantId();
 
       const payload = {
         organisations: [
@@ -64,45 +54,31 @@ const OrganizationAdminActions = ({ orgType }) => {
             tenantId,
             name: formData.orgName,
             code: formData.orgCode,
-            orgType: orgType || "VENDOR",
-            orgStatus: formData.orgStatus ? formData.orgStatus.code : "ACTIVE",
-
-            orgPocName: formData.orgPocName || null,
-            orgPocPhone: formData.orgPocPhone || null,
-            orgPocEmail: formData.orgPocEmail || null,
-            orgPocUsername: formData.orgPocPhone || null,
-
+            orgType: orgType,
+            orgSubType: formData.orgSubType?.code,
+            orgStatus: formData.orgStatus?.code,
+            orgPocName: formData.orgPocName,
+            orgPocPhone: formData.orgPocPhone,
+            orgPocEmail: formData.orgPocEmail,
+            orgPocUsername: formData.orgPocUsername,
             isActive: true,
-
-            orgAddress: [
-              {
-                tenantId,
-                boundaryType: null,
-                boundaryCode: null,
-                hqAddress: formData.hqAddress,
-                geoLocation: {
-                  latitude: Number(formData.latitude),
-                  longitude: Number(formData.longitude),
-                },
-              },
-            ],
+            orgAddress: [],
           },
         ],
       };
 
       await OrganizationService.createOrganization(payload);
-
       await queryClient.invalidateQueries(["ORGANIZATIONS"]);
 
+      setBlockUI(false);
       setShowModal(false);
       setToast({ key: "success", label: t("ORG_CREATE_SUCCESS") });
     } catch (e) {
+      setBlockUI(false);
       setFormToast({
         key: "error",
         label: getApiErrorMessage(e) || t("ORG_CREATE_FAILED"),
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -112,31 +88,46 @@ const OrganizationAdminActions = ({ orgType }) => {
   };
 
   const closeModal = () => {
-    if (isSubmitting) return;
     setShowModal(false);
   };
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      {blockUI && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+            zIndex: 10000005,
+            backgroundColor: "gray",
+            opacity: 0.5,
+            position: "fixed",
+            top: 0,
+            left: 0,
+          }}
+        >
+          <Loader />
+        </div>
+      )}
       <Button
         variation={"secondary"}
         label={ orgType === "PLATFORM" ? t("ADD_PLATFORM_ORG") : t("ADD_VENDOR_ORG") }
         onButtonClick={openModal}
       />
-
-      {showModal ? (
+      {showModal && (
         <OrganizationModal
           t={t}
           orgType={orgType}
           onSubmit={handleSubmit}
           onClose={closeModal}
-          isLoading={isSubmitting}
           formToast={formToast}
           setFormToast={setFormToast}
         />
-      ) : null}
-
-      {toast ? (
+      )}
+      {toast && (
         <Toast
           error={toast.key === "error"}
           warning={toast.key === "warning"}
@@ -149,7 +140,7 @@ const OrganizationAdminActions = ({ orgType }) => {
           isDleteBtn={true}
           onClose={() => setToast(null)}
         />
-      ) : null}
+      )}
     </div>
   );
 };

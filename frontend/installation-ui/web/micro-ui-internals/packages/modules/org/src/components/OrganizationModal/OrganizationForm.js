@@ -1,71 +1,190 @@
-import React, { useMemo } from "react";
-import { FormComposerV2, TextInput } from "@egovernments/digit-ui-react-components";
+import React, {useEffect, useMemo, useState} from "react";
+import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 
-const OrganizationForm = ({ t, onSubmit, orgType }) => {
-  const orgStatusOptions = useMemo(
-    () => [
-      { code: "ACTIVE", name: t("ACTIVE") },
-      { code: "INACTIVE", name: t("INACTIVE") },
+const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast, setFormToast }) => {
+
+  const tenantId = Digit.ULBService.getCurrentTenantId();
+  const [defaultValues, setDefaultValues] = useState({});
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+
+  useEffect(() => {
+    const handleResize = () => setMobileView(window.innerWidth <= 640);
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
+    tenantId,
+    "Organisation",
+    [
+      {
+        name: "OrgType",
+      },
+      {
+        name: "OrgSubType",
+      },
+      {
+        name: "OrgStatus",
+      },
     ],
-    [t]
+    {
+      select: (data) => data,
+      enabled: !!tenantId,
+    }
   );
 
-  const defaultValues = useMemo(
-    () => ({
-      orgStatus: orgStatusOptions[0],
-    }),
-    [orgStatusOptions]
-  );
+  const organizationTypes = mdmsResponse?.Organisation?.OrgType || [];
+  const organizationSubTypes = (mdmsResponse?.Organisation?.OrgSubType || []).filter((orgSubType) => orgSubType.orgType === orgType);
+  const organizationStatuses = mdmsResponse?.Organisation?.OrgStatus || [];
 
-  const formConfig = useMemo(() => {
-    return [
+  useEffect(() => {
+    if (createdOrganization?.id) {
+      setDefaultValues({...createdOrganization})
+    } else {
+      setDefaultValues({
+        orgType: organizationTypes.find((organizationType) => organizationType.code === orgType),
+        orgStatus: organizationStatuses.find((organizationStatus) => organizationStatus.code === "ACTIVE"),
+      })
+    }
+  }, [mdmsResponse]);
+
+  const formConfig = useMemo(() => [
       {
         key: "ORG_CREATE",
         body: [
-          { inline: true, label: "ORG_NAME", isMandatory: true, key: "orgName", type: "text", populators: { name: "orgName", validation: { required: true }, error: t("CORE_COMMON_REQUIRED") } },
-          { inline: true, label: "ORG_CODE", isMandatory: true, key: "orgCode", type: "text", populators: { name: "orgCode", validation: { required: true }, error: t("CORE_COMMON_REQUIRED") } },
-
-          // ✅ removed ORG_TYPE dropdown completely
-
-          { inline: true, label: "ORG_STATUS", isMandatory: true, key: "orgStatus", type: "dropdown", populators: { name: "orgStatus", options: orgStatusOptions, optionsKey: "name", validation: { required: true }, error: t("CORE_COMMON_REQUIRED") } },
-
-          { inline: true, label: "ORG_POC_NAME", key: "orgPocName", type: "text", populators: { name: "orgPocName" } },
-          { inline: true, label: "ORG_POC_PHONE", key: "orgPocPhone", type: "text", populators: { name: "orgPocPhone" } },
-          { inline: true, label: "ORG_POC_EMAIL", key: "orgPocEmail", type: "text", populators: { name: "orgPocEmail" } },
-
-          { inline: true, label: "ORG_LATITUDE", isMandatory: true, key: "latitude", type: "text", populators: { name: "latitude", validation: { required: true }, error: t("CORE_COMMON_REQUIRED") } },
-          { inline: true, label: "ORG_LONGITUDE", isMandatory: true, key: "longitude", type: "text", populators: { name: "longitude", validation: { required: true }, error: t("CORE_COMMON_REQUIRED") } },
-          { inline: true, label: "ORG_HQ_ADDRESS", isMandatory: true, key: "hqAddress", type: "text", populators: { name: "hqAddress", validation: { required: true }, error: t("CORE_COMMON_REQUIRED") } },
+          {
+            inline: true,
+            label: "ORG_NAME",
+            isMandatory: true,
+            key: "orgName",
+            type: "text",
+            populators: {
+              name: "orgName",
+              error: t("CORE_COMMON_REQUIRED")
+            }
+          },
+          {
+            inline: true,
+            label: "ORG_TYPE",
+            isMandatory: true,
+            disable: true,
+            key: "orgType",
+            type: "dropdown",
+            populators: {
+              name: "orgType",
+              options: organizationTypes,
+              optionsKey: "name",
+              error: t("CORE_COMMON_REQUIRED")
+            }
+          },
+          {
+            inline: true,
+            label: "ORG_SUB_TYPE",
+            isMandatory: !!organizationSubTypes?.length,
+            disable: !organizationSubTypes?.length,
+            key: "orgSubType",
+            type: "dropdown",
+            populators:{
+              name: "orgSubType",
+              options: organizationSubTypes,
+              optionsKey: "name",
+              error: t("CORE_COMMON_REQUIRED")
+            }
+          },
+          {
+            inline: true,
+            label: "ORG_CODE",
+            isMandatory: true,
+            key: "orgCode",
+            type: "text",
+            populators: {
+              name: "orgCode",
+              error: t("CORE_COMMON_REQUIRED")
+            }
+          },
+          {
+            inline: true,
+            label: "ORG_STATUS",
+            isMandatory: true,
+            disable: !createdOrganization?.id,
+            key: "orgStatus",
+            type: "dropdown",
+            populators:{
+              name: "orgStatus",
+              options: organizationStatuses,
+              optionsKey: "name",
+              error: t("CORE_COMMON_REQUIRED")
+            }
+          },
+          {
+            inline: true,
+            label: "ORG_POC_NAME",
+            key: "orgPocName",
+            type: "text",
+            populators: {
+              name: "orgPocName"
+            }
+          },
+          {
+            inline: true,
+            label: "ORG_POC_PHONE",
+            key: "orgPocPhone",
+            type: "text",
+            populators: {
+              name: "orgPocPhone"
+            }
+          },
+          {
+            inline: true,
+            label: "ORG_POC_EMAIL",
+            key: "orgPocEmail",
+            type: "text",
+            populators: {
+              name: "orgPocEmail"
+            }
+          },
+          {
+            inline: true,
+            label: "ORG_POC_USERNAME",
+            key: "orgPocUserName",
+            type: "text",
+            populators: {
+              name: "orgPocUserName"
+            }
+          },
         ],
       },
-    ];
-  }, [t, orgStatusOptions]);
+    ],
+    [t, orgType, createdOrganization, mdmsResponse]
+  );
+
+  if (mdmsLoading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "200px",
+        }}
+      >
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <div
       style={{
-        paddingBottom: "90px",
         position: "relative",
+        padding: "15px 15px 30px",
         maxHeight: "70vh",
         overflow: "auto",
       }}
     >
-      {/* ✅ Disabled orgType field (visual only; payload is enforced in AdminActions) */}
-      <div style={{ marginTop: "10px", marginBottom: "20px" }}>
-        <TextInput
-          name="orgTypeDisplay"
-          value={orgType || "VENDOR"}
-          onChange={() => {}}
-          disable={true}
-          disabled={true}
-          style={{ width: "100%" }}
-        />
-        <div style={{ fontSize: "12px", marginTop: "6px", opacity: 0.8 }}>
-          {t("ORG_TYPE") || "Org Type"}
-        </div>
-      </div>
-
       <FormComposerV2
+        key={JSON.stringify(defaultValues)}
         heading={""}
         label={t("CORE_COMMON_SUBMIT")}
         config={formConfig}
@@ -73,10 +192,22 @@ const OrganizationForm = ({ t, onSubmit, orgType }) => {
         submitInForm={false}
         onSubmit={onSubmit}
         actionClassName={"reverse-actionbar-absolute"}
-        noCardStyle={true}
-        fieldStyle={{ marginRight: 0 }}
-        cardStyle={{ padding: 0, boxShadow: "none" }}
+        cardStyle={{ boxShadow: "none" }}
       />
+      {formToast && (
+        <Toast
+          error={formToast.key === "error"}
+          warning={formToast.key === "warning"}
+          style={{
+            zIndex: 100000000,
+            ...(formToast.key === "error" ? { backgroundColor: "#B91900" } : {}),
+            ...(mobileView ? { bottom: "120px" } : {}),
+          }}
+          label={formToast.label}
+          isDleteBtn={true}
+          onClose={() => setFormToast(null)}
+        />
+      )}
     </div>
   );
 };

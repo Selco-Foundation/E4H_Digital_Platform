@@ -44,7 +44,7 @@ const ORGCard = () => {
     });
   });
 
-  const handleEditOrganizationRedirection = async () => {
+  const handleOrganizationDetailsPageRedirection = async () => {
     try {
       const res = await orgUserSearchMutation.mutateAsync();
 
@@ -60,7 +60,7 @@ const ORGCard = () => {
         return;
       }
 
-      history.push(`/${window?.contextPath}/employee/org/edit/${orgId}`);
+      history.push(`/${window?.contextPath}/employee/org/organizations/${orgId}/details`);
     } catch (e) {
       window.alert(t("ORG_EDIT_ORG_FETCH_FAILED"));
     }
@@ -128,7 +128,7 @@ const ORGCard = () => {
               border: "none",
               opacity: isLoading ? 0.7 : 1,
             }}
-            onClick={handleEditOrganizationRedirection}
+            onClick={handleOrganizationDetailsPageRedirection}
           >
             <ListAlt />
             <span>
