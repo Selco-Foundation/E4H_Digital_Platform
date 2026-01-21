@@ -1,11 +1,7 @@
 import { CustomRequest } from "../components/Custom/CustomRequest";
 
 export const OrganizationService = {
-  /**
-   * POST /vendor/organisation/v1/_search?tenantId=in&offset=0&limit=10
-   * Body: { SearchCriteria: { tenantId: "in", ... } }
-   * CustomRequest will attach RequestInfo automatically (auth + userInfo).
-   */
+
   searchOrganizations: async ({ tenantId, offset = 0, limit = 10, searchCriteria = {} }) => {
     const endpoint = "/vendor/organisation/v1/_search";
     const headers = { "Content-Type": "application/json" };
@@ -21,6 +17,28 @@ export const OrganizationService = {
         SearchCriteria: {
           tenantId,
           ...searchCriteria,
+        },
+      },
+    });
+
+    return resp?.data;
+  },
+
+  searchOrgUsers: async ({ tenantId, userIds = [], offset = 0, limit = 1 }) => {
+    const endpoint = "/vendor/organisation/v1/user/_search";
+    const headers = { "Content-Type": "application/json" };
+
+    const resp = await CustomRequest({
+      url: endpoint,
+      method: "POST",
+      auth: true,
+      userService: true,
+      headers,
+      params: { tenantId, offset, limit },
+      data: {
+        OrgUser: {
+          userIds,
+          tenantId,
         },
       },
     });
