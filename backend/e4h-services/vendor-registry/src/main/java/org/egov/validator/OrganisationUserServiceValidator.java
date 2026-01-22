@@ -5,6 +5,7 @@ import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.user.UserDetailResponse;
 import org.egov.common.models.core.URLParams;
 import org.egov.config.Configuration;
 import org.egov.repository.OrganisationRepository;
@@ -13,6 +14,7 @@ import org.egov.tracer.model.CustomException;
 import org.egov.util.HRMSUtils;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
+import org.egov.util.UserUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -23,7 +25,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.egov.util.OrganisationConstant.*;
+import static org.egov.util.OrganisationConstant.MASTER_ORG_ROLES;
+import static org.egov.util.OrganisationConstant.MDMS_ORGANIZATION_MODULE_NAME;
 
 @Component
 @Slf4j
@@ -38,6 +41,7 @@ public class OrganisationUserServiceValidator {
     private final OrganisationUtil organisationUtil;
 
     private final HRMSUtils hrmsUtils;
+    private final UserUtil userUtil;
 
     private final OrganisationUserRepository userRepository;
 
@@ -49,12 +53,13 @@ public class OrganisationUserServiceValidator {
     private static final String INVALID_ORG_SEARCH_DATE ="INVALID_ORG_SEARCH_DATE";
     @Autowired
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
-                                            OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, OrganisationUserRepository userRepository, ObjectMapper mapper) {
+                                            OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil, OrganisationUserRepository userRepository, ObjectMapper mapper) {
         this.mdmsUtil = mdmsUtil;
         this.configuration = configuration;
         this.organisationRepository = organisationRepository;
         this.organisationUtil = organisationUtil;
         this.hrmsUtils = hrmsUtils;
+        this.userUtil = userUtil;
         this.userRepository = userRepository;
         this.mapper = mapper;
     }
@@ -152,6 +157,15 @@ public class OrganisationUserServiceValidator {
                     Employee employeeResp = employees.get(0);
                     request.setUser(employeeResp.getUser());
                     request.setUserId(employeeResp.getUser().getUuid());
+                    employeeResp.getUser().setPassword(configuration.getDefaultUserPassword());
+                    String url = configuration.getUserHost() + configuration.getUserUpdateEndpoint();
+                    UserRequest userRequest = userUtil.mapToUserRequest(employeeResp.getUser());
+                    CreateUserRequest createUserRequest = CreateUserRequest.builder()
+                            .requestInfo(request.getRequestInfo())
+                            .user(userRequest)
+                            .build();
+                    UserDetailResponse response = userUtil.updateUserPassword(createUserRequest, new StringBuilder(url));
+                    log.info("New user created and updated");
                 }
                 else{
                     log.error("Error occured while creating the new user");

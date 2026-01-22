@@ -133,6 +133,7 @@ public class HierarchyUtil {
         return code.toString();
     }
 
+    // Only use for state boundary code
     public String boundaryCodeToName(String boundaryCode) {
         if (boundaryCode == null || boundaryCode.isBlank()) {
             return "";
