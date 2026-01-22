@@ -13,6 +13,9 @@ const ORGApp = () => {
   const { path } = useRouteMatch();
   const match = useRouteMatch();
   const navigator = useSelector((state) => state.org.common);
+  const { info } = Digit.UserService.getUser();
+  const currentUserRoles = info?.roles?.map(role => role.code);
+  const isVendorAdminUser = currentUserRoles?.includes("VENDOR_ADMIN");
 
   const breadCrumbsConfig = {
     home: {
@@ -66,7 +69,7 @@ const ORGApp = () => {
         <Route path={`${path}/organizations/:organizationId/details`} exact={true}>
           <BreadCrumb
             spanStyle={{ color: "#0B0C0C" }}
-            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.organizations, breadCrumbsConfig.organizationDetails]}
+            crumbs={[breadCrumbsConfig.home, ...(isVendorAdminUser ? [] : [breadCrumbsConfig.organizations]), breadCrumbsConfig.organizationDetails]}
           />
           <OrganizationDetails />
         </Route>
