@@ -40,16 +40,16 @@ class AuthRepository {
 
   Future<void> logout() async {
     final secureStore = SecureStore();
-    secureStore.deleteAccessToken();
-    secureStore.deleteAccessInfo();
-    secureStore.deleteSelectedIndividual();
+    await secureStore.deleteAccessToken();
+    await secureStore.deleteAccessInfo();
+    await secureStore.deleteSelectedIndividual();
   }
 
   Future<String> refreshToken() async {
     final secureStore = SecureStore();
     final ResponseModel? accessInfo = await secureStore.getAccessInfo();
 
-    AppLogger.instance.info("refreshing token accessInfo ${accessInfo}");
+    AppLogger.instance.info("refreshing token accessInfo $accessInfo");
     if (accessInfo!.refresh_token == null) {
       throw Exception("No refresh token stored");
     }

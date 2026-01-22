@@ -35,6 +35,19 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription<CacheSyncRecordState>? _syncSub;
   bool _popupShown = false;
 
+  // bool _isSessionExpiredMessage(String? message) {
+  //   final msg = (message ?? '').toLowerCase();
+  //   return msg.contains('session_expired');
+  // }
+  //
+  // void _handleSessionExpired(BuildContext context) {
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     const SnackBar(content: Text('Token expired! Please login again.')),
+  //   );
+  //   context.read<AuthBloc>().add(const AuthEvent.logout());
+  //   context.router.replace(const UnauthenticatedRouteWrapper());
+  // }
+
   @override
   void initState() {
     super.initState();
@@ -121,6 +134,11 @@ class _HomePageState extends State<HomePage> {
         if (_syncRoute != null) {
           Navigator.of(context).pop();
           _syncRoute = null;
+        }
+
+        if (isSessionExpiredMessage(errorMessage)) {
+          handleSessionExpired(context);
+          return;
         }
         _showSyncDialog(context, error: errorMessage);
       },

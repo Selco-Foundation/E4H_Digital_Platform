@@ -311,6 +311,10 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                 },
                 failure: (message) {
                   Navigator.of(context, rootNavigator: true).pop();
+                  if (isSessionExpiredMessage(message)) {
+                    handleSessionExpired(context);
+                    return;
+                  }
                   context.showSnackBar(SnackBar(content: Text(message)));
                 },
                 orElse: () {},

@@ -304,6 +304,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                         },
                         failure: (error) {
                           ScaffoldMessenger.of(context).clearSnackBars();
+                          if (isSessionExpiredMessage(error)) {
+                            handleSessionExpired(context);
+                            return;
+                          }
                           context
                               .showSnackBar(SnackBar(content: Text("$error")));
                           _didNavigateAfterSubmit = false;

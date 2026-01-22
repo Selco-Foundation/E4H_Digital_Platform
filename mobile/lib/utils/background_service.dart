@@ -190,12 +190,18 @@ class BackgroundServiceController {
       await ensureAndroidNotificationPermission();
       service.invoke(kCmdForeground, {'content': 'Preparing…'});
 
-      service.invoke(kMethodSubmit, {
-        'activityFacilityId': activityFacilityId,
-        'facilityId': facilityId,
-        'userType': userType,
-        'fromDraft': fromDraft,
-      });
+      await _forceStartJobImmediately(
+        service: service,
+        method: kMethodSubmit,
+        payload: {
+          'activityFacilityId': activityFacilityId,
+          'facilityId': facilityId,
+          'userType': userType,
+          'fromDraft': fromDraft,
+        },
+        logTag: '[UI]',
+        readyStream: null,
+      );
       return;
     }
 
@@ -204,21 +210,35 @@ class BackgroundServiceController {
     final running = await service.isRunning();
     AppLogger.instance.info('[UI] service.startService() -> running=$running');
 
-    try {
-      await readyStream.first.timeout(const Duration(seconds: 8));
-      AppLogger.instance.info('[UI] kEvtReady received. Submitting job...');
-    } catch (_) {
-      AppLogger.instance
-          .info('[UI] kEvtReady timeout; invoking after short delay');
-      await Future.delayed(const Duration(milliseconds: 300));
-    }
-
-    service.invoke(kMethodSubmit, {
-      'activityFacilityId': activityFacilityId,
-      'facilityId': facilityId,
-      'userType': userType,
-      'fromDraft': fromDraft,
-    });
+    // try {
+    //   await readyStream.first.timeout(const Duration(seconds: 8));
+    //   AppLogger.instance.info('[UI] kEvtReady received. Submitting job...');
+    // } catch (_) {
+    //   AppLogger.instance
+    //       .info('[UI] kEvtReady timeout; invoking after short delay');
+    //   await Future.delayed(const Duration(milliseconds: 300));
+    // }
+    //
+    // service.invoke(kMethodSubmit, {
+    //   'activityFacilityId': activityFacilityId,
+    //   'facilityId': facilityId,
+    //   'userType': userType,
+    //   'fromDraft': fromDraft,
+    // });
+    // Removed kEvtReady waiting + fallback delay:
+    // We force-start immediately to avoid long "waiting" delays.
+    await _forceStartJobImmediately(
+      service: service,
+      method: kMethodSubmit,
+      payload: {
+        'activityFacilityId': activityFacilityId,
+        'facilityId': facilityId,
+        'userType': userType,
+        'fromDraft': fromDraft,
+      },
+      logTag: '[UI]',
+      readyStream: readyStream,
+    );
   }
 
   Future<void> enqueueRejection({
@@ -235,11 +255,17 @@ class BackgroundServiceController {
       await ensureAndroidNotificationPermission();
       service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
 
-      service.invoke(kMethodReject, <String, dynamic>{
-        'activityFacilityId': activityFacilityId,
-        'userType': userType,
-        'transactions': transactions,
-      });
+      await _forceStartJobImmediately(
+        service: service,
+        method: kMethodReject,
+        payload: <String, dynamic>{
+          'activityFacilityId': activityFacilityId,
+          'userType': userType,
+          'transactions': transactions,
+        },
+        logTag: '[UI]',
+        readyStream: null,
+      );
       return;
     }
 
@@ -248,23 +274,35 @@ class BackgroundServiceController {
     final running = await service.isRunning();
     AppLogger.instance.info('[UI] service.startService() -> running=$running');
 
-    try {
-      await readyStream.first.timeout(const Duration(seconds: 8));
-      AppLogger.instance
-          .info('[UI] kEvtReady received. Submitting REJECTION job...');
-    } catch (_) {
-      AppLogger.instance
-          .info('[UI] kEvtReady timeout; proceeding after 300ms fallback');
-      await Future.delayed(const Duration(milliseconds: 300));
-    }
+    // try {
+    //   await readyStream.first.timeout(const Duration(seconds: 8));
+    //   AppLogger.instance
+    //       .info('[UI] kEvtReady received. Submitting REJECTION job...');
+    // } catch (_) {
+    //   AppLogger.instance
+    //       .info('[UI] kEvtReady timeout; proceeding after 300ms fallback');
+    //   await Future.delayed(const Duration(milliseconds: 300));
+    // }
 
     service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
 
-    service.invoke(kMethodReject, <String, dynamic>{
-      'activityFacilityId': activityFacilityId,
-      'userType': userType,
-      'transactions': transactions,
-    });
+    // service.invoke(kMethodReject, <String, dynamic>{
+    //   'activityFacilityId': activityFacilityId,
+    //   'userType': userType,
+    //   'transactions': transactions,
+    // });
+
+    await _forceStartJobImmediately(
+      service: service,
+      method: kMethodReject,
+      payload: <String, dynamic>{
+        'activityFacilityId': activityFacilityId,
+        'userType': userType,
+        'transactions': transactions,
+      },
+      logTag: '[UI]',
+      readyStream: readyStream,
+    );
   }
 
   Future<void> enqueueScheduleVisitSubmission({
@@ -284,10 +322,16 @@ class BackgroundServiceController {
         'content': 'Preparing visit submission…',
       });
 
-      svc.invoke(kMethodSubmitVisit, {
-        'scheduledVisitId': scheduledVisitId,
-        'userType': userType,
-      });
+      await _forceStartJobImmediately(
+        service: svc,
+        method: kMethodSubmitVisit,
+        payload: {
+          'scheduledVisitId': scheduledVisitId,
+          'userType': userType,
+        },
+        logTag: '[BG-CTL]',
+        readyStream: null,
+      );
       return;
     }
 
@@ -299,24 +343,35 @@ class BackgroundServiceController {
       '[BG-CTL] service.startService() -> running=$running (visit submit)',
     );
 
-    try {
-      await readyStream.first.timeout(const Duration(seconds: 5));
-    } catch (e) {
-      AppLogger.instance.info(
-        '[BG-CTL] kEvtReady timeout for visit submit; invoking anyway',
-      );
-      await Future.delayed(const Duration(milliseconds: 300));
-    }
+    // try {
+    //   await readyStream.first.timeout(const Duration(seconds: 5));
+    // } catch (e) {
+    //   AppLogger.instance.info(
+    //     '[BG-CTL] kEvtReady timeout for visit submit; invoking anyway',
+    //   );
+    //   await Future.delayed(const Duration(milliseconds: 300));
+    // }
 
     svc.invoke(kCmdForeground, {
       'title': 'Submitting visit report',
       'content': 'Preparing visit submission…',
     });
 
-    svc.invoke(kMethodSubmitVisit, {
-      'scheduledVisitId': scheduledVisitId,
-      'userType': userType,
-    });
+    // svc.invoke(kMethodSubmitVisit, {
+    //   'scheduledVisitId': scheduledVisitId,
+    //   'userType': userType,
+    // });
+
+    await _forceStartJobImmediately(
+      service: svc,
+      method: kMethodSubmitVisit,
+      payload: {
+        'scheduledVisitId': scheduledVisitId,
+        'userType': userType,
+      },
+      logTag: '[BG-CTL]',
+      readyStream: readyStream,
+    );
   }
 
   Future<void> stopNow() async {
@@ -326,10 +381,57 @@ class BackgroundServiceController {
       service.invoke(kCmdStop);
     }
   }
+
+  Future<void> _forceStartJobImmediately({
+    required FlutterBackgroundService service,
+    required String method,
+    required Map<String, dynamic> payload,
+    required String logTag,
+    Stream<dynamic>? readyStream,
+  }) async {
+    // IMPORTANT:
+    // `service.invoke(...)` can be dropped if the BG isolate listeners aren't attached yet
+    // (even if `isRunning == true`). So we:
+    //  1) Invoke immediately (no await / no delays)
+    //  2) Re-invoke once BG signals `kEvtReady` (non-blocking)
+    //  3) Add a per-request id `_reqId` so BG can de-dupe.
+    final reqId = DateTime.now().microsecondsSinceEpoch.toString();
+    final nextPayload = <String, dynamic>{...payload, '_reqId': reqId};
+
+    AppLogger.instance
+        .info('$logTag forcing immediate start for $method reqId=$reqId');
+
+    // 1) Fire immediately (no wait)
+    service.invoke(method, nextPayload);
+
+    // 2) Fire again when BG signals ready (no wait / just a re-kick)
+    if (readyStream != null) {
+      unawaited(
+        readyStream.first.then((_) {
+          AppLogger.instance.info(
+              '$logTag kEvtReady received -> re-invoke $method reqId=$reqId');
+          service.invoke(method, nextPayload);
+        }).catchError((_) {}),
+      );
+    }
+
+    // 3) Extra tiny safety re-kick (non-blocking). This does NOT delay UI.
+    //    Helps when `kEvtReady` arrives before the listener is attached.
+    Timer(const Duration(milliseconds: 200), () {
+      service.invoke(method, nextPayload);
+    });
+  }
 }
 
 String _pretty(Object? e) {
   final s = e?.toString() ?? 'Failed.';
+  final lower = s.toLowerCase();
+
+  if (lower.contains('session_expired') ||
+      lower.contains('status code of 401') ||
+      lower.contains('status code: 401')) {
+    return 'SESSION_EXPIRED';
+  }
   return s.replaceFirst(RegExp(r'^(Exception:\s*)+'), '');
 }
 
@@ -355,7 +457,35 @@ void onStart(ServiceInstance service) async {
     );
   }
 
+  // --- Request de-dupe (for "invoke now + re-invoke on kEvtReady" reliability) ---
+  // UI sends a `_reqId` so that if the same request is invoked multiple times
+  // (e.g., first invoke dropped before BG listeners attach), BG only runs it once.
+  final List<String> _handledReqIdsOrder = <String>[];
+  final Set<String> _handledReqIds = <String>{};
+
+  bool _shouldDropDuplicate(dynamic event) {
+    if (event is! Map) return false;
+    final id = (event['_reqId'] ?? '').toString();
+    if (id.isEmpty) return false;
+
+    if (_handledReqIds.contains(id)) {
+      AppLogger.instance.info('[BG] duplicate request dropped _reqId=$id');
+      return true;
+    }
+
+    _handledReqIds.add(id);
+    _handledReqIdsOrder.add(id);
+
+    // prevent unbounded growth
+    if (_handledReqIdsOrder.length > 200) {
+      final old = _handledReqIdsOrder.removeAt(0);
+      _handledReqIds.remove(old);
+    }
+    return false;
+  }
+
   service.on(kMethodSubmit).listen((payload) async {
+    if (_shouldDropDuplicate(payload)) return;
     AppLogger.instance.info('[BG] submit received: $payload');
     final isar = await isarFuture;
     await envFuture;
@@ -410,6 +540,7 @@ void onStart(ServiceInstance service) async {
   });
 
   service.on(kMethodReject).listen((payload) async {
+    if (_shouldDropDuplicate(payload)) return;
     final isar = await isarFuture;
     await envFuture;
     AppLogger.instance
@@ -452,6 +583,7 @@ void onStart(ServiceInstance service) async {
   });
 
   service.on(kMethodSubmitVisit).listen((payload) async {
+    if (_shouldDropDuplicate(payload)) return;
     final isar = await isarFuture;
     await envFuture;
 

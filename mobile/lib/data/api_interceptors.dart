@@ -10,9 +10,59 @@ import 'network_manager.dart';
 import 'remote_client.dart';
 import 'secure_storage/secureStore.dart';
 
+typedef SessionExpiredCallback = Future<void> Function();
+
 class AuthTokenInterceptor extends Interceptor {
   final _lock = Lock();
   static const _maxRetries = 5;
+
+  /// Set this from UI (so you can dispatch AuthBloc.logout + route to login).
+  static SessionExpiredCallback? onSessionExpired;
+
+  static bool _logoutTriggered = false;
+
+  static Future<void> _triggerLogoutOnce() async {
+    if (_logoutTriggered) return;
+    _logoutTriggered = true;
+
+    // 1) clear stored tokens
+    try {
+      await AuthRepository().logout();
+    } catch (_) {}
+
+    // 2) notify UI layer (navigation + bloc)
+    try {
+      await onSessionExpired?.call();
+    } catch (_) {}
+  }
+
+  DioError _sessionExpiredError(DioError original) {
+    return DioError(
+      requestOptions: original.requestOptions,
+      response: original.response,
+      type: original.type,
+      error: original.error,
+      message: 'SESSION_EXPIRED',
+    );
+  }
+
+  bool _refreshTokenLooksExpired(Object e) {
+    if (e is DioError) {
+      final code = e.response?.statusCode;
+
+      if (code == 400 || code == 401 || code == 403) return true;
+
+      final data = e.response?.data;
+      if (data is Map) {
+        final err = (data['error'] ?? '').toString().toLowerCase();
+        final desc = (data['error_description'] ?? '').toString().toLowerCase();
+
+        if (err.contains('invalid') || desc.contains('invalid')) return true;
+        if (err.contains('expired') || desc.contains('expired')) return true;
+      }
+    }
+    return false;
+  }
 
   @override
   Future<dynamic> onRequest(
@@ -64,22 +114,30 @@ class AuthTokenInterceptor extends Interceptor {
 
     final attempts = (err.requestOptions.extra['retryAttempts'] as int?) ?? 0;
     if (attempts >= _maxRetries) {
-      return handler.next(err);
+      // return handler.next(err);
+      await _triggerLogoutOnce();
+      return handler.reject(_sessionExpiredError(err));
     }
 
     try {
       await _lock.synchronized(() async {
-        final authRepo = AuthRepository();
-        await authRepo.refreshToken();
+        await AuthRepository().refreshToken();
       });
     } catch (e) {
+      // If refresh token is invalid/expired -> logout immediately
+      if (_refreshTokenLooksExpired(
+          e is Object ? e : Exception(e.toString()))) {
+        await _triggerLogoutOnce();
+        return handler.reject(_sessionExpiredError(err));
+      }
+
       return handler.next(err);
     }
 
     try {
       final dio = DioClient().dio;
 
-      final RequestOptions ro = err.requestOptions;
+      final ro = err.requestOptions;
       ro.extra = Map<String, dynamic>.from(ro.extra)
         ..update('retryAttempts', (v) => (v as int) + 1, ifAbsent: () => 1);
 

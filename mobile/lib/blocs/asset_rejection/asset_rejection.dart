@@ -91,9 +91,9 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
       await _writeJobStatusUI(
         activityFacilityId: event.activityFacilityId,
         status: 'failed',
-        error: e.toString(),
+        error: _normalizeErrorMessage(e.toString()),
       );
-      emit(RejectionState.failure(e.toString()));
+      emit(RejectionState.failure(_normalizeErrorMessage(e.toString())));
     }
   }
 
@@ -114,10 +114,22 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
     await _writeJobStatusUI(
       activityFacilityId: event.activityFacilityId,
       status: 'failed',
-      error: event.message,
+      error: _normalizeErrorMessage(event.message),
     );
-    emit(RejectionState.failure(event.message ?? 'Failed to reject.'));
+    emit(RejectionState.failure(
+        _normalizeErrorMessage(event.message ?? 'Failed to reject.')));
     await BackgroundServiceController.I.stopNow();
+  }
+
+  bool _isSessionExpiredMessage(String? message) {
+    final msg = (message ?? '').toLowerCase();
+    return msg.contains('session_expired');
+  }
+
+  String _normalizeErrorMessage(String? message) {
+    if (_isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
+    final m = (message ?? '').trim();
+    return m.isEmpty ? 'Failed.' : m;
   }
 
   Future<void> _writeJobStatusUI({

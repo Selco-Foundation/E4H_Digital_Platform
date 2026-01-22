@@ -161,6 +161,9 @@ class AssetSubmissionBloc
     final total = activityFacilityIds.length;
     final successes = jobs.where((j) => j.status == 'success').length;
     final anyFailed = jobs.any((j) => j.status == 'failed');
+    final anySessionExpired = jobs
+        .any((j) => j.status == 'failed' && _isSessionExpiredMessage(j.error));
+
     final anyRunningOrQueued =
         jobs.any((j) => j.status == 'running' || j.status == 'queued');
 
@@ -173,7 +176,9 @@ class AssetSubmissionBloc
 
       if (anyFailed) {
         if (!emit.isDone) {
-          emit(const AssetSubmissionState.failure('Some submissions failed.'));
+          emit(AssetSubmissionState.failure(anySessionExpired
+              ? 'SESSION_EXPIRED'
+              : 'Some submissions failed.'));
         }
       } else {
         if (!emit.isDone) {
@@ -251,7 +256,8 @@ class AssetSubmissionBloc
 
           case 'failed':
             if (!emit.isDone) {
-              emit(AssetSubmissionState.failure(job.error ?? 'Failed.'));
+              emit(AssetSubmissionState.failure(
+                  _normalizeErrorMessage(job.error)));
             }
             _activeSingleActivityFacilityId = null;
             await _jobSub?.cancel();
@@ -274,16 +280,17 @@ class AssetSubmissionBloc
     String? message,
     Emitter<AssetSubmissionState> emit,
   ) async {
+    final normalized = _normalizeErrorMessage(message);
     await _writeJobStatusUI(
       activityFacilityId: activityFacilityId,
       status: 'failed',
-      error: message,
+      error: normalized,
     );
 
     if (!_isBatchMode &&
         _activeSingleActivityFacilityId != null &&
         _activeSingleActivityFacilityId == activityFacilityId) {
-      emit(AssetSubmissionState.failure(message ?? 'Failed.'));
+      emit(AssetSubmissionState.failure(normalized));
       _activeSingleActivityFacilityId = null;
       await BackgroundServiceController.I.stopNow();
       return;
@@ -291,7 +298,7 @@ class AssetSubmissionBloc
 
     AppLogger.instance.info('[BLoC] _handleSvcError -> batch emit failure');
     if (!emit.isDone) {
-      emit(AssetSubmissionState.failure(message ?? 'Failed.'));
+      emit(AssetSubmissionState.failure(normalized));
     }
     await BackgroundServiceController.I.stopNow();
   }
@@ -317,6 +324,17 @@ class AssetSubmissionBloc
     }
     AppLogger.instance
         .info('[BLoC] _handleSvcDone -> batch (no immediate emit)');
+  }
+
+  bool _isSessionExpiredMessage(String? message) {
+    final msg = (message ?? '').toLowerCase();
+    return msg.contains('session_expired');
+  }
+
+  String _normalizeErrorMessage(String? message) {
+    if (_isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
+    final m = (message ?? '').trim();
+    return m.isEmpty ? 'Failed.' : m;
   }
 
   Future<void> _writeJobStatusUI({

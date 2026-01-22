@@ -61,6 +61,17 @@ class ScheduleVisitSubmitBloc
     return super.close();
   }
 
+  bool _isSessionExpiredMessage(String? message) {
+    final msg = (message ?? '').toLowerCase();
+    return msg.contains('session_expired');
+  }
+
+  String _normalizeErrorMessage(String? message) {
+    if (_isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
+    final m = (message ?? '').trim();
+    return m.isEmpty ? 'Failed.' : m;
+  }
+
   Future<void> _onSubmit(
     _Submit event,
     Emitter<ScheduleVisitSubmitState> emit,
@@ -102,7 +113,7 @@ class ScheduleVisitSubmitBloc
     await BackgroundServiceController.I.stopNow();
     emit(
       ScheduleVisitSubmitState.failure(
-          event.message ?? 'Failed to submit visit.'),
+          _normalizeErrorMessage(event.message ?? 'Failed to submit visit.')),
     );
   }
 }

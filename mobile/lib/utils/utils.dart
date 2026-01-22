@@ -21,6 +21,7 @@ import 'package:reactive_forms/reactive_forms.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
+import '../blocs/auth/authbloc.dart';
 import '../blocs/scheduled_visit/scheduled_visit.dart';
 import '../data/app_shared_preferences.dart';
 import '../data/nosql/cache_completion_report.dart';
@@ -30,6 +31,7 @@ import '../model/scheduled_visit/scheduled_visit.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
+import '../router/app_router.dart';
 
 getSelectedLanguage(Initialized state, int index) {
   if (AppSharedPreferences().getSelectedLocale == null) {
@@ -683,6 +685,19 @@ Future<Map<String, dynamic>> buildInitialAmcValues({
   );
 
   return initialValues ?? {"faults_observed": "YES"};
+}
+
+bool isSessionExpiredMessage(String? message) {
+  final msg = (message ?? '').toLowerCase();
+  return msg.contains('session_expired');
+}
+
+void handleSessionExpired(BuildContext context) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Token expired! Please login again.')),
+  );
+  context.read<AuthBloc>().add(const AuthEvent.logout());
+  context.router.replace(const UnauthenticatedRouteWrapper());
 }
 
 class DioErrorParser {
