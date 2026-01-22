@@ -8,7 +8,7 @@ const fetchOrganizations = async (filter, limit, offset) => {
   };
 }
 
-const useOrganization = (queryFilter = {}, limit = 1000, offset = 0) => {
+const useOrganizationDetails = (queryFilter = {}, limit = 1000, offset = 0) => {
 
   const { tenantId, id } = queryFilter;
 
@@ -28,14 +28,14 @@ const useOrganization = (queryFilter = {}, limit = 1000, offset = 0) => {
 
   const queryClient = useQueryClient();
   const {isLoading, isError, error, data} = useQuery(
-    ["ORGANISATION", filter, limit, offset],
+    ["ORGANISATION_DETAILS", filter, limit, offset],
     () => fetchOrganizations(filter, limit, offset),
   );
 
   return {
     isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["ORGANISATION"])
+    revalidate: () => queryClient.invalidateQueries(["ORGANISATION_DETAILS"])
   }
 }
 
-export default useOrganization;
+export default useOrganizationDetails;

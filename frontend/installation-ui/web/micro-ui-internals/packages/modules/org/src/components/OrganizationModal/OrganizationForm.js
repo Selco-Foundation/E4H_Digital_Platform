@@ -40,7 +40,17 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
 
   useEffect(() => {
     if (createdOrganization?.id) {
-      setDefaultValues({...createdOrganization})
+      setDefaultValues({
+        orgType: organizationTypes.find((organizationType) => organizationType.code === orgType),
+        orgSubType: organizationSubTypes.find((organizationSubType) => organizationSubType.code === createdOrganization.orgSubType),
+        orgName: createdOrganization.name,
+        orgCode: createdOrganization.code,
+        orgStatus: organizationStatuses.find((organizationStatus) => organizationStatus.code === createdOrganization.orgStatus),
+        orgPocName: createdOrganization.orgPocName,
+        orgPocPhone: createdOrganization.orgPocPhone,
+        orgPocEmail: createdOrganization.orgPocEmail,
+        orgPocUsername: createdOrganization.orgPocUsername,
+      })
     } else {
       setDefaultValues({
         orgType: organizationTypes.find((organizationType) => organizationType.code === orgType),
@@ -82,10 +92,10 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
             inline: true,
             label: "ORG_SUB_TYPE",
             isMandatory: !!organizationSubTypes?.length,
-            disable: !organizationSubTypes?.length,
+            disable: (!organizationSubTypes?.length || createdOrganization?.id),
             key: "orgSubType",
             type: "dropdown",
-            populators:{
+            populators: {
               name: "orgSubType",
               options: organizationSubTypes,
               optionsKey: "name",
@@ -110,7 +120,7 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
             disable: !createdOrganization?.id,
             key: "orgStatus",
             type: "dropdown",
-            populators:{
+            populators: {
               name: "orgStatus",
               options: organizationStatuses,
               optionsKey: "name",
@@ -147,10 +157,10 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
           {
             inline: true,
             label: "ORG_POC_USERNAME",
-            key: "orgPocUserName",
+            key: "orgPocUsername",
             type: "text",
             populators: {
-              name: "orgPocUserName"
+              name: "orgPocUsername"
             }
           },
         ],

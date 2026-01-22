@@ -2,15 +2,9 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "react-query";
 import { Button, Toast, Loader } from "@egovernments/digit-ui-react-components";
-
 import OrganizationModal from "../OrganizationModal/index";
 import { OrganizationService } from "../../services/Organization";
-
-const getApiErrorMessage = (e) => {
-  return (e?.response?.data?.Errors?.[0]?.message)
-    ? e.response.data.Errors[0].message
-    : (e?.message ? e.message : "");
-};
+import CommonUtils from "../../utilities/CommonUtils";
 
 const OrganizationAdminActions = ({ orgType }) => {
 
@@ -73,11 +67,12 @@ const OrganizationAdminActions = ({ orgType }) => {
       setBlockUI(false);
       setShowModal(false);
       setToast({ key: "success", label: t("ORG_CREATE_SUCCESS") });
+
     } catch (e) {
       setBlockUI(false);
       setFormToast({
         key: "error",
-        label: getApiErrorMessage(e) || t("ORG_CREATE_FAILED"),
+        label: CommonUtils.getApiErrorMessage(e) || t("ORG_CREATE_FAILED"),
       });
     }
   };
