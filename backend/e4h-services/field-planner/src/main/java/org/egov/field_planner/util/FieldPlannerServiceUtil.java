@@ -61,11 +61,49 @@ public class FieldPlannerServiceUtil {
         // Validate state name is not placeholder/invalid
         if (stateName != null && !stateName.equalsIgnoreCase("nan") &&
                 !stateName.equalsIgnoreCase("XYZ") && stateName.trim().length() > 0) {
-            return stateName.trim();
+            return boundaryCodeToName(stateName.trim());
         }
 
         log.warn("Invalid state name found in boundary: {}, returning null", stateName);
         return null;
+    }
+
+    // Output India_AssamBiswanath → Assam Biswanath
+    public String boundaryCodeToName(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return "";
+        }
+
+        // Nettoyage
+        String cleaned = boundaryCode.trim();
+
+        // Supprimer "India_" si présent
+        if (cleaned.startsWith("India_")) {
+            cleaned = cleaned.substring("India_".length());
+        }
+
+        // Remplacer _ par espace
+        cleaned = cleaned.replace("_", " ");
+
+        // Ajouter des espaces avant les majuscules (CamelCase)
+        cleaned = cleaned.replaceAll("(?<=[a-z])(?=[A-Z])", " ");
+
+        // Normaliser les espaces multiples
+        cleaned = cleaned.replaceAll("\\s+", " ").trim();
+
+        // Mettre en forme (Majuscule au début de chaque mot)
+        String[] words = cleaned.split(" ");
+        StringBuilder result = new StringBuilder();
+
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                        .append(word.substring(1).toLowerCase())
+                        .append(" ");
+            }
+        }
+
+        return result.toString().trim();
     }
 
 
