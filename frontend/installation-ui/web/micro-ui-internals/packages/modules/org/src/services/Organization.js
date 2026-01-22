@@ -24,7 +24,7 @@ export const OrganizationService = {
     return resp?.data;
   },
 
-  searchOrgUsers: async ({ tenantId, userIds = [], offset = 0, limit = 1 }) => {
+  searchOrgUsers: async (tenantId, userIds = [], offset = 0, limit = 1) => {
     const endpoint = "/vendor/organisation/v1/user/_search";
     const headers = { "Content-Type": "application/json" };
 
