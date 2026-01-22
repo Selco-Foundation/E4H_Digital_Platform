@@ -1,6 +1,6 @@
 {
   "name": "@selco/installation-ui-css",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "license": "MIT",
   "main": "dist/index.css",
   "author": "Adithya Katuku",
