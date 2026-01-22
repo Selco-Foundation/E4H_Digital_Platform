@@ -170,6 +170,14 @@ public class HierarchyUtil {
         return result.toString().trim();
     }
 
+    public boolean isValidStateBoundaryFormat(String boundary) {
+        if (boundary == null || boundary.trim().isEmpty()) {
+            return false;
+        }
+
+        return boundary.matches("^India_([A-Z][a-z]+)+$");
+    }
+
     public boolean hasOnlyCountryAndState(JsonNode boundaryNode) {
 
         if (boundaryNode == null) {

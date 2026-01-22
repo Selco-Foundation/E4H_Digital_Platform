@@ -143,7 +143,7 @@ public class BoundaryService {
 
     public void createMdmsStateInfo(BoundaryRequest request){
         for (Boundary boundary : request.getBoundary()){
-            boolean isStateBoundaryType = hierarchyUtil.hasOnlyCountryAndState(boundary.getAdditionalDetails());
+            boolean isStateBoundaryType = hierarchyUtil.isValidStateBoundaryFormat(boundary.getCode());
             if(!isStateBoundaryType)
                 continue;
 
