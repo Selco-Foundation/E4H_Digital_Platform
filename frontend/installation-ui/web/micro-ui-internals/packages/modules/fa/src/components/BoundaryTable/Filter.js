@@ -73,16 +73,31 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     const nextDistrictMenu = (districtOptions || []).filter((d) => selectedStateCodes.includes(d.parentCode));
     setDistrictMenu(nextDistrictMenu);
 
+    if (!selectedDistricts.length) {
+      setBlockMenu([]);
+
+      if ((currentFilter.block || []).length > 0) {
+        setCurrentFilter((prev) => ({ ...prev, block: [] }));
+      }
+      return;
+    }
+
     const nextDistrictCodes = nextDistrictMenu.map((d) => d.code);
+    const selectedDistrictCodes = selectedDistricts
+      .map((d) => d.code)
+      .filter((code) => nextDistrictCodes.includes(code)); // only valid districts under selected state(s)
 
-    const districtCodesForBlocks =
-      selectedDistricts.length > 0
-        ? selectedDistricts.map((d) => d.code)
-        : nextDistrictCodes;
+    if (!selectedDistrictCodes.length) {
+      setBlockMenu([]);
+      if ((currentFilter.block || []).length > 0) {
+        setCurrentFilter((prev) => ({ ...prev, block: [] }));
+      }
+      return;
+    }
 
-    const nextBlockMenu = (blockOptions || []).filter((b) => districtCodesForBlocks.includes(b.parentCode));
+    const nextBlockMenu = (blockOptions || []).filter((b) => selectedDistrictCodes.includes(b.parentCode));
     setBlockMenu(nextBlockMenu);
-  }, [stateCodesKey, districtCodesKey, districtOptions, blockOptions]); // do NOT depend on whole objects/functions
+  }, [stateCodesKey, districtCodesKey, districtOptions, blockOptions]); // keep deps tight
 
   useEffect(() => {
     const boundaryFilterQuery = {};
@@ -105,21 +120,21 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
       lastSentRef.current = key;
       if (typeof onFilterChange === "function") onFilterChange(payload);
     }
-
   }, [currentFilter]);
 
   const handleStateChange = (selectedState) => {
     if (!selectedState?.code) return;
+
     if (currentFilter.state.every((s) => s.code !== selectedState.code)) {
       const newSelectedStates = [...currentFilter.state, selectedState];
       const selectedStateCodes = newSelectedStates.map((s) => s.code);
 
       const newDistrictMenu = districtOptions.filter((d) => selectedStateCodes.includes(d.parentCode));
-      const newDistrictMenuCodes = newDistrictMenu.map((d) => d.code);
-
-      const newBlockMenu = blockOptions.filter((b) => newDistrictMenuCodes.includes(b.parentCode));
-
       setDistrictMenu(newDistrictMenu);
+
+      const selectedDistrictCodes = (currentFilter.district || []).map((d) => d.code);
+      const newBlockMenu =
+        selectedDistrictCodes.length > 0 ? blockOptions.filter((b) => selectedDistrictCodes.includes(b.parentCode)) : [];
       setBlockMenu(newBlockMenu);
 
       setCurrentFilter({
@@ -131,6 +146,7 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
 
   const handleDistrictChange = (selectedDistrict) => {
     if (!selectedDistrict?.code) return;
+
     if (currentFilter.district.every((d) => d.code !== selectedDistrict.code)) {
       const newSelectedDistricts = [...currentFilter.district, selectedDistrict];
       const selectedDistrictCodes = newSelectedDistricts.map((d) => d.code);
@@ -147,6 +163,7 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
 
   const handleBlockChange = (selectedBlock) => {
     if (!selectedBlock?.code) return;
+
     if (currentFilter.block.every((b) => b.code !== selectedBlock.code)) {
       setCurrentFilter({
         ...currentFilter,
@@ -183,6 +200,16 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     if (key === "district") {
       const remainingDistrictCodes = afterRemove.map((d) => d.code);
 
+      if (!remainingDistrictCodes.length) {
+        setBlockMenu([]);
+        setCurrentFilter({
+          ...currentFilter,
+          district: afterRemove,
+          block: [],
+        });
+        return;
+      }
+
       const newBlockMenu = blockOptions.filter((b) => remainingDistrictCodes.includes(b.parentCode));
       const newSelectedBlocks = (currentFilter.block || []).filter((b) => remainingDistrictCodes.includes(b.parentCode));
 
@@ -214,13 +241,7 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     return (
       <div>
         <div className="filter-label">{label}</div>
-        <CustomDropdown
-          t={t}
-          option={options}
-          selected={selected}
-          select={(value) => select(value, key)}
-          optionKey={optionKey}
-        />
+        <CustomDropdown t={t} option={options} selected={selected} select={(value) => select(value, key)} optionKey={optionKey} />
 
         <div className="tag-container">
           {(currentFilter[key] || []).length > 0 &&
