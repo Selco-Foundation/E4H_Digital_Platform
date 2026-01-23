@@ -231,6 +231,7 @@ public class OrganisationUserServiceValidator {
     }
 
     private void validateUserOrgUpdate(OrgUserRequest request) {
+
         Map<String, String> errorMap = new HashMap<>();
         List<Organisation> organisations = new ArrayList<>();
         User orgUser = request.getUser();
@@ -283,103 +284,98 @@ public class OrganisationUserServiceValidator {
             throw new CustomException("Organization", "This user with this phone number do not exist: "+orgUser.getMobileNumber());
         }
 
-        // Get employee details fetched from MDMS
+        // Get employee details fetched from HRMS
         Employee employee = employees.get(0);
 
-        // If phone number is being updated
-        if(!Objects.equals(orgUser.getMobileNumber(), existingOrgUser.getUser().getMobileNumber())){
-            log.error("phone number is being updated. Old phoneNumber {} with new phoneNumber {}", existingOrgUser.getUser().getMobileNumber(), orgUser.getMobileNumber());
-            // If user found, Check if user belong to another organisation record
-            List<String> uuids = employees.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
-            OrgUserSearchCriteria searchUserCriteria1 = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
-            OrgUserSearchRequest orgUserSearchRequest1 = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria1).build();
-            URLParams urlParams1 = URLParams.builder().limit(1).offset(0).build();
-            List<OrgUser> usersBis = userRepository.getOrgUsers(orgUserSearchRequest1, urlParams1);
-            if(usersBis != null && !usersBis.isEmpty()){
-                log.error("This user already belong to another org");
-                throw new CustomException("Organization", "This user already belong to another org");
+        // -----------------------------------------
+        // Detect Changes
+        // -----------------------------------------
+        UserChangeSet changes = detectUserChanges(existingOrgUser.getUser(), orgUser);
+
+        // -----------------------------------------
+        // HRMS Update
+        // -----------------------------------------
+        if (changes.shouldUpdateHRMS()) {
+            // Mobile special handling
+            if (changes.isMobileChanged()) {
+                log.error("phone number is being updated. Old phoneNumber {} with new phoneNumber {}", existingOrgUser.getUser().getMobileNumber(), orgUser.getMobileNumber());
+                // If user found, Check if user belong to another organisation record
+                List<String> uuids = employees.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
+                OrgUserSearchCriteria searchUserCriteria1 = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
+                OrgUserSearchRequest orgUserSearchRequest1 = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria1).build();
+                URLParams urlParams1 = URLParams.builder().limit(1).offset(0).build();
+                List<OrgUser> usersBis = userRepository.getOrgUsers(orgUserSearchRequest1, urlParams1);
+                if(usersBis != null && !usersBis.isEmpty()){
+                    log.error("This user already belong to another org");
+                    throw new CustomException("Organization", "This user already belong to another org");
+                }
+
+                // This user not belong to another org
+
+                //Encrypt new mobile number
+                String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(orgUser.getMobileNumber());
+                if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                    orgUser.setMobileNumber(encryptedPocMobileNumber);
+                }
+
+                employee.getUser().setMobileNumber(orgUser.getMobileNumber());
             }
 
-            // This user not belong to another org
-
-            //Encrypt new mobile number
-            String mobileNumber = orgUser.getMobileNumber();
-            String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(orgUser.getMobileNumber());
-            if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                orgUser.setMobileNumber(encryptedPocMobileNumber);
+            if (changes.isNameChanged()) {
+                employee.getUser().setName(orgUser.getName());
             }
 
-            // Updating user with new email, name and
-            employee.getUser().setName(orgUser.getName());
-            employee.getUser().setMobileNumber(mobileNumber);
-            employee.getUser().setEmailId(orgUser.getEmailId());
-
-            EmployeeRequest employeeRequest = EmployeeRequest.builder().requestInfo(request.getRequestInfo()).employees(List.of(employee)).build();
-            List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
-            if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
-                // User updated successfully
-                Employee employeeResp = updatedEmployees.get(0);
-                existingOrgUser.getUser().setRoles(employeeResp.getUser().getRoles());
-//                request.setUser(employeeResp.getUser());
-//                request.setUserId(employeeResp.getUser().getUuid());
+            if (changes.isEmailChanged()) {
+                employee.getUser().setEmailId(orgUser.getEmailId());
             }
-            else{
-                log.error("Error occured while updating the user");
-                throw new CustomException("HRMS_CREATION", "Error occured while updating the user");
-            }
-        }
 
-        // Check if roles are updated in the request
-        Set<String> newRoles = orgUser.getRoles()
-                .stream()
-                .map(Role::getCode)
-                .collect(Collectors.toSet());
-
-        Set<String> existingRoles = existingOrgUser.getUser().getRoles()
-                .stream()
-                .map(Role::getCode)
-                .collect(Collectors.toSet());
-        boolean checkRolesUpdated = !newRoles.equals(existingRoles);
-        if(checkRolesUpdated){
-            // Roles are updated
-            OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder().ids(List.of(request.getOrganizationId())).tenantId(orgUser.getTenantId()).build();
-            OrgSearchRequest orgSearchRequest = OrgSearchRequest.builder().requestInfo(request.getRequestInfo()).searchCriteria(searchCriteria).build();
-            organisations = organisationRepository.getOrganisations(orgSearchRequest);
-            if(organisations == null || organisations.isEmpty()){
-                log.error("Organization ID do not exist");
-                throw new CustomException("Organization", "Organization ID do not exist");
-            }
-            Organisation organisation = organisations.get(0);
-            String orgType = organisation.getOrgType();
-            Map<String, List<Role>> rolesMap =  getOrgRoles(request.getRequestInfo());
-            if (rolesMap !=null && !rolesMap.isEmpty() && orgType !=null && !orgType.isBlank()){
-                List<Role> roles = rolesMap.get(orgType);
-                List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
-                List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
-                Set<String> orgRolesReqSet = new HashSet<>();
-                orgRolesReqSet.addAll(requestRoleCodes);
-                // Check if Roles from request are valid
-                validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
-                // Call HRMS service to update user
+            if (changes.isRolesChanged()) {
+                // Roles are updated
+                OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder().ids(List.of(request.getOrganizationId())).tenantId(orgUser.getTenantId()).build();
+                OrgSearchRequest orgSearchRequest = OrgSearchRequest.builder().requestInfo(request.getRequestInfo()).searchCriteria(searchCriteria).build();
+                organisations = organisationRepository.getOrganisations(orgSearchRequest);
+                if(organisations == null || organisations.isEmpty()){
+                    log.error("Organization ID do not exist");
+                    throw new CustomException("Organization", "Organization ID do not exist");
+                }
+                Organisation organisation = organisations.get(0);
+                String orgType = organisation.getOrgType();
+                Map<String, List<Role>> rolesMap =  getOrgRoles(request.getRequestInfo());
+                if (rolesMap !=null && !rolesMap.isEmpty() && orgType !=null && !orgType.isBlank()){
+                    List<Role> roles = rolesMap.get(orgType);
+                    List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
+                    List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
+                    Set<String> orgRolesReqSet = new HashSet<>();
+                    orgRolesReqSet.addAll(requestRoleCodes);
+                    // Check if Roles from request are valid
+                    validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
+                }
                 employee.getUser().setRoles(orgUser.getRoles());
-                employee.setJurisdictions(hrmsUtils.buildJurisdictions(orgUser.getJurisdictions()));
-                EmployeeRequest employeeRequest = EmployeeRequest.builder().requestInfo(request.getRequestInfo()).employees(List.of(employee)).build();
-                List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
-                if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
-                    // User updated successfully
-                    Employee employeeResp = updatedEmployees.get(0);
-                    request.setUser(employeeResp.getUser());
-                    request.setUserId(employeeResp.getUser().getUuid());
-                }
-                else{
-                    log.error("Error occured while updating the user");
-                    throw new CustomException("HRMS_CREATION", "Error occured while updating the user");
-                }
             }
-        }
 
-        request.setUser(employee.getUser());
-        request.setUserId(employee.getUser().getUuid());
+            if (changes.isJurisdictionChanged()) {
+                employee.setJurisdictions(
+                        hrmsUtils.buildJurisdictions(orgUser.getJurisdictions())
+                );
+            }
+
+            EmployeeRequest employeeRequest = EmployeeRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .employees(List.of(employee))
+                    .build();
+
+            List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+
+            if (updatedEmployees == null || updatedEmployees.isEmpty()) {
+                throw new CustomException("HRMS_UPDATE", "Error occurred while updating the user");
+            }
+
+            Employee employeeResp = updatedEmployees.get(0);
+            request.setUser(employeeResp.getUser());
+            request.setUserId(employeeResp.getUser().getUuid());
+        } else {
+            log.info("No HRMS update required — no user changes detected");
+        }
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
@@ -497,5 +493,50 @@ public class OrganisationUserServiceValidator {
             throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
         }
     }
+
+    private UserChangeSet detectUserChanges(User existing, User incoming) {
+        UserChangeSet changes = new UserChangeSet();
+
+        changes.setMobileChanged(
+                !Objects.equals(existing.getMobileNumber(), incoming.getMobileNumber())
+        );
+
+        changes.setNameChanged(
+                !Objects.equals(existing.getName(), incoming.getName())
+        );
+
+        changes.setEmailChanged(
+                !Objects.equals(existing.getEmailId(), incoming.getEmailId())
+        );
+
+        changes.setRolesChanged(
+                !safeRoleSet(existing.getRoles())
+                        .equals(safeRoleSet(incoming.getRoles()))
+        );
+
+        changes.setJurisdictionChanged(
+                !safeJurisSet(existing.getJurisdictions())
+                        .equals(safeJurisSet(incoming.getJurisdictions()))
+        );
+
+        return changes;
+    }
+
+    private Set<String> safeRoleSet(List<Role> roles) {
+        if (roles == null) return Set.of();
+        return roles.stream()
+                .map(Role::getCode)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    private Set<String> safeJurisSet(List<Jurisdiction> jurisdictions) {
+        if (jurisdictions == null) return Set.of();
+        return jurisdictions.stream()
+                .map(Jurisdiction::getBoundary)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
 
 }
