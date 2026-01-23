@@ -69,8 +69,29 @@ const computeGeographyCodes = ({ country = DEFAULT_COUNTRY, state, district, blo
 };
 
 export const BoundaryService = {
+
+  fetchBoundaryRelations: async (queryFilter) => {
+    const endpoint = "/boundary-service/boundary-relationships/v2/_search";
+    const headers = {
+      "Content-Type": "application/json",
+    };
+    const data = {
+      BoundaryRelationship: queryFilter,
+    };
+
+    return await Request({
+      url: endpoint,
+      userService: true,
+      method: "POST",
+      auth: true,
+      data: data,
+      headers: headers,
+    });
+  },
+
   computeGeographyCodes,
-  fetchBoundaryRelations: async (boundaryType, codes) => {
+
+  fetchNormalizedBoundaryRelations: async (boundaryType, codes) => {
     const endpoint = "/boundary-service/boundary-relationships/_search";
     const normalizedCodes = Array.isArray(codes) ? codes.filter(Boolean) : codes ? [codes] : null;
 
@@ -86,7 +107,7 @@ export const BoundaryService = {
       params.codes = normalizedCodes.join(",");
     }
 
-    const headers = {"Content-Type": "application/json"};
+    const headers = { "Content-Type": "application/json" };
 
     return await Request({
       url: endpoint,
@@ -98,22 +119,16 @@ export const BoundaryService = {
     });
   },
 
-  fetchAllBoundaries: async ({
-                               page = 0,
-                               size = 10,
-                               tenantId = "in",
-                               hierarchyType = "SELCO",
-                               boundaryType = "Block",
-                             } = {}) => {
+  fetchAllBoundaries: async ({ page = 0, size = 10, tenantId = "in", hierarchyType = "SELCO", boundaryType = "Block" } = {}) => {
     return await Request({
       url: "/boundary-service/boundary/getAllBoundaries",
       userService: true,
       method: "GET",
       auth: true,
-      params: {page, size, tenantId, hierarchyType, boundaryType},
+      params: { page, size, tenantId, hierarchyType, boundaryType },
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        'tenantId': "in",
+        tenantId: "in",
         ...authHeaders(),
       },
     });
@@ -126,7 +141,7 @@ export const BoundaryService = {
       method: "POST",
       auth: true,
       data: boundaryData,
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
     });
   },
 
@@ -137,7 +152,7 @@ export const BoundaryService = {
       userService: true,
       method: "POST",
       auth: true,
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
     });
   },
 };

@@ -230,12 +230,29 @@ export const IngestionService = {
     });
   },
 
-  uploadFacilityData: async (filledFacilityData) => {
-    const endpoint = "/ingestion-service/ingest/facilities";
+  validateFacilityData: async (filledFacilityData) => {
+    const endpoint = "/ingestion-service/ingest/addFacilitiesValidateData";
 
     return await CustomRequest({
       url: endpoint,
       data: filledFacilityData,
+      userService: true,
+      method: "POST",
+      attachAuthHeaders: true,
+      auth: true,
+      attachRequestInfo: (data, RequestInfo) => {
+        data.append("request_info", JSON.stringify(RequestInfo));
+      },
+      responseType: "blob",
+    });
+  },
+
+  uploadFacilityData: async (validatedFacilityData) => {
+    const endpoint = "/ingestion-service/ingest/facilities";
+
+    return await CustomRequest({
+      url: endpoint,
+      data: validatedFacilityData,
       userService: true,
       method: "POST",
       attachAuthHeaders: true,

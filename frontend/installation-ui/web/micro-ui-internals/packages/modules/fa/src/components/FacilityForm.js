@@ -1,11 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FormComposerV2, Loader } from "@egovernments/digit-ui-react-components";
+import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../hooks/useBoundary";
 
-const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {} }) => {
+const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}, formToast, setFormToast }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const [defaultValues, setDefaultValues] = useState({});
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+
+  useEffect(() => {
+    const handleResize = () => setMobileView(window.innerWidth <= 640);
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     if (createdFacility?.id) {
@@ -181,7 +189,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           {
             inline: true,
             label: "FACILITY_HFR_ID",
-            isMandatory: true,
+            isMandatory: false,
             disable: !!createdFacility?.id,
             key: "hfrId",
             type: "text",
@@ -192,7 +200,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           {
             inline: true,
             label: "FACILITY_NIN_ID",
-            isMandatory: true,
+            isMandatory: false,
             disable: !!createdFacility?.id,
             key: "ninId",
             type: "text",
@@ -239,11 +247,11 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             populators: {
               name: "latitude",
               validation: {
-                min: -180,
-                max: 180,
+                min: -90,
+                max: 90,
                 pattern: {
-                  value: /^-?(180(\.0+)?|1[0-7]\d(\.\d+)?|\d{1,2}(\.\d+)?)$/,
-                  message: "Enter a valid longitude (-180 to 180)",
+                  value: /^-?(90(\.0+)?|[1-8]?\d(\.\d+)?)$/,
+                  message: "Enter a valid latitude (-90 to 90)",
                 },
               },
             },
@@ -271,6 +279,19 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
     ],
     [t, mdmsResponse, createdFacility, boundaryData, solarSolutionDesignTypes, facilityTypes]
   );
+
+  const handleFormSubmit = (formData) => {
+    const hasHfrId = formData?.hfrId && `${formData.hfrId}`.trim().length > 0;
+    const hasNinId = formData?.ninId && `${formData.ninId}`.trim().length > 0;
+    if (hasHfrId || hasNinId) {
+      onFormSubmit(formData);
+    } else {
+      setFormToast({
+        key: "error",
+        label: t("FACILITY_HFR_OR_NIN_REQUIRED"),
+      });
+    }
+  };
 
   if (isFormLoading) {
     return (
@@ -301,13 +322,27 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
         key={JSON.stringify(defaultValues)}
         defaultValues={defaultValues}
         config={addFacilityFormConfig}
-        onSubmit={onFormSubmit}
+        onSubmit={handleFormSubmit}
         label={t("CORE_COMMON_SUBMIT")}
         heading={""}
         cardStyle={{ boxShadow: "none" }}
         submitInForm={false}
         actionClassName={"reverse-actionbar-fixed"}
       />
+      {formToast && (
+        <Toast
+          error={formToast.key === "error"}
+          warning={formToast.key === "warning"}
+          style={{
+            zIndex: 100000000,
+            ...(formToast.key === "error" ? { backgroundColor: "#B91900" } : {}),
+            ...(mobileView ? { bottom: "120px" } : {}),
+          }}
+          label={formToast.label}
+          isDleteBtn={true}
+          onClose={() => setFormToast(null)}
+        />
+      )}
     </div>
   );
 };

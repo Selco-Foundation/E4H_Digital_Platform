@@ -2,7 +2,7 @@ import React from "react";
 import { PopUp, Button } from "@egovernments/digit-ui-react-components";
 import FacilityForm from "./FacilityForm";
 
-const FacilityModal = ({ t, title, onClose, onSubmit, createdFacility }) => {
+const FacilityModal = ({ t, title, onClose, onSubmit, createdFacility, formToast, setFormToast }) => {
   return (
     <PopUp>
       <div
@@ -55,7 +55,13 @@ const FacilityModal = ({ t, title, onClose, onSubmit, createdFacility }) => {
             }}
           />
         </div>
-        <FacilityForm t={t} createdFacility={createdFacility} onFormSubmit={onSubmit} />
+        <FacilityForm
+          t={t}
+          createdFacility={createdFacility}
+          onFormSubmit={onSubmit}
+          formToast={formToast}
+          setFormToast={setFormToast}
+        />
       </div>
     </PopUp>
   );

@@ -23,6 +23,7 @@ const FacilityDetails = () => {
   const [showEditFacilityModal, setShowEditFacilityModal] = useState(false);
   const dispatch = useDispatch();
   const [toast, setToast] = useState(null);
+  const [formToast, setFormToast] = useState(null);
   const [activeTab, setActiveTab] = useState("ACTIVITY");
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [blockUI, setBlockUI] = useState(null);
@@ -42,7 +43,19 @@ const FacilityDetails = () => {
     }
   }, [toast]);
 
-  const { isLoading, data: facilityData} = useFacilityDetails(facilityId);
+  useEffect(() => {
+    if (formToast) {
+      setTimeout(() => {
+        setFormToast(null);
+      }, 2500);
+    }
+  }, [formToast]);
+
+  const {
+    isLoading, data: facilityData,
+    revalidate: invalidateFacilityDetails
+  } = useFacilityDetails(facilityId);
+
   const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
     tenantId,
     "facility",
@@ -110,8 +123,8 @@ const FacilityDetails = () => {
           isOnmReady: formData?.isOnmReady?.code === "YES",
           address: {
             tenantId: tenantId,
-            ...(formData?.latitude ? { latitude: formData.latitude } : {}),
-            ...(formData?.longitude ? { longitude: formData.longitude } : {}),
+            ...(formData?.latitude ? { latitude: parseFloat(formData.latitude) } : {}),
+            ...(formData?.longitude ? { longitude: parseFloat(formData.longitude) } : {}),
           },
           facility_poc_name: formData?.facilityPocName,
           facility_poc_phone: formData?.facilityPocPhone,
@@ -123,6 +136,7 @@ const FacilityDetails = () => {
       };
 
       await FacilityService.updateFacility(payload);
+      await invalidateFacilityDetails();
 
       setBlockUI(false);
       setShowEditFacilityModal(false);
@@ -133,7 +147,7 @@ const FacilityDetails = () => {
     } catch (e) {
       console.error("Failed to upload facility", e);
       setBlockUI(false);
-      setToast({
+      setFormToast({
         key: "error",
         label: t("FACILITY_UPDATION_FAILED"),
       });
@@ -241,6 +255,8 @@ const FacilityDetails = () => {
           createdFacility={createdFacility}
           onSubmit={handleFacilityUpdate}
           onClose={() => setShowEditFacilityModal(false)}
+          formToast={formToast}
+          setFormToast={setFormToast}
         />
       )}
       <Tab

@@ -9,10 +9,12 @@ const StateSelector = ({ data = {}, setValue, props }) => {
   useEffect(() => {
     if (boundaryData?.states) {
       setStateMenu(
-        boundaryData.states.map((state) => ({
-          ...state,
-          name: t(`Boundary_${state.code}`),
-        }))
+        boundaryData.states
+          .map((state) => ({
+            ...state,
+            name: t(`Boundary_${state.code}`),
+          }))
+        .sort((a, b) => a?.name?.localeCompare(b?.name))
       );
     }
   }, [t, boundaryData]);

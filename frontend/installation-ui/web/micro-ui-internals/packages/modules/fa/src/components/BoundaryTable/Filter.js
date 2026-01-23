@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { RemoveableTag, Loader } from "@egovernments/digit-ui-react-components";
 import RefreshButton from "../RefreshButton";
-import useBoundary from "../../hooks/useBoundary";
+import useNormalizedBoundary from "../../hooks/useNormalizedBoundary";
 import CustomFilterIcon from "../Custom/CustomFilterIcon";
 import CustomDropdown from "../Custom/CustomDropdown";
 
@@ -29,7 +29,7 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
 
   const lastSentRef = useRef("");
 
-  const { isLoading, data } = useBoundary("State");
+  const { isLoading, data } = useNormalizedBoundary("State");
 
   useEffect(() => {
     if (!data) return;

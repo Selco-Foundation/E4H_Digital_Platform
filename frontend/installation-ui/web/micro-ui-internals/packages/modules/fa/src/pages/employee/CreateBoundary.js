@@ -5,7 +5,7 @@ import {useHistory} from "react-router-dom";
 import { useDispatch } from "react-redux";
 
 import { populateResponsePage } from "../../redux/actions";
-import useBoundary from "../../hooks/useBoundary";
+import useNormalizedBoundary from "../../hooks/useNormalizedBoundary";
 import CustomDropdown from "../../components/Custom/CustomDropdown";
 import CustomSwapHorizontalCircle from "../../components/Custom/CustomSwapHorizontalCircle";
 import {BoundaryService} from "../../services/Boundary";
@@ -267,7 +267,7 @@ const CreateBoundary = () => {
   const [isStateTextMode, setIsStateTextMode] = useState(false);
   const [isDistrictTextMode, setIsDistrictTextMode] = useState(false);
 
-  const {data: boundaryData, isLoading: isBoundaryLoading} = useBoundary("State");
+  const {data: boundaryData, isLoading: isBoundaryLoading} = useNormalizedBoundary("State");
 
   if (Digit && Digit.ComponentRegistryService && Digit.ComponentRegistryService.setComponent) {
     Digit.ComponentRegistryService.setComponent("FAStateToggleField", FAStateToggleField);
