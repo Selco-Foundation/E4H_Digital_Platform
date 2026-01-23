@@ -372,6 +372,7 @@ public class OrganisationUserServiceValidator {
 
             Employee employeeResp = updatedEmployees.get(0);
             request.setUser(employeeResp.getUser());
+            request.getUser().setJurisdictions(employeeResp.getJurisdictions());
             request.setUserId(employeeResp.getUser().getUuid());
         } else {
             log.info("No HRMS update required — no user changes detected");
