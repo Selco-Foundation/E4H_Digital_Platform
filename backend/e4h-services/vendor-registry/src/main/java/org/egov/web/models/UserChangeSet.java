@@ -7,6 +7,7 @@ public class UserChangeSet {
 
     private boolean mobileChanged;
     private boolean nameChanged;
+    private boolean usernameChanged;
     private boolean emailChanged;
     private boolean rolesChanged;
     private boolean jurisdictionChanged;
@@ -14,6 +15,7 @@ public class UserChangeSet {
     public boolean shouldUpdateHRMS() {
         return mobileChanged ||
                 nameChanged ||
+                usernameChanged ||
                 emailChanged ||
                 rolesChanged ||
                 jurisdictionChanged;

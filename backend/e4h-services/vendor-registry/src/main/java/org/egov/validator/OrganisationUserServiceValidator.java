@@ -321,6 +321,17 @@ public class OrganisationUserServiceValidator {
                 employee.getUser().setMobileNumber(orgUser.getMobileNumber());
             }
 
+            if(changes.isUsernameChanged()){
+                // Get existing user with username from hrms service
+                List<Employee> response = hrmsUtils.getUserByUsername(request, orgUser.getUserName());
+                if (response != null && !response.isEmpty()) {
+                    //If user exist
+                    log.error("This user with this username already exist: {}", orgUser.getUserName());
+                    throw new CustomException("Organization", "This user with this username already exist: "+orgUser.getUserName());
+                }
+                employee.getUser().setUserName(orgUser.getUserName());
+            }
+
             if (changes.isNameChanged()) {
                 employee.getUser().setName(orgUser.getName());
             }
@@ -376,6 +387,9 @@ public class OrganisationUserServiceValidator {
             request.setUserId(employeeResp.getUser().getUuid());
         } else {
             log.info("No HRMS update required — no user changes detected");
+            request.setUserId(existingOrgUser.getUserId());
+            request.setUser(employee.getUser());
+            request.getUser().setJurisdictions(employee.getJurisdictions());
         }
 
         if (!errorMap.isEmpty())
@@ -504,6 +518,10 @@ public class OrganisationUserServiceValidator {
 
         changes.setNameChanged(
                 !Objects.equals(existing.getName(), incoming.getName())
+        );
+
+        changes.setUsernameChanged(
+                !Objects.equals(existing.getUserName(), incoming.getUserName())
         );
 
         changes.setEmailChanged(

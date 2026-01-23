@@ -95,6 +95,17 @@ public class HRMSUtils {
         return employeeResponse.getEmployees();
     }
 
+    public List<Employee> getUserByUsername(Object request, String username) {
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()+ "?tenantId=in&codes="+username;
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            return null;
+        }
+        return employeeResponse.getEmployees();
+    }
+
     public List<Employee> createHRMSUser(Object request) {
         String url = config.getHrmsHost() + config.getHrmsCreateEndPoint()+ "?tenantId=in";
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
