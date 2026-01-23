@@ -458,7 +458,7 @@ public class FacilityService {
 
         StringBuilder query = new StringBuilder("SELECT * FROM facility");
         query.append(result.getWhereClause());
-        query.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+        query.append(" ORDER BY created_at DESC NULLS LAST LIMIT ? OFFSET ?");
 
         List<Object> allParams = new ArrayList<>(result.getParams());
         allParams.add(request.getLimit());
