@@ -94,7 +94,8 @@ const OrganizationTableBase = ({ orgType }) => {
   const columns = [
     { Header: t("ORG_NAME") || "Name", Cell: ({ row }) => GetCell((row && row.original && row.original.name) || "-") },
     { Header: t("ORG_CODE") || "Code", Cell: ({ row }) => GetCell((row && row.original && row.original.code) || "-") },
-    { Header: t("ORG_TYPE") || "Type", Cell: ({ row }) => GetCell((row && row.original && row.original.orgType) || "-") },
+    { Header: t("ORGANIZATION_SUB_TYPE") || "Sub Type", Cell: ({ row }) => GetCell((row && row.original && t(`ORGANIZATION_SUB_TYPE_${row.original.orgSubType}`)) || "-") },
+    { Header: t("ORGANIZATION_STATUS") || "Status", Cell: ({ row }) => GetCell((row && row.original && t(`ORGANIZATION_STATUS_${row.original.orgStatus}`)) || "-") },
     { Header: t("ORG_POC_NAME") || "POC Name", Cell: ({ row }) => GetCell((row && row.original && row.original.pocName) || "-") },
   ];
 
