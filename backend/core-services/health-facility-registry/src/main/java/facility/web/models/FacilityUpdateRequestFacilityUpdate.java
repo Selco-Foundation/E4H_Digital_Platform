@@ -74,4 +74,10 @@ public class FacilityUpdateRequestFacilityUpdate {
     @Schema(name = "isOnmReady", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("isOnmReady")
     private Boolean isOnmReady;
+
+    @JsonProperty("isActive")
+    private Boolean isActive = null;
+
+    @JsonProperty("wfStatus")
+    private String wfStatus = null;
 }
