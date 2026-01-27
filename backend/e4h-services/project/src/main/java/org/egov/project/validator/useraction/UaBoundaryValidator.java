@@ -51,71 +51,102 @@ public class UaBoundaryValidator implements Validator<UserActionBulkRequest, Use
     @Override
     public Map<UserAction, List<Error>> validate(UserActionBulkRequest request) {
         log.debug("Validating userActions boundaries.");
-        // Create a HashMap to store error details for each userAction
         HashMap<UserAction, List<Error>> errorDetailsMap = new HashMap<>();
 
-        // Filter userActions with non-null addresses
-        List<UserAction> entitiesWithValidBoundaries = request.getUserActions().parallelStream()
-                .filter(userAction -> Objects.nonNull(userAction.getBoundaryCode())) // Exclude null boundary codes
-                .toList();
-
-        Map<String, List<UserAction>> tenantIdUserActionMap = entitiesWithValidBoundaries.stream().collect(Collectors.groupingBy(UserAction::getTenantId));
+        List<UserAction> entitiesWithValidBoundaries = filterUserActionsWithBoundaries(request.getUserActions());
+        Map<String, List<UserAction>> tenantIdUserActionMap = groupByTenantId(entitiesWithValidBoundaries);
 
         tenantIdUserActionMap.forEach((tenantId, userActions) -> {
-            // Group userActions by locality code
-            Map<String, List<UserAction>> boundaryCodeUserActionsMap = userActions.stream()
-                    .collect(Collectors.groupingBy(
-                            userAction -> userAction.getBoundaryCode() // Group by boundary code
-                    ));
-
-            List<String> boundaries = new ArrayList<>(boundaryCodeUserActionsMap.keySet());
-            if (!CollectionUtils.isEmpty(boundaries)) {
-                try {
-                    // Fetch boundary details from the service
-                    log.debug("Fetching boundary details for tenantId: {}, boundaries: {}", tenantId, boundaries);
-                    BoundaryResponse boundarySearchResponse = serviceRequestClient.fetchResult(
-                            new StringBuilder(projectConfiguration.getBoundaryServiceHost()
-                                    + projectConfiguration.getBoundarySearchUrl()
-                                    + "?limit=" + boundaries.size()
-                                    + "&offset=0&tenantId=" + tenantId
-                                    + "&codes=" + String.join(",", boundaries)),
-                            request.getRequestInfo(),
-                            BoundaryResponse.class
-                    );
-                    log.debug("Boundary details fetched successfully for tenantId: {}", tenantId);
-
-                    List<String> invalidBoundaryCodes = new ArrayList<>(boundaries);
-                    invalidBoundaryCodes.removeAll(boundarySearchResponse.getBoundary().stream()
-                            .map(Boundary::getCode)
-                            .toList()
-                    );
-
-                    // Filter out userActions with invalid boundary codes
-                    List<UserAction> userActionsWithInvalidBoundaries = boundaryCodeUserActionsMap.entrySet().stream()
-                            .filter(entry -> invalidBoundaryCodes.contains(entry.getKey())) // filter invalid boundary codes
-                            .flatMap(entry -> entry.getValue().stream()) // Flatten the list of userActions
-                            .toList();
-
-                    // Create an error object for userActions with invalid boundaries
-                    Error error = Error.builder()
-                            .errorMessage("Boundary code does not exist in db")
-                            .errorCode("PROJECT_USER_ACTION_INVALID_BOUNDARY_ERROR")
-                            .type(Error.ErrorType.NON_RECOVERABLE)
-                            .exception(new CustomException("PROJECT_USER_ACTION_INVALID_BOUNDARY_ERROR", "Boundary code does not exist in db"))
-                            .build();
-                    userActionsWithInvalidBoundaries.forEach(userAction -> {
-                        // Populate error details for the userAction
-                        populateErrorDetails(userAction, error, errorDetailsMap);
-                    });
-
-                } catch (Exception e) {
-                    log.error("Exception while searching boundaries for tenantId: {}", tenantId, e);
-                    // Throw a custom exception if an error occurs during boundary search
-                    throw new CustomException("BOUNDARY_SERVICE_SEARCH_ERROR", "Error in while fetching boundaries from Boundary Service : " + e.getMessage());
-                }
-            }
+            validateBoundariesForTenant(tenantId, userActions, request, errorDetailsMap);
         });
 
         return errorDetailsMap;
+    }
+
+    private List<UserAction> filterUserActionsWithBoundaries(List<UserAction> userActions) {
+        return userActions.parallelStream()
+                .filter(userAction -> Objects.nonNull(userAction.getBoundaryCode()))
+                .toList();
+    }
+
+    private Map<String, List<UserAction>> groupByTenantId(List<UserAction> userActions) {
+        return userActions.stream()
+                .collect(Collectors.groupingBy(UserAction::getTenantId));
+    }
+
+    private void validateBoundariesForTenant(String tenantId, List<UserAction> userActions, 
+                                             UserActionBulkRequest request, 
+                                             Map<UserAction, List<Error>> errorDetailsMap) {
+        Map<String, List<UserAction>> boundaryCodeUserActionsMap = groupByBoundaryCode(userActions);
+        List<String> boundaries = new ArrayList<>(boundaryCodeUserActionsMap.keySet());
+        
+        if (CollectionUtils.isEmpty(boundaries)) {
+            return;
+        }
+
+        try {
+            BoundaryResponse boundarySearchResponse = fetchBoundaryDetails(tenantId, boundaries, request);
+            List<String> invalidBoundaryCodes = findInvalidBoundaryCodes(boundaries, boundarySearchResponse);
+            addErrorsForInvalidBoundaries(boundaryCodeUserActionsMap, invalidBoundaryCodes, errorDetailsMap);
+        } catch (Exception e) {
+            log.error("Exception while searching boundaries for tenantId: {}", tenantId, e);
+            throw new CustomException("BOUNDARY_SERVICE_SEARCH_ERROR", 
+                    "Error in while fetching boundaries from Boundary Service : " + e.getMessage());
+        }
+    }
+
+    private Map<String, List<UserAction>> groupByBoundaryCode(List<UserAction> userActions) {
+        return userActions.stream()
+                .collect(Collectors.groupingBy(UserAction::getBoundaryCode));
+    }
+
+    private BoundaryResponse fetchBoundaryDetails(String tenantId, List<String> boundaries, UserActionBulkRequest request) {
+        log.debug("Fetching boundary details for tenantId: {}, boundaries: {}", tenantId, boundaries);
+        String url = buildBoundarySearchUrl(tenantId, boundaries);
+        BoundaryResponse response = serviceRequestClient.fetchResult(
+                new StringBuilder(url),
+                request.getRequestInfo(),
+                BoundaryResponse.class
+        );
+        log.debug("Boundary details fetched successfully for tenantId: {}", tenantId);
+        return response;
+    }
+
+    private String buildBoundarySearchUrl(String tenantId, List<String> boundaries) {
+        return projectConfiguration.getBoundaryServiceHost()
+                + projectConfiguration.getBoundarySearchUrl()
+                + "?limit=" + boundaries.size()
+                + "&offset=0&tenantId=" + tenantId
+                + "&codes=" + String.join(",", boundaries);
+    }
+
+    private List<String> findInvalidBoundaryCodes(List<String> boundaries, BoundaryResponse boundarySearchResponse) {
+        List<String> validBoundaryCodes = boundarySearchResponse.getBoundary().stream()
+                .map(Boundary::getCode)
+                .toList();
+        
+        List<String> invalidBoundaryCodes = new ArrayList<>(boundaries);
+        invalidBoundaryCodes.removeAll(validBoundaryCodes);
+        return invalidBoundaryCodes;
+    }
+
+    private void addErrorsForInvalidBoundaries(Map<String, List<UserAction>> boundaryCodeUserActionsMap,
+                                               List<String> invalidBoundaryCodes,
+                                               Map<UserAction, List<Error>> errorDetailsMap) {
+        List<UserAction> userActionsWithInvalidBoundaries = boundaryCodeUserActionsMap.entrySet().stream()
+                .filter(entry -> invalidBoundaryCodes.contains(entry.getKey()))
+                .flatMap(entry -> entry.getValue().stream())
+                .toList();
+
+        Error error = Error.builder()
+                .errorMessage("Boundary code does not exist in db")
+                .errorCode("PROJECT_USER_ACTION_INVALID_BOUNDARY_ERROR")
+                .type(Error.ErrorType.NON_RECOVERABLE)
+                .exception(new CustomException("PROJECT_USER_ACTION_INVALID_BOUNDARY_ERROR", "Boundary code does not exist in db"))
+                .build();
+        
+        userActionsWithInvalidBoundaries.forEach(userAction -> {
+            populateErrorDetails(userAction, error, errorDetailsMap);
+        });
     }
 }

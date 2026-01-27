@@ -78,61 +78,99 @@ public class ProjectAddressQueryBuilder {
 
     private static void extracted(Long lastChangedSince, boolean isAncestorProjectId, List<Object> preparedStmtList, Project project, StringBuilder queryBuilder) {
         checkAncestorProject(isAncestorProjectId, preparedStmtList, project, queryBuilder);
+        addProjectBasicFields(project, preparedStmtList, queryBuilder);
+        addProjectAddressFields(project, preparedStmtList, queryBuilder);
+        addProjectDateFields(project, lastChangedSince, preparedStmtList, queryBuilder);
+    }
 
+    private static void addProjectBasicFields(Project project, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        addProjectNumberClause(project, preparedStmtList, queryBuilder);
+        addProjectNameClause(project, preparedStmtList, queryBuilder);
+        addProjectTypeClause(project, preparedStmtList, queryBuilder);
+        addReferenceIdClause(project, preparedStmtList, queryBuilder);
+        addParentClause(project, preparedStmtList, queryBuilder);
+        addProjectSubTypeClause(project, preparedStmtList, queryBuilder);
+    }
+
+    private static void addProjectNumberClause(Project project, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(project.getProjectNumber())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.projectNumber =? ");
             preparedStmtList.add(project.getProjectNumber());
         }
+    }
 
+    private static void addProjectNameClause(Project project, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(project.getName())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.name LIKE ? ");
             preparedStmtList.add('%' + project.getName() + '%');
         }
+    }
 
+    private static void addProjectTypeClause(Project project, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(project.getProjectType())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.projectType=? ");
             preparedStmtList.add(project.getProjectType());
         }
+    }
 
+    private static void addReferenceIdClause(Project project, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(project.getReferenceID())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.referenceId =? ");
             preparedStmtList.add(project.getReferenceID());
         }
+    }
 
+    private static void addParentClause(Project project, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(project.getParent())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.parent =? ");
             preparedStmtList.add(project.getParent());
         }
+    }
 
-        if (project.getAddress() != null && StringUtils.isNotBlank(project.getAddress().getBoundary())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" addr.boundary=? ");
-            preparedStmtList.add(project.getAddress().getBoundary());
-        }
-
+    private static void addProjectSubTypeClause(Project project, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(project.getProjectSubType())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.projectSubtype=? ");
             preparedStmtList.add(project.getProjectSubType());
         }
+    }
 
+    private static void addProjectAddressFields(Project project, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (project.getAddress() != null && StringUtils.isNotBlank(project.getAddress().getBoundary())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" addr.boundary=? ");
+            preparedStmtList.add(project.getAddress().getBoundary());
+        }
+    }
+
+    private static void addProjectDateFields(Project project, Long lastChangedSince, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        addStartDateClause(project, preparedStmtList, queryBuilder);
+        addEndDateClause(project, preparedStmtList, queryBuilder);
+        addLastChangedSinceClause(lastChangedSince, preparedStmtList, queryBuilder);
+    }
+
+    private static void addStartDateClause(Project project, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (project.getStartDate() != null && project.getStartDate() != 0) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.startDate >= ? ");
             preparedStmtList.add(project.getStartDate());
         }
+    }
 
+    private static void addEndDateClause(Project project, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (project.getEndDate() != null && project.getEndDate() != 0) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" prj.endDate <= ? ");
             preparedStmtList.add(project.getEndDate());
         }
+    }
 
+    private static void addLastChangedSinceClause(Long lastChangedSince, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (lastChangedSince != null && lastChangedSince != 0) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" ( prj.lastModifiedTime >= ? )");

@@ -96,59 +96,144 @@ public class ProjectAddressRowMapper implements ResultSetExtractor<List<Project>
 
     /* Builds Project Object from Result Set and address */
     private Project getProjectObjFromResultSet(ResultSet rs, Address address) throws SQLException {
-        String project_id = rs.getString("projectId");
-        String project_tenantId = rs.getString("project_tenantId");
-        String project_projectNumber = rs.getString("project_projectNumber");
-        String project_name = rs.getString("project_name");
-        String project_projectType = rs.getString("project_projectType");
-        String project_projectTypeId = rs.getString("project_projectTypeId");
-        String project_projectSubtype = rs.getString("project_projectSubtype");
-        String project_department = rs.getString("project_department");
-        String project_description = rs.getString("project_description");
-        String project_referenceId = rs.getString("project_referenceId");
-        Long project_startDate = rs.getLong("project_startDate");
-        Long project_endDate = rs.getLong("project_endDate");
-        Boolean project_isTaskEnabled = rs.getBoolean("project_isTaskEnabled");
-        String project_projectHierarchy = rs.getString("project_projectHierarchy");
-        String project_parent = rs.getString("project_parent");
-        JsonNode project_additionalDetails = getAdditionalDetail("project_additionalDetails", rs);
-        String project_natureOfWork = rs.getString("project_natureOfWork");
-        Boolean project_isDeleted = rs.getBoolean("project_isDeleted");
-        Integer project_rowVersion = rs.getInt("project_rowVersion");
-        String project_createdBy = rs.getString("project_createdBy");
-        String project_lastModifiedBy = rs.getString("project_lastModifiedBy");
-        Long project_createdTime = rs.getLong("project_createdTime");
-        Long project_lastModifiedTime = rs.getLong("project_lastModifiedTime");
+        ProjectBasicFields basicFields = extractProjectBasicFields(rs);
+        ProjectDateFields dateFields = extractProjectDateFields(rs);
+        AuditDetails auditDetails = buildProjectAuditDetails(rs);
+        JsonNode additionalDetails = getAdditionalDetail("project_additionalDetails", rs);
 
-        AuditDetails projectAuditDetails = AuditDetails.builder().createdBy(project_createdBy).createdTime(project_createdTime)
-                .lastModifiedBy(project_lastModifiedBy).lastModifiedTime(project_lastModifiedTime)
-                .build();
-
-        Project project = Project.builder()
-                .id(project_id)
-                .tenantId(project_tenantId)
-                .projectNumber(project_projectNumber)
-                .name(project_name)
-                .projectType(project_projectType)
-                .projectTypeId(project_projectTypeId)
-                .projectSubType(project_projectSubtype)
-                .department(project_department)
-                .description(project_description)
-                .referenceID(project_referenceId)
-                .startDate(project_startDate)
-                .endDate(project_endDate)
-                .isTaskEnabled(project_isTaskEnabled)
-                .parent(project_parent)
-                .projectHierarchy(project_projectHierarchy)
-                .additionalDetails(project_additionalDetails)
-                .natureOfWork(project_natureOfWork)
-                .isDeleted(project_isDeleted)
-                .rowVersion(project_rowVersion)
+        return Project.builder()
+                .id(basicFields.getId())
+                .tenantId(basicFields.getTenantId())
+                .projectNumber(basicFields.getProjectNumber())
+                .name(basicFields.getName())
+                .projectType(basicFields.getProjectType())
+                .projectTypeId(basicFields.getProjectTypeId())
+                .projectSubType(basicFields.getProjectSubType())
+                .department(basicFields.getDepartment())
+                .description(basicFields.getDescription())
+                .referenceID(basicFields.getReferenceId())
+                .startDate(dateFields.getStartDate())
+                .endDate(dateFields.getEndDate())
+                .isTaskEnabled(basicFields.getIsTaskEnabled())
+                .parent(basicFields.getParent())
+                .projectHierarchy(basicFields.getProjectHierarchy())
+                .additionalDetails(additionalDetails)
+                .natureOfWork(basicFields.getNatureOfWork())
+                .isDeleted(basicFields.getIsDeleted())
+                .rowVersion(basicFields.getRowVersion())
                 .address(address)
-                .auditDetails(projectAuditDetails)
+                .auditDetails(auditDetails)
                 .build();
+    }
 
-        return project;
+    private ProjectBasicFields extractProjectBasicFields(ResultSet rs) throws SQLException {
+        return new ProjectBasicFields(
+                rs.getString("projectId"),
+                rs.getString("project_tenantId"),
+                rs.getString("project_projectNumber"),
+                rs.getString("project_name"),
+                rs.getString("project_projectType"),
+                rs.getString("project_projectTypeId"),
+                rs.getString("project_projectSubtype"),
+                rs.getString("project_department"),
+                rs.getString("project_description"),
+                rs.getString("project_referenceId"),
+                rs.getBoolean("project_isTaskEnabled"),
+                rs.getString("project_projectHierarchy"),
+                rs.getString("project_parent"),
+                rs.getString("project_natureOfWork"),
+                rs.getBoolean("project_isDeleted"),
+                rs.getInt("project_rowVersion")
+        );
+    }
+
+    private ProjectDateFields extractProjectDateFields(ResultSet rs) throws SQLException {
+        return new ProjectDateFields(
+                rs.getLong("project_startDate"),
+                rs.getLong("project_endDate")
+        );
+    }
+
+    private AuditDetails buildProjectAuditDetails(ResultSet rs) throws SQLException {
+        return AuditDetails.builder()
+                .createdBy(rs.getString("project_createdBy"))
+                .createdTime(rs.getLong("project_createdTime"))
+                .lastModifiedBy(rs.getString("project_lastModifiedBy"))
+                .lastModifiedTime(rs.getLong("project_lastModifiedTime"))
+                .build();
+    }
+
+    // Helper classes for project field extraction
+    private static class ProjectBasicFields {
+        private final String id;
+        private final String tenantId;
+        private final String projectNumber;
+        private final String name;
+        private final String projectType;
+        private final String projectTypeId;
+        private final String projectSubType;
+        private final String department;
+        private final String description;
+        private final String referenceId;
+        private final Boolean isTaskEnabled;
+        private final String projectHierarchy;
+        private final String parent;
+        private final String natureOfWork;
+        private final Boolean isDeleted;
+        private final Integer rowVersion;
+
+        public ProjectBasicFields(String id, String tenantId, String projectNumber, String name,
+                                 String projectType, String projectTypeId, String projectSubType,
+                                 String department, String description, String referenceId,
+                                 Boolean isTaskEnabled, String projectHierarchy, String parent,
+                                 String natureOfWork, Boolean isDeleted, Integer rowVersion) {
+            this.id = id;
+            this.tenantId = tenantId;
+            this.projectNumber = projectNumber;
+            this.name = name;
+            this.projectType = projectType;
+            this.projectTypeId = projectTypeId;
+            this.projectSubType = projectSubType;
+            this.department = department;
+            this.description = description;
+            this.referenceId = referenceId;
+            this.isTaskEnabled = isTaskEnabled;
+            this.projectHierarchy = projectHierarchy;
+            this.parent = parent;
+            this.natureOfWork = natureOfWork;
+            this.isDeleted = isDeleted;
+            this.rowVersion = rowVersion;
+        }
+
+        public String getId() { return id; }
+        public String getTenantId() { return tenantId; }
+        public String getProjectNumber() { return projectNumber; }
+        public String getName() { return name; }
+        public String getProjectType() { return projectType; }
+        public String getProjectTypeId() { return projectTypeId; }
+        public String getProjectSubType() { return projectSubType; }
+        public String getDepartment() { return department; }
+        public String getDescription() { return description; }
+        public String getReferenceId() { return referenceId; }
+        public Boolean getIsTaskEnabled() { return isTaskEnabled; }
+        public String getProjectHierarchy() { return projectHierarchy; }
+        public String getParent() { return parent; }
+        public String getNatureOfWork() { return natureOfWork; }
+        public Boolean getIsDeleted() { return isDeleted; }
+        public Integer getRowVersion() { return rowVersion; }
+    }
+
+    private static class ProjectDateFields {
+        private final Long startDate;
+        private final Long endDate;
+
+        public ProjectDateFields(Long startDate, Long endDate) {
+            this.startDate = startDate;
+            this.endDate = endDate;
+        }
+
+        public Long getStartDate() { return startDate; }
+        public Long getEndDate() { return endDate; }
     }
 
     private JsonNode getAdditionalDetail(String columnName, ResultSet rs)    throws SQLException {
