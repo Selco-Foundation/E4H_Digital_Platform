@@ -74,10 +74,29 @@ public class FacilityKibanaMapper {
         }
         log.info("Converting facility {} to Kibana index format", facility.getFacilityId());
 
-        FacilityKibanaIndex.FacilityKibanaIndexBuilder builder = FacilityKibanaIndex.builder()
+        FacilityKibanaIndex.FacilityKibanaIndexBuilder builder = initializeIndexBuilder(facility);
+        applyGeoPoint(facility, builder);
+        applySolarPanelStatus(facility, builder);
+        applyVendorInformation(facility, builder);
+
+        BoundaryCodes boundaryCodes = fetchBoundaryHierarchy(facility, requestInfo);
+        BoundaryInfo boundaryInfo = applyBoundaryInformation(facility, builder, boundaryCodes);
+
+        logBoundaryInfo(facility, boundaryInfo);
+
+        FacilityKibanaIndex result = builder.build();
+        logBoundaryOnResult(facility, result);
+
+        log.info("Successfully converted facility {} to Kibana index format", facility.getFacilityId());
+        log.trace("Exiting toKibanaIndex method");
+        return result;
+    }
+
+    private FacilityKibanaIndex.FacilityKibanaIndexBuilder initializeIndexBuilder(Facility facility) {
+        return FacilityKibanaIndex.builder()
                 .facilityId(facility.getFacilityId())
                 .name(facility.getFacilityName())
-                .phcName(new HashMap<>()) // Empty map to satisfy ES object type requirement
+                .phcName(new HashMap<>())
                 .phcType(facility.getFacilityType())
                 .tenantId(facility.getTenantId())
                 .tenantIdLocalized(facility.getTenantId())
@@ -89,68 +108,79 @@ public class FacilityKibanaMapper {
                 .openTickets(0)
                 .closedTickets(0)
                 .lastModifiedTime(System.currentTimeMillis());
+    }
 
-        // Set geoPoint from address if available
-        if (facility.getAddress() != null && 
-            facility.getAddress().getLatitude() != null && 
-            facility.getAddress().getLongitude() != null) {
-            String geoPoint = facility.getAddress().getLatitude() + "," + facility.getAddress().getLongitude();
-            builder.geoPoint(geoPoint);
+    private void applyGeoPoint(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+        if (facility.getAddress() == null ||
+                facility.getAddress().getLatitude() == null ||
+                facility.getAddress().getLongitude() == null) {
+            return;
         }
 
-        // Set solar panel status from additionalDetails if available
-        if (facility.getAdditionalDetails() != null) {
-            Object solarStatus = facility.getAdditionalDetails().get("solarPanelStatus");
-            if (solarStatus != null) {
-                builder.solarPanelStatus(solarStatus.toString());
-            }
+        String geoPoint = facility.getAddress().getLatitude() + "," + facility.getAddress().getLongitude();
+        builder.geoPoint(geoPoint);
+    }
+
+    private void applySolarPanelStatus(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+        if (facility.getAdditionalDetails() == null) {
+            return;
         }
 
-        // Set vendor information from additionalDetails if available
-        if (facility.getAdditionalDetails() != null) {
-            Object vendorUserName = facility.getAdditionalDetails().get("mappedVendorUserName");
-            Object vendorName = facility.getAdditionalDetails().get("mappedVendorName");
-            if (vendorUserName != null) {
-                builder.mappedVendorUserName(vendorUserName.toString());
-            }
-            if (vendorName != null) {
-                builder.mappedVendorName(vendorName.toString());
-            }
+        Object solarStatus = facility.getAdditionalDetails().get("solarPanelStatus");
+        if (solarStatus != null) {
+            builder.solarPanelStatus(solarStatus.toString());
+        }
+    }
+
+    private void applyVendorInformation(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+        if (facility.getAdditionalDetails() == null) {
+            return;
         }
 
-        // Fetch boundary hierarchy and extract codes
-        BoundaryCodes boundaryCodes = fetchBoundaryHierarchy(facility, requestInfo);
-        
-        // Set top-level fields from boundary hierarchy
+        Object vendorUserName = facility.getAdditionalDetails().get("mappedVendorUserName");
+        Object vendorName = facility.getAdditionalDetails().get("mappedVendorName");
+        if (vendorUserName != null) {
+            builder.mappedVendorUserName(vendorUserName.toString());
+        }
+        if (vendorName != null) {
+            builder.mappedVendorName(vendorName.toString());
+        }
+    }
+
+    private BoundaryInfo applyBoundaryInformation(Facility facility,
+                                                  FacilityKibanaIndex.FacilityKibanaIndexBuilder builder,
+                                                  BoundaryCodes boundaryCodes) {
         String blockCode = null;
         String districtCode = null;
         String stateCode = null;
         String countryCode = null;
+
         if (boundaryCodes != null) {
             blockCode = boundaryCodes.getBlockCode();
             districtCode = boundaryCodes.getDistrictCode();
             stateCode = boundaryCodes.getStateCode();
             countryCode = boundaryCodes.getCountryCode();
             builder.block(blockCode)
-                   .district(districtCode)
-                   .state(stateCode);
+                    .district(districtCode)
+                    .state(stateCode);
         }
-        
-        // Build boundary info from fetched hierarchy (use extracted values)
+
         BoundaryInfo boundaryInfo = buildBoundaryInfo(facility, boundaryCodes, blockCode, districtCode, stateCode, countryCode);
         builder.boundary(boundaryInfo);
-        
-        // Log boundary object status (avoid logging full objects in INFO)
+        return boundaryInfo;
+    }
+
+    private void logBoundaryInfo(Facility facility, BoundaryInfo boundaryInfo) {
         if (boundaryInfo != null) {
             log.debug("Boundary object built for facility {}: facilityCode={}, blockCode={}, districtCode={}, stateCode={}, countryCode={}",
-                    sanitizeForLog(facility.getFacilityId()), sanitizeForLog(boundaryInfo.getFacilityCode()), sanitizeForLog(boundaryInfo.getBlockCode()), 
+                    sanitizeForLog(facility.getFacilityId()), sanitizeForLog(boundaryInfo.getFacilityCode()), sanitizeForLog(boundaryInfo.getBlockCode()),
                     sanitizeForLog(boundaryInfo.getDistrictCode()), sanitizeForLog(boundaryInfo.getStateCode()), sanitizeForLog(boundaryInfo.getCountryCode()));
         } else {
             log.warn("Boundary object is null for facility {}", sanitizeForLog(facility.getFacilityId()));
         }
+    }
 
-        FacilityKibanaIndex result = builder.build();
-        // Only log full boundary object in DEBUG level
+    private void logBoundaryOnResult(Facility facility, FacilityKibanaIndex result) {
         if (result.getBoundary() != null) {
             if (log.isDebugEnabled()) {
                 log.debug("Boundary in FacilityKibanaIndex for facility {}: {}", sanitizeForLog(facility.getFacilityId()), result.getBoundary());
@@ -158,9 +188,6 @@ public class FacilityKibanaMapper {
         } else {
             log.warn("Boundary is null in FacilityKibanaIndex for facility {}", sanitizeForLog(facility.getFacilityId()));
         }
-        log.info("Successfully converted facility {} to Kibana index format", facility.getFacilityId());
-        log.trace("Exiting toKibanaIndex method");
-        return result;
     }
 
     /**

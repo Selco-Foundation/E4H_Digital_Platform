@@ -80,132 +80,189 @@ public class FacilityService {
         List<FacilityCreate> facilities = request.getFacilities();
         log.info("Processing facility create request for {} facilities", facilities.size());
 
-        // Group facility create requests by tenant ID for batch validation and processing
-        Map<String, List<FacilityCreate>> facilitiesByTenant = facilities.stream()
-                .collect(Collectors.groupingBy(FacilityCreate::getTenantId));
-        log.debug("Grouped facilities into {} tenant groups", facilitiesByTenant.size());
-
+        Map<String, List<FacilityCreate>> facilitiesByTenant = groupFacilitiesByTenant(facilities);
         List<Facility> validatedFacilities = new ArrayList<>();
 
         for (Map.Entry<String, List<FacilityCreate>> entry : facilitiesByTenant.entrySet()) {
             String tenantId = entry.getKey();
             List<FacilityCreate> facilityCreateList = entry.getValue();
             log.info("Processing {} facilities for tenant {}", facilityCreateList.size(), tenantId);
-            List<Facility> tenantFacilities = new ArrayList<>();
 
-            // Validate block boundary codes in bulk
-            Set<String> blockBoundaryCodes = facilityCreateList.stream()
-                    .map(FacilityCreate::getBlockBoundaryCode)
-                    .collect(Collectors.toSet());
-            log.debug("Validating {} unique block boundary codes for tenant {}", blockBoundaryCodes.size(), tenantId);
-            boundaryValidator.validateBoundaries(blockBoundaryCodes, tenantId, request.getRequestInfo());
-
-            List<Boundary> boundaryList = new ArrayList<>();
-            List<BoundaryRelation> boundaryRelationList = new ArrayList<>();
-
-            for (FacilityCreate facilityCreate : facilityCreateList) {
-                Facility facility = Facility.builder()
-                        .tenantId(tenantId)
-                        .facilityCategory(facilityCreate.getFacilityCategory())
-                        .facilityType(facilityCreate.getFacilityType())
-                        .facilitySubtype(facilityCreate.getFacilitySubtype())
-                        .facilityName(facilityCreate.getFacilityName())
-                        .facilityOwnership(facilityCreate.getFacilityOwnership())
-                        .facilityRegion(facilityCreate.getFacilityRegion())
-                        .address(facilityCreate.getAddress())
-                        .facilityDetails(facilityCreate.getFacilityDetails())
-                        .wfStatus(facilityCreate.getWfStatus())
-                        .additionalDetails(facilityCreate.getAdditionalDetails())
-                        .isActive(facilityCreate.getIsActive())
-                        .isOnmReady(facilityCreate.getIsOnmReady())
-                        .build();
-
-                facility.setFacilityId(idgenUtil.getIdList(
-                        request.getRequestInfo(), tenantId, "facility.id", "", 1
-                ).get(0));
-
-                String facilityBoundaryCode = facilityCreate.getBlockBoundaryCode() + "_" + facility.getFacilityId();
-
-                boundaryList.add(
-                        Boundary.builder()
-                                .tenantId(tenantId)
-                                .code(facilityBoundaryCode)
-                                .build()
-                );
-                boundaryRelationList.add(
-                        BoundaryRelation.builder()
-                                .tenantId(tenantId)
-                                .boundaryType("Facility")
-                                .code(facilityBoundaryCode)
-                                .parent(facilityCreate.getBlockBoundaryCode())
-                                .hierarchyType("SELCO")
-                                .build()
-                );
-                facility.setBoundaryCode(facilityBoundaryCode);
-
-                // Set default workflow status and activation flag
-                if (facility.getWfStatus() == null) facility.setWfStatus("CREATED");
-                if (facility.getIsActive() == null) facility.setIsActive(true);
-
-                // Generate address ID if missing
-                if (facility.getAddress().getAddressId() == null) {
-                    facility.getAddress().setAddressId(UUID.randomUUID().toString());
-                }
-
-                // Check uniqueness for HFR ID or NIN ID
-                validateHfrOrNinUniqueness(facility, tenantId);
-
-                // Check uniqueness of facility name + boundaryCode
-                validateFacilityNameBoundaryCodeUnique(facility, tenantId);
-
-                tenantFacilities.add(facility);
-            }
-
-            // Validate facilities against MDMS master data
-            log.info("Validating {} facilities against MDMS for tenant {}", tenantFacilities.size(), tenantId);
-            facilityMdmsValidator.validateAgainstMDMS(tenantFacilities, tenantId, request.getRequestInfo());
-
-            //todo: handle boundary or boundary relation creation failure??
-            log.info("Creating {} boundaries for tenant {}", boundaryList.size(), tenantId);
-            BoundaryCreateRequest boundaryCreateRequest = BoundaryCreateRequest.builder()
-                    .requestInfo(request.getRequestInfo())
-                    .boundary(boundaryList)
-                    .build();
-            boundaryService.createBoundaries(boundaryCreateRequest);
-
-            log.info("Creating {} boundary relationships for tenant {}", boundaryRelationList.size(), tenantId);
-            for (BoundaryRelation boundaryRelation: boundaryRelationList) {
-                BoundaryRelationshipRequest boundaryRelationshipRequest = BoundaryRelationshipRequest.builder()
-                        .requestInfo(request.getRequestInfo())
-                        .boundaryRelationship(boundaryRelation)
-                        .build();
-                boundaryService.createBoundaryRelationship(boundaryRelationshipRequest);
-            }
-
-            log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
-            for (Facility facility : tenantFacilities) {
-                log.trace("Processing facility: {}", facility.getFacilityId());
-                // Push to Kafka topic for persistence
-                facilityRepository.pushCreateFacility(facility);
-                
-                // If facility is ONM ready, create POC user and push to Kibana for indexing
-                if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
-                    log.info("Facility {} is ONM ready, creating POC user and pushing to Kibana", facility.getFacilityId());
-                    // Create POC user if not exists (check by phone number uniqueness)
-                    createFacilityPOCUserIfNotExists(facility, tenantId, request.getRequestInfo());
-                    
-                    // Push to Kibana for indexing
-                    FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
-                    facilityRepository.pushToKibana(kibanaIndex);
-                }
-                
-                validatedFacilities.add(facility);
-            }
+            processTenantFacilities(request, tenantId, facilityCreateList, validatedFacilities);
         }
 
         log.info("Successfully created {} facilities", validatedFacilities.size());
         log.trace("Exiting createFacility method");
         return validatedFacilities;
+    }
+
+    private Map<String, List<FacilityCreate>> groupFacilitiesByTenant(List<FacilityCreate> facilities) {
+        Map<String, List<FacilityCreate>> facilitiesByTenant = facilities.stream()
+                .collect(Collectors.groupingBy(FacilityCreate::getTenantId));
+        log.debug("Grouped facilities into {} tenant groups", facilitiesByTenant.size());
+        return facilitiesByTenant;
+    }
+
+    private void processTenantFacilities(FacilityCreateRequest request,
+                                         String tenantId,
+                                         List<FacilityCreate> facilityCreateList,
+                                         List<Facility> validatedFacilities) {
+
+        validateBlockBoundaries(request, tenantId, facilityCreateList);
+
+        List<Boundary> boundaryList = new ArrayList<>();
+        List<BoundaryRelation> boundaryRelationList = new ArrayList<>();
+        List<Facility> tenantFacilities = buildFacilitiesForTenant(request, tenantId, facilityCreateList,
+                boundaryList, boundaryRelationList);
+
+        validateFacilitiesAgainstMdms(request, tenantId, tenantFacilities);
+        createBoundaries(request, tenantId, boundaryList, boundaryRelationList);
+        pushFacilitiesForTenant(request, tenantId, tenantFacilities, validatedFacilities);
+    }
+
+    private void validateBlockBoundaries(FacilityCreateRequest request,
+                                         String tenantId,
+                                         List<FacilityCreate> facilityCreateList) {
+        Set<String> blockBoundaryCodes = facilityCreateList.stream()
+                .map(FacilityCreate::getBlockBoundaryCode)
+                .collect(Collectors.toSet());
+        log.debug("Validating {} unique block boundary codes for tenant {}", blockBoundaryCodes.size(), tenantId);
+        boundaryValidator.validateBoundaries(blockBoundaryCodes, tenantId, request.getRequestInfo());
+    }
+
+    private List<Facility> buildFacilitiesForTenant(FacilityCreateRequest request,
+                                                    String tenantId,
+                                                    List<FacilityCreate> facilityCreateList,
+                                                    List<Boundary> boundaryList,
+                                                    List<BoundaryRelation> boundaryRelationList) {
+        List<Facility> tenantFacilities = new ArrayList<>();
+
+        for (FacilityCreate facilityCreate : facilityCreateList) {
+            Facility facility = buildFacilityFromCreate(request, tenantId, facilityCreate);
+            String facilityBoundaryCode = facilityCreate.getBlockBoundaryCode() + "_" + facility.getFacilityId();
+
+            boundaryList.add(buildBoundary(tenantId, facilityBoundaryCode));
+            boundaryRelationList.add(buildBoundaryRelation(tenantId, facilityCreate, facilityBoundaryCode));
+            facility.setBoundaryCode(facilityBoundaryCode);
+
+            applyDefaultStatusAndActivation(facility);
+            ensureAddressId(facility);
+            validateHfrOrNinUniqueness(facility, tenantId);
+            validateFacilityNameBoundaryCodeUnique(facility, tenantId);
+
+            tenantFacilities.add(facility);
+        }
+
+        return tenantFacilities;
+    }
+
+    private Facility buildFacilityFromCreate(FacilityCreateRequest request,
+                                             String tenantId,
+                                             FacilityCreate facilityCreate) {
+        Facility facility = Facility.builder()
+                .tenantId(tenantId)
+                .facilityCategory(facilityCreate.getFacilityCategory())
+                .facilityType(facilityCreate.getFacilityType())
+                .facilitySubtype(facilityCreate.getFacilitySubtype())
+                .facilityName(facilityCreate.getFacilityName())
+                .facilityOwnership(facilityCreate.getFacilityOwnership())
+                .facilityRegion(facilityCreate.getFacilityRegion())
+                .address(facilityCreate.getAddress())
+                .facilityDetails(facilityCreate.getFacilityDetails())
+                .wfStatus(facilityCreate.getWfStatus())
+                .additionalDetails(facilityCreate.getAdditionalDetails())
+                .isActive(facilityCreate.getIsActive())
+                .isOnmReady(facilityCreate.getIsOnmReady())
+                .build();
+
+        facility.setFacilityId(idgenUtil.getIdList(
+                request.getRequestInfo(), tenantId, "facility.id", "", 1
+        ).get(0));
+
+        return facility;
+    }
+
+    private Boundary buildBoundary(String tenantId, String facilityBoundaryCode) {
+        return Boundary.builder()
+                .tenantId(tenantId)
+                .code(facilityBoundaryCode)
+                .build();
+    }
+
+    private BoundaryRelation buildBoundaryRelation(String tenantId,
+                                                   FacilityCreate facilityCreate,
+                                                   String facilityBoundaryCode) {
+        return BoundaryRelation.builder()
+                .tenantId(tenantId)
+                .boundaryType("Facility")
+                .code(facilityBoundaryCode)
+                .parent(facilityCreate.getBlockBoundaryCode())
+                .hierarchyType("SELCO")
+                .build();
+    }
+
+    private void applyDefaultStatusAndActivation(Facility facility) {
+        if (facility.getWfStatus() == null) {
+            facility.setWfStatus("CREATED");
+        }
+        if (facility.getIsActive() == null) {
+            facility.setIsActive(true);
+        }
+    }
+
+    private void ensureAddressId(Facility facility) {
+        if (facility.getAddress().getAddressId() == null) {
+            facility.getAddress().setAddressId(UUID.randomUUID().toString());
+        }
+    }
+
+    private void validateFacilitiesAgainstMdms(FacilityCreateRequest request,
+                                               String tenantId,
+                                               List<Facility> tenantFacilities) {
+        log.info("Validating {} facilities against MDMS for tenant {}", tenantFacilities.size(), tenantId);
+        facilityMdmsValidator.validateAgainstMDMS(tenantFacilities, tenantId, request.getRequestInfo());
+    }
+
+    private void createBoundaries(FacilityCreateRequest request,
+                                  String tenantId,
+                                  List<Boundary> boundaryList,
+                                  List<BoundaryRelation> boundaryRelationList) {
+        log.info("Creating {} boundaries for tenant {}", boundaryList.size(), tenantId);
+        BoundaryCreateRequest boundaryCreateRequest = BoundaryCreateRequest.builder()
+                .requestInfo(request.getRequestInfo())
+                .boundary(boundaryList)
+                .build();
+        boundaryService.createBoundaries(boundaryCreateRequest);
+
+        log.info("Creating {} boundary relationships for tenant {}", boundaryRelationList.size(), tenantId);
+        for (BoundaryRelation boundaryRelation : boundaryRelationList) {
+            BoundaryRelationshipRequest boundaryRelationshipRequest = BoundaryRelationshipRequest.builder()
+                    .requestInfo(request.getRequestInfo())
+                    .boundaryRelationship(boundaryRelation)
+                    .build();
+            boundaryService.createBoundaryRelationship(boundaryRelationshipRequest);
+        }
+    }
+
+    private void pushFacilitiesForTenant(FacilityCreateRequest request,
+                                         String tenantId,
+                                         List<Facility> tenantFacilities,
+                                         List<Facility> validatedFacilities) {
+        log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
+        for (Facility facility : tenantFacilities) {
+            log.trace("Processing facility: {}", facility.getFacilityId());
+            facilityRepository.pushCreateFacility(facility);
+
+            if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+                log.info("Facility {} is ONM ready, creating POC user and pushing to Kibana", facility.getFacilityId());
+                createFacilityPOCUserIfNotExists(facility, tenantId, request.getRequestInfo());
+
+                FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
+                facilityRepository.pushToKibana(kibanaIndex);
+            }
+
+            validatedFacilities.add(facility);
+        }
     }
 
     /**
@@ -308,29 +365,52 @@ public class FacilityService {
         log.trace("Entering updateFacility method");
         FacilityUpdateRequestFacilityUpdate update = request.getFacilityUpdate();
 
+        validateUpdateRequest(update);
+        log.info("Updating facility {} for tenant {}", update.getFacilityId(), update.getTenantId());
+
+        Facility existingFacility = fetchExistingFacility(update);
+        Facility facility = buildFacilityFromUpdate(update);
+
+        validateUpdateAgainstMdmsAndBoundary(request, update, facility);
+        applyDefaultUpdateStatus(facility);
+
+        log.info("Pushing facility update to Kafka");
+        facilityRepository.pushUpdateFacility(request);
+
+        if (Boolean.TRUE.equals(update.getIsOnmReady())) {
+            handleOnmReadyProcessing(request, update, existingFacility, facility);
+        }
+
+        log.info("Successfully updated facility {}", update.getFacilityId());
+        log.trace("Exiting updateFacility method");
+        return facility;
+    }
+
+    private void validateUpdateRequest(FacilityUpdateRequestFacilityUpdate update) {
         if (update.getFacilityId() == null || update.getTenantId() == null) {
             log.error("Update request missing facilityId or tenantId");
             throw new IllegalArgumentException("facilityId and tenantId must be provided for update");
         }
+    }
 
-        log.info("Updating facility {} for tenant {}", update.getFacilityId(), update.getTenantId());
-
-        // Fetch existing facility to check current state
+    private Facility fetchExistingFacility(FacilityUpdateRequestFacilityUpdate update) {
         String fetchExistingFacilitySql = "SELECT * FROM facility WHERE id = ? AND tenant_id = ?";
-        Facility existingFacility;
         try {
-            existingFacility = jdbcTemplate.queryForObject(
+            Facility existingFacility = jdbcTemplate.queryForObject(
                     fetchExistingFacilitySql,
                     facilityRowMapper.rowMapper,
                     update.getFacilityId(),
                     update.getTenantId()
             );
             log.debug("Found existing facility for update");
+            return existingFacility;
         } catch (EmptyResultDataAccessException e) {
             log.warn("Facility {} not found for tenant {}, returning null", update.getFacilityId(), update.getTenantId());
-            return null; // facility not found
+            return null;
         }
+    }
 
+    private Facility buildFacilityFromUpdate(FacilityUpdateRequestFacilityUpdate update) {
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
         facility.setTenantId(update.getTenantId());
@@ -341,8 +421,12 @@ public class FacilityService {
         facility.setAdditionalDetails(update.getAdditionalDetails());
         facility.setBoundaryCode(update.getBoundaryCode());
         facility.setFacilityDetails(update.getFacilityDetails());
+        return facility;
+    }
 
-        // Validate with MDMS and boundary APIs
+    private void validateUpdateAgainstMdmsAndBoundary(FacilityUpdateRequest request,
+                                                      FacilityUpdateRequestFacilityUpdate update,
+                                                      Facility facility) {
         log.info("Validating facility update against MDMS and boundaries");
         facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
         if (facility.getBoundaryCode() != null) {
@@ -352,75 +436,82 @@ public class FacilityService {
                     update.getTenantId(),
                     request.getRequestInfo());
         }
+    }
 
-        if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
-        if (facility.getIsActive() == null) facility.setIsActive(true);
-
-        log.info("Pushing facility update to Kafka");
-        facilityRepository.pushUpdateFacility(request);
-        
-        // If user sent isOnmReady = true, handle POC user creation and Kibana push
-        if (Boolean.TRUE.equals(update.getIsOnmReady())) {
-            log.info("Facility {} is marked as ONM ready, processing POC user and Kibana push", update.getFacilityId());
-            // Merge update request data with existing facility data to get complete facility info
-            Facility facilityForProcessing = Facility.builder()
-                    .facilityId(facility.getFacilityId())
-                    .tenantId(facility.getTenantId())
-                    .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
-                    .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
-                    .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
-                    .facilityCategory(existingFacility.getFacilityCategory())
-                    .facilityOwnership(existingFacility.getFacilityOwnership())
-                    .facilityRegion(existingFacility.getFacilityRegion())
-                    .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
-                    .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
-                    .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
-                    .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
-                    .isOnmReady(true)
-                    .build();
-
-            // Always check/create POC user when isOnmReady is true (whether transitioning or already true)
-            // This ensures POC user is created if missing, even if facility was already ONM ready
-            createFacilityPOCUserIfNotExists(facilityForProcessing, update.getTenantId(), request.getRequestInfo());
-            
-            // Check if facility already exists in Kibana, if not then push
-            boolean existsInKibana = facilityKibanaMapper.existsInKibana(
-                    update.getFacilityId(), 
-                    update.getTenantId(), 
-                    request.getRequestInfo()
-            );
-            
-            if (existsInKibana) {
-                log.info("Facility {} already exists in Kibana, skipping push", sanitizeForLog(update.getFacilityId()));
-                return facility;
-            }
-            
-            // Merge update request data with existing facility data (prioritize update values)
-            Facility facilityForKibana = Facility.builder()
-                    .facilityId(facility.getFacilityId())
-                    .tenantId(facility.getTenantId())
-                    .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
-                    .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
-                    .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
-                    .facilityCategory(existingFacility.getFacilityCategory()) // Not in update request, use existing
-                    .facilityOwnership(existingFacility.getFacilityOwnership()) // Not in update request, use existing
-                    .facilityRegion(existingFacility.getFacilityRegion()) // Not in update request, use existing
-                    .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
-                    .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
-                    .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
-                    .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
-                    .isOnmReady(true) // Set from update request
-                    .build();
-            
-            // Transform to Kibana index format and push
-            FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facilityForKibana, request.getRequestInfo());
-            facilityRepository.pushToKibana(kibanaIndex);
-            log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
+    private void applyDefaultUpdateStatus(Facility facility) {
+        if (facility.getWfStatus() == null) {
+            facility.setWfStatus("UPDATED");
         }
-        
-        log.info("Successfully updated facility {}", update.getFacilityId());
-        log.trace("Exiting updateFacility method");
-        return facility;
+        if (facility.getIsActive() == null) {
+            facility.setIsActive(true);
+        }
+    }
+
+    private void handleOnmReadyProcessing(FacilityUpdateRequest request,
+                                          FacilityUpdateRequestFacilityUpdate update,
+                                          Facility existingFacility,
+                                          Facility facility) {
+        if (existingFacility == null) {
+            log.warn("Existing facility not found; skipping ONM ready processing for facility {}", update.getFacilityId());
+            return;
+        }
+
+        log.info("Facility {} is marked as ONM ready, processing POC user and Kibana push", update.getFacilityId());
+
+        Facility facilityForProcessing = buildFacilityForProcessing(existingFacility, facility);
+        createFacilityPOCUserIfNotExists(facilityForProcessing, update.getTenantId(), request.getRequestInfo());
+
+        boolean existsInKibana = facilityKibanaMapper.existsInKibana(
+                update.getFacilityId(),
+                update.getTenantId(),
+                request.getRequestInfo()
+        );
+
+        if (existsInKibana) {
+            log.info("Facility {} already exists in Kibana, skipping push", sanitizeForLog(update.getFacilityId()));
+            return;
+        }
+
+        Facility facilityForKibana = buildFacilityForKibana(existingFacility, facility);
+        FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facilityForKibana, request.getRequestInfo());
+        facilityRepository.pushToKibana(kibanaIndex);
+        log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
+    }
+
+    private Facility buildFacilityForProcessing(Facility existingFacility, Facility facility) {
+        return Facility.builder()
+                .facilityId(facility.getFacilityId())
+                .tenantId(facility.getTenantId())
+                .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
+                .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
+                .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
+                .facilityCategory(existingFacility.getFacilityCategory())
+                .facilityOwnership(existingFacility.getFacilityOwnership())
+                .facilityRegion(existingFacility.getFacilityRegion())
+                .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
+                .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
+                .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
+                .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
+                .isOnmReady(true)
+                .build();
+    }
+
+    private Facility buildFacilityForKibana(Facility existingFacility, Facility facility) {
+        return Facility.builder()
+                .facilityId(facility.getFacilityId())
+                .tenantId(facility.getTenantId())
+                .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
+                .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
+                .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
+                .facilityCategory(existingFacility.getFacilityCategory())
+                .facilityOwnership(existingFacility.getFacilityOwnership())
+                .facilityRegion(existingFacility.getFacilityRegion())
+                .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
+                .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
+                .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
+                .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
+                .isOnmReady(true)
+                .build();
     }
 
     /**

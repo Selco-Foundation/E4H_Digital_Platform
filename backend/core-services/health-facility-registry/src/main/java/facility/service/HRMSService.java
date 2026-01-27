@@ -86,101 +86,20 @@ public class HRMSService {
     public boolean createFacilityPOCEmployee(Facility facility, RequestInfo requestInfo) {
         log.trace("Entering createFacilityPOCEmployee method");
         HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
-        
-        if (facilityDetails == null || facilityDetails.getHfrId() == null || 
-            facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null || 
-            facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
-            log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name", 
-                    sanitizeForLog(facility.getFacilityId()));
+
+        if (!isValidPocDetails(facility, facilityDetails)) {
             return false;
         }
 
         log.info("Creating POC employee for facility {} with HFR ID {}", 
                 sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
         try {
-            // Build employee object
-            Map<String, Object> user = new HashMap<>();
-            user.put("userName", facilityDetails.getHfrId()); // Use HFR ID as username
-            user.put("name", facilityDetails.getPocName());
-            user.put("mobileNumber", facilityDetails.getPocContact());
-            user.put("tenantId", facility.getTenantId());
-            user.put("type", "EMPLOYEE");
-            user.put("active", true);
-
-            // Add roles - COMPLAINANT and EMPLOYEE roles
-            List<Map<String, Object>> roles = new ArrayList<>();
-            
-            // COMPLAINANT role
-            Map<String, Object> complainantRole = new HashMap<>();
-            complainantRole.put("code", "COMPLAINANT");
-            complainantRole.put("name", "Complainant");
-            complainantRole.put("tenantId", facility.getTenantId());
-            roles.add(complainantRole);
-            
-            // EMPLOYEE role
-            Map<String, Object> employeeRole = new HashMap<>();
-            employeeRole.put("code", "EMPLOYEE");
-            employeeRole.put("name", "Employee");
-            employeeRole.put("tenantId", facility.getTenantId());
-            roles.add(employeeRole);
-            
-            user.put("roles", roles);
-
-            // Get current timestamp for dateOfAppointment
+            Map<String, Object> user = buildUser(facility, facilityDetails);
             long currentTimestamp = Instant.now().toEpochMilli();
+            Map<String, Object> employee = buildEmployee(facility, facilityDetails, user, currentTimestamp);
+            Map<String, Object> createRequest = buildCreateRequest(requestInfo, employee);
+            String uri = buildHrmsCreateUri();
 
-            // Build employee object
-            Map<String, Object> employee = new HashMap<>();
-            employee.put("code", null); // HRMS will generate employee code
-            employee.put("employeeStatus", "EMPLOYED");
-            employee.put("employeeType", "PERMANENT");
-            employee.put("dateOfAppointment", currentTimestamp);
-            employee.put("tenantId", facility.getTenantId());
-            employee.put("isActive", true);
-            employee.put("user", user);
-
-            // Add jurisdictions with facility boundary
-            if (facility.getBoundaryCode() != null && !facility.getBoundaryCode().isBlank()) {
-                List<Map<String, Object>> jurisdictions = new ArrayList<>();
-                Map<String, Object> jurisdiction = new HashMap<>();
-                jurisdiction.put("hierarchy", "ADMIN");
-                jurisdiction.put("boundary", facility.getBoundaryCode());
-                jurisdiction.put("boundaryType", "Facility");
-                jurisdiction.put("tenantId", facility.getTenantId());
-                jurisdiction.put("isActive", true);
-                jurisdictions.add(jurisdiction);
-                employee.put("jurisdictions", jurisdictions);
-            }
-
-            // Add assignments with designation and department
-            List<Map<String, Object>> assignments = new ArrayList<>();
-            Map<String, Object> assignment = new HashMap<>();
-            
-            // Add designation code if available
-            if (facilityDetails.getPocDesignation() != null && !facilityDetails.getPocDesignation().isBlank()) {
-                String designationCode = facilityDetails.getPocDesignation();
-                assignment.put("designation", designationCode);
-            }
-            assignment.put("department", configs.getHrmsDefaultDepartmentCode());
-            assignment.put("fromDate", currentTimestamp);
-            assignment.put("toDate", null);
-            assignment.put("tenantid", facility.getTenantId());
-            assignment.put("isCurrentAssignment", true);
-            assignments.add(assignment);
-            employee.put("assignments", assignments);
-
-            // Build create request
-            Map<String, Object> createRequest = new HashMap<>();
-            createRequest.put("RequestInfo", requestInfo);
-            createRequest.put("Employees", Arrays.asList(employee));
-
-            // Construct the URI
-            String uri = UriComponentsBuilder
-                    .fromUriString(configs.getHrmsHost())
-                    .path(configs.getHrmsCreateEndpoint())
-                    .toUriString();
-
-            // Call HRMS create API
             Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchResult(
                     new StringBuilder(uri), createRequest
             );
@@ -199,6 +118,106 @@ public class HRMSService {
                     sanitizeForLog(facility.getFacilityId()), e.getMessage(), e);
             return false;
         }
+    }
+
+    private boolean isValidPocDetails(Facility facility, HealthFacilityDetails facilityDetails) {
+        if (facilityDetails == null || facilityDetails.getHfrId() == null ||
+                facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null ||
+                facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
+            log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name",
+                    sanitizeForLog(facility.getFacilityId()));
+            return false;
+        }
+        return true;
+    }
+
+    private Map<String, Object> buildUser(Facility facility, HealthFacilityDetails facilityDetails) {
+        Map<String, Object> user = new HashMap<>();
+        user.put("userName", facilityDetails.getHfrId());
+        user.put("name", facilityDetails.getPocName());
+        user.put("mobileNumber", facilityDetails.getPocContact());
+        user.put("tenantId", facility.getTenantId());
+        user.put("type", "EMPLOYEE");
+        user.put("active", true);
+
+        List<Map<String, Object>> roles = new ArrayList<>();
+        roles.add(buildRole("COMPLAINANT", "Complainant", facility.getTenantId()));
+        roles.add(buildRole("EMPLOYEE", "Employee", facility.getTenantId()));
+        user.put("roles", roles);
+
+        return user;
+    }
+
+    private Map<String, Object> buildRole(String code, String name, String tenantId) {
+        Map<String, Object> role = new HashMap<>();
+        role.put("code", code);
+        role.put("name", name);
+        role.put("tenantId", tenantId);
+        return role;
+    }
+
+    private Map<String, Object> buildEmployee(Facility facility, HealthFacilityDetails facilityDetails,
+                                              Map<String, Object> user, long currentTimestamp) {
+        Map<String, Object> employee = new HashMap<>();
+        employee.put("code", null);
+        employee.put("employeeStatus", "EMPLOYED");
+        employee.put("employeeType", "PERMANENT");
+        employee.put("dateOfAppointment", currentTimestamp);
+        employee.put("tenantId", facility.getTenantId());
+        employee.put("isActive", true);
+        employee.put("user", user);
+
+        addJurisdictionsIfPresent(facility, employee);
+        addAssignments(facility, facilityDetails, employee, currentTimestamp);
+
+        return employee;
+    }
+
+    private void addJurisdictionsIfPresent(Facility facility, Map<String, Object> employee) {
+        if (facility.getBoundaryCode() == null || facility.getBoundaryCode().isBlank()) {
+            return;
+        }
+
+        List<Map<String, Object>> jurisdictions = new ArrayList<>();
+        Map<String, Object> jurisdiction = new HashMap<>();
+        jurisdiction.put("hierarchy", "ADMIN");
+        jurisdiction.put("boundary", facility.getBoundaryCode());
+        jurisdiction.put("boundaryType", "Facility");
+        jurisdiction.put("tenantId", facility.getTenantId());
+        jurisdiction.put("isActive", true);
+        jurisdictions.add(jurisdiction);
+        employee.put("jurisdictions", jurisdictions);
+    }
+
+    private void addAssignments(Facility facility, HealthFacilityDetails facilityDetails,
+                                Map<String, Object> employee, long currentTimestamp) {
+        List<Map<String, Object>> assignments = new ArrayList<>();
+        Map<String, Object> assignment = new HashMap<>();
+
+        if (facilityDetails.getPocDesignation() != null && !facilityDetails.getPocDesignation().isBlank()) {
+            assignment.put("designation", facilityDetails.getPocDesignation());
+        }
+        assignment.put("department", configs.getHrmsDefaultDepartmentCode());
+        assignment.put("fromDate", currentTimestamp);
+        assignment.put("toDate", null);
+        assignment.put("tenantid", facility.getTenantId());
+        assignment.put("isCurrentAssignment", true);
+        assignments.add(assignment);
+        employee.put("assignments", assignments);
+    }
+
+    private Map<String, Object> buildCreateRequest(RequestInfo requestInfo, Map<String, Object> employee) {
+        Map<String, Object> createRequest = new HashMap<>();
+        createRequest.put("RequestInfo", requestInfo);
+        createRequest.put("Employees", Arrays.asList(employee));
+        return createRequest;
+    }
+
+    private String buildHrmsCreateUri() {
+        return UriComponentsBuilder
+                .fromUriString(configs.getHrmsHost())
+                .path(configs.getHrmsCreateEndpoint())
+                .toUriString();
     }
 
     /**
