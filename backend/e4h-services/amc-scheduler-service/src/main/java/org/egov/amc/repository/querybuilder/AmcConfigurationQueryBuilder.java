@@ -74,6 +74,64 @@ public class AmcConfigurationQueryBuilder {
         }
     }
 
+    private static void appendInClause(Collection<String> values,
+                                       String columnName,
+                                       List<Object> preparedStmtList,
+                                       StringBuilder queryBuilder) {
+        if (CollectionUtils.isEmpty(values)) {
+            return;
+        }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" ")
+                .append(columnName)
+                .append(" IN (")
+                .append(createQuery(values))
+                .append(")");
+        preparedStmtList.addAll(values);
+    }
+
+    private static void appendDateCondition(Long value,
+                                            String columnName,
+                                            String operator,
+                                            List<Object> preparedStmtList,
+                                            StringBuilder queryBuilder) {
+        if (value == null || value == 0) {
+            return;
+        }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder
+                .append(" ")
+                .append(columnName)
+                .append(" ")
+                .append(operator)
+                .append(" ? ");
+        preparedStmtList.add(value);
+    }
+
+    private static void appendStatusCondition(Collection<String> statuses,
+                                              List<Object> preparedStmtList,
+                                              StringBuilder queryBuilder) {
+        if (CollectionUtils.isEmpty(statuses)) {
+            return;
+        }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" ac.status IN (");
+        String placeholders = statuses.stream().map(ws -> "?").collect(Collectors.joining(", "));
+        queryBuilder.append(placeholders).append(") ");
+        preparedStmtList.addAll(statuses);
+    }
+
+    private static void appendLastChangedCondition(Long lastChangedSince,
+                                                   List<Object> preparedStmtList,
+                                                   StringBuilder queryBuilder) {
+        if (lastChangedSince == null || lastChangedSince == 0) {
+            return;
+        }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" ( ac.last_modified_time >= ? )");
+        preparedStmtList.add(lastChangedSince);
+    }
+
     private static void addClause(String tenantId, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(tenantId)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
@@ -129,63 +187,28 @@ public class AmcConfigurationQueryBuilder {
     }
 
     private void extracted(Long lastChangedSince, List<Object> preparedStmtList, AmcConfigurationSearchCriteria criteria, StringBuilder queryBuilder) {
+        appendInClause(criteria.getIds(), "ac.id", preparedStmtList, queryBuilder);
+        appendInClause(criteria.getProjectIds(), "ac.project_id", preparedStmtList, queryBuilder);
+        appendInClause(criteria.getFacilityIds(), "ac.facility_id", preparedStmtList, queryBuilder);
+        appendInClause(criteria.getVendorIds(), "ac.vendor_id", preparedStmtList, queryBuilder);
 
-        if (!CollectionUtils.isEmpty(criteria.getIds())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ac.id IN (").append(createQuery(criteria.getIds())).append(")");
-            preparedStmtList.addAll(criteria.getIds());
-        }
+        appendStatusCondition(criteria.getStatuses(), preparedStmtList, queryBuilder);
 
-        if (!CollectionUtils.isEmpty(criteria.getProjectIds())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ac.project_id IN (").append(createQuery(criteria.getProjectIds())).append(")");
-            preparedStmtList.addAll(criteria.getProjectIds());
-        }
+        appendDateCondition(criteria.getConfigurationStartDate(),
+                "ac.configuration_start_date",
+                ">=",
+                preparedStmtList,
+                queryBuilder);
 
-        if (!CollectionUtils.isEmpty(criteria.getFacilityIds())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ac.facility_id IN (").append(createQuery(criteria.getFacilityIds())).append(")");
-            preparedStmtList.addAll(criteria.getFacilityIds());
-        }
+        appendDateCondition(criteria.getConfigurationEndDate(),
+                "ac.configuration_end_date",
+                "<=",
+                preparedStmtList,
+                queryBuilder);
 
-        if (!CollectionUtils.isEmpty(criteria.getVendorIds())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ac.vendor_id IN (").append(createQuery(criteria.getVendorIds())).append(")");
-            preparedStmtList.addAll(criteria.getVendorIds());
-        }
+        appendInClause(criteria.getAssignedUsers(), "aca.assigned_user", preparedStmtList, queryBuilder);
 
-        // Check if workflowStatuses filter is provided
-        if (!CollectionUtils.isEmpty(criteria.getStatuses())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ac.status IN (");
-            String placeholders = criteria.getStatuses().stream().map(ws -> "?").collect(Collectors.joining(", "));
-            queryBuilder.append(placeholders).append(") ");
-            preparedStmtList.addAll(criteria.getStatuses());
-        }
-
-        if (criteria.getConfigurationStartDate() != null && criteria.getConfigurationStartDate() != 0) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ac.configuration_start_date >= ? ");
-            preparedStmtList.add(criteria.getConfigurationStartDate());
-        }
-
-        if (criteria.getConfigurationEndDate() != null && criteria.getConfigurationEndDate() != 0) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ac.configuration_end_date <= ? ");
-            preparedStmtList.add(criteria.getConfigurationEndDate());
-        }
-
-        if (!CollectionUtils.isEmpty(criteria.getAssignedUsers())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" aca.assigned_user IN (").append(createQuery(criteria.getAssignedUsers())).append(")");
-            preparedStmtList.addAll(criteria.getAssignedUsers());
-        }
-
-        if (lastChangedSince != null && lastChangedSince != 0) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ( ac.last_modified_time >= ? )");
-            preparedStmtList.add(lastChangedSince);
-        }
+        appendLastChangedCondition(lastChangedSince, preparedStmtList, queryBuilder);
     }
 
 //    private void addIsDeletedCondition(List<Object> preparedStmtList, StringBuilder queryBuilder, Boolean includeDeleted) {
@@ -224,7 +247,7 @@ public class AmcConfigurationQueryBuilder {
         return getAmcConfigurationSearchQuery(criteria, urlParams, preparedStatement);
     }
 
-    private String createQuery(Collection<String> ids) {
+    private static String createQuery(Collection<String> ids) {
         StringBuilder builder = new StringBuilder();
         int length = ids.size();
         for (int i = 0; i < length; i++) {

@@ -154,72 +154,88 @@ public class AmcConfigurationService {
          */
         AmcConfiguration amcConfigurationFromDB = findAmcConfigurationById(amcConfigurationId, amcConfigurationsFromDB);
 
-        if (amcConfigurationFromDB != null) {
-            /*
-             * Merge additional details of the amcConfiguration from the request and amcConfiguration from DB
-             */
-            amcConfigurationServiceUtil.mergeAdditionalDetails(amcConfiguration, amcConfigurationFromDB);
-
-            handleUpdateamcConfiguration(request, amcConfiguration, amcConfigurationFromDB);
+        if (amcConfigurationFromDB == null) {
+            return;
         }
+
+        /*
+         * Merge additional details of the amcConfiguration from the request and amcConfiguration from DB
+         */
+        amcConfigurationServiceUtil.mergeAdditionalDetails(amcConfiguration, amcConfigurationFromDB);
+
+        handleUpdateamcConfiguration(request, amcConfiguration, amcConfigurationFromDB);
     }
 
     private void handleUpdateamcConfiguration(AmcConfigurationRequest request, AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB) {
-        /*
-         * Save original values of start date, end date, and additional details
-         */
-        Long originalStartDate = amcConfigurationFromDB.getConfigurationStartDate();
-        Long originalEndDate = amcConfigurationFromDB.getConfigurationEndDate();
-        List<Map<String, Object>> originalAssetTypes = amcConfigurationFromDB.getAssetTypes();
-        int originalDurationMonths = amcConfigurationFromDB.getDurationMonths();
-        int originalVisitFrequencyMonths = amcConfigurationFromDB.getVisitFrequencyMonths();
-        String originalVendorId = amcConfigurationFromDB.getVendorId();
-        AuditDetails originalAuditDetails = amcConfigurationFromDB.getAuditDetails();
+        OriginalAmcSnapshot originalSnapshot = captureOriginalSnapshot(amcConfigurationFromDB);
 
+        applyRequestedChanges(amcConfiguration, amcConfigurationFromDB);
 
-        /*
-         * Update the amcConfiguration with new start date, end date, and additional details
-         */
-        amcConfigurationFromDB.setConfigurationStartDate(amcConfiguration.getConfigurationStartDate());
-        amcConfigurationFromDB.setConfigurationEndDate(amcConfiguration.getConfigurationEndDate());
-        amcConfigurationFromDB.setAssetTypes(amcConfiguration.getAssetTypes());
-        amcConfigurationFromDB.setDurationMonths(amcConfiguration.getDurationMonths());
-        amcConfigurationFromDB.setVisitFrequencyMonths(amcConfiguration.getVisitFrequencyMonths());
-        amcConfigurationFromDB.setVendorId(amcConfigurationFromDB.getId());
-        amcConfigurationFromDB.setAuditDetails(amcConfiguration.getAuditDetails());
+        validateAllowedUpdate(amcConfigurationFromDB, amcConfiguration);
 
-        /*
-         * Ensure that no other properties are being updated besides the start and end dates
-         */
-        if (!isValidCascadingUpdate(amcConfigurationFromDB, amcConfiguration)) {
+        restoreOriginalSnapshot(amcConfigurationFromDB, originalSnapshot);
+
+        amcConfigurationEnrichment.enrichAmcConfigurationRequestOnUpdate(
+                amcConfiguration,
+                amcConfigurationFromDB,
+                request.getRequestInfo()
+        );
+
+        log.debug("Pushing AMC configuration update to kafka for configurationId: {}", amcConfiguration.getId());
+        producer.push(amcServiceConfiguration.getUpdateAmcConfigurationTopic(), request);
+        log.info("AMC configuration update pushed to kafka for configurationId: {}", amcConfiguration.getId());
+    }
+
+    private void validateAllowedUpdate(AmcConfiguration updatedFromDB, AmcConfiguration requestConfiguration) {
+        if (!isValidCascadingUpdate(updatedFromDB, requestConfiguration)) {
             throw new CustomException(
                     "AMC_UPDATE_ERROR",
                     "Can only update amc configs dates, asset types, vendor and additional details"
             );
         }
+    }
 
-        /*
-         * Restore original values of start date, end date, and additional details
-         */
-        amcConfigurationFromDB.setConfigurationStartDate(originalStartDate);
-        amcConfigurationFromDB.setConfigurationEndDate(originalEndDate);
-        amcConfigurationFromDB.setAssetTypes(originalAssetTypes);
-        amcConfigurationFromDB.setDurationMonths(originalDurationMonths);
-        amcConfigurationFromDB.setVisitFrequencyMonths(originalVisitFrequencyMonths);
-        amcConfigurationFromDB.setVendorId(originalVendorId);
-        amcConfigurationFromDB.setAuditDetails(originalAuditDetails);
+    private OriginalAmcSnapshot captureOriginalSnapshot(AmcConfiguration amcConfigurationFromDB) {
+        return new OriginalAmcSnapshot(
+                amcConfigurationFromDB.getConfigurationStartDate(),
+                amcConfigurationFromDB.getConfigurationEndDate(),
+                amcConfigurationFromDB.getAssetTypes(),
+                amcConfigurationFromDB.getDurationMonths(),
+                amcConfigurationFromDB.getVisitFrequencyMonths(),
+                amcConfigurationFromDB.getVendorId(),
+                amcConfigurationFromDB.getAuditDetails()
+        );
+    }
 
-        /*
-         * Update lastModifiedTime and lastModifiedBy for the amcConfiguration
-         */
-        amcConfigurationEnrichment.enrichAmcConfigurationRequestOnUpdate(amcConfiguration, amcConfigurationFromDB, request.getRequestInfo());
+    private void applyRequestedChanges(AmcConfiguration requestConfiguration, AmcConfiguration amcConfigurationFromDB) {
+        amcConfigurationFromDB.setConfigurationStartDate(requestConfiguration.getConfigurationStartDate());
+        amcConfigurationFromDB.setConfigurationEndDate(requestConfiguration.getConfigurationEndDate());
+        amcConfigurationFromDB.setAssetTypes(requestConfiguration.getAssetTypes());
+        amcConfigurationFromDB.setDurationMonths(requestConfiguration.getDurationMonths());
+        amcConfigurationFromDB.setVisitFrequencyMonths(requestConfiguration.getVisitFrequencyMonths());
+        amcConfigurationFromDB.setVendorId(amcConfigurationFromDB.getId());
+        amcConfigurationFromDB.setAuditDetails(requestConfiguration.getAuditDetails());
+    }
 
-        /*
-         * Check and enrich cascading amcConfiguration dates and push the update to the message broker
-         */
-        log.debug("Pushing AMC configuration update to kafka for configurationId: {}", amcConfiguration.getId());
-        producer.push(amcServiceConfiguration.getUpdateAmcConfigurationTopic(), request);
-        log.info("AMC configuration update pushed to kafka for configurationId: {}", amcConfiguration.getId());
+    private void restoreOriginalSnapshot(AmcConfiguration amcConfigurationFromDB, OriginalAmcSnapshot snapshot) {
+        amcConfigurationFromDB.setConfigurationStartDate(snapshot.originalStartDate());
+        amcConfigurationFromDB.setConfigurationEndDate(snapshot.originalEndDate());
+        amcConfigurationFromDB.setAssetTypes(snapshot.originalAssetTypes());
+        amcConfigurationFromDB.setDurationMonths(snapshot.originalDurationMonths());
+        amcConfigurationFromDB.setVisitFrequencyMonths(snapshot.originalVisitFrequencyMonths());
+        amcConfigurationFromDB.setVendorId(snapshot.originalVendorId());
+        amcConfigurationFromDB.setAuditDetails(snapshot.originalAuditDetails());
+    }
+
+    private record OriginalAmcSnapshot(
+            Long originalStartDate,
+            Long originalEndDate,
+            List<Map<String, Object>> originalAssetTypes,
+            int originalDurationMonths,
+            int originalVisitFrequencyMonths,
+            String originalVendorId,
+            AuditDetails originalAuditDetails
+    ) {
     }
 
     private boolean isValidCascadingUpdate(AmcConfiguration amcConfigurationFromDB, AmcConfiguration amcConfiguration) {

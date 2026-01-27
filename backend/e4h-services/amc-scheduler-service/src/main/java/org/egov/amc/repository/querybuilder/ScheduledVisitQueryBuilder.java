@@ -74,6 +74,77 @@ public class ScheduledVisitQueryBuilder {
         }
     }
 
+    private static void appendInClause(Collection<String> values,
+                                       String columnName,
+                                       List<Object> preparedStmtList,
+                                       StringBuilder queryBuilder) {
+        if (CollectionUtils.isEmpty(values)) {
+            return;
+        }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" ")
+                .append(columnName)
+                .append(" IN (")
+                .append(createQuery(values))
+                .append(")");
+        preparedStmtList.addAll(values);
+    }
+
+    private static void appendDateCondition(Long value,
+                                            String columnName,
+                                            String operator,
+                                            List<Object> preparedStmtList,
+                                            StringBuilder queryBuilder) {
+        if (value == null || value == 0) {
+            return;
+        }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder
+                .append(" ")
+                .append(columnName)
+                .append(" ")
+                .append(operator)
+                .append(" ? ");
+        preparedStmtList.add(value);
+    }
+
+    private static void appendStatusCondition(Collection<String> statuses,
+                                              List<Object> preparedStmtList,
+                                              StringBuilder queryBuilder) {
+        if (CollectionUtils.isEmpty(statuses)) {
+            return;
+        }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" sv.status IN (");
+        String placeholders = statuses.stream().map(ws -> "?").collect(Collectors.joining(", "));
+        queryBuilder.append(placeholders).append(") ");
+        preparedStmtList.addAll(statuses);
+    }
+
+    private static void appendAssignedUsersCondition(Collection<String> assignedUsers,
+                                                     List<Object> preparedStmtList,
+                                                     StringBuilder queryBuilder) {
+        if (CollectionUtils.isEmpty(assignedUsers)) {
+            return;
+        }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" sva.assigned_user IN (")
+                .append(createQuery(assignedUsers))
+                .append(")");
+        preparedStmtList.addAll(assignedUsers);
+    }
+
+    private static void appendLastChangedCondition(Long lastChangedSince,
+                                                   List<Object> preparedStmtList,
+                                                   StringBuilder queryBuilder) {
+        if (lastChangedSince == null || lastChangedSince == 0) {
+            return;
+        }
+        addClauseIfRequired(preparedStmtList, queryBuilder);
+        queryBuilder.append(" ( aa.last_modified_time >= ? )");
+        preparedStmtList.add(lastChangedSince);
+    }
+
     private static void addClause(String tenantId, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(tenantId)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
@@ -125,84 +196,47 @@ public class ScheduledVisitQueryBuilder {
     }
 
     private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ScheduledVisitSearchCriteria criteria, StringBuilder queryBuilder) {
+        appendInClause(criteria.getIds(), "sv.id", preparedStmtList, queryBuilder);
+        appendInClause(criteria.getAmcConfigurationIds(), "sv.amc_configuration_id", preparedStmtList, queryBuilder);
+        appendInClause(criteria.getFacilityIds(), "sv.facility_id", preparedStmtList, queryBuilder);
+        appendInClause(criteria.getProjectsIds(), "sv.project_id", preparedStmtList, queryBuilder);
 
-        if (!CollectionUtils.isEmpty(criteria.getIds())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sv.id IN (").append(createQuery(criteria.getIds())).append(")");
-            preparedStmtList.addAll(criteria.getIds());
-        }
-
-        if (!CollectionUtils.isEmpty(criteria.getAmcConfigurationIds())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sv.amc_configuration_id IN (").append(createQuery(criteria.getAmcConfigurationIds())).append(")");
-            preparedStmtList.addAll(criteria.getAmcConfigurationIds());
-        }
-
-        if (!CollectionUtils.isEmpty(criteria.getFacilityIds())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sv.facility_id IN (").append(createQuery(criteria.getFacilityIds())).append(")");
-            preparedStmtList.addAll(criteria.getFacilityIds());
-        }
-
-        if (!CollectionUtils.isEmpty(criteria.getProjectsIds())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sv.project_id IN (").append(createQuery(criteria.getProjectsIds())).append(")");
-            preparedStmtList.addAll(criteria.getProjectsIds());
-        }
-
-        // Check if workflowStatuses filter is provided
-        if (!CollectionUtils.isEmpty(criteria.getStatuses())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sv.status IN (");
-            String placeholders = criteria.getStatuses().stream().map(ws -> "?").collect(Collectors.joining(", "));
-            queryBuilder.append(placeholders).append(") ");
-            preparedStmtList.addAll(criteria.getStatuses());
-        }
+        appendStatusCondition(criteria.getStatuses(), preparedStmtList, queryBuilder);
 
         if (!CollectionUtils.isEmpty(criteria.getVisitNumbers())) {
             List<String> stringList = criteria.getVisitNumbers().stream()
                     .map(String::valueOf)
                     .toList();
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sv.visit_number IN (").append(createQuery(stringList)).append(")");
-            preparedStmtList.addAll(criteria.getVisitNumbers());
+            appendInClause(stringList, "sv.visit_number", preparedStmtList, queryBuilder);
         }
 
-        if (criteria.getScheduledDateFrom() != null && criteria.getScheduledDateFrom() != 0) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sv.scheduled_date >= ? ");
-            preparedStmtList.add(criteria.getScheduledDateFrom());
-        }
+        appendDateCondition(criteria.getScheduledDateFrom(),
+                "sv.scheduled_date",
+                ">=",
+                preparedStmtList,
+                queryBuilder);
 
-        if (criteria.getScheduledDateTo() != null && criteria.getScheduledDateTo() != 0) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sv.scheduled_date <= ? ");
-            preparedStmtList.add(criteria.getScheduledDateTo());
-        }
+        appendDateCondition(criteria.getScheduledDateTo(),
+                "sv.scheduled_date",
+                "<=",
+                preparedStmtList,
+                queryBuilder);
 
-        if (criteria.getActualDateFrom() != null && criteria.getActualDateFrom() != 0) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sv.actual_visit_date >= ? ");
-            preparedStmtList.add(criteria.getActualDateFrom());
-        }
+        appendDateCondition(criteria.getActualDateFrom(),
+                "sv.actual_visit_date",
+                ">=",
+                preparedStmtList,
+                queryBuilder);
 
-        if (criteria.getActualDateTo() != null && criteria.getActualDateTo() != 0) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sv.actual_visit_date <= ? ");
-            preparedStmtList.add(criteria.getActualDateTo());
-        }
+        appendDateCondition(criteria.getActualDateTo(),
+                "sv.actual_visit_date",
+                "<=",
+                preparedStmtList,
+                queryBuilder);
 
-        if (!CollectionUtils.isEmpty(criteria.getAssignedUsers())) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" sva.assigned_user IN (").append(createQuery(criteria.getAssignedUsers())).append(")");
-            preparedStmtList.addAll(criteria.getAssignedUsers());
-        }
+        appendAssignedUsersCondition(criteria.getAssignedUsers(), preparedStmtList, queryBuilder);
 
-        if (lastChangedSince != null && lastChangedSince != 0) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ( aa.last_modified_time >= ? )");
-            preparedStmtList.add(lastChangedSince);
-        }
+        appendLastChangedCondition(lastChangedSince, preparedStmtList, queryBuilder);
     }
 
     private String addPaginationWrapper(String query, List<Object> preparedStmtList, Integer limitParam, Integer offsetParam) {
@@ -235,7 +269,7 @@ public class ScheduledVisitQueryBuilder {
         return getScheduledVisitSearchQuery(criteria, urlParams, preparedStatement);
     }
 
-    private String createQuery(Collection<String> ids) {
+    private static String createQuery(Collection<String> ids) {
         StringBuilder builder = new StringBuilder();
         int length = ids.size();
         for (int i = 0; i < length; i++) {

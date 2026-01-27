@@ -57,16 +57,12 @@ public class AmcConfigurationValidator {
         log.trace("Entering validateCreateAmcConfigurationRequest method");
         log.info("Validating create AMC configuration request, configuration count: {}", 
                 request.getAmcConfigurations() != null ? request.getAmcConfigurations().size() : 0);
-        Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
         //Verify if AmcConfiguration request and mandatory fields are present
         validateAmcConfigurationRequest(request);
-
-        if (!errorMap.isEmpty())
-            throw new CustomException(errorMap);
         log.debug("Create AMC configuration request validation completed successfully");
     }
 
@@ -81,82 +77,114 @@ public class AmcConfigurationValidator {
 
         log.debug("Validating {} AMC configuration(s)", request.getAmcConfigurations().size());
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
-            if (amcConfiguration == null) {
-                log.error("AmcConfiguration is mandatory in AmcConfiguration");
-                throw new CustomException("AmcConfiguration", "AmcConfiguration is mandatory");
-            }
-
-            if (amcConfiguration.getProjectId() == null || amcConfiguration.getProjectId().isEmpty()) {
-                log.error("Project ID is mandatory in AmcConfiguration");
-                throw new CustomException("AmcConfiguration", "Project ID is mandatory");
-            }
-            // Get existing amcConfiguration with projectID from amcConfiguration service
-            log.debug("Validating project ID: {} for tenantId: {}", amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
-            Project existingProject = getProjectById(request.getRequestInfo(), amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
-            if (existingProject == null) {
-                log.error("Project ID {} does not exist for tenantId: {}", amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
-                throw new CustomException("AmcConfiguration", "Project ID do not exist");
-            }
-
-            if (amcConfiguration.getVendorId() == null || amcConfiguration.getVendorId().isEmpty()) {
-                log.error("Vendor ID is mandatory in Amc Configuration");
-                throw new CustomException("AMC Configuration", "Vendor ID is mandatory");
-            }
-
-            if (amcConfiguration.getFacilityId() == null || amcConfiguration.getFacilityId().isEmpty()) {
-                log.error("Facility ID is mandatory in Amc Configuration");
-                throw new CustomException("AMC Configuration", "Facility ID is mandatory");
-            }
-            // Get existing facility with facilityID from facility service
-            log.debug("Validating facility ID: {}", amcConfiguration.getFacilityId());
-            Facility existingFacility = getFacilityById(amcConfiguration.getFacilityId());
-            if (existingFacility == null) {
-                log.error("Facility ID {} does not exist", amcConfiguration.getFacilityId());
-                throw new CustomException("AMC Configuration", "Facility ID do not exist");
-            }
-
-            if (amcConfiguration.getDurationMonths() == null || amcConfiguration.getDurationMonths() <= 0) {
-                log.error("Duration is mandatory in Amc Configuration");
-                throw new CustomException("AMC Configuration", "Duration should be greater than 0");
-            }
-
-            if (amcConfiguration.getVisitFrequencyMonths() == null || amcConfiguration.getVisitFrequencyMonths() <= 0) {
-                log.error("Visit Frequency is mandatory in Amc Configuration");
-                throw new CustomException("AMC Configuration", "Visit Frequency should be greater than 0");
-            }
-
-            if (amcConfiguration.getConfigurationStartDate() == null || amcConfiguration.getConfigurationStartDate() == 0) {
-                log.error("Start Date is mandatory in Amc Configuration");
-                throw new CustomException("AMC Configuration", "Visit Frequency should be greater than 0");
-            }
-
-            // Check if amcConfiguration dates are within amcConfiguration dates
-//            isAmcConfigurationWithinProject(existingProject, amcConfiguration, errorMap);
-
-            if (StringUtils.isBlank(amcConfiguration.getTenantId())) {
-                log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
-                errorMap.put("TENANT_ID", "Tenant ID is mandatory");
-            }
-            if (amcConfiguration.getAssetTypes() == null || amcConfiguration.getAssetTypes().isEmpty()) {
-                log.error(ASSET_TYPES_IS_MANDATORY_IN_AMC_CONFIG_REQUEST_BODY);
-                errorMap.put("AMC Configuration", "ASSET_TYPES_IS_MANDATORY_IN_AMC_CONFIG_REQUEST_BODY");
-            }
-            if ((amcConfiguration.getConfigurationStartDate() != null && amcConfiguration.getConfigurationEndDate() != null && amcConfiguration.getConfigurationEndDate() != 0) && (amcConfiguration.getConfigurationStartDate().compareTo(amcConfiguration.getConfigurationEndDate()) > 0)) {
-                log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
-                errorMap.put("INVALID_DATE_ERROR", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
-            }
-            if (amcConfiguration.getConfigurationStartDate() != null && amcConfiguration.getConfigurationEndDate() != null && amcConfiguration.getConfigurationEndDate() != 0
-                    && amcConfiguration.getConfigurationEndDate().compareTo(Instant.ofEpochMilli(amcConfiguration.getConfigurationStartDate()).plus(Duration.ofDays(1)).toEpochMilli()) < 0) {
-                log.error("Start date and end date difference should at least be 1 day.");
-                errorMap.put("INVALID_DATE", "Start date and end date difference should at least be 1 day.");
-            }
-
-            // Validate assignment users data
-            validateAmcConfigurationAssignmentRequest(amcConfiguration.getAssignments(), errorMap) ;
+            validateSingleAmcConfiguration(request, amcConfiguration, errorMap);
         }
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
+    }
+
+    private void validateSingleAmcConfiguration(AmcConfigurationRequest request,
+                                                AmcConfiguration amcConfiguration,
+                                                Map<String, String> errorMap) {
+        if (amcConfiguration == null) {
+            log.error("AmcConfiguration is mandatory in AmcConfiguration");
+            throw new CustomException("AmcConfiguration", "AmcConfiguration is mandatory");
+        }
+
+        validateProjectDetails(request, amcConfiguration);
+        validateVendorAndFacility(amcConfiguration);
+        validateDurationAndFrequency(amcConfiguration);
+        validateConfigurationDates(amcConfiguration, errorMap);
+        validateTenantAndAssets(amcConfiguration, errorMap);
+
+        // Validate assignment users data
+        validateAmcConfigurationAssignmentRequest(amcConfiguration.getAssignments(), errorMap);
+    }
+
+    private void validateProjectDetails(AmcConfigurationRequest request,
+                                        AmcConfiguration amcConfiguration) {
+        if (amcConfiguration.getProjectId() == null || amcConfiguration.getProjectId().isEmpty()) {
+            log.error("Project ID is mandatory in AmcConfiguration");
+            throw new CustomException("AmcConfiguration", "Project ID is mandatory");
+        }
+
+        log.debug("Validating project ID: {} for tenantId: {}", amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
+        Project existingProject = getProjectById(request.getRequestInfo(), amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
+        if (existingProject == null) {
+            log.error("Project ID {} does not exist for tenantId: {}", amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
+            throw new CustomException("AmcConfiguration", "Project ID do not exist");
+        }
+    }
+
+    private void validateVendorAndFacility(AmcConfiguration amcConfiguration) {
+        if (amcConfiguration.getVendorId() == null || amcConfiguration.getVendorId().isEmpty()) {
+            log.error("Vendor ID is mandatory in Amc Configuration");
+            throw new CustomException("AMC Configuration", "Vendor ID is mandatory");
+        }
+
+        if (amcConfiguration.getFacilityId() == null || amcConfiguration.getFacilityId().isEmpty()) {
+            log.error("Facility ID is mandatory in Amc Configuration");
+            throw new CustomException("AMC Configuration", "Facility ID is mandatory");
+        }
+
+        log.debug("Validating facility ID: {}", amcConfiguration.getFacilityId());
+        Facility existingFacility = getFacilityById(amcConfiguration.getFacilityId());
+        if (existingFacility == null) {
+            log.error("Facility ID {} does not exist", amcConfiguration.getFacilityId());
+            throw new CustomException("AMC Configuration", "Facility ID do not exist");
+        }
+    }
+
+    private void validateDurationAndFrequency(AmcConfiguration amcConfiguration) {
+        if (amcConfiguration.getDurationMonths() == null || amcConfiguration.getDurationMonths() <= 0) {
+            log.error("Duration is mandatory in Amc Configuration");
+            throw new CustomException("AMC Configuration", "Duration should be greater than 0");
+        }
+
+        if (amcConfiguration.getVisitFrequencyMonths() == null || amcConfiguration.getVisitFrequencyMonths() <= 0) {
+            log.error("Visit Frequency is mandatory in Amc Configuration");
+            throw new CustomException("AMC Configuration", "Visit Frequency should be greater than 0");
+        }
+
+        if (amcConfiguration.getConfigurationStartDate() == null || amcConfiguration.getConfigurationStartDate() == 0) {
+            log.error("Start Date is mandatory in Amc Configuration");
+            throw new CustomException("AMC Configuration", "Visit Frequency should be greater than 0");
+        }
+    }
+
+    private void validateConfigurationDates(AmcConfiguration amcConfiguration,
+                                            Map<String, String> errorMap) {
+        if (amcConfiguration.getConfigurationStartDate() != null
+                && amcConfiguration.getConfigurationEndDate() != null
+                && amcConfiguration.getConfigurationEndDate() != 0
+                && (amcConfiguration.getConfigurationStartDate().compareTo(amcConfiguration.getConfigurationEndDate()) > 0)) {
+            log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+            errorMap.put("INVALID_DATE_ERROR", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+        }
+
+        if (amcConfiguration.getConfigurationStartDate() != null
+                && amcConfiguration.getConfigurationEndDate() != null
+                && amcConfiguration.getConfigurationEndDate() != 0
+                && amcConfiguration.getConfigurationEndDate().compareTo(
+                Instant.ofEpochMilli(amcConfiguration.getConfigurationStartDate())
+                        .plus(Duration.ofDays(1))
+                        .toEpochMilli()) < 0) {
+            log.error("Start date and end date difference should at least be 1 day.");
+            errorMap.put("INVALID_DATE", "Start date and end date difference should at least be 1 day.");
+        }
+    }
+
+    private void validateTenantAndAssets(AmcConfiguration amcConfiguration,
+                                         Map<String, String> errorMap) {
+        if (StringUtils.isBlank(amcConfiguration.getTenantId())) {
+            log.error(TENANT_ID_IS_MANDATORY_IN_AmcConfiguration_REQUEST_BODY);
+            errorMap.put("TENANT_ID", "Tenant ID is mandatory");
+        }
+        if (amcConfiguration.getAssetTypes() == null || amcConfiguration.getAssetTypes().isEmpty()) {
+            log.error(ASSET_TYPES_IS_MANDATORY_IN_AMC_CONFIG_REQUEST_BODY);
+            errorMap.put("AMC Configuration", "ASSET_TYPES_IS_MANDATORY_IN_AMC_CONFIG_REQUEST_BODY");
+        }
     }
 
     private void validateAmcConfigurationAssignmentRequest(List<AmcConfigurationAssignment> request, Map<String, String> errorMap) {

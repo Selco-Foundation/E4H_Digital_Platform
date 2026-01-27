@@ -55,56 +55,23 @@ public class AmcConfigurationServiceUtil {
 
     // Generates AMC visits based on AMC Duration (in months) and AMC Frequency
     public List<Long> generateAmcVisits(long startDateMillis, long endDateMillis, int frequencyMonths) {
-        log.trace("Entering generateAmcVisits method, startDate: {}, endDate: {}, frequencyMonths: {}", 
+        log.trace("Entering generateAmcVisits method, startDate: {}, endDate: {}, frequencyMonths: {}",
                 startDateMillis, endDateMillis, frequencyMonths);
-        if (startDateMillis <= 0) {
-            log.error("Invalid startDateMillis: {}", startDateMillis);
-            throw new IllegalArgumentException("startDateMillis must be a positive timestamp.");
-        }
-        if (endDateMillis <= 0) {
-            log.error("Invalid endDateMillis: {}", endDateMillis);
-            throw new IllegalArgumentException("endDateMillis must be a positive timestamp.");
-        }
-        if (endDateMillis <= startDateMillis) {
-            log.error("endDateMillis {} must be greater than startDateMillis {}", endDateMillis, startDateMillis);
-            throw new IllegalArgumentException("endDateMillis must be greater than startDateMillis.");
-        }
-        if (frequencyMonths <= 0) {
-            log.error("Invalid frequencyMonths: {}", frequencyMonths);
-            throw new IllegalArgumentException("frequencyMonths must be > 0.");
-        }
+
+        validateVisitGenerationInputs(startDateMillis, endDateMillis, frequencyMonths);
+
+        LocalDate startDate = toLocalDate(startDateMillis);
+        LocalDate endDate = toLocalDate(endDateMillis);
 
         List<Long> visits = new ArrayList<>();
-        // Convert startDate → LocalDate
-        LocalDate startDate = Instant.ofEpochMilli(startDateMillis)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate();
-
-        // Compute AMC end date = startDate + duration
-//        LocalDate endDate = startDate.plusMonths(durationMonths);
-
-        // Convert endDate → LocalDate
-        LocalDate endDate = Instant.ofEpochMilli(endDateMillis)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate();
-
-        // First visit = startDate + frequency
         LocalDate visitDate = startDate.plusMonths(frequencyMonths);
 
-        // Generate all visits
         int safetyCounter = 0; // avoid infinite loops
         while (!visitDate.isAfter(endDate)) {
-            long visitMillis = visitDate
-                    .atStartOfDay(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli();
-
+            long visitMillis = toEpochMillis(visitDate);
             visits.add(visitMillis);
 
-            // Next visit
             visitDate = visitDate.plusMonths(frequencyMonths);
-
-            // Safety (ex: bad data → infinite loop)
             if (++safetyCounter > 1000) {
                 log.error("Infinite-loop protection triggered while generating AMC visits");
                 throw new IllegalStateException("Infinite-loop protection triggered.");
@@ -180,5 +147,36 @@ public class AmcConfigurationServiceUtil {
 
         }
         return mainNode;
+    }
+
+    private void validateVisitGenerationInputs(long startDateMillis, long endDateMillis, int frequencyMonths) {
+        if (startDateMillis <= 0) {
+            log.error("Invalid startDateMillis: {}", startDateMillis);
+            throw new IllegalArgumentException("startDateMillis must be a positive timestamp.");
+        }
+        if (endDateMillis <= 0) {
+            log.error("Invalid endDateMillis: {}", endDateMillis);
+            throw new IllegalArgumentException("endDateMillis must be a positive timestamp.");
+        }
+        if (endDateMillis <= startDateMillis) {
+            log.error("endDateMillis {} must be greater than startDateMillis {}", endDateMillis, startDateMillis);
+            throw new IllegalArgumentException("endDateMillis must be greater than startDateMillis.");
+        }
+        if (frequencyMonths <= 0) {
+            log.error("Invalid frequencyMonths: {}", frequencyMonths);
+            throw new IllegalArgumentException("frequencyMonths must be > 0.");
+        }
+    }
+
+    private LocalDate toLocalDate(long epochMillis) {
+        return Instant.ofEpochMilli(epochMillis)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+    }
+
+    private long toEpochMillis(LocalDate date) {
+        return date.atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli();
     }
 }

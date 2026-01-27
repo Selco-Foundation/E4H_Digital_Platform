@@ -64,56 +64,102 @@ public class BoundaryUtil {
     }
 
     public static Map<String, Boundary> extractBlockToDistrictMapping(String json) throws IOException {
-        Map<String, Boundary> blockToDistrictMap = new HashMap<>();
         if (json == null || json.trim().isEmpty()) {
             throw new IllegalArgumentException("JSON input cannot be null or empty");
         }
+
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode root = objectMapper.readTree(json);
 
+        Map<String, Boundary> blockToDistrictMap = new HashMap<>();
         JsonNode tenantBoundaryArray = root.get("TenantBoundary");
-        if (tenantBoundaryArray != null && tenantBoundaryArray.isArray()) {
-            for (JsonNode tenantBoundary : tenantBoundaryArray) {
-                JsonNode boundaryArray = tenantBoundary.get("boundary");
-                if (boundaryArray != null && boundaryArray.isArray()) {
-                    for (JsonNode state : boundaryArray) {
-                        JsonNode districts = state.get("children");
-                        JsonNode stateCodeNode = state.get("code");
-                        if (stateCodeNode == null) continue;
-                        String stateCode = stateCodeNode.asText();
-                        if (districts != null && districts.isArray()) {
-                            for (JsonNode district : districts) {
-                                JsonNode districtCodeNode = district.get("code");
-                                if (districtCodeNode == null) continue;
-                                String districtCode = districtCodeNode.asText();
-                                JsonNode blocks = district.get("children");
-                                if (blocks != null && blocks.isArray()) {
-                                    for (JsonNode block : blocks) {
-                                        JsonNode facilities = block.get("children");
-                                        JsonNode blockCodeNode = block.get("code");
-                                        String blockCode = blockCodeNode.asText();
-                                        // To take into account facilities whose boundary code is: India_Assam_Kamrup_Amingaon_FAC/2025/0045
-                                        if (facilities != null && facilities.isArray() && !facilities.isEmpty()) {
-                                            for (JsonNode facility : facilities) {
-                                                JsonNode boundaryTypeNode = facility.get("boundaryType");
-                                                JsonNode facilityCodeNode = facility.get("code");
-                                                if (boundaryTypeNode != null && facilityCodeNode !=null && "Facility".equals(boundaryTypeNode.asText())) {
-                                                    String facilityCode = facilityCodeNode.asText();
-                                                    Boundary boundary = Boundary.builder().state(stateCode).district(districtCode).block(blockCode).build();
-                                                    blockToDistrictMap.put(facilityCode, boundary);
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+        if (tenantBoundaryArray == null || !tenantBoundaryArray.isArray()) {
+            return blockToDistrictMap;
+        }
+
+        for (JsonNode tenantBoundary : tenantBoundaryArray) {
+            JsonNode boundaryArray = tenantBoundary.get("boundary");
+            if (boundaryArray == null || !boundaryArray.isArray()) {
+                continue;
             }
+            processStates(boundaryArray, blockToDistrictMap);
         }
 
         return blockToDistrictMap;
+    }
+
+    private static void processStates(JsonNode boundaryArray, Map<String, Boundary> blockToDistrictMap) {
+        for (JsonNode state : boundaryArray) {
+            JsonNode stateCodeNode = state.get("code");
+            if (stateCodeNode == null) {
+                continue;
+            }
+            String stateCode = stateCodeNode.asText();
+            JsonNode districts = state.get("children");
+            if (districts == null || !districts.isArray()) {
+                continue;
+            }
+            processDistricts(districts, stateCode, blockToDistrictMap);
+        }
+    }
+
+    private static void processDistricts(JsonNode districts,
+                                         String stateCode,
+                                         Map<String, Boundary> blockToDistrictMap) {
+        for (JsonNode district : districts) {
+            JsonNode districtCodeNode = district.get("code");
+            if (districtCodeNode == null) {
+                continue;
+            }
+            String districtCode = districtCodeNode.asText();
+            JsonNode blocks = district.get("children");
+            if (blocks == null || !blocks.isArray()) {
+                continue;
+            }
+            processBlocks(blocks, stateCode, districtCode, blockToDistrictMap);
+        }
+    }
+
+    private static void processBlocks(JsonNode blocks,
+                                      String stateCode,
+                                      String districtCode,
+                                      Map<String, Boundary> blockToDistrictMap) {
+        for (JsonNode block : blocks) {
+            JsonNode blockCodeNode = block.get("code");
+            if (blockCodeNode == null) {
+                continue;
+            }
+            String blockCode = blockCodeNode.asText();
+            JsonNode facilities = block.get("children");
+            if (facilities == null || !facilities.isArray() || facilities.isEmpty()) {
+                continue;
+            }
+            mapFacilities(facilities, stateCode, districtCode, blockCode, blockToDistrictMap);
+        }
+    }
+
+    private static void mapFacilities(JsonNode facilities,
+                                      String stateCode,
+                                      String districtCode,
+                                      String blockCode,
+                                      Map<String, Boundary> blockToDistrictMap) {
+        for (JsonNode facility : facilities) {
+            JsonNode boundaryTypeNode = facility.get("boundaryType");
+            JsonNode facilityCodeNode = facility.get("code");
+            if (boundaryTypeNode == null || facilityCodeNode == null) {
+                continue;
+            }
+            if (!"Facility".equals(boundaryTypeNode.asText())) {
+                continue;
+            }
+            String facilityCode = facilityCodeNode.asText();
+            Boundary boundary = Boundary.builder()
+                    .state(stateCode)
+                    .district(districtCode)
+                    .block(blockCode)
+                    .build();
+            blockToDistrictMap.put(facilityCode, boundary);
+        }
     }
 }
 

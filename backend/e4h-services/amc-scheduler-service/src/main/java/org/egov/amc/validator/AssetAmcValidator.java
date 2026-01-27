@@ -64,16 +64,12 @@ public class AssetAmcValidator {
         log.trace("Entering validateCreateAssetAmcRequest method");
         log.info("Validating create asset AMC request, record count: {}", 
                 request.getAssetAmcs() != null ? request.getAssetAmcs().size() : 0);
-        Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
         //Verify if AssetAmc request and mandatory fields are present
         validateAssetAmcRequest(request);
-
-        if (!errorMap.isEmpty())
-            throw new CustomException(errorMap);
         log.debug("Create asset AMC request validation completed successfully");
     }
 
@@ -88,61 +84,12 @@ public class AssetAmcValidator {
 
         log.debug("Validating {} asset AMC record(s)", request.getAssetAmcs().size());
         for (AssetAmc assetAmc : request.getAssetAmcs()) {
-            if (assetAmc == null) {
-                log.error("AssetAmc is mandatory in AssetAmcs");
-                throw new CustomException("AssetAmc", "AssetAmc is mandatory");
-            }
-
-            if (assetAmc.getAssetId() == null || assetAmc.getAssetId().isEmpty()) {
-                log.error("Asset ID is mandatory in AssetAmcs");
-                throw new CustomException("AssetAmc", "Project ID is mandatory");
-            }
-            // Get existing assetAmc with projectID from assetAmc service
-            log.debug("Validating asset ID: {} for tenantId: {}", assetAmc.getAssetId(), assetAmc.getTenantId());
-            Asset existingAsset = getAssetById(request, assetAmc);
-            if (existingAsset == null) {
-                log.error("Asset ID {} does not exist for tenantId: {}", assetAmc.getAssetId(), assetAmc.getTenantId());
-                throw new CustomException("AssetAmc", "Asset ID do not exist");
-            }
-
-            if (assetAmc.getAmcConfigurationId() == null || assetAmc.getAmcConfigurationId().isEmpty()) {
-                log.error("Amc Configuration ID is mandatory in Amc Configuration");
-                throw new CustomException("Asset Amc", "Amc Configuration ID is mandatory");
-            }
-
-            // Get existing amcConfiguration from amcConfiguration service
-            log.debug("Validating AMC configuration ID: {} for tenantId: {}", assetAmc.getAmcConfigurationId(), assetAmc.getTenantId());
-            String amcConfigurationIds = assetAmc.getAmcConfigurationId();
-            AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder().ids(new ArrayList<>(List.of(amcConfigurationIds))).tenantId(assetAmc.getTenantId()).build();
-            AmcConfigurationSearchRequest searchRequest = AmcConfigurationSearchRequest.builder().RequestInfo(request.getRequestInfo()).searchCriteria(criteria).build();
-            List<AmcConfiguration> amcConfigurationList = amcConfigurationService.searchAmcConfiguration(searchRequest, 10, 0, assetAmc.getTenantId(), false, null );
-            if (amcConfigurationList ==null || amcConfigurationList.isEmpty()){
-                log.error("AMC Configuration ID {} does not exist for tenantId: {}", assetAmc.getAmcConfigurationId(), assetAmc.getTenantId());
-                throw new CustomException("Asset Amc", "AMC Configuration do not exist");
-            }
-
-            if (assetAmc.getAmcStartDate() == null || assetAmc.getAmcStartDate() == 0) {
-                log.error("Start Date is mandatory in Asset AMC");
-                throw new CustomException("Asset AMC", "Start Date Asset AMC is mandatory");
-            }
-
-            if (StringUtils.isBlank(assetAmc.getTenantId())) {
-                log.error(TENANT_ID_IS_MANDATORY_IN_ASSETAMC_REQUEST_BODY);
-                errorMap.put("TENANT_ID", "Tenant ID is mandatory");
-            }
-            if ((assetAmc.getAmcStartDate() != null && assetAmc.getAmcEndDate() != null && assetAmc.getAmcEndDate() != 0) && (assetAmc.getAmcStartDate().compareTo(assetAmc.getAmcEndDate()) > 0)) {
-                log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
-                errorMap.put("INVALID_DATE_ERROR", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
-            }
-            if (assetAmc.getAmcStartDate() != null && assetAmc.getAmcEndDate() != null && assetAmc.getAmcEndDate() != 0
-                    && assetAmc.getAmcEndDate().compareTo(Instant.ofEpochMilli(assetAmc.getAmcStartDate()).plus(Duration.ofDays(1)).toEpochMilli()) < 0) {
-                log.error("Start date and end date difference should at least be 1 day.");
-                errorMap.put("INVALID_DATE", "Start date and end date difference should at least be 1 day.");
-            }
+            validateSingleAssetAmc(request, assetAmc, errorMap);
         }
 
-        if (!errorMap.isEmpty())
+        if (!errorMap.isEmpty()) {
             throw new CustomException(errorMap);
+        }
     }
 
     private void validateRequestInfo(RequestInfo requestInfo) {
@@ -160,6 +107,97 @@ public class AssetAmcValidator {
             throw new CustomException("USERINFO_UUID", "UUID is mandatory");
         }
         log.debug("RequestInfo validation successful");
+    }
+
+    private void validateSingleAssetAmc(AssetAmcRequest request,
+                                        AssetAmc assetAmc,
+                                        Map<String, String> errorMap) {
+        if (assetAmc == null) {
+            log.error("AssetAmc is mandatory in AssetAmcs");
+            throw new CustomException("AssetAmc", "AssetAmc is mandatory");
+        }
+
+        validateAssetDetails(request, assetAmc);
+        validateConfigurationDetails(request, assetAmc);
+        validateAmcDates(assetAmc, errorMap);
+        validateTenant(assetAmc, errorMap);
+    }
+
+    private void validateAssetDetails(AssetAmcRequest request, AssetAmc assetAmc) {
+        if (assetAmc.getAssetId() == null || assetAmc.getAssetId().isEmpty()) {
+            log.error("Asset ID is mandatory in AssetAmcs");
+            throw new CustomException("AssetAmc", "Project ID is mandatory");
+        }
+
+        log.debug("Validating asset ID: {} for tenantId: {}", assetAmc.getAssetId(), assetAmc.getTenantId());
+        Asset existingAsset = getAssetById(request, assetAmc);
+        if (existingAsset == null) {
+            log.error("Asset ID {} does not exist for tenantId: {}", assetAmc.getAssetId(), assetAmc.getTenantId());
+            throw new CustomException("AssetAmc", "Asset ID do not exist");
+        }
+    }
+
+    private void validateConfigurationDetails(AssetAmcRequest request, AssetAmc assetAmc) {
+        if (assetAmc.getAmcConfigurationId() == null || assetAmc.getAmcConfigurationId().isEmpty()) {
+            log.error("Amc Configuration ID is mandatory in Amc Configuration");
+            throw new CustomException("Asset Amc", "Amc Configuration ID is mandatory");
+        }
+
+        log.debug("Validating AMC configuration ID: {} for tenantId: {}", assetAmc.getAmcConfigurationId(), assetAmc.getTenantId());
+        String amcConfigurationIds = assetAmc.getAmcConfigurationId();
+        AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder()
+                .ids(new ArrayList<>(List.of(amcConfigurationIds)))
+                .tenantId(assetAmc.getTenantId())
+                .build();
+        AmcConfigurationSearchRequest searchRequest = AmcConfigurationSearchRequest.builder()
+                .RequestInfo(request.getRequestInfo())
+                .searchCriteria(criteria)
+                .build();
+        List<AmcConfiguration> amcConfigurationList = amcConfigurationService.searchAmcConfiguration(
+                searchRequest,
+                10,
+                0,
+                assetAmc.getTenantId(),
+                false,
+                null
+        );
+        if (amcConfigurationList == null || amcConfigurationList.isEmpty()) {
+            log.error("AMC Configuration ID {} does not exist for tenantId: {}", assetAmc.getAmcConfigurationId(), assetAmc.getTenantId());
+            throw new CustomException("Asset Amc", "AMC Configuration do not exist");
+        }
+    }
+
+    private void validateAmcDates(AssetAmc assetAmc, Map<String, String> errorMap) {
+        if (assetAmc.getAmcStartDate() == null || assetAmc.getAmcStartDate() == 0) {
+            log.error("Start Date is mandatory in Asset AMC");
+            throw new CustomException("Asset AMC", "Start Date Asset AMC is mandatory");
+        }
+
+        if (assetAmc.getAmcStartDate() != null
+                && assetAmc.getAmcEndDate() != null
+                && assetAmc.getAmcEndDate() != 0
+                && (assetAmc.getAmcStartDate().compareTo(assetAmc.getAmcEndDate()) > 0)) {
+            log.error(START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+            errorMap.put("INVALID_DATE_ERROR", START_DATE_SHOULD_BE_LESS_THAN_END_DATE);
+        }
+
+        if (assetAmc.getAmcStartDate() != null
+                && assetAmc.getAmcEndDate() != null
+                && assetAmc.getAmcEndDate() != 0
+                && assetAmc.getAmcEndDate().compareTo(
+                Instant.ofEpochMilli(assetAmc.getAmcStartDate())
+                        .plus(Duration.ofDays(1))
+                        .toEpochMilli()) < 0) {
+            log.error("Start date and end date difference should at least be 1 day.");
+            errorMap.put("INVALID_DATE", "Start date and end date difference should at least be 1 day.");
+        }
+    }
+
+    private void validateTenant(AssetAmc assetAmc, Map<String, String> errorMap) {
+        if (StringUtils.isBlank(assetAmc.getTenantId())) {
+            log.error(TENANT_ID_IS_MANDATORY_IN_ASSETAMC_REQUEST_BODY);
+            errorMap.put("TENANT_ID", "Tenant ID is mandatory");
+        }
     }
 
     public Asset getAssetById(AssetAmcRequest request, AssetAmc assetAmc) {

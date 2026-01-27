@@ -108,66 +108,31 @@ public class ScheduledVisitService {
     }
 
     public ScheduledVisitResponse generateScheduledVisits(VisitGenerationRequest request) {
-        if (request == null)
-            throw new CustomException("GENERATE_VISIT_ERROR", "The request is empty");
-
-        if (request.getConfigurationId() == null || request.getConfigurationId().isEmpty())
-            throw new CustomException("GENERATE_VISIT_ERROR", "Configuration ID is mandatory");
+        validateGenerateVisitsRequest(request);
 
         log.trace("Entering generateScheduledVisits method for configurationId: {}", request.getConfigurationId());
         log.info("Generating scheduled visits for AMC configuration: {}", request.getConfigurationId());
-        // Check id configuration ID exist
-        AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder().ids(List.of(request.getConfigurationId())).tenantId(request.getRequestInfo().getUserInfo().getTenantId()).build();
-        AmcConfigurationSearchRequest searchRequest = AmcConfigurationSearchRequest.builder().RequestInfo(request.getRequestInfo()).searchCriteria(criteria).build();
-        List<AmcConfiguration> amcConfigurationList = amcConfigurationService.searchAmcConfiguration(searchRequest, 10, 0, request.getRequestInfo().getUserInfo().getTenantId(), false, null);
-        if(amcConfigurationList==null || amcConfigurationList.isEmpty())
-            throw new CustomException("GENERATE_VISIT_ERROR", "The configuration ID: "+ request.getConfigurationId() +" do not exist");
 
-        // Beginning of the scheduling horizon (defaults to configuration start date if not provided)
-        // End of the scheduling horizon (defaults to configuration end date if not provided)
-        Long startDate, endDate;
-        AmcConfiguration amcConfiguration = amcConfigurationList.get(0);
-        startDate = (amcConfiguration.getConfigurationStartDate() != null && amcConfiguration.getConfigurationStartDate() != 0) ? amcConfiguration.getConfigurationStartDate() : null ;
-        endDate = (amcConfiguration.getConfigurationEndDate() != null && amcConfiguration.getConfigurationEndDate() != 0) ? amcConfiguration.getConfigurationEndDate() : null ;
-        if(request.getGenerationStartDate() != null && request.getGenerationStartDate() != 0)
-            startDate = request.getGenerationStartDate();
-        if(request.getGenerationEndDate() != null && request.getGenerationEndDate() != 0)
-            endDate = request.getGenerationStartDate();
+        AmcConfiguration amcConfiguration = fetchAmcConfigurationForGeneration(request);
+        DateRange generationWindow = resolveGenerationWindow(request, amcConfiguration);
 
-        // Generate scheduled visit based on startDate and Frequency
-        List<Long> generateAmcVisits = amcConfigurationServiceUtil.generateAmcVisits(startDate, endDate, amcConfiguration.getVisitFrequencyMonths());
-        if (generateAmcVisits ==null || generateAmcVisits.isEmpty())
+        List<Long> visitDates = amcConfigurationServiceUtil.generateAmcVisits(
+                generationWindow.startDate(),
+                generationWindow.endDate(),
+                amcConfiguration.getVisitFrequencyMonths()
+        );
+
+        if (visitDates == null || visitDates.isEmpty()) {
             throw new CustomException("GENERATE_VISIT_ERROR", "Cannot generate scheduled visit for this configuration");
-
-        List<ScheduledVisit> scheduledVisitList = new ArrayList<>();
-        Long previousVisitDate = null;
-        int i =1;
-        for (Long visitDate : generateAmcVisits){
-            List<ScheduledVisitAssignment> assignments = amcConfiguration.getAssignments().stream()
-                            .map(a -> ScheduledVisitAssignment.builder()
-                                    .tenantId(amcConfiguration.getTenantId())
-                                    .assignedUser(a.getAssignedUser())
-                                    .build())
-                            .toList();
-            ScheduledVisit visit = ScheduledVisit.builder()
-                    .tenantId(amcConfiguration.getTenantId())
-                    .amcConfigurationId(amcConfiguration.getId())
-                    .projectId(amcConfiguration.getProjectId())
-                    .lastVisitDate(previousVisitDate)
-                    .facilityId(amcConfiguration.getFacilityId())
-                    .visitNumber(i)
-                    .scheduledDate(visitDate)
-                    .assignments(assignments)
-                    .status("DRAFT")
-                    .build();
-
-            scheduledVisitList.add(visit);
-            previousVisitDate = visitDate;
-            i++;
         }
 
+        List<ScheduledVisit> scheduledVisitList = buildScheduledVisitsFromDates(amcConfiguration, visitDates);
+
         log.debug("Generated {} scheduled visits for configuration {}", scheduledVisitList.size(), request.getConfigurationId());
-        ScheduledVisitRequest scheduledVisitRequest = ScheduledVisitRequest.builder().requestInfo(request.getRequestInfo()).scheduledVisits(scheduledVisitList).build();
+        ScheduledVisitRequest scheduledVisitRequest = ScheduledVisitRequest.builder()
+                .requestInfo(request.getRequestInfo())
+                .scheduledVisits(scheduledVisitList)
+                .build();
         ScheduledVisitRequest response = createScheduledVisit(scheduledVisitRequest);
         log.info("Successfully generated {} scheduled visits for configuration {}", response.getScheduledVisits().size(), request.getConfigurationId());
 
@@ -548,64 +513,28 @@ public class ScheduledVisitService {
     private void checkAndScheduleVisitIfNeeded(ScheduledVisit visit, RequestInfo requestInfo) {
         log.trace("Entering checkAndScheduleVisitIfNeeded for visitId: {}, status: {}", visit.getId(), visit.getStatus());
         // Only process DRAFT visits
-        if (visit.getStatus() == null || !visit.getStatus().equals("DRAFT")) {
+        if (!isDraftVisit(visit)) {
             log.debug("Skipping auto-schedule check for visitId: {} with status: {}", visit.getId(), visit.getStatus());
             return;
         }
 
         try {
-            // Fetch notice period from MDMS
-            log.debug("Fetching notice period from MDMS for tenantId: {}", visit.getTenantId());
-            AmcConfigurationRequest mdmsRequest = AmcConfigurationRequest.builder()
-                    .requestInfo(requestInfo)
-                    .amcConfigurations(new ArrayList<>())
-                    .build();
-            Object mdmsData = mdmsUtils.mDMSCall(mdmsRequest, visit.getTenantId());
-            Integer noticePeriod = parseNoticePeriodFromMDMS(mdmsData, visit.getTenantId());
-            log.debug("Notice period from MDMS: {} days for tenantId: {}", noticePeriod, visit.getTenantId());
-            
+            Integer noticePeriod = fetchNoticePeriod(visit, requestInfo);
             if (noticePeriod == null) {
                 log.warn("Could not fetch notice period from MDMS for tenant: {}. Skipping auto-schedule check.", visit.getTenantId());
                 return;
             }
 
             // Calculate threshold date: current_date + notice_period
-            long currentTimeMillis = System.currentTimeMillis();
-            LocalDate currentDate = Instant.ofEpochMilli(currentTimeMillis)
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate();
-            LocalDate thresholdDate = currentDate.plusDays(noticePeriod);
-            long thresholdDateMillis = thresholdDate.atStartOfDay(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli();
+            long thresholdDateMillis = calculateThresholdDateMillis(noticePeriod);
 
             // Check if scheduled_date < threshold_date
             if (visit.getScheduledDate() != null && visit.getScheduledDate() < thresholdDateMillis) {
-                log.debug("Visit scheduled date {} is before threshold date {}, applying SCHEDULE action", 
+                log.debug("Visit scheduled date {} is before threshold date {}, applying SCHEDULE action",
                         visit.getScheduledDate(), thresholdDateMillis);
                 log.info("Visit {} is nearing scheduled date. Applying SCHEDULE workflow action.", visit.getId());
-                
-                try {
-                    // This updates the workflow state and returns the new ProcessInstance
-                    ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
-                            visit,
-                            "SCHEDULE",
-                            null,
-                            requestInfo,
-                            "Automatically scheduled by daily cron job - visit nearing scheduled date"
-                    );
-                    
-                    // Update the visit status directly from the workflow response
-                    if (updatedWorkflow != null && updatedWorkflow.getState() != null) {
-                        visit.setStatus(updatedWorkflow.getState().getState());
-                        log.info("Successfully applied SCHEDULE action on visit: {}. New status: {}", 
-                                visit.getId(), visit.getStatus());
-                    } else {
-                        log.warn("Workflow transition succeeded but returned null state for visit: {}", visit.getId());
-                    }
-                } catch (Exception e) {
-                    log.error("Error applying SCHEDULE workflow action on visit: {}", visit.getId(), e);
-                }
+
+                applyScheduleWorkflowAction(visit, requestInfo);
             }
         } catch (Exception e) {
             log.error("Error checking if visit needs scheduling: {}", visit.getId(), e);
@@ -679,6 +608,147 @@ public class ScheduledVisitService {
             log.error("Error parsing AMCThresholds from MDMS response for tenant: {}", tenantId, e);
             return null;
         }
+    }
+
+    private void validateGenerateVisitsRequest(VisitGenerationRequest request) {
+        if (request == null) {
+            throw new CustomException("GENERATE_VISIT_ERROR", "The request is empty");
+        }
+
+        if (request.getConfigurationId() == null || request.getConfigurationId().isEmpty()) {
+            throw new CustomException("GENERATE_VISIT_ERROR", "Configuration ID is mandatory");
+        }
+    }
+
+    private AmcConfiguration fetchAmcConfigurationForGeneration(VisitGenerationRequest request) {
+        AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder()
+                .ids(List.of(request.getConfigurationId()))
+                .tenantId(request.getRequestInfo().getUserInfo().getTenantId())
+                .build();
+        AmcConfigurationSearchRequest searchRequest = AmcConfigurationSearchRequest.builder()
+                .RequestInfo(request.getRequestInfo())
+                .searchCriteria(criteria)
+                .build();
+        List<AmcConfiguration> amcConfigurationList = amcConfigurationService.searchAmcConfiguration(
+                searchRequest,
+                10,
+                0,
+                request.getRequestInfo().getUserInfo().getTenantId(),
+                false,
+                null
+        );
+        if (amcConfigurationList == null || amcConfigurationList.isEmpty()) {
+            throw new CustomException("GENERATE_VISIT_ERROR",
+                    "The configuration ID: " + request.getConfigurationId() + " do not exist");
+        }
+        return amcConfigurationList.get(0);
+    }
+
+    private DateRange resolveGenerationWindow(VisitGenerationRequest request, AmcConfiguration amcConfiguration) {
+        // Beginning of the scheduling horizon (defaults to configuration start date if not provided)
+        Long startDate = (amcConfiguration.getConfigurationStartDate() != null
+                && amcConfiguration.getConfigurationStartDate() != 0)
+                ? amcConfiguration.getConfigurationStartDate()
+                : null;
+        // End of the scheduling horizon (defaults to configuration end date if not provided)
+        Long endDate = (amcConfiguration.getConfigurationEndDate() != null
+                && amcConfiguration.getConfigurationEndDate() != 0)
+                ? amcConfiguration.getConfigurationEndDate()
+                : null;
+
+        if (request.getGenerationStartDate() != null && request.getGenerationStartDate() != 0) {
+            startDate = request.getGenerationStartDate();
+        }
+        if (request.getGenerationEndDate() != null && request.getGenerationEndDate() != 0) {
+            endDate = request.getGenerationStartDate();
+        }
+
+        return new DateRange(startDate, endDate);
+    }
+
+    private List<ScheduledVisit> buildScheduledVisitsFromDates(AmcConfiguration amcConfiguration,
+                                                               List<Long> visitDates) {
+        List<ScheduledVisit> scheduledVisitList = new ArrayList<>();
+        Long previousVisitDate = null;
+        int visitNumber = 1;
+
+        for (Long visitDate : visitDates) {
+            List<ScheduledVisitAssignment> assignments = amcConfiguration.getAssignments().stream()
+                    .map(a -> ScheduledVisitAssignment.builder()
+                            .tenantId(amcConfiguration.getTenantId())
+                            .assignedUser(a.getAssignedUser())
+                            .build())
+                    .toList();
+            ScheduledVisit visit = ScheduledVisit.builder()
+                    .tenantId(amcConfiguration.getTenantId())
+                    .amcConfigurationId(amcConfiguration.getId())
+                    .projectId(amcConfiguration.getProjectId())
+                    .lastVisitDate(previousVisitDate)
+                    .facilityId(amcConfiguration.getFacilityId())
+                    .visitNumber(visitNumber)
+                    .scheduledDate(visitDate)
+                    .assignments(assignments)
+                    .status("DRAFT")
+                    .build();
+
+            scheduledVisitList.add(visit);
+            previousVisitDate = visitDate;
+            visitNumber++;
+        }
+
+        return scheduledVisitList;
+    }
+
+    private boolean isDraftVisit(ScheduledVisit visit) {
+        return visit.getStatus() != null && visit.getStatus().equals("DRAFT");
+    }
+
+    private Integer fetchNoticePeriod(ScheduledVisit visit, RequestInfo requestInfo) {
+        log.debug("Fetching notice period from MDMS for tenantId: {}", visit.getTenantId());
+        AmcConfigurationRequest mdmsRequest = AmcConfigurationRequest.builder()
+                .requestInfo(requestInfo)
+                .amcConfigurations(new ArrayList<>())
+                .build();
+        Object mdmsData = mdmsUtils.mDMSCall(mdmsRequest, visit.getTenantId());
+        Integer noticePeriod = parseNoticePeriodFromMDMS(mdmsData, visit.getTenantId());
+        log.debug("Notice period from MDMS: {} days for tenantId: {}", noticePeriod, visit.getTenantId());
+        return noticePeriod;
+    }
+
+    private long calculateThresholdDateMillis(Integer noticePeriod) {
+        long currentTimeMillis = System.currentTimeMillis();
+        LocalDate currentDate = Instant.ofEpochMilli(currentTimeMillis)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+        LocalDate thresholdDate = currentDate.plusDays(noticePeriod);
+        return thresholdDate.atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli();
+    }
+
+    private void applyScheduleWorkflowAction(ScheduledVisit visit, RequestInfo requestInfo) {
+        try {
+            ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
+                    visit,
+                    "SCHEDULE",
+                    null,
+                    requestInfo,
+                    "Automatically scheduled by daily cron job - visit nearing scheduled date"
+            );
+
+            if (updatedWorkflow != null && updatedWorkflow.getState() != null) {
+                visit.setStatus(updatedWorkflow.getState().getState());
+                log.info("Successfully applied SCHEDULE action on visit: {}. New status: {}",
+                        visit.getId(), visit.getStatus());
+            } else {
+                log.warn("Workflow transition succeeded but returned null state for visit: {}", visit.getId());
+            }
+        } catch (Exception e) {
+            log.error("Error applying SCHEDULE workflow action on visit: {}", visit.getId(), e);
+        }
+    }
+
+    private record DateRange(Long startDate, Long endDate) {
     }
 
     public List<ProcessInstance> getProcessInstanceById(String businessId, String tenantId, RequestInfo requestInfo) {
