@@ -44,6 +44,7 @@ import org.apache.commons.collections4.MapUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.request.Role;
 import org.egov.inbox.config.InboxConfiguration;
+import org.egov.inbox.model.InboxProcessingContext;
 import org.egov.inbox.model.vehicle.VehicleSearchCriteria;
 import org.egov.inbox.model.vehicle.VehicleTripDetail;
 import org.egov.inbox.model.vehicle.VehicleTripDetailResponse;
@@ -137,725 +138,260 @@ public class InboxService {
 
     public InboxResponse fetchInboxData(InboxSearchCriteria criteria, RequestInfo requestInfo) {
         log.trace("Method invoked: fetchInboxData");
-        String tenantId = criteria.getTenantId();
-        String moduleName = criteria.getProcessSearchCriteria() != null 
-                ? criteria.getProcessSearchCriteria().getModuleName() : null;
-        String userId = requestInfo != null && requestInfo.getUserInfo() != null 
-                ? requestInfo.getUserInfo().getUuid() : null;
+        log.info("Fetching inbox data - tenantId: {}, module: {}", 
+                criteria.getTenantId(), 
+                criteria.getProcessSearchCriteria() != null ? criteria.getProcessSearchCriteria().getModuleName() : null);
         
-        log.info("Fetching inbox data - tenantId: {}, module: {}, userId: {}", tenantId, moduleName, userId);
+        InboxProcessingContext context = initializeProcessingContext(criteria, requestInfo);
+        context = prepareStatusCountMap(context, requestInfo);
+        context = processModuleSearchCriteria(context, requestInfo);
+        context = processFsmModuleIfNeeded(context, requestInfo);
         
-        ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
-        HashMap moduleSearchCriteria = criteria.getModuleSearchCriteria();
-        processCriteria.setTenantId(criteria.getTenantId());
+        return buildInboxResponse(context);
+    }
+
+    /**
+     * Initializes the processing context with basic setup
+     */
+    private InboxProcessingContext initializeProcessingContext(InboxSearchCriteria criteria, RequestInfo requestInfo) {
+        log.trace("Method invoked: initializeProcessingContext");
+        log.debug("Initializing processing context - tenantId: {}", criteria.getTenantId());
+        
+        InboxProcessingContext context = new InboxProcessingContext();
+        context.criteria = criteria;
+        context.requestInfo = requestInfo;
+        context.processCriteria = criteria.getProcessSearchCriteria();
+        context.moduleSearchCriteria = criteria.getModuleSearchCriteria();
+        context.processCriteria.setTenantId(criteria.getTenantId());
         log.debug("Process search criteria initialized - tenantId: {}", criteria.getTenantId());
-        Integer flag=0;
-        if (processCriteria.getModuleName().equalsIgnoreCase(BS_WS)) {
-        	flag=1;
-        	processCriteria.setModuleName(BS_WS_MODULENAME);
-        	log.debug("Module name converted from BS_WS to BS_WS_MODULENAME");
-        } else if(processCriteria.getModuleName().equalsIgnoreCase(BS_SW)) {
-        	flag=2;
-        	processCriteria.setModuleName(BS_SW_MODULENAME);
-        	log.debug("Module name converted from BS_SW to BS_SW_MODULENAME");
+        
+        context.flag = convertModuleNameIfNeeded(context.processCriteria);
+        context.totalCount = getTotalCount(criteria, requestInfo, context.processCriteria);
+        context.nearingSlaProcessCount = workflowService.getNearingSlaProcessCount(
+                criteria.getTenantId(), requestInfo, context.processCriteria);
+        log.debug("Nearing SLA process count retrieved: {}", context.nearingSlaProcessCount);
+        
+        context.inputStatuses = new ArrayList<>();
+        if (!CollectionUtils.isEmpty(context.processCriteria.getStatus())) {
+            context.inputStatuses = new ArrayList<>(context.processCriteria.getStatus());
         }
-
-        Integer totalCount = 0;
-        if(!(processCriteria.getModuleName().equals(SW) || processCriteria.getModuleName().equals(WS))) {
-            log.debug("Fetching process count from workflow service");
-            totalCount = workflowService.getProcessCount(criteria.getTenantId(), requestInfo, processCriteria);
-            log.debug("Process count retrieved: {}", totalCount);
+        
+        context.dsoId = fetchDsoIdIfNeeded(criteria, requestInfo);
+        context.assigneeUuid = handleAssignee(context.processCriteria);
+        context.roles = requestInfo.getUserInfo().getRoles().stream()
+                .map(Role::getCode).collect(Collectors.toList());
+        context.originalModuleName = context.processCriteria.getModuleName();
+        
+        context.businessServiceName = context.processCriteria.getBusinessService();
+        if (CollectionUtils.isEmpty(context.businessServiceName)) {
+            log.error("Business service is empty");
+            throw new CustomException(ErrorConstants.MODULE_SEARCH_INVLAID, 
+                    "Bussiness Service is mandatory for module search");
         }
-        log.debug("Fetching nearing SLA process count");
-        Integer nearingSlaProcessCount = workflowService.getNearingSlaProcessCount(criteria.getTenantId(), requestInfo, processCriteria);
-        log.debug("Nearing SLA process count retrieved: {}", nearingSlaProcessCount);
-        List<String> inputStatuses = new ArrayList<>();
-        if (!CollectionUtils.isEmpty(processCriteria.getStatus()))
-            inputStatuses = new ArrayList<>(processCriteria.getStatus());
-        StringBuilder assigneeUuid = new StringBuilder();
-        String dsoId = null;
-        if (requestInfo.getUserInfo().getRoles().get(0).getCode().equals(FSMConstants.FSM_DSO)) {
-            Map<String, Object> searcherRequestForDSO = new HashMap<>();
-            Map<String, Object> searchCriteriaForDSO = new HashMap<>();
-            searchCriteriaForDSO.put(TENANT_ID_PARAM, criteria.getTenantId());
-            searchCriteriaForDSO.put(FSMConstants.OWNER_ID, requestInfo.getUserInfo().getUuid());
-            searcherRequestForDSO.put(REQUESTINFO_PARAM, requestInfo);
-            searcherRequestForDSO.put(SEARCH_CRITERIA_PARAM, searchCriteriaForDSO);
-            StringBuilder uri = new StringBuilder();
-            uri.append(config.getSearcherHost()).append(config.getFsmInboxDSoIDEndpoint());
+        
+        context.srvMap = fetchAppropriateServiceMap(context.businessServiceName, context.originalModuleName);
+        context.inboxes = new ArrayList<>();
+        context.response = new InboxResponse();
+        context.businessObjects = null;
+        context.businessServiceSlaMap = new HashMap<>();
+        context.tenantAndApplnNumbersMap = new HashMap<>();
+        
+        log.debug("Processing context initialized successfully");
+        return context;
+    }
 
-            Object resultForDsoId = restTemplate.postForObject(uri.toString(), searcherRequestForDSO, Map.class);
-
-            dsoId = JsonPath.read(resultForDsoId, "$.vendor[0].id");
-
-        }
-        if (!ObjectUtils.isEmpty(processCriteria.getAssignee())) {
-            assigneeUuid = assigneeUuid.append(processCriteria.getAssignee());
-            processCriteria.setStatus(null);
-        }
+    /**
+     * Prepares status count map by fetching from workflow service
+     */
+    private InboxProcessingContext prepareStatusCountMap(InboxProcessingContext context, RequestInfo requestInfo) {
+        log.trace("Method invoked: prepareStatusCountMap");
+        log.debug("Preparing status count map");
+        
         // Since we want the whole status count map regardless of the status filter and assignee filter being passed
-        processCriteria.setAssignee(null);
-        processCriteria.setStatus(null);
+        context.processCriteria.setAssignee(null);
+        context.processCriteria.setStatus(null);
         
-        List<HashMap<String, Object>> bpaCitizenStatusCountMap = new ArrayList<HashMap<String,Object>>();
-        List<String> roles = requestInfo.getUserInfo().getRoles().stream().map(Role::getCode).collect(Collectors.toList());
+        context.statusCountMap = workflowService.getProcessStatusCount(requestInfo, context.processCriteria);
+        log.debug("Status count map retrieved - size: {}", context.statusCountMap.size());
         
-         String moduleName = processCriteria.getModuleName();
-			/*
-			 * SAN-920: Commenting out this code as Module name will now be passed for FSM
-			 * if(ObjectUtils.isEmpty(processCriteria.getModuleName()) &&
-			 * !ObjectUtils.isEmpty(processCriteria.getBusinessService()) &&
-			 * (processCriteria.getBusinessService().contains("FSM") ||
-			 * processCriteria.getBusinessService().contains("FSM_VEHICLE_TRIP"))){
-			 * processCriteria.setModuleName(processCriteria.getBusinessService().get(0)); }
-			 */
-        List<HashMap<String, Object>> statusCountMap = workflowService.getProcessStatusCount(requestInfo, processCriteria);
-        processCriteria.setModuleName(moduleName);
-        processCriteria.setStatus(inputStatuses);
-        processCriteria.setAssignee(assigneeUuid.toString());
-        List<String> businessServiceName = processCriteria.getBusinessService();
-        List<Inbox> inboxes = new ArrayList<Inbox>();
-        InboxResponse response = new InboxResponse();
-        JSONArray businessObjects = null;
-        // Map<String,String> srvMap = (Map<String, String>) config.getServiceSearchMapping().get(businessServiceName.get(0));
-        Map<String, String> srvMap = fetchAppropriateServiceMap(businessServiceName,moduleName);
-        if (CollectionUtils.isEmpty(businessServiceName)) {
-            throw new CustomException(ErrorConstants.MODULE_SEARCH_INVLAID, "Bussiness Service is mandatory for module search");
-        }
+        context.processCriteria.setModuleName(context.originalModuleName);
+        context.processCriteria.setStatus(context.inputStatuses);
+        context.processCriteria.setAssignee(context.assigneeUuid.toString());
+        
+        log.debug("Status count map preparation completed");
+        return context;
+    }
 
-        Map<String, Long> businessServiceSlaMap = new HashMap<>();
-
-        if (!CollectionUtils.isEmpty(moduleSearchCriteria)) {
-            moduleSearchCriteria.put("tenantId", criteria.getTenantId());
-            moduleSearchCriteria.put("offset", criteria.getOffset());
-            moduleSearchCriteria.put("limit", criteria.getLimit());
-            List<BusinessService> bussinessSrvs = new ArrayList<BusinessService>();
-            for (String businessSrv : businessServiceName) {
-                BusinessService businessService = workflowService.getBusinessService(criteria.getTenantId(), requestInfo,
-                        businessSrv);
-                bussinessSrvs.add(businessService);
-                businessServiceSlaMap.put(businessService.getBusinessService(),businessService.getBusinessServiceSla());
-            }
-            HashMap<String, String> StatusIdNameMap = workflowService.getActionableStatusesForRole(requestInfo, bussinessSrvs,
-                    processCriteria);
-            String applicationStatusParam = srvMap.get("applsStatusParam");
-            String businessIdParam = srvMap.get("businessIdProperty");
-            if (StringUtils.isEmpty(applicationStatusParam)) {
-                applicationStatusParam = "applicationStatus";
-            }
-            List<String> crtieriaStatuses = new ArrayList<String>();
-            // if(!CollectionUtils.isEmpty((Collection<String>) moduleSearchCriteria.get(applicationStatusParam))) {
-            // //crtieriaStatuses = (List<String>) moduleSearchCriteria.get(applicationStatusParam);
-            // }else {
-            if (StatusIdNameMap.values().size() > 0) {
-                if (!CollectionUtils.isEmpty(processCriteria.getStatus())) {
-                    List<String> statuses = new ArrayList<String>();
-                    processCriteria.getStatus().forEach(status -> {
-                        statuses.add(StatusIdNameMap.get(status));
-                    });
-                    moduleSearchCriteria.put(applicationStatusParam, StringUtils.arrayToDelimitedString(statuses.toArray(), ","));
-                } else {
-                    moduleSearchCriteria.put(applicationStatusParam,
-                            StringUtils.arrayToDelimitedString(StatusIdNameMap.values().toArray(), ","));
-                }
-
-            }
-            
-            Map<String, List<String>> tenantAndApplnNumbersMap = new HashMap<>();
-            if(processCriteria != null && !ObjectUtils.isEmpty(processCriteria.getModuleName())
-                    && processCriteria.getModuleName().equals(BPA) && roles.contains(BpaConstants.CITIZEN)) {
-                List<Map<String, String>> tenantWiseApplns = bpaInboxFilterService.fetchTenantWiseApplicationNumbersForCitizenInboxFromSearcher(criteria, StatusIdNameMap, requestInfo);
-                if (moduleSearchCriteria == null || moduleSearchCriteria.isEmpty()) {
-                    moduleSearchCriteria = new HashMap<>();
-                    moduleSearchCriteria.put(MOBILE_NUMBER_PARAM, requestInfo.getUserInfo().getMobileNumber());
-                    criteria.setModuleSearchCriteria(moduleSearchCriteria);
-                } 
-                for(Map<String, String> tenantAppln : tenantWiseApplns) {
-                    String tenant = tenantAppln.get("tenantid");
-                    String applnNo = tenantAppln.get("applicationno");
-                    if(tenantAndApplnNumbersMap.containsKey(tenant)) {
-                        List<String> applnNos = tenantAndApplnNumbersMap.get(tenant);
-                        applnNos.add(applnNo);
-                        tenantAndApplnNumbersMap.put(tenant, applnNos);
-                    } else {
-                        List<String> l = new ArrayList<>();
-                        l.add(applnNo);
-                        tenantAndApplnNumbersMap.put(tenant, l);
-                    }
-                }
-                String inputTenantID = processCriteria.getTenantId();
-                List<String> inputBusinessIds = processCriteria.getBusinessIds();
-                List<String> inputStatus = processCriteria.getStatus();
-                if(!StatusIdNameMap.isEmpty())
-                    processCriteria
-                            .setStatus(StatusIdNameMap.entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList()));
-                for(Map.Entry<String, List<String>> t : tenantAndApplnNumbersMap.entrySet()) {
-                    processCriteria.setTenantId(t.getKey());
-                    processCriteria.setBusinessIds(t.getValue());
-                    List<HashMap<String, Object>> tenantWiseStatusCount = workflowService.getProcessStatusCount(requestInfo, processCriteria);
-                    if(bpaCitizenStatusCountMap.isEmpty()) {
-                        bpaCitizenStatusCountMap.addAll(tenantWiseStatusCount);
-                    } else {
-                        for (HashMap<String, Object> tenantStatusMap : tenantWiseStatusCount) {
-                            for (HashMap<String, Object> bpaStatusMap : bpaCitizenStatusCountMap) {
-                                if (bpaStatusMap.containsValue(tenantStatusMap.get(STATUS_ID))) {
-                                    bpaStatusMap.put(COUNT, Integer.parseInt(String.valueOf(bpaStatusMap.get(COUNT)))
-                                            + Integer.parseInt(String.valueOf(tenantStatusMap.get(COUNT))));
-                                }
-                            }
-                        }
-                    }
-                }
-                statusCountMap = bpaCitizenStatusCountMap;
-                processCriteria.setTenantId(inputTenantID);
-                processCriteria.setBusinessIds(inputBusinessIds);
-                processCriteria.setStatus(inputStatus);
-            }
-            
-            /*
-             * In the WF statuscount API, locality based fileter is not supported.
-             * To support status wise count based on locality, with status and locality API
-             * is called and those count will be set in statuscount response.
-             */
-            if(processCriteria != null && !ObjectUtils.isEmpty(processCriteria.getModuleName())
-                    && processCriteria.getModuleName().equals(BPA)) {
-                if(moduleSearchCriteria.get(LOCALITY_PARAM) != null) {
-                    for(Map<String, Object> statusWiseCount : statusCountMap) {
-                        List<String> statusList = new ArrayList<>();
-                        statusList.add(String.valueOf(statusWiseCount.get(STATUS_ID)));
-                        criteria.getProcessSearchCriteria().setStatus(statusList);
-                        Integer count = bpaInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap, requestInfo);
-                        if(count == 0) {
-                            statusWiseCount.clear();
-                        } else {
-                            statusWiseCount.put(COUNT, count); 
-                        }
-                    }
-                    criteria.getProcessSearchCriteria().setStatus(inputStatuses);
-                }
-                if(!statusCountMap.isEmpty()) {
-                    List<HashMap<String, Object>> bpaInboxStatusCountMap = new ArrayList<>();
-                    for (HashMap<String, Object> bpaLoclalityStatusCount : statusCountMap) {
-                        if (!bpaLoclalityStatusCount.isEmpty())
-                            bpaInboxStatusCountMap.add(bpaLoclalityStatusCount);
-                    }
-                    statusCountMap = bpaInboxStatusCountMap;
-                }
-            }
-
-            // }
-            // Redirect request to searcher in case of PT to fetch acknowledgement IDS
-            Boolean isSearchResultEmpty = false;
-            List<String> businessKeys = new ArrayList<>();
-            if (!ObjectUtils.isEmpty(processCriteria.getModuleName()) && processCriteria.getModuleName().equals(PT)) {
-                totalCount = ptInboxFilterService.fetchAcknowledgementIdsCountFromSearcher(criteria, StatusIdNameMap,
-                        requestInfo);
-                List<String> acknowledgementNumbers = ptInboxFilterService.fetchAcknowledgementIdsFromSearcher(criteria,
-                        StatusIdNameMap, requestInfo);
-                if (!CollectionUtils.isEmpty(acknowledgementNumbers)) {
-                    moduleSearchCriteria.put(ACKNOWLEDGEMENT_IDS_PARAM, acknowledgementNumbers);
-                    businessKeys.addAll(acknowledgementNumbers);
-                    moduleSearchCriteria.remove(LOCALITY_PARAM);
-                    moduleSearchCriteria.remove(OFFSET_PARAM);
-                } else {
-                    isSearchResultEmpty = true;
-                }
-            }
-            if (!ObjectUtils.isEmpty(processCriteria.getModuleName()) && ( processCriteria.getModuleName().equals(TL)
-                    || processCriteria.getModuleName().equals(BPAREG))) {
-                totalCount = tlInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap, requestInfo);
-                List<String> applicationNumbers = tlInboxFilterService.fetchApplicationNumbersFromSearcher(criteria,
-                        StatusIdNameMap, requestInfo);
-                if (!CollectionUtils.isEmpty(applicationNumbers)) {
-                    moduleSearchCriteria.put(APPLICATION_NUMBER_PARAM, applicationNumbers);
-                    businessKeys.addAll(applicationNumbers);
-                    moduleSearchCriteria.remove(TLConstants.STATUS_PARAM);
-                    moduleSearchCriteria.remove(LOCALITY_PARAM);
-                    moduleSearchCriteria.remove(OFFSET_PARAM);
-                } else {
-                    isSearchResultEmpty = true;
-                }
-            }
-
-           //TODO as on now this does not seem to be required, hence commenting the code
-           /* if (!ObjectUtils.isEmpty(processCriteria.getModuleName())
-					&& processCriteria.getModuleName().equalsIgnoreCase(FSMConstants.FSM_MODULE)) {
-
-                totalCount = fsmInboxFilter.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap, requestInfo, dsoId);
-            }*/
-            if (processCriteria != null && !ObjectUtils.isEmpty(processCriteria.getModuleName())
-                    && processCriteria.getModuleName().equals(BPA)) {
-                totalCount = bpaInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap, requestInfo);
-                List<String> applicationNumbers = bpaInboxFilterService.fetchApplicationNumbersFromSearcher(criteria,
-                        StatusIdNameMap, requestInfo);
-                if (!CollectionUtils.isEmpty(applicationNumbers)) {
-                    moduleSearchCriteria.put(BPA_APPLICATION_NUMBER_PARAM, applicationNumbers);
-                    businessKeys.addAll(applicationNumbers);
-                    moduleSearchCriteria.remove(STATUS_PARAM);
-                    moduleSearchCriteria.remove(MOBILE_NUMBER_PARAM);
-                    moduleSearchCriteria.remove(LOCALITY_PARAM);
-                    moduleSearchCriteria.remove(OFFSET_PARAM);
-                } else {
-                    isSearchResultEmpty = true;
-                }
-            }
-            
-            if (processCriteria != null && !ObjectUtils.isEmpty(processCriteria.getModuleName())
-                    && processCriteria.getModuleName().equals(NOC)) {
-                totalCount = nocInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap, requestInfo);
-                List<String> applicationNumbers = nocInboxFilterService.fetchApplicationNumbersFromSearcher(criteria, StatusIdNameMap, requestInfo);
-                if (!CollectionUtils.isEmpty(applicationNumbers)) {
-                    moduleSearchCriteria.put(NOC_APPLICATION_NUMBER_PARAM, applicationNumbers);
-                    businessKeys.addAll(applicationNumbers);
-                    moduleSearchCriteria.remove(STATUS_PARAM);
-                    moduleSearchCriteria.remove(MOBILE_NUMBER_PARAM);
-                    moduleSearchCriteria.remove(LOCALITY_PARAM);
-                    moduleSearchCriteria.remove(OFFSET_PARAM);
-                } else {
-                    isSearchResultEmpty = true;
-                }
-            }
-
-            List<Map<String,Object>> result = new ArrayList<>();
-            Map<String, Object> businessMapWS = new LinkedHashMap<>();
-            // Redirect request to ElasticSearch in case of WS and SW to fetch data
-            if (!ObjectUtils.isEmpty(processCriteria.getModuleName()) && (processCriteria.getModuleName().equals(WS)
-                    || processCriteria.getModuleName().equals(SW))){
-                JsonNode responseNode = null;
-                Map<String, Object> finalResult = new HashMap<>();
-
-                try {
-                    responseNode = new ObjectMapper().convertValue(elasticSearchRepository.elasticSearchApplications(criteria, (List<String>) null), JsonNode.class);
-                    JsonNode output = responseNode.get(ELASTICSEARCH_HIT_KEY).get(ELASTICSEARCH_HIT_KEY);
-                    //Throw exception for no returned result
-//                    if(output.size()==0){
-//                        throw new CustomException("NO_DATA", "No logs data for the given user with the provided search criteria");
-//                    }
-                    totalCount = responseNode.get(ELASTICSEARCH_HIT_KEY).get("total").intValue();
-
-                    List<String> userIds = new ArrayList<>();
-                    if (!isNull(output) && output.isArray()) {
-                        for (JsonNode objectnode : output) {
-                            Map<String, Object> data = new HashMap<>();
-                            data.put("Data", objectnode.get("_source").get("Data"));
-
-                            Long applicationServiceSla = getApplicationServiceSla(businessServiceSlaMap, data.get("Data"));
-                            data.put("serviceSLA", applicationServiceSla);
-                            result.add(data);
-                        }
-                    }
-                } catch (HttpClientErrorException e) {
-                    log.error("Client error while searching ElasticSearch - statusCode: {}, message: {}", 
-                            e.getStatusCode(), e.getMessage(), e);
-                    throw new CustomException("ELASTICSEARCH_ERROR", "client error while searching ES : " + e.getMessage());
-                }
-            }
-                     
-            // Redirect request to searcher in case of WS to fetch acknowledgement IDS
-            if (!ObjectUtils.isEmpty(processCriteria.getModuleName()) && processCriteria.getModuleName().equals(BS_WS_MODULENAME)
-            		&& flag==1) {
-            	processCriteria.setModuleName(BS_WS);
-                totalCount = billInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap,
-                        requestInfo);
-                Map<String, List<String>> map = billInboxFilterService.fetchConsumerNumbersFromSearcher(criteria,
-                        StatusIdNameMap, requestInfo);
-                List<String> consumerCodes = map.get("consumerCodes");
-                List<String> amendmentIds = map.get("amendmentIds");
-                if (!CollectionUtils.isEmpty(consumerCodes)) {
-                    moduleSearchCriteria.put(BS_CONSUMER_NO_PARAM, consumerCodes);
-                    businessKeys.addAll(amendmentIds);
-                    moduleSearchCriteria.put(BS_BUSINESS_SERVICE_PARAM, "WS");
-                    moduleSearchCriteria.remove(MOBILE_NUMBER_PARAM);
-                    moduleSearchCriteria.remove(ASSIGNEE_PARAM);
-                    moduleSearchCriteria.remove(LOCALITY_PARAM);
-                    moduleSearchCriteria.remove(OFFSET_PARAM);
-                } else {
-                    isSearchResultEmpty = true;
-                }
-                moduleSearchCriteria.put("isPropertyDetailsRequired", true);
-                processCriteria.setModuleName(BS_WS_MODULENAME);
-            }
-
-            // Redirect request to searcher in case of SW to fetch acknowledgement IDS
-            if (!ObjectUtils.isEmpty(processCriteria.getModuleName()) && processCriteria.getModuleName().equals(BS_SW_MODULENAME)
-            		&& flag==2) {
-            	processCriteria.setModuleName(BS_SW);
-                totalCount = billInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap,
-                        requestInfo);
-                Map<String, List<String>> map = billInboxFilterService.fetchConsumerNumbersFromSearcher(criteria,
-                        StatusIdNameMap, requestInfo);
-                List<String> consumerCodes = map.get("consumerCodes");
-                List<String> amendmentIds = map.get("amendmentIds");
-                if (!CollectionUtils.isEmpty(consumerCodes)) {
-                    moduleSearchCriteria.put(BS_CONSUMER_NO_PARAM, consumerCodes);
-                    businessKeys.addAll(amendmentIds);
-                    moduleSearchCriteria.put(BS_BUSINESS_SERVICE_PARAM, "SW");
-                    moduleSearchCriteria.remove(MOBILE_NUMBER_PARAM);
-                    moduleSearchCriteria.remove(ASSIGNEE_PARAM);
-                    moduleSearchCriteria.remove(LOCALITY_PARAM);
-                    moduleSearchCriteria.remove(OFFSET_PARAM);
-                } else {
-                    isSearchResultEmpty = true;
-                }
-                moduleSearchCriteria.put("isPropertyDetailsRequired", true);
-                processCriteria.setModuleName(BS_SW_MODULENAME);
-            }
-            /*
-             * if(!ObjectUtils.isEmpty(processCriteria.getModuleName()) && processCriteria.getModuleName().equals(PT)){ Boolean
-             * isMobileNumberPresent = false; if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){ isMobileNumberPresent =
-             * true; } Boolean isUserPresentForGivenMobileNumber = false; if(isMobileNumberPresent) { String tenantId =
-             * criteria.getTenantId(); String mobileNumber = (String) moduleSearchCriteria.get(MOBILE_NUMBER_PARAM); String
-             * userUUID = fetchUserUUID(mobileNumber, requestInfo, tenantId); isUserPresentForGivenMobileNumber =
-             * ObjectUtils.isEmpty(userUUID) ? true : false; } if(isMobileNumberPresent && isUserPresentForGivenMobileNumber){
-             * isSearchResultEmpty = true; } if(!isSearchResultEmpty){ Object result = null; Map<String, Object> searcherRequest =
-             * new HashMap<>(); Map<String, Object> searchCriteria = new HashMap<>();
-             * searchCriteria.put(TENANT_ID_PARAM,criteria.getTenantId()); // Accomodating module search criteria in searcher
-             * request if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){ searchCriteria.put(MOBILE_NUMBER_PARAM,
-             * moduleSearchCriteria.get(MOBILE_NUMBER_PARAM)); } if(moduleSearchCriteria.containsKey(LOCALITY_PARAM)){
-             * searchCriteria.put(LOCALITY_PARAM, moduleSearchCriteria.get(LOCALITY_PARAM)); }
-             * if(moduleSearchCriteria.containsKey(PROPERTY_ID_PARAM)){ searchCriteria.put(PROPERTY_ID_PARAM,
-             * moduleSearchCriteria.get(PROPERTY_ID_PARAM)); } if(moduleSearchCriteria.containsKey(APPLICATION_NUMBER_PARAM)) {
-             * searchCriteria.put(APPLICATION_NUMBER_PARAM, moduleSearchCriteria.get(APPLICATION_NUMBER_PARAM)); } // Accomodating
-             * process search criteria in searcher request if(!ObjectUtils.isEmpty(processCriteria.getAssignee())){
-             * searchCriteria.put(ASSIGNEE_PARAM, processCriteria.getAssignee()); }
-             * if(!ObjectUtils.isEmpty(processCriteria.getStatus())){ searchCriteria.put(STATUS_PARAM,
-             * processCriteria.getStatus()); }else{ if(StatusIdNameMap.values().size() > 0) {
-             * if(CollectionUtils.isEmpty(processCriteria.getStatus())) { searchCriteria.put(STATUS_PARAM,
-             * StatusIdNameMap.keySet()); } } } // Paginating searcher results searchCriteria.put(OFFSET_PARAM,
-             * criteria.getOffset()); searchCriteria.put(NO_OF_RECORDS_PARAM, criteria.getLimit());
-             * searcherRequest.put(REQUESTINFO_PARAM, requestInfo); searcherRequest.put(SEARCH_CRITERIA_PARAM, searchCriteria);
-             * result = restTemplate.postForObject(PT_INBOX_SEARCHER_URL, searcherRequest, Map.class); List<String>
-             * acknowledgementNumbers = JsonPath.read(result, "$.Properties.*.acknowldgementnumber");
-             * if(!CollectionUtils.isEmpty(acknowledgementNumbers)) { moduleSearchCriteria.put(ACKNOWLEDGEMENT_IDS_PARAM,
-             * acknowledgementNumbers); moduleSearchCriteria.remove(OFFSET_PARAM); moduleSearchCriteria.remove(LIMIT_PARAM);
-             * }else{ isSearchResultEmpty = true; } } }
-             */
-            businessObjects = new JSONArray();
-            //Search module specific data from respective modules. Works for all modules except WS and SW
-            if (!isSearchResultEmpty && !(processCriteria.getModuleName().equals(SW) || processCriteria.getModuleName().equals(WS))) {
-                businessObjects = fetchModuleObjects(moduleSearchCriteria, businessServiceName, criteria.getTenantId(),
-                        requestInfo, srvMap);
-            }
-            Map<String, Object> businessMap = StreamSupport.stream(businessObjects.spliterator(), false)
-                    .collect(Collectors.toMap(s1 -> ((JSONObject) s1).get(businessIdParam).toString(),
-                            s1 -> s1, (e1, e2) -> e1, LinkedHashMap::new));
-            ArrayList businessIds = new ArrayList();
-            businessIds.addAll(businessMap.keySet());
-            processCriteria.setBusinessIds(businessIds);
-            // processCriteria.setOffset(criteria.getOffset());
-            // processCriteria.setLimit(criteria.getLimit());
-            processCriteria.setIsProcessCountCall(false);
-
-	    String businessService;
-	    Map<String, String> srvSearchMap;
-	    JSONArray serviceSearchObject = new JSONArray();
-	    Map<String, Object> serviceSearchMap ;
-        String businessServiceForAmendment = businessServiceName.get(0);
-        Boolean isBusinessServiceWSOrSW = businessServiceForAmendment.equalsIgnoreCase(BS_WS_SERVICE) || businessServiceForAmendment.equalsIgnoreCase(BS_SW_SERVICE);
-	    if (businessObjects != null && businessObjects.length() > 0
-                && isBusinessServiceWSOrSW) {
-		businessService = moduleSearchCriteria.get(BS_BUSINESS_SERVICE_PARAM).toString();
-		// businessObjects.getJSONObject(0).getString("businessService");
-		srvSearchMap = fetchAppropriateServiceSearchMap(businessService, moduleName);
-		if (!isSearchResultEmpty && (processCriteria.getModuleName().equalsIgnoreCase(BS_WS_MODULENAME) || processCriteria.getModuleName().equalsIgnoreCase(BS_SW_MODULENAME))) {
-			moduleSearchCriteria.put(srvSearchMap.get("consumerCodeParam"), moduleSearchCriteria.get(BS_CONSUMER_NO_PARAM));
-			moduleSearchCriteria.remove(BS_CONSUMER_NO_PARAM);
-			moduleSearchCriteria.remove(BS_BUSINESS_SERVICE_PARAM);
-			moduleSearchCriteria.remove(BS_APPLICATION_NUMBER_PARAM);
-			moduleSearchCriteria.remove("status");
-			moduleSearchCriteria.put("searchType", "CONNECTION");
-			serviceSearchObject = fetchModuleSearchObjects(moduleSearchCriteria, businessServiceName,
-					criteria.getTenantId(), requestInfo, srvSearchMap);
-			moduleSearchCriteria.remove("searchType");
-			moduleSearchCriteria.put(BS_BUSINESS_SERVICE_PARAM, businessService);
-		}
-				
-	    }
-	    serviceSearchMap = StreamSupport.stream(serviceSearchObject.spliterator(), false)
-	         .collect(Collectors.toMap(s1 -> ((JSONObject) s1).get("connectionNo").toString(),
-	                s1 -> s1, (e1, e2) -> e1, LinkedHashMap::new));
-			 
-	    ProcessInstanceResponse processInstanceResponse;
-            /*
-             * In BPA, the stakeholder can able to submit applications for multiple cities
-             * and in the single inbox all cities submitted applications need to show
-             */
-            if(processCriteria != null && !ObjectUtils.isEmpty(processCriteria.getModuleName())
-                    && processCriteria.getModuleName().equals(BPA) && roles.contains(BpaConstants.CITIZEN)) {
-                Map<String, List<String>> tenantAndApplnNoForProcessInstance = new HashMap<>();
-                for(Object businessId : businessIds) {
-                    for (Map.Entry<String, List<String>> tenantAppln : tenantAndApplnNumbersMap.entrySet()) {
-                        String tenantId = tenantAppln.getKey();
-                        if (tenantAppln.getValue().contains(businessId)
-                                && tenantAndApplnNoForProcessInstance.containsKey(tenantId)) {
-                              List<String> applnNos = tenantAndApplnNoForProcessInstance.get(tenantId);
-                              applnNos.add(String.valueOf(businessId));
-                              tenantAndApplnNoForProcessInstance.put(tenantId, applnNos);
-                          } else {
-                              List<String> businesIds = new ArrayList<>();
-                              businesIds.add(String.valueOf(businessId));
-                              tenantAndApplnNoForProcessInstance.put(tenantId, businesIds);
-                          }
-                      }
-                }
-                ProcessInstanceResponse processInstanceRes = new ProcessInstanceResponse();
-                for(Map.Entry<String, List<String>> appln : tenantAndApplnNoForProcessInstance.entrySet()) {
-                    processCriteria.setTenantId(appln.getKey());
-                    processCriteria.setBusinessIds(appln.getValue());
-                    ProcessInstanceResponse processInstance = workflowService.getProcessInstance(processCriteria, requestInfo);
-                    processInstanceRes.setResponseInfo(processInstance.getResponseInfo());
-                    if(processInstanceRes.getProcessInstances() == null)
-                        processInstanceRes.setProcessInstances(processInstance.getProcessInstances());
-                    else
-                        processInstanceRes.getProcessInstances().addAll(processInstance.getProcessInstances());
-                }
-                processInstanceResponse = processInstanceRes;
-            } else {
-                processInstanceResponse = workflowService.getProcessInstance(processCriteria, requestInfo);
-            }
-            
-            List<ProcessInstance> processInstances = processInstanceResponse.getProcessInstances();
-            Map<String, ProcessInstance> processInstanceMap = processInstances.stream()
-                    .collect(Collectors.toMap(ProcessInstance::getBusinessId, Function.identity()));
-
-            //Adding searched Items in Inbox result object for WS and SW
-            if (moduleName.equals(WS) || moduleName.equals(SW)) {
-                if (!CollectionUtils.isEmpty(result)) {
-                    //Add items in Inbox response in Inbox object
-                    result.forEach(res -> {
-                        Inbox inbox = new Inbox();
-                        JsonNode jsonNode = mapper.convertValue(res.get("Data"), JsonNode.class);
-                        JSONObject jsonObject=new JSONObject();
-                        jsonObject.put("Data",jsonNode);
-                        jsonObject.put("serviceSLA",res.get("serviceSLA"));
-                        inbox.setBusinessObject(toMap(jsonObject));
-                        inboxes.add(inbox);
-                    });
-                }
-            }
-            if (businessObjects.length() > 0 && processInstances.size() > 0) {
-                if (CollectionUtils.isEmpty(businessKeys)) {
-                    businessMap.keySet().forEach(businessKey -> {
-                        if(null != processInstanceMap.get(businessKey)) {
-                            if (!isBusinessServiceWSOrSW) {
-                            	//For non- Bill Amendment Inbox search
-                                Inbox inbox = new Inbox();
-                                inbox.setProcessInstance(processInstanceMap.get(businessKey));
-                                inbox.setBusinessObject(toMap((JSONObject) businessMap.get(businessKey)));
-                                inboxes.add(inbox);
-                            } else {
-                                //When Bill Amendment objects are searched
-                                Inbox inbox = new Inbox();
-                                inbox.setProcessInstance(processInstanceMap.get(businessKey));
-                                inbox.setBusinessObject(toMap((JSONObject) businessMap.get(businessKey)));
-                                inbox.setServiceObject(toMap(
-                                        (JSONObject) serviceSearchMap.get(inbox.getBusinessObject().get("consumerCode"))));
-                                inboxes.add(inbox);
-                            }
-                        }
-                    });
-                    if (isBusinessServiceWSOrSW)
-                  	    totalCount = processInstanceMap.size();
-                } else {
-                	//For non- Bill Amendment Inbox search
-			if (!isBusinessServiceWSOrSW) {
-				businessKeys.forEach(businessKey -> {
-					Inbox inbox = new Inbox();
-					inbox.setProcessInstance(processInstanceMap.get(businessKey));
-					inbox.setBusinessObject(toMap((JSONObject) businessMap.get(businessKey)));
-					inboxes.add(inbox);
-				});
-			} else {
-			//When Bill Amendment objects are searched
-				for (String businessKey : businessKeys) {
-					Inbox inbox = new Inbox();
-					inbox.setProcessInstance(processInstanceMap.get(businessKey));
-					inbox.setBusinessObject(toMap((JSONObject) businessMap.get(businessKey)));
-					inbox.setServiceObject(toMap(
-							(JSONObject) serviceSearchMap.get(inbox.getBusinessObject().get("consumerCode"))));
-					inboxes.add(inbox);
-				}
-			}
-                }
-            }
+    /**
+     * Processes module search criteria and builds inbox items
+     */
+    private InboxProcessingContext processModuleSearchCriteria(InboxProcessingContext context, RequestInfo requestInfo) {
+        log.trace("Method invoked: processModuleSearchCriteria");
+        log.debug("Processing module search criteria");
+        
+        if (!CollectionUtils.isEmpty(context.moduleSearchCriteria)) {
+            context = processNonEmptyModuleSearchCriteria(context, requestInfo);
         } else {
-            processCriteria.setOffset(criteria.getOffset());
-            processCriteria.setLimit(criteria.getLimit());
-
-            ProcessInstanceResponse processInstanceResponse = workflowService.getProcessInstance(processCriteria, requestInfo);
-            List<ProcessInstance> processInstances = processInstanceResponse.getProcessInstances();
-            HashMap<String, List<String>> businessSrvIdsMap = new HashMap<String, List<String>>();
-            Map<String, ProcessInstance> processInstanceMap = processInstances.stream()
-                    .collect(Collectors.toMap(ProcessInstance::getBusinessId, Function.identity()));
-            moduleSearchCriteria = new HashMap<String, String>();
-            if (CollectionUtils.isEmpty(srvMap)) {
-                throw new CustomException(ErrorConstants.INVALID_MODULE,
-                        "config not found for the businessService : " + businessServiceName);
-            }
-            String businessIdParam = srvMap.get("businessIdProperty");
-            moduleSearchCriteria.put(srvMap.get("applNosParam"),
-                    StringUtils.arrayToDelimitedString(processInstanceMap.keySet().toArray(), ","));
-            moduleSearchCriteria.put("tenantId", criteria.getTenantId());
-            // moduleSearchCriteria.put("offset", criteria.getOffset());
-            moduleSearchCriteria.put("limit", -1);
-            businessObjects = fetchModuleObjects(moduleSearchCriteria, businessServiceName, criteria.getTenantId(), requestInfo,
-                    srvMap);
-            Map<String, Object> businessMap = StreamSupport.stream(businessObjects.spliterator(), false)
-                    .collect(Collectors.toMap(s1 -> ((JSONObject) s1).get(businessIdParam).toString(),
-                            s1 -> s1));
-
-            if (businessObjects.length() > 0 && processInstances.size() > 0) {
-                processInstanceMap.keySet().forEach(pinstance -> {
-                    Inbox inbox = new Inbox();
-                    inbox.setProcessInstance(processInstanceMap.get(pinstance));
-                    inbox.setBusinessObject(toMap((JSONObject) businessMap.get(pinstance)));
-                    inboxes.add(inbox);
-                });
-            }
-
+            log.debug("Module search criteria is empty, handling empty criteria scenario");
+            handleEmptyModuleSearchCriteria(context.criteria, context.processCriteria, requestInfo, 
+                    context.businessServiceName, context.srvMap, context.inboxes);
         }
         
-       // log.info("businessServiceName.contains(FSM_MODULE) ::: " + businessServiceName.contains(FSM_MODULE));
+        log.debug("Module search criteria processing completed");
+        return context;
+    }
+
+    /**
+     * Processes non-empty module search criteria
+     */
+    private InboxProcessingContext processNonEmptyModuleSearchCriteria(InboxProcessingContext context, 
+            RequestInfo requestInfo) {
+        log.trace("Method invoked: processNonEmptyModuleSearchCriteria");
+        log.debug("Processing non-empty module search criteria");
         
-		if (!ObjectUtils.isEmpty(processCriteria.getModuleName())
-				&& processCriteria.getModuleName().equalsIgnoreCase(FSMConstants.FSM_MODULE)) {
+        initializeModuleSearchCriteria(context.criteria, context.moduleSearchCriteria);
+        List<BusinessService> bussinessSrvs = buildBusinessServicesList(context.criteria, requestInfo, 
+                context.businessServiceName, context.businessServiceSlaMap);
+        context.statusIdNameMap = workflowService.getActionableStatusesForRole(requestInfo, bussinessSrvs, 
+                context.processCriteria);
+        String applicationStatusParam = getApplicationStatusParam(context.srvMap);
+        context.businessIdParam = context.srvMap.get("businessIdProperty");
+        
+        applyStatusFilterToModuleSearchCriteria(context.processCriteria, context.statusIdNameMap, 
+                context.moduleSearchCriteria, applicationStatusParam);
+        
+        if (isBpaCitizen(context.processCriteria, context.roles)) {
+            log.debug("Processing BPA citizen scenario");
+            context.statusCountMap = handleBpaCitizenStatusCount(context.criteria, context.processCriteria, 
+                    context.statusIdNameMap, context.moduleSearchCriteria, requestInfo, 
+                    context.tenantAndApplnNumbersMap);
+        }
+        
+        if (isBpaModule(context.processCriteria)) {
+            log.debug("Processing BPA module locality filtering");
+            context.statusCountMap = handleBpaLocalityFiltering(context.criteria, context.processCriteria, 
+                    context.statusIdNameMap, context.moduleSearchCriteria, context.statusCountMap, 
+                    context.inputStatuses, requestInfo);
+        }
 
-			List<String> applicationStatus = new ArrayList<>();
-			applicationStatus.add(WAITING_FOR_DISPOSAL_STATE);
-			applicationStatus.add(DISPOSED_STATE);
-			List<Map<String, Object>> vehicleResponse = fetchVehicleTripResponse(criteria, requestInfo,applicationStatus);
-			BusinessService businessService = workflowService.getBusinessService(criteria.getTenantId(), requestInfo,
-					FSM_VEHICLE_TRIP_MODULE);
-			//log.info("businessService :::: " + businessService);
-			populateStatusCountMap(statusCountMap, vehicleResponse, businessService);
+        context = applyModuleFiltersAndFetchData(context, requestInfo);
+        context = buildInboxItemsFromData(context, requestInfo);
+        
+        log.debug("Non-empty module search criteria processing completed");
+        return context;
+    }
 
-			for (HashMap<String, Object> vTripMap : statusCountMap) {
-				if ((WAITING_FOR_DISPOSAL_STATE.equals(vTripMap.get(APPLICATIONSTATUS))
-						|| DISPOSED_STATE.equals(vTripMap.get(APPLICATIONSTATUS)))
-						&& inputStatuses.contains(vTripMap.get(STATUSID))) {
-					totalCount += ((int) vTripMap.get(COUNT));
-				}
-			}
-			List<String> requiredApplications = new ArrayList<>();
-			inboxes.forEach(inbox -> {
-				ProcessInstance inboxProcessInstance = inbox.getProcessInstance();
-				if (null != inboxProcessInstance && null!= inboxProcessInstance.getState()) {
-					String appStatus = inboxProcessInstance.getState().getApplicationStatus();
-					if (DSO_INPROGRESS_STATE.equals(appStatus) || CITIZEN_FEEDBACK_PENDING_STATE.equals(appStatus)
-							|| COMPLETED_STATE.equals(appStatus)) {
-						requiredApplications.add(inboxProcessInstance.getBusinessId());
-					}
-				}
-			});
-			//log.info("requiredApplications :::: " + requiredApplications);
-			
-			List<VehicleTripDetail> vehicleTripDetail = fetchVehicleStatusForApplication(requiredApplications,requestInfo,criteria.getTenantId());
-			//log.info("vehicleTripDetail :::: " + vehicleTripDetail);			
-			inboxes.forEach(inbox -> {
-				if (null != inbox && null != inbox.getProcessInstance()
-						&& null != inbox.getProcessInstance().getBusinessId()) {
-					List<VehicleTripDetail> vehicleTripDetails = vehicleTripDetail.stream()
-							.filter(trip -> inbox.getProcessInstance().getBusinessId().equals(trip.getReferenceNo()))
-							.collect(Collectors.toList());
-					Map<String, Object> vehicleBusinessObject = inbox.getBusinessObject();
-					vehicleBusinessObject.put(VEHICLE_LOG, vehicleTripDetails);
-				}
-			});
-			//log.info("CollectionUtils.isEmpty(inboxes) :::: " + CollectionUtils.isEmpty(inboxes));
-			if (CollectionUtils.isEmpty(inboxes) && totalCount>0 && !moduleSearchCriteria.containsKey("applicationNos")) {
-				inputStatuses = inputStatuses.stream().filter(x -> x != null).collect(Collectors.toList());
-				List<String> fsmApplicationList = fetchVehicleStateMap(inputStatuses, requestInfo, criteria.getTenantId(),criteria.getLimit(),criteria.getOffset());
-				moduleSearchCriteria.put("applicationNos", fsmApplicationList);
-				moduleSearchCriteria.put("applicationStatus", requiredApplications);
-//				moduleSearchCriteria.put("offset", criteria.getOffset());
-//	            moduleSearchCriteria.put("limit", criteria.getLimit());
-				processCriteria.setBusinessIds(fsmApplicationList);
-				processCriteria.setStatus(null);
-				ProcessInstanceResponse processInstanceResponse = workflowService.getProcessInstance(processCriteria,
-						requestInfo);
-				//log.info("processInstanceResponse :::: " + processInstanceResponse);
-				List<ProcessInstance> vehicleProcessInstances = processInstanceResponse.getProcessInstances();
-				Map<String, ProcessInstance> vehicleProcessInstanceMap = vehicleProcessInstances.stream()
-						.collect(Collectors.toMap(ProcessInstance::getBusinessId, Function.identity()));
-				JSONArray vehicleBusinessObjects = fetchModuleObjects(moduleSearchCriteria, businessServiceName,
-						criteria.getTenantId(), requestInfo, srvMap);
-				String businessIdParam = srvMap.get("businessIdProperty");
-				//log.info("businessIdParam :::: " + businessIdParam);
-				Map<String, Object> vehicleBusinessMap = StreamSupport
-						.stream(vehicleBusinessObjects.spliterator(), false)
-						.collect(Collectors.toMap(s1 -> ((JSONObject) s1).get(businessIdParam).toString(), s1 -> s1,
-								(e1, e2) -> e1, LinkedHashMap::new));
-				//log.info("businessIdParam :::: " + businessIdParam);
-				//log.info("vehicleBusinessObjects.length() :::: " + vehicleBusinessObjects.length());
-				//log.info("vehicleProcessInstances.size() :::: " + vehicleProcessInstances.size());
-				
-				if (vehicleBusinessObjects.length() > 0 && vehicleProcessInstances.size() > 0) {
-					//log.info("vehicleBusinessObjects.length() :::: " + vehicleBusinessObjects.length());
-					//log.info("vehicleProcessInstances.size() :::: " + vehicleProcessInstances.size());
-					fsmApplicationList.forEach(busiessKey -> {
-//						if(null != vehicleProcessInstanceMap.get(busiessKey)) {
-							Inbox inbox = new Inbox();
-							inbox.setProcessInstance(vehicleProcessInstanceMap.get(busiessKey));
-							inbox.setBusinessObject(toMap((JSONObject) vehicleBusinessMap.get(busiessKey)));
-							inboxes.add(inbox);	
-//						}
-					});
-				}
-			}
-			
-			//SAN-920: Logic for aggregating the statuses of Pay now and post pay application
-			List<HashMap<String, Object>> aggregateStatusCountMap = new ArrayList<>();
-			for (HashMap<String, Object> statusCountEntry : statusCountMap) {
-				 HashMap<String, Object> tempStatusMap = new HashMap<>();
-				 boolean matchFound=false;
-					for (HashMap<String, Object> aggrMapInstance : aggregateStatusCountMap) {
-	
-						String statusMapAppStatus = (String) statusCountEntry.get("applicationstatus");
-						String aggrMapAppStatus = (String) aggrMapInstance.get("applicationstatus");
-	
-	 					if (aggrMapAppStatus.equalsIgnoreCase(statusMapAppStatus)) {
-							aggrMapInstance.put(COUNT,
-									((Integer) statusCountEntry.get(COUNT) + (Integer) aggrMapInstance.get(COUNT)));
-							aggrMapInstance.put(APPLICATIONSTATUS, (String) statusCountEntry.get(APPLICATIONSTATUS));
-							aggrMapInstance.put(BUSINESS_SERVICE_PARAM, (String) statusCountEntry.get(BUSINESS_SERVICE_PARAM) + ","
-									+ (String) aggrMapInstance.get(BUSINESS_SERVICE_PARAM));
-							aggrMapInstance.put(STATUSID, (String) statusCountEntry.get(STATUSID) + ","
-									+ (String) aggrMapInstance.get(STATUSID));
-							matchFound=true;
-							break;
-						} else {
-							tempStatusMap.put(COUNT, (Integer) statusCountEntry.get(COUNT));
-							tempStatusMap.put(APPLICATIONSTATUS, (String) statusCountEntry.get(APPLICATIONSTATUS));
-							tempStatusMap.put(BUSINESS_SERVICE_PARAM, (String) statusCountEntry.get(BUSINESS_SERVICE_PARAM));
-							tempStatusMap.put(STATUSID, (String) statusCountEntry.get(STATUSID));
-							
-						}
-				 }
-					if (ObjectUtils.isEmpty(aggregateStatusCountMap)) {
-						aggregateStatusCountMap.add(statusCountEntry);
-					} else {
-						if (!matchFound) {
-							aggregateStatusCountMap.add(tempStatusMap);
-						}
-					}
-			}
-			
-			statusCountMap=	aggregateStatusCountMap;
-			//log.info("removeStatusCountMap:: "+ new Gson().toJson(statusCountMap));
+    /**
+     * Applies module-specific filters and fetches business data
+     */
+    private InboxProcessingContext applyModuleFiltersAndFetchData(InboxProcessingContext context, 
+            RequestInfo requestInfo) {
+        log.trace("Method invoked: applyModuleFiltersAndFetchData");
+        log.debug("Applying module-specific filters and fetching data");
+        
+        Boolean[] isSearchResultEmptyRef = new Boolean[] { false };
+        List<String> businessKeys = new ArrayList<>();
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        Integer updatedTotalCount = applyModuleSpecificFilters(context.criteria, context.processCriteria, 
+                context.statusIdNameMap, requestInfo, context.moduleSearchCriteria, context.businessServiceSlaMap, 
+                context.flag, context.originalModuleName, result, businessKeys, isSearchResultEmptyRef);
+        if (updatedTotalCount != null) {
+            context.totalCount = updatedTotalCount;
+            log.debug("Total count updated from module filters: {}", updatedTotalCount);
+        }
+        Boolean isSearchResultEmpty = isSearchResultEmptyRef[0];
+        
+        context.businessObjects = fetchBusinessObjects(context.moduleSearchCriteria, context.businessServiceName, 
+                context.criteria.getTenantId(), requestInfo, context.srvMap, context.processCriteria, 
+                isSearchResultEmpty);
+        
+        log.debug("Module filters applied and data fetched - businessObjects: {}", 
+                context.businessObjects != null ? context.businessObjects.length() : 0);
+        return context;
+    }
 
-		}
-		log.info("Status count map size: {}", statusCountMap.size());
-		
+    /**
+     * Builds inbox items from fetched business data
+     */
+    private InboxProcessingContext buildInboxItemsFromData(InboxProcessingContext context, RequestInfo requestInfo) {
+        log.trace("Method invoked: buildInboxItemsFromData");
+        log.debug("Building inbox items from fetched data");
+        
+        Map<String, Object> businessMap = buildBusinessMap(context.businessObjects, context.businessIdParam);
+        ArrayList businessIds = new ArrayList();
+        businessIds.addAll(businessMap.keySet());
+        context.processCriteria.setBusinessIds(businessIds);
+        context.processCriteria.setIsProcessCountCall(false);
+        log.debug("Business IDs extracted - count: {}", businessIds.size());
+
+        String businessServiceForAmendment = context.businessServiceName.get(0);
+        Boolean isBusinessServiceWSOrSW = businessServiceForAmendment.equalsIgnoreCase(BS_WS_SERVICE)
+                || businessServiceForAmendment.equalsIgnoreCase(BS_SW_SERVICE);
+        Map<String, Object> serviceSearchMap = fetchServiceSearchObjects(context.criteria, context.processCriteria,
+                context.moduleSearchCriteria, context.businessServiceName, requestInfo, context.businessObjects, 
+                isBusinessServiceWSOrSW, false, context.originalModuleName);
+
+        ProcessInstanceResponse processInstanceResponse = fetchProcessInstances(context.criteria, 
+                context.processCriteria, requestInfo, businessIds, context.tenantAndApplnNumbersMap, context.roles);
+        List<ProcessInstance> processInstances = processInstanceResponse.getProcessInstances();
+        Map<String, ProcessInstance> processInstanceMap = processInstances.stream()
+                .collect(Collectors.toMap(ProcessInstance::getBusinessId, Function.identity()));
+        log.debug("Process instances fetched - count: {}", processInstances.size());
+
+        List<String> businessKeys = new ArrayList<>();
+        List<Map<String, Object>> result = new ArrayList<>();
+        buildInboxItems(context.inboxes, result, businessMap, businessKeys, processInstanceMap, serviceSearchMap,
+                isBusinessServiceWSOrSW, context.originalModuleName);
+        
+        if (isBusinessServiceWSOrSW && CollectionUtils.isEmpty(businessKeys)) {
+            context.totalCount = processInstanceMap.size();
+            log.debug("Total count updated for WS/SW: {}", context.totalCount);
+        }
+        
+        log.debug("Inbox items built - count: {}", context.inboxes.size());
+        return context;
+    }
+
+    /**
+     * Processes FSM module if applicable
+     */
+    private InboxProcessingContext processFsmModuleIfNeeded(InboxProcessingContext context, RequestInfo requestInfo) {
+        log.trace("Method invoked: processFsmModuleIfNeeded");
+        
+        if (!ObjectUtils.isEmpty(context.processCriteria.getModuleName())
+                && context.processCriteria.getModuleName().equalsIgnoreCase(FSMConstants.FSM_MODULE)) {
+            log.debug("Processing FSM module");
+            Integer[] fsmTotalCount = new Integer[] { context.totalCount };
+            context.statusCountMap = processFsmModule(context.criteria, context.processCriteria, requestInfo, 
+                    context.inputStatuses, context.inboxes, context.moduleSearchCriteria, 
+                    context.businessServiceName, context.srvMap, context.statusCountMap, fsmTotalCount);
+            context.totalCount = fsmTotalCount[0];
+            log.debug("FSM module processing completed - totalCount: {}", context.totalCount);
+        } else {
+            log.debug("FSM module processing not required");
+        }
+        
+        return context;
+    }
+
+    /**
+     * Builds and returns the final inbox response
+     */
+    private InboxResponse buildInboxResponse(InboxProcessingContext context) {
+        log.trace("Method invoked: buildInboxResponse");
+        log.info("Status count map size: {}", context.statusCountMap.size());
+        
         log.debug("Building inbox response");
-        response.setTotalCount(totalCount);
-        response.setNearingSlaCount(nearingSlaProcessCount);
-        response.setStatusMap(statusCountMap);
-        response.setItems(inboxes);
+        context.response.setTotalCount(context.totalCount);
+        context.response.setNearingSlaCount(context.nearingSlaProcessCount);
+        context.response.setStatusMap(context.statusCountMap);
+        context.response.setItems(context.inboxes);
         
-        int itemCount = inboxes != null ? inboxes.size() : 0;
+        int itemCount = context.inboxes != null ? context.inboxes.size() : 0;
         log.info("Inbox data fetched successfully - totalCount: {}, nearingSlaCount: {}, itemCount: {}, statusMapSize: {}", 
-                totalCount, nearingSlaProcessCount, itemCount, statusCountMap.size());
-        return response;
+                context.totalCount, context.nearingSlaProcessCount, itemCount, context.statusCountMap.size());
+        return context.response;
     }
 
     /**
@@ -1241,5 +777,901 @@ public class InboxService {
 		}
 
 		return results;
+	}
+
+	/**
+	 * Converts module name from BS_WS/BS_SW to their module name equivalents if needed
+	 * @param processCriteria Process search criteria
+	 * @return flag indicating which conversion was done (1 for BS_WS, 2 for BS_SW, 0 for none)
+	 */
+	private Integer convertModuleNameIfNeeded(ProcessInstanceSearchCriteria processCriteria) {
+		log.trace("Method invoked: convertModuleNameIfNeeded");
+		log.debug("Checking if module name conversion needed - moduleName: {}", processCriteria.getModuleName());
+		Integer flag = 0;
+		if (processCriteria.getModuleName().equalsIgnoreCase(BS_WS)) {
+			flag = 1;
+			processCriteria.setModuleName(BS_WS_MODULENAME);
+			log.debug("Module name converted from BS_WS to BS_WS_MODULENAME");
+		} else if (processCriteria.getModuleName().equalsIgnoreCase(BS_SW)) {
+			flag = 2;
+			processCriteria.setModuleName(BS_SW_MODULENAME);
+			log.debug("Module name converted from BS_SW to BS_SW_MODULENAME");
+		} else {
+			log.debug("No module name conversion needed");
+		}
+		return flag;
+	}
+
+	/**
+	 * Gets total count from workflow service if applicable
+	 */
+	private Integer getTotalCount(InboxSearchCriteria criteria, RequestInfo requestInfo, 
+			ProcessInstanceSearchCriteria processCriteria) {
+		log.trace("Method invoked: getTotalCount");
+		log.debug("Getting total count - moduleName: {}", processCriteria.getModuleName());
+		Integer totalCount = 0;
+		if (!(processCriteria.getModuleName().equals(SW) || processCriteria.getModuleName().equals(WS))) {
+			log.debug("Fetching process count from workflow service");
+			totalCount = workflowService.getProcessCount(criteria.getTenantId(), requestInfo, processCriteria);
+			log.debug("Process count retrieved: {}", totalCount);
+		} else {
+			log.debug("Skipping total count fetch for WS/SW module");
+		}
+		return totalCount;
+	}
+
+	/**
+	 * Fetches DSO ID if the user has FSM_DSO role
+	 */
+	private String fetchDsoIdIfNeeded(InboxSearchCriteria criteria, RequestInfo requestInfo) {
+		log.trace("Method invoked: fetchDsoIdIfNeeded");
+		String dsoId = null;
+		if (requestInfo.getUserInfo().getRoles().get(0).getCode().equals(FSMConstants.FSM_DSO)) {
+			log.debug("User has FSM_DSO role, fetching DSO ID");
+			Map<String, Object> searcherRequestForDSO = new HashMap<>();
+			Map<String, Object> searchCriteriaForDSO = new HashMap<>();
+			searchCriteriaForDSO.put(TENANT_ID_PARAM, criteria.getTenantId());
+			searchCriteriaForDSO.put(FSMConstants.OWNER_ID, requestInfo.getUserInfo().getUuid());
+			searcherRequestForDSO.put(REQUESTINFO_PARAM, requestInfo);
+			searcherRequestForDSO.put(SEARCH_CRITERIA_PARAM, searchCriteriaForDSO);
+			StringBuilder uri = new StringBuilder();
+			uri.append(config.getSearcherHost()).append(config.getFsmInboxDSoIDEndpoint());
+			log.debug("Fetching DSO ID from searcher - URL: {}", uri.toString());
+
+			Object resultForDsoId = restTemplate.postForObject(uri.toString(), searcherRequestForDSO, Map.class);
+			dsoId = JsonPath.read(resultForDsoId, "$.vendor[0].id");
+			log.debug("DSO ID fetched: {}", dsoId);
+		} else {
+			log.debug("User does not have FSM_DSO role, skipping DSO ID fetch");
+		}
+		return dsoId;
+	}
+
+	/**
+	 * Handles assignee filtering
+	 */
+	private StringBuilder handleAssignee(ProcessInstanceSearchCriteria processCriteria) {
+		log.trace("Method invoked: handleAssignee");
+		StringBuilder assigneeUuid = new StringBuilder();
+		if (!ObjectUtils.isEmpty(processCriteria.getAssignee())) {
+			log.debug("Assignee filter present: {}", processCriteria.getAssignee());
+			assigneeUuid = assigneeUuid.append(processCriteria.getAssignee());
+			processCriteria.setStatus(null);
+			log.debug("Status cleared due to assignee filter");
+		} else {
+			log.debug("No assignee filter present");
+		}
+		return assigneeUuid;
+	}
+
+	/**
+	 * Initializes module search criteria with tenant, offset, and limit
+	 */
+	private void initializeModuleSearchCriteria(InboxSearchCriteria criteria, HashMap moduleSearchCriteria) {
+		log.trace("Method invoked: initializeModuleSearchCriteria");
+		log.debug("Initializing module search criteria - tenantId: {}, offset: {}, limit: {}", 
+				criteria.getTenantId(), criteria.getOffset(), criteria.getLimit());
+		moduleSearchCriteria.put("tenantId", criteria.getTenantId());
+		moduleSearchCriteria.put("offset", criteria.getOffset());
+		moduleSearchCriteria.put("limit", criteria.getLimit());
+		log.debug("Module search criteria initialized");
+	}
+
+	/**
+	 * Builds list of business services and populates SLA map
+	 */
+	private List<BusinessService> buildBusinessServicesList(InboxSearchCriteria criteria, RequestInfo requestInfo,
+			List<String> businessServiceName, Map<String, Long> businessServiceSlaMap) {
+		log.trace("Method invoked: buildBusinessServicesList");
+		log.debug("Building business services list - count: {}", businessServiceName.size());
+		List<BusinessService> bussinessSrvs = new ArrayList<BusinessService>();
+		for (String businessSrv : businessServiceName) {
+			log.debug("Fetching business service: {}", businessSrv);
+			BusinessService businessService = workflowService.getBusinessService(criteria.getTenantId(), requestInfo,
+					businessSrv);
+			bussinessSrvs.add(businessService);
+			businessServiceSlaMap.put(businessService.getBusinessService(), businessService.getBusinessServiceSla());
+			log.debug("Business service added - name: {}, SLA: {}", 
+					businessService.getBusinessService(), businessService.getBusinessServiceSla());
+		}
+		log.debug("Business services list built - total: {}", bussinessSrvs.size());
+		return bussinessSrvs;
+	}
+
+	/**
+	 * Gets application status parameter from service map, defaults to "applicationStatus"
+	 */
+	private String getApplicationStatusParam(Map<String, String> srvMap) {
+		log.trace("Method invoked: getApplicationStatusParam");
+		String applicationStatusParam = srvMap.get("applsStatusParam");
+		if (StringUtils.isEmpty(applicationStatusParam)) {
+			applicationStatusParam = "applicationStatus";
+			log.debug("Application status param not found in service map, using default: {}", applicationStatusParam);
+		} else {
+			log.debug("Application status param found: {}", applicationStatusParam);
+		}
+		return applicationStatusParam;
+	}
+
+	/**
+	 * Applies status filter to module search criteria
+	 */
+	private void applyStatusFilterToModuleSearchCriteria(ProcessInstanceSearchCriteria processCriteria,
+			HashMap<String, String> StatusIdNameMap, HashMap moduleSearchCriteria, String applicationStatusParam) {
+		log.trace("Method invoked: applyStatusFilterToModuleSearchCriteria");
+		if (StatusIdNameMap.values().size() > 0) {
+			if (!CollectionUtils.isEmpty(processCriteria.getStatus())) {
+				log.debug("Applying filtered statuses to module search criteria - statusCount: {}", 
+						processCriteria.getStatus().size());
+				List<String> statuses = new ArrayList<String>();
+				processCriteria.getStatus().forEach(status -> {
+					statuses.add(StatusIdNameMap.get(status));
+				});
+				moduleSearchCriteria.put(applicationStatusParam,
+						StringUtils.arrayToDelimitedString(statuses.toArray(), ","));
+				log.debug("Filtered statuses applied: {}", moduleSearchCriteria.get(applicationStatusParam));
+			} else {
+				log.debug("No status filter, applying all actionable statuses");
+				moduleSearchCriteria.put(applicationStatusParam,
+						StringUtils.arrayToDelimitedString(StatusIdNameMap.values().toArray(), ","));
+				log.debug("All actionable statuses applied: {}", moduleSearchCriteria.get(applicationStatusParam));
+			}
+		} else {
+			log.debug("No actionable statuses found, skipping status filter application");
+		}
+	}
+
+	/**
+	 * Checks if the request is for BPA citizen
+	 */
+	private boolean isBpaCitizen(ProcessInstanceSearchCriteria processCriteria, List<String> roles) {
+		log.trace("Method invoked: isBpaCitizen");
+		boolean result = processCriteria != null && !ObjectUtils.isEmpty(processCriteria.getModuleName())
+				&& processCriteria.getModuleName().equals(BPA) && roles.contains(BpaConstants.CITIZEN);
+		log.debug("BPA citizen check - result: {}", result);
+		return result;
+	}
+
+	/**
+	 * Checks if the request is for BPA module
+	 */
+	private boolean isBpaModule(ProcessInstanceSearchCriteria processCriteria) {
+		log.trace("Method invoked: isBpaModule");
+		boolean result = processCriteria != null && !ObjectUtils.isEmpty(processCriteria.getModuleName())
+				&& processCriteria.getModuleName().equals(BPA);
+		log.debug("BPA module check - result: {}", result);
+		return result;
+	}
+
+	/**
+	 * Handles BPA citizen status count aggregation across multiple tenants
+	 */
+	private List<HashMap<String, Object>> handleBpaCitizenStatusCount(InboxSearchCriteria criteria,
+			ProcessInstanceSearchCriteria processCriteria, HashMap<String, String> StatusIdNameMap,
+			HashMap moduleSearchCriteria, RequestInfo requestInfo,
+			Map<String, List<String>> tenantAndApplnNumbersMap) {
+		log.trace("Method invoked: handleBpaCitizenStatusCount");
+		log.debug("Handling BPA citizen status count aggregation across multiple tenants");
+		List<HashMap<String, Object>> bpaCitizenStatusCountMap = new ArrayList<HashMap<String, Object>>();
+		List<Map<String, String>> tenantWiseApplns = bpaInboxFilterService
+				.fetchTenantWiseApplicationNumbersForCitizenInboxFromSearcher(criteria, StatusIdNameMap, requestInfo);
+		log.debug("Fetched tenant-wise applications - count: {}", tenantWiseApplns.size());
+		if (moduleSearchCriteria == null || moduleSearchCriteria.isEmpty()) {
+			log.debug("Module search criteria is empty, initializing with mobile number");
+			moduleSearchCriteria = new HashMap<>();
+			moduleSearchCriteria.put(MOBILE_NUMBER_PARAM, requestInfo.getUserInfo().getMobileNumber());
+			criteria.setModuleSearchCriteria(moduleSearchCriteria);
+		}
+		for (Map<String, String> tenantAppln : tenantWiseApplns) {
+			String tenant = tenantAppln.get("tenantid");
+			String applnNo = tenantAppln.get("applicationno");
+			if (tenantAndApplnNumbersMap.containsKey(tenant)) {
+				List<String> applnNos = tenantAndApplnNumbersMap.get(tenant);
+				applnNos.add(applnNo);
+				tenantAndApplnNumbersMap.put(tenant, applnNos);
+			} else {
+				List<String> l = new ArrayList<>();
+				l.add(applnNo);
+				tenantAndApplnNumbersMap.put(tenant, l);
+			}
+		}
+		log.debug("Tenant-wise application numbers mapped - tenantCount: {}", tenantAndApplnNumbersMap.size());
+		String inputTenantID = processCriteria.getTenantId();
+		List<String> inputBusinessIds = processCriteria.getBusinessIds();
+		List<String> inputStatus = processCriteria.getStatus();
+		if (!StatusIdNameMap.isEmpty())
+			processCriteria.setStatus(
+					StatusIdNameMap.entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList()));
+		for (Map.Entry<String, List<String>> t : tenantAndApplnNumbersMap.entrySet()) {
+			log.debug("Processing status count for tenant: {}, applicationCount: {}", t.getKey(), t.getValue().size());
+			processCriteria.setTenantId(t.getKey());
+			processCriteria.setBusinessIds(t.getValue());
+			List<HashMap<String, Object>> tenantWiseStatusCount = workflowService.getProcessStatusCount(requestInfo,
+					processCriteria);
+			if (bpaCitizenStatusCountMap.isEmpty()) {
+				bpaCitizenStatusCountMap.addAll(tenantWiseStatusCount);
+				log.debug("Initial status count map populated from tenant: {}", t.getKey());
+			} else {
+				for (HashMap<String, Object> tenantStatusMap : tenantWiseStatusCount) {
+					for (HashMap<String, Object> bpaStatusMap : bpaCitizenStatusCountMap) {
+						if (bpaStatusMap.containsValue(tenantStatusMap.get(STATUS_ID))) {
+							bpaStatusMap.put(COUNT,
+									Integer.parseInt(String.valueOf(bpaStatusMap.get(COUNT)))
+											+ Integer.parseInt(String.valueOf(tenantStatusMap.get(COUNT))));
+						}
+					}
+				}
+				log.debug("Status counts aggregated for tenant: {}", t.getKey());
+			}
+		}
+		processCriteria.setTenantId(inputTenantID);
+		processCriteria.setBusinessIds(inputBusinessIds);
+		processCriteria.setStatus(inputStatus);
+		log.debug("BPA citizen status count aggregation completed - statusCountMapSize: {}", bpaCitizenStatusCountMap.size());
+		return bpaCitizenStatusCountMap;
+	}
+
+	/**
+	 * Handles BPA locality-based filtering for status counts
+	 */
+	private List<HashMap<String, Object>> handleBpaLocalityFiltering(InboxSearchCriteria criteria,
+			ProcessInstanceSearchCriteria processCriteria, HashMap<String, String> StatusIdNameMap,
+			HashMap moduleSearchCriteria, List<HashMap<String, Object>> statusCountMap, List<String> inputStatuses,
+			RequestInfo requestInfo) {
+		log.trace("Method invoked: handleBpaLocalityFiltering");
+		if (moduleSearchCriteria.get(LOCALITY_PARAM) != null) {
+			log.debug("Locality filter present, applying locality-based status count filtering");
+			for (Map<String, Object> statusWiseCount : statusCountMap) {
+				List<String> statusList = new ArrayList<>();
+				statusList.add(String.valueOf(statusWiseCount.get(STATUS_ID)));
+				criteria.getProcessSearchCriteria().setStatus(statusList);
+				Integer count = bpaInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap,
+						requestInfo);
+				if (count == 0) {
+					log.debug("Status count is 0 for statusId: {}, clearing entry", statusWiseCount.get(STATUS_ID));
+					statusWiseCount.clear();
+				} else {
+					log.debug("Status count updated for statusId: {}, count: {}", statusWiseCount.get(STATUS_ID), count);
+					statusWiseCount.put(COUNT, count);
+				}
+			}
+			criteria.getProcessSearchCriteria().setStatus(inputStatuses);
+			log.debug("Locality-based filtering completed");
+		} else {
+			log.debug("No locality filter present, skipping locality-based filtering");
+		}
+		if (!statusCountMap.isEmpty()) {
+			List<HashMap<String, Object>> bpaInboxStatusCountMap = new ArrayList<>();
+			for (HashMap<String, Object> bpaLoclalityStatusCount : statusCountMap) {
+				if (!bpaLoclalityStatusCount.isEmpty())
+					bpaInboxStatusCountMap.add(bpaLoclalityStatusCount);
+			}
+			statusCountMap = bpaInboxStatusCountMap;
+			log.debug("Filtered status count map - size: {}", statusCountMap.size());
+		}
+		return statusCountMap;
+	}
+
+	/**
+	 * Result class for module filter operations
+	 */
+	/**
+	 * Applies module-specific filters (PT, TL, BPA, NOC, WS/SW, BS_WS, BS_SW)
+	 */
+	private Integer applyModuleSpecificFilters(InboxSearchCriteria criteria,
+			ProcessInstanceSearchCriteria processCriteria, HashMap<String, String> StatusIdNameMap,
+			RequestInfo requestInfo, HashMap moduleSearchCriteria, Map<String, Long> businessServiceSlaMap,
+			Integer flag, String originalModuleName, List<Map<String, Object>> result, List<String> businessKeys,
+			Boolean[] isSearchResultEmptyRef) {
+		log.trace("Method invoked: applyModuleSpecificFilters");
+		log.debug("Applying module-specific filters - moduleName: {}", processCriteria.getModuleName());
+		Integer totalCount = null;
+
+		// PT module filtering
+		if (!ObjectUtils.isEmpty(processCriteria.getModuleName()) && processCriteria.getModuleName().equals(PT)) {
+			log.debug("Applying PT module filter");
+			totalCount = ptInboxFilterService.fetchAcknowledgementIdsCountFromSearcher(criteria, StatusIdNameMap,
+					requestInfo);
+			List<String> acknowledgementNumbers = ptInboxFilterService.fetchAcknowledgementIdsFromSearcher(criteria,
+					StatusIdNameMap, requestInfo);
+			if (!CollectionUtils.isEmpty(acknowledgementNumbers)) {
+				log.debug("PT acknowledgement numbers fetched - count: {}", acknowledgementNumbers.size());
+				moduleSearchCriteria.put(ACKNOWLEDGEMENT_IDS_PARAM, acknowledgementNumbers);
+				businessKeys.addAll(acknowledgementNumbers);
+				moduleSearchCriteria.remove(LOCALITY_PARAM);
+				moduleSearchCriteria.remove(OFFSET_PARAM);
+			} else {
+				log.debug("PT acknowledgement numbers empty, marking search result as empty");
+				isSearchResultEmptyRef[0] = true;
+			}
+		}
+
+		// TL/BPAREG module filtering
+		if (!ObjectUtils.isEmpty(processCriteria.getModuleName())
+				&& (processCriteria.getModuleName().equals(TL) || processCriteria.getModuleName().equals(BPAREG))) {
+			log.debug("Applying TL/BPAREG module filter");
+			totalCount = tlInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap, requestInfo);
+			List<String> applicationNumbers = tlInboxFilterService.fetchApplicationNumbersFromSearcher(criteria,
+					StatusIdNameMap, requestInfo);
+			if (!CollectionUtils.isEmpty(applicationNumbers)) {
+				log.debug("TL/BPAREG application numbers fetched - count: {}", applicationNumbers.size());
+				moduleSearchCriteria.put(APPLICATION_NUMBER_PARAM, applicationNumbers);
+				businessKeys.addAll(applicationNumbers);
+				moduleSearchCriteria.remove(TLConstants.STATUS_PARAM);
+				moduleSearchCriteria.remove(LOCALITY_PARAM);
+				moduleSearchCriteria.remove(OFFSET_PARAM);
+			} else {
+				log.debug("TL/BPAREG application numbers empty, marking search result as empty");
+				isSearchResultEmptyRef[0] = true;
+			}
+		}
+
+		// BPA module filtering
+		if (processCriteria != null && !ObjectUtils.isEmpty(processCriteria.getModuleName())
+				&& processCriteria.getModuleName().equals(BPA)) {
+			log.debug("Applying BPA module filter");
+			totalCount = bpaInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap, requestInfo);
+			List<String> applicationNumbers = bpaInboxFilterService.fetchApplicationNumbersFromSearcher(criteria,
+					StatusIdNameMap, requestInfo);
+			if (!CollectionUtils.isEmpty(applicationNumbers)) {
+				log.debug("BPA application numbers fetched - count: {}", applicationNumbers.size());
+				moduleSearchCriteria.put(BPA_APPLICATION_NUMBER_PARAM, applicationNumbers);
+				businessKeys.addAll(applicationNumbers);
+				moduleSearchCriteria.remove(STATUS_PARAM);
+				moduleSearchCriteria.remove(MOBILE_NUMBER_PARAM);
+				moduleSearchCriteria.remove(LOCALITY_PARAM);
+				moduleSearchCriteria.remove(OFFSET_PARAM);
+			} else {
+				log.debug("BPA application numbers empty, marking search result as empty");
+				isSearchResultEmptyRef[0] = true;
+			}
+		}
+
+		// NOC module filtering
+		if (processCriteria != null && !ObjectUtils.isEmpty(processCriteria.getModuleName())
+				&& processCriteria.getModuleName().equals(NOC)) {
+			log.debug("Applying NOC module filter");
+			totalCount = nocInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap, requestInfo);
+			List<String> applicationNumbers = nocInboxFilterService.fetchApplicationNumbersFromSearcher(criteria,
+					StatusIdNameMap, requestInfo);
+			if (!CollectionUtils.isEmpty(applicationNumbers)) {
+				log.debug("NOC application numbers fetched - count: {}", applicationNumbers.size());
+				moduleSearchCriteria.put(NOC_APPLICATION_NUMBER_PARAM, applicationNumbers);
+				businessKeys.addAll(applicationNumbers);
+				moduleSearchCriteria.remove(STATUS_PARAM);
+				moduleSearchCriteria.remove(MOBILE_NUMBER_PARAM);
+				moduleSearchCriteria.remove(LOCALITY_PARAM);
+				moduleSearchCriteria.remove(OFFSET_PARAM);
+			} else {
+				log.debug("NOC application numbers empty, marking search result as empty");
+				isSearchResultEmptyRef[0] = true;
+			}
+		}
+
+		// WS/SW ElasticSearch filtering
+		if (!ObjectUtils.isEmpty(processCriteria.getModuleName())
+				&& (processCriteria.getModuleName().equals(WS) || processCriteria.getModuleName().equals(SW))) {
+			log.debug("Applying WS/SW ElasticSearch filter");
+			totalCount = fetchElasticSearchData(criteria, businessServiceSlaMap, result);
+		}
+
+		// BS_WS (Bill Amendment WS) filtering
+		if (!ObjectUtils.isEmpty(processCriteria.getModuleName())
+				&& processCriteria.getModuleName().equals(BS_WS_MODULENAME) && flag == 1) {
+			log.debug("Applying BS_WS (Bill Amendment WS) filter");
+			processCriteria.setModuleName(BS_WS);
+			totalCount = billInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap, requestInfo);
+			Map<String, List<String>> map = billInboxFilterService.fetchConsumerNumbersFromSearcher(criteria,
+					StatusIdNameMap, requestInfo);
+			List<String> consumerCodes = map.get("consumerCodes");
+			List<String> amendmentIds = map.get("amendmentIds");
+			if (!CollectionUtils.isEmpty(consumerCodes)) {
+				log.debug("BS_WS consumer codes fetched - count: {}", consumerCodes.size());
+				moduleSearchCriteria.put(BS_CONSUMER_NO_PARAM, consumerCodes);
+				businessKeys.addAll(amendmentIds);
+				moduleSearchCriteria.put(BS_BUSINESS_SERVICE_PARAM, "WS");
+				moduleSearchCriteria.remove(MOBILE_NUMBER_PARAM);
+				moduleSearchCriteria.remove(ASSIGNEE_PARAM);
+				moduleSearchCriteria.remove(LOCALITY_PARAM);
+				moduleSearchCriteria.remove(OFFSET_PARAM);
+			} else {
+				log.debug("BS_WS consumer codes empty, marking search result as empty");
+				isSearchResultEmptyRef[0] = true;
+			}
+			moduleSearchCriteria.put("isPropertyDetailsRequired", true);
+			processCriteria.setModuleName(BS_WS_MODULENAME);
+		}
+
+		// BS_SW (Bill Amendment SW) filtering
+		if (!ObjectUtils.isEmpty(processCriteria.getModuleName())
+				&& processCriteria.getModuleName().equals(BS_SW_MODULENAME) && flag == 2) {
+			log.debug("Applying BS_SW (Bill Amendment SW) filter");
+			processCriteria.setModuleName(BS_SW);
+			totalCount = billInboxFilterService.fetchApplicationCountFromSearcher(criteria, StatusIdNameMap, requestInfo);
+			Map<String, List<String>> map = billInboxFilterService.fetchConsumerNumbersFromSearcher(criteria,
+					StatusIdNameMap, requestInfo);
+			List<String> consumerCodes = map.get("consumerCodes");
+			List<String> amendmentIds = map.get("amendmentIds");
+			if (!CollectionUtils.isEmpty(consumerCodes)) {
+				log.debug("BS_SW consumer codes fetched - count: {}", consumerCodes.size());
+				moduleSearchCriteria.put(BS_CONSUMER_NO_PARAM, consumerCodes);
+				businessKeys.addAll(amendmentIds);
+				moduleSearchCriteria.put(BS_BUSINESS_SERVICE_PARAM, "SW");
+				moduleSearchCriteria.remove(MOBILE_NUMBER_PARAM);
+				moduleSearchCriteria.remove(ASSIGNEE_PARAM);
+				moduleSearchCriteria.remove(LOCALITY_PARAM);
+				moduleSearchCriteria.remove(OFFSET_PARAM);
+			} else {
+				log.debug("BS_SW consumer codes empty, marking search result as empty");
+				isSearchResultEmptyRef[0] = true;
+			}
+			moduleSearchCriteria.put("isPropertyDetailsRequired", true);
+			processCriteria.setModuleName(BS_SW_MODULENAME);
+		}
+
+		log.debug("Module-specific filters applied - totalCount: {}, isSearchResultEmpty: {}", 
+				totalCount, isSearchResultEmptyRef[0]);
+		return totalCount;
+	}
+
+	/**
+	 * Fetches data from ElasticSearch for WS and SW modules
+	 */
+	private Integer fetchElasticSearchData(InboxSearchCriteria criteria, Map<String, Long> businessServiceSlaMap,
+			List<Map<String, Object>> result) {
+		Integer totalCount = 0;
+		try {
+			JsonNode responseNode = new ObjectMapper()
+					.convertValue(elasticSearchRepository.elasticSearchApplications(criteria, (List<String>) null),
+							JsonNode.class);
+			JsonNode output = responseNode.get(ELASTICSEARCH_HIT_KEY).get(ELASTICSEARCH_HIT_KEY);
+			totalCount = responseNode.get(ELASTICSEARCH_HIT_KEY).get("total").intValue();
+
+			if (!isNull(output) && output.isArray()) {
+				for (JsonNode objectnode : output) {
+					Map<String, Object> data = new HashMap<>();
+					data.put("Data", objectnode.get("_source").get("Data"));
+					Long applicationServiceSla = getApplicationServiceSla(businessServiceSlaMap, data.get("Data"));
+					data.put("serviceSLA", applicationServiceSla);
+					result.add(data);
+				}
+			}
+		} catch (HttpClientErrorException e) {
+			log.error("Client error while searching ElasticSearch - statusCode: {}, message: {}", e.getStatusCode(),
+					e.getMessage(), e);
+			throw new CustomException("ELASTICSEARCH_ERROR", "client error while searching ES : " + e.getMessage());
+		}
+		return totalCount;
+	}
+
+	/**
+	 * Fetches business objects from module search
+	 */
+	private JSONArray fetchBusinessObjects(HashMap moduleSearchCriteria, List<String> businessServiceName,
+			String tenantId, RequestInfo requestInfo, Map<String, String> srvMap,
+			ProcessInstanceSearchCriteria processCriteria, Boolean isSearchResultEmpty) {
+		log.trace("Method invoked: fetchBusinessObjects");
+		log.debug("Fetching business objects - isSearchResultEmpty: {}, moduleName: {}", 
+				isSearchResultEmpty, processCriteria.getModuleName());
+		JSONArray businessObjects = new JSONArray();
+		if (!isSearchResultEmpty
+				&& !(processCriteria.getModuleName().equals(SW) || processCriteria.getModuleName().equals(WS))) {
+			businessObjects = fetchModuleObjects(moduleSearchCriteria, businessServiceName, tenantId, requestInfo, srvMap);
+			log.debug("Business objects fetched - count: {}", businessObjects.length());
+		} else {
+			log.debug("Skipping business objects fetch - isSearchResultEmpty: {}, moduleName: {}", 
+					isSearchResultEmpty, processCriteria.getModuleName());
+		}
+		return businessObjects;
+	}
+
+	/**
+	 * Builds business map from business objects
+	 */
+	private Map<String, Object> buildBusinessMap(JSONArray businessObjects, String businessIdParam) {
+		log.trace("Method invoked: buildBusinessMap");
+		log.debug("Building business map from business objects - count: {}, businessIdParam: {}", 
+				businessObjects.length(), businessIdParam);
+		Map<String, Object> businessMap = StreamSupport.stream(businessObjects.spliterator(), false)
+				.collect(Collectors.toMap(s1 -> ((JSONObject) s1).get(businessIdParam).toString(), s1 -> s1,
+						(e1, e2) -> e1, LinkedHashMap::new));
+		log.debug("Business map built - size: {}", businessMap.size());
+		return businessMap;
+	}
+
+	/**
+	 * Fetches service search objects for bill amendments
+	 */
+	private Map<String, Object> fetchServiceSearchObjects(InboxSearchCriteria criteria,
+			ProcessInstanceSearchCriteria processCriteria, HashMap moduleSearchCriteria,
+			List<String> businessServiceName, RequestInfo requestInfo, JSONArray businessObjects,
+			Boolean isBusinessServiceWSOrSW, Boolean isSearchResultEmpty, String originalModuleName) {
+		log.trace("Method invoked: fetchServiceSearchObjects");
+		log.debug("Fetching service search objects - isBusinessServiceWSOrSW: {}, businessObjectsCount: {}", 
+				isBusinessServiceWSOrSW, businessObjects != null ? businessObjects.length() : 0);
+		Map<String, Object> serviceSearchMap = new LinkedHashMap<>();
+		if (businessObjects != null && businessObjects.length() > 0 && isBusinessServiceWSOrSW) {
+			log.debug("Fetching service search objects for bill amendments");
+			String businessService = moduleSearchCriteria.get(BS_BUSINESS_SERVICE_PARAM).toString();
+			Map<String, String> srvSearchMap = fetchAppropriateServiceSearchMap(businessService, originalModuleName);
+			if (!isSearchResultEmpty && (processCriteria.getModuleName().equalsIgnoreCase(BS_WS_MODULENAME)
+					|| processCriteria.getModuleName().equalsIgnoreCase(BS_SW_MODULENAME))) {
+				moduleSearchCriteria.put(srvSearchMap.get("consumerCodeParam"),
+						moduleSearchCriteria.get(BS_CONSUMER_NO_PARAM));
+				moduleSearchCriteria.remove(BS_CONSUMER_NO_PARAM);
+				moduleSearchCriteria.remove(BS_BUSINESS_SERVICE_PARAM);
+				moduleSearchCriteria.remove(BS_APPLICATION_NUMBER_PARAM);
+				moduleSearchCriteria.remove("status");
+				moduleSearchCriteria.put("searchType", "CONNECTION");
+				JSONArray serviceSearchObject = fetchModuleSearchObjects(moduleSearchCriteria, businessServiceName,
+						criteria.getTenantId(), requestInfo, srvSearchMap);
+				moduleSearchCriteria.remove("searchType");
+				moduleSearchCriteria.put(BS_BUSINESS_SERVICE_PARAM, businessService);
+				serviceSearchMap = StreamSupport.stream(serviceSearchObject.spliterator(), false)
+						.collect(Collectors.toMap(s1 -> ((JSONObject) s1).get("connectionNo").toString(), s1 -> s1,
+								(e1, e2) -> e1, LinkedHashMap::new));
+				log.debug("Service search map built - size: {}", serviceSearchMap.size());
+			}
+		} else {
+			log.debug("Skipping service search objects fetch");
+		}
+		return serviceSearchMap;
+	}
+
+	/**
+	 * Fetches process instances, handling BPA citizen multi-tenant scenario
+	 */
+	private ProcessInstanceResponse fetchProcessInstances(InboxSearchCriteria criteria,
+			ProcessInstanceSearchCriteria processCriteria, RequestInfo requestInfo, ArrayList businessIds,
+			Map<String, List<String>> tenantAndApplnNumbersMap, List<String> roles) {
+		log.trace("Method invoked: fetchProcessInstances");
+		log.debug("Fetching process instances - businessIdsCount: {}, moduleName: {}", 
+				businessIds.size(), processCriteria.getModuleName());
+		if (processCriteria != null && !ObjectUtils.isEmpty(processCriteria.getModuleName())
+				&& processCriteria.getModuleName().equals(BPA) && roles.contains(BpaConstants.CITIZEN)) {
+			log.debug("BPA citizen multi-tenant scenario detected, fetching process instances per tenant");
+			Map<String, List<String>> tenantAndApplnNoForProcessInstance = new HashMap<>();
+			for (Object businessId : businessIds) {
+				for (Map.Entry<String, List<String>> tenantAppln : tenantAndApplnNumbersMap.entrySet()) {
+					String tenantId = tenantAppln.getKey();
+					if (tenantAppln.getValue().contains(businessId)
+							&& tenantAndApplnNoForProcessInstance.containsKey(tenantId)) {
+						List<String> applnNos = tenantAndApplnNoForProcessInstance.get(tenantId);
+						applnNos.add(String.valueOf(businessId));
+						tenantAndApplnNoForProcessInstance.put(tenantId, applnNos);
+					} else if (tenantAppln.getValue().contains(businessId)) {
+						List<String> businesIds = new ArrayList<>();
+						businesIds.add(String.valueOf(businessId));
+						tenantAndApplnNoForProcessInstance.put(tenantId, businesIds);
+					}
+				}
+			}
+			ProcessInstanceResponse processInstanceRes = new ProcessInstanceResponse();
+			for (Map.Entry<String, List<String>> appln : tenantAndApplnNoForProcessInstance.entrySet()) {
+				log.debug("Fetching process instances for tenant: {}, businessIdsCount: {}", 
+						appln.getKey(), appln.getValue().size());
+				processCriteria.setTenantId(appln.getKey());
+				processCriteria.setBusinessIds(appln.getValue());
+				ProcessInstanceResponse processInstance = workflowService.getProcessInstance(processCriteria,
+						requestInfo);
+				processInstanceRes.setResponseInfo(processInstance.getResponseInfo());
+				if (processInstanceRes.getProcessInstances() == null)
+					processInstanceRes.setProcessInstances(processInstance.getProcessInstances());
+				else
+					processInstanceRes.getProcessInstances().addAll(processInstance.getProcessInstances());
+				log.debug("Process instances fetched for tenant: {} - count: {}", 
+						appln.getKey(), processInstance.getProcessInstances() != null ? processInstance.getProcessInstances().size() : 0);
+			}
+			log.debug("BPA citizen process instances fetched - totalCount: {}", 
+					processInstanceRes.getProcessInstances() != null ? processInstanceRes.getProcessInstances().size() : 0);
+			return processInstanceRes;
+		} else {
+			log.debug("Fetching process instances for standard scenario");
+			ProcessInstanceResponse response = workflowService.getProcessInstance(processCriteria, requestInfo);
+			log.debug("Process instances fetched - count: {}", 
+					response.getProcessInstances() != null ? response.getProcessInstances().size() : 0);
+			return response;
+		}
+	}
+
+	/**
+	 * Builds inbox items from business objects and process instances
+	 */
+	private void buildInboxItems(List<Inbox> inboxes, List<Map<String, Object>> result,
+			Map<String, Object> businessMap, List<String> businessKeys,
+			Map<String, ProcessInstance> processInstanceMap, Map<String, Object> serviceSearchMap,
+			Boolean isBusinessServiceWSOrSW, String originalModuleName) {
+		log.trace("Method invoked: buildInboxItems");
+		log.debug("Building inbox items - businessMapSize: {}, processInstanceMapSize: {}, businessKeysSize: {}", 
+				businessMap != null ? businessMap.size() : 0, 
+				processInstanceMap != null ? processInstanceMap.size() : 0, 
+				businessKeys != null ? businessKeys.size() : 0);
+		// Adding searched Items in Inbox result object for WS and SW
+		if (originalModuleName != null && (originalModuleName.equals(WS) || originalModuleName.equals(SW))) {
+			log.debug("Building inbox items for WS/SW module");
+			if (!CollectionUtils.isEmpty(result)) {
+				log.debug("Adding WS/SW items from ElasticSearch result - count: {}", result.size());
+				result.forEach(res -> {
+					Inbox inbox = new Inbox();
+					JsonNode jsonNode = mapper.convertValue(res.get("Data"), JsonNode.class);
+					JSONObject jsonObject = new JSONObject();
+					jsonObject.put("Data", jsonNode);
+					jsonObject.put("serviceSLA", res.get("serviceSLA"));
+					inbox.setBusinessObject(toMap(jsonObject));
+					inboxes.add(inbox);
+				});
+				log.debug("WS/SW inbox items added - count: {}", result.size());
+			}
+		}
+		if (businessMap != null && !businessMap.isEmpty() && processInstanceMap != null
+				&& !processInstanceMap.isEmpty()) {
+			if (CollectionUtils.isEmpty(businessKeys)) {
+				log.debug("Building inbox items from business map keys");
+				businessMap.keySet().forEach(businessKey -> {
+					if (null != processInstanceMap.get(businessKey)) {
+						if (!isBusinessServiceWSOrSW) {
+							Inbox inbox = new Inbox();
+							inbox.setProcessInstance(processInstanceMap.get(businessKey));
+							inbox.setBusinessObject(toMap((JSONObject) businessMap.get(businessKey)));
+							inboxes.add(inbox);
+						} else {
+							Inbox inbox = new Inbox();
+							inbox.setProcessInstance(processInstanceMap.get(businessKey));
+							inbox.setBusinessObject(toMap((JSONObject) businessMap.get(businessKey)));
+							Object consumerCode = inbox.getBusinessObject().get("consumerCode");
+							if (consumerCode != null && serviceSearchMap.containsKey(consumerCode)) {
+								inbox.setServiceObject(toMap((JSONObject) serviceSearchMap.get(consumerCode)));
+							}
+							inboxes.add(inbox);
+						}
+					}
+				});
+				log.debug("Inbox items built from business map - count: {}", 
+						businessMap.keySet().size());
+			} else {
+				log.debug("Building inbox items from business keys - count: {}", businessKeys.size());
+				if (!isBusinessServiceWSOrSW) {
+					businessKeys.forEach(businessKey -> {
+						Inbox inbox = new Inbox();
+						inbox.setProcessInstance(processInstanceMap.get(businessKey));
+						inbox.setBusinessObject(toMap((JSONObject) businessMap.get(businessKey)));
+						inboxes.add(inbox);
+					});
+				} else {
+					for (String businessKey : businessKeys) {
+						Inbox inbox = new Inbox();
+						inbox.setProcessInstance(processInstanceMap.get(businessKey));
+						inbox.setBusinessObject(toMap((JSONObject) businessMap.get(businessKey)));
+						Object consumerCode = inbox.getBusinessObject().get("consumerCode");
+						if (consumerCode != null && serviceSearchMap.containsKey(consumerCode)) {
+							inbox.setServiceObject(toMap((JSONObject) serviceSearchMap.get(consumerCode)));
+						}
+						inboxes.add(inbox);
+					}
+				}
+				log.debug("Inbox items built from business keys - count: {}", businessKeys.size());
+			}
+		} else {
+			log.debug("Skipping inbox items build - businessMap or processInstanceMap is empty");
+		}
+		log.debug("Inbox items building completed - totalCount: {}", inboxes.size());
+	}
+
+	/**
+	 * Handles empty module search criteria scenario
+	 */
+	private void handleEmptyModuleSearchCriteria(InboxSearchCriteria criteria,
+			ProcessInstanceSearchCriteria processCriteria, RequestInfo requestInfo, List<String> businessServiceName,
+			Map<String, String> srvMap, List<Inbox> inboxes) {
+		log.trace("Method invoked: handleEmptyModuleSearchCriteria");
+		log.debug("Handling empty module search criteria scenario");
+		processCriteria.setOffset(criteria.getOffset());
+		processCriteria.setLimit(criteria.getLimit());
+		log.debug("Set offset and limit - offset: {}, limit: {}", criteria.getOffset(), criteria.getLimit());
+
+		ProcessInstanceResponse processInstanceResponse = workflowService.getProcessInstance(processCriteria,
+				requestInfo);
+		List<ProcessInstance> processInstances = processInstanceResponse.getProcessInstances();
+		log.debug("Process instances fetched - count: {}", processInstances != null ? processInstances.size() : 0);
+		Map<String, ProcessInstance> processInstanceMap = processInstances.stream()
+				.collect(Collectors.toMap(ProcessInstance::getBusinessId, Function.identity()));
+		HashMap moduleSearchCriteria = new HashMap<String, String>();
+		if (CollectionUtils.isEmpty(srvMap)) {
+			log.error("Service map is empty for business service: {}", businessServiceName);
+			throw new CustomException(ErrorConstants.INVALID_MODULE,
+					"config not found for the businessService : " + businessServiceName);
+		}
+		String businessIdParam = srvMap.get("businessIdProperty");
+		moduleSearchCriteria.put(srvMap.get("applNosParam"),
+				StringUtils.arrayToDelimitedString(processInstanceMap.keySet().toArray(), ","));
+		moduleSearchCriteria.put("tenantId", criteria.getTenantId());
+		moduleSearchCriteria.put("limit", -1);
+		log.debug("Fetching business objects for empty module search criteria");
+		JSONArray businessObjects = fetchModuleObjects(moduleSearchCriteria, businessServiceName,
+				criteria.getTenantId(), requestInfo, srvMap);
+		log.debug("Business objects fetched - count: {}", businessObjects.length());
+		Map<String, Object> businessMap = StreamSupport.stream(businessObjects.spliterator(), false)
+				.collect(Collectors.toMap(s1 -> ((JSONObject) s1).get(businessIdParam).toString(), s1 -> s1));
+
+		if (businessObjects.length() > 0 && processInstances.size() > 0) {
+			log.debug("Building inbox items from process instances and business objects");
+			processInstanceMap.keySet().forEach(pinstance -> {
+				Inbox inbox = new Inbox();
+				inbox.setProcessInstance(processInstanceMap.get(pinstance));
+				inbox.setBusinessObject(toMap((JSONObject) businessMap.get(pinstance)));
+				inboxes.add(inbox);
+			});
+			log.debug("Inbox items built for empty module search criteria - count: {}", inboxes.size());
+		} else {
+			log.debug("No inbox items to build - businessObjects: {}, processInstances: {}", 
+					businessObjects.length(), processInstances.size());
+		}
+	}
+
+	/**
+	 * Processes FSM module specific logic
+	 */
+	private List<HashMap<String, Object>> processFsmModule(InboxSearchCriteria criteria,
+			ProcessInstanceSearchCriteria processCriteria, RequestInfo requestInfo, List<String> inputStatuses,
+			List<Inbox> inboxes, HashMap moduleSearchCriteria, List<String> businessServiceName,
+			Map<String, String> srvMap, List<HashMap<String, Object>> statusCountMap, Integer[] totalCountRef) {
+		log.trace("Method invoked: processFsmModule");
+		log.debug("Processing FSM module specific logic");
+		Integer totalCount = totalCountRef[0];
+		List<String> applicationStatus = new ArrayList<>();
+		applicationStatus.add(WAITING_FOR_DISPOSAL_STATE);
+		applicationStatus.add(DISPOSED_STATE);
+		log.debug("Fetching vehicle trip response for FSM - applicationStatus: {}", applicationStatus);
+		List<Map<String, Object>> vehicleResponse = fetchVehicleTripResponse(criteria, requestInfo, applicationStatus);
+		BusinessService businessService = workflowService.getBusinessService(criteria.getTenantId(), requestInfo,
+				FSM_VEHICLE_TRIP_MODULE);
+		log.debug("Populating status count map from vehicle response");
+		populateStatusCountMap(statusCountMap, vehicleResponse, businessService);
+
+		for (HashMap<String, Object> vTripMap : statusCountMap) {
+			if ((WAITING_FOR_DISPOSAL_STATE.equals(vTripMap.get(APPLICATIONSTATUS))
+					|| DISPOSED_STATE.equals(vTripMap.get(APPLICATIONSTATUS)))
+					&& inputStatuses.contains(vTripMap.get(STATUSID))) {
+				totalCount += ((int) vTripMap.get(COUNT));
+			}
+		}
+		log.debug("Total count updated from vehicle trips - totalCount: {}", totalCount);
+
+		List<String> requiredApplications = new ArrayList<>();
+		inboxes.forEach(inbox -> {
+			ProcessInstance inboxProcessInstance = inbox.getProcessInstance();
+			if (null != inboxProcessInstance && null != inboxProcessInstance.getState()) {
+				String appStatus = inboxProcessInstance.getState().getApplicationStatus();
+				if (DSO_INPROGRESS_STATE.equals(appStatus) || CITIZEN_FEEDBACK_PENDING_STATE.equals(appStatus)
+						|| COMPLETED_STATE.equals(appStatus)) {
+					requiredApplications.add(inboxProcessInstance.getBusinessId());
+				}
+			}
+		});
+		log.debug("Required applications identified for vehicle trip details - count: {}", requiredApplications.size());
+
+		List<VehicleTripDetail> vehicleTripDetail = fetchVehicleStatusForApplication(requiredApplications, requestInfo,
+				criteria.getTenantId());
+		log.debug("Vehicle trip details fetched - count: {}", vehicleTripDetail.size());
+		inboxes.forEach(inbox -> {
+			if (null != inbox && null != inbox.getProcessInstance()
+					&& null != inbox.getProcessInstance().getBusinessId()) {
+				List<VehicleTripDetail> vehicleTripDetails = vehicleTripDetail.stream()
+						.filter(trip -> inbox.getProcessInstance().getBusinessId().equals(trip.getReferenceNo()))
+						.collect(Collectors.toList());
+				Map<String, Object> vehicleBusinessObject = inbox.getBusinessObject();
+				vehicleBusinessObject.put(VEHICLE_LOG, vehicleTripDetails);
+			}
+		});
+		log.debug("Vehicle trip details added to inbox items");
+
+		if (CollectionUtils.isEmpty(inboxes) && totalCount > 0 && !moduleSearchCriteria.containsKey("applicationNos")) {
+			log.debug("Inboxes empty but totalCount > 0, fetching FSM applications from vehicle state map");
+			inputStatuses = inputStatuses.stream().filter(x -> x != null).collect(Collectors.toList());
+			List<String> fsmApplicationList = fetchVehicleStateMap(inputStatuses, requestInfo, criteria.getTenantId(),
+					criteria.getLimit(), criteria.getOffset());
+			log.debug("FSM application list fetched - count: {}", fsmApplicationList.size());
+			moduleSearchCriteria.put("applicationNos", fsmApplicationList);
+			moduleSearchCriteria.put("applicationStatus", requiredApplications);
+			processCriteria.setBusinessIds(fsmApplicationList);
+			processCriteria.setStatus(null);
+			ProcessInstanceResponse processInstanceResponse = workflowService.getProcessInstance(processCriteria,
+					requestInfo);
+			List<ProcessInstance> vehicleProcessInstances = processInstanceResponse.getProcessInstances();
+			log.debug("Vehicle process instances fetched - count: {}", 
+					vehicleProcessInstances != null ? vehicleProcessInstances.size() : 0);
+			Map<String, ProcessInstance> vehicleProcessInstanceMap = vehicleProcessInstances.stream()
+					.collect(Collectors.toMap(ProcessInstance::getBusinessId, Function.identity()));
+			JSONArray vehicleBusinessObjects = fetchModuleObjects(moduleSearchCriteria, businessServiceName,
+					criteria.getTenantId(), requestInfo, srvMap);
+			String businessIdParam = srvMap.get("businessIdProperty");
+			Map<String, Object> vehicleBusinessMap = StreamSupport.stream(vehicleBusinessObjects.spliterator(), false)
+					.collect(Collectors.toMap(s1 -> ((JSONObject) s1).get(businessIdParam).toString(), s1 -> s1,
+							(e1, e2) -> e1, LinkedHashMap::new));
+			log.debug("Vehicle business objects fetched - count: {}", vehicleBusinessObjects.length());
+
+			if (vehicleBusinessObjects.length() > 0 && vehicleProcessInstances.size() > 0) {
+				log.debug("Building inbox items from vehicle business objects");
+				fsmApplicationList.forEach(busiessKey -> {
+					Inbox inbox = new Inbox();
+					inbox.setProcessInstance(vehicleProcessInstanceMap.get(busiessKey));
+					inbox.setBusinessObject(toMap((JSONObject) vehicleBusinessMap.get(busiessKey)));
+					inboxes.add(inbox);
+				});
+				log.debug("Inbox items built from vehicle business objects - count: {}", fsmApplicationList.size());
+			}
+		}
+
+		// SAN-920: Logic for aggregating the statuses of Pay now and post pay application
+		log.debug("Aggregating FSM status count map");
+		totalCountRef[0] = totalCount;
+		List<HashMap<String, Object>> aggregatedMap = aggregateFsmStatusCountMap(statusCountMap);
+		log.debug("FSM module processing completed - aggregatedStatusCountMapSize: {}", aggregatedMap.size());
+		return aggregatedMap;
+	}
+
+	/**
+	 * Aggregates FSM status count map by application status
+	 */
+	private List<HashMap<String, Object>> aggregateFsmStatusCountMap(
+			List<HashMap<String, Object>> statusCountMap) {
+		log.trace("Method invoked: aggregateFsmStatusCountMap");
+		log.debug("Aggregating FSM status count map - inputSize: {}", statusCountMap.size());
+		List<HashMap<String, Object>> aggregateStatusCountMap = new ArrayList<>();
+		for (HashMap<String, Object> statusCountEntry : statusCountMap) {
+			HashMap<String, Object> tempStatusMap = new HashMap<>();
+			boolean matchFound = false;
+			for (HashMap<String, Object> aggrMapInstance : aggregateStatusCountMap) {
+				String statusMapAppStatus = (String) statusCountEntry.get("applicationstatus");
+				String aggrMapAppStatus = (String) aggrMapInstance.get("applicationstatus");
+
+				if (aggrMapAppStatus.equalsIgnoreCase(statusMapAppStatus)) {
+					aggrMapInstance.put(COUNT,
+							((Integer) statusCountEntry.get(COUNT) + (Integer) aggrMapInstance.get(COUNT)));
+					aggrMapInstance.put(APPLICATIONSTATUS, (String) statusCountEntry.get(APPLICATIONSTATUS));
+					aggrMapInstance.put(BUSINESS_SERVICE_PARAM,
+							(String) statusCountEntry.get(BUSINESS_SERVICE_PARAM) + ","
+									+ (String) aggrMapInstance.get(BUSINESS_SERVICE_PARAM));
+					aggrMapInstance.put(STATUSID,
+							(String) statusCountEntry.get(STATUSID) + "," + (String) aggrMapInstance.get(STATUSID));
+					matchFound = true;
+					break;
+				} else {
+					tempStatusMap.put(COUNT, (Integer) statusCountEntry.get(COUNT));
+					tempStatusMap.put(APPLICATIONSTATUS, (String) statusCountEntry.get(APPLICATIONSTATUS));
+					tempStatusMap.put(BUSINESS_SERVICE_PARAM, (String) statusCountEntry.get(BUSINESS_SERVICE_PARAM));
+					tempStatusMap.put(STATUSID, (String) statusCountEntry.get(STATUSID));
+				}
+			}
+			if (ObjectUtils.isEmpty(aggregateStatusCountMap)) {
+				aggregateStatusCountMap.add(statusCountEntry);
+			} else {
+				if (!matchFound) {
+					aggregateStatusCountMap.add(tempStatusMap);
+				}
+			}
+		}
+		log.debug("FSM status count map aggregation completed - outputSize: {}", aggregateStatusCountMap.size());
+		return aggregateStatusCountMap;
 	}
 }

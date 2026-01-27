@@ -117,6 +117,19 @@ public class ElasticSearchService {
 
 
     public Map<String, Object> search(InboxElasticSearchRequest request) {
+        log.trace("Method invoked: search");
+        Map<String, Object> query = fetchQueryFromMdms(request);
+        String searchQuery = buildAndEnrichSearchQuery(request, query);
+        String url = buildElasticSearchUrl(query);
+        HttpEntity<String> requestEntity = createHttpEntity(searchQuery);
+        
+        Map<String, Object> finalResult = executeElasticSearchRequest(url, requestEntity, request);
+        log.info("ElasticSearch search completed successfully");
+        return finalResult;
+    }
+
+    private Map<String, Object> fetchQueryFromMdms(InboxElasticSearchRequest request) {
+        log.trace("Method invoked: fetchQueryFromMdms");
         Map<String, Object> query = new HashMap<>();
         try{
             String tenantId = centralInstanceUtil.getStateLevelTenant(request.getInboxElasticSearchCriteria().getTenantId());
@@ -124,69 +137,125 @@ public class ElasticSearchService {
             String jsonPath = MDMS_ELASTIC_SEARCH_PATH.replace("{{indexKey}}",request.getInboxElasticSearchCriteria().getIndexKey());
             List<Map> object  = JsonPath.read(mdmsData, jsonPath);
             query = mapper.convertValue(object.get(0),Map.class);
+            log.debug("Query fetched from MDMS - indexKey: {}", request.getInboxElasticSearchCriteria().getIndexKey());
         }catch (Exception e) {
+            log.error("Error fetching MDMS data", e);
             throw new CustomException("MDMS_DATA_EXTRACTION_ERROR", "Error in fetching mdms data. Check whether index key present in mdms file or not");
         }
+        return query;
+    }
 
+    private String buildAndEnrichSearchQuery(InboxElasticSearchRequest request, Map<String, Object> query) {
+        log.trace("Method invoked: buildAndEnrichSearchQuery");
         String searchQuery = (String) query.get("query");
-        String indexName = (String) query.get("indexName");
         List<String> placeHolderList = (List<String>) query.get("placeHolders");
         searchQuery = enrichSearchQuery(request.getRequestInfo(),request.getInboxElasticSearchCriteria(),searchQuery, placeHolderList);
-        String url =( config.getIndexServiceHost() ) + indexName + config.getIndexServiceHostSearchEndpoint();
+        log.info("Searching ES for Query: " + searchQuery);
+        return searchQuery;
+    }
+
+    private String buildElasticSearchUrl(Map<String, Object> query) {
+        log.trace("Method invoked: buildElasticSearchUrl");
+        String indexName = (String) query.get("indexName");
+        String url = ( config.getIndexServiceHost() ) + indexName + config.getIndexServiceHostSearchEndpoint();
+        log.debug("ElasticSearch URL built: {}", url);
+        return url;
+    }
+
+    private HttpEntity<String> createHttpEntity(String searchQuery) {
+        log.trace("Method invoked: createHttpEntity");
         HttpHeaders headers = getHttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        log.info("Searching ES for Query: " + searchQuery);
         HttpEntity<String> requestEntity = new HttpEntity<>(searchQuery, headers);
-        String reqBody = requestEntity.getBody();
-        JsonNode responseNode = null;
-        Map<String, Object> finalResult = new HashMap<>();
+        log.debug("HTTP entity created");
+        return requestEntity;
+    }
 
+    private Map<String, Object> executeElasticSearchRequest(String url, HttpEntity<String> requestEntity, InboxElasticSearchRequest request) {
+        log.trace("Method invoked: executeElasticSearchRequest");
+        Map<String, Object> finalResult = new HashMap<>();
         try {
             ResponseEntity<Object> response = retryTemplate.postForEntity(url, requestEntity);
-            responseNode = new ObjectMapper().convertValue(response.getBody(), JsonNode.class);
-            Object total = responseNode.get(ELASTICSEARCH_HIT_KEY).get(ELASTICSEARCH_TOTAL_KEY);
-            JsonNode output = responseNode.get(ELASTICSEARCH_HIT_KEY).get(ELASTICSEARCH_HIT_KEY);
-            if(output.size()==0){
-                throw new CustomException("NO_DATA", "No logs data for the given user with the provided search criteria");
-            }
-            List<Map<String,Object>> result = new ArrayList<>();
-            List<String> userIds = new ArrayList<>();
-            Map<String,Object> totalHits = new HashMap<>();
-            totalHits.put(ELASTICSEARCH_TOTAL_KEY,total);
-            result.add(totalHits);
-            if (!isNull(output) && output.isArray()) {
-                for(JsonNode objectnode : output){
-                    Map<String,Object> data = new HashMap<>();
-                    data.put(ELASTICSEARCH_TIMESTAMP_KEY,objectnode.get(ELASTICSEARCH_SOURCE_KEY).get(ELASTICSEARCH_DATA_KEY).get(ELASTICSEARCH_TIMESTAMP_KEY));
-                    data.put(ELASTICSEARCH_DATAVIEW_KEY,objectnode.get(ELASTICSEARCH_SOURCE_KEY).get(ELASTICSEARCH_DATA_KEY).get(ELASTICSEARCH_PALINACCESSREQUEST_KEY).get(ELASTICSEARCH_PALINACCESSREQUESTFIELD_KEY));
-                    data.put(ELASTICSEARCH_USERID_KEY,objectnode.get(ELASTICSEARCH_SOURCE_KEY).get(ELASTICSEARCH_DATA_KEY).get(ELASTICSEARCH_USERID_KEY).textValue());
-                    if(!(userIds.contains((String) data.get(ELASTICSEARCH_USERID_KEY))))
-                        userIds.add((String) data.get(ELASTICSEARCH_USERID_KEY));
-                    result.add(data);
-                }
-            }
-            Map<String, Object> mapping = getPlainOwnerDetails(request.getRequestInfo(), userIds, request.getInboxElasticSearchCriteria().getTenantId());
-            if(mapping.size() != userIds.size())
-                getremainingCitizenUserDetails(request.getRequestInfo(),userIds,request.getInboxElasticSearchCriteria().getTenantId(), mapping);
-
-            for(int i=0;i<result.size();i++){
-                String uuid = (String) result.get(i).get(ELASTICSEARCH_USERID_KEY);
-                Map<String,Object> userData = (Map<String, Object>) mapping.get(uuid);
-                if(userData!= null){
-                    result.get(i).put(ELASTICSEARCH_DATAVIEWEDBY_KEY,userData.get("name"));
-                    result.get(i).put(ELASTICSEARCH_ROLES_KEY,userData.get("roles"));
-                }
-                else
-                    result.get(i).put("user",null);
-            }
+            JsonNode responseNode = new ObjectMapper().convertValue(response.getBody(), JsonNode.class);
+            List<Map<String,Object>> result = parseElasticSearchResponse(responseNode, request);
             finalResult.put("ResponseInfo",null);
             finalResult.put("ElasticSearchData",result);
-
+            log.debug("ElasticSearch request executed successfully - resultCount: {}", result.size());
         } catch (HttpClientErrorException e) {
             log.error("client error while searching ES : " + e.getMessage());
             throw new CustomException("ELASTICSEARCH_ERROR", "client error while searching ES : \" + e.getMessage()");
         }
         return finalResult;
+    }
+
+    private List<Map<String,Object>> parseElasticSearchResponse(JsonNode responseNode, InboxElasticSearchRequest request) {
+        log.trace("Method invoked: parseElasticSearchResponse");
+        Object total = responseNode.get(ELASTICSEARCH_HIT_KEY).get(ELASTICSEARCH_TOTAL_KEY);
+        JsonNode output = responseNode.get(ELASTICSEARCH_HIT_KEY).get(ELASTICSEARCH_HIT_KEY);
+        if(output.size()==0){
+            log.warn("No data found in ElasticSearch response");
+            throw new CustomException("NO_DATA", "No logs data for the given user with the provided search criteria");
+        }
+        
+        List<Map<String,Object>> result = new ArrayList<>();
+        List<String> userIds = new ArrayList<>();
+        addTotalHitsToResult(result, total);
+        extractDataFromOutput(output, result, userIds);
+        enrichResultWithUserDetails(result, userIds, request);
+        
+        log.debug("ElasticSearch response parsed - resultCount: {}, userIdCount: {}", result.size(), userIds.size());
+        return result;
+    }
+
+    private void addTotalHitsToResult(List<Map<String,Object>> result, Object total) {
+        log.trace("Method invoked: addTotalHitsToResult");
+        Map<String,Object> totalHits = new HashMap<>();
+        totalHits.put(ELASTICSEARCH_TOTAL_KEY,total);
+        result.add(totalHits);
+        log.debug("Total hits added to result");
+    }
+
+    private void extractDataFromOutput(JsonNode output, List<Map<String,Object>> result, List<String> userIds) {
+        log.trace("Method invoked: extractDataFromOutput");
+        if (!isNull(output) && output.isArray()) {
+            for(JsonNode objectnode : output){
+                Map<String,Object> data = extractDataFromNode(objectnode);
+                String userId = (String) data.get(ELASTICSEARCH_USERID_KEY);
+                if(!(userIds.contains(userId)))
+                    userIds.add(userId);
+                result.add(data);
+            }
+        }
+        log.debug("Data extracted from output - dataCount: {}, userIdCount: {}", result.size(), userIds.size());
+    }
+
+    private Map<String,Object> extractDataFromNode(JsonNode objectnode) {
+        log.trace("Method invoked: extractDataFromNode");
+        Map<String,Object> data = new HashMap<>();
+        data.put(ELASTICSEARCH_TIMESTAMP_KEY,objectnode.get(ELASTICSEARCH_SOURCE_KEY).get(ELASTICSEARCH_DATA_KEY).get(ELASTICSEARCH_TIMESTAMP_KEY));
+        data.put(ELASTICSEARCH_DATAVIEW_KEY,objectnode.get(ELASTICSEARCH_SOURCE_KEY).get(ELASTICSEARCH_DATA_KEY).get(ELASTICSEARCH_PALINACCESSREQUEST_KEY).get(ELASTICSEARCH_PALINACCESSREQUESTFIELD_KEY));
+        data.put(ELASTICSEARCH_USERID_KEY,objectnode.get(ELASTICSEARCH_SOURCE_KEY).get(ELASTICSEARCH_DATA_KEY).get(ELASTICSEARCH_USERID_KEY).textValue());
+        log.debug("Data extracted from node");
+        return data;
+    }
+
+    private void enrichResultWithUserDetails(List<Map<String,Object>> result, List<String> userIds, InboxElasticSearchRequest request) {
+        log.trace("Method invoked: enrichResultWithUserDetails");
+        Map<String, Object> mapping = getPlainOwnerDetails(request.getRequestInfo(), userIds, request.getInboxElasticSearchCriteria().getTenantId());
+        if(mapping.size() != userIds.size())
+            getremainingCitizenUserDetails(request.getRequestInfo(),userIds,request.getInboxElasticSearchCriteria().getTenantId(), mapping);
+
+        for(int i=0;i<result.size();i++){
+            String uuid = (String) result.get(i).get(ELASTICSEARCH_USERID_KEY);
+            Map<String,Object> userData = (Map<String, Object>) mapping.get(uuid);
+            if(userData!= null){
+                result.get(i).put(ELASTICSEARCH_DATAVIEWEDBY_KEY,userData.get("name"));
+                result.get(i).put(ELASTICSEARCH_ROLES_KEY,userData.get("roles"));
+            }
+            else
+                result.get(i).put("user",null);
+        }
+        log.debug("Result enriched with user details - enrichedCount: {}", result.size());
     }
 
     /**
@@ -218,60 +287,113 @@ public class ElasticSearchService {
      * @param placeHolderList list of placeholder to replace
      */
     public String enrichSearchQuery(RequestInfo requestInfo, InboxElasticSearchCriteria criteria, String searchQuery, List<String> placeHolderList){
-       String elasticSearchQuery = searchQuery;
-        Long limit = config.getDefaultLimit();
-        Long offset = config.getDefaultOffset();
-        String sortOrder = config.getDefaultSortOrder();
+        log.trace("Method invoked: enrichSearchQuery");
+        String elasticSearchQuery = searchQuery;
+        Long limit = calculateLimit(criteria);
+        Long offset = calculateOffset(criteria);
+        String sortOrder = calculateSortOrder(criteria);
 
+        for(String placeholder:placeHolderList){
+            elasticSearchQuery = replacePlaceholder(placeholder, elasticSearchQuery, requestInfo, criteria, limit, offset, sortOrder);
+        }
+        log.debug("ElasticSearch query enriched with placeholders");
+        return elasticSearchQuery;
+    }
+
+    private Long calculateLimit(InboxElasticSearchCriteria criteria) {
+        log.trace("Method invoked: calculateLimit");
+        Long limit = config.getDefaultLimit();
         if(criteria.getLimit() != null && criteria.getLimit() <= config.getMaxSearchLimit())
             limit = Long.valueOf(criteria.getLimit());
 
         if(criteria.getLimit() != null && criteria.getLimit() > config.getMaxSearchLimit())
             limit = Long.valueOf(config.getMaxSearchLimit());
+        log.debug("Limit calculated: {}", limit);
+        return limit;
+    }
 
+    private Long calculateOffset(InboxElasticSearchCriteria criteria) {
+        log.trace("Method invoked: calculateOffset");
+        Long offset = config.getDefaultOffset();
         if(criteria.getOffset() != null)
             offset = Long.valueOf(criteria.getOffset());
+        log.debug("Offset calculated: {}", offset);
+        return offset;
+    }
 
+    private String calculateSortOrder(InboxElasticSearchCriteria criteria) {
+        log.trace("Method invoked: calculateSortOrder");
+        String sortOrder = config.getDefaultSortOrder();
         if(criteria.getSortOrder() != null)
             sortOrder = criteria.getSortOrder();
+        log.debug("Sort order calculated: {}", sortOrder);
+        return sortOrder;
+    }
 
-        for(String placeholder:placeHolderList){
+    private String replacePlaceholder(String placeholder, String elasticSearchQuery, RequestInfo requestInfo,
+                                      InboxElasticSearchCriteria criteria, Long limit, Long offset, String sortOrder) {
+        log.trace("Method invoked: replacePlaceholder - placeholder: {}", placeholder);
+        if(placeholder.equalsIgnoreCase(PLACEHOLDER_FROMDATE_KEY)){
+            String fromDate = getFromDateValue(criteria);
+            elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_FROMDATE_KEY,fromDate);
+            log.debug("Replaced FROMDATE placeholder");
+        }
 
-            if(placeholder.equalsIgnoreCase(PLACEHOLDER_FROMDATE_KEY)){
-                String fromDate = "0";
-                if(criteria.getFromDate()!=0)
-                    fromDate = String.valueOf(criteria.getFromDate());
-                elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_FROMDATE_KEY,fromDate);
+        if(placeholder.equalsIgnoreCase(PLACEHOLDER_TODATE_KEY)){
+            String toDate = getToDateValue(criteria);
+            elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_TODATE_KEY,toDate);
+            log.debug("Replaced TODATE placeholder");
+        }
 
-            }
+        if(placeholder.equalsIgnoreCase(PLACEHOLDER_OFFSET_KEY)) {
+            elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_OFFSET_KEY,String.valueOf(offset));
+            log.debug("Replaced OFFSET placeholder");
+        }
 
-            if(placeholder.equalsIgnoreCase(PLACEHOLDER_TODATE_KEY)){
-                String toDate = String.valueOf(System.currentTimeMillis());
-                if(criteria.getToDate()!=0)
-                    toDate = String.valueOf(criteria.getToDate());
-                elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_TODATE_KEY,toDate);
+        if(placeholder.equalsIgnoreCase(PLACEHOLDER_LIMIT_KEY)) {
+            elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_LIMIT_KEY,String.valueOf(limit));
+            log.debug("Replaced LIMIT placeholder");
+        }
 
-            }
+        if(placeholder.equalsIgnoreCase(PLACEHOLDER_SORT_ORDER_KEY)) {
+            elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_SORT_ORDER_KEY,sortOrder);
+            log.debug("Replaced SORT_ORDER placeholder");
+        }
 
-            if(placeholder.equalsIgnoreCase(PLACEHOLDER_OFFSET_KEY))
-                elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_OFFSET_KEY,String.valueOf(offset));
-
-            if(placeholder.equalsIgnoreCase(PLACEHOLDER_LIMIT_KEY))
-                elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_LIMIT_KEY,String.valueOf(limit));
-
-            if(placeholder.equalsIgnoreCase(PLACEHOLDER_SORT_ORDER_KEY))
-                elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_SORT_ORDER_KEY,sortOrder);
-
-
-            if(placeholder.equalsIgnoreCase(PLACEHOLDER_UUID_KEY)){
-                String mobileNumber = requestInfo.getUserInfo().getMobileNumber();
-                String tenantId = centralInstanceUtil.getStateLevelTenant(criteria.getTenantId());
-                List<String> usersUuid = getUsersUuid(requestInfo,mobileNumber,tenantId);
-                String multiMatchQuery = String.join(" OR ",usersUuid);
-                elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_UUID_KEY,multiMatchQuery);
-            }  
+        if(placeholder.equalsIgnoreCase(PLACEHOLDER_UUID_KEY)){
+            String multiMatchQuery = buildMultiMatchQueryForUuid(requestInfo, criteria);
+            elasticSearchQuery = elasticSearchQuery.replace(PLACEHOLDER_UUID_KEY,multiMatchQuery);
+            log.debug("Replaced UUID placeholder");
         }
         return elasticSearchQuery;
+    }
+
+    private String getFromDateValue(InboxElasticSearchCriteria criteria) {
+        log.trace("Method invoked: getFromDateValue");
+        String fromDate = "0";
+        if(criteria.getFromDate()!=0)
+            fromDate = String.valueOf(criteria.getFromDate());
+        log.debug("From date value: {}", fromDate);
+        return fromDate;
+    }
+
+    private String getToDateValue(InboxElasticSearchCriteria criteria) {
+        log.trace("Method invoked: getToDateValue");
+        String toDate = String.valueOf(System.currentTimeMillis());
+        if(criteria.getToDate()!=0)
+            toDate = String.valueOf(criteria.getToDate());
+        log.debug("To date value: {}", toDate);
+        return toDate;
+    }
+
+    private String buildMultiMatchQueryForUuid(RequestInfo requestInfo, InboxElasticSearchCriteria criteria) {
+        log.trace("Method invoked: buildMultiMatchQueryForUuid");
+        String mobileNumber = requestInfo.getUserInfo().getMobileNumber();
+        String tenantId = centralInstanceUtil.getStateLevelTenant(criteria.getTenantId());
+        List<String> usersUuid = getUsersUuid(requestInfo,mobileNumber,tenantId);
+        String multiMatchQuery = String.join(" OR ",usersUuid);
+        log.debug("Multi-match query built for UUID - userCount: {}", usersUuid.size());
+        return multiMatchQuery;
     }
 
     /**

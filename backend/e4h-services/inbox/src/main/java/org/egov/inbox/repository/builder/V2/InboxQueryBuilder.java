@@ -49,6 +49,30 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         log.info("Building ElasticSearch query - tenantId: {}, module: {}, pagination: {}, SLA: {}",
                 tenantId, moduleName, isPaginationRequired, isSLA);
 
+        InboxQueryConfiguration configuration = fetchInboxQueryConfiguration(inboxRequest);
+        Map<String, Object> baseEsQuery = initializeBaseQuery(inboxRequest, isPaginationRequired, configuration);
+        Map<String, String> nameToPathMap = buildSearchCriteriaMappings(configuration, inboxRequest);
+        Map<String, SearchParam.Operator> nameToOperator = buildOperatorMappings(configuration, inboxRequest);
+        
+        Map<String, Object> innerBoolClause = extractInnerBoolClause(baseEsQuery);
+        List<Object> mustClauseList = (ArrayList<Object>) innerBoolClause.get(MUST_KEY);
+        List<Object> jurisdictionMustClauseList = new ArrayList<Object>();
+
+        Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
+        addAllSearchCriteriaToMustClauses(inboxRequest, nameToPathMap, nameToOperator, mustClauseList, jurisdictionMustClauseList);
+        applyMergedMustClauses(innerBoolClause, mustClauseList, jurisdictionMustClauseList);
+        applySlaFilterIfNeeded(params, isSLA, baseEsQuery, mustClauseList);
+
+        log.info("ElasticSearch query built successfully - tenantId: {}, module: {}", tenantId, moduleName);
+        if (log.isDebugEnabled()) {
+            log.debug("Final ElasticSearch query structure completed");
+        }
+
+        return baseEsQuery;
+    }
+
+    private InboxQueryConfiguration fetchInboxQueryConfiguration(InboxRequest inboxRequest) {
+        log.trace("Method invoked: fetchInboxQueryConfiguration");
         log.debug("Fetching inbox query configuration from MDMS");
         InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(
                 inboxRequest.getInbox().getTenantId(),
@@ -56,46 +80,77 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         log.debug("Configuration loaded - allowedCriteria: {}, sortParam: {}",
                 configuration.getAllowedSearchCriteria().size(), 
                 configuration.getSortParam() != null ? "present" : "null");
+        return configuration;
+    }
 
+    private Map<String, Object> initializeBaseQuery(InboxRequest inboxRequest, Boolean isPaginationRequired, InboxQueryConfiguration configuration) {
+        log.trace("Method invoked: initializeBaseQuery");
         Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
-        Map<String, Object> jurisdictionParams = inboxRequest.getInbox().getJurisdictionSearchCriteria();
         log.debug("Initializing base ElasticSearch query");
         Map<String, Object> baseEsQuery = getBaseESQueryBody(inboxRequest, isPaginationRequired);
         log.debug("Base ElasticSearch query initialized");
 
         if (isPaginationRequired) {
-            String sortClauseFieldPath = configuration.getSortParam().getPath();
-            SortParam.Order sortOrder = params.containsKey(SORT_ORDER_CONSTANT)
-                    ? SortParam.Order.valueOf((String) params.get(SORT_ORDER_CONSTANT))
-                    : configuration.getSortParam().getOrder();
-            addSortClauseToBaseQuery(baseEsQuery, sortClauseFieldPath, sortOrder);
-            log.debug("Sort clause added - field: {}, order: {}", sortClauseFieldPath, sortOrder);
-
-            List<String> sourceFilterPathList = configuration.getSourceFilterPathList();
-            addSourceFilterToBaseQuery(baseEsQuery, sourceFilterPathList);
-            log.debug("Source filter added - filterCount: {}", sourceFilterPathList.size());
+            addPaginationClauses(baseEsQuery, configuration, params);
         }
+        return baseEsQuery;
+    }
 
-        Map<String, Object> innerBoolClause =
-                (HashMap<String, Object>) ((HashMap<String, Object>) baseEsQuery.get(QUERY_KEY)).get(BOOL_KEY);
-        List<Object> mustClauseList = (ArrayList<Object>) innerBoolClause.get(MUST_KEY);
-        List<Object> jurisdictionMustClauseList = new ArrayList<Object>();
+    private void addPaginationClauses(Map<String, Object> baseEsQuery, InboxQueryConfiguration configuration, Map<String, Object> params) {
+        log.trace("Method invoked: addPaginationClauses");
+        String sortClauseFieldPath = configuration.getSortParam().getPath();
+        SortParam.Order sortOrder = params.containsKey(SORT_ORDER_CONSTANT)
+                ? SortParam.Order.valueOf((String) params.get(SORT_ORDER_CONSTANT))
+                : configuration.getSortParam().getOrder();
+        addSortClauseToBaseQuery(baseEsQuery, sortClauseFieldPath, sortOrder);
+        log.debug("Sort clause added - field: {}, order: {}", sortClauseFieldPath, sortOrder);
 
+        List<String> sourceFilterPathList = configuration.getSourceFilterPathList();
+        addSourceFilterToBaseQuery(baseEsQuery, sourceFilterPathList);
+        log.debug("Source filter added - filterCount: {}", sourceFilterPathList.size());
+    }
+
+    private Map<String, String> buildSearchCriteriaMappings(InboxQueryConfiguration configuration, InboxRequest inboxRequest) {
+        log.trace("Method invoked: buildSearchCriteriaMappings");
         Map<String, String> nameToPathMap = new HashMap<>();
-        Map<String, SearchParam.Operator> nameToOperator = new HashMap<>();
-
         configuration.getAllowedSearchCriteria().forEach(searchParam -> {
             nameToPathMap.put(searchParam.getName(), searchParam.getPath());
+        });
+        log.debug("Search criteria path mappings built - mappingCount: {}", nameToPathMap.size());
+        return nameToPathMap;
+    }
+
+    private Map<String, SearchParam.Operator> buildOperatorMappings(InboxQueryConfiguration configuration, InboxRequest inboxRequest) {
+        log.trace("Method invoked: buildOperatorMappings");
+        Map<String, SearchParam.Operator> nameToOperator = new HashMap<>();
+        configuration.getAllowedSearchCriteria().forEach(searchParam -> {
             nameToOperator.put(searchParam.getName(), searchParam.getOperator());
         });
-        log.debug("Search criteria mappings built - mappingCount: {}", nameToPathMap.size());
-
+        
         // Special case for tenantId
         if (inboxRequest.getInbox().getProcessSearchCriteria().getTenantId().split("\\.").length == 1
                 && !inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId").toString().contains(",")) {
             nameToOperator.put("tenantId", SearchParam.Operator.WILDCARD);
             log.debug("Applied wildcard operator for tenantId");
         }
+        log.debug("Search criteria operator mappings built - mappingCount: {}", nameToOperator.size());
+        return nameToOperator;
+    }
+
+    private Map<String, Object> extractInnerBoolClause(Map<String, Object> baseEsQuery) {
+        log.trace("Method invoked: extractInnerBoolClause");
+        Map<String, Object> innerBoolClause =
+                (HashMap<String, Object>) ((HashMap<String, Object>) baseEsQuery.get(QUERY_KEY)).get(BOOL_KEY);
+        log.debug("Inner bool clause extracted");
+        return innerBoolClause;
+    }
+
+    private void addAllSearchCriteriaToMustClauses(InboxRequest inboxRequest, Map<String, String> nameToPathMap,
+                                                   Map<String, SearchParam.Operator> nameToOperator,
+                                                   List<Object> mustClauseList, List<Object> jurisdictionMustClauseList) {
+        log.trace("Method invoked: addAllSearchCriteriaToMustClauses");
+        Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
+        Map<String, Object> jurisdictionParams = inboxRequest.getInbox().getJurisdictionSearchCriteria();
 
         log.debug("Adding module search criteria to must clause");
         addModuleSearchCriteriaToBaseQuery(params, nameToPathMap, nameToOperator, mustClauseList);
@@ -113,7 +168,11 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             log.debug("Must clause list size: {}", mustClauseList.size());
             log.debug("Jurisdiction must clause list size: {}", jurisdictionMustClauseList.size());
         }
+    }
 
+    private void applyMergedMustClauses(Map<String, Object> innerBoolClause, List<Object> mustClauseList,
+                                        List<Object> jurisdictionMustClauseList) {
+        log.trace("Method invoked: applyMergedMustClauses");
         // Group the different blocks of should into a single should block
         log.debug("Extracting should clauses from must clause lists");
         List<Map<String, Object>> updatedMustClauseList = extractShouldClauses(mustClauseList);
@@ -122,50 +181,55 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         log.debug("Must clauses merged - mergedSize: {}", mergedMustClause.size());
 
         innerBoolClause.put(MUST_KEY, mergedMustClause);
+    }
 
+    private void applySlaFilterIfNeeded(Map<String, Object> params, Boolean isSLA, Map<String, Object> baseEsQuery,
+                                        List<Object> mustClauseList) {
+        log.trace("Method invoked: applySlaFilterIfNeeded");
         // Add SLA filter if required
         if (params.containsKey("nearingSLA") && isSLA) {
             log.info("Applying SLA filter - nearingSLA enabled");
-
-            Map<String, Object> query = (Map<String, Object>) baseEsQuery.get("query");
-            Map<String, Object> boolClause = (Map<String, Object>) query.get("bool");
-
-            List<Map<String, Object>> mustNotClauseList =
-                    (List<Map<String, Object>>) boolClause.getOrDefault("must_not", new ArrayList<>());
-
-            Map<String, Object> terminateClause = new HashMap<>();
-            terminateClause.put("term", Collections.singletonMap("Data.currentProcessInstance.state.isTerminateState", true));
-            mustNotClauseList.add(terminateClause);
-
-            Map<String, Object> excludeIncidentTerm = new HashMap<>();
-            excludeIncidentTerm.put("term", Collections.singletonMap("Data.currentProcessInstance.businessService.keyword", "Incident"));
-            mustNotClauseList.add(excludeIncidentTerm);
-
-            boolClause.put("must_not", mustNotClauseList);
-            log.debug("SLA exclusions added - terminated tickets and Incident service");
-
-            Map<String, Object> scriptInner = new HashMap<>();
-            scriptInner.put("source",
-                    "doc.containsKey('Data.slaRemaining') && " +
-                            "doc.containsKey('Data.stateSla') && " +
-                            "doc['Data.stateSla'].size() > 0 && " +
-                            "doc['Data.stateSla'].value > 0 && " +
-                            "((double) doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
-            scriptInner.put("lang", "painless");
-
-            Map<String, Object> scriptClause = new HashMap<>();
-            scriptClause.put("script", scriptInner);
-
-            mustClauseList.add(Collections.singletonMap("script", scriptClause));
-            log.debug("SLA painless script filter added");
+            addSlaExclusionsToQuery(baseEsQuery);
+            addSlaScriptFilter(mustClauseList);
         }
+    }
 
-        log.info("ElasticSearch query built successfully - tenantId: {}, module: {}", tenantId, moduleName);
-        if (log.isDebugEnabled()) {
-            log.debug("Final ElasticSearch query structure completed");
-        }
+    private void addSlaExclusionsToQuery(Map<String, Object> baseEsQuery) {
+        log.trace("Method invoked: addSlaExclusionsToQuery");
+        Map<String, Object> query = (Map<String, Object>) baseEsQuery.get("query");
+        Map<String, Object> boolClause = (Map<String, Object>) query.get("bool");
 
-        return baseEsQuery;
+        List<Map<String, Object>> mustNotClauseList =
+                (List<Map<String, Object>>) boolClause.getOrDefault("must_not", new ArrayList<>());
+
+        Map<String, Object> terminateClause = new HashMap<>();
+        terminateClause.put("term", Collections.singletonMap("Data.currentProcessInstance.state.isTerminateState", true));
+        mustNotClauseList.add(terminateClause);
+
+        Map<String, Object> excludeIncidentTerm = new HashMap<>();
+        excludeIncidentTerm.put("term", Collections.singletonMap("Data.currentProcessInstance.businessService.keyword", "Incident"));
+        mustNotClauseList.add(excludeIncidentTerm);
+
+        boolClause.put("must_not", mustNotClauseList);
+        log.debug("SLA exclusions added - terminated tickets and Incident service");
+    }
+
+    private void addSlaScriptFilter(List<Object> mustClauseList) {
+        log.trace("Method invoked: addSlaScriptFilter");
+        Map<String, Object> scriptInner = new HashMap<>();
+        scriptInner.put("source",
+                "doc.containsKey('Data.slaRemaining') && " +
+                        "doc.containsKey('Data.stateSla') && " +
+                        "doc['Data.stateSla'].size() > 0 && " +
+                        "doc['Data.stateSla'].value > 0 && " +
+                        "((double) doc['Data.slaRemaining'].value / doc['Data.stateSla'].value) <= 0.3");
+        scriptInner.put("lang", "painless");
+
+        Map<String, Object> scriptClause = new HashMap<>();
+        scriptClause.put("script", scriptInner);
+
+        mustClauseList.add(Collections.singletonMap("script", scriptClause));
+        log.debug("SLA painless script filter added");
     }
 
     // Group the different blocks of should into a single should block
@@ -323,60 +387,20 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
     }
 
     public Map<String, Object> getESQueryProject(InboxRequest inboxRequest, Boolean isPaginationRequired) {
+        log.trace("Method invoked: getESQueryProject");
         String tenantId = inboxRequest.getInbox().getTenantId();
         String moduleName = inboxRequest.getInbox().getProcessSearchCriteria().getModuleName();
-
-        log.trace("Method invoked: getESQueryProject");
         log.info("Starting ElasticSearch query build for project - tenantId: {}, module: {}", tenantId, moduleName);
 
-        // Récupération de la configuration depuis MDMS
-        log.debug("Fetching MDMS configuration");
-        InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(tenantId, moduleName);
-        log.debug("MDMS configuration fetched - allowedCriteria: {}", 
-                configuration != null ? configuration.getAllowedSearchCriteria().size() : 0);
-
-        Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
-        log.debug("Initializing base ElasticSearch query body");
-        Map<String, Object> baseEsQuery = getBaseESQueryBody(inboxRequest, isPaginationRequired);
-        log.debug("Base ElasticSearch query body initialized");
-
-        if (isPaginationRequired) {
-            // Sort
-            String sortClauseFieldPath = configuration.getSortParam().getPath();
-            SortParam.Order sortOrder = params.containsKey(SORT_ORDER_CONSTANT)
-                    ? SortParam.Order.valueOf((String) params.get(SORT_ORDER_CONSTANT))
-                    : configuration.getSortParam().getOrder();
-
-            log.debug("Adding sort clause - field: {}, order: {}", sortClauseFieldPath, sortOrder);
-            addSortClauseToBaseQuery(baseEsQuery, sortClauseFieldPath, sortOrder);
-
-            // Source filter
-            List<String> sourceFilterPathList = configuration.getSourceFilterPathList();
-            log.debug("Adding source filter paths - count: {}", sourceFilterPathList.size());
-            addSourceFilterToBaseQuery(baseEsQuery, sourceFilterPathList);
-        }
-
-        // Construction des clauses booléennes
-        Map<String, Object> innerBoolClause = (HashMap<String, Object>) ((HashMap<String, Object>) baseEsQuery.get(QUERY_KEY)).get(BOOL_KEY);
+        InboxQueryConfiguration configuration = fetchConfigurationForProject(tenantId, moduleName);
+        Map<String, Object> baseEsQuery = initializeProjectBaseQuery(inboxRequest, isPaginationRequired, configuration);
+        Map<String, String> nameToPathMap = buildSearchCriteriaMappings(configuration, inboxRequest);
+        Map<String, SearchParam.Operator> nameToOperator = buildOperatorMappingsForProject(configuration);
+        
+        Map<String, Object> innerBoolClause = extractInnerBoolClause(baseEsQuery);
         List<Object> mustClauseList = (ArrayList<Object>) innerBoolClause.get(MUST_KEY);
-
-        Map<String, String> nameToPathMap = new HashMap<>();
-        Map<String, SearchParam.Operator> nameToOperator = new HashMap<>();
-
-        configuration.getAllowedSearchCriteria().forEach(searchParam -> {
-            nameToPathMap.put(searchParam.getName(), searchParam.getPath());
-            nameToOperator.put(searchParam.getName(), searchParam.getOperator());
-        });
-
-        log.debug("Name to path map built - mappingCount: {}", nameToPathMap.size());
-        log.debug("Name to operator map built - mappingCount: {}", nameToOperator.size());
-
-        log.debug("Adding module search criteria to ElasticSearch query");
-        addModuleSearchCriteriaToBaseQuery(params, nameToPathMap, nameToOperator, mustClauseList);
-
-        log.debug("Adding process search criteria to ElasticSearch query");
-        addProcessSearchCriteriaToBaseQuery(inboxRequest.getInbox().getProcessSearchCriteria(), nameToPathMap, nameToOperator, mustClauseList);
-
+        
+        addProjectSearchCriteriaToMustClauses(inboxRequest, nameToPathMap, nameToOperator, mustClauseList);
         innerBoolClause.put(MUST_KEY, mustClauseList);
 
         log.info("ElasticSearch query build completed for project - tenantId: {}, module: {}", tenantId, moduleName);
@@ -385,6 +409,52 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         }
 
         return baseEsQuery;
+    }
+
+    private InboxQueryConfiguration fetchConfigurationForProject(String tenantId, String moduleName) {
+        log.trace("Method invoked: fetchConfigurationForProject");
+        log.debug("Fetching MDMS configuration");
+        InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(tenantId, moduleName);
+        log.debug("MDMS configuration fetched - allowedCriteria: {}", 
+                configuration != null ? configuration.getAllowedSearchCriteria().size() : 0);
+        return configuration;
+    }
+
+    private Map<String, Object> initializeProjectBaseQuery(InboxRequest inboxRequest, Boolean isPaginationRequired, InboxQueryConfiguration configuration) {
+        log.trace("Method invoked: initializeProjectBaseQuery");
+        Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
+        log.debug("Initializing base ElasticSearch query body");
+        Map<String, Object> baseEsQuery = getBaseESQueryBody(inboxRequest, isPaginationRequired);
+        log.debug("Base ElasticSearch query body initialized");
+
+        if (isPaginationRequired) {
+            addPaginationClauses(baseEsQuery, configuration, params);
+        }
+        return baseEsQuery;
+    }
+
+    private Map<String, SearchParam.Operator> buildOperatorMappingsForProject(InboxQueryConfiguration configuration) {
+        log.trace("Method invoked: buildOperatorMappingsForProject");
+        Map<String, SearchParam.Operator> nameToOperator = new HashMap<>();
+        configuration.getAllowedSearchCriteria().forEach(searchParam -> {
+            nameToOperator.put(searchParam.getName(), searchParam.getOperator());
+        });
+        log.debug("Name to operator map built - mappingCount: {}", nameToOperator.size());
+        return nameToOperator;
+    }
+
+    private void addProjectSearchCriteriaToMustClauses(InboxRequest inboxRequest, Map<String, String> nameToPathMap,
+                                                       Map<String, SearchParam.Operator> nameToOperator,
+                                                       List<Object> mustClauseList) {
+        log.trace("Method invoked: addProjectSearchCriteriaToMustClauses");
+        Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
+        
+        log.debug("Adding module search criteria to ElasticSearch query");
+        addModuleSearchCriteriaToBaseQuery(params, nameToPathMap, nameToOperator, mustClauseList);
+
+        log.debug("Adding process search criteria to ElasticSearch query");
+        addProcessSearchCriteriaToBaseQuery(inboxRequest.getInbox().getProcessSearchCriteria(), nameToPathMap, nameToOperator, mustClauseList);
+        log.debug("Project search criteria added to must clauses");
     }
 
     public Map<String, Object> getESQueryForSimpleSearch(SearchRequest searchRequest, Boolean isPaginationRequired) {
@@ -439,60 +509,57 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
     }
 
     private void addProcessSearchCriteriaToBaseQuery(ProcessInstanceSearchCriteria processSearchCriteria, Map<String, String> nameToPathMap, Map<String, SearchParam.Operator> nameToOperator, List<Object> mustClauseList) {
+        log.trace("Method invoked: addProcessSearchCriteriaToBaseQuery");
+        addStatusCriteriaIfPresent(processSearchCriteria, nameToPathMap, nameToOperator, mustClauseList);
+        addAssigneeCriteriaIfPresent(processSearchCriteria, nameToPathMap, nameToOperator, mustClauseList);
+        addFromDateCriteriaIfPresent(processSearchCriteria, nameToPathMap, nameToOperator, mustClauseList);
+        addToDateCriteriaIfPresent(processSearchCriteria, nameToPathMap, nameToOperator, mustClauseList);
+    }
+
+    private void addStatusCriteriaIfPresent(ProcessInstanceSearchCriteria processSearchCriteria, Map<String, String> nameToPathMap, Map<String, SearchParam.Operator> nameToOperator, List<Object> mustClauseList) {
+        log.trace("Method invoked: addStatusCriteriaIfPresent");
         if (!ObjectUtils.isEmpty(processSearchCriteria.getStatus())) {
             String key = "status";
-            Map<String, Object> mustClauseChild = null;
-            Map<String, Object> params = new HashMap<>();
-
             processSearchCriteria.getStatus().removeAll(Collections.singleton(null));
-            params.put(key, processSearchCriteria.getStatus());
-            mustClauseChild = (Map<String, Object>) prepareMustClauseChild(params, key, nameToPathMap, nameToOperator);
-            if (CollectionUtils.isEmpty(mustClauseChild)) {
-                log.info("Error occurred while preparing filter for must clause. Filter for key " + key + " will not be added.");
-            } else {
-                mustClauseList.add(mustClauseChild);
-            }
+            addProcessCriteriaToMustClause(key, processSearchCriteria.getStatus(), nameToPathMap, nameToOperator, mustClauseList);
         }
+    }
 
+    private void addAssigneeCriteriaIfPresent(ProcessInstanceSearchCriteria processSearchCriteria, Map<String, String> nameToPathMap, Map<String, SearchParam.Operator> nameToOperator, List<Object> mustClauseList) {
+        log.trace("Method invoked: addAssigneeCriteriaIfPresent");
         if (!ObjectUtils.isEmpty(processSearchCriteria.getAssignee())) {
             String key = "assignee";
-            Map<String, Object> mustClauseChild = null;
-            Map<String, Object> params = new HashMap<>();
-            params.put(key, processSearchCriteria.getAssignee());
-            mustClauseChild = (Map<String, Object>) prepareMustClauseChild(params, key, nameToPathMap, nameToOperator);
-            if (CollectionUtils.isEmpty(mustClauseChild)) {
-                log.info("Error occurred while preparing filter for must clause. Filter for key " + key + " will not be added.");
-            } else {
-                mustClauseList.add(mustClauseChild);
-            }
+            addProcessCriteriaToMustClause(key, processSearchCriteria.getAssignee(), nameToPathMap, nameToOperator, mustClauseList);
         }
+    }
 
+    private void addFromDateCriteriaIfPresent(ProcessInstanceSearchCriteria processSearchCriteria, Map<String, String> nameToPathMap, Map<String, SearchParam.Operator> nameToOperator, List<Object> mustClauseList) {
+        log.trace("Method invoked: addFromDateCriteriaIfPresent");
         if (!ObjectUtils.isEmpty(processSearchCriteria.getFromDate())) {
             String key = "fromDate";
-            Map<String, Object> mustClauseChild = null;
-            Map<String, Object> params = new HashMap<>();
-            params.put(key, processSearchCriteria.getFromDate());
-            mustClauseChild = (Map<String, Object>) prepareMustClauseChild(params, key, nameToPathMap, nameToOperator);
-            if (CollectionUtils.isEmpty(mustClauseChild)) {
-                log.info("Error occurred while preparing filter for must clause. Filter for key " + key + " will not be added.");
-            } else {
-                mustClauseList.add(mustClauseChild);
-            }
+            addProcessCriteriaToMustClause(key, processSearchCriteria.getFromDate(), nameToPathMap, nameToOperator, mustClauseList);
         }
+    }
 
+    private void addToDateCriteriaIfPresent(ProcessInstanceSearchCriteria processSearchCriteria, Map<String, String> nameToPathMap, Map<String, SearchParam.Operator> nameToOperator, List<Object> mustClauseList) {
+        log.trace("Method invoked: addToDateCriteriaIfPresent");
         if (!ObjectUtils.isEmpty(processSearchCriteria.getToDate())) {
             String key = "toDate";
-            Map<String, Object> mustClauseChild = null;
-            Map<String, Object> params = new HashMap<>();
-            params.put(key, processSearchCriteria.getToDate());
-            mustClauseChild = (Map<String, Object>) prepareMustClauseChild(params, key, nameToPathMap, nameToOperator);
-            if (CollectionUtils.isEmpty(mustClauseChild)) {
-                log.info("Error occurred while preparing filter for must clause. Filter for key " + key + " will not be added.");
-            } else {
-                mustClauseList.add(mustClauseChild);
-            }
+            addProcessCriteriaToMustClause(key, processSearchCriteria.getToDate(), nameToPathMap, nameToOperator, mustClauseList);
         }
+    }
 
+    private void addProcessCriteriaToMustClause(String key, Object value, Map<String, String> nameToPathMap, Map<String, SearchParam.Operator> nameToOperator, List<Object> mustClauseList) {
+        log.trace("Method invoked: addProcessCriteriaToMustClause - key: {}", key);
+        Map<String, Object> params = new HashMap<>();
+        params.put(key, value);
+        Map<String, Object> mustClauseChild = (Map<String, Object>) prepareMustClauseChild(params, key, nameToPathMap, nameToOperator);
+        if (CollectionUtils.isEmpty(mustClauseChild)) {
+            log.info("Error occurred while preparing filter for must clause. Filter for key " + key + " will not be added.");
+        } else {
+            mustClauseList.add(mustClauseChild);
+            log.debug("Process criteria added to must clause - key: {}", key);
+        }
     }
 
 

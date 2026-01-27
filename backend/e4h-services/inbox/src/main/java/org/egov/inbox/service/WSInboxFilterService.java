@@ -50,177 +50,160 @@ public class WSInboxFilterService {
     private ServiceRequestRepository serviceRequestRepository;
 
     public List<String> fetchApplicationNumbersFromSearcher(InboxSearchCriteria criteria, HashMap<String, String> StatusIdNameMap, RequestInfo requestInfo){
-        List<String> applicationNumbers = new ArrayList<>();
+        log.trace("Method invoked: fetchApplicationNumbersFromSearcher");
         HashMap moduleSearchCriteria = criteria.getModuleSearchCriteria();
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
-        Boolean isSearchResultEmpty = false;
-        Boolean isMobileNumberPresent = false;
-        List<String> userUUIDs = new ArrayList<>();
-        if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){
-            isMobileNumberPresent = true;
-        }
-        if(isMobileNumberPresent) {
-            String tenantId = criteria.getTenantId();
-            String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
-            userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
-            Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
-            isSearchResultEmpty = !isMobileNumberPresent || !isUserPresentForGivenMobileNumber;
-            if(isSearchResultEmpty){
-                return new ArrayList<>();
-            }
+        
+        List<String> userUUIDs = validateMobileNumberAndFetchUserUUIDs(criteria, moduleSearchCriteria, requestInfo);
+        if (userUUIDs == null) {
+            log.debug("Search result empty - returning empty list");
+            return new ArrayList<>();
         }
 
-        if(!isSearchResultEmpty){
-            Object result = null;
-
-            Map<String, Object> searcherRequest = new HashMap<>();
-            Map<String, Object> searchCriteria = new HashMap<>();
-
-            searchCriteria.put(TENANT_ID_PARAM,criteria.getTenantId());
-            searchCriteria.put(WS_BUSINESS_SERVICE_PARAM, processCriteria.getBusinessService());
-
-            // Accomodating module search criteria in searcher request
-           if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM) && !CollectionUtils.isEmpty(userUUIDs)){
-                searchCriteria.put(USERID_PARAM, userUUIDs);
-            }
-            /*if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){
-                searchCriteria.put(MOBILE_NUMBER_PARAM, moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
-            }*/
-            if(moduleSearchCriteria.containsKey(LOCALITY_PARAM)){
-                searchCriteria.put(LOCALITY_PARAM, moduleSearchCriteria.get(LOCALITY_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(PROPERTY_ID_PARAM)){
-                searchCriteria.put(PROPERTY_ID_PARAM, moduleSearchCriteria.get(PROPERTY_ID_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(WS_APPLICATION_NUMBER_PARAM)) {
-                searchCriteria.put(WS_APPLICATION_NUMBER_PARAM, moduleSearchCriteria.get(WS_APPLICATION_NUMBER_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(WS_APPLICATION_TYPE_PARAM)) {
-                searchCriteria.put(WS_APPLICATION_TYPE_PARAM, moduleSearchCriteria.get(WS_APPLICATION_TYPE_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(WS_CONNECTION_NO_PARAM)){
-                searchCriteria.put(WS_CONNECTION_NO_PARAM, moduleSearchCriteria.get(WS_CONNECTION_NO_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey("appStatus")){
-                searchCriteria.put(WS_APPLICATION_STATUS_PARAM, moduleSearchCriteria.get("appStatus"));
-            }
-            // Accomodating process search criteria in searcher request
-            if(!ObjectUtils.isEmpty(processCriteria.getAssignee())){
-                searchCriteria.put(WS_ASSIGNEE_PARAM, processCriteria.getAssignee());
-            }
-            if(!ObjectUtils.isEmpty(processCriteria.getStatus())){
-                searchCriteria.put(STATUS_PARAM, processCriteria.getStatus());
-            }else{
-                if(StatusIdNameMap.values().size() > 0) {
-                    if(CollectionUtils.isEmpty(processCriteria.getStatus())) {
-                        searchCriteria.put(STATUS_PARAM, StatusIdNameMap.keySet());
-                    }
-                }
-            }
-
-            // Paginating searcher results
-            searchCriteria.put(OFFSET_PARAM, criteria.getOffset());
-            searchCriteria.put(NO_OF_RECORDS_PARAM, criteria.getLimit());
-            //moduleSearchCriteria.put(LIMIT_PARAM, criteria.getLimit());
-
-            searcherRequest.put(WS_REQUESTINFO_PARAM, requestInfo);
-            searcherRequest.put(WS_SEARCH_CRITERIA_PARAM, searchCriteria);
-
-            StringBuilder uri = new StringBuilder();
-            if(moduleSearchCriteria.containsKey(SORT_ORDER_PARAM) && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM)){
-                uri.append(searcherHost).append(wsInboxSearcherDescEndpoint);
-            }else {
-                uri.append(searcherHost).append(wsInboxSearcherEndpoint);
-            }
-
-            result = restTemplate.postForObject(uri.toString(), searcherRequest, Map.class);
-
-            applicationNumbers = JsonPath.read(result, "$.WaterConnections.*.applicationno");
-
-        }
-        return  applicationNumbers;
+        Map<String, Object> searchCriteria = buildWSSearchCriteria(criteria, moduleSearchCriteria, processCriteria, StatusIdNameMap, userUUIDs);
+        Map<String, Object> searcherRequest = buildWSSearcherRequest(requestInfo, searchCriteria);
+        String uri = buildWSSearcherUri(moduleSearchCriteria, false);
+        
+        Object result = restTemplate.postForObject(uri, searcherRequest, Map.class);
+        List<String> applicationNumbers = JsonPath.read(result, "$.WaterConnections.*.applicationno");
+        log.info("Application numbers retrieved from searcher - count: {}", applicationNumbers.size());
+        
+        return applicationNumbers;
     }
 
     public Integer fetchApplicationCountFromSearcher(InboxSearchCriteria criteria, HashMap<String, String> StatusIdNameMap, RequestInfo requestInfo){
-        Integer totalCount = 0;
+        log.trace("Method invoked: fetchApplicationCountFromSearcher");
         HashMap moduleSearchCriteria = criteria.getModuleSearchCriteria();
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
-        Boolean isSearchResultEmpty = false;
-        Boolean isMobileNumberPresent = false;
-        List<String> userUUIDs = new ArrayList<>();
-        if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){
-            isMobileNumberPresent = true;
-        }
-        if(isMobileNumberPresent) {
-            String tenantId = criteria.getTenantId();
-            String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
-            userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
-            Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
-            isSearchResultEmpty = !isMobileNumberPresent || !isUserPresentForGivenMobileNumber;
-            if(isSearchResultEmpty){
-                return 0;
-            }
+        
+        List<String> userUUIDs = validateMobileNumberAndFetchUserUUIDs(criteria, moduleSearchCriteria, requestInfo);
+        if (userUUIDs == null) {
+            log.debug("Search result empty - returning 0");
+            return 0;
         }
 
-        if(!isSearchResultEmpty){
-            Object result = null;
+        Map<String, Object> searchCriteria = buildWSSearchCriteria(criteria, moduleSearchCriteria, processCriteria, StatusIdNameMap, userUUIDs);
+        Map<String, Object> searcherRequest = buildWSSearcherRequest(requestInfo, searchCriteria);
+        String uri = buildWSSearcherUri(moduleSearchCriteria, true);
+        
+        Object result = restTemplate.postForObject(uri, searcherRequest, Map.class);
+        double count = JsonPath.read(result, "$.TotalCount[0].count");
+        Integer totalCount = new Integer((int) count);
+        log.info("Application count retrieved from searcher - count: {}", totalCount);
+        
+        return totalCount;
+    }
 
-            Map<String, Object> searcherRequest = new HashMap<>();
-            Map<String, Object> searchCriteria = new HashMap<>();
+    private List<String> validateMobileNumberAndFetchUserUUIDs(InboxSearchCriteria criteria, HashMap moduleSearchCriteria, RequestInfo requestInfo) {
+        log.trace("Method invoked: validateMobileNumberAndFetchUserUUIDs");
+        if(!moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){
+            log.debug("Mobile number not present in search criteria");
+            return new ArrayList<>();
+        }
+        
+        String tenantId = criteria.getTenantId();
+        String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
+        List<String> userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
+        Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
+        
+        if(!isUserPresentForGivenMobileNumber){
+            log.warn("No user found for mobile number");
+            return null;
+        }
+        log.debug("User UUIDs retrieved - count: {}", userUUIDs.size());
+        return userUUIDs;
+    }
 
-            searchCriteria.put(TENANT_ID_PARAM,criteria.getTenantId());
+    private Map<String, Object> buildWSSearchCriteria(InboxSearchCriteria criteria, HashMap moduleSearchCriteria,
+                                                      ProcessInstanceSearchCriteria processCriteria,
+                                                      HashMap<String, String> StatusIdNameMap,
+                                                      List<String> userUUIDs) {
+        log.trace("Method invoked: buildWSSearchCriteria");
+        Map<String, Object> searchCriteria = new HashMap<>();
+        searchCriteria.put(TENANT_ID_PARAM, criteria.getTenantId());
+        searchCriteria.put(WS_BUSINESS_SERVICE_PARAM, processCriteria.getBusinessService());
 
-            // Accomodating module search criteria in searcher request
-            if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM) && !CollectionUtils.isEmpty(userUUIDs)){
-                searchCriteria.put(USERID_PARAM, userUUIDs);
-            }
-            if(moduleSearchCriteria.containsKey(LOCALITY_PARAM)){
-                searchCriteria.put(LOCALITY_PARAM, moduleSearchCriteria.get(LOCALITY_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(PROPERTY_ID_PARAM)){
-                searchCriteria.put(PROPERTY_ID_PARAM, moduleSearchCriteria.get(PROPERTY_ID_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(WS_APPLICATION_NUMBER_PARAM)) {
-                searchCriteria.put(WS_APPLICATION_NUMBER_PARAM, moduleSearchCriteria.get(WS_APPLICATION_NUMBER_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(WS_APPLICATION_TYPE_PARAM)) {
-                searchCriteria.put(WS_APPLICATION_TYPE_PARAM, moduleSearchCriteria.get(WS_APPLICATION_TYPE_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(WS_CONNECTION_NO_PARAM)){
-                searchCriteria.put(WS_CONNECTION_NO_PARAM, moduleSearchCriteria.get(WS_CONNECTION_NO_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey("appStatus")){
-                searchCriteria.put(WS_APPLICATION_STATUS_PARAM, moduleSearchCriteria.get("appStatus"));
-            }
-            // Accomodating process search criteria in searcher request
-            if(!ObjectUtils.isEmpty(processCriteria.getAssignee())){
-                searchCriteria.put(WS_ASSIGNEE_PARAM, processCriteria.getAssignee());
-            }
-            if(!ObjectUtils.isEmpty(processCriteria.getStatus())){
-                searchCriteria.put(STATUS_PARAM, processCriteria.getStatus());
-            }else{
-                if(StatusIdNameMap.values().size() > 0) {
-                    if(CollectionUtils.isEmpty(processCriteria.getStatus())) {
-                        searchCriteria.put(STATUS_PARAM, StatusIdNameMap.keySet());
-                    }
+        addWSModuleSearchCriteria(moduleSearchCriteria, searchCriteria, userUUIDs);
+        addWSProcessSearchCriteria(processCriteria, StatusIdNameMap, searchCriteria);
+        addWSPaginationCriteria(criteria, searchCriteria);
+        
+        log.debug("WS search criteria built");
+        return searchCriteria;
+    }
+
+    private void addWSModuleSearchCriteria(HashMap moduleSearchCriteria, Map<String, Object> searchCriteria, List<String> userUUIDs) {
+        log.trace("Method invoked: addWSModuleSearchCriteria");
+        if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM) && !CollectionUtils.isEmpty(userUUIDs)){
+            searchCriteria.put(USERID_PARAM, userUUIDs);
+        }
+        if(moduleSearchCriteria.containsKey(LOCALITY_PARAM)){
+            searchCriteria.put(LOCALITY_PARAM, moduleSearchCriteria.get(LOCALITY_PARAM));
+        }
+        if(moduleSearchCriteria.containsKey(PROPERTY_ID_PARAM)){
+            searchCriteria.put(PROPERTY_ID_PARAM, moduleSearchCriteria.get(PROPERTY_ID_PARAM));
+        }
+        if(moduleSearchCriteria.containsKey(WS_APPLICATION_NUMBER_PARAM)) {
+            searchCriteria.put(WS_APPLICATION_NUMBER_PARAM, moduleSearchCriteria.get(WS_APPLICATION_NUMBER_PARAM));
+        }
+        if(moduleSearchCriteria.containsKey(WS_APPLICATION_TYPE_PARAM)) {
+            searchCriteria.put(WS_APPLICATION_TYPE_PARAM, moduleSearchCriteria.get(WS_APPLICATION_TYPE_PARAM));
+        }
+        if(moduleSearchCriteria.containsKey(WS_CONNECTION_NO_PARAM)){
+            searchCriteria.put(WS_CONNECTION_NO_PARAM, moduleSearchCriteria.get(WS_CONNECTION_NO_PARAM));
+        }
+        if(moduleSearchCriteria.containsKey("appStatus")){
+            searchCriteria.put(WS_APPLICATION_STATUS_PARAM, moduleSearchCriteria.get("appStatus"));
+        }
+        log.debug("WS module search criteria added");
+    }
+
+    private void addWSProcessSearchCriteria(ProcessInstanceSearchCriteria processCriteria,
+                                           HashMap<String, String> StatusIdNameMap,
+                                           Map<String, Object> searchCriteria) {
+        log.trace("Method invoked: addWSProcessSearchCriteria");
+        if(!ObjectUtils.isEmpty(processCriteria.getAssignee())){
+            searchCriteria.put(WS_ASSIGNEE_PARAM, processCriteria.getAssignee());
+        }
+        if(!ObjectUtils.isEmpty(processCriteria.getStatus())){
+            searchCriteria.put(STATUS_PARAM, processCriteria.getStatus());
+        }else{
+            if(StatusIdNameMap.values().size() > 0) {
+                if(CollectionUtils.isEmpty(processCriteria.getStatus())) {
+                    searchCriteria.put(STATUS_PARAM, StatusIdNameMap.keySet());
                 }
             }
-
-            // Paginating searcher results
-
-            searcherRequest.put(WS_REQUESTINFO_PARAM, requestInfo);
-            searcherRequest.put(WS_SEARCH_CRITERIA_PARAM, searchCriteria);
-
-            StringBuilder uri = new StringBuilder();
-            uri.append(searcherHost).append(wsInboxSearcherCountEndpoint);
-
-            result = restTemplate.postForObject(uri.toString(), searcherRequest, Map.class);
-
-            double count = JsonPath.read(result, "$.TotalCount[0].count");
-            totalCount = new Integer((int) count);
-
         }
-        return  totalCount;
+        log.debug("WS process search criteria added");
+    }
+
+    private void addWSPaginationCriteria(InboxSearchCriteria criteria, Map<String, Object> searchCriteria) {
+        log.trace("Method invoked: addWSPaginationCriteria");
+        searchCriteria.put(OFFSET_PARAM, criteria.getOffset());
+        searchCriteria.put(NO_OF_RECORDS_PARAM, criteria.getLimit());
+        log.debug("WS pagination criteria added");
+    }
+
+    private Map<String, Object> buildWSSearcherRequest(RequestInfo requestInfo, Map<String, Object> searchCriteria) {
+        log.trace("Method invoked: buildWSSearcherRequest");
+        Map<String, Object> searcherRequest = new HashMap<>();
+        searcherRequest.put(WS_REQUESTINFO_PARAM, requestInfo);
+        searcherRequest.put(WS_SEARCH_CRITERIA_PARAM, searchCriteria);
+        log.debug("WS searcher request built");
+        return searcherRequest;
+    }
+
+    private String buildWSSearcherUri(HashMap moduleSearchCriteria, boolean isCount) {
+        log.trace("Method invoked: buildWSSearcherUri - isCount: {}", isCount);
+        StringBuilder uri = new StringBuilder();
+        if(isCount) {
+            uri.append(searcherHost).append(wsInboxSearcherCountEndpoint);
+        } else if(moduleSearchCriteria.containsKey(SORT_ORDER_PARAM) && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM)){
+            uri.append(searcherHost).append(wsInboxSearcherDescEndpoint);
+        } else {
+            uri.append(searcherHost).append(wsInboxSearcherEndpoint);
+        }
+        log.debug("WS searcher URI built: {}", uri.toString());
+        return uri.toString();
     }
 
 

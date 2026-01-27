@@ -73,78 +73,132 @@ public class BPAInboxFilterService {
 
     public List<String> fetchApplicationNumbersFromSearcher(InboxSearchCriteria criteria,
             HashMap<String, String> StatusIdNameMap, RequestInfo requestInfo) {
-        List<String> applicationNumbers = new ArrayList<>();
+        log.trace("Method invoked: fetchApplicationNumbersFromSearcher");
         HashMap<String, Object> moduleSearchCriteria = criteria.getModuleSearchCriteria();
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
-        Boolean isSearchResultEmpty = false;
-        Boolean isMobileNumberPresent = false;
+        
+        UserDetails userDetails = validateAndFetchUserDetails(criteria, moduleSearchCriteria, requestInfo);
+        if (userDetails == null || userDetails.userUUIDs.isEmpty()) {
+            log.debug("Search result empty - returning empty list");
+            return new ArrayList<>();
+        }
+
+        Map<String, Object> searchCriteria = buildBPASearchCriteria(criteria, StatusIdNameMap, requestInfo,
+                moduleSearchCriteria, processCriteria, userDetails.userUUIDs, userDetails.citizenRoles);
+        Map<String, Object> searcherRequest = buildBPASearcherRequest(requestInfo, searchCriteria);
+        
+        List<String> applicationNumbers = fetchBPAApplicationNumbers(moduleSearchCriteria, searcherRequest, 
+                requestInfo, userDetails.citizenRoles);
+        log.info("Application numbers retrieved from searcher - count: {}", applicationNumbers.size());
+        
+        return applicationNumbers;
+    }
+
+    private UserDetails validateAndFetchUserDetails(InboxSearchCriteria criteria, HashMap<String, Object> moduleSearchCriteria, RequestInfo requestInfo) {
+        log.trace("Method invoked: validateAndFetchUserDetails");
         List<String> userUUIDs = new ArrayList<>();
         List<String> citizenRoles = Collections.emptyList();
+        
         if (moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)) {
-            isMobileNumberPresent = true;
-        }
-        if (isMobileNumberPresent) {
             String tenantId = criteria.getTenantId();
             String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
-            Map<String, List<String>> userDetails = fetchUserUUID(mobileNumber, requestInfo, tenantId);
-            userUUIDs = userDetails.get(USER_UUID);
-            citizenRoles = userDetails.get(USER_ROLES);
+            Map<String, List<String>> userDetailsMap = fetchUserUUID(mobileNumber, requestInfo, tenantId);
+            userUUIDs = userDetailsMap.get(USER_UUID);
+            citizenRoles = userDetailsMap.get(USER_ROLES);
             Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
-            isSearchResultEmpty = !isMobileNumberPresent || !isUserPresentForGivenMobileNumber;
-            if (isSearchResultEmpty) {
-                return new ArrayList<>();
+            
+            if (!isUserPresentForGivenMobileNumber) {
+                log.warn("No user found for mobile number");
+                return null;
             }
+            log.debug("User UUIDs retrieved from mobile number - count: {}", userUUIDs.size());
         } else {
             List<String> roles = requestInfo.getUserInfo().getRoles().stream().map(Role::getCode).collect(Collectors.toList());
             if(roles.contains(CITIZEN)) {
                 userUUIDs.add(requestInfo.getUserInfo().getUuid());
                 citizenRoles = roles;
+                log.debug("Using current user UUID for citizen role");
             }
         }
+        
+        UserDetails details = new UserDetails();
+        details.userUUIDs = userUUIDs;
+        details.citizenRoles = citizenRoles;
+        return details;
+    }
 
-        if (!isSearchResultEmpty) {
-            Object result = null;
+    private Map<String, Object> buildBPASearchCriteria(InboxSearchCriteria criteria, HashMap<String, String> StatusIdNameMap,
+                                                       RequestInfo requestInfo, HashMap<String, Object> moduleSearchCriteria,
+                                                       ProcessInstanceSearchCriteria processCriteria,
+                                                       List<String> userUUIDs, List<String> citizenRoles) {
+        log.trace("Method invoked: buildBPASearchCriteria");
+        Map<String, Object> searchCriteria = getSearchCriteria(criteria, StatusIdNameMap, requestInfo,
+                moduleSearchCriteria, processCriteria, userUUIDs, citizenRoles);
+        searchCriteria.put(OFFSET_PARAM, criteria.getOffset());
+        searchCriteria.put(NO_OF_RECORDS_PARAM, criteria.getLimit());
+        moduleSearchCriteria.put(LIMIT_PARAM, criteria.getLimit());
+        log.debug("BPA search criteria built");
+        return searchCriteria;
+    }
 
-            Map<String, Object> searcherRequest = new HashMap<>();
-            Map<String, Object> searchCriteria = getSearchCriteria(criteria, StatusIdNameMap, requestInfo,
-                    moduleSearchCriteria, processCriteria, userUUIDs, citizenRoles);
-            // Paginating searcher results
-            searchCriteria.put(OFFSET_PARAM, criteria.getOffset());
-            searchCriteria.put(NO_OF_RECORDS_PARAM, criteria.getLimit());
-            moduleSearchCriteria.put(LIMIT_PARAM, criteria.getLimit());
+    private Map<String, Object> buildBPASearcherRequest(RequestInfo requestInfo, Map<String, Object> searchCriteria) {
+        log.trace("Method invoked: buildBPASearcherRequest");
+        Map<String, Object> searcherRequest = new HashMap<>();
+        searcherRequest.put(REQUESTINFO_PARAM, requestInfo);
+        searcherRequest.put(SEARCH_CRITERIA_PARAM, searchCriteria);
+        log.debug("BPA searcher request built");
+        return searcherRequest;
+    }
 
-            searcherRequest.put(REQUESTINFO_PARAM, requestInfo);
-            searcherRequest.put(SEARCH_CRITERIA_PARAM, searchCriteria);
-
-            if (citizenHasStakeholderRoles(requestInfo, citizenRoles)) {
-                StringBuilder uri = new StringBuilder();
-                if (moduleSearchCriteria.containsKey(SORT_ORDER_PARAM)
-                        && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM))
-                    uri.append(searcherHost).append(bpaInboxSearcherDescEndpoint);
-                else
-                    uri.append(searcherHost).append(bpaInboxSearcherEndpoint);
-
-                result = restTemplate.postForObject(uri.toString(), searcherRequest, Map.class);
-
-                applicationNumbers = JsonPath.read(result, "$.BPAs.*.applicationno");
-            } else {
-                StringBuilder citizenUri = new StringBuilder();
-
-                if (moduleSearchCriteria.containsKey(SORT_ORDER_PARAM)
-                        && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM))
-                    citizenUri.append(searcherHost).append(bpaCitizenInboxSearcherDescEndpoint);
-                else
-                    citizenUri.append(searcherHost).append(bpaCitizenInboxSearcherEndpoint);
-
-                result = restTemplate.postForObject(citizenUri.toString(), searcherRequest, Map.class);
-
-                List<String> citizenApplicationsNumbers = JsonPath.read(result, "$.BPAs.*.applicationno");
-
-                applicationNumbers.addAll(citizenApplicationsNumbers);
-            }
-
+    private List<String> fetchBPAApplicationNumbers(HashMap<String, Object> moduleSearchCriteria,
+                                                  Map<String, Object> searcherRequest,
+                                                  RequestInfo requestInfo, List<String> citizenRoles) {
+        log.trace("Method invoked: fetchBPAApplicationNumbers");
+        List<String> applicationNumbers = new ArrayList<>();
+        
+        if (citizenHasStakeholderRoles(requestInfo, citizenRoles)) {
+            String uri = buildBPAStakeholderUri(moduleSearchCriteria);
+            Object result = restTemplate.postForObject(uri, searcherRequest, Map.class);
+            applicationNumbers = JsonPath.read(result, "$.BPAs.*.applicationno");
+            log.debug("Fetched application numbers from stakeholder endpoint - count: {}", applicationNumbers.size());
+        } else {
+            String citizenUri = buildBPACitizenUri(moduleSearchCriteria);
+            Object result = restTemplate.postForObject(citizenUri, searcherRequest, Map.class);
+            List<String> citizenApplicationsNumbers = JsonPath.read(result, "$.BPAs.*.applicationno");
+            applicationNumbers.addAll(citizenApplicationsNumbers);
+            log.debug("Fetched application numbers from citizen endpoint - count: {}", citizenApplicationsNumbers.size());
         }
+        
         return applicationNumbers;
+    }
+
+    private String buildBPAStakeholderUri(HashMap<String, Object> moduleSearchCriteria) {
+        log.trace("Method invoked: buildBPAStakeholderUri");
+        StringBuilder uri = new StringBuilder();
+        if (moduleSearchCriteria.containsKey(SORT_ORDER_PARAM)
+                && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM))
+            uri.append(searcherHost).append(bpaInboxSearcherDescEndpoint);
+        else
+            uri.append(searcherHost).append(bpaInboxSearcherEndpoint);
+        log.debug("BPA stakeholder URI built: {}", uri.toString());
+        return uri.toString();
+    }
+
+    private String buildBPACitizenUri(HashMap<String, Object> moduleSearchCriteria) {
+        log.trace("Method invoked: buildBPACitizenUri");
+        StringBuilder citizenUri = new StringBuilder();
+        if (moduleSearchCriteria.containsKey(SORT_ORDER_PARAM)
+                && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM))
+            citizenUri.append(searcherHost).append(bpaCitizenInboxSearcherDescEndpoint);
+        else
+            citizenUri.append(searcherHost).append(bpaCitizenInboxSearcherEndpoint);
+        log.debug("BPA citizen URI built: {}", citizenUri.toString());
+        return citizenUri.toString();
+    }
+
+    private static class UserDetails {
+        List<String> userUUIDs;
+        List<String> citizenRoles;
     }
 
     private Map<String, Object> getSearchCriteria(InboxSearchCriteria criteria, Map<String, String> statusIdNameMap,
@@ -195,61 +249,44 @@ public class BPAInboxFilterService {
 
     public Integer fetchApplicationCountFromSearcher(InboxSearchCriteria criteria,
             HashMap<String, String> StatusIdNameMap, RequestInfo requestInfo) {
-        Integer totalCount = 0;
+        log.trace("Method invoked: fetchApplicationCountFromSearcher");
         HashMap<String, Object> moduleSearchCriteria = criteria.getModuleSearchCriteria();
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
-        Boolean isSearchResultEmpty = false;
-        Boolean isMobileNumberPresent = false;
-        List<String> userUUIDs = new ArrayList<>();
-        if (moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)) {
-            isMobileNumberPresent = true;
+        
+        UserDetails userDetails = validateAndFetchUserDetails(criteria, moduleSearchCriteria, requestInfo);
+        if (userDetails == null || userDetails.userUUIDs.isEmpty()) {
+            log.debug("Search result empty - returning 0");
+            return 0;
         }
-        List<String> citizenRoles = Collections.emptyList();
-        if (isMobileNumberPresent) {
-            String tenantId = criteria.getTenantId();
-            String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
-            Map<String, List<String>> userDetails = fetchUserUUID(mobileNumber, requestInfo, tenantId);
-            userUUIDs = userDetails.get(USER_UUID);
-            citizenRoles = userDetails.get(USER_ROLES);
-            Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
-            isSearchResultEmpty = !isMobileNumberPresent || !isUserPresentForGivenMobileNumber;
-            if (isSearchResultEmpty) {
-                return 0;
-            }
+
+        Map<String, Object> searchCriteria = getSearchCriteria(criteria, StatusIdNameMap, requestInfo,
+                moduleSearchCriteria, processCriteria, userDetails.userUUIDs, userDetails.citizenRoles);
+        Map<String, Object> searcherRequest = buildBPASearcherRequest(requestInfo, searchCriteria);
+        
+        Integer totalCount = fetchBPACount(searcherRequest, requestInfo, userDetails.citizenRoles);
+        log.info("Application count retrieved from searcher - count: {}", totalCount);
+        
+        return totalCount;
+    }
+
+    private Integer fetchBPACount(Map<String, Object> searcherRequest, RequestInfo requestInfo, List<String> citizenRoles) {
+        log.trace("Method invoked: fetchBPACount");
+        Integer totalCount = 0;
+        
+        if (citizenHasStakeholderRoles(requestInfo, citizenRoles)) {
+            String uri = searcherHost + bpaInboxSearcherCountEndpoint;
+            Object result = restTemplate.postForObject(uri, searcherRequest, Map.class);
+            double count = JsonPath.read(result, "$.TotalCount[0].count");
+            totalCount = (int) count;
+            log.debug("Fetched count from stakeholder endpoint - count: {}", totalCount);
         } else {
-            List<String> roles = requestInfo.getUserInfo().getRoles().stream().map(Role::getCode).collect(Collectors.toList());
-            if(roles.contains(CITIZEN)) {
-                userUUIDs.add(requestInfo.getUserInfo().getUuid());
-                citizenRoles = roles;
-            }
+            String citizenUri = searcherHost + bpaCitizenInboxSearcherCountEndpoint;
+            Object citizenResult = restTemplate.postForObject(citizenUri, searcherRequest, Map.class);
+            double citizenCount = JsonPath.read(citizenResult, "$.TotalCount[0].count");
+            totalCount = totalCount + (int) citizenCount;
+            log.debug("Fetched count from citizen endpoint - count: {}", (int) citizenCount);
         }
-
-        if (!isSearchResultEmpty) {
-            Object result = null;
-
-            Map<String, Object> searcherRequest = new HashMap<>();
-            Map<String, Object> searchCriteria = getSearchCriteria(criteria, StatusIdNameMap, requestInfo,
-                    moduleSearchCriteria, processCriteria, userUUIDs, citizenRoles);
-            searcherRequest.put(REQUESTINFO_PARAM, requestInfo);
-            searcherRequest.put(SEARCH_CRITERIA_PARAM, searchCriteria);
-            if (citizenHasStakeholderRoles(requestInfo, citizenRoles)) {
-                StringBuilder uri = new StringBuilder();
-                uri.append(searcherHost).append(bpaInboxSearcherCountEndpoint);
-
-                result = restTemplate.postForObject(uri.toString(), searcherRequest, Map.class);
-
-                double count = JsonPath.read(result, "$.TotalCount[0].count");
-                totalCount = (int) count;
-            } else {
-                StringBuilder citizenUri = new StringBuilder();
-                citizenUri.append(searcherHost).append(bpaCitizenInboxSearcherCountEndpoint);
-
-                Object citizenResult = restTemplate.postForObject(citizenUri.toString(), searcherRequest, Map.class);
-
-                double citizenCount = JsonPath.read(citizenResult, "$.TotalCount[0].count");
-                totalCount = totalCount + (int) citizenCount;
-            }
-        }
+        
         return totalCount;
     }
 

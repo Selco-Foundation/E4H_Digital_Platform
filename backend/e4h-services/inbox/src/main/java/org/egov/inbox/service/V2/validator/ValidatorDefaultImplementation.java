@@ -36,13 +36,29 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
         
         log.info("Validating search criteria - tenantId: {}, module: {}", tenantId, moduleName);
 
+        InboxQueryConfiguration config = fetchInboxQueryConfiguration(inboxRequest);
+        Map<String, Boolean> isMandatoryMap = buildMandatoryFieldsMap(config);
+        HashMap<String, Object> moduleSearchCriteria = inboxRequest.getInbox().getModuleSearchCriteria();
+        
+        validateMandatoryFieldsPresent(moduleSearchCriteria, isMandatoryMap);
+        validateMandatoryFieldsNotEmpty(moduleSearchCriteria, isMandatoryMap);
+
+        log.info("Validation successful for search criteria");
+    }
+
+    private InboxQueryConfiguration fetchInboxQueryConfiguration(InboxRequest inboxRequest) {
+        log.trace("Method invoked: fetchInboxQueryConfiguration");
         log.debug("Fetching inbox query configuration from MDMS");
         InboxQueryConfiguration config = mdmsUtil.getConfigFromMDMS(
                 inboxRequest.getInbox().getTenantId(),
                 inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+        log.debug("InboxQueryConfiguration fetched");
+        return config;
+    }
 
+    private Map<String, Boolean> buildMandatoryFieldsMap(InboxQueryConfiguration config) {
+        log.trace("Method invoked: buildMandatoryFieldsMap");
         Map<String, Boolean> isMandatoryMap = new HashMap<>();
-
         config.getAllowedSearchCriteria().forEach(
                 searchParam -> {
                     isMandatoryMap.put(searchParam.getName(),
@@ -50,10 +66,11 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
                 }
         );
         log.debug("Allowed search criteria with mandatory flags - totalCriteria: {}", isMandatoryMap.size());
+        return isMandatoryMap;
+    }
 
-        HashMap<String, Object> moduleSearchCriteria = inboxRequest.getInbox().getModuleSearchCriteria();
-
-        // Check if all mandatory fields exist in search criteria
+    private void validateMandatoryFieldsPresent(HashMap<String, Object> moduleSearchCriteria, Map<String, Boolean> isMandatoryMap) {
+        log.trace("Method invoked: validateMandatoryFieldsPresent");
         Set<String> mandatoryTrueFields = isMandatoryMap.entrySet().stream()
                 .filter(entry -> Boolean.TRUE.equals(entry.getValue()))
                 .map(Entry::getKey)
@@ -66,7 +83,10 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
             throw new CustomException("INVALID_SEARCH_CRITERIA",
                     "Mandatory fields are missing in the moduleSearchCriteria");
         }
+    }
 
+    private void validateMandatoryFieldsNotEmpty(HashMap<String, Object> moduleSearchCriteria, Map<String, Boolean> isMandatoryMap) {
+        log.trace("Method invoked: validateMandatoryFieldsNotEmpty");
         Map<String, String> errorMap = new HashMap<>();
         for (Map.Entry<String, Object> entry : moduleSearchCriteria.entrySet()) {
             String key = entry.getKey();
@@ -86,8 +106,6 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
             log.error("Validation failed - errorCount: {}", errorMap.size());
             throw new CustomException(errorMap);
         }
-
-        log.info("Validation successful for search criteria");
     }
 
 
@@ -95,11 +113,24 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
         log.trace("Method invoked: validateSearchCriteria - tenantId: {}, module: {}", tenantId, moduleName);
         log.info("Validating search criteria - tenantId: {}, module: {}", tenantId, moduleName);
 
+        InboxQueryConfiguration config = fetchInboxQueryConfiguration(tenantId, moduleName);
+        Map<String, Boolean> isMandatoryMap = buildMandatoryFieldsMapForSimpleSearch(config);
+        validateMandatoryFieldsNotEmptyForSimpleSearch(moduleSearchCriteria, isMandatoryMap);
+
+        log.info("Validation successful for moduleSearchCriteria");
+    }
+
+    private InboxQueryConfiguration fetchInboxQueryConfiguration(String tenantId, String moduleName) {
+        log.trace("Method invoked: fetchInboxQueryConfiguration");
         log.debug("Fetching inbox query configuration from MDMS");
         InboxQueryConfiguration config = mdmsUtil.getConfigFromMDMS(tenantId, moduleName);
         log.debug("InboxQueryConfiguration retrieved - allowedCriteria: {}", 
                 config != null ? config.getAllowedSearchCriteria().size() : 0);
+        return config;
+    }
 
+    private Map<String, Boolean> buildMandatoryFieldsMapForSimpleSearch(InboxQueryConfiguration config) {
+        log.trace("Method invoked: buildMandatoryFieldsMapForSimpleSearch");
         Map<String, Boolean> isMandatoryMap = new HashMap<>();
         config.getAllowedSearchCriteria().forEach(searchParam -> {
             isMandatoryMap.put(searchParam.getName(),
@@ -108,7 +139,11 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
         log.debug("Mandatory fields map built - totalFields: {}, mandatoryCount: {}", 
                 isMandatoryMap.size(), 
                 isMandatoryMap.values().stream().filter(Boolean::booleanValue).count());
+        return isMandatoryMap;
+    }
 
+    private void validateMandatoryFieldsNotEmptyForSimpleSearch(Map<String, Object> moduleSearchCriteria, Map<String, Boolean> isMandatoryMap) {
+        log.trace("Method invoked: validateMandatoryFieldsNotEmptyForSimpleSearch");
         Map<String, String> errorMap = new HashMap<>();
         for (Map.Entry<String, Object> entry : moduleSearchCriteria.entrySet()) {
             String key = entry.getKey();
@@ -128,8 +163,6 @@ public class ValidatorDefaultImplementation implements SearchCriteriaValidatorIn
             log.error("Validation failed - errorCount: {}", errorMap.size());
             throw new CustomException(errorMap);
         }
-
-        log.info("Validation successful for moduleSearchCriteria");
     }
 
 

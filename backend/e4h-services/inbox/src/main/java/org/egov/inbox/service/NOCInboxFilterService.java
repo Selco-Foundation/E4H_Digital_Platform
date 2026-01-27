@@ -69,56 +69,26 @@ public class NOCInboxFilterService {
 
     public List<String> fetchApplicationNumbersFromSearcher(InboxSearchCriteria criteria,
             HashMap<String, String> StatusIdNameMap, RequestInfo requestInfo) {
-        List<String> applicationNumbers = new ArrayList<>();
+        log.trace("Method invoked: fetchApplicationNumbersFromSearcher");
         HashMap<String, Object> moduleSearchCriteria = criteria.getModuleSearchCriteria();
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
-        Boolean isSearchResultEmpty = false;
-        Boolean isMobileNumberPresent = false;
-        List<String> userUUIDs = new ArrayList<>();
-        if (moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)) {
-            isMobileNumberPresent = true;
-        }
-        if (isMobileNumberPresent) {
-            String tenantId = criteria.getTenantId();
-            String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
-            userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
-            Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
-            isSearchResultEmpty = !isMobileNumberPresent || !isUserPresentForGivenMobileNumber;
-            if (isSearchResultEmpty) {
-                return new ArrayList<>();
-            }
+        
+        List<String> userUUIDs = validateMobileNumberAndFetchUserUUIDs(criteria, moduleSearchCriteria, requestInfo);
+        if (userUUIDs == null) {
+            log.debug("Search result empty - returning empty list");
+            return new ArrayList<>();
         }
 
-        if (!isSearchResultEmpty) {
-            Object result = null;
-
-            Map<String, Object> searcherRequest = new HashMap<>();
-            Map<String, Object> searchCriteria = getSearchCriteria(criteria, StatusIdNameMap, requestInfo,
-                    moduleSearchCriteria, processCriteria, userUUIDs);
-            // Paginating searcher results
-            searchCriteria.put(OFFSET_PARAM, criteria.getOffset());
-            searchCriteria.put(NO_OF_RECORDS_PARAM, criteria.getLimit());
-            moduleSearchCriteria.put(LIMIT_PARAM, criteria.getLimit());
-
-            searcherRequest.put(REQUESTINFO_PARAM, requestInfo);
-            searcherRequest.put(SEARCH_CRITERIA_PARAM, searchCriteria);
-
-            StringBuilder uri = new StringBuilder();
-
-            if (moduleSearchCriteria.containsKey(SORT_ORDER_PARAM)
-                    && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM))
-                uri.append(searcherHost).append(nocInboxSearcherDescEndpoint);
-            else
-                uri.append(searcherHost).append(nocInboxSearcherEndpoint);
-
-            result = restTemplate.postForObject(uri.toString(), searcherRequest, Map.class);
-
-            List<String> citizenApplicationsNumbers = JsonPath.read(result, "$.Noc.*.applicationno");
-
-            applicationNumbers.addAll(citizenApplicationsNumbers);
-
-        }
-        return applicationNumbers;
+        Map<String, Object> searchCriteria = buildNOCSearchCriteria(criteria, StatusIdNameMap, requestInfo,
+                moduleSearchCriteria, processCriteria, userUUIDs);
+        Map<String, Object> searcherRequest = buildNOCSearcherRequest(requestInfo, searchCriteria);
+        String uri = buildNOCSearcherUri(moduleSearchCriteria, false);
+        
+        Object result = restTemplate.postForObject(uri, searcherRequest, Map.class);
+        List<String> citizenApplicationsNumbers = JsonPath.read(result, "$.Noc.*.applicationno");
+        log.info("Application numbers retrieved from searcher - count: {}", citizenApplicationsNumbers.size());
+        
+        return citizenApplicationsNumbers;
     }
 
     private Map<String, Object> getSearchCriteria(InboxSearchCriteria criteria, HashMap<String, String> StatusIdNameMap,
@@ -162,41 +132,84 @@ public class NOCInboxFilterService {
 
     public Integer fetchApplicationCountFromSearcher(InboxSearchCriteria criteria,
             HashMap<String, String> StatusIdNameMap, RequestInfo requestInfo) {
-        Integer totalCount = 0;
+        log.trace("Method invoked: fetchApplicationCountFromSearcher");
         HashMap<String, Object> moduleSearchCriteria = criteria.getModuleSearchCriteria();
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
-        Boolean isSearchResultEmpty = false;
-        Boolean isMobileNumberPresent = false;
-        List<String> userUUIDs = new ArrayList<>();
-        if (moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)) {
-            isMobileNumberPresent = true;
-        }
-        if (isMobileNumberPresent) {
-            String tenantId = criteria.getTenantId();
-            String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
-            userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
-            Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
-            isSearchResultEmpty = !isMobileNumberPresent || !isUserPresentForGivenMobileNumber;
-            if (isSearchResultEmpty) {
-                return 0;
-            }
+        
+        List<String> userUUIDs = validateMobileNumberAndFetchUserUUIDs(criteria, moduleSearchCriteria, requestInfo);
+        if (userUUIDs == null) {
+            log.debug("Search result empty - returning 0");
+            return 0;
         }
 
-        if (!isSearchResultEmpty) {
-            Map<String, Object> searcherRequest = new HashMap<>();
-            Map<String, Object> searchCriteria = getSearchCriteria(criteria, StatusIdNameMap, requestInfo,
-                    moduleSearchCriteria, processCriteria, userUUIDs);
-            searcherRequest.put(REQUESTINFO_PARAM, requestInfo);
-            searcherRequest.put(SEARCH_CRITERIA_PARAM, searchCriteria);
-            StringBuilder citizenUri = new StringBuilder();
-            citizenUri.append(searcherHost).append(nocInboxSearcherCountEndpoint);
-
-            Object result = restTemplate.postForObject(citizenUri.toString(), searcherRequest, Map.class);
-
-            double citizenCount = JsonPath.read(result, "$.TotalCount[0].count");
-            totalCount = totalCount + (int) citizenCount;
-        }
+        Map<String, Object> searchCriteria = getSearchCriteria(criteria, StatusIdNameMap, requestInfo,
+                moduleSearchCriteria, processCriteria, userUUIDs);
+        Map<String, Object> searcherRequest = buildNOCSearcherRequest(requestInfo, searchCriteria);
+        String uri = buildNOCSearcherUri(moduleSearchCriteria, true);
+        
+        Object result = restTemplate.postForObject(uri, searcherRequest, Map.class);
+        double citizenCount = JsonPath.read(result, "$.TotalCount[0].count");
+        Integer totalCount = (int) citizenCount;
+        log.info("Application count retrieved from searcher - count: {}", totalCount);
+        
         return totalCount;
+    }
+
+    private List<String> validateMobileNumberAndFetchUserUUIDs(InboxSearchCriteria criteria, HashMap<String, Object> moduleSearchCriteria, RequestInfo requestInfo) {
+        log.trace("Method invoked: validateMobileNumberAndFetchUserUUIDs");
+        if(!moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){
+            log.debug("Mobile number not present in search criteria");
+            return new ArrayList<>();
+        }
+        
+        String tenantId = criteria.getTenantId();
+        String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
+        List<String> userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
+        Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
+        
+        if(!isUserPresentForGivenMobileNumber){
+            log.warn("No user found for mobile number");
+            return null;
+        }
+        log.debug("User UUIDs retrieved - count: {}", userUUIDs.size());
+        return userUUIDs;
+    }
+
+    private Map<String, Object> buildNOCSearchCriteria(InboxSearchCriteria criteria, HashMap<String, String> StatusIdNameMap,
+                                                       RequestInfo requestInfo, HashMap<String, Object> moduleSearchCriteria,
+                                                       ProcessInstanceSearchCriteria processCriteria, List<String> userUUIDs) {
+        log.trace("Method invoked: buildNOCSearchCriteria");
+        Map<String, Object> searchCriteria = getSearchCriteria(criteria, StatusIdNameMap, requestInfo,
+                moduleSearchCriteria, processCriteria, userUUIDs);
+        searchCriteria.put(OFFSET_PARAM, criteria.getOffset());
+        searchCriteria.put(NO_OF_RECORDS_PARAM, criteria.getLimit());
+        moduleSearchCriteria.put(LIMIT_PARAM, criteria.getLimit());
+        log.debug("NOC search criteria built");
+        return searchCriteria;
+    }
+
+    private Map<String, Object> buildNOCSearcherRequest(RequestInfo requestInfo, Map<String, Object> searchCriteria) {
+        log.trace("Method invoked: buildNOCSearcherRequest");
+        Map<String, Object> searcherRequest = new HashMap<>();
+        searcherRequest.put(REQUESTINFO_PARAM, requestInfo);
+        searcherRequest.put(SEARCH_CRITERIA_PARAM, searchCriteria);
+        log.debug("NOC searcher request built");
+        return searcherRequest;
+    }
+
+    private String buildNOCSearcherUri(HashMap<String, Object> moduleSearchCriteria, boolean isCount) {
+        log.trace("Method invoked: buildNOCSearcherUri - isCount: {}", isCount);
+        StringBuilder uri = new StringBuilder();
+        if(isCount) {
+            uri.append(searcherHost).append(nocInboxSearcherCountEndpoint);
+        } else if (moduleSearchCriteria.containsKey(SORT_ORDER_PARAM)
+                && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM)) {
+            uri.append(searcherHost).append(nocInboxSearcherDescEndpoint);
+        } else {
+            uri.append(searcherHost).append(nocInboxSearcherEndpoint);
+        }
+        log.debug("NOC searcher URI built: {}", uri.toString());
+        return uri.toString();
     }
 
     private List<String> fetchUserUUID(String mobileNumber, RequestInfo requestInfo, String tenantId) {

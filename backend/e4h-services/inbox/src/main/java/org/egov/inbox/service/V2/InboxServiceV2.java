@@ -78,12 +78,24 @@ public class InboxServiceV2 {
         
         log.info("Building InboxResponse - tenantId: {}, module: {}, userId: {}", tenantId, moduleName, userId);
 
-        // Validation
+        validateAndProcessVendorTenant(inboxRequest);
+        InboxQueryConfiguration inboxQueryConfiguration = fetchAndProcessConfiguration(inboxRequest);
+        List<Inbox> items = fetchAndEnrichInboxItems(inboxRequest, inboxQueryConfiguration);
+        InboxMetrics metrics = calculateInboxMetrics(inboxRequest, inboxQueryConfiguration);
+        
+        InboxResponse response = buildInboxResponse(items, metrics);
+        log.info("InboxResponse built successfully - items: {}, totalCount: {}, nearingSLA: {}",
+                response.getItems().size(), response.getTotalCount(), response.getNearingSlaCount());
+
+        return response;
+    }
+
+    private void validateAndProcessVendorTenant(InboxRequest inboxRequest) {
+        log.trace("Method invoked: validateAndProcessVendorTenant");
         log.debug("Validating search criteria");
         validator.validateSearchCriteria(inboxRequest);
         log.debug("Search criteria validation completed");
 
-        // Vérification des rôles
         List<Role> roles = inboxRequest.getRequestInfo().getUserInfo().getRoles();
         List<String> tenantIds = roles.stream()
                 .filter(role -> role.getCode().equals("COMPLAINT_RESOLVER"))
@@ -92,7 +104,6 @@ public class InboxServiceV2 {
         boolean isVendor = !tenantIds.isEmpty();
         log.debug("User role check completed - isVendor: {}, roleCount: {}", isVendor, roles.size());
 
-        // Gestion du tenantId pour les vendors
         Object tenantIdFromRequest = inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId");
         if (isVendor && tenantIdFromRequest instanceof String) {
             Set<String> tenantsFromRequest = new HashSet<>(Arrays.asList(((String) tenantIdFromRequest).split("\\.")));
@@ -101,30 +112,36 @@ public class InboxServiceV2 {
                 log.debug("Overridden tenantId for vendor - tenantIds count: {}", tenantIds.size());
             }
         }
+    }
 
-        // Récupération de la configuration
+    private InboxQueryConfiguration fetchAndProcessConfiguration(InboxRequest inboxRequest) {
+        log.trace("Method invoked: fetchAndProcessConfiguration");
         log.debug("Fetching inbox query configuration from MDMS");
         InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
                 inboxRequest.getInbox().getTenantId(),
                 inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
         log.debug("InboxQueryConfiguration loaded - index: {}", inboxQueryConfiguration.getIndex());
 
-        // Hash params si nécessaire
         hashParamsWhereverRequiredBasedOnConfiguration(
                 inboxRequest.getInbox().getModuleSearchCriteria(), inboxQueryConfiguration);
         log.debug("Parameter hashing applied if required");
+        return inboxQueryConfiguration;
+    }
 
-        // Récupération des items
+    private List<Inbox> fetchAndEnrichInboxItems(InboxRequest inboxRequest, InboxQueryConfiguration inboxQueryConfiguration) {
+        log.trace("Method invoked: fetchAndEnrichInboxItems");
         log.info("Fetching inbox items from ElasticSearch");
         List<Inbox> items = getInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
         log.info("Retrieved inbox items - count: {}", items.size());
 
-        // Enrichissement des items
         log.debug("Enriching inbox items with process instance details");
         enrichProcessInstanceInInboxItems(items);
         log.debug("Inbox items enrichment completed - items count: {}", items.size());
+        return items;
+    }
 
-        // Compteurs
+    private InboxMetrics calculateInboxMetrics(InboxRequest inboxRequest, InboxQueryConfiguration inboxQueryConfiguration) {
+        log.trace("Method invoked: calculateInboxMetrics");
         log.info("Calculating total application count");
         Integer totalCount = getTotalApplicationCount(inboxRequest, inboxQueryConfiguration.getIndex());
         log.info("Total applications count: {}", totalCount);
@@ -138,17 +155,29 @@ public class InboxServiceV2 {
         Integer nearingSlaCount = getApplicationsNearingSlaCount(inboxRequest, inboxQueryConfiguration.getIndex());
         log.info("Applications nearing SLA count: {}", nearingSlaCount);
 
+        InboxMetrics metrics = new InboxMetrics();
+        metrics.totalCount = totalCount;
+        metrics.statusCountMap = statusCountMap;
+        metrics.nearingSlaCount = nearingSlaCount;
+        return metrics;
+    }
+
+    private InboxResponse buildInboxResponse(List<Inbox> items, InboxMetrics metrics) {
+        log.trace("Method invoked: buildInboxResponse");
         InboxResponse response = InboxResponse.builder()
                 .items(items)
-                .totalCount(totalCount)
-                .statusMap(statusCountMap)
-                .nearingSlaCount(nearingSlaCount)
+                .totalCount(metrics.totalCount)
+                .statusMap(metrics.statusCountMap)
+                .nearingSlaCount(metrics.nearingSlaCount)
                 .build();
-
-        log.info("InboxResponse built successfully - items: {}, totalCount: {}, nearingSLA: {}",
-                response.getItems().size(), response.getTotalCount(), response.getNearingSlaCount());
-
+        log.debug("InboxResponse built");
         return response;
+    }
+
+    private static class InboxMetrics {
+        Integer totalCount;
+        List<HashMap<String, Object>> statusCountMap;
+        Integer nearingSlaCount;
     }
 
 
@@ -180,78 +209,100 @@ public class InboxServiceV2 {
         
         log.info("Starting project inbox search - tenantId: {}, module: {}", tenantId, moduleName);
 
-        // Validation des critères
-        log.debug("Validating search criteria for project inbox");
-        validator.validateSearchCriteria(inboxRequest);
-        log.debug("Search criteria validation completed");
-
-        // Récupération configuration depuis MDMS
-        log.debug("Fetching inbox query configuration from MDMS");
-        InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
-                inboxRequest.getInbox().getTenantId(),
-                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
-        log.debug("InboxQueryConfiguration loaded - index: {}", inboxQueryConfiguration.getIndex());
-
-        // Hashing si besoin
-        hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(),
-                inboxQueryConfiguration);
-        log.debug("Parameter hashing applied if required");
-
-        // Récupération des projets
-        log.info("Fetching project inbox items from ElasticSearch");
-        List<Project> items = getProjectInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
+        validateProjectSearchCriteria(inboxRequest);
+        InboxQueryConfiguration inboxQueryConfiguration = fetchProjectConfiguration(inboxRequest);
+        List<Project> items = fetchProjectItems(inboxRequest, inboxQueryConfiguration);
         Integer totalCount = getTotalProjectCount(inboxRequest, inboxQueryConfiguration.getIndex());
-        log.info("Retrieved project inbox items - count: {}, totalCount: {}", items.size(), totalCount);
-
-        // Récupération des boundaries
-        log.debug("Fetching boundaries for enrichment");
-        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
-        if (listBlock != null) {
-            log.debug("Boundaries loaded - count: {}", listBlock.size());
-
-            for (Project item : items) {
-                Object additionalDetails = item.getProject().get("additionalDetails");
-                Object boundaryCodeObject = item.getProject().get("address");
-
-                if (boundaryCodeObject != null) {
-                    Address address = mapper.convertValue(boundaryCodeObject, Address.class);
-
-                    if (address != null) {
-                        String boundaryCode = address.getBoundary();
-                        Object projectId = item.getProject().get("id");
-                        log.trace("Processing project - projectId: {}, boundaryCode: {}", projectId, boundaryCode);
-
-                        if (boundaryCode != null) {
-                            Boundary boundary = listBlock.get(boundaryCode);
-
-                            if (boundary != null) {
-                                log.debug("Enriching project with boundary data - projectId: {}, state: {}, district: {}",
-                                        projectId, boundary.getState(), boundary.getDistrict());
-
-                                Object enrichedAdditionalDetails =
-                                        mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
-                                item.getProject().put("additionalDetails", enrichedAdditionalDetails);
-
-                                additionalDetails = item.getProject().get("additionalDetails");
-                                enrichedAdditionalDetails =
-                                        mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
-                                item.getProject().put("additionalDetails", enrichedAdditionalDetails);
-                            } else {
-                                log.warn("No boundary found for code: {} in projectId: {}", boundaryCode, projectId);
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            log.warn("No boundaries returned by boundaryUtil.getBoundaryByCode()");
-        }
+        enrichProjectsWithBoundaries(items);
 
         ProjectResponse response = ProjectResponse.builder().items(items).totalCount(totalCount).build();
         log.info("Project inbox search completed - items: {}, totalCount: {}",
                 response.getItems().size(), response.getTotalCount());
 
         return response;
+    }
+
+    private void validateProjectSearchCriteria(InboxRequest inboxRequest) {
+        log.trace("Method invoked: validateProjectSearchCriteria");
+        log.debug("Validating search criteria for project inbox");
+        validator.validateSearchCriteria(inboxRequest);
+        log.debug("Search criteria validation completed");
+    }
+
+    private InboxQueryConfiguration fetchProjectConfiguration(InboxRequest inboxRequest) {
+        log.trace("Method invoked: fetchProjectConfiguration");
+        log.debug("Fetching inbox query configuration from MDMS");
+        InboxQueryConfiguration inboxQueryConfiguration = mdmsUtil.getConfigFromMDMS(
+                inboxRequest.getInbox().getTenantId(),
+                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
+        log.debug("InboxQueryConfiguration loaded - index: {}", inboxQueryConfiguration.getIndex());
+
+        hashParamsWhereverRequiredBasedOnConfiguration(inboxRequest.getInbox().getModuleSearchCriteria(),
+                inboxQueryConfiguration);
+        log.debug("Parameter hashing applied if required");
+        return inboxQueryConfiguration;
+    }
+
+    private List<Project> fetchProjectItems(InboxRequest inboxRequest, InboxQueryConfiguration inboxQueryConfiguration) {
+        log.trace("Method invoked: fetchProjectItems");
+        log.info("Fetching project inbox items from ElasticSearch");
+        List<Project> items = getProjectInboxItems(inboxRequest, inboxQueryConfiguration.getIndex());
+        log.info("Retrieved project inbox items - count: {}", items.size());
+        return items;
+    }
+
+    private void enrichProjectsWithBoundaries(List<Project> items) {
+        log.trace("Method invoked: enrichProjectsWithBoundaries");
+        log.debug("Fetching boundaries for enrichment");
+        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+        if (listBlock != null) {
+            log.debug("Boundaries loaded - count: {}", listBlock.size());
+            items.forEach(item -> enrichProjectItemWithBoundary(item, listBlock));
+        } else {
+            log.warn("No boundaries returned by boundaryUtil.getBoundaryByCode()");
+        }
+    }
+
+    private void enrichProjectItemWithBoundary(Project item, Map<String, Boundary> listBlock) {
+        log.trace("Method invoked: enrichProjectItemWithBoundary");
+        Object additionalDetails = item.getProject().get("additionalDetails");
+        Object boundaryCodeObject = item.getProject().get("address");
+
+        if (boundaryCodeObject != null) {
+            Address address = mapper.convertValue(boundaryCodeObject, Address.class);
+
+            if (address != null) {
+                String boundaryCode = address.getBoundary();
+                Object projectId = item.getProject().get("id");
+                log.trace("Processing project - projectId: {}, boundaryCode: {}", projectId, boundaryCode);
+
+                if (boundaryCode != null) {
+                    Boundary boundary = listBlock.get(boundaryCode);
+
+                    if (boundary != null) {
+                        enrichProjectWithBoundaryData(item, additionalDetails, boundary, projectId);
+                    } else {
+                        log.warn("No boundary found for code: {} in projectId: {}", boundaryCode, projectId);
+                    }
+                }
+            }
+        }
+    }
+
+    private void enrichProjectWithBoundaryData(Project item, Object additionalDetails, Boundary boundary, Object projectId) {
+        log.trace("Method invoked: enrichProjectWithBoundaryData");
+        log.debug("Enriching project with boundary data - projectId: {}, state: {}, district: {}",
+                projectId, boundary.getState(), boundary.getDistrict());
+
+        Object enrichedAdditionalDetails =
+                mergeListIntoAdditionalDetails(additionalDetails, "state", boundary.getState());
+        item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+
+        additionalDetails = item.getProject().get("additionalDetails");
+        enrichedAdditionalDetails =
+                mergeListIntoAdditionalDetails(additionalDetails, "district", boundary.getDistrict());
+        item.getProject().put("additionalDetails", enrichedAdditionalDetails);
+        log.debug("Project enriched with boundary data");
     }
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {
@@ -579,9 +630,7 @@ public class InboxServiceV2 {
         log.trace("Method invoked: parseInboxItemsFromSearchResponse");
         log.info("Parsing inbox items from ElasticSearch search response");
 
-        Map<String, Object> hits = (Map<String, Object>) ((Map<String, Object>) result).get(HITS);
-        List<Map<String, Object>> nestedHits = (List<Map<String, Object>>) hits.get(HITS);
-
+        List<Map<String, Object>> nestedHits = extractNestedHitsFromResponse(result);
         if (CollectionUtils.isEmpty(nestedHits)) {
             log.warn("No hits found in ElasticSearch response");
             return new ArrayList<>();
@@ -589,16 +638,40 @@ public class InboxServiceV2 {
 
         log.info("Found hits in ElasticSearch response - count: {}", nestedHits.size());
 
-        // Préparer les maps SLA
+        Map<String, Long> businessServiceSlaMap = buildBusinessServiceSlaMap(businessServices);
+        Map<String, Long> stateUuidVsSlaMap = buildStateUuidSlaMap(businessServices);
+
+        List<Inbox> inboxItemList = buildInboxItemsFromHits(nestedHits, businessServiceSlaMap, stateUuidVsSlaMap);
+
+        log.info("Successfully parsed inbox items - count: {}", inboxItemList.size());
+        return inboxItemList;
+    }
+
+    private List<Map<String, Object>> extractNestedHitsFromResponse(Object result) {
+        log.trace("Method invoked: extractNestedHitsFromResponse");
+        Map<String, Object> hits = (Map<String, Object>) ((Map<String, Object>) result).get(HITS);
+        List<Map<String, Object>> nestedHits = (List<Map<String, Object>>) hits.get(HITS);
+        log.debug("Extracted nested hits from ElasticSearch response");
+        return nestedHits;
+    }
+
+    private Map<String, Long> buildBusinessServiceSlaMap(List<BusinessService> businessServices) {
+        log.trace("Method invoked: buildBusinessServiceSlaMap");
         log.debug("Building SLA maps from business services");
         Map<String, Long> businessServiceSlaMap = new HashMap<>();
-        Map<String, Long> stateUuidVsSlaMap = new HashMap<>();
-
         businessServices.forEach(businessService -> {
             businessServiceSlaMap.put(businessService.getBusinessService(), businessService.getBusinessServiceSla());
             log.debug("BusinessService SLA mapped - businessService: {}, sla: {}", 
                     businessService.getBusinessService(), businessService.getBusinessServiceSla());
+        });
+        log.debug("Business service SLA map built - count: {}", businessServiceSlaMap.size());
+        return businessServiceSlaMap;
+    }
 
+    private Map<String, Long> buildStateUuidSlaMap(List<BusinessService> businessServices) {
+        log.trace("Method invoked: buildStateUuidSlaMap");
+        Map<String, Long> stateUuidVsSlaMap = new HashMap<>();
+        businessServices.forEach(businessService -> {
             businessService.getStates().forEach(state -> {
                 if (!ObjectUtils.isEmpty(state.getSla())) {
                     stateUuidVsSlaMap.put(state.getUuid(), state.getSla());
@@ -606,36 +679,48 @@ public class InboxServiceV2 {
                 }
             });
         });
-        log.debug("SLA maps built - businessServices: {}, states: {}", 
-                businessServiceSlaMap.size(), stateUuidVsSlaMap.size());
+        log.debug("State UUID SLA map built - count: {}", stateUuidVsSlaMap.size());
+        return stateUuidVsSlaMap;
+    }
 
-        // Construire les inbox items
+    private List<Inbox> buildInboxItemsFromHits(List<Map<String, Object>> nestedHits, Map<String, Long> businessServiceSlaMap, Map<String, Long> stateUuidVsSlaMap) {
+        log.trace("Method invoked: buildInboxItemsFromHits");
         log.debug("Building inbox items from hits");
         List<Inbox> inboxItemList = new ArrayList<>();
         nestedHits.forEach(hit -> {
-            Inbox inbox = new Inbox();
-            Map<String, Object> businessObject = (Map<String, Object>) hit.get(SOURCE_KEY);
-            Map<String, Object> dataBusinessObject = (Map<String, Object>) businessObject.get(DATA_KEY);
-
-            inbox.setBusinessObject(dataBusinessObject);
-
-            Long serviceSla = getApplicationServiceSla(businessServiceSlaMap, stateUuidVsSlaMap, inbox.getBusinessObject());
-            inbox.getBusinessObject().put(SERVICESLA_KEY, serviceSla);
-            inbox.getBusinessObject().put(SLA_REMAINING, dataBusinessObject.get(SLA_REMAINING));
-            inbox.getBusinessObject().put(STATE_SLA, dataBusinessObject.get(STATE_SLA));
-            inbox.getBusinessObject().put(TOTAL_SLA_REMAINING, dataBusinessObject.get(TOTAL_SLA_REMAINING));
-
-            log.debug("Parsed inbox item - serviceSla: {}, stateSla: {}, slaRemaining: {}",
-                    serviceSla,
-                    dataBusinessObject.get(STATE_SLA),
-                    dataBusinessObject.get(SLA_REMAINING));
-
+            Inbox inbox = createInboxItemFromHit(hit, businessServiceSlaMap, stateUuidVsSlaMap);
             inboxItemList.add(inbox);
         });
-
-        log.info("Successfully parsed inbox items - count: {}", inboxItemList.size());
-
+        log.debug("Inbox items built - count: {}", inboxItemList.size());
         return inboxItemList;
+    }
+
+    private Inbox createInboxItemFromHit(Map<String, Object> hit, Map<String, Long> businessServiceSlaMap, Map<String, Long> stateUuidVsSlaMap) {
+        log.trace("Method invoked: createInboxItemFromHit");
+        Inbox inbox = new Inbox();
+        Map<String, Object> businessObject = (Map<String, Object>) hit.get(SOURCE_KEY);
+        Map<String, Object> dataBusinessObject = (Map<String, Object>) businessObject.get(DATA_KEY);
+
+        inbox.setBusinessObject(dataBusinessObject);
+
+        Long serviceSla = getApplicationServiceSla(businessServiceSlaMap, stateUuidVsSlaMap, inbox.getBusinessObject());
+        enrichInboxItemWithSlaData(inbox, dataBusinessObject, serviceSla);
+
+        log.debug("Parsed inbox item - serviceSla: {}, stateSla: {}, slaRemaining: {}",
+                serviceSla,
+                dataBusinessObject.get(STATE_SLA),
+                dataBusinessObject.get(SLA_REMAINING));
+
+        return inbox;
+    }
+
+    private void enrichInboxItemWithSlaData(Inbox inbox, Map<String, Object> dataBusinessObject, Long serviceSla) {
+        log.trace("Method invoked: enrichInboxItemWithSlaData");
+        inbox.getBusinessObject().put(SERVICESLA_KEY, serviceSla);
+        inbox.getBusinessObject().put(SLA_REMAINING, dataBusinessObject.get(SLA_REMAINING));
+        inbox.getBusinessObject().put(STATE_SLA, dataBusinessObject.get(STATE_SLA));
+        inbox.getBusinessObject().put(TOTAL_SLA_REMAINING, dataBusinessObject.get(TOTAL_SLA_REMAINING));
+        log.debug("Inbox item enriched with SLA data");
     }
 
     @SuppressWarnings("unchecked")
@@ -677,83 +762,137 @@ public class InboxServiceV2 {
         log.trace("Method invoked: getApplicationsNearingSlaCount - index: {}", indexName);
         log.info("Calculating applications nearing SLA - index: {}", indexName);
 
+        List<BusinessService> businessServicesObjs = fetchBusinessServicesForSlaCalculation(inboxRequest);
+        Map<String, Long> businessServiceSlaMap = buildBusinessServiceSlaMapForNearingSla(businessServicesObjs);
+        Map<String, HashSet<String>> businessServiceVsStateUuids = buildBusinessServiceStateUuidsMap(businessServicesObjs);
+        Map<String, List<String>> businessServiceVsUuidsBasedOnSearchCriteria = 
+                buildBusinessServiceUuidsBasedOnSearchCriteria(inboxRequest, businessServiceVsStateUuids);
+        
+        Integer totalCount = calculateTotalNearingSlaCount(inboxRequest, indexName, businessServiceVsUuidsBasedOnSearchCriteria, businessServiceSlaMap);
+
+        log.info("Total nearing SLA applications calculated - count: {}", totalCount);
+        return totalCount;
+    }
+
+    private List<BusinessService> fetchBusinessServicesForSlaCalculation(InboxRequest inboxRequest) {
+        log.trace("Method invoked: fetchBusinessServicesForSlaCalculation");
         log.debug("Retrieving business services for SLA calculation");
         List<BusinessService> businessServicesObjs = workflowService.getBusinessServices(inboxRequest);
-        Map<String, Long> businessServiceSlaMap = new HashMap<>();
-        Map<String, HashSet<String>> businessServiceVsStateUuids = new HashMap<>();
+        log.debug("Business services retrieved - count: {}", businessServicesObjs.size());
+        return businessServicesObjs;
+    }
 
+    private Map<String, Long> buildBusinessServiceSlaMapForNearingSla(List<BusinessService> businessServicesObjs) {
+        log.trace("Method invoked: buildBusinessServiceSlaMapForNearingSla");
+        Map<String, Long> businessServiceSlaMap = new HashMap<>();
+        businessServicesObjs.forEach(businessService -> {
+            businessServiceSlaMap.put(businessService.getBusinessService(), businessService.getBusinessServiceSla());
+            log.debug("BusinessService SLA mapped - businessService: {}, sla: {}",
+                    businessService.getBusinessService(),
+                    businessService.getBusinessServiceSla());
+        });
+        log.debug("Business service SLA map built - services: {}", businessServicesObjs.size());
+        return businessServiceSlaMap;
+    }
+
+    private Map<String, HashSet<String>> buildBusinessServiceStateUuidsMap(List<BusinessService> businessServicesObjs) {
+        log.trace("Method invoked: buildBusinessServiceStateUuidsMap");
+        Map<String, HashSet<String>> businessServiceVsStateUuids = new HashMap<>();
         businessServicesObjs.forEach(businessService -> {
             List<String> listOfUuids = new ArrayList<>();
             businessService.getStates().forEach(state -> {
                 listOfUuids.add(state.getUuid());
             });
             businessServiceVsStateUuids.put(businessService.getBusinessService(), new HashSet<>(listOfUuids));
-            businessServiceSlaMap.put(businessService.getBusinessService(), businessService.getBusinessServiceSla());
-
-            log.debug("BusinessService SLA mapped - businessService: {}, sla: {}, states: {}",
+            log.debug("BusinessService state UUIDs mapped - businessService: {}, stateCount: {}",
                     businessService.getBusinessService(),
-                    businessService.getBusinessServiceSla(),
                     listOfUuids.size());
         });
-        log.debug("Business service SLA maps built - services: {}", businessServicesObjs.size());
+        log.debug("Business service state UUIDs map built");
+        return businessServiceVsStateUuids;
+    }
 
+    private Map<String, List<String>> buildBusinessServiceUuidsBasedOnSearchCriteria(InboxRequest inboxRequest, 
+                                                                                       Map<String, HashSet<String>> businessServiceVsStateUuids) {
+        log.trace("Method invoked: buildBusinessServiceUuidsBasedOnSearchCriteria");
         List<String> uuidsInSearchCriteria = inboxRequest.getInbox().getProcessSearchCriteria().getStatus();
         Map<String, List<String>> businessServiceVsUuidsBasedOnSearchCriteria = new HashMap<>();
 
         if (!CollectionUtils.isEmpty(uuidsInSearchCriteria)) {
             log.info("Using status filter - uuidCount: {}", uuidsInSearchCriteria.size());
-            uuidsInSearchCriteria.forEach(uuid -> {
-                businessServiceVsStateUuids.keySet().forEach(businessService -> {
-                    HashSet<String> setOfUuids = businessServiceVsStateUuids.get(businessService);
-                    if (setOfUuids.contains(uuid)) {
-                        businessServiceVsUuidsBasedOnSearchCriteria
-                                .computeIfAbsent(businessService, k -> new ArrayList<>())
-                                .add(uuid);
-                    }
-                });
-            });
+            filterUuidsBySearchCriteria(uuidsInSearchCriteria, businessServiceVsStateUuids, businessServiceVsUuidsBasedOnSearchCriteria);
         } else {
             log.info("No status filter provided - using all states for each BusinessService");
             businessServiceVsStateUuids.forEach((businessService, setOfUuids) -> {
                 businessServiceVsUuidsBasedOnSearchCriteria.put(businessService, new ArrayList<>(setOfUuids));
             });
         }
+        log.debug("Business service UUIDs based on search criteria built - serviceCount: {}", 
+                businessServiceVsUuidsBasedOnSearchCriteria.size());
+        return businessServiceVsUuidsBasedOnSearchCriteria;
+    }
 
+    private void filterUuidsBySearchCriteria(List<String> uuidsInSearchCriteria, 
+                                             Map<String, HashSet<String>> businessServiceVsStateUuids,
+                                             Map<String, List<String>> businessServiceVsUuidsBasedOnSearchCriteria) {
+        log.trace("Method invoked: filterUuidsBySearchCriteria");
+        uuidsInSearchCriteria.forEach(uuid -> {
+            businessServiceVsStateUuids.keySet().forEach(businessService -> {
+                HashSet<String> setOfUuids = businessServiceVsStateUuids.get(businessService);
+                if (setOfUuids.contains(uuid)) {
+                    businessServiceVsUuidsBasedOnSearchCriteria
+                            .computeIfAbsent(businessService, k -> new ArrayList<>())
+                            .add(uuid);
+                }
+            });
+        });
+        log.debug("UUIDs filtered by search criteria");
+    }
+
+    private Integer calculateTotalNearingSlaCount(InboxRequest inboxRequest, String indexName,
+                                                   Map<String, List<String>> businessServiceVsUuidsBasedOnSearchCriteria,
+                                                   Map<String, Long> businessServiceSlaMap) {
+        log.trace("Method invoked: calculateTotalNearingSlaCount");
         List<String> businessServices = new ArrayList<>(businessServiceVsUuidsBasedOnSearchCriteria.keySet());
         Integer totalCount = 0;
 
         for (String businessService : businessServices) {
             Long businessServiceSla = businessServiceSlaMap.get(businessService);
-            log.debug("Building nearing SLA count query - businessService: {}, sla: {}", businessService, businessServiceSla);
-            Map<String, Object> finalQueryBody = queryBuilder.getNearingSlaCountQuery(inboxRequest, businessServiceSla, businessService);
-            StringBuilder uri = getURI(indexName, COUNT_PATH);
+            Integer count = getNearingSlaCountForService(inboxRequest, indexName, businessService, businessServiceSla);
+            totalCount += count;
+        }
+        log.debug("Total nearing SLA count calculated - totalCount: {}", totalCount);
+        return totalCount;
+    }
 
-            if (log.isDebugEnabled()) {
-                try {
-                    log.debug("ElasticSearch nearing SLA query - businessService: {}, sla: {}",
-                            businessService,
-                            businessServiceSla);
-                } catch (Exception e) {
-                    log.warn("Failed to log ElasticSearch query for service: {}", businessService, e);
-                }
+    private Integer getNearingSlaCountForService(InboxRequest inboxRequest, String indexName, 
+                                                String businessService, Long businessServiceSla) {
+        log.trace("Method invoked: getNearingSlaCountForService - businessService: {}", businessService);
+        log.debug("Building nearing SLA count query - businessService: {}, sla: {}", businessService, businessServiceSla);
+        Map<String, Object> finalQueryBody = queryBuilder.getNearingSlaCountQuery(inboxRequest, businessServiceSla, businessService);
+        StringBuilder uri = getURI(indexName, COUNT_PATH);
+
+        if (log.isDebugEnabled()) {
+            try {
+                log.debug("ElasticSearch nearing SLA query - businessService: {}, sla: {}",
+                        businessService,
+                        businessServiceSla);
+            } catch (Exception e) {
+                log.warn("Failed to log ElasticSearch query for service: {}", businessService, e);
             }
-
-            @SuppressWarnings("unchecked")
-            Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
-
-            if (!response.containsKey("count")) {
-                log.error("ElasticSearch response missing 'count' key for service: {}", businessService);
-                throw new CustomException("INBOX_COUNT_ERR", "Error occurred while executing ES count query");
-            }
-
-            Integer cnt = (Integer) response.get("count");
-            log.info("ElasticSearch count for service - businessService: {}, count: {}", businessService, cnt);
-
-            totalCount += cnt;
         }
 
-        log.info("Total nearing SLA applications calculated - count: {}", totalCount);
-        return totalCount;
+        @SuppressWarnings("unchecked")
+        Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchESResult(uri, finalQueryBody);
+
+        if (!response.containsKey("count")) {
+            log.error("ElasticSearch response missing 'count' key for service: {}", businessService);
+            throw new CustomException("INBOX_COUNT_ERR", "Error occurred while executing ES count query");
+        }
+
+        Integer cnt = (Integer) response.get("count");
+        log.info("ElasticSearch count for service - businessService: {}, count: {}", businessService, cnt);
+        return cnt;
     }
 
 

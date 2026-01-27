@@ -113,89 +113,28 @@ public class ElasticSearchQueryBuilder {
      * @return
      */
     public String getSearchQuery(InboxSearchCriteria criteria, List<String> ids) {
-
+        log.trace("Method invoked: getSearchQuery");
         String finalQuery;
 
         try {
-            String baseQuery = addPagination(criteria);
-            baseQuery = baseQuery.replace("{{SORT_BY}}", "Data." + criteria.getModuleSearchCriteria().get("sortBy").toString());
-            baseQuery = baseQuery.replace("{{SORT_ORDER}}", criteria.getModuleSearchCriteria().get("sortOrder").toString());
+            validateCriteria(criteria);
+            String baseQuery = buildBaseQueryWithPagination(criteria);
             JsonNode node = mapper.readTree(baseQuery);
             ObjectNode insideMatch = (ObjectNode) node.get("query");
-            List<JsonNode> clauses = new LinkedList<>();
-            List<JsonNode> mobileClause = new LinkedList<>();
-            //encrypting criteria for mobileNumber
-            try {
-                if (criteria == null) {
-                    return null;
-                }
-                criteria.setModuleSearchCriteria(encryptionService.encryptJson(criteria.getModuleSearchCriteria(), "InboxWnS",centralInstanceUtil.getStateLevelTenant(criteria.getTenantId()), HashMap.class));
-                if (criteria == null) {
-                    throw new CustomException("ENCRYPTION_NULL_ERROR", "Null object found on performing encryption");
-                }
-
-            } catch (Exception e) {
-                log.error("Error occurred while encrypting W&S search criteria", e);
-                throw new CustomException("WnS_CRITERIA_ENCRYPTION_ERROR", "Unknown error occurred in encryption process");
-            }
-            HashMap<String, Object> moduleSearchCriteria = criteria.getModuleSearchCriteria();
-            //Adding "must" terms for the search parameters in criteria
-            if (!StringUtils.isEmpty(moduleSearchCriteria.get("mobileNumber"))) {
-                mobileClause.add(getInnerNodeForMobileNumber(moduleSearchCriteria.get("mobileNumber").toString(), "Data.connectionHolders.mobileNumber.keyword", "Data.ownerMobileNumbers.keyword"));
-            }
-            if (!StringUtils.isEmpty(moduleSearchCriteria.get("locality"))) {
-                clauses.add(getInnerNode(moduleSearchCriteria.get("locality").toString(), "Data.additionalDetails.locality.keyword"));
-            }
-            if (!StringUtils.isEmpty(moduleSearchCriteria.get("applicationNumber"))) {
-                clauses.add(getInnerNode(moduleSearchCriteria.get("applicationNumber").toString(), "Data.applicationNo.keyword"));
-            }
-            if (!StringUtils.isEmpty(moduleSearchCriteria.get("applicationType"))) {
-                clauses.add(getInnerNode(moduleSearchCriteria.get("applicationType").toString(), "Data.applicationType.keyword"));
-            }
-            if (!StringUtils.isEmpty(moduleSearchCriteria.get("consumerNo"))) {
-                clauses.add(getInnerNode(moduleSearchCriteria.get("consumerNo").toString(), "Data.connectionNo.keyword"));
-            }
-            if (!StringUtils.isEmpty(moduleSearchCriteria.get("propertyId"))) {
-                clauses.add(getInnerNode(moduleSearchCriteria.get("propertyId").toString(), "Data.propertyId.keyword"));
-            }
-            if (!StringUtils.isEmpty(moduleSearchCriteria.get("applicationStatus"))) {
-                clauses.add(getInnerNode(moduleSearchCriteria.get("applicationStatus").toString(), "Data.applicationStatus.keyword"));
-            }
-            if (!StringUtils.isEmpty(moduleSearchCriteria.get("assignee"))) {
-                clauses.add(getInnerNode(moduleSearchCriteria.get("assignee").toString(), "Data.workflow.assignes.keyword"));
-            }
-            if (!StringUtils.isEmpty(moduleSearchCriteria.get("businessService"))) {
-                clauses.add(getInnerNode(moduleSearchCriteria.get("businessService").toString(), "Data.history.businessService.keyword"));
-            }
-
-            JsonNode mustNode = mapper.convertValue(new HashMap<String, List<JsonNode>>() {{
-                put("must", clauses);
-            }}, JsonNode.class);
-            //Updating filter clause if MobileNumber search is there
-            if (!StringUtils.isEmpty(moduleSearchCriteria.get("mobileNumber"))) {
-                ObjectNode insideNode = (ObjectNode) node.get("query");
-                insideNode.put("bool", mobileClause.get(0));
-                mobileClause.remove(0);
-                ObjectNode parentNode = mapper.createObjectNode();
-                parentNode.put("filter", insideNode);
-                //Merge all search criterias including that of mobileNumber
-                mustNode = merge(mustNode, (JsonNode) new ObjectMapper().readTree(parentNode.toString()));
-            }
-
+            
+            HashMap<String, Object> moduleSearchCriteria = encryptSearchCriteria(criteria);
+            List<JsonNode> clauses = buildSearchClauses(moduleSearchCriteria);
+            List<JsonNode> mobileClause = buildMobileClause(moduleSearchCriteria);
+            
+            JsonNode mustNode = buildMustNode(clauses, mobileClause, node);
+            mustNode = applyMobileNumberFilterIfNeeded(moduleSearchCriteria, mobileClause, node, mustNode);
+            
             insideMatch.put("bool", mustNode);
             ObjectNode boolNode = (ObjectNode) insideMatch.get("bool");
-
-
-            if (!CollectionUtils.isEmpty(ids)) {
-                JsonNode jsonNode = mapper.convertValue(new HashMap<String, List<String>>() {{
-                    put("Data.id.keyword", ids);
-                }}, JsonNode.class);
-                ObjectNode parentNode = mapper.createObjectNode();
-                parentNode.put("terms", jsonNode);
-                boolNode.put("filter", parentNode);
-            }
+            applyIdFilterIfNeeded(ids, boolNode);
 
             finalQuery = mapper.writeValueAsString(node);
+            log.debug("Search query built successfully");
 
         } catch (Exception e) {
             log.error("ES_ERROR", e);
@@ -203,7 +142,126 @@ public class ElasticSearchQueryBuilder {
         }
 
         return finalQuery;
+    }
 
+    private void validateCriteria(InboxSearchCriteria criteria) {
+        log.trace("Method invoked: validateCriteria");
+        if (criteria == null) {
+            log.warn("Criteria is null");
+        }
+    }
+
+    private String buildBaseQueryWithPagination(InboxSearchCriteria criteria) {
+        log.trace("Method invoked: buildBaseQueryWithPagination");
+        String baseQuery = addPagination(criteria);
+        baseQuery = baseQuery.replace("{{SORT_BY}}", "Data." + criteria.getModuleSearchCriteria().get("sortBy").toString());
+        baseQuery = baseQuery.replace("{{SORT_ORDER}}", criteria.getModuleSearchCriteria().get("sortOrder").toString());
+        log.debug("Base query with pagination built");
+        return baseQuery;
+    }
+
+    private HashMap<String, Object> encryptSearchCriteria(InboxSearchCriteria criteria) {
+        log.trace("Method invoked: encryptSearchCriteria");
+        try {
+            if (criteria == null) {
+                return null;
+            }
+            criteria.setModuleSearchCriteria(encryptionService.encryptJson(criteria.getModuleSearchCriteria(), "InboxWnS",centralInstanceUtil.getStateLevelTenant(criteria.getTenantId()), HashMap.class));
+            if (criteria == null) {
+                throw new CustomException("ENCRYPTION_NULL_ERROR", "Null object found on performing encryption");
+            }
+            log.debug("Search criteria encrypted successfully");
+        } catch (Exception e) {
+            log.error("Error occurred while encrypting W&S search criteria", e);
+            throw new CustomException("WnS_CRITERIA_ENCRYPTION_ERROR", "Unknown error occurred in encryption process");
+        }
+        return criteria.getModuleSearchCriteria();
+    }
+
+    private List<JsonNode> buildSearchClauses(HashMap<String, Object> moduleSearchCriteria) {
+        log.trace("Method invoked: buildSearchClauses");
+        List<JsonNode> clauses = new LinkedList<>();
+        addClauseIfPresent(moduleSearchCriteria, "locality", "Data.additionalDetails.locality.keyword", clauses);
+        addClauseIfPresent(moduleSearchCriteria, "applicationNumber", "Data.applicationNo.keyword", clauses);
+        addClauseIfPresent(moduleSearchCriteria, "applicationType", "Data.applicationType.keyword", clauses);
+        addClauseIfPresent(moduleSearchCriteria, "consumerNo", "Data.connectionNo.keyword", clauses);
+        addClauseIfPresent(moduleSearchCriteria, "propertyId", "Data.propertyId.keyword", clauses);
+        addClauseIfPresent(moduleSearchCriteria, "applicationStatus", "Data.applicationStatus.keyword", clauses);
+        addClauseIfPresent(moduleSearchCriteria, "assignee", "Data.workflow.assignes.keyword", clauses);
+        addClauseIfPresent(moduleSearchCriteria, "businessService", "Data.history.businessService.keyword", clauses);
+        log.debug("Search clauses built - clauseCount: {}", clauses.size());
+        return clauses;
+    }
+
+    private void addClauseIfPresent(HashMap<String, Object> moduleSearchCriteria, String key, String fieldPath, List<JsonNode> clauses) {
+        log.trace("Method invoked: addClauseIfPresent - key: {}", key);
+        if (!StringUtils.isEmpty(moduleSearchCriteria.get(key))) {
+            try {
+                clauses.add(getInnerNode(moduleSearchCriteria.get(key).toString(), fieldPath));
+                log.debug("Clause added - key: {}, fieldPath: {}", key, fieldPath);
+            } catch (Exception e) {
+                log.error("Error adding clause for key: {}", key, e);
+            }
+        }
+    }
+
+    private List<JsonNode> buildMobileClause(HashMap<String, Object> moduleSearchCriteria) {
+        log.trace("Method invoked: buildMobileClause");
+        List<JsonNode> mobileClause = new LinkedList<>();
+        if (!StringUtils.isEmpty(moduleSearchCriteria.get("mobileNumber"))) {
+            try {
+                mobileClause.add(getInnerNodeForMobileNumber(moduleSearchCriteria.get("mobileNumber").toString(), "Data.connectionHolders.mobileNumber.keyword", "Data.ownerMobileNumbers.keyword"));
+                log.debug("Mobile clause built");
+            } catch (Exception e) {
+                log.error("Error building mobile clause", e);
+            }
+        }
+        return mobileClause;
+    }
+
+    private JsonNode buildMustNode(List<JsonNode> clauses, List<JsonNode> mobileClause, JsonNode node) {
+        log.trace("Method invoked: buildMustNode");
+        JsonNode mustNode = mapper.convertValue(new HashMap<String, List<JsonNode>>() {{
+            put("must", clauses);
+        }}, JsonNode.class);
+        log.debug("Must node built - clauseCount: {}", clauses.size());
+        return mustNode;
+    }
+
+    private JsonNode applyMobileNumberFilterIfNeeded(HashMap<String, Object> moduleSearchCriteria, List<JsonNode> mobileClause, JsonNode node, JsonNode mustNode) {
+        log.trace("Method invoked: applyMobileNumberFilterIfNeeded");
+        if (!StringUtils.isEmpty(moduleSearchCriteria.get("mobileNumber"))) {
+            try {
+                ObjectNode insideNode = (ObjectNode) node.get("query");
+                insideNode.put("bool", mobileClause.get(0));
+                mobileClause.remove(0);
+                ObjectNode parentNode = mapper.createObjectNode();
+                parentNode.put("filter", insideNode);
+                JsonNode mergedNode = merge(mustNode, (JsonNode) new ObjectMapper().readTree(parentNode.toString()));
+                log.debug("Mobile number filter applied");
+                return mergedNode;
+            } catch (Exception e) {
+                log.error("Error applying mobile number filter", e);
+            }
+        }
+        return mustNode;
+    }
+
+    private void applyIdFilterIfNeeded(List<String> ids, ObjectNode boolNode) {
+        log.trace("Method invoked: applyIdFilterIfNeeded");
+        if (!CollectionUtils.isEmpty(ids)) {
+            try {
+                JsonNode jsonNode = mapper.convertValue(new HashMap<String, List<String>>() {{
+                    put("Data.id.keyword", ids);
+                }}, JsonNode.class);
+                ObjectNode parentNode = mapper.createObjectNode();
+                parentNode.put("terms", jsonNode);
+                boolNode.put("filter", parentNode);
+                log.debug("ID filter applied - idCount: {}", ids.size());
+            } catch (Exception e) {
+                log.error("Error applying ID filter", e);
+            }
+        }
     }
 
 

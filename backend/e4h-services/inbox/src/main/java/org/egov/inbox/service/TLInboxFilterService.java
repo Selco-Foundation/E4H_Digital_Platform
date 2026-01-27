@@ -54,86 +54,26 @@ public class TLInboxFilterService {
     private ServiceRequestRepository serviceRequestRepository;
 
     public List<String> fetchApplicationNumbersFromSearcher(InboxSearchCriteria criteria, HashMap<String, String> StatusIdNameMap, RequestInfo requestInfo){
-        List<String> acknowledgementNumbers = new ArrayList<>();
+        log.trace("Method invoked: fetchApplicationNumbersFromSearcher");
         HashMap moduleSearchCriteria = criteria.getModuleSearchCriteria();
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
-        Boolean isSearchResultEmpty = false;
-        Boolean isMobileNumberPresent = false;
-        List<String> userUUIDs = new ArrayList<>();
-        moduleSearchCriteria = setUserWhenMobileNoIsEmptyForStakeholderRegOfCitizen(criteria, requestInfo, moduleSearchCriteria,
-                processCriteria);
-        if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){
-            isMobileNumberPresent = true;
-        }
-        if(isMobileNumberPresent) {
-            String tenantId = criteria.getTenantId();
-            String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
-            userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
-            Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
-            isSearchResultEmpty = !isMobileNumberPresent || !isUserPresentForGivenMobileNumber;
-            if(isSearchResultEmpty){
-                return new ArrayList<>();
-            }
+        
+        moduleSearchCriteria = setUserWhenMobileNoIsEmptyForStakeholderRegOfCitizen(criteria, requestInfo, moduleSearchCriteria, processCriteria);
+        List<String> userUUIDs = validateMobileNumberAndFetchUserUUIDs(criteria, moduleSearchCriteria, requestInfo);
+        if (userUUIDs == null) {
+            log.debug("Search result empty - returning empty list");
+            return new ArrayList<>();
         }
 
-        if(!isSearchResultEmpty){
-            Object result = null;
-
-            Map<String, Object> searcherRequest = new HashMap<>();
-            Map<String, Object> searchCriteria = new HashMap<>();
-
-            searchCriteria.put(TENANT_ID_PARAM,criteria.getTenantId());
-            searchCriteria.put(BUSINESS_SERVICE_PARAM,processCriteria.getBusinessService());
-
-            // Accomodating module search criteria in searcher request
-            if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM) && !CollectionUtils.isEmpty(userUUIDs)){
-                searchCriteria.put(USERID_PARAM, userUUIDs);
-            }
-            if(moduleSearchCriteria.containsKey(LOCALITY_PARAM)){
-                searchCriteria.put(LOCALITY_PARAM, moduleSearchCriteria.get(LOCALITY_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(LICENSE_NUMBER_PARAM)){
-                searchCriteria.put(LICENSE_NUMBER_PARAM, moduleSearchCriteria.get(LICENSE_NUMBER_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(APPLICATION_NUMBER_PARAM)) {
-                searchCriteria.put(APPLICATION_NUMBER_PARAM, moduleSearchCriteria.get(APPLICATION_NUMBER_PARAM));
-            }
-
-            // Accomodating process search criteria in searcher request
-            if(!ObjectUtils.isEmpty(processCriteria.getAssignee())){
-                searchCriteria.put(ASSIGNEE_PARAM, processCriteria.getAssignee());
-            }
-            if(!ObjectUtils.isEmpty(processCriteria.getStatus())){
-                searchCriteria.put(STATUS_PARAM, processCriteria.getStatus());
-            }else{
-                if(StatusIdNameMap.values().size() > 0) {
-                    if(CollectionUtils.isEmpty(processCriteria.getStatus())) {
-                        searchCriteria.put(STATUS_PARAM, StatusIdNameMap.keySet());
-                    }
-                }
-            }
-
-            // Paginating searcher results
-            searchCriteria.put(OFFSET_PARAM, criteria.getOffset());
-            searchCriteria.put(NO_OF_RECORDS_PARAM, criteria.getLimit());
-            moduleSearchCriteria.put(LIMIT_PARAM, criteria.getLimit());
-
-            searcherRequest.put(REQUESTINFO_PARAM, requestInfo);
-            searcherRequest.put(SEARCH_CRITERIA_PARAM, searchCriteria);
-
-            StringBuilder uri = new StringBuilder();
-            if(moduleSearchCriteria.containsKey(SORT_ORDER_PARAM) && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM)){
-                uri.append(searcherHost).append(tlInboxSearcherDescEndpoint);
-            }else {
-                uri.append(searcherHost).append(tlInboxSearcherEndpoint);
-            }
-
-            result = restTemplate.postForObject(uri.toString(), searcherRequest, Map.class);
-
-            acknowledgementNumbers = JsonPath.read(result, "$.Licenses.*.applicationnumber");
-
-        }
-        return  acknowledgementNumbers;
+        Map<String, Object> searchCriteria = buildTLSearchCriteria(criteria, moduleSearchCriteria, processCriteria, StatusIdNameMap, userUUIDs);
+        Map<String, Object> searcherRequest = buildTLSearcherRequest(requestInfo, searchCriteria);
+        String uri = buildTLSearcherUri(moduleSearchCriteria, false);
+        
+        Object result = restTemplate.postForObject(uri, searcherRequest, Map.class);
+        List<String> acknowledgementNumbers = JsonPath.read(result, "$.Licenses.*.applicationnumber");
+        log.info("Application numbers retrieved from searcher - count: {}", acknowledgementNumbers.size());
+        
+        return acknowledgementNumbers;
     }
 
     private HashMap setUserWhenMobileNoIsEmptyForStakeholderRegOfCitizen(InboxSearchCriteria criteria, RequestInfo requestInfo,
@@ -150,76 +90,133 @@ public class TLInboxFilterService {
     }
 
     public Integer fetchApplicationCountFromSearcher(InboxSearchCriteria criteria, HashMap<String, String> StatusIdNameMap, RequestInfo requestInfo){
-        Integer totalCount = 0;
+        log.trace("Method invoked: fetchApplicationCountFromSearcher");
         HashMap moduleSearchCriteria = criteria.getModuleSearchCriteria();
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
-        Boolean isSearchResultEmpty = false;
-        Boolean isMobileNumberPresent = false;
-        List<String> userUUIDs = new ArrayList<>();
-        moduleSearchCriteria = setUserWhenMobileNoIsEmptyForStakeholderRegOfCitizen(criteria, requestInfo, moduleSearchCriteria,
-                processCriteria);
-        if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){
-            isMobileNumberPresent = true;
-        }
-        if(isMobileNumberPresent) {
-            String tenantId = criteria.getTenantId();
-            String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
-            userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
-            Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
-            isSearchResultEmpty = !isMobileNumberPresent || !isUserPresentForGivenMobileNumber;
-            if(isSearchResultEmpty){
-                return 0;
-            }
+        
+        moduleSearchCriteria = setUserWhenMobileNoIsEmptyForStakeholderRegOfCitizen(criteria, requestInfo, moduleSearchCriteria, processCriteria);
+        List<String> userUUIDs = validateMobileNumberAndFetchUserUUIDs(criteria, moduleSearchCriteria, requestInfo);
+        if (userUUIDs == null) {
+            log.debug("Search result empty - returning 0");
+            return 0;
         }
 
-        if(!isSearchResultEmpty){
-            Object result = null;
+        Map<String, Object> searchCriteria = buildTLSearchCriteria(criteria, moduleSearchCriteria, processCriteria, StatusIdNameMap, userUUIDs);
+        Map<String, Object> searcherRequest = buildTLSearcherRequest(requestInfo, searchCriteria);
+        String uri = buildTLSearcherUri(moduleSearchCriteria, true);
+        
+        Object result = restTemplate.postForObject(uri, searcherRequest, Map.class);
+        double count = JsonPath.read(result, "$.TotalCount[0].count");
+        Integer totalCount = new Integer((int) count);
+        log.info("Application count retrieved from searcher - count: {}", totalCount);
+        
+        return totalCount;
+    }
 
-            Map<String, Object> searcherRequest = new HashMap<>();
-            Map<String, Object> searchCriteria = new HashMap<>();
+    private List<String> validateMobileNumberAndFetchUserUUIDs(InboxSearchCriteria criteria, HashMap moduleSearchCriteria, RequestInfo requestInfo) {
+        log.trace("Method invoked: validateMobileNumberAndFetchUserUUIDs");
+        if(!moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){
+            log.debug("Mobile number not present in search criteria");
+            return new ArrayList<>();
+        }
+        
+        String tenantId = criteria.getTenantId();
+        String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
+        List<String> userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
+        Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
+        
+        if(!isUserPresentForGivenMobileNumber){
+            log.warn("No user found for mobile number");
+            return null;
+        }
+        log.debug("User UUIDs retrieved - count: {}", userUUIDs.size());
+        return userUUIDs;
+    }
 
-            searchCriteria.put(TENANT_ID_PARAM,criteria.getTenantId());
+    private Map<String, Object> buildTLSearchCriteria(InboxSearchCriteria criteria, HashMap moduleSearchCriteria,
+                                                      ProcessInstanceSearchCriteria processCriteria,
+                                                      HashMap<String, String> StatusIdNameMap,
+                                                      List<String> userUUIDs) {
+        log.trace("Method invoked: buildTLSearchCriteria");
+        Map<String, Object> searchCriteria = new HashMap<>();
+        searchCriteria.put(TENANT_ID_PARAM, criteria.getTenantId());
+        if(processCriteria.getBusinessService() != null) {
+            searchCriteria.put(BUSINESS_SERVICE_PARAM, processCriteria.getBusinessService());
+        }
 
-            // Accomodating module search criteria in searcher request
-            if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM) && !CollectionUtils.isEmpty(userUUIDs)){
-                searchCriteria.put(USERID_PARAM, userUUIDs);
-            }
-            if(moduleSearchCriteria.containsKey(LOCALITY_PARAM)){
-                searchCriteria.put(LOCALITY_PARAM, moduleSearchCriteria.get(LOCALITY_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(LICENSE_NUMBER_PARAM)){
-                searchCriteria.put(LICENSE_NUMBER_PARAM, moduleSearchCriteria.get(LICENSE_NUMBER_PARAM));
-            }
-            if(moduleSearchCriteria.containsKey(APPLICATION_NUMBER_PARAM)) {
-                searchCriteria.put(APPLICATION_NUMBER_PARAM, moduleSearchCriteria.get(APPLICATION_NUMBER_PARAM));
-            }
+        addTLModuleSearchCriteria(moduleSearchCriteria, searchCriteria, userUUIDs);
+        addTLProcessSearchCriteria(processCriteria, StatusIdNameMap, searchCriteria);
+        addTLPaginationCriteria(criteria, moduleSearchCriteria, searchCriteria);
+        
+        log.debug("TL search criteria built");
+        return searchCriteria;
+    }
 
-            // Accomodating process search criteria in searcher request
-            if(!ObjectUtils.isEmpty(processCriteria.getAssignee())){
-                searchCriteria.put(ASSIGNEE_PARAM, processCriteria.getAssignee());
-            }
-            if(!ObjectUtils.isEmpty(processCriteria.getStatus())){
-                searchCriteria.put(STATUS_PARAM, processCriteria.getStatus());
-            }else{
-                if(StatusIdNameMap.values().size() > 0) {
-                    if(CollectionUtils.isEmpty(processCriteria.getStatus())) {
-                        searchCriteria.put(STATUS_PARAM, StatusIdNameMap.keySet());
-                    }
+    private void addTLModuleSearchCriteria(HashMap moduleSearchCriteria, Map<String, Object> searchCriteria, List<String> userUUIDs) {
+        log.trace("Method invoked: addTLModuleSearchCriteria");
+        if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM) && !CollectionUtils.isEmpty(userUUIDs)){
+            searchCriteria.put(USERID_PARAM, userUUIDs);
+        }
+        if(moduleSearchCriteria.containsKey(LOCALITY_PARAM)){
+            searchCriteria.put(LOCALITY_PARAM, moduleSearchCriteria.get(LOCALITY_PARAM));
+        }
+        if(moduleSearchCriteria.containsKey(LICENSE_NUMBER_PARAM)){
+            searchCriteria.put(LICENSE_NUMBER_PARAM, moduleSearchCriteria.get(LICENSE_NUMBER_PARAM));
+        }
+        if(moduleSearchCriteria.containsKey(APPLICATION_NUMBER_PARAM)) {
+            searchCriteria.put(APPLICATION_NUMBER_PARAM, moduleSearchCriteria.get(APPLICATION_NUMBER_PARAM));
+        }
+        log.debug("TL module search criteria added");
+    }
+
+    private void addTLProcessSearchCriteria(ProcessInstanceSearchCriteria processCriteria,
+                                           HashMap<String, String> StatusIdNameMap,
+                                           Map<String, Object> searchCriteria) {
+        log.trace("Method invoked: addTLProcessSearchCriteria");
+        if(!ObjectUtils.isEmpty(processCriteria.getAssignee())){
+            searchCriteria.put(ASSIGNEE_PARAM, processCriteria.getAssignee());
+        }
+        if(!ObjectUtils.isEmpty(processCriteria.getStatus())){
+            searchCriteria.put(STATUS_PARAM, processCriteria.getStatus());
+        }else{
+            if(StatusIdNameMap.values().size() > 0) {
+                if(CollectionUtils.isEmpty(processCriteria.getStatus())) {
+                    searchCriteria.put(STATUS_PARAM, StatusIdNameMap.keySet());
                 }
             }
-
-            searcherRequest.put(REQUESTINFO_PARAM, requestInfo);
-            searcherRequest.put(SEARCH_CRITERIA_PARAM, searchCriteria);
-
-            StringBuilder uri = new StringBuilder();
-            uri.append(searcherHost).append(tlInboxSearcherCountEndpoint);
-
-            result = restTemplate.postForObject(uri.toString(), searcherRequest, Map.class);
-
-            double count = JsonPath.read(result, "$.TotalCount[0].count");
-            totalCount = new Integer((int) count);
         }
-        return  totalCount;
+        log.debug("TL process search criteria added");
+    }
+
+    private void addTLPaginationCriteria(InboxSearchCriteria criteria, HashMap moduleSearchCriteria, Map<String, Object> searchCriteria) {
+        log.trace("Method invoked: addTLPaginationCriteria");
+        searchCriteria.put(OFFSET_PARAM, criteria.getOffset());
+        searchCriteria.put(NO_OF_RECORDS_PARAM, criteria.getLimit());
+        moduleSearchCriteria.put(LIMIT_PARAM, criteria.getLimit());
+        log.debug("TL pagination criteria added");
+    }
+
+    private Map<String, Object> buildTLSearcherRequest(RequestInfo requestInfo, Map<String, Object> searchCriteria) {
+        log.trace("Method invoked: buildTLSearcherRequest");
+        Map<String, Object> searcherRequest = new HashMap<>();
+        searcherRequest.put(REQUESTINFO_PARAM, requestInfo);
+        searcherRequest.put(SEARCH_CRITERIA_PARAM, searchCriteria);
+        log.debug("TL searcher request built");
+        return searcherRequest;
+    }
+
+    private String buildTLSearcherUri(HashMap moduleSearchCriteria, boolean isCount) {
+        log.trace("Method invoked: buildTLSearcherUri - isCount: {}", isCount);
+        StringBuilder uri = new StringBuilder();
+        if(isCount) {
+            uri.append(searcherHost).append(tlInboxSearcherCountEndpoint);
+        } else if(moduleSearchCriteria.containsKey(SORT_ORDER_PARAM) && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM)){
+            uri.append(searcherHost).append(tlInboxSearcherDescEndpoint);
+        } else {
+            uri.append(searcherHost).append(tlInboxSearcherEndpoint);
+        }
+        log.debug("TL searcher URI built: {}", uri.toString());
+        return uri.toString();
     }
 
 
