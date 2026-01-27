@@ -22,39 +22,15 @@ public class FFMpegExecutor {
             StringBuilder output = new StringBuilder();
             StringBuilder error = new StringBuilder();
 
-            // Create readers for stdout and stderr
-            try (BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                 BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+            captureProcessStreams(process, output, error);
 
-                String line;
-                while ((line = stdInput.readLine()) != null) {
-                    output.append(line).append("\n");
-                }
+            int exitCode = waitForProcess(process);
 
-                while ((line = stdError.readLine()) != null) {
-                    error.append(line).append("\n");
-                }
-            }
-
-            // Wait for the command to finish and capture the exit code
-            int exitCode = process.waitFor();
-
-            // Log the output and error
-            if (output.length() > 0) {
-                log.debug("Command output: {}", output.toString());
-            }
-            if (error.length() > 0) {
-                log.error("Command error output: {}", error.toString());
-            }
+            logProcessResult(command, output, error, exitCode);
 
             if (exitCode != 0) {
-                log.error("Command failed with exit code: {}. Command: {}", exitCode, command);
-                log.error("Error details: {}", error.toString());
-                throw new CustomException("Command failed:",
-                        String.format("Command failed with exit code: %d. Error details: %s", exitCode, error));
+                throwCommandFailure(command, error, exitCode);
             }
-
-            log.debug("Command completed successfully with exit code: {}", exitCode);
         } catch (IOException e) {
             log.error("IOException while executing command: {}. Error: {}", command, e.getMessage(), e);
             throw new CustomException(String.format("IOException while executing command: %s", command), e.getMessage());
@@ -70,6 +46,46 @@ public class FFMpegExecutor {
                 process.destroy();
             }
         }
+    }
+
+    private void captureProcessStreams(Process process, StringBuilder output, StringBuilder error) throws IOException {
+        try (BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
+             BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+
+            String line;
+            while ((line = stdInput.readLine()) != null) {
+                output.append(line).append("\n");
+            }
+
+            while ((line = stdError.readLine()) != null) {
+                error.append(line).append("\n");
+            }
+        }
+    }
+
+    private int waitForProcess(Process process) throws InterruptedException {
+        return process.waitFor();
+    }
+
+    private void logProcessResult(String command, StringBuilder output, StringBuilder error, int exitCode) {
+        if (output.length() > 0) {
+            log.debug("Command output: {}", output.toString());
+        }
+        if (error.length() > 0) {
+            log.error("Command error output: {}", error.toString());
+        }
+
+        if (exitCode != 0) {
+            log.error("Command failed with exit code: {}. Command: {}", exitCode, command);
+            log.error("Error details: {}", error.toString());
+        } else {
+            log.debug("Command completed successfully with exit code: {}", exitCode);
+        }
+    }
+
+    private void throwCommandFailure(String command, StringBuilder error, int exitCode) {
+        throw new CustomException("Command failed:",
+                String.format("Command failed with exit code: %d. Error details: %s", exitCode, error));
     }
 
 }

@@ -84,103 +84,11 @@ public class NotificationService {
             }
 
             Map<String, List<String>> finalMessage = getFinalMessage(request, topic, applicationStatus);
-            String reporterMobileNumber = request.getIncident().getReporter().getMobileNumber();
-            String employeeMobileNumber = null;
-            String citizenMobileNumber = null;
-            String crmMobileNumber = null;
-            Boolean crmUser = false;
 
-            if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(APPLY)) {
-                Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
-                employeeMobileNumber = reassigneeDetails.get("employeeMobile");
-            } else if (applicationStatus.equalsIgnoreCase(PENDINGATVENDOR) && action.equalsIgnoreCase(ASSIGN)) {
-                request.getWorkflow().setAssignes(null);
-                Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
-                employeeMobileNumber = reassigneeDetails.get("employeeMobile");
-                ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), ASSIGN);
-                citizenMobileNumber = processInstance.getAssignes().get(0).getMobileNumber();
-            } else if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(SENDBACK)) {
-                Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
-                employeeMobileNumber = reassigneeDetails.get("employeeMobile");
-            } else if (applicationStatus.equalsIgnoreCase(REJECTED) && action.equalsIgnoreCase(REJECT)) {
-                Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
-                employeeMobileNumber = reassigneeDetails.get("employeeMobile");
-            } else if (applicationStatus.equalsIgnoreCase(RESOLVED) && action.equalsIgnoreCase(IM_WF_RESOLVE)) {
-                Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
-                employeeMobileNumber = reassigneeDetails.get("employeeMobile");
-
-                ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
-                citizenMobileNumber = processInstance.getAssigner().getMobileNumber();
-
-                processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), ASSIGN);
-                crmMobileNumber = processInstance.getAssigner().getMobileNumber();
-            } else if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(IM_WF_REOPEN)) {
-                ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
-                if (processInstance == null || processInstance.getAssigner() == null)
-                    processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), REJECT);
-
-                employeeMobileNumber = processInstance.getAssigner().getMobileNumber();
-                Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
-                citizenMobileNumber = reassigneeDetails.get("employeeMobile");
-
-            } else if (applicationStatus.equalsIgnoreCase(CLOSED_AFTER_RESOLUTION) && action.equalsIgnoreCase(CLOSE)) {
-                ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
-                employeeMobileNumber = processInstance.getAssigner().getMobileNumber();
-
-                Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
-                citizenMobileNumber = reassigneeDetails.get("employeeMobile");
-            } else if (applicationStatus.equalsIgnoreCase(PENDINGATVENDOR) && action.equalsIgnoreCase(REASSIGN)) {
-                employeeMobileNumber = fetchUserByUUID(request.getWorkflow().getAssignes().get(0), request.getRequestInfo(), request.getIncident().getTenantId()).getMobileNumber();
-            } else {
-                employeeMobileNumber = fetchUserByUUID(request.getIncident().getAuditDetails().getCreatedBy(), request.getRequestInfo(), request.getIncident().getTenantId()).getMobileNumber();
-            }
+            NotificationRecipients recipients = resolveNotificationRecipients(request, incidentWrapper, applicationStatus, action);
 
             if (!StringUtils.isEmpty(finalMessage)) {
-//                if (config.getIsUserEventsNotificationEnabled() != null && config.getIsUserEventsNotificationEnabled()) {
-//                    for (Map.Entry<String, List<String>> entry : finalMessage.entrySet()) {
-//                        for (String msg : entry.getValue()) {
-//                            EventRequest eventRequest = enrichEventRequest(request, msg);
-//                            if (eventRequest != null) {
-//                                notificationUtil.sendEventNotification(tenantId, eventRequest);
-//                            }
-//                        }
-//                    }
-//                }
-
-                if (config.getIsSMSEnabled() != null && config.getIsSMSEnabled()) {
-
-                    for (Map.Entry<String, List<String>> entry : finalMessage.entrySet()) {
-
-                        if (entry.getKey().equalsIgnoreCase(CITIZEN)) {
-                            for (String msg : entry.getValue()) {
-                                List<SMSRequest> smsRequests = new ArrayList<>();
-                                smsRequests = enrichSmsRequest(citizenMobileNumber, msg);
-                                if (!CollectionUtils.isEmpty(smsRequests)) {
-                                    notificationUtil.sendSMS(tenantId, smsRequests);
-                                }
-                            }
-                        } else if (entry.getKey().equalsIgnoreCase(EMPLOYEE)) {
-                            for (String msg : entry.getValue()) {
-                                List<SMSRequest> smsRequests = new ArrayList<>();
-                                smsRequests = enrichSmsRequest(employeeMobileNumber, msg);
-                                if (!CollectionUtils.isEmpty(smsRequests)) {
-                                    notificationUtil.sendSMS(tenantId, smsRequests);
-                                }
-                            }
-                        } else {
-
-                            for (String msg : entry.getValue()) {
-                                List<SMSRequest> smsRequests = new ArrayList<>();
-                                smsRequests = enrichSmsRequest(crmMobileNumber, msg);
-                                if (!CollectionUtils.isEmpty(smsRequests)) {
-                                    notificationUtil.sendSMS(tenantId, smsRequests);
-                                }
-                            }
-
-                        }
-                    }
-
-                }
+                sendSmsNotifications(tenantId, finalMessage, recipients);
             }
 
         } catch (Exception ex) {
@@ -779,15 +687,7 @@ public class NotificationService {
         List<String> employeeMobile = null;
         List<String> employeeUUID = null;
 
-        StringBuilder url = null;
-        String tenantId = request.getIncident().getTenantId();
-        if ("COMPLAINT_FACILITATOR_1".equals(role) && tenantId != null && tenantId.contains(".")) {
-            tenantId = tenantId.split("\\.")[0];
-        }
-        if (request.getWorkflow().getAssignes() != null)
-            url = hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role, request.getIncident().getBoundaryCode());
-        else
-            url = hrmsUtils.getHRMSURI(null, tenantId, role, request.getIncident().getBoundaryCode());
+        StringBuilder url = buildHrmsSearchUrl(request, role);
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(request.getRequestInfo()).build();
         Object response = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
 
@@ -816,23 +716,7 @@ public class NotificationService {
 //
 //        try{
 //            designation = JsonPath.read(response, designationJsonPath);
-        try {
-            employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
-            employeeMobile = JsonPath.read(response, HRMS_EMP_MOBILE_JSONPATH);
-            employeeUUID = JsonPath.read(response, HRMS_EMP_UUID_JSONPATH);
-        } catch (Exception e) {
-            log.error("Failed to parse HRMS response for employee details", e);
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse HRMS response for employee");
-        }
-
-        if (CollectionUtils.isEmpty(employeeName) || CollectionUtils.isEmpty(employeeMobile) || CollectionUtils.isEmpty(employeeUUID)) {
-            log.warn("Empty employee details returned from HRMS for role: {}", role);
-            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee details not found for role: " + role);
-        }
-
-        reassigneeDetails.put("employeeName", employeeName.get(0));
-        reassigneeDetails.put("employeeMobile", employeeMobile.get(0));
-        reassigneeDetails.put("employeeUUID", employeeUUID.get(0));
+        extractEmployeeDetailsFromHrmsResponse(role, reassigneeDetails, response);
         log.debug("Successfully fetched HRMS employee details for role: {}", role);
 
         return reassigneeDetails;
@@ -977,6 +861,158 @@ public class NotificationService {
         String uiAppHost = config.getUiAppHostMap().get(stateLevelTenantId);
         log.debug("Retrieved UI app host for tenantId: {}, stateLevelTenantId: {}", tenantId, stateLevelTenantId);
         return uiAppHost;
+    }
+
+    private NotificationRecipients resolveNotificationRecipients(IncidentRequest request,
+                                                                 IncidentWrapper incidentWrapper,
+                                                                 String applicationStatus,
+                                                                 String action) {
+        String employeeMobileNumber = null;
+        String citizenMobileNumber = null;
+        String crmMobileNumber = null;
+
+        if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(APPLY)) {
+            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+            employeeMobileNumber = reassigneeDetails.get("employeeMobile");
+        } else if (applicationStatus.equalsIgnoreCase(PENDINGATVENDOR) && action.equalsIgnoreCase(ASSIGN)) {
+            request.getWorkflow().setAssignes(null);
+            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+            employeeMobileNumber = reassigneeDetails.get("employeeMobile");
+            ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), ASSIGN);
+            citizenMobileNumber = processInstance.getAssignes().get(0).getMobileNumber();
+        } else if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(SENDBACK)) {
+            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+            employeeMobileNumber = reassigneeDetails.get("employeeMobile");
+        } else if (applicationStatus.equalsIgnoreCase(REJECTED) && action.equalsIgnoreCase(REJECT)) {
+            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+            employeeMobileNumber = reassigneeDetails.get("employeeMobile");
+        } else if (applicationStatus.equalsIgnoreCase(RESOLVED) && action.equalsIgnoreCase(IM_WF_RESOLVE)) {
+            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+            employeeMobileNumber = reassigneeDetails.get("employeeMobile");
+
+            ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
+            citizenMobileNumber = processInstance.getAssigner().getMobileNumber();
+
+            processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), ASSIGN);
+            crmMobileNumber = processInstance.getAssigner().getMobileNumber();
+        } else if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(IM_WF_REOPEN)) {
+            ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
+            if (processInstance == null || processInstance.getAssigner() == null)
+                processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), REJECT);
+
+            employeeMobileNumber = processInstance.getAssigner().getMobileNumber();
+            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+            citizenMobileNumber = reassigneeDetails.get("employeeMobile");
+
+        } else if (applicationStatus.equalsIgnoreCase(CLOSED_AFTER_RESOLUTION) && action.equalsIgnoreCase(CLOSE)) {
+            ProcessInstance processInstance = getEmployeeName(incidentWrapper.getIncident().getTenantId(), incidentWrapper.getIncident().getIncidentId(), request.getRequestInfo(), IM_WF_RESOLVE);
+            employeeMobileNumber = processInstance.getAssigner().getMobileNumber();
+
+            Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
+            citizenMobileNumber = reassigneeDetails.get("employeeMobile");
+        } else if (applicationStatus.equalsIgnoreCase(PENDINGATVENDOR) && action.equalsIgnoreCase(REASSIGN)) {
+            employeeMobileNumber = fetchUserByUUID(request.getWorkflow().getAssignes().get(0), request.getRequestInfo(), request.getIncident().getTenantId()).getMobileNumber();
+        } else {
+            employeeMobileNumber = fetchUserByUUID(request.getIncident().getAuditDetails().getCreatedBy(), request.getRequestInfo(), request.getIncident().getTenantId()).getMobileNumber();
+        }
+
+        return new NotificationRecipients(employeeMobileNumber, citizenMobileNumber, crmMobileNumber);
+    }
+
+    private void sendSmsNotifications(String tenantId,
+                                      Map<String, List<String>> finalMessage,
+                                      NotificationRecipients recipients) {
+        if (config.getIsSMSEnabled() == null || !config.getIsSMSEnabled()) {
+            return;
+        }
+
+        for (Map.Entry<String, List<String>> entry : finalMessage.entrySet()) {
+
+            if (entry.getKey().equalsIgnoreCase(CITIZEN)) {
+                for (String msg : entry.getValue()) {
+                    List<SMSRequest> smsRequests = enrichSmsRequest(recipients.getCitizenMobileNumber(), msg);
+                    if (!CollectionUtils.isEmpty(smsRequests)) {
+                        notificationUtil.sendSMS(tenantId, smsRequests);
+                    }
+                }
+            } else if (entry.getKey().equalsIgnoreCase(EMPLOYEE)) {
+                for (String msg : entry.getValue()) {
+                    List<SMSRequest> smsRequests = enrichSmsRequest(recipients.getEmployeeMobileNumber(), msg);
+                    if (!CollectionUtils.isEmpty(smsRequests)) {
+                        notificationUtil.sendSMS(tenantId, smsRequests);
+                    }
+                }
+            } else {
+
+                for (String msg : entry.getValue()) {
+                    List<SMSRequest> smsRequests = enrichSmsRequest(recipients.getCrmMobileNumber(), msg);
+                    if (!CollectionUtils.isEmpty(smsRequests)) {
+                        notificationUtil.sendSMS(tenantId, smsRequests);
+                    }
+                }
+
+            }
+        }
+    }
+
+    private StringBuilder buildHrmsSearchUrl(IncidentRequest request, String role) {
+        String tenantId = request.getIncident().getTenantId();
+        if ("COMPLAINT_FACILITATOR_1".equals(role) && tenantId != null && tenantId.contains(".")) {
+            tenantId = tenantId.split("\\.")[0];
+        }
+        if (request.getWorkflow().getAssignes() != null)
+            return hrmsUtils.getHRMSURI(request.getWorkflow().getAssignes(), tenantId, role, request.getIncident().getBoundaryCode());
+        else
+            return hrmsUtils.getHRMSURI(null, tenantId, role, request.getIncident().getBoundaryCode());
+    }
+
+    private void extractEmployeeDetailsFromHrmsResponse(String role,
+                                                        Map<String, String> reassigneeDetails,
+                                                        Object response) {
+        List<String> employeeName;
+        List<String> employeeMobile;
+        List<String> employeeUUID;
+        try {
+            employeeName = JsonPath.read(response, HRMS_EMP_NAME_JSONPATH);
+            employeeMobile = JsonPath.read(response, HRMS_EMP_MOBILE_JSONPATH);
+            employeeUUID = JsonPath.read(response, HRMS_EMP_UUID_JSONPATH);
+        } catch (Exception e) {
+            log.error("Failed to parse HRMS response for employee details", e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse HRMS response for employee");
+        }
+
+        if (CollectionUtils.isEmpty(employeeName) || CollectionUtils.isEmpty(employeeMobile) || CollectionUtils.isEmpty(employeeUUID)) {
+            log.warn("Empty employee details returned from HRMS for role: {}", role);
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee details not found for role: " + role);
+        }
+
+        reassigneeDetails.put("employeeName", employeeName.get(0));
+        reassigneeDetails.put("employeeMobile", employeeMobile.get(0));
+        reassigneeDetails.put("employeeUUID", employeeUUID.get(0));
+    }
+
+    private static class NotificationRecipients {
+        private final String employeeMobileNumber;
+        private final String citizenMobileNumber;
+        private final String crmMobileNumber;
+
+        NotificationRecipients(String employeeMobileNumber, String citizenMobileNumber, String crmMobileNumber) {
+            this.employeeMobileNumber = employeeMobileNumber;
+            this.citizenMobileNumber = citizenMobileNumber;
+            this.crmMobileNumber = crmMobileNumber;
+        }
+
+        public String getEmployeeMobileNumber() {
+            return employeeMobileNumber;
+        }
+
+        public String getCitizenMobileNumber() {
+            return citizenMobileNumber;
+        }
+
+        public String getCrmMobileNumber() {
+            return crmMobileNumber;
+        }
     }
 
 }

@@ -41,21 +41,8 @@ public class BoundaryService {
 
         log.debug("Fetching boundary for boundaryCode: {}, tenantId: {}", boundaryCode, tenantId);
         try {
-            String url = UriComponentsBuilder.fromHttpUrl(config.getBoundaryHost() + config.getBoundarySearchPath())
-                    .queryParam("tenantId", tenantId != null ? tenantId.split("\\.")[0] : "")
-                    .queryParam("codes", boundaryCode)
-                    .queryParam("includeParents", "true")
-                    .queryParam("boundaryType", "Facility")
-                    .toUriString();
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("RequestInfo", requestInfo);
-
-            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+            String url = buildBoundarySearchUrl(boundaryCode, tenantId);
+            HttpEntity<Map<String, Object>> requestEntity = buildBoundarySearchRequest(requestInfo);
 
             ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
                     url,
@@ -64,31 +51,7 @@ public class BoundaryService {
                     new ParameterizedTypeReference<Map<String, Object>>() {}
             );
 
-            Map<String, Object> responseMap = responseEntity.getBody();
-
-            if (responseMap != null) {
-                List<Map<String, Object>> boundaryRelationships = (List<Map<String, Object>>) responseMap.get("TenantBoundary");
-
-                if (boundaryRelationships != null && !boundaryRelationships.isEmpty()) {
-                    // Get the first tenant boundary entry
-                    Map<String, Object> tenantBoundary = boundaryRelationships.get(0);
-                    List<Map<String, Object>> boundaries = (List<Map<String, Object>>) tenantBoundary.get("boundary");
-
-                    if (boundaries != null && !boundaries.isEmpty()) {
-                        // Build boundary hierarchy
-                        Boundary boundary = buildBoundaryHierarchy(boundaries);
-
-                        if (boundary != null) {
-                            log.debug("Enriched boundary for indexing for boundaryCode: {}", boundaryCode);
-                            return boundary;
-                        }
-                    } else {
-                        log.warn("No boundaries found in response for boundaryCode: {}", boundaryCode);
-                    }
-                } else {
-                    log.warn("No boundary relationships found for boundaryCode: {}", boundaryCode);
-                }
-            }
+            return extractBoundaryFromResponse(boundaryCode, responseEntity.getBody());
         } catch (Exception e) {
             log.error("Error enriching boundary details for boundaryCode: {}", boundaryCode, e);
         }
@@ -101,6 +64,56 @@ public class BoundaryService {
      * @param boundaries List of boundary objects from boundary service
      * @return Boundary object with hierarchy codes
      */
+    private String buildBoundarySearchUrl(String boundaryCode, String tenantId) {
+        return UriComponentsBuilder.fromHttpUrl(config.getBoundaryHost() + config.getBoundarySearchPath())
+                .queryParam("tenantId", tenantId != null ? tenantId.split("\\.")[0] : "")
+                .queryParam("codes", boundaryCode)
+                .queryParam("includeParents", "true")
+                .queryParam("boundaryType", "Facility")
+                .toUriString();
+    }
+
+    private HttpEntity<Map<String, Object>> buildBoundarySearchRequest(RequestInfo requestInfo) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("RequestInfo", requestInfo);
+
+        return new HttpEntity<>(requestBody, headers);
+    }
+
+    private Boundary extractBoundaryFromResponse(String boundaryCode, Map<String, Object> responseMap) {
+        if (responseMap == null) {
+            return null;
+        }
+
+        List<Map<String, Object>> boundaryRelationships =
+                (List<Map<String, Object>>) responseMap.get("TenantBoundary");
+
+        if (boundaryRelationships == null || boundaryRelationships.isEmpty()) {
+            log.warn("No boundary relationships found for boundaryCode: {}", boundaryCode);
+            return null;
+        }
+
+        Map<String, Object> tenantBoundary = boundaryRelationships.get(0);
+        List<Map<String, Object>> boundaries = (List<Map<String, Object>>) tenantBoundary.get("boundary");
+
+        if (boundaries == null || boundaries.isEmpty()) {
+            log.warn("No boundaries found in response for boundaryCode: {}", boundaryCode);
+            return null;
+        }
+
+        Boundary boundary = buildBoundaryHierarchy(boundaries);
+
+        if (boundary != null) {
+            log.debug("Enriched boundary for indexing for boundaryCode: {}", boundaryCode);
+        }
+
+        return boundary;
+    }
+
     private Boundary buildBoundaryHierarchy(List<Map<String, Object>> boundaries) {
         log.trace("BoundaryService::buildBoundaryHierarchy method invoked");
         Boundary boundary = new Boundary();

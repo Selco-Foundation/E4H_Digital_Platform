@@ -35,72 +35,10 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
 
             String id = rs.getString("ser_id");
             Incident currentService = serviceMap.get(id);
-            String tenantId = rs.getString("ser_tenantId");
 
-            if(currentService == null){
-
-                id = rs.getString("ser_id");
-                String IncidentType = rs.getString("IncidentType");
-                String IncidentSubType = rs.getString("IncidentSubType");
-                String PhcType = rs.getString("PhcType");
-                String reporterType = rs.getString("reporterType");
-                String PhcSubType = rs.getString("PhcSubType");
-                String District = rs.getString("District");
-                String Block = rs.getString("Block");
-                String incidentid = rs.getString("incidentid");
-                String comments = rs.getString("comments");
-                String applicationStatus = rs.getString("applicationStatus");
-                String createdby = rs.getString("ser_createdby");
-                Long createdtime = rs.getLong("ser_createdtime");
-                String lastmodifiedby = rs.getString("ser_lastmodifiedby");
-                Long lastmodifiedtime = rs.getLong("ser_lastmodifiedtime");
-                String accountId = rs.getString("ser_accountid");
-                String reporterTenant = rs.getString("ser_reportertenant");
-                String systemFunctional = rs.getString("ser_systemfunctional");
-                String migrationId = rs.getString("migrationid");
-                String legacyId = rs.getString("legacyid");
-                Long filedDate = rs.getLong("fileddate");
-                String facilityId = rs.getString("facilityid");
-                String boundaryCode = rs.getString("boundarycode");
-                User u=new User();
-                u.setTenantId(reporterTenant);
-                u.setUuid(accountId);
-                if(rs.wasNull()){}
-
-                AuditDetails auditDetails = AuditDetails.builder().createdBy(createdby).createdTime(createdtime)
-                                                .lastModifiedBy(lastmodifiedby).lastModifiedTime(lastmodifiedtime).build();
-
-                currentService = Incident.builder().id(id)
-                        .incidentType(IncidentType)
-                        .incidentSubType(IncidentSubType)
-                        .incidentId(incidentid)
-                        .comments(comments)
-                        .district(District)
-                        .block(Block)
-                        .phcType(PhcType)
-                        .phcSubType(PhcSubType)
-                        .applicationStatus(applicationStatus)
-                        .tenantId(tenantId)
-                        .accountId(accountId)
-                        .reporterTenant(reporterTenant)
-                        .reporter(u)
-                        .reporterType(reporterType)
-                        .auditDetails(auditDetails)
-                        .systemFunctional(systemFunctional)
-                        .migrationId(migrationId)
-                        .legacyId(legacyId)
-                        .filedDate(filedDate)
-                        .facilityId(facilityId)
-                        .boundaryCode(boundaryCode)
-                        .build();
-
-                JsonNode additionalDetails = getAdditionalDetail("ser_additionaldetails",rs);
-
-                if(additionalDetails != null)
-                    currentService.setAdditionalDetail(additionalDetails);
-
-                serviceMap.put(currentService.getId(),currentService);
-
+            if (currentService == null) {
+                currentService = mapIncidentFromResultSet(rs);
+                serviceMap.put(currentService.getId(), currentService);
             }
             //addChildrenToProperty(rs, currentService);
 
@@ -150,6 +88,91 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
             throw new CustomException("PARSING_ERROR","Failed to parse additionalDetail object");
         }
         return additionalDetail;
+    }
+
+    private Incident mapIncidentFromResultSet(ResultSet rs) throws SQLException {
+        Incident incident = buildIncidentCore(rs);
+        JsonNode additionalDetails = getAdditionalDetail("ser_additionaldetails", rs);
+        if (additionalDetails != null) {
+            incident.setAdditionalDetail(additionalDetails);
+        }
+        return incident;
+    }
+
+    private Incident buildIncidentCore(ResultSet rs) throws SQLException {
+        String id = rs.getString("ser_id");
+        String incidentType = rs.getString("IncidentType");
+        String incidentSubType = rs.getString("IncidentSubType");
+        String phcType = rs.getString("PhcType");
+        String reporterType = rs.getString("reporterType");
+        String phcSubType = rs.getString("PhcSubType");
+        String district = rs.getString("District");
+        String block = rs.getString("Block");
+        String incidentid = rs.getString("incidentid");
+        String comments = rs.getString("comments");
+        String applicationStatus = rs.getString("applicationStatus");
+        String tenantId = rs.getString("ser_tenantId");
+        String systemFunctional = rs.getString("ser_systemfunctional");
+        String migrationId = rs.getString("migrationid");
+        String legacyId = rs.getString("legacyid");
+        Long filedDate = rs.getLong("fileddate");
+        String facilityId = rs.getString("facilityid");
+        String boundaryCode = rs.getString("boundarycode");
+
+        String accountId = rs.getString("ser_accountid");
+        String reporterTenant = rs.getString("ser_reportertenant");
+        User reporter = buildReporter(accountId, reporterTenant, rs);
+
+        AuditDetails auditDetails = buildAuditDetails(rs);
+
+        return Incident.builder()
+                .id(id)
+                .incidentType(incidentType)
+                .incidentSubType(incidentSubType)
+                .incidentId(incidentid)
+                .comments(comments)
+                .district(district)
+                .block(block)
+                .phcType(phcType)
+                .phcSubType(phcSubType)
+                .applicationStatus(applicationStatus)
+                .tenantId(tenantId)
+                .accountId(accountId)
+                .reporterTenant(reporterTenant)
+                .reporter(reporter)
+                .reporterType(reporterType)
+                .auditDetails(auditDetails)
+                .systemFunctional(systemFunctional)
+                .migrationId(migrationId)
+                .legacyId(legacyId)
+                .filedDate(filedDate)
+                .facilityId(facilityId)
+                .boundaryCode(boundaryCode)
+                .build();
+    }
+
+    private User buildReporter(String accountId, String reporterTenant, ResultSet rs) throws SQLException {
+        User reporter = new User();
+        reporter.setTenantId(reporterTenant);
+        reporter.setUuid(accountId);
+        if (rs.wasNull()) {
+            // preserve original behaviour: no-op when last read column was SQL NULL
+        }
+        return reporter;
+    }
+
+    private AuditDetails buildAuditDetails(ResultSet rs) throws SQLException {
+        String createdby = rs.getString("ser_createdby");
+        Long createdtime = rs.getLong("ser_createdtime");
+        String lastmodifiedby = rs.getString("ser_lastmodifiedby");
+        Long lastmodifiedtime = rs.getLong("ser_lastmodifiedtime");
+
+        return AuditDetails.builder()
+                .createdBy(createdby)
+                .createdTime(createdtime)
+                .lastModifiedBy(lastmodifiedby)
+                .lastModifiedTime(lastmodifiedtime)
+                .build();
     }
 
 

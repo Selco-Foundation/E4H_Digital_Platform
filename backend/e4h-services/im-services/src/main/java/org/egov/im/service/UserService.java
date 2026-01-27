@@ -293,59 +293,25 @@ public class UserService {
             }
             String roleCode = userInfo.getRoles().get(0).getCode();
 
-            // Only proceed for COMPLAINANT or COMPLAINT RESOLVER
-            if ("COMPLAINANT".equalsIgnoreCase(roleCode) || "COMPLAINT_RESOLVER".equalsIgnoreCase(roleCode)) {
-
-                UserLoginReport userLoginReport = new UserLoginReport();
-                userLoginReport.setId(UUID.randomUUID().toString());
-                userLoginReport.setUserName(userInfo.getUserName());
-                userLoginReport.setUserRole(roleCode);
-                userLoginReport.setCurrentOwnerName(userInfo.getName());
-                userLoginReport.setLastLoginDateTime(String.valueOf(System.currentTimeMillis()));
-
-                if ("COMPLAINANT".equalsIgnoreCase(roleCode)) {
-                    // Check if user also has COMPLAINT_ASSESSOR role (CRM)
-                    boolean hasComplaintAssessorRole = userInfo.getRoles().stream()
-                            .anyMatch(role -> "COMPLAINT_ASSESSOR".equalsIgnoreCase(role.getCode()));
-
-                    if (hasComplaintAssessorRole) {
-                        return;
-                    }
-                    log.debug("Fetching tenant details from MDMS for tenant: {}", userInfo.getTenantId());
-                    String tenantId = userInfo.getTenantId();
-                    String stateLevelTenantId = tenantId.split("\\.")[0];
-
-                    MasterDetail masterDetail = MasterDetail.builder().name("tenants").build();
-                    List<MasterDetail> masterDetails = Collections.singletonList(masterDetail);
-
-                    ModuleDetail moduleDetail = ModuleDetail.builder()
-                            .moduleName("tenant")
-                            .masterDetails(masterDetails)
-                            .build();
-                    List<ModuleDetail> moduleDetails = Collections.singletonList(moduleDetail);
-
-                    MdmsCriteria mdmsCriteria = MdmsCriteria.builder()
-                            .tenantId(stateLevelTenantId)
-                            .moduleDetails(moduleDetails)
-                            .build();
-
-                    MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder()
-                            .requestInfo(userRequest.getRequestInfo())
-                            .mdmsCriteria(mdmsCriteria)
-                            .build();
-
-                    Object result = repository.fetchResult(mdmsUtils.getMdmsSearchUrl(), mdmsCriteriaReq);
-                    setBlockAndDistrictFromMdms(result, tenantId, userLoginReport);
-
-                } else {
-                    log.debug("User is COMPLAINT_RESOLVER. Setting default empty values for location.");
-                    userLoginReport.setHealthFacilityName("");
-                    userLoginReport.setBlock("");
-                    userLoginReport.setDistrict("");
-                    userLoginReport.setState("");
-                }
-                producer.push(userInfo.getTenantId(), config.getSaveTopicIndexer(), userLoginReport);
+            if (!isSupportedLoginReportRole(roleCode)) {
+                return;
             }
+
+            UserLoginReport userLoginReport = buildBaseLoginReport(userInfo, roleCode);
+
+            if ("COMPLAINANT".equalsIgnoreCase(roleCode)) {
+                if (hasComplaintAssessorRole(userInfo)) {
+                    return;
+                }
+                populateComplainantLocationDetails(userRequest, userInfo, userLoginReport);
+            } else {
+                log.debug("User is COMPLAINT_RESOLVER. Setting default empty values for location.");
+                userLoginReport.setHealthFacilityName("");
+                userLoginReport.setBlock("");
+                userLoginReport.setDistrict("");
+                userLoginReport.setState("");
+            }
+            producer.push(userInfo.getTenantId(), config.getSaveTopicIndexer(), userLoginReport);
         } catch (Exception e) {
             log.error("Error while processing login report for user", e);
             throw new CustomException("LOGIN_REPORT_ERROR", "Unable to process login report: " + e.getMessage());
@@ -397,5 +363,54 @@ public class UserService {
             userLoginReport.setState(state != null ? state : "");
             break; // Found the tenant, no need to continue
         }
+    }
+
+    private boolean isSupportedLoginReportRole(String roleCode) {
+        return "COMPLAINANT".equalsIgnoreCase(roleCode) || "COMPLAINT_RESOLVER".equalsIgnoreCase(roleCode);
+    }
+
+    private UserLoginReport buildBaseLoginReport(User userInfo, String roleCode) {
+        UserLoginReport userLoginReport = new UserLoginReport();
+        userLoginReport.setId(UUID.randomUUID().toString());
+        userLoginReport.setUserName(userInfo.getUserName());
+        userLoginReport.setUserRole(roleCode);
+        userLoginReport.setCurrentOwnerName(userInfo.getName());
+        userLoginReport.setLastLoginDateTime(String.valueOf(System.currentTimeMillis()));
+        return userLoginReport;
+    }
+
+    private boolean hasComplaintAssessorRole(User userInfo) {
+        return userInfo.getRoles().stream()
+                .anyMatch(role -> "COMPLAINT_ASSESSOR".equalsIgnoreCase(role.getCode()));
+    }
+
+    private void populateComplainantLocationDetails(UserRequest userRequest,
+                                                    User userInfo,
+                                                    UserLoginReport userLoginReport) {
+        log.debug("Fetching tenant details from MDMS for tenant: {}", userInfo.getTenantId());
+        String tenantId = userInfo.getTenantId();
+        String stateLevelTenantId = tenantId.split("\\.")[0];
+
+        MasterDetail masterDetail = MasterDetail.builder().name("tenants").build();
+        List<MasterDetail> masterDetails = Collections.singletonList(masterDetail);
+
+        ModuleDetail moduleDetail = ModuleDetail.builder()
+                .moduleName("tenant")
+                .masterDetails(masterDetails)
+                .build();
+        List<ModuleDetail> moduleDetails = Collections.singletonList(moduleDetail);
+
+        MdmsCriteria mdmsCriteria = MdmsCriteria.builder()
+                .tenantId(stateLevelTenantId)
+                .moduleDetails(moduleDetails)
+                .build();
+
+        MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder()
+                .requestInfo(userRequest.getRequestInfo())
+                .mdmsCriteria(mdmsCriteria)
+                .build();
+
+        Object result = repository.fetchResult(mdmsUtils.getMdmsSearchUrl(), mdmsCriteriaReq);
+        setBlockAndDistrictFromMdms(result, tenantId, userLoginReport);
     }
 }

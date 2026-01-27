@@ -186,52 +186,13 @@ public class MigrationService {
         log.debug("Transforming {} services and {} action histories", servicesV1.size(),actionHistories.size());
 
         Map<String, List<ActionInfo>> idToActionMap = new HashMap<>();
+        populateActionHistoryMap(actionHistories, idToActionMap);
 
-        for (ActionHistory actionHistory : actionHistories) {
-            List<ActionInfo> actions = actionHistory.getActions();
-
-            if (CollectionUtils.isEmpty(actions)) {
-                log.warn("Skipping record with empty actionHistory");
-                continue;
-            }
-
-            String id = actions.get(0).getBusinessKey();
-            idToActionMap.put(id, actions);
-        }
-
-        // Temporary for testing
         List<org.egov.im.web.models.Incident> incidents = new LinkedList<>();
         List<ProcessInstance> workflowResponse = new LinkedList<>();
 
         for (Service serviceV1 : servicesV1) {
-
-            String tenantId = serviceV1.getTenantId();
-
-            List<ActionInfo> actionInfos = idToActionMap.get(serviceV1.getIncidentId());
-
-            Map<String, Long> actionUuidToSlaMap = getActionUUidToSLAMap(actionInfos, serviceV1.getIssueType());
-
-            List<ProcessInstance> workflows = new LinkedList<>();
-
-            org.egov.im.web.models.Incident incident = transformService(serviceV1, idToUuidMap);
-
-            actionInfos.forEach(actionInfo -> {
-                ProcessInstance workflow = transformAction(actionInfo, idToUuidMap, actionUuidToSlaMap);
-                workflows.add(workflow);
-            });
-
-
-            incident.setApplicationStatus(oldToNewStatus.get(serviceV1.getStatus().toString()));
-            ProcessInstanceRequest processInstanceRequest = ProcessInstanceRequest.builder().processInstances(workflows).build();
-            IncidentRequest incidentRequest = IncidentRequest.builder().incident(incident).build();
-            log.trace("Pushing migrated incident and workflow to Kafka topics");
-            /*#################### TEMPORARY FOR TESTING, REMOVE THE COMMENTS*/
-               producer.push(tenantId,config.getBatchCreateTopic(),incidentRequest);
-               producer.push(tenantId,config.getBatchWorkflowSaveTopic(),processInstanceRequest);
-
-            // Temporary for testing
-            incidents.add(incident);
-            workflowResponse.addAll(workflows);
+            transformSingleService(serviceV1, idToUuidMap, idToActionMap, incidents, workflowResponse);
         }
 
         Map<String, Object> response = new HashMap<>();
@@ -240,8 +201,6 @@ public class MigrationService {
         response.put("Workflows:", workflowResponse);
 
         return response;
-
-
     }
 
 
@@ -252,48 +211,13 @@ public class MigrationService {
         String incidentType = serviceV1.getIssueType();
         String incidentId = serviceV1.getIncidentId();
 
+        Map<String, Object> additionalDetailMap = buildAdditionalDetailMap(serviceV1);
 
-        String feedback = serviceV1.getFeedback();
-        String addressInService = serviceV1.getAddress();
+        String accountId = resolveAccountId(serviceV1, idToUuidMap);
 
-        Map<String, Object> additionalDetailMap = new HashMap<>();
-
-        if(!StringUtils.isEmpty(feedback))
-            additionalDetailMap.put("feedback", feedback);
-
-        if(!StringUtils.isEmpty(addressInService))
-            additionalDetailMap.put("address", addressInService);
-
-
-        /**
-         * AccountId is id, not uuid in old im. Mapping has to fetched
-         * of id to uuid i.e. accountId in new im is the UUID.
-         */
-
-        String accountId = null;
-        if(serviceV1.getAccountId() != null)
-            accountId = idToUuidMap.get(Long.parseLong(serviceV1.getAccountId()));
-
-        AuditDetails auditDetails = serviceV1.getAuditDetails();
-
-        // Setting uuid in place of id in auditDetails
-        auditDetails.setCreatedBy(idToUuidMap.get(Long.parseLong(auditDetails.getCreatedBy())));
-        auditDetails.setLastModifiedBy(auditDetails.getLastModifiedBy() != null ? idToUuidMap.get(Long.parseLong(auditDetails.getLastModifiedBy())):"NOT_SPECIFIED");
+        AuditDetails auditDetails = mapAuditDetailsToUuid(serviceV1.getAuditDetails(), idToUuidMap);
 
         Object attributes = serviceV1.getAttributes();
-
-        /**
-         * Transform address and set geo location
-         */
-        //GeoLocation geoLocation = GeoLocation.builder().longitude(longitutude).latitude(latitude).build();
-        //log.info("Address details: " + serviceV1.getAddressDetail());
-        org.egov.im.web.models.Address address = null;
-        //address.setGeoLocation(geoLocation);
-        address.setTenantId(tenantId);
-
-        Boolean active = serviceV1.getActive();
-
-        // ACTIVE FLAG NEEDS TO BE ACCOUNTED FOR BELOW FOR POPULATING v2 POJO --->
 
         org.egov.im.web.models.Incident incident = org.egov.im.web.models.Incident.builder()
                 .id(UUID.randomUUID().toString())
@@ -307,13 +231,6 @@ public class MigrationService {
 
         if(!CollectionUtils.isEmpty(additionalDetailMap))
             incident.setAdditionalDetail(additionalDetailMap);
-
-//        if (org.apache.commons.lang3.StringUtils.isNumeric(rating)) {
-//        	incident.setRating(Integer.parseInt(rating));
-//        }
-
-
-
 
         return incident;
 
@@ -364,18 +281,9 @@ public class MigrationService {
         String assignee = actionInfo.getAssignee();
         String comments = actionInfo.getComment();
         List<String> fileStoreIds = actionInfo.getMedia();
-        String stateUUID = statusToUUIDMap.get(oldToNewStatus.get(status));
+        State state = buildStateFromStatus(status);
 
-
-        State state = State.builder().uuid(stateUUID).state(oldToNewStatus.get(status)).build();
-
-        // LastmodifiedTime and by is same as that for created as every time new entry is created whenever any action is taken
-        AuditDetails auditDetails = AuditDetails.builder().createdBy(createdBy)
-                .createdTime(createdTime).lastModifiedBy(createdBy).lastModifiedTime(createdTime).build();
-
-        // Setting uuid in place of id in auditDetails
-        auditDetails.setCreatedBy(idToUuidMap.get(Long.parseLong(auditDetails.getCreatedBy())));
-        auditDetails.setLastModifiedBy(idToUuidMap.get(Long.parseLong(auditDetails.getLastModifiedBy())));
+        AuditDetails auditDetails = buildWorkflowAuditDetails(createdBy, createdTime, idToUuidMap);
 
         ProcessInstance workflow = ProcessInstance.builder()
                 .id(uuid)
@@ -389,37 +297,8 @@ public class MigrationService {
                 .businesssServiceSla(actionUuidToSlaMap.get(actionInfo.getUuid()))
                 .auditDetails(auditDetails)
                 .build();
-
-
-        // Wrapping assignee uuid in User object to add it in workflow
-        if (!StringUtils.isEmpty(assignee)) {
-            User user = new User();
-            user.setUuid(idToUuidMap.get(Long.parseLong(assignee)));
-            workflow.setAssignes(Collections.singletonList(user));
-        }
-
-        User assigner = new User();
-        assigner.setUuid(idToUuidMap.get(Long.parseLong(createdBy)));
-        workflow.setAssigner(assigner);
-
-
-        // Setting the images uploaded in workflow document
-        if (!CollectionUtils.isEmpty(fileStoreIds)) {
-            List<Document> documents = new LinkedList<>();
-            for (String fileStoreId : fileStoreIds) {
-
-                if(!StringUtils.isEmpty(fileStoreId) && !fileStoreId.equalsIgnoreCase("null")
-                    && fileStoreId.length()<=64){
-                    Document document = Document.builder()
-                            .documentType(IMAGE_DOCUMENT_TYPE)
-                            .fileStoreId(fileStoreId)
-                            .id(UUID.randomUUID().toString())
-                            .build();
-                    documents.add(document);
-                }
-            }
-            workflow.setDocuments(documents);
-        }
+        populateWorkflowAssigneesAndAssigner(workflow, assignee, createdBy, idToUuidMap);
+        populateWorkflowDocuments(workflow, fileStoreIds);
 
         return workflow;
     }
@@ -450,6 +329,132 @@ public class MigrationService {
         }
         log.debug("Calculated SLA map for {} actions", uuidTOSLAMap.size());
         return uuidTOSLAMap;
+    }
+
+    private void populateActionHistoryMap(List<ActionHistory> actionHistories,
+                                          Map<String, List<ActionInfo>> idToActionMap) {
+        for (ActionHistory actionHistory : actionHistories) {
+            List<ActionInfo> actions = actionHistory.getActions();
+
+            if (CollectionUtils.isEmpty(actions)) {
+                log.warn("Skipping record with empty actionHistory");
+                continue;
+            }
+
+            String id = actions.get(0).getBusinessKey();
+            idToActionMap.put(id, actions);
+        }
+    }
+
+    private void transformSingleService(Service serviceV1,
+                                       Map<Long, String> idToUuidMap,
+                                       Map<String, List<ActionInfo>> idToActionMap,
+                                       List<org.egov.im.web.models.Incident> incidents,
+                                       List<ProcessInstance> workflowResponse) {
+        String tenantId = serviceV1.getTenantId();
+
+        List<ActionInfo> actionInfos = idToActionMap.get(serviceV1.getIncidentId());
+
+        Map<String, Long> actionUuidToSlaMap = getActionUUidToSLAMap(actionInfos, serviceV1.getIssueType());
+
+        List<ProcessInstance> workflows = new LinkedList<>();
+
+        org.egov.im.web.models.Incident incident = transformService(serviceV1, idToUuidMap);
+
+        actionInfos.forEach(actionInfo -> {
+            ProcessInstance workflow = transformAction(actionInfo, idToUuidMap, actionUuidToSlaMap);
+            workflows.add(workflow);
+        });
+
+        incident.setApplicationStatus(oldToNewStatus.get(serviceV1.getStatus().toString()));
+        ProcessInstanceRequest processInstanceRequest = ProcessInstanceRequest.builder().processInstances(workflows).build();
+        IncidentRequest incidentRequest = IncidentRequest.builder().incident(incident).build();
+        log.trace("Pushing migrated incident and workflow to Kafka topics");
+        producer.push(tenantId,config.getBatchCreateTopic(),incidentRequest);
+        producer.push(tenantId,config.getBatchWorkflowSaveTopic(),processInstanceRequest);
+
+        incidents.add(incident);
+        workflowResponse.addAll(workflows);
+    }
+
+    private Map<String, Object> buildAdditionalDetailMap(Service serviceV1) {
+        String feedback = serviceV1.getFeedback();
+        String addressInService = serviceV1.getAddress();
+
+        Map<String, Object> additionalDetailMap = new HashMap<>();
+
+        if(!StringUtils.isEmpty(feedback))
+            additionalDetailMap.put("feedback", feedback);
+
+        if(!StringUtils.isEmpty(addressInService))
+            additionalDetailMap.put("address", addressInService);
+
+        return additionalDetailMap;
+    }
+
+    private String resolveAccountId(Service serviceV1, Map<Long, String> idToUuidMap) {
+        String accountId = null;
+        if(serviceV1.getAccountId() != null)
+            accountId = idToUuidMap.get(Long.parseLong(serviceV1.getAccountId()));
+        return accountId;
+    }
+
+    private AuditDetails mapAuditDetailsToUuid(AuditDetails auditDetails, Map<Long, String> idToUuidMap) {
+        auditDetails.setCreatedBy(idToUuidMap.get(Long.parseLong(auditDetails.getCreatedBy())));
+        auditDetails.setLastModifiedBy(auditDetails.getLastModifiedBy() != null ? idToUuidMap.get(Long.parseLong(auditDetails.getLastModifiedBy())):"NOT_SPECIFIED");
+        return auditDetails;
+    }
+
+    private State buildStateFromStatus(String status) {
+        String stateUUID = statusToUUIDMap.get(oldToNewStatus.get(status));
+        return State.builder().uuid(stateUUID).state(oldToNewStatus.get(status)).build();
+    }
+
+    private AuditDetails buildWorkflowAuditDetails(String createdBy,
+                                                   Long createdTime,
+                                                   Map<Long, String> idToUuidMap) {
+        AuditDetails auditDetails = AuditDetails.builder().createdBy(createdBy)
+                .createdTime(createdTime).lastModifiedBy(createdBy).lastModifiedTime(createdTime).build();
+
+        auditDetails.setCreatedBy(idToUuidMap.get(Long.parseLong(auditDetails.getCreatedBy())));
+        auditDetails.setLastModifiedBy(idToUuidMap.get(Long.parseLong(auditDetails.getLastModifiedBy())));
+        return auditDetails;
+    }
+
+    private void populateWorkflowAssigneesAndAssigner(ProcessInstance workflow,
+                                                      String assignee,
+                                                      String createdBy,
+                                                      Map<Long, String> idToUuidMap) {
+        if (!StringUtils.isEmpty(assignee)) {
+            User user = new User();
+            user.setUuid(idToUuidMap.get(Long.parseLong(assignee)));
+            workflow.setAssignes(Collections.singletonList(user));
+        }
+
+        User assigner = new User();
+        assigner.setUuid(idToUuidMap.get(Long.parseLong(createdBy)));
+        workflow.setAssigner(assigner);
+    }
+
+    private void populateWorkflowDocuments(ProcessInstance workflow, List<String> fileStoreIds) {
+        if (CollectionUtils.isEmpty(fileStoreIds)) {
+            return;
+        }
+
+        List<Document> documents = new LinkedList<>();
+        for (String fileStoreId : fileStoreIds) {
+
+            if(!StringUtils.isEmpty(fileStoreId) && !fileStoreId.equalsIgnoreCase("null")
+                && fileStoreId.length()<=64){
+                Document document = Document.builder()
+                        .documentType(IMAGE_DOCUMENT_TYPE)
+                        .fileStoreId(fileStoreId)
+                        .id(UUID.randomUUID().toString())
+                        .build();
+                documents.add(document);
+            }
+        }
+        workflow.setDocuments(documents);
     }
 
 }

@@ -49,164 +49,12 @@ public class IMQueryBuilder {
 
         StringBuilder builder = new StringBuilder(QUERY);
 
-        if(criteria.getIsPlainSearch() != null && criteria.getIsPlainSearch()){
-            Set<String> tenantIds = criteria.getTenantIds();
-            if(!CollectionUtils.isEmpty(tenantIds)){
-                addClauseIfRequired(preparedStmtList, builder);
-                builder.append(" ser.tenantId IN (").append(createQuery(tenantIds)).append(")");
-                addToPreparedStatement(preparedStmtList, tenantIds);
-            }
-          
-        }
-        else if (criteria.getPhcType()==null && criteria.getTenantId()!=null && criteria.getTenantId().contains(","))
-        {
-            //String tenantId = criteria.getTenantId();
-            String[] tenantIdChunks = criteria.getTenantId().split(",");
-            Set<String> tenantIdList = new HashSet<>(Arrays.asList(tenantIdChunks));
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.tenantid IN (").append(createQuery(tenantIdList)).append(")");
-            addToPreparedStatement(preparedStmtList, tenantIdList);
-        }
-        else {
-            if ( criteria.getPhcType()==null && criteria.getTenantId() != null) {
-                String tenantId = criteria.getTenantId();
-                String[] tenantIdChunks = tenantId.split("\\.");
-
-                if (tenantIdChunks.length == config.getStateLevelTenantIdLength()) {
-                    addClauseIfRequired(preparedStmtList, builder);
-                    builder.append(" ser.tenantid LIKE ? ");
-                    preparedStmtList.add(criteria.getTenantId() + '%');
-                }
-                else {
-                    addClauseIfRequired(preparedStmtList, builder);
-                    builder.append(" ser.tenantid=? ");
-                    preparedStmtList.add(criteria.getTenantId());
-                }
-                
-            }
-        }
-
-        Set<String> applicationStatus = criteria.getApplicationStatus();
-        if (!CollectionUtils.isEmpty(applicationStatus)) {
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.applicationstatus IN (").append(createQuery(applicationStatus)).append(")");
-            addToPreparedStatement(preparedStmtList, applicationStatus);
-        }
-
-        Set<String> incidentType = criteria.getIncidentType();
-        if (!CollectionUtils.isEmpty(incidentType)){
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.incidenttype IN (").append(createQuery(incidentType)).append(")");
-            addToPreparedStatement(preparedStmtList, incidentType);
-        }
-
-        Set<String> incidentSubType = criteria.getIncidentSubType();
-        if (!CollectionUtils.isEmpty(incidentSubType)){
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.incidentsubtype IN (").append(createQuery(incidentSubType)).append(")");
-            addToPreparedStatement(preparedStmtList, incidentSubType);
-        }
-
-        Set<String> phcType = criteria.getPhcType();
-         if (!CollectionUtils.isEmpty(phcType)){
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.tenantid IN (").append(createQuery(phcType)).append(")");
-            addToPreparedStatement(preparedStmtList, phcType);
-        }
-
-        Set<String> phcSubType = criteria.getPhcSubType();
-        if (!CollectionUtils.isEmpty(phcSubType)){
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.phcsubtype IN (").append(createQuery(phcSubType)).append(")");
-            addToPreparedStatement(preparedStmtList, phcSubType);
-        }
-
-        if (criteria.getIncidentId() != null) {
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.incidentid=? ");
-            preparedStmtList.add(criteria.getIncidentId());
-        }
-
-        if (criteria.getDistrict() != null) {
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" LOWER(ser.district) = ? ");
-            preparedStmtList.add(criteria.getDistrict().toLowerCase());
-        }
-
-        if (criteria.getBoundaryCode() != null) {
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" LOWER(ser.boundarycode) = ? ");
-            preparedStmtList.add(criteria.getBoundaryCode().toLowerCase());
-        }
-
-        if (criteria.getBlock() != null) {
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" LOWER(ser.block) = ? ");
-            preparedStmtList.add(criteria.getBlock().toLowerCase());
-        }
-
-        if (criteria.getSystemFunctional() != null) {
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.systemfunctional=? ");
-            preparedStmtList.add(criteria.getSystemFunctional());
-        }
-
-        Set<String> ids = criteria.getIds();
-        if (!CollectionUtils.isEmpty(ids)) {
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.id IN (").append(createQuery(ids)).append(")");
-            addToPreparedStatement(preparedStmtList, ids);
-        }
-
-        //When UI tries to fetch "escalated" complaints count.
-        if(criteria.getSlaDeltaMaxLimit() != null && criteria.getSlaDeltaMinLimit() == null){
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ((extract(epoch FROM NOW())*1000) - ser.createdtime) > ? ");
-            preparedStmtList.add(criteria.getSlaDeltaMaxLimit());
-        }
-        //When UI tries to fetch "other" complaints count.
-        if(criteria.getSlaDeltaMaxLimit() != null && criteria.getSlaDeltaMinLimit() != null){
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ((extract(epoch FROM NOW())*1000) - ser.createdtime) > ? ");
-            preparedStmtList.add(criteria.getSlaDeltaMinLimit());
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ((extract(epoch FROM NOW())*1000) - ser.createdtime) < ? ");
-            preparedStmtList.add(criteria.getSlaDeltaMaxLimit());
-        }
-
-        Set<String> userIds = criteria.getUserIds();
-        if (!CollectionUtils.isEmpty(userIds)) {
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ser.accountId IN (").append(createQuery(userIds)).append(")");
-            addToPreparedStatement(preparedStmtList, userIds);
-        }
-
-
-        Set<String> localities = criteria.getLocality();
-        if(!CollectionUtils.isEmpty(localities)){
-            addClauseIfRequired(preparedStmtList, builder);
-            builder.append(" ads.locality IN (").append(createQuery(localities)).append(")");
-            addToPreparedStatement(preparedStmtList, localities);
-        }
-
-        if (criteria.getFromDate() != null) {
-            addClauseIfRequired(preparedStmtList, builder);
-
-            //If user does not specify toDate, take today's date as toDate by default.
-            if (criteria.getToDate() == null) {
-                criteria.setToDate(Instant.now().toEpochMilli());
-            }
-
-            builder.append(" ser.createdtime BETWEEN ? AND ?");
-            preparedStmtList.add(criteria.getFromDate());
-            preparedStmtList.add(criteria.getToDate());
-
-        } else {
-            //if only toDate is provided as parameter without fromDate parameter, throw an exception.
-            if (criteria.getToDate() != null) {
-                throw new CustomException("INVALID_SEARCH", "Cannot specify to-Date without a from-Date");
-            }
-        }
+        applyTenantFilters(criteria, preparedStmtList, builder);
+        applyStatusAndTypeFilters(criteria, preparedStmtList, builder);
+        applyIncidentSpecificFilters(criteria, preparedStmtList, builder);
+        applySlaFilters(criteria, preparedStmtList, builder);
+        applyUserAndLocalityFilters(criteria, preparedStmtList, builder);
+        applyDateFilters(criteria, preparedStmtList, builder);
 
 
         addOrderByClause(builder, criteria);
@@ -251,6 +99,172 @@ public class IMQueryBuilder {
         builder.append(" LIMIT ? ");
         preparedStmtList.add(criteria.getLimit());
 
+    }
+
+    private void applyTenantFilters(RequestSearchCriteria criteria, List<Object> preparedStmtList,
+                                    StringBuilder builder) {
+        if (criteria.getIsPlainSearch() != null && criteria.getIsPlainSearch()) {
+            Set<String> tenantIds = criteria.getTenantIds();
+            if (!CollectionUtils.isEmpty(tenantIds)) {
+                addClauseIfRequired(preparedStmtList, builder);
+                builder.append(" ser.tenantId IN (").append(createQuery(tenantIds)).append(")");
+                addToPreparedStatement(preparedStmtList, tenantIds);
+            }
+        } else if (criteria.getPhcType() == null && criteria.getTenantId() != null
+                && criteria.getTenantId().contains(",")) {
+            String[] tenantIdChunks = criteria.getTenantId().split(",");
+            Set<String> tenantIdList = new HashSet<>(Arrays.asList(tenantIdChunks));
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.tenantid IN (").append(createQuery(tenantIdList)).append(")");
+            addToPreparedStatement(preparedStmtList, tenantIdList);
+        } else if (criteria.getPhcType() == null && criteria.getTenantId() != null) {
+            String tenantId = criteria.getTenantId();
+            String[] tenantIdChunks = tenantId.split("\\.");
+
+            if (tenantIdChunks.length == config.getStateLevelTenantIdLength()) {
+                addClauseIfRequired(preparedStmtList, builder);
+                builder.append(" ser.tenantid LIKE ? ");
+                preparedStmtList.add(criteria.getTenantId() + '%');
+            } else {
+                addClauseIfRequired(preparedStmtList, builder);
+                builder.append(" ser.tenantid=? ");
+                preparedStmtList.add(criteria.getTenantId());
+            }
+        }
+    }
+
+    private void applyStatusAndTypeFilters(RequestSearchCriteria criteria, List<Object> preparedStmtList,
+                                           StringBuilder builder) {
+        Set<String> applicationStatus = criteria.getApplicationStatus();
+        if (!CollectionUtils.isEmpty(applicationStatus)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.applicationstatus IN (").append(createQuery(applicationStatus)).append(")");
+            addToPreparedStatement(preparedStmtList, applicationStatus);
+        }
+
+        Set<String> incidentType = criteria.getIncidentType();
+        if (!CollectionUtils.isEmpty(incidentType)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.incidenttype IN (").append(createQuery(incidentType)).append(")");
+            addToPreparedStatement(preparedStmtList, incidentType);
+        }
+
+        Set<String> incidentSubType = criteria.getIncidentSubType();
+        if (!CollectionUtils.isEmpty(incidentSubType)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.incidentsubtype IN (").append(createQuery(incidentSubType)).append(")");
+            addToPreparedStatement(preparedStmtList, incidentSubType);
+        }
+
+        Set<String> phcType = criteria.getPhcType();
+        if (!CollectionUtils.isEmpty(phcType)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.tenantid IN (").append(createQuery(phcType)).append(")");
+            addToPreparedStatement(preparedStmtList, phcType);
+        }
+
+        Set<String> phcSubType = criteria.getPhcSubType();
+        if (!CollectionUtils.isEmpty(phcSubType)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.phcsubtype IN (").append(createQuery(phcSubType)).append(")");
+            addToPreparedStatement(preparedStmtList, phcSubType);
+        }
+    }
+
+    private void applyIncidentSpecificFilters(RequestSearchCriteria criteria, List<Object> preparedStmtList,
+                                              StringBuilder builder) {
+        if (criteria.getIncidentId() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.incidentid=? ");
+            preparedStmtList.add(criteria.getIncidentId());
+        }
+
+        if (criteria.getDistrict() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" LOWER(ser.district) = ? ");
+            preparedStmtList.add(criteria.getDistrict().toLowerCase());
+        }
+
+        if (criteria.getBoundaryCode() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" LOWER(ser.boundarycode) = ? ");
+            preparedStmtList.add(criteria.getBoundaryCode().toLowerCase());
+        }
+
+        if (criteria.getBlock() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" LOWER(ser.block) = ? ");
+            preparedStmtList.add(criteria.getBlock().toLowerCase());
+        }
+
+        if (criteria.getSystemFunctional() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.systemfunctional=? ");
+            preparedStmtList.add(criteria.getSystemFunctional());
+        }
+
+        Set<String> ids = criteria.getIds();
+        if (!CollectionUtils.isEmpty(ids)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.id IN (").append(createQuery(ids)).append(")");
+            addToPreparedStatement(preparedStmtList, ids);
+        }
+    }
+
+    private void applySlaFilters(RequestSearchCriteria criteria, List<Object> preparedStmtList,
+                                 StringBuilder builder) {
+        // When UI tries to fetch "escalated" complaints count.
+        if (criteria.getSlaDeltaMaxLimit() != null && criteria.getSlaDeltaMinLimit() == null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ((extract(epoch FROM NOW())*1000) - ser.createdtime) > ? ");
+            preparedStmtList.add(criteria.getSlaDeltaMaxLimit());
+        }
+        // When UI tries to fetch "other" complaints count.
+        if (criteria.getSlaDeltaMaxLimit() != null && criteria.getSlaDeltaMinLimit() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ((extract(epoch FROM NOW())*1000) - ser.createdtime) > ? ");
+            preparedStmtList.add(criteria.getSlaDeltaMinLimit());
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ((extract(epoch FROM NOW())*1000) - ser.createdtime) < ? ");
+            preparedStmtList.add(criteria.getSlaDeltaMaxLimit());
+        }
+    }
+
+    private void applyUserAndLocalityFilters(RequestSearchCriteria criteria, List<Object> preparedStmtList,
+                                             StringBuilder builder) {
+        Set<String> userIds = criteria.getUserIds();
+        if (!CollectionUtils.isEmpty(userIds)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.accountId IN (").append(createQuery(userIds)).append(")");
+            addToPreparedStatement(preparedStmtList, userIds);
+        }
+
+        Set<String> localities = criteria.getLocality();
+        if (!CollectionUtils.isEmpty(localities)) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ads.locality IN (").append(createQuery(localities)).append(")");
+            addToPreparedStatement(preparedStmtList, localities);
+        }
+    }
+
+    private void applyDateFilters(RequestSearchCriteria criteria, List<Object> preparedStmtList,
+                                  StringBuilder builder) {
+        if (criteria.getFromDate() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+
+            // If user does not specify toDate, take today's date as toDate by default.
+            if (criteria.getToDate() == null) {
+                criteria.setToDate(Instant.now().toEpochMilli());
+            }
+
+            builder.append(" ser.createdtime BETWEEN ? AND ?");
+            preparedStmtList.add(criteria.getFromDate());
+            preparedStmtList.add(criteria.getToDate());
+
+        } else if (criteria.getToDate() != null) {
+            // if only toDate is provided as parameter without fromDate parameter, throw an exception.
+            throw new CustomException("INVALID_SEARCH", "Cannot specify to-Date without a from-Date");
+        }
     }
 
     private static void addClauseIfRequired(List<Object> values, StringBuilder queryString) {

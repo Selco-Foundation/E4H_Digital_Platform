@@ -144,44 +144,8 @@ public class EnrichmentService {
 
         String idGenIncidentIdFormat = config.getServiceRequestIdGenFormat();
 
-        StringBuilder hcrUserSearchUri = hrmsUtil.getHRMSURI(null, incident.getTenantId(), "COMPLAINANT", incident.getBoundaryCode());
-        hcrUserSearchUri.append("&searchOnlyInBoundary=");
-        hcrUserSearchUri.append(true);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("RequestInfo", requestInfo);
-
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
-
-        ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
-                hcrUserSearchUri.toString(),
-                HttpMethod.POST,
-                requestEntity,
-                new ParameterizedTypeReference<>() {}
-        );
-        Map<String, Object> responseMap = responseEntity.getBody();
-        String hcrUser = Optional.ofNullable(safeJsonPathRead(responseMap, "$.Employees[0].code"))
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .orElseThrow(() -> new CustomException("HCR_NOT_FOUND", "HCR not found for given boundary"));
-
-        Object mdmsResponse = mdmsUtils.fetchMDMSData(requestInfo, incident.getTenantId(), "common-masters", List.of("StateInfo"), null);
-        List<?> stateInfoList = Optional.ofNullable(safeJsonPathRead(mdmsResponse, "$.MdmsRes.common-masters.StateInfo"))
-                .filter(List.class::isInstance)
-                .map(List.class::cast)
-                .orElseThrow(() -> new CustomException("STATE_INFO_MISSING", "Cannot fetch StateInfo for tenant " + incident.getTenantId()));
-        String stateCode = stateInfoList.stream()
-                .map(Map.class::cast)
-                .filter(item -> boundary.getStateCode().equals(item.get("boundaryCode")))
-                .map(item -> item.get("code"))
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .findFirst()
-                .orElseThrow(() -> new CustomException("STATE_CODE_NOT_FOUND", "State code not found for boundary " + boundary.getStateCode()));
+        String hcrUser = fetchHcrUser(requestInfo, incident);
+        String stateCode = resolveStateCode(requestInfo, incident, boundary);
 
         Map<String, String> values = Map.of(
                 "STATE_CODE", stateCode,
@@ -282,53 +246,16 @@ public class EnrichmentService {
         localizationService.enrichLocalizedFieldsForIndexing(wrapper);
 
         // Ensure IndexView is initialized and reused (not replaced)
-        IndexView indexView = wrapper.getIndexView();
-        if (indexView == null) {
-            indexView = new IndexView();
-            wrapper.setIndexView(indexView);
-        }
+        IndexView indexView = ensureIndexView(wrapper);
 
         // Fetch HCR and Vendor details
         log.trace("Fetching HCR and vendor details for indexing");
         Map<String, String> hcrDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, "COMPLAINANT");
         Map<String, String> vendorDetails = notificationService.getHRMSEmployeeForIndexing(incidentRequest, null, "COMPLAINT_RESOLVER");
 
-        // Get details of the user who last modified (last action)
-        String lastActionTakenByUser = wrapper.getIncidentRequest().getRequestInfo().getUserInfo().getName();
-
-        // Set fields in IndexView if values exist
-        Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
-        Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendorUserName);
-        Optional.ofNullable(vendorDetails.get("employeeName")).ifPresent(indexView::setMappedVendorName);
-        indexView.setLastActionTakenBy(lastActionTakenByUser);
-        indexView.setComments(
-                (wrapper.getIncidentRequest().getWorkflow().getComments() != null &&
-                        !wrapper.getIncidentRequest().getWorkflow().getComments().isEmpty())
-                        ? wrapper.getIncidentRequest().getWorkflow().getComments()
-                        : wrapper.getIncidentRequest().getIncident().getComments()
-        );
-
-        if (wrapper.getIncidentRequest().getWorkflow().getSendBackReason() != null) {
-            SendBackReason reason = wrapper.getIncidentRequest().getWorkflow().getSendBackReason();
-            indexView.setSendBackReason(reason.getReason());
-            indexView.setSendBackSubReason(reason.getSubReason());
-        }
-
-        Object additionalDetailObj = wrapper.getIncidentRequest().getIncident().getAdditionalDetail();
-
-        if (additionalDetailObj instanceof Map) {
-            Map<String, Object> additionalDetail = (Map<String, Object>) additionalDetailObj;
-
-            Object rejectReasonObj = additionalDetail.get("rejectReason");
-
-            if (rejectReasonObj instanceof List) {
-                List<?> rejectReasons = (List<?>) rejectReasonObj;
-
-                if (!rejectReasons.isEmpty()) {
-                    indexView.setLatestRejectReason(rejectReasons.get(rejectReasons.size() - 1).toString());
-                }
-            }
-        }
+        populateIndexViewWithEmployeeDetails(wrapper, indexView, hcrDetails, vendorDetails);
+        populateIndexViewWithWorkflowDetails(wrapper, indexView);
+        populateIndexViewWithRejectReason(wrapper, indexView);
 
         // Enrich boundary object for indexing only (not persisted to database)
         if (boundary != null) {
@@ -487,5 +414,104 @@ public class EnrichmentService {
                         .collect(Collectors.joining(" , "));
 
         indexView.setDocumentUrls(fileStoreUrls);
+    }
+
+    private String fetchHcrUser(RequestInfo requestInfo, Incident incident) {
+        StringBuilder hcrUserSearchUri = hrmsUtil.getHRMSURI(null, incident.getTenantId(), "COMPLAINANT", incident.getBoundaryCode());
+        hcrUserSearchUri.append("&searchOnlyInBoundary=");
+        hcrUserSearchUri.append(true);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+        Map<String, Object> requestBody = new HashMap<>();
+        requestBody.put("RequestInfo", requestInfo);
+
+        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+        ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
+                hcrUserSearchUri.toString(),
+                HttpMethod.POST,
+                requestEntity,
+                new ParameterizedTypeReference<>() {}
+        );
+        Map<String, Object> responseMap = responseEntity.getBody();
+        return Optional.ofNullable(safeJsonPathRead(responseMap, "$.Employees[0].code"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .orElseThrow(() -> new CustomException("HCR_NOT_FOUND", "HCR not found for given boundary"));
+    }
+
+    private String resolveStateCode(RequestInfo requestInfo, Incident incident, Boundary boundary) {
+        Object mdmsResponse = mdmsUtils.fetchMDMSData(requestInfo, incident.getTenantId(), "common-masters", List.of("StateInfo"), null);
+        List<?> stateInfoList = Optional.ofNullable(safeJsonPathRead(mdmsResponse, "$.MdmsRes.common-masters.StateInfo"))
+                .filter(List.class::isInstance)
+                .map(List.class::cast)
+                .orElseThrow(() -> new CustomException("STATE_INFO_MISSING", "Cannot fetch StateInfo for tenant " + incident.getTenantId()));
+
+        return stateInfoList.stream()
+                .map(Map.class::cast)
+                .filter(item -> boundary.getStateCode().equals(item.get("boundaryCode")))
+                .map(item -> item.get("code"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .findFirst()
+                .orElseThrow(() -> new CustomException("STATE_CODE_NOT_FOUND", "State code not found for boundary " + boundary.getStateCode()));
+    }
+
+    private IndexView ensureIndexView(IncidentRequestWrapper wrapper) {
+        IndexView indexView = wrapper.getIndexView();
+        if (indexView == null) {
+            indexView = new IndexView();
+            wrapper.setIndexView(indexView);
+        }
+        return indexView;
+    }
+
+    private void populateIndexViewWithEmployeeDetails(IncidentRequestWrapper wrapper,
+                                                      IndexView indexView,
+                                                      Map<String, String> hcrDetails,
+                                                      Map<String, String> vendorDetails) {
+        String lastActionTakenByUser = wrapper.getIncidentRequest().getRequestInfo().getUserInfo().getName();
+
+        Optional.ofNullable(hcrDetails.get("employeeUserName")).ifPresent(indexView::setNinHfrId);
+        Optional.ofNullable(vendorDetails.get("employeeUserName")).ifPresent(indexView::setMappedVendorUserName);
+        Optional.ofNullable(vendorDetails.get("employeeName")).ifPresent(indexView::setMappedVendorName);
+        indexView.setLastActionTakenBy(lastActionTakenByUser);
+    }
+
+    private void populateIndexViewWithWorkflowDetails(IncidentRequestWrapper wrapper, IndexView indexView) {
+        indexView.setComments(
+                (wrapper.getIncidentRequest().getWorkflow().getComments() != null &&
+                        !wrapper.getIncidentRequest().getWorkflow().getComments().isEmpty())
+                        ? wrapper.getIncidentRequest().getWorkflow().getComments()
+                        : wrapper.getIncidentRequest().getIncident().getComments()
+        );
+
+        if (wrapper.getIncidentRequest().getWorkflow().getSendBackReason() != null) {
+            SendBackReason reason = wrapper.getIncidentRequest().getWorkflow().getSendBackReason();
+            indexView.setSendBackReason(reason.getReason());
+            indexView.setSendBackSubReason(reason.getSubReason());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void populateIndexViewWithRejectReason(IncidentRequestWrapper wrapper, IndexView indexView) {
+        Object additionalDetailObj = wrapper.getIncidentRequest().getIncident().getAdditionalDetail();
+
+        if (additionalDetailObj instanceof Map) {
+            Map<String, Object> additionalDetail = (Map<String, Object>) additionalDetailObj;
+
+            Object rejectReasonObj = additionalDetail.get("rejectReason");
+
+            if (rejectReasonObj instanceof List) {
+                List<?> rejectReasons = (List<?>) rejectReasonObj;
+
+                if (!rejectReasons.isEmpty()) {
+                    indexView.setLatestRejectReason(rejectReasons.get(rejectReasons.size() - 1).toString());
+                }
+            }
+        }
     }
 }
