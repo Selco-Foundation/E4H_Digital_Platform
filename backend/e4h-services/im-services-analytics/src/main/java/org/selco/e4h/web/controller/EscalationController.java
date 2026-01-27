@@ -374,14 +374,21 @@ public class EscalationController {
             return WeeklyReportData.builder().build();
         }
         
-        // Use the first report as base and aggregate data
         WeeklyReportData firstReport = reportDataByTenant.values().iterator().next();
+        ConsolidatedMetrics metrics = aggregateMetricsFromReports(reportDataByTenant);
+        Map<String, WeeklyReportData.StateAgeBucketData> consolidatedStateData = mergeStateData(reportDataByTenant);
+        ArrowData funcArrow = calculateConsolidatedFunctionalArrow(metrics);
+        ArrowData nonFuncArrow = calculateConsolidatedNonFunctionalArrow(metrics);
+        String consolidatedStateList = buildConsolidatedStateList(consolidatedStateData, reportDataByTenant);
         
+        return buildConsolidatedWeeklyReportData(firstReport, metrics, consolidatedStateData, 
+            funcArrow, nonFuncArrow, consolidatedStateList);
+    }
+
+    private ConsolidatedMetrics aggregateMetricsFromReports(Map<String, WeeklyReportData> reportDataByTenant) {
         int totalFuncStart = 0, totalNonFuncStart = 0;
         int totalFuncEnd = 0, totalNonFuncEnd = 0;
         int totalLt1Wk = 0, totalLt1Mo = 0, totalLt3Mo = 0;
-        
-        Map<String, WeeklyReportData.StateAgeBucketData> consolidatedStateData = new HashMap<>();
         
         for (WeeklyReportData reportData : reportDataByTenant.values()) {
             if (reportData.getWeekStartMetrics() != null) {
@@ -397,61 +404,76 @@ public class EscalationController {
                 totalLt1Mo += reportData.getTotalAgeBuckets().getTotalLt1Mo();
                 totalLt3Mo += reportData.getTotalAgeBuckets().getTotalLt3Mo();
             }
-            
-            // Merge state data
+        }
+        
+        return new ConsolidatedMetrics(totalFuncStart, totalNonFuncStart, totalFuncEnd, 
+            totalNonFuncEnd, totalLt1Wk, totalLt1Mo, totalLt3Mo);
+    }
+
+    private Map<String, WeeklyReportData.StateAgeBucketData> mergeStateData(Map<String, WeeklyReportData> reportDataByTenant) {
+        Map<String, WeeklyReportData.StateAgeBucketData> consolidatedStateData = new HashMap<>();
+        for (WeeklyReportData reportData : reportDataByTenant.values()) {
             if (reportData.getStateData() != null) {
                 consolidatedStateData.putAll(reportData.getStateData());
             }
         }
-        
-        // Calculate percentages
-        int totalStart = totalFuncStart + totalNonFuncStart;
-        int totalEnd = totalFuncEnd + totalNonFuncEnd;
-        
-        double funcStartPct = totalStart > 0 ? (totalFuncStart * 100.0 / totalStart) : 0;
-        double nonFuncStartPct = totalStart > 0 ? (totalNonFuncStart * 100.0 / totalStart) : 0;
-        double funcEndPct = totalEnd > 0 ? (totalFuncEnd * 100.0 / totalEnd) : 0;
-        double nonFuncEndPct = totalEnd > 0 ? (totalNonFuncEnd * 100.0 / totalEnd) : 0;
-        
-        // Calculate arrows using shared utility
-        ArrowData funcArrow = commonUtility.calculateArrow(funcStartPct, funcEndPct, true);
-        ArrowData nonFuncArrow = commonUtility.calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
-        
-        // Create consolidated state list - use tenant IDs if no state data
-        String consolidatedStateList;
+        return consolidatedStateData;
+    }
+
+    private ArrowData calculateConsolidatedFunctionalArrow(ConsolidatedMetrics metrics) {
+        int totalStart = metrics.totalFuncStart + metrics.totalNonFuncStart;
+        int totalEnd = metrics.totalFuncEnd + metrics.totalNonFuncEnd;
+        double funcStartPct = totalStart > 0 ? (metrics.totalFuncStart * 100.0 / totalStart) : 0;
+        double funcEndPct = totalEnd > 0 ? (metrics.totalFuncEnd * 100.0 / totalEnd) : 0;
+        return commonUtility.calculateArrow(funcStartPct, funcEndPct, true);
+    }
+
+    private ArrowData calculateConsolidatedNonFunctionalArrow(ConsolidatedMetrics metrics) {
+        int totalStart = metrics.totalFuncStart + metrics.totalNonFuncStart;
+        int totalEnd = metrics.totalFuncEnd + metrics.totalNonFuncEnd;
+        double nonFuncStartPct = totalStart > 0 ? (metrics.totalNonFuncStart * 100.0 / totalStart) : 0;
+        double nonFuncEndPct = totalEnd > 0 ? (metrics.totalNonFuncEnd * 100.0 / totalEnd) : 0;
+        return commonUtility.calculateArrow(nonFuncStartPct, nonFuncEndPct, false);
+    }
+
+    private String buildConsolidatedStateList(Map<String, WeeklyReportData.StateAgeBucketData> consolidatedStateData,
+                                             Map<String, WeeklyReportData> reportDataByTenant) {
         log.info("Creating consolidated state list. consolidatedStateData size: {}, reportDataByTenant keys: {}", 
             consolidatedStateData.size(), reportDataByTenant.keySet());
         
         if (consolidatedStateData.isEmpty()) {
-            // If no state data, use tenant IDs from the reports
-            consolidatedStateList = reportDataByTenant.keySet().stream()
+            String stateList = reportDataByTenant.keySet().stream()
                 .map(commonUtility::getStateDisplayName)
                 .collect(Collectors.joining(", "));
-            log.info("Using tenant IDs for state list: {}", consolidatedStateList);
+            log.info("Using tenant IDs for state list: {}", stateList);
+            return stateList;
         } else {
-            // Use state data keys if available
-            consolidatedStateList = consolidatedStateData.keySet().stream()
+            String stateList = consolidatedStateData.keySet().stream()
                 .map(commonUtility::getStateDisplayName)
                 .collect(Collectors.joining(", "));
-            log.info("Using state data keys for state list: {}", consolidatedStateList);
+            log.info("Using state data keys for state list: {}", stateList);
+            return stateList;
         }
-        
-        // Create FunctionalMetrics objects
+    }
+
+    private WeeklyReportData buildConsolidatedWeeklyReportData(WeeklyReportData firstReport, ConsolidatedMetrics metrics,
+                                                             Map<String, WeeklyReportData.StateAgeBucketData> consolidatedStateData,
+                                                             ArrowData funcArrow, ArrowData nonFuncArrow,
+                                                             String consolidatedStateList) {
         FunctionalMetrics startMetrics = FunctionalMetrics.builder()
-            .functionalCount(totalFuncStart)
-            .nonFunctionalCount(totalNonFuncStart)
+            .functionalCount(metrics.totalFuncStart)
+            .nonFunctionalCount(metrics.totalNonFuncStart)
             .build();
 
         FunctionalMetrics endMetrics = FunctionalMetrics.builder()
-            .functionalCount(totalFuncEnd)
-            .nonFunctionalCount(totalNonFuncEnd)
+            .functionalCount(metrics.totalFuncEnd)
+            .nonFunctionalCount(metrics.totalNonFuncEnd)
             .build();
 
-        // Create AgeBucketData object
         AgeBucketData totalAgeBuckets = AgeBucketData.builder()
-            .totalLt1Wk(totalLt1Wk)
-            .totalLt1Mo(totalLt1Mo)
-            .totalLt3Mo(totalLt3Mo)
+            .totalLt1Wk(metrics.totalLt1Wk)
+            .totalLt1Mo(metrics.totalLt1Mo)
+            .totalLt3Mo(metrics.totalLt3Mo)
             .build();
 
         return WeeklyReportData.builder()
@@ -468,7 +490,27 @@ public class EscalationController {
             .stateList(consolidatedStateList)
             .todayFormatted(firstReport.getTodayFormatted())
             .build();
+    }
 
+    private static class ConsolidatedMetrics {
+        final int totalFuncStart;
+        final int totalNonFuncStart;
+        final int totalFuncEnd;
+        final int totalNonFuncEnd;
+        final int totalLt1Wk;
+        final int totalLt1Mo;
+        final int totalLt3Mo;
+        
+        ConsolidatedMetrics(int totalFuncStart, int totalNonFuncStart, int totalFuncEnd,
+                           int totalNonFuncEnd, int totalLt1Wk, int totalLt1Mo, int totalLt3Mo) {
+            this.totalFuncStart = totalFuncStart;
+            this.totalNonFuncStart = totalNonFuncStart;
+            this.totalFuncEnd = totalFuncEnd;
+            this.totalNonFuncEnd = totalNonFuncEnd;
+            this.totalLt1Wk = totalLt1Wk;
+            this.totalLt1Mo = totalLt1Mo;
+            this.totalLt3Mo = totalLt3Mo;
+        }
     }
     /**
      * Process a single escalation recipient
@@ -1210,69 +1252,84 @@ public class EscalationController {
      * Create MultipartFile from string content
      */
     private MultipartFile createMultipartFileFromContent(String content, String fileName, String contentType) {
-        return new MultipartFile() {
-            @Override
-            public String getName() {
-                return "file";
+        return new ContentMultipartFile(content, fileName, contentType);
+    }
+
+    private static class ContentMultipartFile implements MultipartFile {
+        private final String content;
+        private final String fileName;
+        private final String contentType;
+        
+        ContentMultipartFile(String content, String fileName, String contentType) {
+            this.content = content;
+            this.fileName = fileName;
+            this.contentType = contentType;
+        }
+        
+        @Override
+        public String getName() {
+            return "file";
+        }
+        
+        @Override
+        public String getOriginalFilename() {
+            return fileName;
+        }
+        
+        @Override
+        public String getContentType() {
+            return contentType;
+        }
+        
+        @Override
+        public boolean isEmpty() {
+            return content == null || content.isEmpty();
+        }
+        
+        @Override
+        public long getSize() {
+            return content != null ? content.getBytes().length : 0;
+        }
+        
+        @Override
+        public byte[] getBytes() throws IOException {
+            return content != null ? content.getBytes() : new byte[0];
+        }
+        
+        @Override
+        public InputStream getInputStream() throws IOException {
+            return new ByteArrayInputStream(getBytes());
+        }
+        
+        @Override
+        public void transferTo(java.io.File dest) throws IOException, IllegalStateException {
+            try (java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
+                fos.write(getBytes());
             }
-            
-            @Override
-            public String getOriginalFilename() {
-                return fileName;
+        }
+        
+        @Override
+        public Resource getResource() {
+            try {
+                return new ByteArrayResource(getBytes()) {
+                    @Override
+                    public String getFilename() {
+                        return fileName;
+                    }
+                };
+            } catch (IOException e) {
+                return createEmptyResource();
             }
-            
-            @Override
-            public String getContentType() {
-                return contentType;
-            }
-            
-            @Override
-            public boolean isEmpty() {
-                return content == null || content.isEmpty();
-            }
-            
-            @Override
-            public long getSize() {
-                return content != null ? content.getBytes().length : 0;
-            }
-            
-            @Override
-            public byte[] getBytes() throws IOException {
-                return content != null ? content.getBytes() : new byte[0];
-            }
-            
-            @Override
-            public InputStream getInputStream() throws IOException {
-                return new ByteArrayInputStream(getBytes());
-            }
-            
-            @Override
-            public void transferTo(java.io.File dest) throws IOException, IllegalStateException {
-                try (java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
-                    fos.write(getBytes());
+        }
+        
+        private Resource createEmptyResource() {
+            return new ByteArrayResource(new byte[0]) {
+                @Override
+                public String getFilename() {
+                    return fileName;
                 }
-            }
-            
-            @Override
-            public Resource getResource() {
-                try {
-                    return new ByteArrayResource(getBytes()) {
-                        @Override
-                        public String getFilename() {
-                            return fileName;
-                        }
-                    };
-                } catch (IOException e) {
-                    log.error("Error creating resource for file: {}", fileName, e);
-                    return new ByteArrayResource(new byte[0]) {
-                        @Override
-                        public String getFilename() {
-                            return fileName;
-                        }
-                    };
-                }
-            }
-        };
+            };
+        }
     }
     
     /**

@@ -312,93 +312,22 @@ public class ElasticSearchClient {
         try {
             log.debug("Converting Elasticsearch source: {}", source.keySet());
 
-            // Extract Data object which contains the main ticket information
-            Map<String, Object> data = (Map<String, Object>) source.get("Data");
+            Map<String, Object> data = extractDataFromSource(source);
             if (data == null) {
-                log.warn("No Data object found in Elasticsearch source: {}", source.keySet());
                 return null;
             }
 
-            log.debug("Data object keys: {}", data.keySet());
-
-            // Extract incident data (nested within Data)
-            Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+            Map<String, Object> incident = extractIncidentFromData(data);
             if (incident == null) {
-                log.warn("No incident found in Data: {}", data.keySet());
                 return null;
             }
 
-            log.debug("Incident object keys: {}", incident.keySet());
-
-            // Extract SLA information from the correct location (directly in Data)
-            Object slaRemaining = data.get("slaRemaining");
-            Object totalSlaRemaining = data.get("totalSlaRemaining");
-            Object stateSla = data.get("stateSla");
-
-            log.debug("SLA fields - slaRemaining: {}, totalSlaRemaining: {}, stateSla: {}",
-                slaRemaining, totalSlaRemaining, stateSla);
-
-            // Calculate SLA breach time if slaRemaining is negative
-            Long slaBreachTime = null;
-            if (slaRemaining instanceof Number && ((Number) slaRemaining).doubleValue() < 0) {
-                slaBreachTime = System.currentTimeMillis();
-            }
-
-            // Extract additional fields for complete ticket information
-            Map<String, Object> auditDetails = (Map<String, Object>) incident.get("auditDetails");
-            Long createdTime = auditDetails != null ? getLongValue(auditDetails, "createdTime") : null;
-
-            // Extract vendor information
-            String mappedVendorName = extractVendorName(data);
-
-            // Extract priority from business service (since priority field doesn't exist in index)
-            String priority = extractPriorityFromBusinessService(data);
-
-            // Extract comments from incident
-            String comments = (String) incident.get("comments");
-
-            // Determine SLA compliance status
-            boolean slaComplianceCurrentStatus = slaRemaining != null && getLongValue(slaRemaining) > 0;
-            boolean slaComplianceOverallTicket = totalSlaRemaining != null && getLongValue(totalSlaRemaining) > 0;
-
-            String definedSlaDurationCurrentStatus = stateSla != null ? stateSla.toString() : "Not Defined";
-            Object definedTotalSla = data.get("definedTotalSla");
-            String definedOverallSlaDuration = definedTotalSla != null ? definedTotalSla.toString() : "Not Defined";
-
-            // Determine if solar system is working based on system functional status
-            boolean isSolarSystemWorking = "FUNCTIONAL".equals(data.get("systemFunctional"));
-
-            EscalationTicket ticket = EscalationTicket.builder()
-                    .id(documentId)  // Use document ID from hit metadata
-                    .incidentId((String) incident.get("incidentId"))
-                    .tenantId((String) data.get("tenantId"))  // tenantId is in Data, not incident
-                    .applicationStatus((String) incident.get("applicationStatus"))
-                    .incidentType((String) incident.get("incidentType"))
-                    .incidentSubType((String) incident.get("incidentSubType"))
-                    .filedDate(createdTime)
-                    .slaBreachTime(slaBreachTime)
-                    .escalationInfo(parseEscalations(data))
-                    .additionalDetails(data)
-                    // Complete field mapping according to enhancement requirements
-                    .ticketNumber((String) incident.get("incidentId"))
-                    .district((String) data.get("district"))  // district is in Data, not incident
-                    .block((String) data.get("block"))        // block is in Data, not incident
-                    .healthFacilityName((String) data.get("tenantId_localized"))  // tenantId_localized is the health facility name
-                    .healthFacilityType((String) incident.get("phcSubType")) // phcSubType is in incident for health facility type
-                    .isSolarSystemWorking(isSolarSystemWorking)
-                    .issueType((String) incident.get("incidentType"))
-                    .issueSubType((String) incident.get("incidentSubType"))
-                    .priority(priority)
-                    .mappedVendor(mappedVendorName)
-                    .currentTicketStatus((String) incident.get("applicationStatus"))
-                    .slaComplianceCurrentStatus(slaComplianceCurrentStatus)
-                    .definedSlaDurationCurrentStatus(definedSlaDurationCurrentStatus)
-                    .slaComplianceOverallTicket(slaComplianceOverallTicket)
-                    .definedOverallSlaDuration(definedOverallSlaDuration)
-                    .comments(comments)
-                    .ticketFiledDate(createdTime)
-                    .build();
-
+            SLAData slaData = extractSLAData(data);
+            TicketBasicInfo basicInfo = extractBasicTicketInfo(incident, data, documentId);
+            SLAComplianceInfo slaCompliance = calculateSLACompliance(slaData);
+            
+            EscalationTicket ticket = buildEscalationTicket(basicInfo, slaData, slaCompliance, data, incident);
+            
             log.debug("Created EscalationTicket: id={}, tenantId={}, incidentId={}, applicationStatus={}, district={}, block={}",
                 ticket.getId(), ticket.getTenantId(), ticket.getIncidentId(),
                 ticket.getApplicationStatus(), ticket.getDistrict(), ticket.getBlock());
@@ -407,6 +336,149 @@ public class ElasticSearchClient {
         } catch (Exception e) {
             log.error("Error converting Elasticsearch source to EscalationTicket", e);
             return null;
+        }
+    }
+
+    private Map<String, Object> extractDataFromSource(Map<String, Object> source) {
+        Map<String, Object> data = (Map<String, Object>) source.get("Data");
+        if (data == null) {
+            log.warn("No Data object found in Elasticsearch source: {}", source.keySet());
+            return null;
+        }
+        log.debug("Data object keys: {}", data.keySet());
+        return data;
+    }
+
+    private Map<String, Object> extractIncidentFromData(Map<String, Object> data) {
+        Map<String, Object> incident = (Map<String, Object>) data.get("incident");
+        if (incident == null) {
+            log.warn("No incident found in Data: {}", data.keySet());
+            return null;
+        }
+        log.debug("Incident object keys: {}", incident.keySet());
+        return incident;
+    }
+
+    private SLAData extractSLAData(Map<String, Object> data) {
+        Object slaRemaining = data.get("slaRemaining");
+        Object totalSlaRemaining = data.get("totalSlaRemaining");
+        Object stateSla = data.get("stateSla");
+        Object definedTotalSla = data.get("definedTotalSla");
+        
+        log.debug("SLA fields - slaRemaining: {}, totalSlaRemaining: {}, stateSla: {}",
+            slaRemaining, totalSlaRemaining, stateSla);
+        
+        return new SLAData(slaRemaining, totalSlaRemaining, stateSla, definedTotalSla);
+    }
+
+    private TicketBasicInfo extractBasicTicketInfo(Map<String, Object> incident, Map<String, Object> data, String documentId) {
+        Map<String, Object> auditDetails = (Map<String, Object>) incident.get("auditDetails");
+        Long createdTime = auditDetails != null ? getLongValue(auditDetails, "createdTime") : null;
+        String mappedVendorName = extractVendorName(data);
+        String priority = extractPriorityFromBusinessService(data);
+        String comments = (String) incident.get("comments");
+        boolean isSolarSystemWorking = "FUNCTIONAL".equals(data.get("systemFunctional"));
+        
+        return new TicketBasicInfo(documentId, incident, data, createdTime, mappedVendorName, priority, comments, isSolarSystemWorking);
+    }
+
+    private SLAComplianceInfo calculateSLACompliance(SLAData slaData) {
+        Long slaBreachTime = null;
+        if (slaData.slaRemaining instanceof Number && ((Number) slaData.slaRemaining).doubleValue() < 0) {
+            slaBreachTime = System.currentTimeMillis();
+        }
+        
+        boolean slaComplianceCurrentStatus = slaData.slaRemaining != null && getLongValue(slaData.slaRemaining) > 0;
+        boolean slaComplianceOverallTicket = slaData.totalSlaRemaining != null && getLongValue(slaData.totalSlaRemaining) > 0;
+        String definedSlaDurationCurrentStatus = slaData.stateSla != null ? slaData.stateSla.toString() : "Not Defined";
+        String definedOverallSlaDuration = slaData.definedTotalSla != null ? slaData.definedTotalSla.toString() : "Not Defined";
+        
+        return new SLAComplianceInfo(slaBreachTime, slaComplianceCurrentStatus, slaComplianceOverallTicket, 
+            definedSlaDurationCurrentStatus, definedOverallSlaDuration);
+    }
+
+    private EscalationTicket buildEscalationTicket(TicketBasicInfo basicInfo, SLAData slaData, 
+                                                   SLAComplianceInfo slaCompliance, 
+                                                   Map<String, Object> data, Map<String, Object> incident) {
+        return EscalationTicket.builder()
+                .id(basicInfo.documentId)
+                .incidentId((String) incident.get("incidentId"))
+                .tenantId((String) data.get("tenantId"))
+                .applicationStatus((String) incident.get("applicationStatus"))
+                .incidentType((String) incident.get("incidentType"))
+                .incidentSubType((String) incident.get("incidentSubType"))
+                .filedDate(basicInfo.createdTime)
+                .slaBreachTime(slaCompliance.slaBreachTime)
+                .escalationInfo(parseEscalations(data))
+                .additionalDetails(data)
+                .ticketNumber((String) incident.get("incidentId"))
+                .district((String) data.get("district"))
+                .block((String) data.get("block"))
+                .healthFacilityName((String) data.get("tenantId_localized"))
+                .healthFacilityType((String) incident.get("phcSubType"))
+                .isSolarSystemWorking(basicInfo.isSolarSystemWorking)
+                .issueType((String) incident.get("incidentType"))
+                .issueSubType((String) incident.get("incidentSubType"))
+                .priority(basicInfo.priority)
+                .mappedVendor(basicInfo.mappedVendorName)
+                .currentTicketStatus((String) incident.get("applicationStatus"))
+                .slaComplianceCurrentStatus(slaCompliance.slaComplianceCurrentStatus)
+                .definedSlaDurationCurrentStatus(slaCompliance.definedSlaDurationCurrentStatus)
+                .slaComplianceOverallTicket(slaCompliance.slaComplianceOverallTicket)
+                .definedOverallSlaDuration(slaCompliance.definedOverallSlaDuration)
+                .comments(basicInfo.comments)
+                .ticketFiledDate(basicInfo.createdTime)
+                .build();
+    }
+
+    private static class SLAData {
+        final Object slaRemaining;
+        final Object totalSlaRemaining;
+        final Object stateSla;
+        final Object definedTotalSla;
+        
+        SLAData(Object slaRemaining, Object totalSlaRemaining, Object stateSla, Object definedTotalSla) {
+            this.slaRemaining = slaRemaining;
+            this.totalSlaRemaining = totalSlaRemaining;
+            this.stateSla = stateSla;
+            this.definedTotalSla = definedTotalSla;
+        }
+    }
+
+    private static class TicketBasicInfo {
+        final String documentId;
+        final Long createdTime;
+        final String mappedVendorName;
+        final String priority;
+        final String comments;
+        final boolean isSolarSystemWorking;
+        
+        TicketBasicInfo(String documentId, Map<String, Object> incident, Map<String, Object> data,
+                       Long createdTime, String mappedVendorName, String priority, String comments,
+                       boolean isSolarSystemWorking) {
+            this.documentId = documentId;
+            this.createdTime = createdTime;
+            this.mappedVendorName = mappedVendorName;
+            this.priority = priority;
+            this.comments = comments;
+            this.isSolarSystemWorking = isSolarSystemWorking;
+        }
+    }
+
+    private static class SLAComplianceInfo {
+        final Long slaBreachTime;
+        final boolean slaComplianceCurrentStatus;
+        final boolean slaComplianceOverallTicket;
+        final String definedSlaDurationCurrentStatus;
+        final String definedOverallSlaDuration;
+        
+        SLAComplianceInfo(Long slaBreachTime, boolean slaComplianceCurrentStatus, boolean slaComplianceOverallTicket,
+                         String definedSlaDurationCurrentStatus, String definedOverallSlaDuration) {
+            this.slaBreachTime = slaBreachTime;
+            this.slaComplianceCurrentStatus = slaComplianceCurrentStatus;
+            this.slaComplianceOverallTicket = slaComplianceOverallTicket;
+            this.definedSlaDurationCurrentStatus = definedSlaDurationCurrentStatus;
+            this.definedOverallSlaDuration = definedOverallSlaDuration;
         }
     }
 

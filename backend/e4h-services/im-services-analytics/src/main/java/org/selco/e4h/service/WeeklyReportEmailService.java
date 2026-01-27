@@ -317,12 +317,28 @@ public class WeeklyReportEmailService {
         log.warn("Using fallback email template due to template loading failure");
         StringBuilder html = new StringBuilder();
         
+        appendFallbackEmailHeader(html, recipientName, reportData);
+        appendFunctionalStatusSection(html, reportData);
+        appendAgeBucketSection(html, reportData);
+        appendFallbackEmailFooter(html);
+        
+        return html.toString();
+    }
+
+    private void appendFallbackEmailHeader(StringBuilder html, String recipientName, WeeklyReportData reportData) {
         html.append("<!DOCTYPE html><html><head><title>Weekly Report</title></head><body>");
         html.append("<h1>Weekly DRE System Report</h1>");
         html.append("<p>Dear ").append(commonUtility.escapeHtml(recipientName)).append(",</p>");
         html.append("<p>Please find below the weekly report for the week of <strong>").append(reportData.getDateRange()).append("</strong>.</p>");
-        
+    }
+
+    private void appendFunctionalStatusSection(StringBuilder html, WeeklyReportData reportData) {
         html.append("<h2>Functional vs Non-Functional Status</h2>");
+        appendWeekStartMetrics(html, reportData);
+        appendWeekEndMetrics(html, reportData);
+    }
+
+    private void appendWeekStartMetrics(StringBuilder html, WeeklyReportData reportData) {
         html.append("<p>Week Start (").append(reportData.getWeekStartDate()).append("):</p>");
         html.append("<ul>");
         if (reportData.getWeekStartMetrics() != null) {
@@ -336,7 +352,9 @@ public class WeeklyReportEmailService {
             html.append("<li>Non-Functional: 0 (0.0%)</li>");
         }
         html.append("</ul>");
-        
+    }
+
+    private void appendWeekEndMetrics(StringBuilder html, WeeklyReportData reportData) {
         html.append("<p>Week End (").append(reportData.getWeekEndDate()).append("):</p>");
         html.append("<ul>");
         if (reportData.getWeekEndMetrics() != null) {
@@ -352,7 +370,9 @@ public class WeeklyReportEmailService {
             html.append("<li>Non-Functional: 0 (0.0%)</li>");
         }
         html.append("</ul>");
-        
+    }
+
+    private void appendAgeBucketSection(StringBuilder html, WeeklyReportData reportData) {
         html.append("<h2>Age Bucket Summary</h2>");
         html.append("<ul>");
         if (reportData.getTotalAgeBuckets() != null) {
@@ -365,10 +385,10 @@ public class WeeklyReportEmailService {
             html.append("<li>&lt; 3 Month: 0</li>");
         }
         html.append("</ul>");
-        
+    }
+
+    private void appendFallbackEmailFooter(StringBuilder html) {
         html.append("<p>This is an automated weekly summary from Saura eMitra.</p>");
         html.append("</body></html>");
-        
-        return html.toString();
     }
 }
