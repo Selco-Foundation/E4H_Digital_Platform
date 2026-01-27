@@ -42,84 +42,99 @@ public class OrganisationEnrichmentService {
         log.trace("OrganisationEnrichmentService::enrichCreateOrgRegistryWithoutWorkFlow entry");
         RequestInfo requestInfo = orgRequest.getRequestInfo();
         List<Organisation> organisationList = orgRequest.getOrganisations();
-        String tenantId = organisationList != null && !organisationList.isEmpty() 
-                ? organisationList.get(0).getTenantId() : "unknown";
+        String tenantId = getTenantId(organisationList);
         log.info("Starting enrichment for organisation creation, tenant: {}, organisation count: {}", 
                 tenantId, organisationList != null ? organisationList.size() : 0);
 
-        //set the audit details
         organisationUtil.setAuditDetailsForOrganisation(requestInfo.getUserInfo().getUuid(), organisationList, Boolean.TRUE);
         log.debug("Audit details set for organisations");
 
-        //idgen to get the list of organisation application Numbers
-        List<String> orgApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgApplicationNumberName()
-                , config.getOrgApplicationNumberFormat(), organisationList.size());
+        GeneratedIds generatedIds = generateAllIds(requestInfo, tenantId, organisationList);
+        
+        enrichOrganisations(organisationList, generatedIds, requestInfo);
+        
+        log.info("Organisation enrichment completed successfully for tenant: {}", tenantId);
+    }
+
+    private String getTenantId(List<Organisation> organisationList) {
+        return organisationList != null && !organisationList.isEmpty() 
+                ? organisationList.get(0).getTenantId() : "unknown";
+    }
+
+    private GeneratedIds generateAllIds(RequestInfo requestInfo, String tenantId, List<Organisation> organisationList) {
+        List<String> orgApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, 
+                config.getOrgApplicationNumberName(), config.getOrgApplicationNumberFormat(), organisationList.size());
         log.debug("Generated {} organisation application numbers", orgApplicationNumbers != null ? orgApplicationNumbers.size() : 0);
 
-        //idgen to get the list of organisation codes
-        List<String> orgCodes = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgCodeName(), config.getOrgCodeFormat(), organisationList.size());
+        List<String> orgCodes = idgenUtil.getIdList(requestInfo, tenantId, 
+                config.getOrgCodeName(), config.getOrgCodeFormat(), organisationList.size());
         log.debug("Generated {} organisation codes", orgCodes != null ? orgCodes.size() : 0);
 
-        //idgen to get the list of function application Numbers
-        long idgenFuncApplicationNumberCount = organisationList.stream().mapToInt(org -> {
+        long idgenFuncApplicationNumberCount = calculateFunctionApplicationNumberCount(organisationList);
+        log.debug("Total function application numbers needed: {}", idgenFuncApplicationNumberCount);
+
+        List<String> orgFunctionApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, 
+                config.getFunctionApplicationNumberName(), config.getFunctionApplicationNumberFormat(), 
+                ((int) idgenFuncApplicationNumberCount));
+        log.debug("Generated {} function application numbers", orgFunctionApplicationNumbers != null ? orgFunctionApplicationNumbers.size() : 0);
+
+        return new GeneratedIds(orgApplicationNumbers, orgCodes, orgFunctionApplicationNumbers);
+    }
+
+    private long calculateFunctionApplicationNumberCount(List<Organisation> organisationList) {
+        return organisationList.stream().mapToInt(org -> {
             if (!CollectionUtils.isEmpty(org.getFunctions())) {
                 return org.getFunctions().size();
             }
             return 0;
         }).sum();
-        log.debug("Total function application numbers needed: {}", idgenFuncApplicationNumberCount);
+    }
 
-        List<String> orgFunctionApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getFunctionApplicationNumberName()
-                , config.getFunctionApplicationNumberFormat(), ((int) idgenFuncApplicationNumberCount));
-        log.debug("Generated {} function application numbers", orgFunctionApplicationNumbers != null ? orgFunctionApplicationNumbers.size() : 0);
-
+    private void enrichOrganisations(List<Organisation> organisationList, GeneratedIds generatedIds, RequestInfo requestInfo) {
         int orgAppNumIdFormatIndex = 0;
         int funcAppNumIdFormatIndex = 0;
         int orgCodeIdFormatIndex = 0;
+        
         for (Organisation organisation : organisationList) {
-            organisation.setId(UUID.randomUUID().toString());
-            organisation.setApplicationNumber(orgApplicationNumbers.get(orgAppNumIdFormatIndex));
-            organisation.setCode(orgCodes.get(orgCodeIdFormatIndex));
-            if (organisation.getIsActive() == null) {
-                organisation.setIsActive(Boolean.TRUE);
-            }
-
-            /**
-             * TODO : As of we are generating the org number from idgen and setting it to each organisation object
-             * but this will be part of update org registry
-             * and "idgen formatted number will be set once workflow is 'APPROVED' ".
-             */
-//            organisation.setOrgNumber(orgNumbers.get(orgAppNumIdFormatIndex));
-
-            List<Address> orgAddressList = organisation.getOrgAddress();
-            List<ContactDetails> contactDetailsList = organisation.getContactDetails();
-            List<Document> documentList = organisation.getDocuments();
-            List<Identifier> identifierList = organisation.getIdentifiers();
-            List<Function> functionList = organisation.getFunctions();
-            List<Jurisdiction> jurisdictionList = organisation.getJurisdiction();
-
-            //org address
-            enrichOrgAddress(orgAddressList);
-
-            //contact detail
-            enrichContactDetails(contactDetailsList);
-
-            //org document
-            enrichOrgDocument(documentList);
-
-            //org tax identifier
-            enrichTaxIdentifier(identifierList);
-
-            //set id, audit details, application number for function
-            enrichFunction(requestInfo, functionList, orgFunctionApplicationNumbers, funcAppNumIdFormatIndex);
-
-            //jurisdiction
-            enrichJurisdiction(jurisdictionList);
-
+            enrichOrganisationBasicFields(organisation, generatedIds, orgAppNumIdFormatIndex, orgCodeIdFormatIndex);
+            funcAppNumIdFormatIndex = enrichOrganisationRelatedEntities(organisation, requestInfo, generatedIds, funcAppNumIdFormatIndex);
+            
             orgAppNumIdFormatIndex++;
             orgCodeIdFormatIndex++;
         }
-        log.info("Organisation enrichment completed successfully for tenant: {}", tenantId);
+    }
+
+    private void enrichOrganisationBasicFields(Organisation organisation, GeneratedIds generatedIds, 
+                                               int orgAppNumIndex, int orgCodeIndex) {
+        organisation.setId(UUID.randomUUID().toString());
+        organisation.setApplicationNumber(generatedIds.orgApplicationNumbers.get(orgAppNumIndex));
+        organisation.setCode(generatedIds.orgCodes.get(orgCodeIndex));
+        if (organisation.getIsActive() == null) {
+            organisation.setIsActive(Boolean.TRUE);
+        }
+    }
+
+    private int enrichOrganisationRelatedEntities(Organisation organisation, RequestInfo requestInfo, 
+                                                   GeneratedIds generatedIds, int funcAppNumIndex) {
+        enrichOrgAddress(organisation.getOrgAddress());
+        enrichContactDetails(organisation.getContactDetails());
+        enrichOrgDocument(organisation.getDocuments());
+        enrichTaxIdentifier(organisation.getIdentifiers());
+        int updatedIndex = enrichFunction(requestInfo, organisation.getFunctions(), generatedIds.orgFunctionApplicationNumbers, funcAppNumIndex);
+        enrichJurisdiction(organisation.getJurisdiction());
+        return updatedIndex;
+    }
+
+    private static class GeneratedIds {
+        final List<String> orgApplicationNumbers;
+        final List<String> orgCodes;
+        final List<String> orgFunctionApplicationNumbers;
+
+        GeneratedIds(List<String> orgApplicationNumbers, List<String> orgCodes, List<String> orgFunctionApplicationNumbers) {
+            this.orgApplicationNumbers = orgApplicationNumbers;
+            this.orgCodes = orgCodes;
+            this.orgFunctionApplicationNumbers = orgFunctionApplicationNumbers;
+        }
     }
 
     private void enrichJurisdiction(List<Jurisdiction> jurisdictionList) {
@@ -130,7 +145,7 @@ public class OrganisationEnrichmentService {
         }
     }
 
-    private void enrichFunction(RequestInfo requestInfo,List<Function> functionList, List<String> orgFunctionApplicationNumbers, int funcAppNumIdFormatIndex) {
+    private int enrichFunction(RequestInfo requestInfo,List<Function> functionList, List<String> orgFunctionApplicationNumbers, int funcAppNumIdFormatIndex) {
         if (!CollectionUtils.isEmpty(functionList)) {
 
             organisationUtil.setAuditDetailsForFunction(requestInfo.getUserInfo().getUuid(), functionList, Boolean.TRUE);
@@ -148,6 +163,7 @@ public class OrganisationEnrichmentService {
 
             }
         }
+        return funcAppNumIdFormatIndex;
     }
 
     private void enrichDocuments(List<Document> documents) {

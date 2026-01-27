@@ -62,52 +62,73 @@ public class OrganisationRepository {
 
     public List<Organisation> getOrganisations(OrgSearchRequest orgSearchRequest) {
         log.trace("OrganisationRepository::getOrganisations entry");
-        String tenantId = orgSearchRequest.getSearchCriteria() != null 
-                ? orgSearchRequest.getSearchCriteria().getTenantId() : "unknown";
+        String tenantId = getTenantId(orgSearchRequest);
         log.info("Starting organisation search for tenant: {}", tenantId);
         
-        // Encrypt search criteria
         encryptionService.encryptDetails(orgSearchRequest, ORGANISATION_ENCRYPT_KEY);
         log.debug("Search criteria encrypted");
         
-        //Fetch organisation ids based on identifierType and identifierValue search criteria
-        Set<String> orgIdsFromIdentifierSearch = getOrgIdsForIdentifiersBasedOnSearchCriteria(orgSearchRequest);
-        log.debug("Found {} organisation IDs from identifier search", orgIdsFromIdentifierSearch.size());
-        
-        //Fetch organisation ids based on boundaryCode in  search criteria
-        Set<String> orgIdsFromBoundarySearch = getOrgIdsForAddressesBasedOnSearchCriteria(orgSearchRequest);
-        log.debug("Found {} organisation IDs from boundary search", orgIdsFromBoundarySearch.size());
-        
-        //Fetch organisation ids based on contactMobileNumber in  search criteria
-        Set<String> orgIdsFromContactMobileNumberSearch = getOrgIdsForContactNumberBasedOnSearchCriteria(orgSearchRequest);
-        log.debug("Found {} organisation IDs from contact mobile number search", orgIdsFromContactMobileNumberSearch.size());
-
-        Set<String> orgIds = new HashSet<>();
-        getOrgIdsForSearch(orgSearchRequest, orgIdsFromIdentifierSearch, orgIdsFromBoundarySearch, orgIdsFromContactMobileNumberSearch, orgIds);
+        Set<String> orgIds = collectOrgIdsFromSearchCriteria(orgSearchRequest);
         log.debug("Total unique organisation IDs after combining search results: {}", orgIds.size());
 
-        // If OrgIds are empty and request is present in search criteria
-        if (orgIds.isEmpty() &&
-                (StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierType())
-                || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue())
-                || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode())
-                || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getContactMobileNumber())
-                || !orgSearchRequest.getSearchCriteria().getId().isEmpty())) {
+        if (shouldReturnEmptyList(orgSearchRequest, orgIds)) {
             log.debug("No organisation IDs found matching search criteria");
             return Collections.emptyList();
         }
 
-        //Fetch Organisations based on search criteria
         List<Organisation> organisations = getOrganisationsBasedOnSearchCriteria(orgSearchRequest, orgIds);
         log.debug("Fetched {} organisations from database", organisations.size());
 
-        Set<String> organisationIds = organisations.stream().map(Organisation :: getId).collect(Collectors.toSet());
+        OrganisationRelatedData relatedData = fetchRelatedData(organisations);
+        
+        log.info("Organisation search completed, returning {} organisations", organisations.size());
+        return encryptionService.decrypt(
+                buildOrganisationSearchResult(organisations, relatedData.addresses, relatedData.contactDetails,
+                        relatedData.documents, relatedData.jurisdictions, relatedData.identifiers),
+                ORGANISATION_ENCRYPT_KEY, orgSearchRequest);
+    }
 
-        //Fetch addresses based on organisation Ids
+    private String getTenantId(OrgSearchRequest orgSearchRequest) {
+        return orgSearchRequest.getSearchCriteria() != null 
+                ? orgSearchRequest.getSearchCriteria().getTenantId() : "unknown";
+    }
+
+    private Set<String> collectOrgIdsFromSearchCriteria(OrgSearchRequest orgSearchRequest) {
+        Set<String> orgIdsFromIdentifierSearch = getOrgIdsForIdentifiersBasedOnSearchCriteria(orgSearchRequest);
+        log.debug("Found {} organisation IDs from identifier search", orgIdsFromIdentifierSearch.size());
+        
+        Set<String> orgIdsFromBoundarySearch = getOrgIdsForAddressesBasedOnSearchCriteria(orgSearchRequest);
+        log.debug("Found {} organisation IDs from boundary search", orgIdsFromBoundarySearch.size());
+        
+        Set<String> orgIdsFromContactMobileNumberSearch = getOrgIdsForContactNumberBasedOnSearchCriteria(orgSearchRequest);
+        log.debug("Found {} organisation IDs from contact mobile number search", orgIdsFromContactMobileNumberSearch.size());
+
+        Set<String> orgIds = new HashSet<>();
+        getOrgIdsForSearch(orgSearchRequest, orgIdsFromIdentifierSearch, orgIdsFromBoundarySearch, 
+                orgIdsFromContactMobileNumberSearch, orgIds);
+        return orgIds;
+    }
+
+    private boolean shouldReturnEmptyList(OrgSearchRequest orgSearchRequest, Set<String> orgIds) {
+        if (orgIds.isEmpty()) {
+            OrgSearchCriteria criteria = orgSearchRequest.getSearchCriteria();
+            return StringUtils.isNotBlank(criteria.getIdentifierType())
+                    || StringUtils.isNotBlank(criteria.getIdentifierValue())
+                    || StringUtils.isNotBlank(criteria.getBoundaryCode())
+                    || StringUtils.isNotBlank(criteria.getContactMobileNumber())
+                    || !criteria.getId().isEmpty();
+        }
+        return false;
+    }
+
+    private OrganisationRelatedData fetchRelatedData(List<Organisation> organisations) {
+        Set<String> organisationIds = organisations.stream()
+                .map(Organisation::getId)
+                .collect(Collectors.toSet());
+
         List<Address> addresses = getAddressBasedOnOrganisationIds(organisationIds);
         log.debug("Fetched {} addresses", addresses.size());
 
-        //Fetch contactDetails based on organisation Ids
         List<ContactDetails> contactDetails = getContactDetailsBasedOnOrganisationIds(organisationIds);
         log.debug("Fetched {} contact details", contactDetails.size());
 
@@ -115,23 +136,35 @@ public class OrganisationRepository {
                 .flatMap(org -> org.getFunctions().stream())
                 .map(Function::getId)
                 .collect(Collectors.toSet());
-        //Fetch documents based on organisation Ids
+        
         List<Document> documents = getDocumentsBasedOnOrganisationIds(organisationIds, functionIds);
         log.debug("Fetched {} documents", documents.size());
 
-        //Fetch jurisdictions based on organisation Ids
         List<Jurisdiction> jurisdictions = getJurisdictionsBasedOnOrganisationIds(organisationIds);
         log.debug("Fetched {} jurisdictions", jurisdictions.size());
 
-        //Fetch identifiers based on organisation Ids
         List<Identifier> identifiers = getIdentifiersBasedOnOrganisationIds(organisationIds);
         log.debug("Fetched {} identifiers", identifiers.size());
 
-        log.info("Organisation search completed, returning {} organisations", organisations.size());
-        //Construct Organisation Objects with fetched organisations, addresses, contactDetails, jurisdictions, identifiers and documents using Organisation id
-        return encryptionService
-                .decrypt(buildOrganisationSearchResult(organisations, addresses, contactDetails, documents, jurisdictions, identifiers),
-                        ORGANISATION_ENCRYPT_KEY,orgSearchRequest);
+        return new OrganisationRelatedData(addresses, contactDetails, documents, jurisdictions, identifiers);
+    }
+
+    private static class OrganisationRelatedData {
+        final List<Address> addresses;
+        final List<ContactDetails> contactDetails;
+        final List<Document> documents;
+        final List<Jurisdiction> jurisdictions;
+        final List<Identifier> identifiers;
+
+        OrganisationRelatedData(List<Address> addresses, List<ContactDetails> contactDetails,
+                                List<Document> documents, List<Jurisdiction> jurisdictions,
+                                List<Identifier> identifiers) {
+            this.addresses = addresses;
+            this.contactDetails = contactDetails;
+            this.documents = documents;
+            this.jurisdictions = jurisdictions;
+            this.identifiers = identifiers;
+        }
     }
 
     private Set<String> getOrgIdsForContactNumberBasedOnSearchCriteria(OrgSearchRequest orgSearchRequest) {
@@ -181,63 +214,129 @@ public class OrganisationRepository {
 
     /* Get OrgIds for search result from contact details, identifier and boundaryCode search results and orgIds in request */
     private void getOrgIdsForSearch(OrgSearchRequest orgSearchRequest, Set<String> orgIdsFromIdentifierSearch,Set<String> orgIdsFromBoundarySearch,Set<String> orgIdsFromContactMobileNumberSearch, Set<String> orgIds) {
-        boolean isIdentifierSearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierType())
-                || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue());
-        boolean isBoundarySearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode());
-        boolean isOrgIdsSearchCriteriaPresent = orgSearchRequest.getSearchCriteria().getId() != null && !orgSearchRequest.getSearchCriteria().getId().isEmpty();
-        boolean isContactMobileNumberSearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getContactMobileNumber());
+        SearchCriteriaFlags flags = determineSearchCriteriaFlags(orgSearchRequest);
+        ensureOrgIdsListInitialized(orgSearchRequest);
+        
+        if (shouldReturnEarly(flags, orgIdsFromIdentifierSearch, orgIdsFromBoundarySearch, orgIdsFromContactMobileNumberSearch)) {
+            return;
+        }
+        
+        combineOrgIds(orgSearchRequest, flags, orgIdsFromIdentifierSearch, orgIdsFromBoundarySearch, 
+                orgIdsFromContactMobileNumberSearch, orgIds);
+    }
+
+    private SearchCriteriaFlags determineSearchCriteriaFlags(OrgSearchRequest orgSearchRequest) {
+        OrgSearchCriteria criteria = orgSearchRequest.getSearchCriteria();
+        return new SearchCriteriaFlags(
+                StringUtils.isNotBlank(criteria.getIdentifierType()) || StringUtils.isNotBlank(criteria.getIdentifierValue()),
+                StringUtils.isNotBlank(criteria.getBoundaryCode()),
+                criteria.getId() != null && !criteria.getId().isEmpty(),
+                StringUtils.isNotBlank(criteria.getContactMobileNumber())
+        );
+    }
+
+    private void ensureOrgIdsListInitialized(OrgSearchRequest orgSearchRequest) {
         if (orgSearchRequest.getSearchCriteria().getId() == null) {
             orgSearchRequest.getSearchCriteria().setId(new ArrayList<>());
         }
+    }
 
-        // If identifierType or identifierValue present in request, but the search result is empty, then return empty list
-        if (orgIdsFromIdentifierSearch.isEmpty() && isIdentifierSearchCriteriaPresent) {
-            return;
+    private boolean shouldReturnEarly(SearchCriteriaFlags flags, Set<String> orgIdsFromIdentifierSearch,
+                                     Set<String> orgIdsFromBoundarySearch, Set<String> orgIdsFromContactMobileNumberSearch) {
+        if (orgIdsFromIdentifierSearch.isEmpty() && flags.isIdentifierSearchCriteriaPresent()) {
+            return true;
         }
-        // If contactMobileNumber present in request, but the search result is empty, then return empty list
-        if (orgIdsFromContactMobileNumberSearch.isEmpty() && isContactMobileNumberSearchCriteriaPresent) {
-            return;
+        if (orgIdsFromContactMobileNumberSearch.isEmpty() && flags.isContactMobileNumberSearchCriteriaPresent()) {
+            return true;
         }
-        // If boundaryCode present in request, but the search result is empty, then return empty list
-        if (orgIdsFromBoundarySearch.isEmpty() && isBoundarySearchCriteriaPresent) {
-            return;
+        if (orgIdsFromBoundarySearch.isEmpty() && flags.isBoundarySearchCriteriaPresent()) {
+            return true;
         }
+        return false;
+    }
 
-        // Get common orgIds from contact mobile number search, identifier search result, boundaryCode search result and orgIds in request
-        if (isContactMobileNumberSearchCriteriaPresent) {
-            orgIds.addAll(orgIdsFromContactMobileNumberSearch);
-            if (isIdentifierSearchCriteriaPresent) {
-                //Get common orgIds of contactDetails search result and identifiers search result
-                orgIds.retainAll(orgIdsFromIdentifierSearch);
-            }
-            if (isBoundarySearchCriteriaPresent) {
-                //Get common orgIds of identifier search result and boundary search result
-                orgIds.retainAll(orgIdsFromBoundarySearch);
-            }
-            //Get common orgIds of identifier search result and orgIds in search request
-            if (isOrgIdsSearchCriteriaPresent) {
-                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
-            }
-        } else if (isIdentifierSearchCriteriaPresent) {
-            orgIds.addAll(orgIdsFromIdentifierSearch);
-            if (isBoundarySearchCriteriaPresent) {
-                //Get common orgIds of identifier search result and boundary search result
-                orgIds.retainAll(orgIdsFromBoundarySearch);
-            }
-            //Get common orgIds of identifier search result and orgIds in search request
-            if (isOrgIdsSearchCriteriaPresent) {
-                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
-            }
-        } else if (isBoundarySearchCriteriaPresent) {
-            orgIds.addAll(orgIdsFromBoundarySearch);
-            //Get common orgIds of boundary search result and orgIds in search request
-            if (isOrgIdsSearchCriteriaPresent) {
-                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
-            }
+    private void combineOrgIds(OrgSearchRequest orgSearchRequest, SearchCriteriaFlags flags,
+                               Set<String> orgIdsFromIdentifierSearch, Set<String> orgIdsFromBoundarySearch,
+                               Set<String> orgIdsFromContactMobileNumberSearch, Set<String> orgIds) {
+        if (flags.isContactMobileNumberSearchCriteriaPresent()) {
+            combineOrgIdsWithContactMobileNumber(orgSearchRequest, flags, orgIdsFromIdentifierSearch,
+                    orgIdsFromBoundarySearch, orgIdsFromContactMobileNumberSearch, orgIds);
+        } else if (flags.isIdentifierSearchCriteriaPresent()) {
+            combineOrgIdsWithIdentifier(orgSearchRequest, flags, orgIdsFromIdentifierSearch,
+                    orgIdsFromBoundarySearch, orgIds);
+        } else if (flags.isBoundarySearchCriteriaPresent()) {
+            combineOrgIdsWithBoundary(orgSearchRequest, flags, orgIdsFromBoundarySearch, orgIds);
         } else {
             orgIds.addAll(orgSearchRequest.getSearchCriteria().getId());
         }
+    }
 
+    private void combineOrgIdsWithContactMobileNumber(OrgSearchRequest orgSearchRequest, SearchCriteriaFlags flags,
+                                                      Set<String> orgIdsFromIdentifierSearch,
+                                                      Set<String> orgIdsFromBoundarySearch,
+                                                      Set<String> orgIdsFromContactMobileNumberSearch,
+                                                      Set<String> orgIds) {
+        orgIds.addAll(orgIdsFromContactMobileNumberSearch);
+        if (flags.isIdentifierSearchCriteriaPresent()) {
+            orgIds.retainAll(orgIdsFromIdentifierSearch);
+        }
+        if (flags.isBoundarySearchCriteriaPresent()) {
+            orgIds.retainAll(orgIdsFromBoundarySearch);
+        }
+        if (flags.isOrgIdsSearchCriteriaPresent()) {
+            orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
+        }
+    }
+
+    private void combineOrgIdsWithIdentifier(OrgSearchRequest orgSearchRequest, SearchCriteriaFlags flags,
+                                            Set<String> orgIdsFromIdentifierSearch,
+                                            Set<String> orgIdsFromBoundarySearch, Set<String> orgIds) {
+        orgIds.addAll(orgIdsFromIdentifierSearch);
+        if (flags.isBoundarySearchCriteriaPresent()) {
+            orgIds.retainAll(orgIdsFromBoundarySearch);
+        }
+        if (flags.isOrgIdsSearchCriteriaPresent()) {
+            orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
+        }
+    }
+
+    private void combineOrgIdsWithBoundary(OrgSearchRequest orgSearchRequest, SearchCriteriaFlags flags,
+                                          Set<String> orgIdsFromBoundarySearch, Set<String> orgIds) {
+        orgIds.addAll(orgIdsFromBoundarySearch);
+        if (flags.isOrgIdsSearchCriteriaPresent()) {
+            orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
+        }
+    }
+
+    private static class SearchCriteriaFlags {
+        private final boolean identifierSearchCriteriaPresent;
+        private final boolean boundarySearchCriteriaPresent;
+        private final boolean orgIdsSearchCriteriaPresent;
+        private final boolean contactMobileNumberSearchCriteriaPresent;
+
+        public SearchCriteriaFlags(boolean identifierSearchCriteriaPresent, boolean boundarySearchCriteriaPresent,
+                                  boolean orgIdsSearchCriteriaPresent, boolean contactMobileNumberSearchCriteriaPresent) {
+            this.identifierSearchCriteriaPresent = identifierSearchCriteriaPresent;
+            this.boundarySearchCriteriaPresent = boundarySearchCriteriaPresent;
+            this.orgIdsSearchCriteriaPresent = orgIdsSearchCriteriaPresent;
+            this.contactMobileNumberSearchCriteriaPresent = contactMobileNumberSearchCriteriaPresent;
+        }
+
+        public boolean isIdentifierSearchCriteriaPresent() {
+            return identifierSearchCriteriaPresent;
+        }
+
+        public boolean isBoundarySearchCriteriaPresent() {
+            return boundarySearchCriteriaPresent;
+        }
+
+        public boolean isOrgIdsSearchCriteriaPresent() {
+            return orgIdsSearchCriteriaPresent;
+        }
+
+        public boolean isContactMobileNumberSearchCriteriaPresent() {
+            return contactMobileNumberSearchCriteriaPresent;
+        }
     }
 
     /* Get addresses list based on organisation Ids */

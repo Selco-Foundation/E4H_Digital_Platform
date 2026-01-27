@@ -62,48 +62,86 @@ public class OrganisationFunctionQueryBuilder {
         StringBuilder queryBuilder = new StringBuilder(query);
         OrgSearchCriteria searchCriteria = orgSearchRequest.getSearchCriteria();
 
+        addOrgIdCondition(orgIds, preparedStmtList, queryBuilder);
+        addOrganisationConditions(searchCriteria, preparedStmtList, queryBuilder);
+        addFunctionConditions(searchCriteria, preparedStmtList, queryBuilder);
+
+        if (Boolean.TRUE.equals(isCountQuery)) {
+            return queryBuilder.toString();
+        }
+
+        addOrderByClause(queryBuilder, orgSearchRequest.getPagination());
+        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, orgSearchRequest.getPagination());
+    }
+
+    private void addOrgIdCondition(Set<String> orgIds, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (orgIds != null && !orgIds.isEmpty()) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.id IN (").append(createQuery(orgIds)).append(")");
             addToPreparedStatement(preparedStmtList, orgIds);
         }
+    }
 
+    private void addOrganisationConditions(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        addTenantIdCondition(searchCriteria, preparedStmtList, queryBuilder);
+        addNameCondition(searchCriteria, preparedStmtList, queryBuilder);
+        addCodeCondition(searchCriteria, preparedStmtList, queryBuilder);
+        addApplicationNumberCondition(searchCriteria, preparedStmtList, queryBuilder);
+        addOrgNumberCondition(searchCriteria, preparedStmtList, queryBuilder);
+        addApplicationStatusCondition(searchCriteria, preparedStmtList, queryBuilder);
+        addCreatedTimeConditions(searchCriteria, preparedStmtList, queryBuilder);
+        addIsActiveCondition(searchCriteria, preparedStmtList, queryBuilder);
+    }
+
+    private void addTenantIdCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(searchCriteria.getTenantId()) && searchCriteria.getTenantId().contains(config.getStateLevelTenantId()+".")) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.tenant_id=? ");
             preparedStmtList.add(searchCriteria.getTenantId());
         }
+    }
 
+    private void addNameCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(searchCriteria.getName())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.name LIKE ? ");
             preparedStmtList.add('%' + searchCriteria.getName() + '%');
         }
+    }
 
+    private void addCodeCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(searchCriteria.getCode())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.code LIKE ? ");
             preparedStmtList.add('%' + searchCriteria.getCode() + '%');
         }
+    }
 
+    private void addApplicationNumberCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(searchCriteria.getApplicationNumber())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.application_number=? ");
             preparedStmtList.add(searchCriteria.getApplicationNumber());
         }
+    }
 
+    private void addOrgNumberCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(searchCriteria.getOrgNumber())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.org_number=? ");
             preparedStmtList.add(searchCriteria.getOrgNumber());
         }
+    }
 
+    private void addApplicationStatusCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (StringUtils.isNotBlank(searchCriteria.getApplicationStatus())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.application_status=? ");
             preparedStmtList.add(searchCriteria.getApplicationStatus());
         }
+    }
 
+    private void addCreatedTimeConditions(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (searchCriteria.getCreatedFrom() != null && searchCriteria.getCreatedFrom() != 0) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.created_time >= ? ");
@@ -115,75 +153,95 @@ public class OrganisationFunctionQueryBuilder {
             queryBuilder.append(" org.created_time <= ? ");
             preparedStmtList.add(searchCriteria.getCreatedTo());
         }
+    }
 
-
+    private void addIsActiveCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (searchCriteria.getIncludeDeleted() == null || !searchCriteria.getIncludeDeleted()) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" org.is_active=true ");
         }
+    }
 
+    private void addFunctionConditions(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
         if (searchCriteria.getFunctions() != null) {
+            addFunctionTypeCondition(searchCriteria, preparedStmtList, queryBuilder);
+            addFunctionSubTypeCondition(searchCriteria, preparedStmtList, queryBuilder);
+            addFunctionCategoryCondition(searchCriteria, preparedStmtList, queryBuilder);
+            addFunctionPropertyClassCondition(searchCriteria, preparedStmtList, queryBuilder);
+            addFunctionValidFromCondition(searchCriteria, preparedStmtList, queryBuilder);
+            addFunctionValidToCondition(searchCriteria, preparedStmtList, queryBuilder);
+            addFunctionWfStatusCondition(searchCriteria, preparedStmtList, queryBuilder);
+            addFunctionIsActiveCondition(searchCriteria, preparedStmtList, queryBuilder);
+        }
+    }
 
+    private void addFunctionTypeCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (StringUtils.isNotBlank(searchCriteria.getFunctions().getType())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
             // This search matches with only organisation type which is the first part of the '.' separated value as well as
             // exact value in database. i.e. OrgType along with organisation subtype which is '.' separated value
-            if (StringUtils.isNotBlank(searchCriteria.getFunctions().getType())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                //This query checks first part of the type field in db
-                queryBuilder.append("( LEFT(orgFunction.type, POSITION('.' in orgFunction.type)-1) = ? ");
-                //If the type doesn't have '.' i.e. the organisation doesn't have subtype
-                queryBuilder.append(" OR orgFunction.type = ?  )");
-                preparedStmtList.add(searchCriteria.getFunctions().getType());
-                preparedStmtList.add(searchCriteria.getFunctions().getType());
-            }
-
-            if (StringUtils.isNotBlank(searchCriteria.getFunctions().getSubType())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" orgFunction.subtype=? ");
-                preparedStmtList.add(searchCriteria.getFunctions().getSubType());
-            }
-
-            if (StringUtils.isNotBlank(searchCriteria.getFunctions().getCategory())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" orgFunction.category=? ");
-                preparedStmtList.add(searchCriteria.getFunctions().getCategory());
-            }
-
-            if (StringUtils.isNotBlank(searchCriteria.getFunctions().getPropertyClass())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" orgFunction.class=? ");
-                preparedStmtList.add(searchCriteria.getFunctions().getPropertyClass());
-            }
-
-            if (searchCriteria.getFunctions().getValidFrom() != null && BigDecimal.ZERO.compareTo(searchCriteria.getFunctions().getValidFrom()) != 0) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" orgFunction.valid_from >= ? ");
-                preparedStmtList.add(searchCriteria.getFunctions().getValidFrom());
-            }
-
-            if (searchCriteria.getFunctions().getValidTo() != null && BigDecimal.ZERO.compareTo(searchCriteria.getFunctions().getValidTo()) != 0) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" orgFunction.valid_to <= ? ");
-                preparedStmtList.add(searchCriteria.getFunctions().getValidTo());
-            }
-
-            if (StringUtils.isNotBlank(searchCriteria.getFunctions().getWfStatus())) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" orgFunction.wf_status=? ");
-                preparedStmtList.add(searchCriteria.getFunctions().getWfStatus());
-            }
-
-            if (searchCriteria.getIncludeDeleted() == null || !searchCriteria.getIncludeDeleted()) {
-                addClauseIfRequired(preparedStmtList, queryBuilder);
-                queryBuilder.append(" orgFunction.is_active=true ");
-            }
+            // This query checks first part of the type field in db
+            queryBuilder.append("( LEFT(orgFunction.type, POSITION('.' in orgFunction.type)-1) = ? ");
+            // If the type doesn't have '.' i.e. the organisation doesn't have subtype
+            queryBuilder.append(" OR orgFunction.type = ?  )");
+            preparedStmtList.add(searchCriteria.getFunctions().getType());
+            preparedStmtList.add(searchCriteria.getFunctions().getType());
         }
+    }
 
-        if (Boolean.TRUE.equals(isCountQuery)) {
-            return queryBuilder.toString();
+    private void addFunctionSubTypeCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (StringUtils.isNotBlank(searchCriteria.getFunctions().getSubType())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" orgFunction.subtype=? ");
+            preparedStmtList.add(searchCriteria.getFunctions().getSubType());
         }
+    }
 
-        addOrderByClause(queryBuilder, orgSearchRequest.getPagination());
-        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, orgSearchRequest.getPagination());
+    private void addFunctionCategoryCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (StringUtils.isNotBlank(searchCriteria.getFunctions().getCategory())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" orgFunction.category=? ");
+            preparedStmtList.add(searchCriteria.getFunctions().getCategory());
+        }
+    }
+
+    private void addFunctionPropertyClassCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (StringUtils.isNotBlank(searchCriteria.getFunctions().getPropertyClass())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" orgFunction.class=? ");
+            preparedStmtList.add(searchCriteria.getFunctions().getPropertyClass());
+        }
+    }
+
+    private void addFunctionValidFromCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (searchCriteria.getFunctions().getValidFrom() != null && BigDecimal.ZERO.compareTo(searchCriteria.getFunctions().getValidFrom()) != 0) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" orgFunction.valid_from >= ? ");
+            preparedStmtList.add(searchCriteria.getFunctions().getValidFrom());
+        }
+    }
+
+    private void addFunctionValidToCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (searchCriteria.getFunctions().getValidTo() != null && BigDecimal.ZERO.compareTo(searchCriteria.getFunctions().getValidTo()) != 0) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" orgFunction.valid_to <= ? ");
+            preparedStmtList.add(searchCriteria.getFunctions().getValidTo());
+        }
+    }
+
+    private void addFunctionWfStatusCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (StringUtils.isNotBlank(searchCriteria.getFunctions().getWfStatus())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" orgFunction.wf_status=? ");
+            preparedStmtList.add(searchCriteria.getFunctions().getWfStatus());
+        }
+    }
+
+    private void addFunctionIsActiveCondition(OrgSearchCriteria searchCriteria, List<Object> preparedStmtList, StringBuilder queryBuilder) {
+        if (searchCriteria.getIncludeDeleted() == null || !searchCriteria.getIncludeDeleted()) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" orgFunction.is_active=true ");
+        }
     }
 
     private static void addClauseIfRequired(List<Object> values, StringBuilder queryString) {

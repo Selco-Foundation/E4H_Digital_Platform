@@ -142,62 +142,103 @@ public class IndividualService {
         String stateLevelTenantId = multiStateInstanceUtil.getStateLevelTenant(organisationList.get(0).getTenantId());
         Role role = getOrgAdminRole();
 
-        OrgSearchCriteria orgSearchCriteria = OrgSearchCriteria.builder()
-                .id(new ArrayList<>()).tenantId(tenantId).build();
-
-        for(Organisation organisation : organisationList) {
-            orgSearchCriteria.getId().add(organisation.getId());
-        }
-        OrgSearchRequest orgSearch = OrgSearchRequest.builder().requestInfo(requestInfo)
-                .searchCriteria(orgSearchCriteria).build();
-        List<Organisation> organisationListFromDB = organisationRepository.getOrganisations(orgSearch);
+        List<Organisation> organisationListFromDB = fetchOrganisationsFromDB(request, tenantId, requestInfo);
 
         for(int i = 0; i < organisationList.size(); i++) {
             Organisation organisation = organisationList.get(i);
             Organisation organisationFromDB = organisationListFromDB.get(i);
-
-            // Member mobiles copied from request
-            Set<String> requestMembersMobiles = organisation.getContactDetails().stream().map(ContactDetails::getContactMobileNumber).collect(Collectors.toSet());
-            // Member mobiles copied from organisation object from db
-            Set<String> dbMembersMobiles = organisationFromDB.getContactDetails().stream().map(ContactDetails::getContactMobileNumber).collect(Collectors.toSet());
-
-            Set<String> toBeAddedMembersMobile = new HashSet<>(requestMembersMobiles);
-            toBeAddedMembersMobile.removeAll(dbMembersMobiles);
-
-            Set<String> toBeRemovedMembersMobile = new HashSet<>(dbMembersMobiles);
-            toBeRemovedMembersMobile.removeAll(requestMembersMobiles);
-
-            // Plainly update the individuals which are not new to the org
-            Set<ContactDetails> toBeUpdatedExistingMembers = organisation.getContactDetails().stream().filter(contactDetails -> dbMembersMobiles.contains(contactDetails.getContactMobileNumber())).collect(Collectors.toSet());
-            for(ContactDetails contactDetails : toBeUpdatedExistingMembers) {
-                updateContactDetails(contactDetails, stateLevelTenantId, requestInfo, role);
-            }
-
-            Set<ContactDetails> newMembers = organisation.getContactDetails().stream().filter(contactDetails -> toBeAddedMembersMobile.contains(contactDetails.getContactMobileNumber())).collect(Collectors.toSet());
-            for(ContactDetails contactDetails : newMembers) {
-                addContactAsOrgMember(contactDetails, stateLevelTenantId, requestInfo, role);
-            }
-
-            Set<ContactDetails> toBeRemovedMembers = organisationFromDB.getContactDetails().stream().filter(contactDetails -> toBeRemovedMembersMobile.contains(contactDetails.getContactMobileNumber())).collect(Collectors.toSet());
-            for(ContactDetails contactDetails : toBeRemovedMembers) {
-                updateContactDetails(contactDetails, stateLevelTenantId, requestInfo, getCitizenRole());
-            }
-
-            if(!newMembers.isEmpty() && !toBeRemovedMembers.isEmpty()) {
-                OrgContactUpdateDiff orgContactUpdateDiff = new OrgContactUpdateDiff();
-                orgContactUpdateDiff.setRequestInfo(requestInfo);
-                orgContactUpdateDiff.setTenantId(tenantId);
-                orgContactUpdateDiff.setOrganisationId(organisation.getId());
-                orgContactUpdateDiff.setOldContacts(toBeRemovedMembers);
-                orgContactUpdateDiff.setNewContacts(newMembers);
-                organizationProducer.push(config.getOrganisationContactDetailsUpdateTopic(), orgContactUpdateDiff);
-
-                log.info("Organisation contact update - Organisation ID: {}, members to be removed: {}, members to be added: {}", 
-                        organisation.getId(), toBeRemovedMembers.size(), newMembers.size());
-                log.debug("Contact update message pushed to Kafka topic: {}", config.getOrganisationContactDetailsUpdateTopic());
-            }
+            
+            MemberChangeSets changeSets = identifyMemberChanges(organisation, organisationFromDB);
+            processMemberChanges(changeSets, stateLevelTenantId, requestInfo, role);
+            publishContactUpdateIfNeeded(changeSets, requestInfo, tenantId, organisation);
         }
         log.info("Individual update process completed for tenant: {}", tenantId);
+    }
+
+    private List<Organisation> fetchOrganisationsFromDB(OrgRequest request, String tenantId, RequestInfo requestInfo) {
+        OrgSearchCriteria orgSearchCriteria = OrgSearchCriteria.builder()
+                .id(new ArrayList<>()).tenantId(tenantId).build();
+
+        for(Organisation organisation : request.getOrganisations()) {
+            orgSearchCriteria.getId().add(organisation.getId());
+        }
+        OrgSearchRequest orgSearch = OrgSearchRequest.builder().requestInfo(requestInfo)
+                .searchCriteria(orgSearchCriteria).build();
+        return organisationRepository.getOrganisations(orgSearch);
+    }
+
+    private MemberChangeSets identifyMemberChanges(Organisation organisation, Organisation organisationFromDB) {
+        Set<String> requestMembersMobiles = organisation.getContactDetails().stream()
+                .map(ContactDetails::getContactMobileNumber)
+                .collect(Collectors.toSet());
+        Set<String> dbMembersMobiles = organisationFromDB.getContactDetails().stream()
+                .map(ContactDetails::getContactMobileNumber)
+                .collect(Collectors.toSet());
+
+        Set<String> toBeAddedMembersMobile = new HashSet<>(requestMembersMobiles);
+        toBeAddedMembersMobile.removeAll(dbMembersMobiles);
+
+        Set<String> toBeRemovedMembersMobile = new HashSet<>(dbMembersMobiles);
+        toBeRemovedMembersMobile.removeAll(requestMembersMobiles);
+
+        Set<ContactDetails> toBeUpdatedExistingMembers = organisation.getContactDetails().stream()
+                .filter(contactDetails -> dbMembersMobiles.contains(contactDetails.getContactMobileNumber()))
+                .collect(Collectors.toSet());
+        
+        Set<ContactDetails> newMembers = organisation.getContactDetails().stream()
+                .filter(contactDetails -> toBeAddedMembersMobile.contains(contactDetails.getContactMobileNumber()))
+                .collect(Collectors.toSet());
+        
+        Set<ContactDetails> toBeRemovedMembers = organisationFromDB.getContactDetails().stream()
+                .filter(contactDetails -> toBeRemovedMembersMobile.contains(contactDetails.getContactMobileNumber()))
+                .collect(Collectors.toSet());
+
+        return new MemberChangeSets(toBeUpdatedExistingMembers, newMembers, toBeRemovedMembers);
+    }
+
+    private void processMemberChanges(MemberChangeSets changeSets, String stateLevelTenantId, 
+                                     RequestInfo requestInfo, Role role) {
+        for(ContactDetails contactDetails : changeSets.toBeUpdatedExistingMembers) {
+            updateContactDetails(contactDetails, stateLevelTenantId, requestInfo, role);
+        }
+
+        for(ContactDetails contactDetails : changeSets.newMembers) {
+            addContactAsOrgMember(contactDetails, stateLevelTenantId, requestInfo, role);
+        }
+
+        for(ContactDetails contactDetails : changeSets.toBeRemovedMembers) {
+            updateContactDetails(contactDetails, stateLevelTenantId, requestInfo, getCitizenRole());
+        }
+    }
+
+    private void publishContactUpdateIfNeeded(MemberChangeSets changeSets, RequestInfo requestInfo, 
+                                             String tenantId, Organisation organisation) {
+        if(!changeSets.newMembers.isEmpty() && !changeSets.toBeRemovedMembers.isEmpty()) {
+            OrgContactUpdateDiff orgContactUpdateDiff = new OrgContactUpdateDiff();
+            orgContactUpdateDiff.setRequestInfo(requestInfo);
+            orgContactUpdateDiff.setTenantId(tenantId);
+            orgContactUpdateDiff.setOrganisationId(organisation.getId());
+            orgContactUpdateDiff.setOldContacts(changeSets.toBeRemovedMembers);
+            orgContactUpdateDiff.setNewContacts(changeSets.newMembers);
+            organizationProducer.push(config.getOrganisationContactDetailsUpdateTopic(), orgContactUpdateDiff);
+
+            log.info("Organisation contact update - Organisation ID: {}, members to be removed: {}, members to be added: {}", 
+                    organisation.getId(), changeSets.toBeRemovedMembers.size(), changeSets.newMembers.size());
+            log.debug("Contact update message pushed to Kafka topic: {}", config.getOrganisationContactDetailsUpdateTopic());
+        }
+    }
+
+    private static class MemberChangeSets {
+        final Set<ContactDetails> toBeUpdatedExistingMembers;
+        final Set<ContactDetails> newMembers;
+        final Set<ContactDetails> toBeRemovedMembers;
+
+        MemberChangeSets(Set<ContactDetails> toBeUpdatedExistingMembers, Set<ContactDetails> newMembers,
+                        Set<ContactDetails> toBeRemovedMembers) {
+            this.toBeUpdatedExistingMembers = toBeUpdatedExistingMembers;
+            this.newMembers = newMembers;
+            this.toBeRemovedMembers = toBeRemovedMembers;
+        }
     }
 
     private void addContactAsOrgMember(ContactDetails contactDetails, String tenantId, RequestInfo requestInfo, Role role) {
