@@ -11,10 +11,12 @@ const ORGCard = () => {
   const history = useHistory();
   const { t } = useTranslation();
   const { info } = Digit.UserService.getUser();
-  const currentUserRoles = info?.roles?.map(role => role.code);
+  const currentUserRoles = info?.roles || [];
+  const currentUserRoleCodes = currentUserRoles.map((role) => role?.code);
   const [toast, setToast] = useState(null);
   const [blockUI, setBlockUI] = useState(null);
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+  const isVendorAdminUser = currentUserRoles.map((role) => role.name)?.includes("Vendor Administrator");
 
   useEffect(() => {
     if (toast) {
@@ -30,11 +32,10 @@ const ORGCard = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // if (!currentUserRoles?.includes("FACILITY_ADMIN")) {
-  //   return null;
-  // }
+  if (!currentUserRoleCodes?.includes("ORG_PLATFORM_ADMIN") && !isVendorAdminUser) {
+    return null;
+  }
 
-  const isVendorAdminUser = currentUserRoles?.includes("VENDOR_ADMIN");
   const userType = "employee";
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const userUuid = info?.uuid;

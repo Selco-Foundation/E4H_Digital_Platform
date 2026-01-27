@@ -14,8 +14,8 @@ const ORGApp = () => {
   const match = useRouteMatch();
   const navigator = useSelector((state) => state.org.common);
   const { info } = Digit.UserService.getUser();
-  const currentUserRoles = info?.roles?.map(role => role.code);
-  const isVendorAdminUser = currentUserRoles?.includes("VENDOR_ADMIN");
+  const currentUserRoles = info?.roles || [];
+  const isVendorAdminUser = currentUserRoles.map((role) => role.name)?.includes("Vendor Administrator");
 
   const breadCrumbsConfig = {
     home: {

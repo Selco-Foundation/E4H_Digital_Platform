@@ -14,11 +14,13 @@ const ORGModule = ({ stateCode, userType, tenants }) => {
   const language = Digit.StoreData.getCurrentLanguage();
   const { isLoading, data: store } = Digit.Services.useStore({ stateCode, moduleCode, language });
   const { info } = Digit.UserService.getUser();
-  const currentUserRoles = info?.roles?.map(role => role.code);
+  const currentUserRoles = info?.roles || [];
+  const currentUserRoleCodes = currentUserRoles.map((role) => role?.code);
+  const isVendorAdminUser = currentUserRoles.map((role) => role.name)?.includes("Vendor Administrator");
 
-  // if(!currentUserRoles?.includes("FACILITY_ADMIN")) {
-  //   return null;
-  // }
+  if (!currentUserRoleCodes?.includes("ORG_PLATFORM_ADMIN") && !isVendorAdminUser) {
+    return null;
+  }
 
   if (isLoading) {
     return <Loader />;
