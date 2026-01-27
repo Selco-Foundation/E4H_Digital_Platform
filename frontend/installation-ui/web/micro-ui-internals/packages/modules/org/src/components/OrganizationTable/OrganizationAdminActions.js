@@ -47,7 +47,6 @@ const OrganizationAdminActions = ({ orgType }) => {
           {
             tenantId,
             name: formData.orgName,
-            code: formData.orgCode,
             orgType: orgType,
             orgSubType: formData.orgSubType?.code,
             orgStatus: formData.orgStatus?.code,
@@ -109,6 +108,20 @@ const OrganizationAdminActions = ({ orgType }) => {
       )}
       <Button
         variation={"secondary"}
+        style={{
+          backgroundColor: "white",
+          border: "1px solid #d35400",
+          color: "#d35400",
+          padding: "8px 20px",
+          cursor: "pointer",
+          fontWeight: "bold",
+          fontSize: "16px",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "5px",
+          height: "40px",
+        }}
         label={ orgType === "PLATFORM" ? t("ADD_PLATFORM_ORG") : t("ADD_VENDOR_ORG") }
         onButtonClick={openModal}
       />

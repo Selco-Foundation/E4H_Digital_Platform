@@ -104,17 +104,6 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
           },
           {
             inline: true,
-            label: "ORG_CODE",
-            isMandatory: true,
-            key: "orgCode",
-            type: "text",
-            populators: {
-              name: "orgCode",
-              error: t("CORE_COMMON_REQUIRED")
-            }
-          },
-          {
-            inline: true,
             label: "ORG_STATUS",
             isMandatory: true,
             disable: !createdOrganization?.id,
@@ -142,7 +131,8 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
             key: "orgPocPhone",
             type: "text",
             populators: {
-              name: "orgPocPhone"
+              name: "orgPocPhone",
+              validation: { minlength: 10, maxlength: 10, pattern: { value: /^[0-9]\d{9}$/, message: "Enter a valid mobile number" } },
             }
           },
           {
@@ -196,7 +186,7 @@ const OrganizationForm = ({ t, onSubmit, orgType, createdOrganization, formToast
       <FormComposerV2
         key={JSON.stringify(defaultValues)}
         heading={""}
-        label={t("CORE_COMMON_SUBMIT")}
+        label={t("CORE_COMMON_SAVE")}
         config={formConfig}
         defaultValues={defaultValues}
         submitInForm={false}

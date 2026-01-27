@@ -5,7 +5,7 @@ const formatOrganizationUsers = (organizationUsers) => {
   return organizationUsers.map((organizationUser) => ({
     ...organizationUser.user,
     orgUserId: organizationUser.id,
-    roles: (organizationUser.user.roles || []).filter((role) => (role.code && role.name)),
+    roles: (organizationUser.user?.roles || []).filter((role) => (role.code && role.name)),
     organizationId: organizationUser.organizationId,
   }))
 }

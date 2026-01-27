@@ -84,7 +84,6 @@ const OrganizationDetails = () => {
           {
             ...organizationData,
             name: formData.orgName,
-            code: formData.orgCode,
             orgStatus: formData.orgStatus?.code,
             orgPocName: formData.orgPocName,
             orgPocPhone: formData.orgPocPhone,
