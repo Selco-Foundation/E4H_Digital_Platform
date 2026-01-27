@@ -54,61 +54,83 @@ public class EmployeeRepository {
 		log.trace("EmployeeRepository.fetchEmployees invoked");
 		List<Employee> employees = new ArrayList<>();
 		List<Object> preparedStmtList = new ArrayList<>();
-
-		if(hrmsUtils.isAssignmentSearchReqd(criteria)) {
-			log.debug("Assignment search required, fetching employees by assignment");
-			List<String> empUuids = fetchEmployeesforAssignment(criteria, requestInfo, stateLevelTenantId);
-			if (CollectionUtils.isEmpty(empUuids)) {
-				log.debug("No employees found for assignment criteria");
-				return employees;
-			}
-			else {
-				log.debug("Found {} employee uuid(s) for assignment criteria", empUuids.size());
-				if(!CollectionUtils.isEmpty(criteria.getUuids()))
-					criteria.setUuids(criteria.getUuids().stream().filter(empUuids::contains).collect(Collectors.toList()));
-				else
-					criteria.setUuids(empUuids);
-			}
-		}
-
-		if(hrmsUtils.isJurisdictionSearchReqd(criteria)) {
-			log.debug("Jurisdiction search required, fetching employees by jurisdiction");
-			List<String> empUuids = fetchEmployeesforJurisdiction(criteria, requestInfo, stateLevelTenantId);
-			if (CollectionUtils.isEmpty(empUuids)) {
-				log.debug("No employees found for jurisdiction criteria");
-				return employees;
-			}
-			else {
-				log.debug("Found {} employee uuid(s) for jurisdiction criteria", empUuids.size());
-				if(!CollectionUtils.isEmpty(criteria.getUuids())) {
-					List<String> filteredUuids = criteria.getUuids().stream().filter(empUuids::contains).collect(Collectors.toList());
-					// If both roles and boundaryCodes are provided, and no employees match both criteria, return empty list
-					if(!CollectionUtils.isEmpty(criteria.getRoles()) && CollectionUtils.isEmpty(filteredUuids)) {
-						log.debug("No employees match both roles and boundary criteria");
-						return employees;
-					}
-					criteria.setUuids(filteredUuids);
-				} else {
-					criteria.setUuids(empUuids);
-				}
-			}
-		}
 		
+		if (hrmsUtils.isAssignmentSearchReqd(criteria)) {
+			if (!processAssignmentSearch(criteria, requestInfo, stateLevelTenantId)) {
+				return employees;
+			}
+		}
+
+		if (hrmsUtils.isJurisdictionSearchReqd(criteria)) {
+			if (!processJurisdictionSearch(criteria, requestInfo, stateLevelTenantId, employees)) {
+				return employees;
+			}
+		}
+
 		String query = queryBuilder.getEmployeeSearchQuery(criteria, preparedStmtList);
-		String finalQuery;
+		String finalQuery = buildEmployeeSearchQueryWithSchema(stateLevelTenantId, query);
+
+		employees = executeEmployeeSearch(stateLevelTenantId, preparedStmtList, finalQuery);
+		return employees;
+	}
+
+	private boolean processAssignmentSearch(EmployeeSearchCriteria criteria, RequestInfo requestInfo,
+											String stateLevelTenantId) {
+		log.debug("Assignment search required, fetching employees by assignment");
+		List<String> empUuids = fetchEmployeesforAssignment(criteria, requestInfo, stateLevelTenantId);
+		if (CollectionUtils.isEmpty(empUuids)) {
+			log.debug("No employees found for assignment criteria");
+			return false;
+		}
+		log.debug("Found {} employee uuid(s) for assignment criteria", empUuids.size());
+		if (!CollectionUtils.isEmpty(criteria.getUuids()))
+			criteria.setUuids(criteria.getUuids().stream().filter(empUuids::contains).collect(Collectors.toList()));
+		else
+			criteria.setUuids(empUuids);
+		return true;
+	}
+
+	private boolean processJurisdictionSearch(EmployeeSearchCriteria criteria, RequestInfo requestInfo,
+											  String stateLevelTenantId, List<Employee> employees) {
+		log.debug("Jurisdiction search required, fetching employees by jurisdiction");
+		List<String> empUuids = fetchEmployeesforJurisdiction(criteria, requestInfo, stateLevelTenantId);
+		if (CollectionUtils.isEmpty(empUuids)) {
+			log.debug("No employees found for jurisdiction criteria");
+			return false;
+		}
+		log.debug("Found {} employee uuid(s) for jurisdiction criteria", empUuids.size());
+		if (!CollectionUtils.isEmpty(criteria.getUuids())) {
+			List<String> filteredUuids = criteria.getUuids().stream().filter(empUuids::contains).collect(Collectors.toList());
+			// If both roles and boundaryCodes are provided, and no employees match both criteria, return empty list
+			if (!CollectionUtils.isEmpty(criteria.getRoles()) && CollectionUtils.isEmpty(filteredUuids)) {
+				log.debug("No employees match both roles and boundary criteria");
+				return false;
+			}
+			criteria.setUuids(filteredUuids);
+		} else {
+			criteria.setUuids(empUuids);
+		}
+		return true;
+	}
+
+	private String buildEmployeeSearchQueryWithSchema(String stateLevelTenantId, String query) {
 		try {
-			finalQuery = centralInstanceUtil.replaceSchemaPlaceholder(query, stateLevelTenantId);
+			return centralInstanceUtil.replaceSchemaPlaceholder(query, stateLevelTenantId);
 		} catch (InvalidTenantIdException e1) {
 			log.error("Invalid tenant ID exception for state level tenant: {}", stateLevelTenantId, e1);
 			throw new CustomException("HRMS_TENANTID_ERROR",
-					"TenantId length is not sufficient to replace query schema in a multi state instance");		
+					"TenantId length is not sufficient to replace query schema in a multi state instance");
 		}
+	}
 
+	private List<Employee> executeEmployeeSearch(String stateLevelTenantId, List<Object> preparedStmtList,
+												 String finalQuery) {
+		List<Employee> employees = new ArrayList<>();
 		try {
 			log.debug("Executing employee search query for tenant: {}", stateLevelTenantId);
-			employees = jdbcTemplate.query(finalQuery, preparedStmtList.toArray(),rowMapper);
+			employees = jdbcTemplate.query(finalQuery, preparedStmtList.toArray(), rowMapper);
 			log.debug("Employee search query executed successfully, returned {} employee(s)", employees.size());
-		}catch(Exception e) {
+		} catch (Exception e) {
 			log.error("Exception while executing employee search query for tenant: {}", stateLevelTenantId, e);
 		}
 		return employees;
