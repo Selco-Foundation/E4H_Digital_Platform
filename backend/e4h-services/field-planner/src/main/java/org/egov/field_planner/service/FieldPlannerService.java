@@ -208,59 +208,92 @@ public class FieldPlannerService {
         log.trace("Entering getStateActivitiesYearFormat method");
         log.debug("Generating field plan name format for tenant: {}", tenantId);
         
-        Object mdmsData = mdmsUtils.mDMSCall(request, tenantId);
-        String mdmsRes = "$.MdmsRes.";
-        final String jsonPathForActivities = mdmsRes + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ACTIVITIES;
-        final String jsonPathForStateInfo = mdmsRes + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_STATE_INFO;
-
-        List<Object> activitiesRes = null;
-        List<Object> stateInfoRes = null;
-        String baseName = null;
-        String stateCode = null;
-        String concatenatedActivityCode = null;
-        Map<String, Object> geographyDetails = fieldPlan.getGeographyDetails();
-        String stateBoundary = (String)geographyDetails.get("state");
-        String state = fieldPlanServiceUtil.extractStateName(stateBoundary);
-        List<Map<String, Object>> activities = fieldPlan.getActivities();
-        log.debug("Extracted state: {}, activities count: {}", state, activities.size());
-        
         try {
-            activitiesRes = JsonPath.read(mdmsData, jsonPathForActivities);
-            stateInfoRes = JsonPath.read(mdmsData, jsonPathForStateInfo);
-            log.debug("Retrieved {} activities and {} state info records from MDMS", 
-                    activitiesRes.size(), 
-                    stateInfoRes.size());
+            Object mdmsData = mdmsUtils.mDMSCall(request, tenantId);
+            String state = extractStateFromFieldPlan(fieldPlan);
+            List<Map<String, Object>> activities = fieldPlan.getActivities();
+            log.debug("Extracted state: {}, activities count: {}", state, activities.size());
             
-            for (Object map : stateInfoRes) {
-                LinkedHashMap<String, Object> stateInfo = (LinkedHashMap<String, Object>) map;
-                String name = (String) stateInfo.get("name");
-                if (state.equalsIgnoreCase(name)) {
-                    stateCode = (String) stateInfo.get("code");
-                    log.debug("Found state code: {} for state: {}", stateCode, state);
-                    break;
-                }
-            }
-
-            concatenatedActivityCode = activities.stream()
-                    .map(activity -> (String) activity.get("code"))
-                    .collect(Collectors.joining("_"));
-            log.debug("Concatenated activity codes: {}", concatenatedActivityCode);
-
-            LocalDateTime endDate = LocalDateTime.ofInstant(
-                    Instant.ofEpochMilli(fieldPlan.getEndDate()),
-                    ZoneId.systemDefault()
-            );
-            int endYear = endDate.getYear();
-            log.debug("Extracted end year: {}", endYear);
-
-            baseName = String.format("%s-%s-%s", stateCode, concatenatedActivityCode, endYear);
+            String stateCode = extractStateCodeFromMDMS(mdmsData, state);
+            String concatenatedActivityCode = concatenateActivityCodes(activities, mdmsData);
+            int endYear = extractYearFromEndDate(fieldPlan.getEndDate());
+            
+            String baseName = formatFieldPlanBaseName(stateCode, concatenatedActivityCode, endYear);
             log.debug("Generated base name: {}", baseName);
+            
+            log.trace("Exiting getStateActivitiesYearFormat method");
+            return baseName;
         } catch (Exception e) {
             log.error("Error generating field plan name format for tenant: {}", tenantId, e);
             throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
         }
+    }
 
-        log.trace("Exiting getStateActivitiesYearFormat method");
+    private String extractStateFromFieldPlan(FieldPlan fieldPlan) {
+        log.trace("Entering extractStateFromFieldPlan method");
+        Map<String, Object> geographyDetails = fieldPlan.getGeographyDetails();
+        String stateBoundary = (String) geographyDetails.get("state");
+        String state = fieldPlanServiceUtil.extractStateName(stateBoundary);
+        log.trace("Exiting extractStateFromFieldPlan method");
+        return state;
+    }
+
+    private String extractStateCodeFromMDMS(Object mdmsData, String stateName) {
+        log.trace("Entering extractStateCodeFromMDMS method");
+        String mdmsRes = "$.MdmsRes.";
+        final String jsonPathForStateInfo = mdmsRes + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_STATE_INFO;
+        
+        List<Object> stateInfoRes = JsonPath.read(mdmsData, jsonPathForStateInfo);
+        log.debug("Retrieved {} state info records from MDMS", stateInfoRes.size());
+        
+        for (Object map : stateInfoRes) {
+            LinkedHashMap<String, Object> stateInfo = (LinkedHashMap<String, Object>) map;
+            String name = (String) stateInfo.get("name");
+            if (stateName.equalsIgnoreCase(name)) {
+                String stateCode = (String) stateInfo.get("code");
+                log.debug("Found state code: {} for state: {}", stateCode, stateName);
+                log.trace("Exiting extractStateCodeFromMDMS method");
+                return stateCode;
+            }
+        }
+        
+        log.warn("State code not found for state: {}", stateName);
+        log.trace("Exiting extractStateCodeFromMDMS method");
+        return null;
+    }
+
+    private String concatenateActivityCodes(List<Map<String, Object>> activities, Object mdmsData) {
+        log.trace("Entering concatenateActivityCodes method");
+        String mdmsRes = "$.MdmsRes.";
+        final String jsonPathForActivities = mdmsRes + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ACTIVITIES;
+        
+        List<Object> activitiesRes = JsonPath.read(mdmsData, jsonPathForActivities);
+        log.debug("Retrieved {} activities from MDMS", activitiesRes.size());
+        
+        String concatenatedActivityCode = activities.stream()
+                .map(activity -> (String) activity.get("code"))
+                .collect(Collectors.joining("_"));
+        log.debug("Concatenated activity codes: {}", concatenatedActivityCode);
+        log.trace("Exiting concatenateActivityCodes method");
+        return concatenatedActivityCode;
+    }
+
+    private int extractYearFromEndDate(Long endDateMillis) {
+        log.trace("Entering extractYearFromEndDate method");
+        LocalDateTime endDate = LocalDateTime.ofInstant(
+                Instant.ofEpochMilli(endDateMillis),
+                ZoneId.systemDefault()
+        );
+        int endYear = endDate.getYear();
+        log.debug("Extracted end year: {}", endYear);
+        log.trace("Exiting extractYearFromEndDate method");
+        return endYear;
+    }
+
+    private String formatFieldPlanBaseName(String stateCode, String concatenatedActivityCode, int endYear) {
+        log.trace("Entering formatFieldPlanBaseName method");
+        String baseName = String.format("%s-%s-%s", stateCode, concatenatedActivityCode, endYear);
+        log.trace("Exiting formatFieldPlanBaseName method");
         return baseName;
     }
 
@@ -434,130 +467,184 @@ public class FieldPlannerService {
 
     private void handleUpdateFieldPlan(FieldPlanRequest request, FieldPlan fieldPlan, FieldPlan fieldPlanFromDB) {
         log.trace("Entering handleUpdateFieldPlan method for field plan ID: {}", fieldPlan.getId());
-        /*
-         * Save original values of start date, end date, and additional details
-         */
-        Long originalStartDate = fieldPlanFromDB.getStartDate();
-        Long originalEndDate = fieldPlanFromDB.getEndDate();
-        Object originalGeographyDetails = fieldPlanFromDB.getGeographyDetails();
-        Object originalActivity = fieldPlanFromDB.getActivities();
-        AuditDetails originalAuditDetails = fieldPlanFromDB.getAuditDetails();
+        
+        FieldPlanSnapshot originalSnapshot = saveOriginalFieldPlanValues(fieldPlanFromDB);
+        updateFieldPlanValues(fieldPlanFromDB, fieldPlan);
+        validateCascadingUpdate(fieldPlanFromDB, fieldPlan);
+        restoreOriginalFieldPlanValues(fieldPlanFromDB, originalSnapshot);
+        
+        fieldPlannerEnrichment.enrichFieldPlanRequestOnUpdate(fieldPlan, fieldPlanFromDB, request.getRequestInfo());
 
+        if (StringUtils.equals(fieldPlan.getStatus(), "SCHEDULED")) {
+            handleScheduledStatusUpdate(request, fieldPlan);
+        }
 
-        /*
-         * Update the fieldPlan with new start date, end date, and additional details
-         */
+        handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
+        pushFieldPlanUpdate(request);
+        
+        log.trace("Exiting handleUpdateFieldPlan method");
+    }
+
+    private static class FieldPlanSnapshot {
+        private final Long startDate;
+        private final Long endDate;
+        private final Object geographyDetails;
+        private final Object activities;
+        private final AuditDetails auditDetails;
+
+        public FieldPlanSnapshot(Long startDate, Long endDate, Object geographyDetails, Object activities, AuditDetails auditDetails) {
+            this.startDate = startDate;
+            this.endDate = endDate;
+            this.geographyDetails = geographyDetails;
+            this.activities = activities;
+            this.auditDetails = auditDetails;
+        }
+
+        public Long getStartDate() { return startDate; }
+        public Long getEndDate() { return endDate; }
+        public Object getGeographyDetails() { return geographyDetails; }
+        public Object getActivities() { return activities; }
+        public AuditDetails getAuditDetails() { return auditDetails; }
+    }
+
+    private FieldPlanSnapshot saveOriginalFieldPlanValues(FieldPlan fieldPlanFromDB) {
+        log.trace("Entering saveOriginalFieldPlanValues method");
+        FieldPlanSnapshot snapshot = new FieldPlanSnapshot(
+                fieldPlanFromDB.getStartDate(),
+                fieldPlanFromDB.getEndDate(),
+                fieldPlanFromDB.getGeographyDetails(),
+                fieldPlanFromDB.getActivities(),
+                fieldPlanFromDB.getAuditDetails()
+        );
+        log.trace("Exiting saveOriginalFieldPlanValues method");
+        return snapshot;
+    }
+
+    private void updateFieldPlanValues(FieldPlan fieldPlanFromDB, FieldPlan fieldPlan) {
+        log.trace("Entering updateFieldPlanValues method");
         fieldPlanFromDB.setStartDate(fieldPlan.getStartDate());
         fieldPlanFromDB.setEndDate(fieldPlan.getEndDate());
         fieldPlanFromDB.setGeographyDetails(fieldPlan.getGeographyDetails());
         fieldPlanFromDB.setActivities(fieldPlan.getActivities());
         fieldPlanFromDB.setAuditDetails(fieldPlan.getAuditDetails());
+        log.trace("Exiting updateFieldPlanValues method");
+    }
 
-        /*
-         * Ensure that no other properties are being updated besides the start and end dates
-         */
+    private void validateCascadingUpdate(FieldPlan fieldPlanFromDB, FieldPlan fieldPlan) {
+        log.trace("Entering validateCascadingUpdate method");
         if (!isValidCascadingUpdate(fieldPlanFromDB, fieldPlan)) {
             throw new CustomException(
                     "FIELDPLANE_CASCADE_UPDATE_ERROR",
                     "Can only update FieldPlan dates, geographyDetails and additional details if cascade FieldPlan date update true"
             );
         }
+        log.trace("Exiting validateCascadingUpdate method");
+    }
 
-        /*
-         * Restore original values of start date, end date, and additional details
-         */
-        fieldPlanFromDB.setStartDate(originalStartDate);
-        fieldPlanFromDB.setEndDate(originalEndDate);
-        fieldPlanFromDB.setGeographyDetails(mapper.convertValue(originalGeographyDetails, Map.class));
-        fieldPlanFromDB.setActivities((List<Map<String, Object>>) originalActivity);
-        fieldPlanFromDB.setAuditDetails(originalAuditDetails);
+    private void restoreOriginalFieldPlanValues(FieldPlan fieldPlanFromDB, FieldPlanSnapshot snapshot) {
+        log.trace("Entering restoreOriginalFieldPlanValues method");
+        fieldPlanFromDB.setStartDate(snapshot.getStartDate());
+        fieldPlanFromDB.setEndDate(snapshot.getEndDate());
+        fieldPlanFromDB.setGeographyDetails(mapper.convertValue(snapshot.getGeographyDetails(), Map.class));
+        fieldPlanFromDB.setActivities((List<Map<String, Object>>) snapshot.getActivities());
+        fieldPlanFromDB.setAuditDetails(snapshot.getAuditDetails());
+        log.trace("Exiting restoreOriginalFieldPlanValues method");
+    }
 
-        /*
-         * Update lastModifiedTime and lastModifiedBy for the fieldPlan
-         */
-        fieldPlannerEnrichment.enrichFieldPlanRequestOnUpdate(fieldPlan, fieldPlanFromDB, request.getRequestInfo());
+    private void handleScheduledStatusUpdate(FieldPlanRequest request, FieldPlan fieldPlan) {
+        log.trace("Entering handleScheduledStatusUpdate method for field plan ID: {}", fieldPlan.getId());
+        try {
+            validateFieldPlanForScheduledStatus(fieldPlan);
+            List<ActivityAssignment> activityAssignmentList = validateAndGetActivityAssignments(request, fieldPlan);
+            sendActivityAssignmentEmail(request, activityAssignmentList);
+            createFacilityActivitiesForScheduledStatus(request, fieldPlan, activityAssignmentList);
+        } catch (Exception e) {
+            log.error("Error handling scheduled status update for field plan ID: {}", fieldPlan.getId(), e);
+            throw new RuntimeException(e);
+        }
+        log.trace("Exiting handleScheduledStatusUpdate method");
+    }
 
-        // If status equals to scheduled, so dont update the fieldplan name
-        if(StringUtils.equals(fieldPlan.getStatus(), "SCHEDULED")){
-            try {
-                // Check if INSTALLATION_REVIEWER, one FIELD_SUPERVISOR and one FIELD_STAFF is assigned and if at least one facility is linked to the fieldplan
-                if (fieldPlan == null) {
-                    log.error("Field Plan is mandatory");
-                    throw new CustomException("FIELDPLAN", "Field Plan is mandatory");
-                }
-                if (fieldPlan.getId() == null) {
-                    log.error("FieldPlan ID is mandatory");
-                    throw new CustomException("FIELDPLAN", "FieldPlan ID");
-                }
+    private void validateFieldPlanForScheduledStatus(FieldPlan fieldPlan) {
+        log.trace("Entering validateFieldPlanForScheduledStatus method");
+        if (fieldPlan == null) {
+            log.error("Field Plan is mandatory");
+            throw new CustomException("FIELDPLAN", "Field Plan is mandatory");
+        }
+        if (fieldPlan.getId() == null) {
+            log.error("FieldPlan ID is mandatory");
+            throw new CustomException("FIELDPLAN", "FieldPlan ID");
+        }
+        log.trace("Exiting validateFieldPlanForScheduledStatus method");
+    }
 
-                List<ActivityAssignment> activityAssignmentList = getFieldPlanActivityAssignment(request, fieldPlan);
-                if(activityAssignmentList==null || activityAssignmentList.isEmpty()){
-                    log.error("Activity Assignment is empty for the fieldplan");
-                    throw new CustomException("FIELDPLAN", "Activity Assignment is empty for the fieldplan");
-                }
-                // Check if at least one INSTALLATION_REVIEWER, one FIELD_SUPERVISOR and one FIELD_STAFF are already link to field plan
-                if(!hasRequiredUsers(activityAssignmentList)){
-                    throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and FIELD_STAFF and FIELD_SUPERVISOR need to be assigned for the fieldplan");
-                }
+    private List<ActivityAssignment> validateAndGetActivityAssignments(FieldPlanRequest request, FieldPlan fieldPlan) {
+        log.trace("Entering validateAndGetActivityAssignments method");
+        List<ActivityAssignment> activityAssignmentList = getFieldPlanActivityAssignment(request, fieldPlan);
+        if (activityAssignmentList == null || activityAssignmentList.isEmpty()) {
+            log.error("Activity Assignment is empty for the fieldplan");
+            throw new CustomException("FIELDPLAN", "Activity Assignment is empty for the fieldplan");
+        }
+        if (!hasRequiredUsers(activityAssignmentList)) {
+            throw new CustomException("FIELDPLAN", "INSTALLATION_REVIEWER and FIELD_STAFF and FIELD_SUPERVISOR need to be assigned for the fieldplan");
+        }
+        log.trace("Exiting validateAndGetActivityAssignments method");
+        return activityAssignmentList;
+    }
 
-                sendActivityAssignmentEmail(request, activityAssignmentList);
+    private void createFacilityActivitiesForScheduledStatus(FieldPlanRequest request, FieldPlan fieldPlan, List<ActivityAssignment> activityAssignmentList) throws Exception {
+        log.trace("Entering createFacilityActivitiesForScheduledStatus method");
+        SearchResponse<FieldPlanFacility> fieldPlanFacilitySearchResponse = getFieldPlanFacilities(request, fieldPlan);
+        if (fieldPlanFacilitySearchResponse == null || fieldPlanFacilitySearchResponse.getResponse().isEmpty() || fieldPlanFacilitySearchResponse.getTotalCount() == 0) {
+            log.error("No facility is linked to the fieldplan");
+            throw new CustomException("FIELDPLAN", "No facility is linked to the fieldplan");
+        }
+        
+        List<FieldPlanFacility> fieldPlanFacilities = fieldPlanFacilitySearchResponse.getResponse();
+        if (fieldPlanFacilities != null && !fieldPlanFacilities.isEmpty()) {
+            List<ActivityFacility> activityFacilities = buildActivityFacilitiesList(fieldPlan, fieldPlanFacilities, activityAssignmentList);
+            createFacilityActivity(request.getRequestInfo(), activityFacilities);
+        }
+        log.trace("Exiting createFacilityActivitiesForScheduledStatus method");
+    }
 
-                SearchResponse<FieldPlanFacility> fieldPlanFacilitySearchResponse = getFieldPlanFacilities(request, fieldPlan);
-                if(fieldPlanFacilitySearchResponse== null || fieldPlanFacilitySearchResponse.getResponse().isEmpty() || fieldPlanFacilitySearchResponse.getTotalCount()==0){
-                    log.error("No facility is linked to the fieldplan");
-                    throw new CustomException("FIELDPLAN", "No facility is linked to the fieldplan");
-                }
-                // Call facility activity create with bulk facility activity
-                List<FieldPlanFacility> fieldPlanFacilities = fieldPlanFacilitySearchResponse.getResponse();
-                if (fieldPlanFacilities != null && !fieldPlanFacilities.isEmpty()){
-                    List<ActivityFacility> activityFacilities = new ArrayList();
-
-                    // On groupe par role.code et on récupère la liste des ids
-                    Map<String, List<String>> roleToIds = activityAssignmentList.stream()
-                            .filter(item -> item.getRole() != null)
-                            .collect(Collectors.groupingBy(
-                                    item -> (String) ((Map<String, Object>) item.getRole()).get("code"),
-                                    Collectors.mapping(item -> (String) item.getAssignedTo(), Collectors.toList())
-                            ));
-                    for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities){
-                        for(Map<String, Object> activity : fieldPlan.getActivities()){
-                            ActivityFacility activityFacility = ActivityFacility.builder()
-                                    .tenantId("in")
-                                    .fieldPlanId(fieldPlanFacility.getFieldPlanId())
-                                    .facilityId(fieldPlanFacility.getFacilityId())
-                                    .activityId((String)activity.get("code"))
-                                    .scheduledAt(fieldPlan.getStartDate())
-                                    .activatedAt(fieldPlan.getStartDate())
-                                    .reviewerUser(roleToIds.get(INSTALLATION_REVIEWER_ROLE))
-                                    .fieldStaffUsers(roleToIds.get(FIELD_STAFF_ROLE))
-                                    .fieldSupervisorUsers(roleToIds.get(FIELD_SUPERVISOR_ROLE))
-                                    .build();
-
-                            activityFacilities.add(activityFacility);
-                        }
-                    }
-
-                    createFacilityActivity(request.getRequestInfo(), activityFacilities);
-
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
+    private List<ActivityFacility> buildActivityFacilitiesList(FieldPlan fieldPlan, List<FieldPlanFacility> fieldPlanFacilities, List<ActivityAssignment> activityAssignmentList) {
+        log.trace("Entering buildActivityFacilitiesList method");
+        Map<String, List<String>> roleToIds = activityAssignmentList.stream()
+                .filter(item -> item.getRole() != null)
+                .collect(Collectors.groupingBy(
+                        item -> (String) ((Map<String, Object>) item.getRole()).get("code"),
+                        Collectors.mapping(item -> (String) item.getAssignedTo(), Collectors.toList())
+                ));
+        
+        List<ActivityFacility> activityFacilities = new ArrayList<>();
+        for (FieldPlanFacility fieldPlanFacility : fieldPlanFacilities) {
+            for (Map<String, Object> activity : fieldPlan.getActivities()) {
+                ActivityFacility activityFacility = ActivityFacility.builder()
+                        .tenantId("in")
+                        .fieldPlanId(fieldPlanFacility.getFieldPlanId())
+                        .facilityId(fieldPlanFacility.getFacilityId())
+                        .activityId((String) activity.get("code"))
+                        .scheduledAt(fieldPlan.getStartDate())
+                        .activatedAt(fieldPlan.getStartDate())
+                        .reviewerUser(roleToIds.get(INSTALLATION_REVIEWER_ROLE))
+                        .fieldStaffUsers(roleToIds.get(FIELD_STAFF_ROLE))
+                        .fieldSupervisorUsers(roleToIds.get(FIELD_SUPERVISOR_ROLE))
+                        .build();
+                activityFacilities.add(activityFacility);
             }
         }
+        log.debug("Built {} activity facilities", activityFacilities.size());
+        log.trace("Exiting buildActivityFacilitiesList method");
+        return activityFacilities;
+    }
 
-        /*
-         * Handle fieldPlan name regeneration if needed (dates changed or activity)
-         */
-        handleFieldPlanNameUpdate(request, fieldPlan, fieldPlanFromDB);
-
-        /*
-         * Check and enrich cascading fieldPlan dates and push the update to the message broker
-         */
+    private void pushFieldPlanUpdate(FieldPlanRequest request) {
+        log.trace("Entering pushFieldPlanUpdate method");
         log.debug("Pushing field plan update to Kafka topic: {}", fieldPlannerConfiguration.getUpdateFieldPlanTopic());
         producer.push(fieldPlannerConfiguration.getUpdateFieldPlanTopic(), request);
         log.info("Field plan update pushed to Kafka successfully");
-        log.trace("Exiting handleUpdateFieldPlan method");
+        log.trace("Exiting pushFieldPlanUpdate method");
     }
 
     private boolean isValidCascadingUpdate(FieldPlan fieldPlanFromDB, FieldPlan fieldPlan) {
@@ -860,62 +947,22 @@ public class FieldPlannerService {
         try {
             log.info("Starting selective facility unlinking for field plan: {} with new boundary codes: {}", fieldPlanId, newBoundaryCodes);
 
-            // Step 1: Get all facilities currently linked to the field plan
-            List<FieldPlanFacility> linkedFieldPlanFacilities = getFacilitiesLinkedToFacility(fieldPlanId, tenantId, requestInfo);
-
+            List<FieldPlanFacility> linkedFieldPlanFacilities = getLinkedFieldPlanFacilities(fieldPlanId, tenantId, requestInfo);
             if (linkedFieldPlanFacilities.isEmpty()) {
-                log.info("No facilities currently linked to field plan: {}", fieldPlanId);
                 return;
             }
 
-            // Step 2: Get all facilities associated with the new boundary codes
             Set<String> facilitiesInNewBoundaries = getFacilitiesByBoundaryCodes(newBoundaryCodes, tenantId, requestInfo);
-
-            // Defensive guard: if boundaries are non-empty but lookup yielded zero, skip unlink to avoid data loss
-            if (!newBoundaryCodes.isEmpty() && facilitiesInNewBoundaries.isEmpty()) {
-                log.warn("Facility lookup returned 0 results for non-empty boundaries {}. Skipping unlink to avoid accidental data loss for field plan: {}",
-                        newBoundaryCodes, fieldPlanId);
+            if (!validateFacilityLookupResults(newBoundaryCodes, facilitiesInNewBoundaries, fieldPlanId)) {
                 return;
             }
 
-            // Step 3: Find facilities to unlink (linked to field plan but not in new boundary codes)
-            List<FieldPlanFacility> facilitiesToUnlink = linkedFieldPlanFacilities.stream()
-                    .filter(projectFacility -> !facilitiesInNewBoundaries.contains(projectFacility.getFacilityId()))
-                    .collect(Collectors.toList());
-
+            List<FieldPlanFacility> facilitiesToUnlink = findFacilitiesToUnlink(linkedFieldPlanFacilities, facilitiesInNewBoundaries, fieldPlanId);
             if (facilitiesToUnlink.isEmpty()) {
-                log.info("No facilities need to be unlinked for field plan: {}", fieldPlanId);
                 return;
             }
 
-            log.info("Found {} facilities to unlink out of {} linked facilities for field plan: {}",
-                    facilitiesToUnlink.size(), linkedFieldPlanFacilities.size(), fieldPlanId);
-
-            // Step 4: Set isDeleted = true for the identified facilities using update API
-            List<FieldPlanFacility> facilitiesToUpdate = facilitiesToUnlink.stream()
-                    .map(fieldplanFacility -> {
-                        // Create a copy with isDeleted = true
-                        return FieldPlanFacility.builder()
-                                .id(fieldplanFacility.getId())
-                                .fieldPlanId(fieldplanFacility.getFieldPlanId())
-                                .facilityId(fieldplanFacility.getFacilityId())
-                                .tenantId(fieldplanFacility.getTenantId())
-                                .isDeleted(true) // Set isDeleted = true
-                                .rowVersion(fieldplanFacility.getRowVersion())
-                                .auditDetails(fieldplanFacility.getAuditDetails())
-                                .build();
-                    })
-                    .collect(Collectors.toList());
-
-            // Use update API to set isDeleted = true
-            FieldPlanFacilityBulkRequest updateRequest = FieldPlanFacilityBulkRequest.builder()
-                    .requestInfo(requestInfo)
-                    .fieldPlanFacilities(facilitiesToUpdate)
-                    .build();
-
-            facilityService.unassignBulk(updateRequest, true);
-
-            log.info("Successfully unlinked {} facilities for project: {} by setting isDeleted=true", facilitiesToUpdate.size(), fieldPlanId);
+            executeFacilityUnlink(facilitiesToUnlink, requestInfo, fieldPlanId);
 
         } catch (Exception e) {
             log.error("Error unlinking facilities for project: {}", fieldPlanId, e);
@@ -923,6 +970,74 @@ public class FieldPlannerService {
                     "Failed to unlink facilities for project: " + fieldPlanId + ". Error: " + e.getMessage());
         }
         log.trace("Exiting unlinkFieldplanFacilities method");
+    }
+
+    private List<FieldPlanFacility> getLinkedFieldPlanFacilities(String fieldPlanId, String tenantId, RequestInfo requestInfo) {
+        log.trace("Entering getLinkedFieldPlanFacilities method");
+        List<FieldPlanFacility> linkedFieldPlanFacilities = getFacilitiesLinkedToFacility(fieldPlanId, tenantId, requestInfo);
+        if (linkedFieldPlanFacilities.isEmpty()) {
+            log.info("No facilities currently linked to field plan: {}", fieldPlanId);
+        }
+        log.trace("Exiting getLinkedFieldPlanFacilities method");
+        return linkedFieldPlanFacilities;
+    }
+
+    private boolean validateFacilityLookupResults(Set<String> newBoundaryCodes, Set<String> facilitiesInNewBoundaries, String fieldPlanId) {
+        log.trace("Entering validateFacilityLookupResults method");
+        if (!newBoundaryCodes.isEmpty() && facilitiesInNewBoundaries.isEmpty()) {
+            log.warn("Facility lookup returned 0 results for non-empty boundaries {}. Skipping unlink to avoid accidental data loss for field plan: {}",
+                    newBoundaryCodes, fieldPlanId);
+            log.trace("Exiting validateFacilityLookupResults method - validation failed");
+            return false;
+        }
+        log.trace("Exiting validateFacilityLookupResults method - validation passed");
+        return true;
+    }
+
+    private List<FieldPlanFacility> findFacilitiesToUnlink(List<FieldPlanFacility> linkedFieldPlanFacilities, Set<String> facilitiesInNewBoundaries, String fieldPlanId) {
+        log.trace("Entering findFacilitiesToUnlink method");
+        List<FieldPlanFacility> facilitiesToUnlink = linkedFieldPlanFacilities.stream()
+                .filter(projectFacility -> !facilitiesInNewBoundaries.contains(projectFacility.getFacilityId()))
+                .collect(Collectors.toList());
+
+        if (facilitiesToUnlink.isEmpty()) {
+            log.info("No facilities need to be unlinked for field plan: {}", fieldPlanId);
+        } else {
+            log.info("Found {} facilities to unlink out of {} linked facilities for field plan: {}",
+                    facilitiesToUnlink.size(), linkedFieldPlanFacilities.size(), fieldPlanId);
+        }
+        log.trace("Exiting findFacilitiesToUnlink method");
+        return facilitiesToUnlink;
+    }
+
+    private void executeFacilityUnlink(List<FieldPlanFacility> facilitiesToUnlink, RequestInfo requestInfo, String fieldPlanId) {
+        log.trace("Entering executeFacilityUnlink method");
+        List<FieldPlanFacility> facilitiesToUpdate = createUnlinkRequest(facilitiesToUnlink);
+        FieldPlanFacilityBulkRequest updateRequest = FieldPlanFacilityBulkRequest.builder()
+                .requestInfo(requestInfo)
+                .fieldPlanFacilities(facilitiesToUpdate)
+                .build();
+
+        facilityService.unassignBulk(updateRequest, true);
+        log.info("Successfully unlinked {} facilities for project: {} by setting isDeleted=true", facilitiesToUpdate.size(), fieldPlanId);
+        log.trace("Exiting executeFacilityUnlink method");
+    }
+
+    private List<FieldPlanFacility> createUnlinkRequest(List<FieldPlanFacility> facilitiesToUnlink) {
+        log.trace("Entering createUnlinkRequest method");
+        List<FieldPlanFacility> facilitiesToUpdate = facilitiesToUnlink.stream()
+                .map(fieldplanFacility -> FieldPlanFacility.builder()
+                        .id(fieldplanFacility.getId())
+                        .fieldPlanId(fieldplanFacility.getFieldPlanId())
+                        .facilityId(fieldplanFacility.getFacilityId())
+                        .tenantId(fieldplanFacility.getTenantId())
+                        .isDeleted(true)
+                        .rowVersion(fieldplanFacility.getRowVersion())
+                        .auditDetails(fieldplanFacility.getAuditDetails())
+                        .build())
+                .collect(Collectors.toList());
+        log.trace("Exiting createUnlinkRequest method");
+        return facilitiesToUpdate;
     }
 
     /**
