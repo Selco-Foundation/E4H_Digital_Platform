@@ -138,104 +138,9 @@ public class WorkflowQueryBuilder {
     public String getProcessInstanceIds(ProcessInstanceSearchCriteria criteria, List<Object> preparedStmtList){
         StringBuilder with_query_builder = new StringBuilder(WITH_CLAUSE);
 
-
-        if(criteria.getIsStateLevelCall()!=null && criteria.getIsStateLevelCall()) {
-        if (!criteria.getHistory()) {
-            with_query_builder.append(" pi_outer.lastmodifiedTime = (" +
-                    "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid " +
-                    ") ");
-        }
-        else 
-        {
-        	 with_query_builder.append(" 1=1");
-        }
-        
-        
-        if(criteria.getAssignee()!=null){
-            with_query_builder.append(" and id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) ");
-            preparedStmtList.add(criteria.getAssignee());
-        }
-
-        }
-        else
-        	
-        {
-        	  if (!criteria.getHistory()) {
-        		  
-        		  if(!criteria.getTenantId().contains(","))
-        		  {
-                  with_query_builder.append(" pi_outer.lastmodifiedTime = (" +
-                          "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid = ? " +
-                          ") ");
-                  preparedStmtList.add(criteria.getTenantId());
-        		  }
-        		  else
-        		  {
-                      List<String> tenantIds=Arrays.asList(criteria.getTenantId().split(","));	
-
-        			  with_query_builder.append(" pi_outer.lastmodifiedTime = (" +
-                              "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid IN (")
-        			  		  .append(createQuery(tenantIds)).append(") )");
-                              addToPreparedStatement(preparedStmtList, tenantIds);
-        		  }
-              }
-        	  else 
-              {
-              	 with_query_builder.append(" 1=1");
-              }
-        	  if(!criteria.getTenantId().contains(",")) {
-        		  if (criteria.getHistory())
-        			  with_query_builder.append(" AND pi_outer.tenantid=? ");
-        		  else
-        			  with_query_builder.append(" AND pi_outer.tenantid=? ");
-        		  preparedStmtList.add(criteria.getTenantId());
-        	  }
-
-             
-              
-              if(criteria.getAssignee()!=null){
-                  with_query_builder.append(" and id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ? ");
-                  preparedStmtList.add(criteria.getAssignee());
-                  preparedStmtList.add(criteria.getTenantId());
-              }
-        }
-
-        List<String> ids = criteria.getIds();
-        if (!CollectionUtils.isEmpty(ids)) {
-            with_query_builder.append("and pi_outer.id IN (").append(createQuery(ids)).append(")");
-            addToPreparedStatement(preparedStmtList, ids);
-        }
-
-        List<String> businessIds = criteria.getBusinessIds();
-        if (!CollectionUtils.isEmpty(businessIds)) {
-            if(isFuzzyEnabled) {
-                with_query_builder.append(" and pi_outer.businessId LIKE ANY(ARRAY[ ").append(createQuery(businessIds)).append("])");
-                addToPreparedStatementForFuzzySearch(preparedStmtList, businessIds);
-            }
-            else {
-                with_query_builder.append(" and pi_outer.businessId IN ( ").append(createQuery(businessIds)).append(")");
-                addToPreparedStatement(preparedStmtList, businessIds);
-            }
-        }
-
-        List<String> status = criteria.getStatus();
-        if (!CollectionUtils.isEmpty(status)) {
-            with_query_builder.append(" and pi_outer.status IN (").append(createQuery(status)).append(")");
-            addToPreparedStatement(preparedStmtList, status);
-        }
-
-      
-
-        if(!StringUtils.isEmpty(criteria.getBusinessService())){
-            with_query_builder.append(" AND pi_outer.businessservice =? ");
-            preparedStmtList.add(criteria.getBusinessService());
-        }
-
-        if(!StringUtils.isEmpty(criteria.getModuleName())){
-            with_query_builder.append(" AND pi_outer.modulename =? ");
-            preparedStmtList.add(criteria.getModuleName());
-        }
-
+        appendStateOrTenantLevelFilters(criteria, preparedStmtList, with_query_builder);
+        appendCommonProcessInstanceFilters(criteria, preparedStmtList, with_query_builder);
+        appendBusinessServiceAndModuleFilters(criteria, preparedStmtList, with_query_builder);
 
         with_query_builder.append(" ORDER BY pi_outer.lastModifiedTime DESC ");
 
@@ -345,56 +250,8 @@ public class WorkflowQueryBuilder {
         List<String> tenantSpecificStatus = criteria.getTenantSpecifiStatus();
         StringBuilder with_query_builder = new StringBuilder(with_query);
 
-        if(criteria.getIsAssignedToMeCount()!=null && criteria.getIsAssignedToMeCount())
-        {
-            with_query_builder.append(" AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ? ");
-            preparedStmtList.add(criteria.getAssignee());
-            preparedStmtList.add(criteria.getTenantId());
-        }
-       else if(!config.getAssignedOnly() && !CollectionUtils.isEmpty(tenantSpecificStatus)){
-            String clause = " AND ((id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?)" +
-                    " AND pi_outer.tenantid = ? ) {{OR_CLUASE_PLACEHOLDER}} )";
-
-            preparedStmtList.add(criteria.getAssignee());
-            preparedStmtList.add(criteria.getTenantId());
-
-            String statusWhereCluse = getStatusRelatedWhereClause(statuses, tenantSpecificStatus, preparedStmtList);
-            clause = clause.replace("{{OR_CLUASE_PLACEHOLDER}}", statusWhereCluse);
-            with_query_builder.append(clause);
-        } 
-        else {
-            if(!isNull(criteria.getModuleName()) && criteria.getModuleName().equals("BPAREG")) {
-                List<String> statusesIrrespectiveOfTenant = criteria.getStatusesIrrespectiveOfTenant();
-                if (CollectionUtils.isEmpty(tenantSpecificStatus) && !CollectionUtils.isEmpty(statusesIrrespectiveOfTenant)) {
-                    String clause = " AND ((id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?)" +
-                            " AND pi_outer.tenantid = ? ) {{OR_CLUASE_PLACEHOLDER}} )";
-
-                    preparedStmtList.add(criteria.getAssignee());
-                    preparedStmtList.add(criteria.getTenantId());
-
-                    StringBuilder statusQuery = new StringBuilder(" OR pi_outer.status IN (").append(createQuery(statusesIrrespectiveOfTenant)).append(")");
-                    addToPreparedStatement(preparedStmtList, statusesIrrespectiveOfTenant);
-                    clause = clause.replace("{{OR_CLUASE_PLACEHOLDER}}", statusQuery.toString());
-                    with_query_builder.append(clause);
-                }
-            } else {
-                with_query_builder.append(" AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ? ");
-                preparedStmtList.add(criteria.getAssignee());
-                preparedStmtList.add(criteria.getTenantId());
-            }
-        }
-
-        if(!StringUtils.isEmpty(criteria.getBusinessService())){
-            with_query_builder.append(" AND pi_outer.businessservice =? ");
-            preparedStmtList.add(criteria.getBusinessService());
-        }
-        
-        if(!ObjectUtils.isEmpty(criteria.getIsNearingSlaCount()) && criteria.getIsNearingSlaCount()){
-            with_query_builder.append(" AND ((select extract(epoch from current_timestamp)) * 1000 - pi_outer.lastmodifiedTime) BETWEEN ? AND ? ");
-            preparedStmtList.add(0l);
-            preparedStmtList.add(criteria.getSlotPercentageSlaLimit());
-        }
-        
+        appendInboxAssigneeAndStatusClauses(criteria, preparedStmtList, statuses, tenantSpecificStatus, with_query_builder);
+        appendInboxBusinessServiceAndSlaClauses(criteria, preparedStmtList, with_query_builder);
 
         with_query_builder.append(" ORDER BY pi_outer.lastModifiedTime DESC ");
 
@@ -404,6 +261,189 @@ public class WorkflowQueryBuilder {
         StringBuilder builder = new StringBuilder(with_query_builder);
 
         return builder.toString();
+    }
+
+    /**
+     * Appends conditions to {@code with_query_builder} depending on whether call is state level or tenant level.
+     */
+    private void appendStateOrTenantLevelFilters(ProcessInstanceSearchCriteria criteria,
+                                                 List<Object> preparedStmtList,
+                                                 StringBuilder with_query_builder) {
+        if (criteria.getIsStateLevelCall() != null && criteria.getIsStateLevelCall()) {
+            appendStateLevelFilters(criteria, preparedStmtList, with_query_builder);
+        } else {
+            appendTenantLevelFilters(criteria, preparedStmtList, with_query_builder);
+        }
+    }
+
+    private void appendStateLevelFilters(ProcessInstanceSearchCriteria criteria,
+                                         List<Object> preparedStmtList,
+                                         StringBuilder with_query_builder) {
+        if (!criteria.getHistory()) {
+            with_query_builder.append(" pi_outer.lastmodifiedTime = (" +
+                    "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid " +
+                    ") ");
+        } else {
+            with_query_builder.append(" 1=1");
+        }
+
+        if (criteria.getAssignee() != null) {
+            with_query_builder.append(" and id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) ");
+            preparedStmtList.add(criteria.getAssignee());
+        }
+    }
+
+    private void appendTenantLevelFilters(ProcessInstanceSearchCriteria criteria,
+                                          List<Object> preparedStmtList,
+                                          StringBuilder with_query_builder) {
+        if (!criteria.getHistory()) {
+            appendLatestRecordTenantFilter(criteria, preparedStmtList, with_query_builder);
+        } else {
+            with_query_builder.append(" 1=1");
+        }
+
+        if (!criteria.getTenantId().contains(",")) {
+            with_query_builder.append(" AND pi_outer.tenantid=? ");
+            preparedStmtList.add(criteria.getTenantId());
+        }
+
+        if (criteria.getAssignee() != null) {
+            with_query_builder.append(" and id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ? ");
+            preparedStmtList.add(criteria.getAssignee());
+            preparedStmtList.add(criteria.getTenantId());
+        }
+    }
+
+    private void appendLatestRecordTenantFilter(ProcessInstanceSearchCriteria criteria,
+                                                List<Object> preparedStmtList,
+                                                StringBuilder with_query_builder) {
+        if (!criteria.getTenantId().contains(",")) {
+            with_query_builder.append(" pi_outer.lastmodifiedTime = (" +
+                    "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid = ? " +
+                    ") ");
+            preparedStmtList.add(criteria.getTenantId());
+        } else {
+            List<String> tenantIds = Arrays.asList(criteria.getTenantId().split(","));
+
+            with_query_builder.append(" pi_outer.lastmodifiedTime = (" +
+                    "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid IN (")
+                    .append(createQuery(tenantIds)).append(") )");
+            addToPreparedStatement(preparedStmtList, tenantIds);
+        }
+    }
+
+    /**
+     * Appends filters that are shared between state-level and tenant-level calls.
+     */
+    private void appendCommonProcessInstanceFilters(ProcessInstanceSearchCriteria criteria,
+                                                    List<Object> preparedStmtList,
+                                                    StringBuilder with_query_builder) {
+        List<String> ids = criteria.getIds();
+        if (!CollectionUtils.isEmpty(ids)) {
+            with_query_builder.append("and pi_outer.id IN (").append(createQuery(ids)).append(")");
+            addToPreparedStatement(preparedStmtList, ids);
+        }
+
+        List<String> businessIds = criteria.getBusinessIds();
+        if (!CollectionUtils.isEmpty(businessIds)) {
+            if (isFuzzyEnabled) {
+                with_query_builder.append(" and pi_outer.businessId LIKE ANY(ARRAY[ ").append(createQuery(businessIds)).append("])");
+                addToPreparedStatementForFuzzySearch(preparedStmtList, businessIds);
+            } else {
+                with_query_builder.append(" and pi_outer.businessId IN ( ").append(createQuery(businessIds)).append(")");
+                addToPreparedStatement(preparedStmtList, businessIds);
+            }
+        }
+
+        List<String> status = criteria.getStatus();
+        if (!CollectionUtils.isEmpty(status)) {
+            with_query_builder.append(" and pi_outer.status IN (").append(createQuery(status)).append(")");
+            addToPreparedStatement(preparedStmtList, status);
+        }
+    }
+
+    private void appendBusinessServiceAndModuleFilters(ProcessInstanceSearchCriteria criteria,
+                                                       List<Object> preparedStmtList,
+                                                       StringBuilder with_query_builder) {
+        if (!StringUtils.isEmpty(criteria.getBusinessService())) {
+            with_query_builder.append(" AND pi_outer.businessservice =? ");
+            preparedStmtList.add(criteria.getBusinessService());
+        }
+
+        if (!StringUtils.isEmpty(criteria.getModuleName())) {
+            with_query_builder.append(" AND pi_outer.modulename =? ");
+            preparedStmtList.add(criteria.getModuleName());
+        }
+    }
+
+    /**
+     * Appends assignee and status related clauses for inbox queries.
+     */
+    private void appendInboxAssigneeAndStatusClauses(ProcessInstanceSearchCriteria criteria,
+                                                     List<Object> preparedStmtList,
+                                                     List<String> statuses,
+                                                     List<String> tenantSpecificStatus,
+                                                     StringBuilder with_query_builder) {
+        if (criteria.getIsAssignedToMeCount() != null && criteria.getIsAssignedToMeCount()) {
+            with_query_builder.append(" AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ? ");
+            preparedStmtList.add(criteria.getAssignee());
+            preparedStmtList.add(criteria.getTenantId());
+        } else if (!config.getAssignedOnly() && !CollectionUtils.isEmpty(tenantSpecificStatus)) {
+            String clause = " AND ((id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?)" +
+                    " AND pi_outer.tenantid = ? ) {{OR_CLUASE_PLACEHOLDER}} )";
+
+            preparedStmtList.add(criteria.getAssignee());
+            preparedStmtList.add(criteria.getTenantId());
+
+            String statusWhereCluse = getStatusRelatedWhereClause(statuses, tenantSpecificStatus, preparedStmtList);
+            clause = clause.replace("{{OR_CLUASE_PLACEHOLDER}}", statusWhereCluse);
+            with_query_builder.append(clause);
+        } else {
+            appendInboxDefaultAssigneeClause(criteria, preparedStmtList, tenantSpecificStatus, with_query_builder);
+        }
+    }
+
+    private void appendInboxDefaultAssigneeClause(ProcessInstanceSearchCriteria criteria,
+                                                  List<Object> preparedStmtList,
+                                                  List<String> tenantSpecificStatus,
+                                                  StringBuilder with_query_builder) {
+        if (!isNull(criteria.getModuleName()) && criteria.getModuleName().equals("BPAREG")) {
+            List<String> statusesIrrespectiveOfTenant = criteria.getStatusesIrrespectiveOfTenant();
+            if (CollectionUtils.isEmpty(tenantSpecificStatus) && !CollectionUtils.isEmpty(statusesIrrespectiveOfTenant)) {
+                String clause = " AND ((id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?)" +
+                        " AND pi_outer.tenantid = ? ) {{OR_CLUASE_PLACEHOLDER}} )";
+
+                preparedStmtList.add(criteria.getAssignee());
+                preparedStmtList.add(criteria.getTenantId());
+
+                StringBuilder statusQuery = new StringBuilder(" OR pi_outer.status IN (").append(createQuery(statusesIrrespectiveOfTenant)).append(")");
+                addToPreparedStatement(preparedStmtList, statusesIrrespectiveOfTenant);
+                clause = clause.replace("{{OR_CLUASE_PLACEHOLDER}}", statusQuery.toString());
+                with_query_builder.append(clause);
+            }
+        } else {
+            with_query_builder.append(" AND id in (select processinstanceid from eg_wf_assignee_v2 asg_inner where asg_inner.assignee = ?) AND pi_outer.tenantid = ? ");
+            preparedStmtList.add(criteria.getAssignee());
+            preparedStmtList.add(criteria.getTenantId());
+        }
+    }
+
+    /**
+     * Appends business service and SLA related clauses for inbox queries.
+     */
+    private void appendInboxBusinessServiceAndSlaClauses(ProcessInstanceSearchCriteria criteria,
+                                                         List<Object> preparedStmtList,
+                                                         StringBuilder with_query_builder) {
+        if (!StringUtils.isEmpty(criteria.getBusinessService())) {
+            with_query_builder.append(" AND pi_outer.businessservice =? ");
+            preparedStmtList.add(criteria.getBusinessService());
+        }
+
+        if (!ObjectUtils.isEmpty(criteria.getIsNearingSlaCount()) && criteria.getIsNearingSlaCount()) {
+            with_query_builder.append(" AND ((select extract(epoch from current_timestamp)) * 1000 - pi_outer.lastmodifiedTime) BETWEEN ? AND ? ");
+            preparedStmtList.add(0l);
+            preparedStmtList.add(criteria.getSlotPercentageSlaLimit());
+        }
     }
 
 

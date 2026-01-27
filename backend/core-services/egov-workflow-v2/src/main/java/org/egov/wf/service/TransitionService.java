@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -58,79 +57,137 @@ public class TransitionService {
         log.debug("Retrieved {} process instance(s) from DB, {} allowed role(s)", 
                 idToProcessInstanceFromDbMap.size(), allowedRoles != null ? allowedRoles.size() : 0);
         
+        List<ProcessStateAndAction> processStateAndActions = new LinkedList<>();
+        
         for(ProcessInstance processInstance: processInstances){
-
-            ProcessStateAndAction processStateAndAction = new ProcessStateAndAction();
-            processStateAndAction.setProcessInstanceFromRequest(processInstance);
-            if(isTransitionCall){
-                processStateAndAction.getProcessInstanceFromRequest().setModuleName(businessService.getBusiness());
-            }
-            processStateAndAction.setProcessInstanceFromDb(idToProcessInstanceFromDbMap.get(processInstance.getBusinessId()));
-            State currentState = null;
-            if(processStateAndAction.getProcessInstanceFromDb()!=null && isTransitionCall)
-                currentState = processStateAndAction.getProcessInstanceFromDb().getState();
-            else if(!isTransitionCall)
-                currentState = processStateAndAction.getProcessInstanceFromRequest().getState();
-
-
-            //Assign businessSla when creating processInstance
-            if(processStateAndAction.getProcessInstanceFromDb()==null && isTransitionCall)
-                processInstance.setBusinesssServiceSla(businessService.getBusinessServiceSla());
-
-
-            if(currentState==null){
-                log.debug("Current state is null for businessId: {}, searching for start state", processInstance.getBusinessId());
-                for (State state : businessService.getStates()) {
-                    if(StringUtils.isEmpty(state.getState())) {
-                        processStateAndAction.setCurrentState(state);
-                        break;
-                    }
-                }
-                if (processStateAndAction.getCurrentState() == null) {
-                    log.error("No start state found in business service config for businessId: {}", processInstance.getBusinessId());
-                    throw new CustomException("START_STATE_NOT_FOUND", "No start state found in business service config");
-                }
-            }
-            else processStateAndAction.setCurrentState(currentState);
-
-            if(!CollectionUtils.isEmpty(processStateAndAction.getCurrentState().getActions())){
-                for (Action action : processStateAndAction.getCurrentState().getActions()){
-                    if(action.getAction().equalsIgnoreCase(processInstance.getAction())){
-                        if(action.getRoles().contains("*"))
-                            action.setRoles(allowedRoles);
-                        processStateAndAction.setAction(action);
-                        break;
-                    }
-                }
-            }
-
-
-            if(isTransitionCall){
-                if(processStateAndAction.getAction()==null) {
-                    String action = processStateAndAction.getProcessInstanceFromRequest().getAction();
-                    String businessId = processStateAndAction.getProcessInstanceFromRequest().getBusinessId();
-                    log.error("Invalid action: {} not found in config for businessId: {}", action, businessId);
-                    throw new CustomException("INVALID ACTION","Action "+action
-                            + " not found in config for the businessId: " + businessId);
-                }
-
-                for(State state : businessService.getStates()){
-                    if(state.getUuid().equalsIgnoreCase(processStateAndAction.getAction().getNextState())){
-                        processStateAndAction.setResultantState(state);
-                        log.debug("Set resultant state for businessId: {}, action: {}", 
-                                processInstance.getBusinessId(), processInstance.getAction());
-                        break;
-                    }
-                }
-            }
-
+            ProcessStateAndAction processStateAndAction = buildProcessStateAndAction(
+                    processInstance, businessService, idToProcessInstanceFromDbMap, allowedRoles, isTransitionCall);
             processStateAndActions.add(processStateAndAction);
-
         }
 
         log.info("Successfully created {} process state and action(s)", processStateAndActions.size());
         log.trace("Exiting getProcessStateAndActions method");
         return processStateAndActions;
+    }
+
+    /**
+     * Builds a ProcessStateAndAction for a single ProcessInstance.
+     */
+    private ProcessStateAndAction buildProcessStateAndAction(ProcessInstance processInstance,
+                                                            BusinessService businessService,
+                                                            Map<String, ProcessInstance> idToProcessInstanceFromDbMap,
+                                                            List<String> allowedRoles,
+                                                            Boolean isTransitionCall) {
+        ProcessStateAndAction processStateAndAction = new ProcessStateAndAction();
+        processStateAndAction.setProcessInstanceFromRequest(processInstance);
+        
+        if(isTransitionCall){
+            processStateAndAction.getProcessInstanceFromRequest().setModuleName(businessService.getBusiness());
+        }
+        
+        processStateAndAction.setProcessInstanceFromDb(idToProcessInstanceFromDbMap.get(processInstance.getBusinessId()));
+        
+        State currentState = determineCurrentState(processStateAndAction, isTransitionCall);
+        setCurrentState(processStateAndAction, currentState, businessService, processInstance);
+        
+        //Assign businessSla when creating processInstance
+        if(processStateAndAction.getProcessInstanceFromDb()==null && isTransitionCall)
+            processInstance.setBusinesssServiceSla(businessService.getBusinessServiceSla());
+
+        findAndSetAction(processStateAndAction, processInstance, allowedRoles);
+        
+        if(isTransitionCall){
+            validateAndSetResultantState(processStateAndAction, businessService, processInstance);
+        }
+        
+        return processStateAndAction;
+    }
+
+    /**
+     * Determines the current state from DB or request.
+     */
+    private State determineCurrentState(ProcessStateAndAction processStateAndAction, Boolean isTransitionCall) {
+        if(processStateAndAction.getProcessInstanceFromDb()!=null && isTransitionCall)
+            return processStateAndAction.getProcessInstanceFromDb().getState();
+        else if(!isTransitionCall)
+            return processStateAndAction.getProcessInstanceFromRequest().getState();
+        return null;
+    }
+
+    /**
+     * Sets the current state, finding start state if current state is null.
+     */
+    private void setCurrentState(ProcessStateAndAction processStateAndAction,
+                                 State currentState,
+                                 BusinessService businessService,
+                                 ProcessInstance processInstance) {
+        if(currentState == null){
+            log.debug("Current state is null for businessId: {}, searching for start state", processInstance.getBusinessId());
+            State startState = findStartState(businessService);
+            if (startState == null) {
+                log.error("No start state found in business service config for businessId: {}", processInstance.getBusinessId());
+                throw new CustomException("START_STATE_NOT_FOUND", "No start state found in business service config");
+            }
+            processStateAndAction.setCurrentState(startState);
+        } else {
+            processStateAndAction.setCurrentState(currentState);
+        }
+    }
+
+    /**
+     * Finds the start state in the business service.
+     */
+    private State findStartState(BusinessService businessService) {
+        for (State state : businessService.getStates()) {
+            if(StringUtils.isEmpty(state.getState())) {
+                return state;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Finds and sets the action matching the process instance action.
+     */
+    private void findAndSetAction(ProcessStateAndAction processStateAndAction,
+                                 ProcessInstance processInstance,
+                                 List<String> allowedRoles) {
+        if(CollectionUtils.isEmpty(processStateAndAction.getCurrentState().getActions())){
+            return;
+        }
+        
+        for (Action action : processStateAndAction.getCurrentState().getActions()){
+            if(action.getAction().equalsIgnoreCase(processInstance.getAction())){
+                if(action.getRoles().contains("*"))
+                    action.setRoles(allowedRoles);
+                processStateAndAction.setAction(action);
+                break;
+            }
+        }
+    }
+
+    /**
+     * Validates action exists and sets the resultant state for transition calls.
+     */
+    private void validateAndSetResultantState(ProcessStateAndAction processStateAndAction,
+                                             BusinessService businessService,
+                                             ProcessInstance processInstance) {
+        if(processStateAndAction.getAction()==null) {
+            String action = processStateAndAction.getProcessInstanceFromRequest().getAction();
+            String businessId = processStateAndAction.getProcessInstanceFromRequest().getBusinessId();
+            log.error("Invalid action: {} not found in config for businessId: {}", action, businessId);
+            throw new CustomException("INVALID ACTION","Action "+action
+                    + " not found in config for the businessId: " + businessId);
+        }
+
+        for(State state : businessService.getStates()){
+            if(state.getUuid().equalsIgnoreCase(processStateAndAction.getAction().getNextState())){
+                processStateAndAction.setResultantState(state);
+                log.debug("Set resultant state for businessId: {}, action: {}", 
+                        processInstance.getBusinessId(), processInstance.getAction());
+                break;
+            }
+        }
     }
 
 

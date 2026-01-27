@@ -56,74 +56,87 @@ public class BusinessServiceRowMapper implements ResultSetExtractor<List<Busines
      * @throws SQLException
      */
     private void addChildrenToBusinessService(ResultSet rs,BusinessService businessService) throws SQLException{
-
         String stateUuid = rs.getString("st_uuid");
         String actionUuid = rs.getString("ac_uuid");
+
+        State state = getOrCreateState(rs, businessService, stateUuid);
+        
+        if(actionUuid != null){
+            addActionToState(rs, state, actionUuid);
+        }
+    }
+
+    /**
+     * Gets existing state or creates a new one if it doesn't exist.
+     */
+    private State getOrCreateState(ResultSet rs, BusinessService businessService, String stateUuid) throws SQLException {
+        State state = businessService.getStateFromUuid(stateUuid);
+        if(state != null){
+            return state;
+        }
 
         Long lastModifiedTime = rs.getLong("st_lastModifiedTime");
         if (rs.wasNull()) {
             lastModifiedTime = null;
         }
 
-        State state;
-        if(businessService.getStateFromUuid(stateUuid)==null){
-            AuditDetails auditdetails = AuditDetails.builder()
-                    .createdBy(rs.getString("st_createdBy"))
-                    .createdTime(rs.getLong("st_createdTime"))
-                    .lastModifiedBy(rs.getString("st_lastModifiedBy"))
-                    .lastModifiedTime(lastModifiedTime)
-                    .build();
-
-            Long sla = rs.getLong("sla");
-            if (rs.wasNull()) {
-                sla = null;
-            }
-
-            state = State.builder()
-                .tenantId(rs.getString("st_tenantId"))
-                .uuid(stateUuid)
-                .state(rs.getString("state"))
-                .sla(sla)
-                .applicationStatus(rs.getString("applicationStatus"))
-                .isStartState(rs.getBoolean("isStartState"))
-                .isTerminateState(rs.getBoolean("isTerminateState"))
-                .docUploadRequired(rs.getBoolean("docuploadrequired"))
-                .isStateUpdatable(rs.getBoolean("isStateUpdatable"))
-                .businessServiceId(rs.getString("businessserviceid"))
-                .auditDetails(auditdetails)
+        AuditDetails auditdetails = AuditDetails.builder()
+                .createdBy(rs.getString("st_createdBy"))
+                .createdTime(rs.getLong("st_createdTime"))
+                .lastModifiedBy(rs.getString("st_lastModifiedBy"))
+                .lastModifiedTime(lastModifiedTime)
                 .build();
 
-            businessService.addStatesItem(state);
-        }
-        else {
-            state = businessService.getStateFromUuid(stateUuid);
+        Long sla = rs.getLong("sla");
+        if (rs.wasNull()) {
+            sla = null;
         }
 
-        if(actionUuid!=null){
-            Long actionLastModifiedTime = rs.getLong("ac_lastModifiedTime");
-            if (rs.wasNull()) {
-                actionLastModifiedTime = null;
-            }
+        state = State.builder()
+            .tenantId(rs.getString("st_tenantId"))
+            .uuid(stateUuid)
+            .state(rs.getString("state"))
+            .sla(sla)
+            .applicationStatus(rs.getString("applicationStatus"))
+            .isStartState(rs.getBoolean("isStartState"))
+            .isTerminateState(rs.getBoolean("isTerminateState"))
+            .docUploadRequired(rs.getBoolean("docuploadrequired"))
+            .isStateUpdatable(rs.getBoolean("isStateUpdatable"))
+            .businessServiceId(rs.getString("businessserviceid"))
+            .auditDetails(auditdetails)
+            .build();
 
-            AuditDetails actionAuditdetails = AuditDetails.builder()
-                    .createdBy(rs.getString("ac_createdBy"))
-                    .createdTime(rs.getLong("ac_createdTime"))
-                    .lastModifiedBy(rs.getString("ac_lastModifiedBy"))
-                    .lastModifiedTime(actionLastModifiedTime)
-                    .build();
+        businessService.addStatesItem(state);
+        return state;
+    }
 
-            Action action = Action.builder()
-                    .tenantId(rs.getString("ac_tenantId"))
-                    .action(rs.getString("action"))
-                    .nextState(rs.getString("nextState"))
-                    .uuid(actionUuid)
-                    .currentState(rs.getString("currentState"))
-                    .roles(Arrays.asList(rs.getString("roles").split(",")))
-                    .active(rs.getBoolean("ac_active"))
-                    .auditDetails(actionAuditdetails)
-                    .build();
-            state.addActionsItem(action);
+    /**
+     * Creates and adds an action to the state.
+     */
+    private void addActionToState(ResultSet rs, State state, String actionUuid) throws SQLException {
+        Long actionLastModifiedTime = rs.getLong("ac_lastModifiedTime");
+        if (rs.wasNull()) {
+            actionLastModifiedTime = null;
         }
+
+        AuditDetails actionAuditdetails = AuditDetails.builder()
+                .createdBy(rs.getString("ac_createdBy"))
+                .createdTime(rs.getLong("ac_createdTime"))
+                .lastModifiedBy(rs.getString("ac_lastModifiedBy"))
+                .lastModifiedTime(actionLastModifiedTime)
+                .build();
+
+        Action action = Action.builder()
+                .tenantId(rs.getString("ac_tenantId"))
+                .action(rs.getString("action"))
+                .nextState(rs.getString("nextState"))
+                .uuid(actionUuid)
+                .currentState(rs.getString("currentState"))
+                .roles(Arrays.asList(rs.getString("roles").split(",")))
+                .active(rs.getBoolean("ac_active"))
+                .auditDetails(actionAuditdetails)
+                .build();
+        state.addActionsItem(action);
     }
 
 

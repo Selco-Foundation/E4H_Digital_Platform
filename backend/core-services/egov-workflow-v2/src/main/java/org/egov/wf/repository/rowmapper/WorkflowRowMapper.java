@@ -1,11 +1,9 @@
 package org.egov.wf.repository.rowmapper;
 
 
-import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import org.egov.common.contract.request.User;
 import org.egov.wf.web.models.Action;
@@ -16,7 +14,6 @@ import org.egov.wf.web.models.State;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 @Component
@@ -114,49 +111,64 @@ public class WorkflowRowMapper implements ResultSetExtractor<List<ProcessInstanc
      * @throws SQLException
      */
     private void addChildrenToProperty(ResultSet rs, ProcessInstance processInstance) throws SQLException {
+        addAssigneeIfPresent(rs, processInstance);
+        addDocumentIfPresent(rs, processInstance);
+        addActionIfPresent(rs, processInstance);
+    }
 
-        // Building the assignes object
+    /**
+     * Adds assignee user to process instance if present in result set.
+     */
+    private void addAssigneeIfPresent(ResultSet rs, ProcessInstance processInstance) throws SQLException {
         String assigneeUuid = rs.getString("assigneeuuid");
-
         if(!StringUtils.isEmpty(assigneeUuid)){
             processInstance.addUsersItem(User.builder().uuid(assigneeUuid).build());
         }
+    }
 
-
+    /**
+     * Adds document to process instance if present in result set.
+     */
+    private void addDocumentIfPresent(ResultSet rs, ProcessInstance processInstance) throws SQLException {
         String documentId = rs.getString("doc_id");
-
-        if(documentId!=null){
-
-            Long lastModifiedTime = rs.getLong("doc_lastModifiedTime");
-            if (rs.wasNull()) {
-                lastModifiedTime = null;
-            }
-
-            AuditDetails auditdetails = AuditDetails.builder()
-                    .createdBy(rs.getString("doc_createdBy"))
-                    .createdTime(rs.getLong("doc_createdTime"))
-                    .lastModifiedBy(rs.getString("doc_lastModifiedBy"))
-                    .lastModifiedTime(lastModifiedTime)
-                    .build();
-
-            Document document = Document.builder()
-                    .id(documentId)
-                    .tenantId(rs.getString("doc_tenantid"))
-                    .documentUid(rs.getString("documentUid"))
-                    .documentType(rs.getString("documentType"))
-                    .fileStoreId(rs.getString("fileStoreId"))
-                    .auditDetails(auditdetails)
-                    .build();
-            processInstance.addDocumentsItem(document);
+        if(documentId == null){
+            return;
         }
 
+        Long lastModifiedTime = rs.getLong("doc_lastModifiedTime");
+        if (rs.wasNull()) {
+            lastModifiedTime = null;
+        }
+
+        AuditDetails auditdetails = AuditDetails.builder()
+                .createdBy(rs.getString("doc_createdBy"))
+                .createdTime(rs.getLong("doc_createdTime"))
+                .lastModifiedBy(rs.getString("doc_lastModifiedBy"))
+                .lastModifiedTime(lastModifiedTime)
+                .build();
+
+        Document document = Document.builder()
+                .id(documentId)
+                .tenantId(rs.getString("doc_tenantid"))
+                .documentUid(rs.getString("documentUid"))
+                .documentType(rs.getString("documentType"))
+                .fileStoreId(rs.getString("fileStoreId"))
+                .auditDetails(auditdetails)
+                .build();
+        processInstance.addDocumentsItem(document);
+    }
+
+    /**
+     * Adds action to process instance state if present in result set.
+     * Null check added for action id to avoid adding empty action object in end state
+     * and avoiding action related errors on end state.
+     */
+    private void addActionIfPresent(ResultSet rs, ProcessInstance processInstance) throws SQLException {
         String actionUuid = rs.getString("ac_uuid");
-        /*
-         * null check added for action id to avoid adding empty action object in end state
-         * 
-         * also avoiding action related errors on end state
-         */
-        if(null != actionUuid) {
+        if(actionUuid == null) {
+            return;
+        }
+
         String roles = rs.getString("roles");
         Action action = Action.builder()
                 .tenantId(rs.getString("ac_tenantId"))
@@ -167,7 +179,6 @@ public class WorkflowRowMapper implements ResultSetExtractor<List<ProcessInstanc
                 .roles(StringUtils.isEmpty(roles) ? Arrays.asList() : Arrays.asList(roles.split(","))) 
                 .build();
         processInstance.getState().addActionsItem(action);
-        }
     }
 
 

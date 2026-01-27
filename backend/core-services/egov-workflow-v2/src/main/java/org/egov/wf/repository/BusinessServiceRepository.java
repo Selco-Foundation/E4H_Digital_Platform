@@ -1,8 +1,6 @@
 package org.egov.wf.repository;
 
 import lombok.extern.slf4j.Slf4j;
-import org.egov.common.contract.request.Role;
-import org.egov.tracer.model.CustomException;
 import org.egov.wf.config.WorkflowConfig;
 import org.egov.wf.repository.querybuilder.BusinessServiceQueryBuilder;
 import org.egov.wf.repository.rowmapper.BusinessServiceRowMapper;
@@ -108,53 +106,68 @@ public class BusinessServiceRepository {
         List<BusinessService> businessServices = getAllBusinessService();
         log.debug("Retrieved {} business service(s) for mapping", businessServices != null ? businessServices.size() : 0);
 
-        for(BusinessService businessService : businessServices){
-
-            String tenantId = businessService.getTenantId();
-
-            for(State state : businessService.getStates()){
-
-                String uuid = state.getUuid();
-
-                if(!CollectionUtils.isEmpty(state.getActions())){
-
-                    for(Action action : state.getActions()){
-
-                        List<String> roles = action.getRoles();
-
-                        if(!CollectionUtils.isEmpty(roles)){
-                            for(String role : roles){
-
-                                Map<String, List<String>> tenantToStatusMap;
-
-                                if (roleTenantAndStatusMapping.containsKey(role))
-                                    tenantToStatusMap = roleTenantAndStatusMapping.get(role);
-                                else tenantToStatusMap = new HashMap();
-
-                                List<String> statuses;
-
-                                if(tenantToStatusMap.containsKey(tenantId))
-                                    statuses = tenantToStatusMap.get(tenantId);
-                                else statuses = new LinkedList<>();
-
-                                statuses.add(uuid);
-
-                                tenantToStatusMap.put(tenantId, statuses);
-                                roleTenantAndStatusMapping.put(role, tenantToStatusMap);
-                            }
-                        }
-                    }
-
-                }
-
-            }
-
+        if (!CollectionUtils.isEmpty(businessServices)) {
+            businessServices.forEach(businessService ->
+                    addBusinessServiceToRoleTenantStatusMapping(businessService, roleTenantAndStatusMapping));
         }
 
         log.info("Successfully built role tenant and status mapping with {} role(s)", roleTenantAndStatusMapping.size());
         log.trace("Exiting getRoleTenantAndStatusMapping method");
         return roleTenantAndStatusMapping;
 
+    }
+
+    /**
+     * Populates {@code roleTenantAndStatusMapping} for a single {@link BusinessService}.
+     */
+    private void addBusinessServiceToRoleTenantStatusMapping(BusinessService businessService,
+                                                             Map<String, Map<String, List<String>>> roleTenantAndStatusMapping) {
+        String tenantId = businessService.getTenantId();
+
+        for (State state : businessService.getStates()) {
+            addStateToRoleTenantStatusMapping(state, tenantId, roleTenantAndStatusMapping);
+        }
+    }
+
+    /**
+     * Populates {@code roleTenantAndStatusMapping} for a single {@link State}.
+     */
+    private void addStateToRoleTenantStatusMapping(State state,
+                                                   String tenantId,
+                                                   Map<String, Map<String, List<String>>> roleTenantAndStatusMapping) {
+        String uuid = state.getUuid();
+
+        if (CollectionUtils.isEmpty(state.getActions())) {
+            return;
+        }
+
+        for (Action action : state.getActions()) {
+            addActionToRoleTenantStatusMapping(action, tenantId, uuid, roleTenantAndStatusMapping);
+        }
+    }
+
+    /**
+     * Populates {@code roleTenantAndStatusMapping} for a single {@link Action}.
+     */
+    private void addActionToRoleTenantStatusMapping(Action action,
+                                                    String tenantId,
+                                                    String stateUuid,
+                                                    Map<String, Map<String, List<String>>> roleTenantAndStatusMapping) {
+        List<String> roles = action.getRoles();
+        if (CollectionUtils.isEmpty(roles)) {
+            return;
+        }
+
+        for (String role : roles) {
+            Map<String, List<String>> tenantToStatusMap =
+                    roleTenantAndStatusMapping.getOrDefault(role, new HashMap());
+
+            List<String> statuses = tenantToStatusMap.getOrDefault(tenantId, new LinkedList<>());
+            statuses.add(stateUuid);
+
+            tenantToStatusMap.put(tenantId, statuses);
+            roleTenantAndStatusMapping.put(role, tenantToStatusMap);
+        }
     }
 
     /**

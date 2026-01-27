@@ -244,74 +244,85 @@ public class WorkflowUtil {
         List<String> tenantSpecificStatuses = new LinkedList<>();
         List<String> statusIrrespectiveOfTenant = new LinkedList<>();
 
-
-
         for(Map.Entry<String, List<String>> entry : roleToTenantIdMap.entrySet()){
-
-            /**
-             * role: Role of the user
-             * tenantIds: Tenants for which he has the above particular role
-             */
             String role = entry.getKey();
             List<String> tenantIds = entry.getValue();
-
 
             if(!roleTenantAndStatusMapping.containsKey(role))
                 continue;
 
-
-
-            Boolean isStatelevelRolePresent = false;
-
-            for (String tenantId : tenantIds) {
-                if (tenantId.equalsIgnoreCase(config.getStateLevelTenantId())){
-                    isStatelevelRolePresent = true;
-                    break;
-                }
-            }
-
-
+            Boolean isStatelevelRolePresent = hasStateLevelRole(tenantIds);
             Map<String,List<String>> tenantToStatuses = roleTenantAndStatusMapping.get(role);
 
-            for (Map.Entry<String, List<String>> tenantEntry : tenantToStatuses.entrySet()){
-
-                String tenantKey = tenantEntry.getKey();
-                List<String> statuses = tenantEntry.getValue();
-
-                /**
-                 * Handles Use Case 1:
-                 *  Example: role is TL_CEMP for tenantId pb.amritsar and config is tenant level. If the tenaantKey is equal to pb.amritsar
-                 *  we have to search all applications with status in statuses and tenantId = pb.amritsar. Since we do bulk search (we can't have multiple IN clause)
-                 *  we use derived column to search which is tenanat:statusUUID
-                 */
-                if(!isStatelevelRolePresent && tenantIds.contains(tenantKey))
-                    tenantSpecificStatuses.addAll(statuses.stream().map(s -> tenantKey+":"+s).collect(Collectors.toList()));
-
-
-                /**
-                 * Handles Use Case 2:
-                 * User has TL_CEMP role for pb.amritsar and pb.jalandhar and the config is statelevel. In this case we have to search all
-                 * applications having tenantId either pb.amritsar or pb.jalandhar and status in the list statuses
-                 *
-                 */
-                if(!isStatelevelRolePresent && tenantKey.equalsIgnoreCase(config.getStateLevelTenantId())){
-                    for (String tenantId : tenantIds){
-                        tenantSpecificStatuses.addAll(statuses.stream().map(s -> tenantId+":"+s).collect(Collectors.toList()));
-                    }
-                }
-
-                /**
-                 * Handles Use Case 3 and 4:
-                 * If the user has state level role he can take action all applications with status in statuses irrespective
-                 * of the tenantId of the application
-                 */
-                if(isStatelevelRolePresent){
-                    statusIrrespectiveOfTenant.addAll(statuses);
-                }
-            }
-
+            processTenantStatusMappings(tenantToStatuses, tenantIds, isStatelevelRolePresent, 
+                    tenantSpecificStatuses, statusIrrespectiveOfTenant);
         }
 
+        applyStatusCriteria(criteria, tenantSpecificStatuses, statusIrrespectiveOfTenant);
+    }
+
+    /**
+     * Checks if any tenant ID in the list matches the state level tenant ID.
+     */
+    private Boolean hasStateLevelRole(List<String> tenantIds) {
+        for (String tenantId : tenantIds) {
+            if (tenantId.equalsIgnoreCase(config.getStateLevelTenantId())){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Processes tenant-to-status mappings and populates tenant-specific and tenant-independent status lists.
+     */
+    private void processTenantStatusMappings(Map<String, List<String>> tenantToStatuses,
+                                           List<String> tenantIds,
+                                           Boolean isStatelevelRolePresent,
+                                           List<String> tenantSpecificStatuses,
+                                           List<String> statusIrrespectiveOfTenant) {
+        for (Map.Entry<String, List<String>> tenantEntry : tenantToStatuses.entrySet()){
+            String tenantKey = tenantEntry.getKey();
+            List<String> statuses = tenantEntry.getValue();
+
+            if(!isStatelevelRolePresent) {
+                addTenantLevelStatuses(tenantKey, tenantIds, statuses, tenantSpecificStatuses);
+            } else {
+                statusIrrespectiveOfTenant.addAll(statuses);
+            }
+        }
+    }
+
+    /**
+     * Adds tenant-level statuses based on use cases 1 and 2.
+     */
+    private void addTenantLevelStatuses(String tenantKey,
+                                       List<String> tenantIds,
+                                       List<String> statuses,
+                                       List<String> tenantSpecificStatuses) {
+        // Use Case 1: Tenant-level role with matching tenant key
+        if(tenantIds.contains(tenantKey)) {
+            tenantSpecificStatuses.addAll(statuses.stream()
+                    .map(s -> tenantKey+":"+s)
+                    .collect(Collectors.toList()));
+        }
+
+        // Use Case 2: Tenant-level role with state-level tenant key
+        if(tenantKey.equalsIgnoreCase(config.getStateLevelTenantId())){
+            for (String tenantId : tenantIds){
+                tenantSpecificStatuses.addAll(statuses.stream()
+                        .map(s -> tenantId+":"+s)
+                        .collect(Collectors.toList()));
+            }
+        }
+    }
+
+    /**
+     * Applies the collected statuses to the search criteria.
+     */
+    private void applyStatusCriteria(ProcessInstanceSearchCriteria criteria,
+                                    List<String> tenantSpecificStatuses,
+                                    List<String> statusIrrespectiveOfTenant) {
         if(!CollectionUtils.isEmpty(tenantSpecificStatuses))
             criteria.setTenantSpecifiStatus(tenantSpecificStatuses);
 
@@ -319,8 +330,6 @@ public class WorkflowUtil {
             criteria.setStatus(statusIrrespectiveOfTenant);
             criteria.setStatusesIrrespectiveOfTenant(statusIrrespectiveOfTenant);
         }
-
-
     }
     
      
