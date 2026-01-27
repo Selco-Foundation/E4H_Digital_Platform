@@ -535,7 +535,8 @@ public class OrganisationUserServiceValidator {
 
         changes.setJurisdictionChanged(
                 !safeJurisSet(existing.getJurisdictions())
-                        .equals(safeJurisSet(incoming.getJurisdictions()))
+                        .equals(safeJurisSet(incoming.getJurisdictions())) || !safeJurisSetActive(existing.getJurisdictions())
+                        .equals(safeJurisSetActive(incoming.getJurisdictions()))
         );
 
         return changes;
@@ -553,6 +554,14 @@ public class OrganisationUserServiceValidator {
         if (jurisdictions == null) return Set.of();
         return jurisdictions.stream()
                 .map(Jurisdiction::getBoundary)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    private Set<Boolean> safeJurisSetActive(List<Jurisdiction> jurisdictions) {
+        if (jurisdictions == null) return Set.of();
+        return jurisdictions.stream()
+                .map(Jurisdiction::getIsActive)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
     }
