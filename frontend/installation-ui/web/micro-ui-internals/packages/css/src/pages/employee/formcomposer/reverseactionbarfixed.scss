@@ -1,0 +1,53 @@
+.reverse-actionbar-fixed {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-width: 100%;
+  position: fixed;
+
+  .submit-bar,
+  .submit-bar-disabled {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .previous-button {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+@media (min-width: 640px) {
+  .reverse-actionbar-fixed {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: space-between;
+    max-width: 100%;
+    position: fixed;
+
+    .submit-bar,
+    .submit-bar-disabled {
+      width: 240px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .previous-button{
+      width: 240px;
+    }
+  }
+}
+
+@media (min-width: 48rem) {
+  .reverse-actionbar-fixed {
+    .previous-button{
+      margin-left: 4rem;
+      width: 240px;
+    }
+  }
+}
+

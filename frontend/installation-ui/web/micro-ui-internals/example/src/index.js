@@ -5,6 +5,7 @@ import { initUtilitiesComponents } from "@egovernments/digit-ui-module-utilities
 import { QCReducers, initQCComponents } from "@selco/digit-ui-module-qc";
 import { PMReducers, initPMComponents } from "@selco/digit-ui-module-pm";
 import { AMCReducers, initAMCComponents } from "@selco/digit-ui-module-amc";
+import { FAReducers, initFAComponents } from "@selco/digit-ui-module-fa";
 import { Loader } from "@egovernments/digit-ui-components";
 
 import "@egovernments/digit-ui-components-css/dist/index.css";
@@ -27,6 +28,7 @@ const enabledModules = [
   "QC",
   "PM",
   "AMC",
+  "FA",
   "Utilities",
 ];
 
@@ -85,11 +87,13 @@ const initDigitUI = () => {
   initQCComponents();
   initPMComponents();
   initAMCComponents();
+  initFAComponents();
 
   const moduleReducers = (initData) => ({
     qc: QCReducers(initData),
     pm: PMReducers(initData),
     amc: AMCReducers(initData),
+    fa: FAReducers(initData),
   });
 
   // const stateCode = window?.globalConfigs?.getConfig("STATE_LEVEL_TENANT_ID") || "pb";
