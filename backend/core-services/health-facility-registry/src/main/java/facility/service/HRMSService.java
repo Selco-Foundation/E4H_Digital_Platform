@@ -188,6 +188,10 @@ public class HRMSService {
             if (response != null) {
                 log.info("Successfully created POC employee for facility {} with HFR ID {}", 
                         sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
+                
+                // Update user password after successful creation
+                updateUserPassword(response, requestInfo);
+                
                 log.trace("Exiting createFacilityPOCEmployee method");
                 return true;
             }
@@ -198,6 +202,71 @@ public class HRMSService {
             log.error("Error creating POC employee for facility {}: {}", 
                     sanitizeForLog(facility.getFacilityId()), e.getMessage(), e);
             return false;
+        }
+    }
+
+    /**
+     * Updates the password for a newly created user from HRMS response.
+     * Extracts user details from HRMS employee response and calls user service to update password.
+     * 
+     * @param hrmsResponse The HRMS create employee response containing employee and user details
+     * @param requestInfo RequestInfo for the API call
+     */
+    private void updateUserPassword(Map<String, Object> hrmsResponse, RequestInfo requestInfo) {
+        log.trace("Entering updateUserPassword method");
+        try {
+            // Extract employees from HRMS response
+            if (!hrmsResponse.containsKey("Employees")) {
+                log.warn("HRMS response does not contain Employees, cannot update password");
+                return;
+            }
+
+            List<Map<String, Object>> employees = (List<Map<String, Object>>) hrmsResponse.get("Employees");
+            if (employees == null || employees.isEmpty()) {
+                log.warn("No employees found in HRMS response, cannot update password");
+                return;
+            }
+
+            // Get the first employee (should be the one we just created)
+            Map<String, Object> employee = employees.get(0);
+            if (!employee.containsKey("user")) {
+                log.warn("Employee does not contain user information, cannot update password");
+                return;
+            }
+
+            Map<String, Object> user = (Map<String, Object>) employee.get("user");
+            if (user == null) {
+                log.warn("User object is null, cannot update password");
+                return;
+            }
+
+            // Verify user has required fields (uuid or id) for update
+            if (!user.containsKey("uuid") && !user.containsKey("id")) {
+                log.warn("User object does not contain uuid or id, cannot update password. User: {}", 
+                        sanitizeForLog((String) user.get("userName")));
+                return;
+            }
+
+            // Set default password
+            user.put("password", configs.getDefaultUserPassword());
+            
+            // Build user update request
+            Map<String, Object> userUpdateRequest = new HashMap<>();
+            userUpdateRequest.put("RequestInfo", requestInfo);
+            userUpdateRequest.put("user", user);
+
+            // Build user update URI
+            String updateUri = configs.getUserHost() + configs.getUserContextPath() + configs.getUserUpdateEndpoint();
+            
+            log.debug("Updating password for user: {}", sanitizeForLog((String) user.get("userName")));
+            
+            // Call user service to update password
+            serviceRequestRepository.fetchResult(new StringBuilder(updateUri), userUpdateRequest);
+            
+            log.info("Successfully updated password for user: {}", sanitizeForLog((String) user.get("userName")));
+            log.trace("Exiting updateUserPassword method");
+        } catch (Exception e) {
+            log.error("Error updating user password: {}", e.getMessage(), e);
         }
     }
 
