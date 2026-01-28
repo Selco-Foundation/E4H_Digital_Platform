@@ -1,0 +1,76 @@
+.digit-tab-main {
+  position: relative;
+
+  .digit-tab {
+    display: flex;
+    align-items: flex-end;
+    gap: 0;
+    position: relative !important;
+    z-index: 2;
+
+    .digit-tab-list {
+      cursor: pointer;
+      border-radius: 8px 8px 0 0;
+      background-color: #FFFFFF;
+      transition: all 0.2s ease;
+      margin-bottom: -1px;
+      position: relative !important;
+
+      &:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 45px;
+        width: 1px;
+        background-color: #D6D5D5;
+      }
+
+      &.active {
+        background-color: #FAFAFA;
+
+        .digit-tab-label {
+          color: #C84C0E;
+        }
+      }
+
+      &:not(.active) {
+        .digit-tab-label {
+          color: #505A5F;
+        }
+      }
+
+      .digit-tab-item {
+        display: flex;
+        background-color: transparent;
+        align-items: center;
+        gap: 8px;
+        border: none;
+
+        .digit-tab-icon {
+          display: flex;
+          align-items: center;
+        }
+
+        .digit-tab-label {
+          font-family: Roboto;
+          font-size: 16px;
+          font-weight: 700;
+        }
+      }
+    }
+  }
+
+  .tab-content-wrapper {
+    position: relative;
+    overflow: auto;
+    z-index: 1;
+    background-color: #fafafa;
+    padding: 15px;
+  }
+}
+
+.digit-tab-main .digit-tab .digit-tab-list {
+  position: relative !important;
+}
