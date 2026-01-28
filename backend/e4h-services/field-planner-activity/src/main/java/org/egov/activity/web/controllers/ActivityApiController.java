@@ -36,9 +36,7 @@ public class ActivityApiController {
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Autowired
-    public ActivityApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
-                                 Producer producer,
-                                 ActivityConfiguration fieldPlannerConfiguration,
+    public ActivityApiController(HttpServletRequest httpServletRequest,
                                  ActivityService activityService, ActivityFacilityUsersService facilityUsersService, FacilityWorkflowService facilityWorkflowService, KafkaTemplate<String, Object> kafkaTemplate) {
         this.httpServletRequest = httpServletRequest;
         this.activityService = activityService;
@@ -111,7 +109,6 @@ public class ActivityApiController {
         Map<String, List<Comment>> commentsByTxnId = allComments.stream()
                 .collect(Collectors.groupingBy(Comment::getTransactionId));
 
-        ObjectMapper mapper = new ObjectMapper();
         List<FacilityStatusWrapper> projectStatusWrappers = new ArrayList<>();
         for (ActivityFacility activityFacility : activityFacilityList) {
             String status = null;

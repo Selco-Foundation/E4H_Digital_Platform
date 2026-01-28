@@ -127,6 +127,12 @@ public class AMCServiceConfiguration {
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
 
+    @Value("${egov.vendor.host}")
+    private String vendorHost;
+
+    @Value("${egov.vendor.search.url}")
+    private String vendorSearchUrl;
+
     @Value("${email.activity.assignment.subject}")
     private String activityEmailSubject;
 

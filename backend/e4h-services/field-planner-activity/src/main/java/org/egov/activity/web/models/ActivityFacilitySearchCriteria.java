@@ -33,6 +33,9 @@ public class ActivityFacilitySearchCriteria {
     @JsonProperty("activityIds")
     private @Valid List<String> activityId = null;
 
+    @JsonProperty("activityCodes")
+    private @Valid List<String> activityCodes = null;
+
     @JsonProperty("statuses")
     private @Valid List<String> statuses = null;
 

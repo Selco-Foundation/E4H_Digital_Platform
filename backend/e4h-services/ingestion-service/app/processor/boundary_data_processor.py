@@ -1,6 +1,6 @@
 import os
 from typing import List, Dict, Set, Tuple
-
+import re
 import pandas as pd
 
 from app.core.logging import AppLogger
@@ -95,10 +95,10 @@ class BoundaryDataProcessor:
     def _organize_boundary_data(self, boundary_df):
         """Organize boundary data into hierarchical structure with full codes"""
         for _, row in boundary_df.iterrows():
-            country = str(row.get('Country', '')).strip()
-            state = str(row.get('State', '')).strip()
-            district = str(row.get('District', '')).strip()
-            block = str(row.get('Block', '')).strip()
+            country = self.to_camel_case(str(row.get('Country', '')).strip())
+            state = self.to_camel_case(str(row.get('State', '')).strip())
+            district = self.to_camel_case(str(row.get('District', '')).strip())
+            block = self.to_camel_case(str(row.get('Block', '')).strip())
 
             # Country level
             if country:
@@ -331,3 +331,15 @@ class BoundaryDataProcessor:
                     boundary_df.loc[index, "error"] = ""
 
         return boundary_df
+
+    def to_camel_case(self, text: str) -> str:
+        if not text or not text.strip():
+            return ""
+
+        cleaned = re.sub(r"[_\-]+", " ", text.strip())
+
+        # Split sur espaces
+        parts = cleaned.split()
+
+        # Capitalize chaque mot et concatène
+        return "".join(word.capitalize() for word in parts)

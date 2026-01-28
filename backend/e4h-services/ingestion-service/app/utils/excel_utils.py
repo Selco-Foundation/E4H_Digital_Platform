@@ -271,6 +271,8 @@ def add_validations_to_excel(file_path: str,
 
     header_row = 1
     max_row = ws.max_row + max_extra_rows  # allow future rows for data entry
+    # Ensure max_row is at least 2 (header row is 1, data starts at row 2)
+    max_row = max(max_row, 2)
     header_cells = {cell.value.strip(): cell for cell in ws[header_row] if cell.value}
 
     for col_name, config in validations.items():

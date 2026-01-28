@@ -111,5 +111,43 @@ public class BoundaryController {
         return ResponseEntity.ok(paginated);
     }
 
+    @GetMapping("/v2/getAllBoundaries")
+    public ResponseEntity<BoundaryRelationshipV2Response> getAllBoundariesV2(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam String tenantId,
+            @RequestParam String hierarchyType,
+            @RequestParam String boundaryType) {
+
+        BoundaryRelationshipSearchCriteria criteria = new BoundaryRelationshipSearchCriteria();
+        criteria.setTenantId(tenantId);
+        criteria.setHierarchyType(hierarchyType);
+        criteria.setIncludeChildren(false);
+        criteria.setIncludeParents(true);
+        criteria.setBoundaryType(boundaryType);
+
+        BoundarySearchResponse response = boundaryRelationshipService.getBoundaryRelationships(criteria, null);
+        log.info(String.valueOf(response));
+        Integer count = boundaryRelationshipService.countBoundaryRelationships(criteria);
+        List<FlatBoundaryResponse> flatList = new ArrayList<>();
+        for (HierarchyRelation tenantBoundary : response.getTenantBoundary()) {
+            for (EnrichedBoundary country : tenantBoundary.getBoundary()) {
+                boundaryService.buildFlatHierarchy(country, flatList, new ArrayList<>());
+            }
+        }
+
+        // Paginate
+        int start = page * size;
+        int end = Math.min(start + size, flatList.size());
+        List<FlatBoundaryResponse> paginated = (start < flatList.size()) ? flatList.subList(start, end) : Collections.emptyList();
+        BoundaryRelationshipV2Response response1 = BoundaryRelationshipV2Response.builder()
+                .responseInfo(null)
+                .totalCount(count)
+                .paginated(paginated)
+                .build();
+
+        return ResponseEntity.ok(response1);
+    }
+
 
 }

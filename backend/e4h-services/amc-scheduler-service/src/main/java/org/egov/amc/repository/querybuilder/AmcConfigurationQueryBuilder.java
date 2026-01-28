@@ -46,7 +46,7 @@ public class AmcConfigurationQueryBuilder {
             "    ) AS assignments " +
             " " +
             "FROM amc_configuration AS ac LEFT JOIN facility AS f ON ac.facility_id = f.id LEFT JOIN project AS p ON ac.project_id = p.id LEFT JOIN amc_configuration_assignments aca ON ac.id = aca.amc_configuration_id ";
-    private static final String AMC_CONFIGURATION_COUNT_QUERY = "SELECT COUNT(*) FROM amc_configuration AS ac LEFT JOIN facility AS f ON ac.facility_id = f.id LEFT JOIN project AS p ON ac.project_id = p.id ";
+    private static final String AMC_CONFIGURATION_COUNT_QUERY = "SELECT COUNT(distinct(ac.id)) FROM amc_configuration AS ac LEFT JOIN facility AS f ON ac.facility_id = f.id LEFT JOIN project AS p ON ac.project_id = p.id LEFT JOIN amc_configuration_assignments aca ON ac.id = aca.amc_configuration_id ";
 
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (ORDER BY amc_last_modified_time DESC , amc_id) offset_ FROM " +

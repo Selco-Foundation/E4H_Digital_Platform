@@ -213,6 +213,9 @@ public class ActivityService {
             log.info("processing get activity code", activityFacility);
             activityEnrichment.enrichActivityFacilityOnSearch(request, activityFacility);
 
+            if(activityFacility.getFacility() == null)
+                continue;
+
             Object additionalDetails = activityFacility.getFacility().getAdditionalDetails();
             String boundaryCode = activityFacility.getFacility().getBoundaryCode();
             log.trace("🔎 Processing projectId={} with boundaryCode={}", activityFacility.getFacility().getId(), boundaryCode);
