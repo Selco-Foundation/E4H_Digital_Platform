@@ -48,6 +48,49 @@ def project_facility_validation(
     return errors
 
 
+def facility_validation(
+    df, mdms_client, request_info, facility_client, boundary_data, schemaName
+):
+    """Main function that orchestrates all facility file validations."""
+    # Ensure boundary_data is provided
+    if boundary_data is None or boundary_data.empty:
+        raise HTTPException(status_code=400, detail="Boundary data is missing or empty")
+
+    if "BoundaryCode" not in boundary_data.columns:
+        raise HTTPException(status_code=400, detail="Boundary data missing 'BoundaryCode' column")
+
+    allowed_boundary_codes = set(
+        str(x).strip() for x in boundary_data["BoundaryCode"] if pd.notna(x)
+    )
+
+    # Reset index so we always work with 0-based positional indices
+    df = df.reset_index(drop=True)
+
+    errors = [[] for _ in range(len(df))]
+    add_err = lambda i, msg: errors[i].append(msg)
+
+    # Only validate rows where Facility ID is empty
+    new_rows = df[df["Facility Id"].isna() | (df["Facility Id"].astype(str).str.strip() == "")]
+    if new_rows.empty:
+        return errors  # No new rows to validate
+
+    # Reset index on new_rows to get 0-based row positions
+    new_rows = new_rows.reset_index()
+
+    schema = mdms_client.get_column_definitions_and_row_constraints_with_metadata(
+        request_info, schemaName
+    )
+
+    # Use positional index mapping to reference errors in original df
+    validate_columns(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
+    validate_boundary_codes(new_rows, allowed_boundary_codes, lambda i, m: add_err(new_rows.loc[i, "index"], m))
+    validate_unique_ids(df, schema, add_err)
+    validate_row_constraints(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
+    validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client)
+
+    return errors
+
+
 # ----------------- Helper Functions ----------------- #
 
 def validate_boundary_codes(df, allowed_boundary_codes, add_err):
@@ -226,7 +269,7 @@ def check_db_duplicates(cache, facility_client, add_err, df, row_idx, hfr=None, 
                     exists = result.get("totalCount", 0) > 0
                     cache[cache_key] = exists
                 except Exception as e:
-                    # ✅ Instead of letting row pass, flag it
+                    # Instead of letting row pass, flag it
                     add_err(row_idx, f"Could not validate {col_name}='{value}' in DB: {e}")
                     # Stop further checks for this row, to avoid partial validation
                     return

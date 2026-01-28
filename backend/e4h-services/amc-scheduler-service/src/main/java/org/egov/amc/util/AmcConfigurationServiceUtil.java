@@ -41,26 +41,36 @@ public class AmcConfigurationServiceUtil {
     }
 
     public AuditDetails getAuditDetails(String by, AuditDetails auditDetails, Boolean isCreate) {
+        log.trace("Entering getAuditDetails method, isCreate: {}", isCreate);
         Long time = System.currentTimeMillis();
-        if (isCreate)
+        if (isCreate) {
+            log.debug("Creating new audit details for user: {}", by);
             return AuditDetails.builder().createdBy(by).lastModifiedBy(by).createdTime(time).lastModifiedTime(time).build();
-        else
+        } else {
+            log.debug("Updating audit details for user: {}", by);
             return AuditDetails.builder().createdBy(auditDetails.getCreatedBy()).lastModifiedBy(by)
                     .createdTime(auditDetails.getCreatedTime()).lastModifiedTime(time).build();
+        }
     }
 
     // Generates AMC visits based on AMC Duration (in months) and AMC Frequency
     public List<Long> generateAmcVisits(long startDateMillis, long endDateMillis, int frequencyMonths) {
+        log.trace("Entering generateAmcVisits method, startDate: {}, endDate: {}, frequencyMonths: {}", 
+                startDateMillis, endDateMillis, frequencyMonths);
         if (startDateMillis <= 0) {
+            log.error("Invalid startDateMillis: {}", startDateMillis);
             throw new IllegalArgumentException("startDateMillis must be a positive timestamp.");
         }
         if (endDateMillis <= 0) {
+            log.error("Invalid endDateMillis: {}", endDateMillis);
             throw new IllegalArgumentException("endDateMillis must be a positive timestamp.");
         }
         if (endDateMillis <= startDateMillis) {
+            log.error("endDateMillis {} must be greater than startDateMillis {}", endDateMillis, startDateMillis);
             throw new IllegalArgumentException("endDateMillis must be greater than startDateMillis.");
         }
         if (frequencyMonths <= 0) {
+            log.error("Invalid frequencyMonths: {}", frequencyMonths);
             throw new IllegalArgumentException("frequencyMonths must be > 0.");
         }
 
@@ -96,21 +106,28 @@ public class AmcConfigurationServiceUtil {
 
             // Safety (ex: bad data → infinite loop)
             if (++safetyCounter > 1000) {
+                log.error("Infinite-loop protection triggered while generating AMC visits");
                 throw new IllegalStateException("Infinite-loop protection triggered.");
             }
         }
 
+        log.debug("Generated {} AMC visit(s) between startDate: {} and endDate: {}", visits.size(), startDateMillis, endDateMillis);
+        log.info("Generated {} AMC visit(s) with frequency: {} months", visits.size(), frequencyMonths);
         return visits;
     }
 
     public ProjectStaff createProjectStaff(RequestInfo requestInfo, List<ProjectStaff> staffs) {
+        log.trace("Entering createProjectStaff method, staff count: {}", staffs != null ? staffs.size() : 0);
         ProjectStaffBulkRequest request  = ProjectStaffBulkRequest.builder().requestInfo(requestInfo).projectStaff(staffs).build();
         String url = amcConfigurationnerConfiguration.getProjectServiceHost() + amcConfigurationnerConfiguration.getProjectStaffCreateUrl();
+        log.debug("Calling project service to create project staff at URL: {}", url);
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
         ProjectStaffResponse projectResponse = objectMapper.convertValue(response, ProjectStaffResponse.class);
         if(projectResponse != null && projectResponse.getProjectStaff() !=null){
+            log.info("Successfully created {} project staff assignment(s)", staffs != null ? staffs.size() : 0);
             return projectResponse.getProjectStaff();
         }
+        log.warn("Project staff creation returned null or empty response");
         return null;
     }
 

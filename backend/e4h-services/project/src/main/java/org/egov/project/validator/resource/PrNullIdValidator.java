@@ -20,6 +20,12 @@ import static org.egov.project.Constants.GET_PROJECT_RESOURCE;
 public class PrNullIdValidator implements Validator<ProjectResourceBulkRequest, ProjectResource> {
     @Override
     public Map<ProjectResource, List<Error>> validate(ProjectResourceBulkRequest request) {
-        return validateForNullId(request, GET_PROJECT_RESOURCE);
+        log.trace("Entering validate (PrNullIdValidator)");
+        log.info("Validating for null ID");
+        log.debug("Validating {} resources for null ID", request.getProjectResource() != null ? request.getProjectResource().size() : 0);
+        Map<ProjectResource, List<Error>> result = validateForNullId(request, GET_PROJECT_RESOURCE);
+        log.debug("Null ID validation completed - found {} errors", result != null ? result.size() : 0);
+        log.trace("Exiting validate (PrNullIdValidator)");
+        return result;
     }
 }

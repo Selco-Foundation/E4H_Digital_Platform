@@ -15,7 +15,8 @@ public class Consumer {
      */
     //@KafkaListener(topics = {"kafka.topics.consumer"})
     public void listen(final HashMap<String, Object> record) {
-
+        log.trace("Consumer::listen called");
+        log.info("Received Kafka message | recordSize={}", record.size());
         //TODO
 
     }

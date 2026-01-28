@@ -31,11 +31,22 @@ public class MDMSController {
      */
     @RequestMapping(value="_search", method = RequestMethod.POST, produces = { "application/json; charset=utf-8" })
     public ResponseEntity<?> search(@Valid @RequestBody MdmsCriteriaReq body) {
-        Map<String,Map<String,JSONArray>>  moduleMasterMap = mdmsService.search(body);
-        MdmsResponse mdmsResponse = MdmsResponse.builder()
-                .mdmsRes(moduleMasterMap)
-                .build();
-        return new ResponseEntity<>(mdmsResponse, HttpStatus.OK);
+        log.trace("MDMSController.search: method invoked");
+        log.info("Processing MDMS v1 search request for tenant: {}", body.getMdmsCriteria() != null ? body.getMdmsCriteria().getTenantId() : "null");
+        
+        try {
+            Map<String,Map<String,JSONArray>>  moduleMasterMap = mdmsService.search(body);
+            log.debug("MDMS search completed, module count: {}", moduleMasterMap != null ? moduleMasterMap.size() : 0);
+            
+            MdmsResponse mdmsResponse = MdmsResponse.builder()
+                    .mdmsRes(moduleMasterMap)
+                    .build();
+            log.info("MDMS v1 search request processed successfully");
+            return new ResponseEntity<>(mdmsResponse, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error processing MDMS v1 search request: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
 }

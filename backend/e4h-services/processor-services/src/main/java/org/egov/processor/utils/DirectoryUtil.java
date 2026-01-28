@@ -20,6 +20,7 @@ public class DirectoryUtil {
      * @param path directory path where HLS chunks will be stored.
      */
     public Path createDirectory(String path) {
+        log.trace("Method invoked: createDirectory, path: {}", path);
         File dir = new File(path);
         if (!dir.exists()) {
             log.debug("Creating output directory: {}", path);
@@ -27,6 +28,9 @@ public class DirectoryUtil {
                 log.error("Failed to create output directory: {}", path);
                 throw new CustomException("Failed to create output directory: ", path);
             }
+            log.debug("Successfully created directory: {}", path);
+        } else {
+            log.trace("Directory already exists: {}", path);
         }
         return dir.toPath();
     }
@@ -37,10 +41,13 @@ public class DirectoryUtil {
      * @param path the path where the file should be created.
      */
     public Path createFile(Path path) {
+        log.trace("Method invoked: createFile, path: {}", path);
         try {
-            return Files.createFile(path);
+            Path createdPath = Files.createFile(path);
+            log.debug("Created file: {}", path);
+            return createdPath;
         } catch (IOException e) {
-            log.error("Failed to create output file: {}", path);
+            log.error("Failed to create output file: {}", path, e);
             throw new CustomException("Failed to create output file: ", path.toString());
         }
     }

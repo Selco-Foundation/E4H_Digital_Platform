@@ -21,11 +21,14 @@ public class UserLoginReportController {
     @PostMapping(value = "/_report")
     @ResponseBody
     public ResponseEntity<?> loginReport(@RequestBody @Valid UserRequest userRequest) {
+        log.trace("UserLoginReportController::loginReport method invoked");
+        String username = userRequest.getUser() != null ? userRequest.getUser().getUserName() : "";
+        log.info("Received login report request for user: {}", username);
         try {
             userService.loginReport(userRequest);
+            log.info("Login report completed successfully for user: {}", username);
             return ResponseEntity.ok("Login report completed successfully");
         } catch (Exception e) {
-            String username = userRequest.getUser() != null ? userRequest.getUser().getUserName() : "";
             log.error("Error during login report for user: {}", username, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Login report failed. Please try again.");
         }

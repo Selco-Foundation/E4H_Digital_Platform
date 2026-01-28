@@ -136,23 +136,39 @@ public class InboxService {
     }
 
     public InboxResponse fetchInboxData(InboxSearchCriteria criteria, RequestInfo requestInfo) {
-    	
+        log.trace("Method invoked: fetchInboxData");
+        String tenantId = criteria.getTenantId();
+        String moduleName = criteria.getProcessSearchCriteria() != null 
+                ? criteria.getProcessSearchCriteria().getModuleName() : null;
+        String userId = requestInfo != null && requestInfo.getUserInfo() != null 
+                ? requestInfo.getUserInfo().getUuid() : null;
+        
+        log.info("Fetching inbox data - tenantId: {}, module: {}, userId: {}", tenantId, moduleName, userId);
+        
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
         HashMap moduleSearchCriteria = criteria.getModuleSearchCriteria();
         processCriteria.setTenantId(criteria.getTenantId());
+        log.debug("Process search criteria initialized - tenantId: {}", criteria.getTenantId());
         Integer flag=0;
         if (processCriteria.getModuleName().equalsIgnoreCase(BS_WS)) {
         	flag=1;
         	processCriteria.setModuleName(BS_WS_MODULENAME);
+        	log.debug("Module name converted from BS_WS to BS_WS_MODULENAME");
         } else if(processCriteria.getModuleName().equalsIgnoreCase(BS_SW)) {
         	flag=2;
         	processCriteria.setModuleName(BS_SW_MODULENAME);
+        	log.debug("Module name converted from BS_SW to BS_SW_MODULENAME");
         }
 
         Integer totalCount = 0;
-        if(!(processCriteria.getModuleName().equals(SW) || processCriteria.getModuleName().equals(WS)))
+        if(!(processCriteria.getModuleName().equals(SW) || processCriteria.getModuleName().equals(WS))) {
+            log.debug("Fetching process count from workflow service");
             totalCount = workflowService.getProcessCount(criteria.getTenantId(), requestInfo, processCriteria);
+            log.debug("Process count retrieved: {}", totalCount);
+        }
+        log.debug("Fetching nearing SLA process count");
         Integer nearingSlaProcessCount = workflowService.getNearingSlaProcessCount(criteria.getTenantId(), requestInfo, processCriteria);
+        log.debug("Nearing SLA process count retrieved: {}", nearingSlaProcessCount);
         List<String> inputStatuses = new ArrayList<>();
         if (!CollectionUtils.isEmpty(processCriteria.getStatus()))
             inputStatuses = new ArrayList<>(processCriteria.getStatus());
@@ -429,8 +445,9 @@ public class InboxService {
                         }
                     }
                 } catch (HttpClientErrorException e) {
-                    log.error("client error while searching ES : " + e.getMessage());
-                    throw new CustomException("ELASTICSEARCH_ERROR", "client error while searching ES : \" + e.getMessage()");
+                    log.error("Client error while searching ElasticSearch - statusCode: {}, message: {}", 
+                            e.getStatusCode(), e.getMessage(), e);
+                    throw new CustomException("ELASTICSEARCH_ERROR", "client error while searching ES : " + e.getMessage());
                 }
             }
                      
@@ -827,12 +844,17 @@ public class InboxService {
 			//log.info("removeStatusCountMap:: "+ new Gson().toJson(statusCountMap));
 
 		}
-		log.info("statusCountMap size :::: " + statusCountMap.size());
+		log.info("Status count map size: {}", statusCountMap.size());
 		
+        log.debug("Building inbox response");
         response.setTotalCount(totalCount);
         response.setNearingSlaCount(nearingSlaProcessCount);
         response.setStatusMap(statusCountMap);
         response.setItems(inboxes);
+        
+        int itemCount = inboxes != null ? inboxes.size() : 0;
+        log.info("Inbox data fetched successfully - totalCount: {}, nearingSlaCount: {}, itemCount: {}, statusMapSize: {}", 
+                totalCount, nearingSlaProcessCount, itemCount, statusCountMap.size());
         return response;
     }
 
@@ -843,7 +865,7 @@ public class InboxService {
      * Description : Calculate ServiceSLA for each application for WS and SW
      */
     private Long getApplicationServiceSla(Map<String, Long> businessServiceSlaMap, Object data) {
-
+        log.trace("Method invoked: getApplicationServiceSla");
         Long currentDate = System.currentTimeMillis(); //current time
         ObjectMapper mapper = new ObjectMapper();
         Map<String, Object> properties = mapper.convertValue(data, Map.class);
@@ -853,13 +875,17 @@ public class InboxService {
             Map<String, Object> history = (LinkedHashMap<String, Object>) ((ArrayList) properties.get("history")).get(0);
             String businessService = (String) history.get("businessService");
             Long businessServiceSLA = businessServiceSlaMap.get(businessService);
-
-            return Long.valueOf(Math.round((businessServiceSLA - (currentDate - createdTime)) / ((double) (24 * 60 * 60 * 1000))));
+            Long remainingDays = Long.valueOf(Math.round((businessServiceSLA - (currentDate - createdTime)) / ((double) (24 * 60 * 60 * 1000))));
+            log.debug("Application service SLA calculated - businessService: {}, remainingDays: {}", businessService, remainingDays);
+            return remainingDays;
         }
+        log.debug("Application service SLA could not be calculated - appCreatedDate not found");
         return null;
     }
 
     public List<String> fetchVehicleStateMap(List<String> inputStatuses, RequestInfo requestInfo, String tenantId,Integer limit,Integer offSet) {
+		log.trace("Method invoked: fetchVehicleStateMap - tenantId: {}, statusCount: {}", tenantId, inputStatuses != null ? inputStatuses.size() : 0);
+		log.info("Fetching vehicle state map - tenantId: {}, limit: {}, offset: {}", tenantId, limit, offSet);
 		VehicleTripSearchCriteria vehicleTripSearchCriteria = new VehicleTripSearchCriteria();
 		vehicleTripSearchCriteria.setApplicationStatus(inputStatuses);
 		vehicleTripSearchCriteria.setTenantId(tenantId);
@@ -867,18 +893,21 @@ public class InboxService {
 		vehicleTripSearchCriteria.setOffset(offSet);
 		StringBuilder url = new StringBuilder(config.getFsmHost());
 		url.append( config.getFetchApplicationIds());
+		log.debug("Calling FSM service to fetch application IDs - URL: {}", url.toString());
 		
 		Object result = serviceRequestRepository.fetchResult(url, vehicleTripSearchCriteria);
 		VehicleCustomResponse response =null;
 		try {
 			response = mapper.convertValue(result, VehicleCustomResponse.class);
 			if(null != response && null != response.getApplicationIdList()) {
-				System.out.println("size ::::  "+response.getApplicationIdList().size());;
+				log.info("Vehicle state map fetched - applicationIdCount: {}", response.getApplicationIdList().size());
 				return response.getApplicationIdList();
 			}
 		} catch (IllegalArgumentException e) {
+			log.error("Failed to parse vehicle state map response", e);
 			throw new CustomException(ErrorConstants.PARSING_ERROR, "Failed to parse response of ProcessInstance");
 		}
+		log.warn("Vehicle state map response is null or empty");
 		return new ArrayList<>();
 	}
     
@@ -888,6 +917,9 @@ public class InboxService {
 	 * Description : Fetch the vehicle_trip_detail by list of reference no.
 	 */
 	private List<VehicleTripDetail> fetchVehicleStatusForApplication(List<String> requiredApplications,RequestInfo requestInfo, String tenantId) {
+		log.trace("Method invoked: fetchVehicleStatusForApplication - tenantId: {}, applicationCount: {}", 
+				tenantId, requiredApplications != null ? requiredApplications.size() : 0);
+		log.debug("Fetching vehicle status for applications");
 		VehicleTripSearchCriteria vehicleTripSearchCriteria = new VehicleTripSearchCriteria();
 		vehicleTripSearchCriteria.setApplicationNos(requiredApplications);
 		vehicleTripSearchCriteria.setTenantId(tenantId);
@@ -895,28 +927,37 @@ public class InboxService {
 	}
 	
 	public List<VehicleTripDetail> fetchVehicleTripDetailsByReferenceNo(VehicleTripSearchCriteria vehicleTripSearchCriteria, RequestInfo requestInfo) {
+		log.trace("Method invoked: fetchVehicleTripDetailsByReferenceNo");
+		log.info("Fetching vehicle trip details by reference number");
 		StringBuilder url = new StringBuilder(config.getVehicleHost());
 		url.append( config.getVehicleSearchTripPath());
+		log.debug("Calling vehicle service - URL: {}", url.toString());
 		Object result = serviceRequestRepository.fetchResult(url, vehicleTripSearchCriteria);
 		VehicleTripDetailResponse response =null;
 		try {
 			response = mapper.convertValue(result, VehicleTripDetailResponse.class);
 			if(null != response && null != response.getVehicleTripDetail()) {
-				System.out.println("size ::::  "+response.getVehicleTripDetail().size());;
+				log.info("Vehicle trip details fetched - count: {}", response.getVehicleTripDetail().size());
 				return response.getVehicleTripDetail();
 			}
 		} catch (IllegalArgumentException e) {
+			log.error("Failed to parse vehicle trip detail response", e);
 			throw new CustomException(ErrorConstants.PARSING_ERROR, "Failed to parse response of ProcessInstance");
 		}
+		log.warn("Vehicle trip detail response is null or empty");
 		return new ArrayList<>();
 	}
 
 
 	private void populateStatusCountMap(List<HashMap<String, Object>> statusCountMap,
 			List<Map<String, Object>> vehicleResponse, BusinessService businessService) {
+		log.trace("Method invoked: populateStatusCountMap");
+		log.debug("Populating status count map from vehicle response");
 		
 		if (!CollectionUtils.isEmpty(vehicleResponse) && businessService != null) {
 			List<State> appStates = businessService.getStates();
+			log.debug("Processing vehicle response - vehicleCount: {}, stateCount: {}", 
+					vehicleResponse.size(), appStates.size());
 
 			for (State appState : appStates) {
 				
@@ -935,10 +976,16 @@ public class InboxService {
 						statusCountMap.add(vehicleTripStatusMp);
 				});
 			}
+			log.debug("Status count map populated - entries: {}", statusCountMap.size());
+		} else {
+			log.warn("Vehicle response or business service is null/empty - cannot populate status count map");
 		}
 	}
     
     private List<Map<String, Object>> fetchVehicleTripResponse(InboxSearchCriteria criteria, RequestInfo requestInfo,List<String> applicationStatus) {
+		log.trace("Method invoked: fetchVehicleTripResponse - tenantId: {}, statusCount: {}", 
+				criteria.getTenantId(), applicationStatus != null ? applicationStatus.size() : 0);
+		log.info("Fetching vehicle trip response - tenantId: {}", criteria.getTenantId());
 
 		VehicleSearchCriteria vehicleTripSearchCriteria = new VehicleSearchCriteria();
 		
@@ -946,11 +993,14 @@ public class InboxService {
 
 		vehicleTripSearchCriteria.setTenantId(criteria.getTenantId());
 		
+		log.debug("Fetching application count for vehicle trips");
 		List<Map<String, Object>> vehicleResponse = null ;
 		VehicleCustomResponse vehicleCustomResponse =  fetchApplicationCount(vehicleTripSearchCriteria, requestInfo);
 		if(null != vehicleCustomResponse && null != vehicleCustomResponse.getApplicationStatusCount() ) {
 			vehicleResponse =vehicleCustomResponse.getApplicationStatusCount();
+			log.info("Vehicle trip response fetched - entryCount: {}", vehicleResponse.size());
 		}else {
+			log.warn("Vehicle trip response is null or empty");
 			vehicleResponse = new ArrayList<Map<String,Object>>();
 		}
     	
@@ -959,13 +1009,18 @@ public class InboxService {
     }
     
     public VehicleCustomResponse fetchApplicationCount(VehicleSearchCriteria criteria, RequestInfo requestInfo) {
+		log.trace("Method invoked: fetchApplicationCount");
+		log.info("Fetching application count for vehicle trips");
 		StringBuilder url = new StringBuilder(config.getVehicleHost());
 		url.append( config.getVehicleApplicationStatusCountPath());
+		log.debug("Calling vehicle service for application count - URL: {}", url.toString());
 		Object result = serviceRequestRepository.fetchResult(url, criteria);
 		VehicleCustomResponse resposne =null;
 		try {
 			resposne = mapper.convertValue(result, VehicleCustomResponse.class);
+			log.debug("Application count response parsed successfully");
 		} catch (IllegalArgumentException e) {
+			log.error("Failed to parse application count response", e);
 			throw new CustomException(ErrorConstants.PARSING_ERROR, "Failed to parse response of ProcessInstance");
 		}
 		return resposne;
@@ -983,6 +1038,10 @@ public class InboxService {
      */
 
     private Map<String, String> fetchAppropriateServiceMap(List<String> businessServiceName,String  moduleName) {
+        log.trace("Method invoked: fetchAppropriateServiceMap");
+        log.debug("Fetching appropriate service map - businessService: {}, module: {}", 
+                businessServiceName != null && !businessServiceName.isEmpty() ? businessServiceName.get(0) : null, moduleName);
+        
         StringBuilder appropriateKey = new StringBuilder();
         for (String businessServiceKeys : config.getServiceSearchMapping().keySet()) {
             if (businessServiceKeys.contains(businessServiceName.get(0))) {
@@ -991,9 +1050,12 @@ public class InboxService {
             }
         }
         if (ObjectUtils.isEmpty(appropriateKey)) {
+            log.error("Inbox service not configured for business service: {}", 
+                    businessServiceName != null && !businessServiceName.isEmpty() ? businessServiceName.get(0) : null);
             throw new CustomException("EG_INBOX_SEARCH_ERROR",
                     "Inbox service is not configured for the provided business services");
         }
+        log.debug("Appropriate service map found - key: {}", appropriateKey.toString());
         //SAN-920: Added check for enabling multiple business services only for FSM module
       		for (String inputBusinessService : businessServiceName) {
       			if (!FSMConstants.FSM_MODULE.equalsIgnoreCase(moduleName)) {
@@ -1008,9 +1070,14 @@ public class InboxService {
 
     private JSONArray fetchModuleObjects(HashMap moduleSearchCriteria, List<String> businessServiceName, String tenantId,
             RequestInfo requestInfo, Map<String, String> srvMap) {
+        log.trace("Method invoked: fetchModuleObjects");
+        log.debug("Fetching module objects - tenantId: {}, businessService: {}", 
+                tenantId, businessServiceName != null && !businessServiceName.isEmpty() ? businessServiceName.get(0) : null);
+        
         JSONArray resutls = null;
         
         if (CollectionUtils.isEmpty(srvMap) || StringUtils.isEmpty(srvMap.get("searchPath"))) {
+            log.error("Search path not configured for business service: {}", businessServiceName);
             throw new CustomException(ErrorConstants.INVALID_MODULE_SEARCH_PATH,
                     "search path not configured for the businessService : " + businessServiceName);
         }
@@ -1039,15 +1106,18 @@ public class InboxService {
 			}
 		});
 		
-		log.info("\nfetchModuleObjects URL :::: " + url.toString());
+		log.debug("Fetching module objects - URL: {}", url.toString());
 		
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
+        log.debug("Calling service request repository");
         Object result = serviceRequestRepository.fetchResult(url, requestInfoWrapper);
         
         LinkedHashMap responseMap;
         try {
+            log.debug("Parsing response from service request repository");
             responseMap = mapper.convertValue(result, LinkedHashMap.class);
         } catch (IllegalArgumentException e) {
+            log.error("Failed to parse response from service request repository", e);
             throw new CustomException(ErrorConstants.PARSING_ERROR, "Failed to parse response of ProcessInstance Count");
         }
         
@@ -1056,7 +1126,9 @@ public class InboxService {
         
         try {
             resutls = (JSONArray) jsonObject.getJSONArray(srvMap.get("dataRoot"));
+            log.debug("Module objects retrieved - count: {}", resutls != null ? resutls.length() : 0);
         } catch (Exception e) {
+            log.error("Failed to extract data from dataroot: {}", srvMap.get("dataRoot"), e);
             throw new CustomException(ErrorConstants.INVALID_MODULE_DATA,
                     " search api could not find data in dataroot " + srvMap.get("dataRoot"));
         }
@@ -1148,7 +1220,7 @@ public class InboxService {
 			}
 		});
 
-		log.info("\nfetchModulSearcheObjects URL :::: " + url.toString());
+		log.debug("Fetching module search objects - URL: {}", url.toString());
 
 		RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
 		Object result = serviceRequestRepository.fetchResult(url, requestInfoWrapper);

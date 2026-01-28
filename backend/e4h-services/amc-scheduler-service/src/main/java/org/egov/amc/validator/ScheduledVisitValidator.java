@@ -63,6 +63,9 @@ public class ScheduledVisitValidator {
     }
 
     public void validateCreateScheduledVisitRequest(ScheduledVisitRequest request) {
+        log.trace("Entering validateCreateScheduledVisitRequest method");
+        log.info("Validating create scheduled visit request, visit count: {}", 
+                request.getScheduledVisits() != null ? request.getScheduledVisits().size() : 0);
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
@@ -73,16 +76,19 @@ public class ScheduledVisitValidator {
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
+        log.debug("Create scheduled visit request validation completed successfully");
     }
 
     private void validateScheduledVisitRequest(ScheduledVisitRequest request) {
+        log.trace("Entering validateScheduledVisitRequest method");
         Map<String, String> errorMap = new HashMap<>();
 
         if (request.getScheduledVisits() == null || request.getScheduledVisits().size() == 0) {
-            log.error("Field Plans list is empty. Field Plans is mandatory");
+            log.error("Scheduled visits list is empty. Scheduled visits are mandatory");
             throw new CustomException("scheduledVisit", "Field Plans are mandatory");
         }
 
+        log.debug("Validating {} scheduled visit(s)", request.getScheduledVisits().size());
         for (ScheduledVisit scheduledVisit : request.getScheduledVisits()) {
             if (scheduledVisit == null) {
                 log.error("ScheduledVisit is mandatory in ScheduledVisits");
@@ -94,9 +100,10 @@ public class ScheduledVisitValidator {
                 throw new CustomException("ScheduledVisit", "Project ID is mandatory");
             }
             // Get existing amcConfiguration with projectID from amcConfiguration service
+            log.debug("Validating project ID: {} for tenantId: {}", scheduledVisit.getProjectId(), scheduledVisit.getTenantId());
             Project existingProject = amcConfigurationValidator.getProjectById(request.getRequestInfo(), scheduledVisit.getProjectId(), scheduledVisit.getTenantId());
             if (existingProject == null) {
-                log.error("Project ID do not exist");
+                log.error("Project ID {} does not exist for tenantId: {}", scheduledVisit.getProjectId(), scheduledVisit.getTenantId());
                 throw new CustomException("ScheduledVisit", "Project ID do not exist");
             }
 
@@ -105,9 +112,10 @@ public class ScheduledVisitValidator {
                 throw new CustomException("AMC Configuration", "Facility ID is mandatory");
             }
             // Get existing facility with facilityID from facility service
+            log.debug("Validating facility ID: {}", scheduledVisit.getFacilityId());
             Facility existingFacility = amcConfigurationValidator.getFacilityById(scheduledVisit.getFacilityId());
             if (existingFacility == null) {
-                log.error("Facility ID do not exist");
+                log.error("Facility ID {} does not exist", scheduledVisit.getFacilityId());
                 throw new CustomException("AMC Configuration", "Facility ID do not exist");
             }
 
@@ -116,12 +124,13 @@ public class ScheduledVisitValidator {
                 throw new CustomException("AMC Configuration", "Amc Configuration ID is mandatory");
             }
             // Get existing amcConfiguration from amcConfiguration service
+            log.debug("Validating AMC configuration ID: {} for tenantId: {}", scheduledVisit.getAmcConfigurationId(), scheduledVisit.getTenantId());
             String amcConfigurationIds = scheduledVisit.getAmcConfigurationId();
             AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder().ids(new ArrayList<>(List.of(amcConfigurationIds))).tenantId(scheduledVisit.getTenantId()).build();
             AmcConfigurationSearchRequest searchRequest = AmcConfigurationSearchRequest.builder().RequestInfo(request.getRequestInfo()).searchCriteria(criteria).build();
             List<AmcConfiguration> amcConfigurationList = amcConfigurationService.searchAmcConfiguration(searchRequest, 10, 0, scheduledVisit.getTenantId(), false, null );
             if (amcConfigurationList ==null || amcConfigurationList.isEmpty()){
-                log.error("AMC Configuration ID do not exist");
+                log.error("AMC Configuration ID {} does not exist for tenantId: {}", scheduledVisit.getAmcConfigurationId(), scheduledVisit.getTenantId());
                 throw new CustomException("ScheduledVisit", "AMC Configuration do not exist");
             }
 
@@ -146,6 +155,7 @@ public class ScheduledVisitValidator {
     }
 
     private void validateRequestInfo(RequestInfo requestInfo) {
+        log.trace("Entering validateRequestInfo method");
         if (requestInfo == null) {
             log.error("Request info is mandatory");
             throw new CustomException("REQUEST_INFO", "Request info is mandatory");
@@ -158,10 +168,14 @@ public class ScheduledVisitValidator {
             log.error("UUID is mandatory in UserInfo");
             throw new CustomException("USERINFO_UUID", "UUID is mandatory");
         }
+        log.debug("RequestInfo validation successful");
     }
 
     /* Validates Update Project request body */
     public void validateUpdateScheduledVisitRequest(ScheduledVisitRequest request) {
+        log.trace("Entering validateUpdateScheduledVisitRequest method");
+        log.info("Validating update scheduled visit request, visit count: {}", 
+                request.getScheduledVisits() != null ? request.getScheduledVisits().size() : 0);
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
@@ -175,10 +189,11 @@ public class ScheduledVisitValidator {
         //Verify if ScheduledVisit id is present
         for (ScheduledVisit scheduledVisit : request.getScheduledVisits()) {
             if (StringUtils.isBlank(scheduledVisit.getId())) {
-                log.error("AMC_Id is mandatory");
+                log.error("Scheduled visit ID is mandatory for update");
                 throw new CustomException("UPDATE_AMC_Configuration", "Amc Configuration Id is mandatory");
             }
         }
+        log.debug("Update scheduled visit request validation completed successfully");
 
 
         if (!errorMap.isEmpty())
@@ -188,6 +203,7 @@ public class ScheduledVisitValidator {
 
     /* Validates search ScheduledVisit request body and parameters*/
     public void validateSearchScheduledVisitRequest(ScheduledVisitSearchRequest request, Integer limit, Integer offset, String tenantId) {
+        log.trace("Entering validateSearchScheduledVisitRequest method, tenantId: {}, limit: {}, offset: {}", tenantId, limit, offset);
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
@@ -197,6 +213,7 @@ public class ScheduledVisitValidator {
         validateSearchScheduledVisitRequestParams(limit, offset, tenantId);
         //Verify if search ScheduledVisit request is valid
         validateSearchScheduledVisit(request.getSearchCriteria(), tenantId);
+        log.debug("Search scheduled visit request validation completed successfully");
         //Verify MDMS Data
         // TODO: Uncomment and fix as per HCM once we get clarity
         // validateRequestMDMSData(project, tenantId, errorMap);
@@ -303,8 +320,12 @@ public class ScheduledVisitValidator {
 
     /* Validates projects data in update request against projects data fetched from database */
     public void validateUpdateAgainstDB(List<ScheduledVisit> scheduledVisitsFromRequest, List<ScheduledVisit> scheduledVisitsFromDB) {
+        log.trace("Entering validateUpdateAgainstDB method, request count: {}, DB count: {}", 
+                scheduledVisitsFromRequest != null ? scheduledVisitsFromRequest.size() : 0,
+                scheduledVisitsFromDB != null ? scheduledVisitsFromDB.size() : 0);
         if (CollectionUtils.isEmpty(scheduledVisitsFromDB)) {
-            log.error("The Scheduled Visit records that you are trying to update does not exists in the system");
+            log.error("The scheduled visit records that you are trying to update do not exist in the system, request count: {}", 
+                    scheduledVisitsFromRequest != null ? scheduledVisitsFromRequest.size() : 0);
             throw new CustomException("INVALID_scheduledVisit_MODIFY", "The records that you are trying to update does not exists in the system");
         }
         Long currentTimestamp = Instant.now().toEpochMilli();
@@ -322,9 +343,10 @@ public class ScheduledVisitValidator {
             ScheduledVisit scheduledVisitFromDB = scheduledVisitsFromDB.stream().filter(p -> p.getId().equals(scheduledVisit.getId())).findFirst().orElse(null);
 
             if (scheduledVisitFromDB == null) {
-                log.error("The Scheduled Visit id " + scheduledVisit.getId() + " that you are trying to update does not exists for the Scheduled Visit");
+                log.error("Scheduled visit ID {} does not exist in the system", scheduledVisit.getId());
                 throw new CustomException("INVALID_scheduledVisit_MODIFY", "The Scheduled Visit id " + scheduledVisit.getId() + " that you are trying to update does not exists for the Scheduled Visit");
             }
+        log.debug("Update against DB validation completed successfully for {} scheduled visit(s)", scheduledVisitsFromRequest.size());
 
         }
     }

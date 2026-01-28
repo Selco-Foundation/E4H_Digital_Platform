@@ -62,36 +62,46 @@ public class BeneficiaryValidator implements Validator<BeneficiaryBulkRequest, P
 
     @Override
     public Map<ProjectBeneficiary, List<Error>> validate(BeneficiaryBulkRequest beneficiaryBulkRequest) {
-        log.info("validating the beneficiary");
+        log.trace("Entering validate (BeneficiaryValidator)");
+        log.info("Validating beneficiaries");
+        log.debug("Validating {} beneficiaries", beneficiaryBulkRequest.getProjectBeneficiaries() != null ? beneficiaryBulkRequest.getProjectBeneficiaries().size() : 0);
         Map<ProjectBeneficiary, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectBeneficiary> validProjectBeneficiaries = beneficiaryBulkRequest.getProjectBeneficiaries()
                 .stream().filter(notHavingErrors()).toList();
+        log.debug("Found {} valid beneficiaries to validate", validProjectBeneficiaries.size());
         if (!validProjectBeneficiaries.isEmpty()) {
             String tenantId = getTenantId(validProjectBeneficiaries);
+            log.debug("Tenant ID: {}", tenantId);
 
             Set<String> projectIds = getSet(validProjectBeneficiaries, GET_PROJECT_ID);
+            log.debug("Extracted {} unique project IDs", projectIds.size());
 
-            log.info("fetch the projects");
+            log.info("Fetching projects from repository");
             List<Project> existingProjects = projectService.findByIds(new ArrayList<>(projectIds));
-            log.info("fetch the project types");
+            log.debug("Found {} existing projects", existingProjects.size());
+            log.info("Fetching project types from MDMS");
             List<ProjectType> projectTypes = getProjectTypes(tenantId, beneficiaryBulkRequest.getRequestInfo());
+            log.debug("Found {} project types", projectTypes.size());
 
-            log.info("creating projectType map");
+            log.debug("Creating project type map");
             Map<String, ProjectType> projectTypeMap = getIdToObjMap(projectTypes);
-            log.info("creating project map");
+            log.debug("Creating project map");
             Map<String, Project> projectMap = getIdToObjMap(existingProjects);
 
-            log.info("creating beneficiaryType map");
+            log.debug("Grouping beneficiaries by type");
             Map<BeneficiaryType, List<ProjectBeneficiary>> beneficiaryTypeMap = validProjectBeneficiaries.stream()
                     .collect(Collectors.groupingBy(b -> projectTypeMap.get(projectMap.get(b
                             .getProjectId()).getProjectTypeId()).getBeneficiaryType()));
+            log.debug("Found {} beneficiary types", beneficiaryTypeMap.size());
 
             for (Map.Entry<BeneficiaryType, List<ProjectBeneficiary>> entry : beneficiaryTypeMap.entrySet()) {
-                log.info("fetch the beneficiaries for type {}", entry.getKey());
+                log.info("Validating {} beneficiaries for type {}", entry.getValue().size(), entry.getKey());
                 searchBeneficiary(entry.getKey(), entry.getValue(), beneficiaryBulkRequest.getRequestInfo(),
                         tenantId, errorDetailsMap);
             }
         }
+        log.debug("Validation completed - {} errors found", errorDetailsMap.size());
+        log.trace("Exiting validate (BeneficiaryValidator)");
         return errorDetailsMap;
     }
 

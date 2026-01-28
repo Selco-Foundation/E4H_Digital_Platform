@@ -44,6 +44,9 @@ public class ActivityFacility {
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
 
+    @JsonProperty("fieldPlan")
+    private FieldPlan fieldPlan = null;
+
     @JsonProperty("id")
     protected String id;
 
@@ -52,6 +55,9 @@ public class ActivityFacility {
 
     @JsonProperty("activityId")
     protected String activityId;
+
+    @JsonProperty("activityType")
+    protected String activityType;
 
     @JsonProperty("scheduledAt")
     private Long scheduledAt = null;

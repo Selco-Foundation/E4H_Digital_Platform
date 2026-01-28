@@ -21,8 +21,8 @@ public class LocalizationService {
     private final IMConfiguration config;
 
     public LocalizationResponse getLocalizationMessages(RequestInfo requestInfo, String stateTenant, String module, String locale, String codes) {
-        log.info("LocalizationService::getLocalizationMessages called | stateTenant={} module={} locale={} codes={}",
-                stateTenant, module, locale, codes);
+        log.trace("LocalizationService::getLocalizationMessages method invoked");
+        log.info("Fetching localization messages for stateTenant={} module={} locale={}", stateTenant, module, locale);
         String baseUrl = config.getLocalizationHost() + config.getLocalizationContextPath() + config.getLocalizationSearchEndpoint();
 
         StringBuilder urlBuilder = new StringBuilder(baseUrl);
@@ -50,6 +50,7 @@ public class LocalizationService {
     }
 
     public void enrichLocalizedDistrictAndBlockNames(IncidentRequest incidentRequest, Boundary boundary) {
+        log.trace("LocalizationService::enrichLocalizedDistrictAndBlockNames method invoked");
         Incident incident = incidentRequest.getIncident();
         String tenantId = incident.getTenantId();
         String locale = "en_IN";
@@ -65,6 +66,7 @@ public class LocalizationService {
     }
 
     public void enrichLocalizedFieldsForIndexing(IncidentRequestWrapper wrapper) {
+        log.trace("LocalizationService::enrichLocalizedFieldsForIndexing method invoked");
         Incident incident = wrapper.getIncidentRequest().getIncident();
         RequestInfo requestInfo = wrapper.getIncidentRequest().getRequestInfo();
 
@@ -72,7 +74,7 @@ public class LocalizationService {
         String stateTenant = tenantId.split("\\.")[0];
         String locale = "en_IN";
 
-        log.info("LocalizationService::enrichLocalizedFieldsForIndexing | tenantId={} incidentId={} locale={}",
+        log.info("Enriching localized fields for indexing | tenantId={} incidentId={} locale={}",
                 tenantId, incident.getIncidentId(), locale);
 
         String stateCode = "HEADER_TENANT_TENANTS_" + stateTenant.toUpperCase();
@@ -109,6 +111,7 @@ public class LocalizationService {
     }
 
     public void enrichLocalizedApplicationStatuses(IncidentRequestWrapper wrapper,String startingStatus) {
+        log.trace("LocalizationService::enrichLocalizedApplicationStatuses method invoked");
         Incident incident = wrapper.getIncidentRequest().getIncident();
         RequestInfo requestInfo = wrapper.getIncidentRequest().getRequestInfo();
 
@@ -127,7 +130,7 @@ public class LocalizationService {
                 .orElse("");
 
         String imCodes = String.join(",", startingStatusCode, endingStatusCode);
-        log.info("LocalizationService::enrichLocalizedApplicationStatuses | incidentId={} startingStatusCode={} endingStatusCode={}",
+        log.info("Enriching localized application statuses | incidentId={} startingStatusCode={} endingStatusCode={}",
                 incident.getIncidentId(), startingStatusCode, endingStatusCode);
 
         LocalizationResponse imResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-im", locale, imCodes);

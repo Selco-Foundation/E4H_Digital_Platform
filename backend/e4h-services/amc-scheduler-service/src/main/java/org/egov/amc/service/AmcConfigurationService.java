@@ -3,6 +3,8 @@ package org.egov.amc.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.amc.repository.AssetAmcRepository;
+import org.egov.amc.repository.ScheduledVisitRepository;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
@@ -28,10 +30,13 @@ public class AmcConfigurationService {
     private final AmcConfigurationValidator amcConfigurationValidator;
     private final AmcConfigurationRepository amcConfigurationRepository;
     private final Producer producer;
+    private final ScheduledVisitRepository scheduledVisitRepository;
     private final AmcConfigurationEnrichment amcConfigurationEnrichment;
 
     private final AmcConfigurationServiceUtil amcConfigurationServiceUtil;
     private final AMCServiceConfiguration amcServiceConfiguration;
+    private final ServiceRequestRepository requestRepository;
+    private final AssetAmcRepository assetAmcRepository;
 
     @Autowired
     @Qualifier("objectMapper")
@@ -39,17 +44,22 @@ public class AmcConfigurationService {
 
     @Autowired
     public AmcConfigurationService(
-            AmcConfigurationRepository amcConfigurationRepository, AmcConfigurationValidator amcConfigurationValidator, AmcConfigurationEnrichment amcConfigurationEnrichment, AMCServiceConfiguration amcConfigurationConfiguration,
-            Producer producer, AmcConfigurationServiceUtil amcConfigurationServiceUtil) {
+            AmcConfigurationRepository amcConfigurationRepository, AmcConfigurationValidator amcConfigurationValidator, ScheduledVisitRepository scheduledVisitRepository, AmcConfigurationEnrichment amcConfigurationEnrichment, AMCServiceConfiguration amcConfigurationConfiguration,
+            Producer producer, AmcConfigurationServiceUtil amcConfigurationServiceUtil, ServiceRequestRepository requestRepository, AssetAmcRepository assetAmcRepository) {
             this.amcConfigurationValidator = amcConfigurationValidator;
-            this.producer = producer;
+        this.scheduledVisitRepository = scheduledVisitRepository;
+        this.producer = producer;
             this.amcServiceConfiguration = amcConfigurationConfiguration;
             this.amcConfigurationRepository = amcConfigurationRepository;
             this.amcConfigurationEnrichment = amcConfigurationEnrichment;
             this.amcConfigurationServiceUtil = amcConfigurationServiceUtil;
+        this.requestRepository = requestRepository;
+        this.assetAmcRepository = assetAmcRepository;
     }
 
     public AmcConfigurationRequest createAmcConfiguration(AmcConfigurationRequest request) {
+        log.trace("Entering createAmcConfiguration method");
+        log.info("Creating {} AMC configuration(s)", request.getAmcConfigurations().size());
         amcConfigurationValidator.validateCreateAmcConfigurationRequest(request);
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             // remove Duplicate Assignments if the same user is AMC_STAFF and AMC_REVIEWER
@@ -69,20 +79,27 @@ public class AmcConfigurationService {
                                 .build())
                         .collect(Collectors.toList());
                 amcConfigurationServiceUtil.createProjectStaff(request.getRequestInfo(), staffs);
+                log.debug("Created {} project staff assignment(s) for configuration", staffs.size());
             }
-            log.info("Enriched with AMC Ids and AuditDetails {}", amcConfiguration);
-            log.info("Pushed to kafka");
+            log.trace("Enriching AMC configuration on create for projectId: {}, facilityId: {}",
+                    amcConfiguration.getProjectId(), amcConfiguration.getFacilityId());
+            log.info("AMC configuration enriched with project ID: {}, facility ID: {}",
+                    amcConfiguration.getProjectId(), amcConfiguration.getFacilityId());
+            log.debug("Enriched AMC configuration details - duration: {} months, visitFrequency: {} months",
+                    amcConfiguration.getDurationMonths(), amcConfiguration.getVisitFrequencyMonths());
         }
+        log.info("Pushing {} AMC configuration(s) to kafka", request.getAmcConfigurations().size());
         producer.push(amcServiceConfiguration.getSaveAmcConfigurationTopic(), request);
         return request;
     }
 
     public AmcConfigurationRequest updateAmcConfiguration(AmcConfigurationRequest request) {
+        log.trace("Entering updateAmcConfiguration method");
         /*
          * Validate the update amcConfiguration request
          */
         amcConfigurationValidator.validateUpdateAmcConfigurationRequest(request);
-        log.info("Update amcConfiguration request validated");
+        log.info("Update AMC configuration request validated, configuration count: {}", request.getAmcConfigurations().size());
 
         /*
          * Search for amcConfiguration based on amcConfiguration IDs provided in the request
@@ -91,7 +108,8 @@ public class AmcConfigurationService {
                 getSearchAmcConfigurationRequest(request.getAmcConfigurations(), request.getRequestInfo()),
                 amcServiceConfiguration.getMaxLimit(), amcServiceConfiguration.getDefaultOffset(),
                 request.getAmcConfigurations().get(0).getTenantId(), false, null);
-        log.info("Fetched amcConfiguration for update request");
+        log.debug("Fetched {} AMC configuration(s) from database for update request", amcConfigurationsFromDB.size());
+        log.info("Fetched AMC configurations for update request");
 
         /*
          * Validate the update amcConfiguration request against the amcConfigurations fetched from the database
@@ -101,9 +119,11 @@ public class AmcConfigurationService {
         /*
          * Process each amcConfiguration in the update request
          */
+        log.debug("Processing {} AMC configuration(s) for update", request.getAmcConfigurations().size());
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             processamcConfigurationUpdate(request, amcConfiguration, amcConfigurationsFromDB);
         }
+        log.info("Successfully processed update for {} AMC configuration(s)", request.getAmcConfigurations().size());
 
         return request;
     }
@@ -123,8 +143,12 @@ public class AmcConfigurationService {
     }
 
     public List<AmcConfiguration> searchAmcConfiguration(AmcConfigurationSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        log.trace("Entering searchAmcConfiguration method, tenantId: {}, limit: {}, offset: {}", tenantId, limit, offset);
         amcConfigurationValidator.validateSearchAmcConfigurationRequest(request, limit, offset, tenantId);
         List<AmcConfiguration> amcConfigurationList = amcConfigurationRepository.getAmcConfiguration(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        enrichAmcConfiguration(request.getRequestInfo(), amcConfigurationList);
+        log.debug("Found {} AMC configuration(s) matching search criteria", amcConfigurationList.size());
+        log.info("AMC configuration search completed");
         return amcConfigurationList;
     }
 
@@ -202,7 +226,9 @@ public class AmcConfigurationService {
         /*
          * Check and enrich cascading amcConfiguration dates and push the update to the message broker
          */
+        log.debug("Pushing AMC configuration update to kafka for configurationId: {}", amcConfiguration.getId());
         producer.push(amcServiceConfiguration.getUpdateAmcConfigurationTopic(), request);
+        log.info("AMC configuration update pushed to kafka for configurationId: {}", amcConfiguration.getId());
     }
 
     private boolean isValidCascadingUpdate(AmcConfiguration amcConfigurationFromDB, AmcConfiguration amcConfiguration) {
@@ -236,7 +262,7 @@ public class AmcConfigurationService {
             JsonNode originalState = originalNode.get("state");
             JsonNode newState = newNode.get("state");
             if (!Objects.equals(originalState, newState)) {
-                log.warn("State cannot be changed during cascading update");
+                log.warn("State cannot be changed during cascading update - original: {}, new: {}", originalState, newState);
                 return false;
             }
 
@@ -258,16 +284,56 @@ public class AmcConfigurationService {
                 .orElse(null);
     }
 
-//    public Employee getUserById(Object request, String userId) {
-//
-//        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
-//        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
-//
-//        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
-//        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
-//            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
-//        }
-//        return employeeResponse.getEmployees().get(0);
-//    }
+    private void enrichAmcConfiguration(RequestInfo requestInfo, List<AmcConfiguration> amcConfigurationList){
+        for (AmcConfiguration amcConfiguration : amcConfigurationList){
+            // Enrich amc configuration with vendor details
+            Organisation organisation = getVendorById(requestInfo, amcConfiguration.getVendorId());
+            if(organisation != null){
+                amcConfiguration.setVendor(organisation);
+            }
+
+            // Enrich amc configuration with total visit
+            Integer totalVisit = amcConfiguration.getDurationMonths()/amcConfiguration.getVisitFrequencyMonths();
+            amcConfiguration.setTotalVisits(totalVisit);
+
+            // Enrich amc configuration with completed visit
+            Integer count = getCompletedVisits(amcConfiguration);
+            amcConfiguration.setCompletedVisits(count);
+
+            // Enrich amc configuration with linked assets amc
+            List<AssetAmc> assetAmcs = getLinkedAssets(amcConfiguration);
+            amcConfiguration.setAssetsAmc(assetAmcs);
+        }
+    }
+
+    private Integer getCompletedVisits(AmcConfiguration amcConfiguration) {
+        ScheduledVisitSearchCriteria searchCriteria = ScheduledVisitSearchCriteria.builder().facilityIds(List.of(amcConfiguration.getFacilityId())).statuses(List.of("APPROVED")).build();
+        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder().searchCriteria(searchCriteria).build();
+        Integer count = scheduledVisitRepository.getScheduledVisitCount(searchRequest, amcConfiguration.getTenantId(), null, null);
+        return count;
+    }
+
+    private List<AssetAmc> getLinkedAssets(AmcConfiguration amcConfiguration) {
+        AssetAmcSearchCriteria searchCriteria = AssetAmcSearchCriteria.builder().amcConfigurationIds(List.of(amcConfiguration.getId())).build();
+        AssetAmcSearchRequest searchRequest = AssetAmcSearchRequest.builder().searchCriteria(searchCriteria).build();
+        List<AssetAmc> assetAmcs = assetAmcRepository.getAssetAmc(searchRequest, 1000, 0, amcConfiguration.getTenantId(), null, null);
+        return assetAmcs;
+    }
+
+    public Organisation getVendorById(RequestInfo requestInfo, String vendorId) {
+        OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder().tenantId("in").id(vendorId).build();
+        OrgSearchRequest searchRequest = OrgSearchRequest.builder().requestInfo(requestInfo).searchCriteria(searchCriteria).build();
+        String url = amcServiceConfiguration.getVendorHost() + amcServiceConfiguration.getVendorSearchUrl()+ "?tenantId=in&limit=1";
+
+        Object response = requestRepository.fetchResult(new StringBuilder(url), searchRequest);
+
+        OrgServiceResponse orgServiceResponse = mapper.convertValue(response, OrgServiceResponse.class);
+        if (orgServiceResponse != null && !orgServiceResponse.getOrganisations().isEmpty()) {
+            return orgServiceResponse.getOrganisations().get(0);
+        }
+        return null;
+    }
+
+
 
 }

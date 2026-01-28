@@ -28,30 +28,34 @@ public class ScheduledVisitEnrichment {
 
     /* Enrich Project on Create Request */
     public void enrichScheduledVisitOnCreate(ScheduledVisit scheduledVisit, RequestInfo requestInfo) {
+        log.trace("Entering enrichScheduledVisitOnCreate method");
         //Enrich Project id and audit details
         enrichScheduledVisitRequestOnCreate(scheduledVisit, requestInfo);
         //Enrich document id and audit details
         enrichUserAssignmentOnCreate(scheduledVisit, requestInfo);
-        log.info("Enriched AMC request with id and Audit details");
-
+        log.info("Scheduled visit enriched with ID and audit details, visitId: {}", scheduledVisit.getId());
     }
 
     /* Enrich ScheduledVisit with id and audit details */
     private void enrichScheduledVisitRequestOnCreate(ScheduledVisit scheduledVisit, RequestInfo requestInfo) {
+        log.trace("Entering enrichScheduledVisitRequestOnCreate method");
         scheduledVisit.setId(UUID.randomUUID().toString());
-        log.info("AMC configs id set to " + scheduledVisit.getId());
-        if (scheduledVisit.getStatus()==null || scheduledVisit.getStatus().isEmpty())
+        log.debug("Generated scheduled visit ID: {}", scheduledVisit.getId());
+        if (scheduledVisit.getStatus()==null || scheduledVisit.getStatus().isEmpty()) {
             scheduledVisit.setStatus("DRAFT");
+            log.debug("Set default status DRAFT for scheduled visit ID: {}", scheduledVisit.getId());
+        }
         AuditDetails auditDetails = amcConfigurationServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         scheduledVisit.setAuditDetails(auditDetails);
     }
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichScheduledVisitRequestOnUpdate(ScheduledVisit scheduledVisit, ScheduledVisit scheduledVisitFromDB, RequestInfo requestInfo) {
+        log.trace("Entering enrichScheduledVisitRequestOnUpdate method for visitId: {}", scheduledVisit.getId());
         scheduledVisit.setAuditDetails(scheduledVisitFromDB.getAuditDetails());
         AuditDetails auditDetails = amcConfigurationServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), scheduledVisitFromDB.getAuditDetails(), false);
         scheduledVisit.setAuditDetails(auditDetails);
-        log.info("Enriched AMC configs audit details for amc " + scheduledVisit.getId());
+        log.info("Scheduled visit audit details enriched for visitId: {}", scheduledVisit.getId());
     }
 
     /* Enrich Document with id and audit details in create BOM request */
@@ -64,11 +68,12 @@ public class ScheduledVisitEnrichment {
     }
 
     private void setUUIDAndAuditDetailsForAssignmentCreate(ScheduledVisitAssignment document, RequestInfo requestInfo, ScheduledVisit scheduledVisit) {
+        log.trace("Entering setUUIDAndAuditDetailsForAssignmentCreate method");
         document.setId(UUID.randomUUID().toString());
         document.setActive(true);
         AuditDetails auditDetailsForAdd = amcConfigurationServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         document.setAuditDetails(auditDetailsForAdd);
-        log.info("Added document with id " + document.getId() + scheduledVisit.getId());
+        log.debug("Created assignment with ID: {} for scheduled visit ID: {}", document.getId(), scheduledVisit.getId());
     }
 
 

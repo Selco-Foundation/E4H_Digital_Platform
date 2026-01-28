@@ -45,34 +45,50 @@ public class UserService {
      * @return OwnerInfo of the user with the given uuid
      */
     public Map<String,User> searchUser(RequestInfo requestInfo,List<String> uuids){
+        log.trace("Entering searchUser method");
+        int uuidCount = uuids != null ? uuids.size() : 0;
+        log.debug("Searching for {} user(s) by UUID", uuidCount);
+        
         UserSearchRequest userSearchRequest =new UserSearchRequest();
         userSearchRequest.setRequestInfo(requestInfo);
         userSearchRequest.setUuid(uuids);
         StringBuilder url = new StringBuilder(config.getUserHost());
         url.append(config.getUserSearchEndpoint());
         UserDetailResponse userDetailResponse = userCall(userSearchRequest,url);
-        if(CollectionUtils.isEmpty(userDetailResponse.getUser()))
+        if(CollectionUtils.isEmpty(userDetailResponse.getUser())) {
+            log.error("No users found for the provided UUIDs");
             throw new CustomException("INVALID USER","No user found for the uuids: "+uuids);
+        }
+        
         Map<String,User> idToUserMap = new HashMap<>();
         userDetailResponse.getUser().forEach(user -> {
             idToUserMap.put(user.getUuid(),user);
         });
+        
+        log.debug("Successfully retrieved {} user(s)", idToUserMap.size());
+        log.trace("Exiting searchUser method");
         return idToUserMap;
     }
 
     public List<String> searchUserUuidsBasedOnRoleCodes(UserSearchRequest userSearchRequest){
+        log.trace("Entering searchUserUuidsBasedOnRoleCodes method");
+        log.debug("Searching user UUIDs based on role codes");
+        
         StringBuilder url = new StringBuilder(config.getUserHost());
         url.append(config.getUserSearchEndpoint());
         UserDetailResponse userDetailResponse = userCall(userSearchRequest,url);
-        if(CollectionUtils.isEmpty(userDetailResponse.getUser()))
+        if(CollectionUtils.isEmpty(userDetailResponse.getUser())) {
+            log.error("No users found for roleCodes: {}", userSearchRequest.getRoleCodes());
             throw new CustomException("INVALID USER","No user found for the roleCodes: " + userSearchRequest.getRoleCodes());
+        }
+        
         List<String> roleSpecificUsersUuids = new ArrayList<>();
         userDetailResponse.getUser().forEach(user -> {
            roleSpecificUsersUuids.add(user.getUuid());
         });
-        // ############ REMOVE ME LATER
-        log.info(roleSpecificUsersUuids.toString());
-        // ############################
+        
+        log.debug("Found {} user UUID(s) for role codes", roleSpecificUsersUuids.size());
+        log.trace("Exiting searchUserUuidsBasedOnRoleCodes method");
         return roleSpecificUsersUuids;
     }
 
@@ -85,16 +101,19 @@ public class UserService {
      * @return Response from user service as parsed as userDetailResponse
      */
     private UserDetailResponse userCall(Object userRequest, StringBuilder uri) {
+        log.trace("Entering userCall method");
         String dobFormat = "yyyy-MM-dd";
 
         try{
             LinkedHashMap responseMap = (LinkedHashMap)serviceRequestRepository.fetchResult(uri, userRequest);
             parseResponse(responseMap,dobFormat);
             UserDetailResponse userDetailResponse = mapper.convertValue(responseMap,UserDetailResponse.class);
+            log.trace("Exiting userCall method");
             return userDetailResponse;
         }
         catch(IllegalArgumentException  e)
         {
+            log.error("IllegalArgumentException while converting response in userCall", e);
             throw new CustomException("IllegalArgumentException","ObjectMapper not able to convertValue in userCall");
         }
     }
@@ -130,14 +149,17 @@ public class UserService {
      * @return Long value of date
      */
     private Long dateTolong(String date,String format){
+        log.trace("Entering dateTolong method");
         SimpleDateFormat f = new SimpleDateFormat(format);
         Date d = null;
         try {
             d = f.parse(date);
         } catch (ParseException e) {
-            log.error("Error while parsing user date",e);
+            log.error("Error while parsing user date: {} with format: {}", date, format, e);
         }
-        return  d.getTime();
+        Long result = d != null ? d.getTime() : null;
+        log.trace("Exiting dateTolong method");
+        return result;
     }
 
 

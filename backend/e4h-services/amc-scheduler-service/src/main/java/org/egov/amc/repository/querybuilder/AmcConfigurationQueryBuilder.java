@@ -46,7 +46,7 @@ public class AmcConfigurationQueryBuilder {
             "    ) AS assignments " +
             " " +
             "FROM amc_configuration AS ac LEFT JOIN facility AS f ON ac.facility_id = f.id LEFT JOIN project AS p ON ac.project_id = p.id LEFT JOIN amc_configuration_assignments aca ON ac.id = aca.amc_configuration_id ";
-    private static final String AMC_CONFIGURATION_COUNT_QUERY = "SELECT COUNT(*) FROM amc_configuration AS ac LEFT JOIN facility AS f ON ac.facility_id = f.id LEFT JOIN project AS p ON ac.project_id = p.id ";
+    private static final String AMC_CONFIGURATION_COUNT_QUERY = "SELECT COUNT(distinct(ac.id)) FROM amc_configuration AS ac LEFT JOIN facility AS f ON ac.facility_id = f.id LEFT JOIN project AS p ON ac.project_id = p.id LEFT JOIN amc_configuration_assignments aca ON ac.id = aca.amc_configuration_id ";
 
     private final String paginationWrapper = "SELECT * FROM " +
             "(SELECT *, DENSE_RANK() OVER (ORDER BY amc_last_modified_time DESC , amc_id) offset_ FROM " +
@@ -78,11 +78,11 @@ public class AmcConfigurationQueryBuilder {
         if (StringUtils.isNotBlank(tenantId)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             if (!tenantId.contains(DOT)) {
-                log.info("State level tenant");
+                log.debug("Adding state level tenant clause for tenantId: {}", tenantId);
                 queryBuilder.append(" ac.tenant_id like ? ");
                 preparedStmtList.add(tenantId + '%');
             } else {
-                log.info("City level tenant");
+                log.debug("Adding city level tenant clause for tenantId: {}", tenantId);
                 queryBuilder.append(" ac.tenant_id=? ");
                 preparedStmtList.add(tenantId);
             }
@@ -90,9 +90,11 @@ public class AmcConfigurationQueryBuilder {
     }
 
     public String getAmcConfigurationSearchQuery(AmcConfigurationSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
+        log.trace("Entering getAmcConfigurationSearchQuery method, isCountQuery: {}", criteria.isCountQuery());
         //This uses a ternary operator to choose between FIELDPLANS_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         String query = criteria.isCountQuery() ? AMC_CONFIGURATION_COUNT_QUERY : FETCH_AMC_CONFIGURATION_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
+        log.debug("Building AMC configuration search query, tenantId: {}", criteria.getTenantId());
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);

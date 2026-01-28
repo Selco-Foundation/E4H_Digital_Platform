@@ -26,46 +26,59 @@ public class ServiceRequestRepository {
     }
 
     public Object fetchResult(StringBuilder uri, Object request) {
+        log.trace("Entering fetchResult (POST) for URI: {}", uri);
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         Object response = null;
         try {
+            log.debug("Making POST request to external service: {}", uri);
             response = restTemplate.postForObject(uri.toString(), request, Map.class);
+            log.debug("Successfully received response from external service");
         } catch (HttpClientErrorException e) {
-            log.error("External Service threw an Exception: ", e);
+            log.error("External service returned error for URI: {}. Status: {}, Response: {}", uri, e.getStatusCode(), e.getResponseBodyAsString());
             throw new ServiceCallException(e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("Error during service call: ", e);
+            log.error("Unexpected error during service call to URI: {}", uri, e);
             throw new ServiceCallException();
         }
+        log.trace("Exiting fetchResult (POST)");
         return response;
     }
 
     public <T> T fetchResult(StringBuilder uri, Object request, TypeReference<T> responseType) {
+        log.trace("Entering fetchResult (POST with TypeReference) for URI: {}", uri);
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         try {
+            log.debug("Making POST request to external service with type reference: {}", uri);
             String jsonResponse = restTemplate.postForObject(uri.toString(), request, String.class);
-            return mapper.readValue(jsonResponse, responseType);
+            log.debug("Successfully received response, deserializing to type");
+            T result = mapper.readValue(jsonResponse, responseType);
+            log.trace("Exiting fetchResult (POST with TypeReference)");
+            return result;
         } catch (HttpClientErrorException e) {
-            log.error("External Service threw an Exception: ", e);
+            log.error("External service returned error for URI: {}. Status: {}, Response: {}", uri, e.getStatusCode(), e.getResponseBodyAsString());
             throw new ServiceCallException(e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("Error during service call: ", e);
+            log.error("Unexpected error during service call to URI: {}", uri, e);
             throw new ServiceCallException();
         }
     }
 
     public Object fetchResult(StringBuilder uri) {
+        log.trace("Entering fetchResult (GET) for URI: {}", uri);
         mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         Object response = null;
         try {
+            log.debug("Making GET request to external service: {}", uri);
             response = restTemplate.getForObject(uri.toString(), Map.class);
+            log.debug("Successfully received response from external service");
         } catch (HttpClientErrorException e) {
-            log.error("External Service threw an Exception: ", e);
+            log.error("External service returned error for URI: {}. Status: {}, Response: {}", uri, e.getStatusCode(), e.getResponseBodyAsString());
             throw new ServiceCallException(e.getResponseBodyAsString());
         } catch (Exception e) {
-            log.error("Error during service call: ", e);
+            log.error("Unexpected error during service call to URI: {}", uri, e);
             throw new ServiceCallException();
         }
+        log.trace("Exiting fetchResult (GET)");
         return response;
     }
 

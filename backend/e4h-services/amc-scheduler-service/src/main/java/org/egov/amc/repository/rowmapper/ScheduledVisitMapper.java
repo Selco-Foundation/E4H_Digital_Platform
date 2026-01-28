@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.tracer.model.CustomException;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 @Repository
+@Slf4j
 public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
 
     @Autowired
@@ -28,6 +30,7 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
 
     @Override
     public ScheduledVisit mapRow(ResultSet rs, int rowNum) throws SQLException {
+        log.trace("Entering mapRow method for scheduled visit, rowNum: {}", rowNum);
         ScheduledVisit visit = new ScheduledVisit();
 
         visit.setId(rs.getString("sv_visit_id"));
@@ -45,9 +48,11 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         String visitReportJson = rs.getString("sv_visit_report");
         if (visitReportJson != null) {
             try {
+                log.debug("Parsing visit report JSON for scheduled visit ID: {}", visit.getId());
                 VisitReport report = objectMapper.readValue(visitReportJson, VisitReport.class);
                 visit.setVisitReport(report);
             } catch (Exception e) {
+                log.error("Error parsing visit_report JSON for scheduled visit ID: {}", visit.getId(), e);
                 throw new SQLException("Error parsing visit_report JSON", e);
             }
         }
@@ -76,9 +81,7 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
 
         visit.setAmcConfiguration(amc);
 
-        // -------------------------
-        // 🔹 Facility info
-        // -------------------------
+        // Facility info
         Facility facility = new Facility();
         facility.setId(rs.getString("facility_id"));
         facility.setFacilityName(rs.getString("facility_name"));
@@ -93,21 +96,22 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         String facilityDetailsJson = rs.getString("facility_details");
         if (facilityDetailsJson != null) {
             try {
+                log.debug("Parsing facility details JSON for scheduled visit ID: {}", visit.getId());
                 facility.setFacilityDetails(objectMapper.readValue(facilityDetailsJson, Map.class));
             } catch (Exception e) {
+                log.error("Error parsing facility_details JSON for scheduled visit ID: {}", visit.getId(), e);
                 throw new SQLException("Error parsing facility_details JSON", e);
             }
         }
 
         visit.setFacility(facility);
 
-        // -------------------------
-        // 🔹 Assignments (JSONB ARRAY)
-        // -------------------------
+        // Assignments (JSONB ARRAY)
         String assignmentsJson = rs.getString("assignments");
 
         if (assignmentsJson != null && !assignmentsJson.equals("[]")) {
             try {
+                log.debug("Parsing assignments JSON for scheduled visit ID: {}", visit.getId());
                 List<ScheduledVisitAssignment> assignments =
                         objectMapper.readValue(
                                 assignmentsJson,
@@ -115,13 +119,16 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
                         );
 
                 visit.setAssignments(assignments);
+                log.debug("Parsed {} assignment(s) for scheduled visit ID: {}", assignments.size(), visit.getId());
             } catch (Exception e) {
+                log.error("Error parsing assignments JSONB array for scheduled visit ID: {}", visit.getId(), e);
                 throw new SQLException("Error parsing assignments JSONB array", e);
             }
         } else {
             visit.setAssignments(new ArrayList<>());
         }
 
+        log.trace("Completed mapping scheduled visit row, visitId: {}", visit.getId());
         return visit;
     }
 
@@ -129,17 +136,24 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
      * Convert JSONB column into List<Map<String,Object>>
      */
     public List<Map<String, Object>> getAssetTypes(String columnName, ResultSet rs) throws SQLException {
+        log.trace("Entering getAssetTypes method for column: {}", columnName);
         try {
             Object obj = rs.getObject(columnName);
-            if (obj == null) return null;
+            if (obj == null) {
+                log.debug("Asset types column {} is null", columnName);
+                return null;
+            }
 
             String json = (obj instanceof PGobject)
                     ? ((PGobject) obj).getValue()
                     : obj.toString();
 
-            return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>(){});
+            List<Map<String, Object>> assetTypes = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>(){});
+            log.debug("Parsed {} asset type(s) from column: {}", assetTypes != null ? assetTypes.size() : 0, columnName);
+            return assetTypes;
         }
         catch (IOException e) {
+            log.error("Failed to parse assetTypes JSON for column: {}", columnName, e);
             throw new CustomException("PARSING ERROR", "Failed to parse assetTypes");
         }
     }

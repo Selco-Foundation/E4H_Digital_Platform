@@ -43,7 +43,7 @@ public class KafkaListenerLoggingAspect {
 
     @Around("anyKafkaConsumer() ")
     public Object logAction(ProceedingJoinPoint pjp) throws Throwable {
-
+        log.trace("logAction aspect method invoked for Kafka listener");
         final Object[] args = pjp.getArgs();
         MethodSignature signature = (MethodSignature) pjp.getSignature();
         Method method = signature.getMethod();
@@ -53,26 +53,35 @@ public class KafkaListenerLoggingAspect {
                 final String topics = getListeningTopics(myAnnotation);
                 final String messageBodyAsString = getMessageBodyAsString(args);
                 log.info(RECEIVED_MESSAGE, topics, messageBodyAsString);
+                log.debug("Kafka listener method: {}, topics: {}", method.getName(), topics);
             }
             final Object result = pjp.proceed();
             log.info(PROCESSED_SUCCESS_MESSAGE);
+            log.debug("Kafka message processing completed successfully for method: {}", method.getName());
             return result;
         } catch (Exception e) {
             log.error(EXCEPTION_MESSAGE, e);
+            log.debug("Exception occurred in Kafka listener method: {}", method.getName());
             throw e;
         }
     }
 
     private String getMessageBodyAsString(Object[] args) throws JsonProcessingException {
-        return objectMapper.writeValueAsString(getMessageBody(args));
+        log.trace("getMessageBodyAsString method invoked");
+        String result = objectMapper.writeValueAsString(getMessageBody(args));
+        log.debug("Message body serialized to string, length: {}", result != null ? result.length() : 0);
+        return result;
     }
 
     private Object getMessageBody(Object[] args) {
-        return Stream.of(args)
+        log.trace("getMessageBody method invoked");
+        Object result = Stream.of(args)
                 .filter(parameterObject -> isNotAcknowledgmentParameter(parameterObject) && isNotString(parameterObject))
                 .findFirst()
                 .map(parameterObject -> parameterObject)
                 .orElse(null);
+        log.debug("Message body extracted, type: {}", result != null ? result.getClass().getSimpleName() : "null");
+        return result;
     }
 
     private boolean isNotString(Object o) {

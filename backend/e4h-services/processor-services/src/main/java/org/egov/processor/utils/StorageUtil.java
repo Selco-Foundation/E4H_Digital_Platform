@@ -44,9 +44,10 @@ public class StorageUtil {
      */
     public StorageResponse uploadToHLSFileStorage(List<MultipartFile> filesToStore,
                                                   ProcessingContext context) throws IOException {
-
+        log.trace("Method invoked: uploadToHLSFileStorage, videoId: {}, file count: {}", context.getVideoId(), filesToStore != null ? filesToStore.size() : 0);
         final String URL = getFileStoreURL(configuration.getFileStoreHlsUploadEndpoint()).toString();
-        log.info("uploading {} to file-store service at {}", filesToStore, URL);
+        log.info("Uploading {} files to file-store service for videoId: {}", filesToStore.size(), context.getVideoId());
+        log.debug("File store URL: {}", URL);
         return serviceRequestRepository.uploadFiles(
                 filesToStore, context, URL);
     }
@@ -57,6 +58,7 @@ public class StorageUtil {
      * @return url for filestore upload endpoint
      */
     public StringBuilder getFileStoreURL() {
+        log.trace("Method invoked: getFileStoreURL");
         return new StringBuilder().append(configuration.getFileStoreHost())
                 .append(configuration.getFileStoreUploadEndpoint());
     }
@@ -67,6 +69,7 @@ public class StorageUtil {
      * @return url for filestore upload endpoint
      */
     public StringBuilder getFileStoreURL(String endPoint) {
+        log.trace("Method invoked: getFileStoreURL, endpoint: {}", endPoint);
         String host = configuration.getFileStoreHost();
         if (configuration.getFileStoreHost().endsWith("/")) {
             host = configuration.getFileStoreHost().substring(0, configuration.getFileStoreHost().length() - 1);
@@ -82,43 +85,51 @@ public class StorageUtil {
      * @return the fetched file as a Resource
      */
     public Resource getFile(String tenantId, String fileStoreId) {
+        log.trace("Method invoked: getFile, tenantId: {}, fileStoreId: {}", tenantId, fileStoreId);
         ResponseEntity<Resource> response =
                 serviceRequestRepository.fetchFile(getFileStoreURL().toString(), tenantId, fileStoreId);
         if (response.getStatusCode().is2xxSuccessful()) {
+            log.debug("Successfully fetched file: {}", fileStoreId);
             return response.getBody();
         }
+        log.error("Failed to fetch file: {}, status code: {}", fileStoreId, response.getStatusCode());
         throw new CustomException("Error fetching file", fileStoreId);
     }
 
     public void writeFileToTempFile(Resource resource, Path tempFile) throws IOException {
+        log.trace("Method invoked: writeFileToTempFile, tempFile: {}", tempFile);
         try {
             File newFile = tempFile.toFile();
 
             // Check if the file does not exist
             if (!newFile.exists()) {
-                log.warn("The file {} does not exist. Creating file.", newFile.getAbsolutePath());
+                log.debug("File does not exist, creating: {}", newFile.getAbsolutePath());
                 boolean fileCreated = newFile.createNewFile();
                 if (!fileCreated) {
                     // If the file cannot be created, throw a custom exception
-                    log.error("Failed to create the file {}", newFile.getAbsolutePath());
+                    log.error("Failed to create the file: {}", newFile.getAbsolutePath());
                     throw new CustomException("Failed to create the file: ", newFile.getAbsolutePath());
                 }
-                log.info("File created: {}", newFile.getAbsolutePath());
+                log.debug("File created: {}", newFile.getAbsolutePath());
             }
 
             // Writing file contents
+            log.trace("Writing file contents to temporary file");
             try (FileOutputStream fos = new FileOutputStream(newFile);
                  InputStream inputStream = resource.getInputStream();
                  BufferedInputStream bis = new BufferedInputStream(inputStream);
                  BufferedOutputStream bos = new BufferedOutputStream(fos)) {
                 byte[] buffer = new byte[16384];  // 16KB buffer for reading and writing
                 int bytesRead;
+                long totalBytes = 0;
                 while ((bytesRead = bis.read(buffer)) != -1) {
                     bos.write(buffer, 0, bytesRead);
+                    totalBytes += bytesRead;
                 }
+                log.debug("Written {} bytes to temporary file: {}", totalBytes, tempFile);
             }
         } catch (NoSuchFileException ex) {
-            log.error("Error processing temporary file. File not found: {}", tempFile.toAbsolutePath(), ex);
+            log.error("File not found while processing temporary file: {}", tempFile.toAbsolutePath(), ex);
             throw new CustomException(
                     String.format("ERROR_PROCESSING_TEMP_FILE: File not found - %s ", tempFile.toAbsolutePath()), ex.getMessage());
         } catch (IOException ex) {
@@ -135,6 +146,7 @@ public class StorageUtil {
 
     // file extension
     public String getFileExtension(Resource resource) {
+        log.trace("Method invoked: getFileExtension");
         String originalFilename = resource.getFilename();
         return (originalFilename != null && originalFilename.contains("."))
                 ? originalFilename.substring(originalFilename.lastIndexOf("."))
@@ -144,9 +156,11 @@ public class StorageUtil {
 
     // file extension
     public File createTempFile(File tempDir, Resource resource) {
+        log.trace("Method invoked: createTempFile");
         String extension = getFileExtension(resource);
         // Create custom temp file using the pre-initialized temp directory
         String uniqueFileName = String.format("%s_%s%s", "video", UUID.randomUUID(), extension);
+        log.debug("Creating temp file: {}", uniqueFileName);
         return new File(tempDir, uniqueFileName);
     }
 
@@ -175,6 +189,7 @@ public class StorageUtil {
      * Deletes the temp file if it exists.
      */
     private void cleanTempFile(File tempFile) {
+        log.trace("Method invoked: cleanTempFile, file: {}", tempFile != null ? tempFile.getName() : "null");
         if (tempFile.exists()) {
             try {
                 Files.delete(tempFile.toPath());
@@ -189,6 +204,7 @@ public class StorageUtil {
      * Deletes all files and subdirectories in the video directory in reverse order.
      */
     private void cleanVideoDirectory(Path videoDirectory) {
+        log.trace("Method invoked: cleanVideoDirectory, directory: {}", videoDirectory);
         if (Files.exists(videoDirectory)) {
             try (Stream<Path> paths = Files.walk(videoDirectory)) {
                 paths.sorted(Comparator.reverseOrder()) // Sorting paths in reverse order
@@ -197,7 +213,7 @@ public class StorageUtil {
                 log.warn("Error walking through video directory: {}", videoDirectory, e);
             }
         } else {
-            log.warn("Video directory does not exist: {}", videoDirectory);
+            log.debug("Video directory does not exist: {}", videoDirectory);
         }
     }
 
@@ -205,6 +221,7 @@ public class StorageUtil {
      * Deletes the given file and logs the result.
      */
     private void deleteFile(Path path) {
+        log.trace("Method invoked: deleteFile, path: {}", path);
         try {
             Files.delete(path);
             log.debug("Deleted: {}", path);
@@ -217,6 +234,7 @@ public class StorageUtil {
      * Deletes the master playlist if it exists.
      */
     private void deleteMasterPlaylist(String videoId, Path outputPath) {
+        log.trace("Method invoked: deleteMasterPlaylist, videoId: {}", videoId);
         Path masterPlaylist = outputPath.resolve(videoId + "_master.m3u8");
         try {
             if (Files.exists(masterPlaylist)) {
@@ -253,12 +271,15 @@ public class StorageUtil {
     }
 
     public MultipartFile getMultipartFileFromS3(String tenantId, String fileStoreId) {
+        log.trace("Method invoked: getMultipartFileFromS3, tenantId: {}, fileStoreId: {}", tenantId, fileStoreId);
         try {
             Resource resource = getFile(tenantId, fileStoreId);
             String filename = resource.getFilename() != null ? resource.getFilename() : "file";
+            log.debug("Retrieved file from S3: {}", filename);
             return new CommonMultipartFile(resource, filename);
 
         } catch (Exception e) {
+            log.error("Error retrieving multipart file from S3, fileStoreId: {}", fileStoreId, e);
             throw new RuntimeException(e);
         }
     }

@@ -43,14 +43,20 @@ public class FieldPlannerRepository extends GenericRepository<FieldPlan> {
     }
 
     public List<FieldPlan> getHighestFielPlanName(FieldPlan fieldPlan) {
+        log.trace("Entering getHighestFielPlanName method");
+        log.debug("Fetching highest field plan name for tenant: {}", fieldPlan.getTenantId());
+        
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getHighestFielPlanNameQuery(fieldPlan, preparedStmtList);
         List<FieldPlan> fieldPlans = jdbcTemplate.query(query, fieldPlanRowMapper, preparedStmtList.toArray());
-        log.info("Fetched latest fieldPlan name based on given Parent Ids");
+        log.info("Fetched {} field plans with highest names based on given criteria", fieldPlans.size());
+        log.trace("Exiting getHighestFielPlanName method");
         return fieldPlans;
     }
 
     public List<FieldPlan> getFieldPlans(FieldPlanSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
+        log.trace("Entering getFieldPlans method");
+        log.debug("Fetching field plans with limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
         //Fetch FieldPlans based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         FieldPlanSearchCriteria criteria = request.getFieldPlan();
@@ -60,19 +66,26 @@ public class FieldPlannerRepository extends GenericRepository<FieldPlan> {
         String query = queryBuilder.getFieldPlanSearchQuery(criteria, urlParams, preparedStmtList);
         List<FieldPlan> fieldPlanList = jdbcTemplate.query(query, fieldPlanRowMapper, preparedStmtList.toArray());
 
-        log.info("Fetched project list based on given search criteria");
+        log.info("Fetched {} field plans based on search criteria", fieldPlanList.size());
+        log.trace("Exiting getFieldPlans method");
         return fieldPlanList;
     }
 
     public Integer getFieldPlanCount(FieldPlanSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+        log.trace("Entering getFieldPlanCount method");
+        log.debug("Getting field plan count for tenant: {}", tenantId);
+        
         List<Object> preparedStatement = new ArrayList<>();
         String query = queryBuilder.getSearchCountQueryString(request, tenantId, lastChangedSince, includeDeleted, preparedStatement);
 
-        if (query == null)
+        if (query == null) {
+            log.debug("Query is null, returning count 0");
             return 0;
+        }
 
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
-        log.info("Total FieldPlans count is : " + count);
+        log.info("Total field plans count: {}", count);
+        log.trace("Exiting getFieldPlanCount method");
         return count;
     }
     

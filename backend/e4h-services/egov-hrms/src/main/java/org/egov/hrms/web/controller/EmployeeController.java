@@ -82,8 +82,15 @@ public class EmployeeController {
 	@PostMapping(value = "/_create")
 	@ResponseBody
 	public ResponseEntity<?> create(@RequestBody @Valid EmployeeRequest employeeRequest) {
+		log.trace("EmployeeController.create invoked");
+		String tenantId = employeeRequest.getEmployees() != null && !employeeRequest.getEmployees().isEmpty() 
+				? employeeRequest.getEmployees().get(0).getTenantId() : "unknown";
+		int employeeCount = employeeRequest.getEmployees() != null ? employeeRequest.getEmployees().size() : 0;
+		log.info("Employee create request received for {} employee(s), tenant: {}", employeeCount, tenantId);
 		validator.validateCreateEmployee(employeeRequest);
+		log.debug("Employee create request validated successfully");
 		EmployeeResponse employeeResponse = employeeService.create(employeeRequest);
+		log.info("Employee create request completed successfully");
         return new ResponseEntity<>(employeeResponse, HttpStatus.ACCEPTED);
 	}
 
@@ -99,8 +106,13 @@ public class EmployeeController {
 	@PostMapping(value = "/_update")
 	@ResponseBody
 	public ResponseEntity<?> update(@RequestBody @Valid EmployeeRequest employeeRequest) {
+		log.trace("EmployeeController.update invoked");
+		String tenantId = employeeRequest.getEmployees().get(0).getTenantId();
+		log.info("Employee update request received, tenant: {}", tenantId);
 		validator.validateUpdateEmployee(employeeRequest);
+		log.debug("Employee update request validated successfully");
 		EmployeeResponse employeeResponse = employeeService.update(employeeRequest);
+		log.info("Employee update request completed successfully");
 		return new ResponseEntity<>(employeeResponse, HttpStatus.ACCEPTED);
 	}
 	
@@ -116,18 +128,26 @@ public class EmployeeController {
 	@PostMapping(value = "/_search")
 	@ResponseBody
 	public ResponseEntity<?> search(@RequestBody @Valid RequestInfoWrapper requestInfoWrapper, @ModelAttribute @Valid EmployeeSearchCriteria criteria, @RequestHeader Map<String, String> headers) {
+		log.trace("EmployeeController.search invoked");
+		String tenantId = criteria.getTenantId();
+		log.info("Employee search request received for tenant: {}", tenantId);
 		validator.validateSearchRequest(requestInfoWrapper.getRequestInfo(), criteria);
+		log.debug("Employee search request validated successfully");
 		EmployeeResponse employeeResponse = employeeService.search(criteria, requestInfoWrapper.getRequestInfo());
+		log.info("Employee search request completed successfully");
 		return new ResponseEntity<>(employeeResponse,HttpStatus.OK);
 	}
 
 	@PostMapping("_count")
 	@ResponseBody
 	private ResponseEntity<?> count(@RequestParam("tenantId") String tenantId, @RequestBody RequestInfo requestInfo) {
-
+		log.trace("EmployeeController.count invoked for tenant: {}", tenantId);
+		log.info("Employee count request received for tenant: {}", tenantId);
 		Map<String,Object> response = new HashMap<>();
 		validator.validateEmployeeCountRequest(tenantId);
+		log.debug("Employee count request validated successfully");
 		response = employeeService.getEmployeeCountResponse(requestInfo,tenantId);
+		log.info("Employee count request completed successfully for tenant: {}", tenantId);
 		return new ResponseEntity<>(response,HttpStatus.OK);
 	}
 

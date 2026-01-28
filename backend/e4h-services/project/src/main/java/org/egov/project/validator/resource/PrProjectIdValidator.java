@@ -34,6 +34,9 @@ public class PrProjectIdValidator implements Validator<ProjectResourceBulkReques
 
     @Override
     public Map<ProjectResource, List<Error>> validate(ProjectResourceBulkRequest request) {
+        log.trace("Entering validate (PrProjectIdValidator)");
+        log.info("Validating project ID for resources");
+        log.debug("Validating {} resources", request.getProjectResource() != null ? request.getProjectResource().size() : 0);
         Map<ProjectResource, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectResource> entities = request.getProjectResource();
         Class<?> objClass = getObjClass(entities);
@@ -42,16 +45,23 @@ public class PrProjectIdValidator implements Validator<ProjectResourceBulkReques
                 .stream().filter(notHavingErrors()).toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
+            log.debug("Validating {} project IDs against repository", entityIds.size());
             List<String> existingProjectIds = projectRepository.validateIds(entityIds,
                     getIdFieldName(idMethod));
+            log.debug("Found {} existing project IDs", existingProjectIds != null ? existingProjectIds.size() : 0);
             List<ProjectResource> invalidEntities = entities.stream().filter(notHavingErrors()).filter(entity ->
                             !existingProjectIds.contains(entity.getProjectId()))
                     .toList();
+            if (!invalidEntities.isEmpty()) {
+                log.warn("Found {} resources with invalid project IDs", invalidEntities.size());
+            }
             invalidEntities.forEach(projectResource -> {
                 Error error = getErrorForNonExistentRelatedEntity(projectResource.getProjectId());
                 populateErrorDetails(projectResource, error, errorDetailsMap);
             });
         }
+        log.debug("Validation completed - {} errors found", errorDetailsMap.size());
+        log.trace("Exiting validate (PrProjectIdValidator)");
         return errorDetailsMap;
     }
 
