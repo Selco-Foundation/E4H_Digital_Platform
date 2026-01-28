@@ -13,7 +13,7 @@ const formatOrganizationUsers = (organizationUsers) => {
 const fetchOrganizationUsers = async (filter, limit, offset) => {
   const response = await VendorService.fetchOrganizationUsers(filter, limit, offset);
   return {
-    organizationUsers: formatOrganizationUsers(response?.OrgUsers),
+    organizationUsers: formatOrganizationUsers(response?.OrgUsers || []),
     totalCount: response.TotalCount,
   };
 }

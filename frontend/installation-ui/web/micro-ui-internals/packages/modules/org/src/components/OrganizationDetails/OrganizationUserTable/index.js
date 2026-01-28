@@ -261,7 +261,7 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
         label: t("ORGANIZATION_USER_UPDATION_SUCCESS"),
       })
     } catch (e) {
-      console.error("Failed to create facility", e);
+      console.error("Failed to create organization user", e);
       setBlockUI(false);
       setFormToast({
         key: "error",

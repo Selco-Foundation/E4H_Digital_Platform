@@ -30,7 +30,7 @@ const ORGApp = () => {
     },
     organizationDetails: {
       content: navigator?.workingOrganization?.name,
-      internalLink: `/${window.contextPath}/employee/org/organizations/:organizationId/details`,
+      internalLink: `/${window.contextPath}/employee/org/organizations/${navigator?.workingOrganization?.id}/details`,
       show: true,
     },
     vendorOrganizations: {

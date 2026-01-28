@@ -27,7 +27,6 @@ const mapOrganizations = (raw) => {
       orgType: org && org.orgType,
       orgSubType: org && org.orgSubType,
       orgStatus: org && org.orgStatus,
-      pocName: org && org.orgOrgPocName, // keep your old mapping if needed
       pocName: org && org.orgPocName,
       pocPhone: org && org.orgPocPhone,
       pocEmail: org && org.orgPocEmail,
@@ -70,7 +69,6 @@ const useOrganization = (filter, limit, offset, fixedOrgType) => {
 
   if (organizationSearchQuery.name) searchCriteria.name = organizationSearchQuery.name;
 
-  // ✅ FORCE ORG TYPE PER PAGE (ignore any orgType filters from UI)
   if (fixedOrgType) searchCriteria.orgType = fixedOrgType;
 
   if (organizationFilterQuery.orgSubType && organizationFilterQuery.orgSubType.length) {
@@ -92,7 +90,6 @@ const useOrganization = (filter, limit, offset, fixedOrgType) => {
 
   const queryClient = useQueryClient();
 
-  // ✅ include fixedOrgType so PLATFORM/VENDOR cache never clashes :contentReference[oaicite:0]{index=0}
   const queryKey = ["ORGANIZATIONS", tenantId, fixedOrgType, limit, offset, searchCriteria];
 
   const queryFn = async () => {

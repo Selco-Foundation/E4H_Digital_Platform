@@ -61,7 +61,7 @@ const OrganizationUserAdminActions = ({ t, organizationId, organizationType, org
         label: t("ORGANIZATION_USER_CREATION_SUCCESS"),
       })
     } catch (e) {
-      console.error("Failed to create facility", e);
+      console.error("Failed to edit organization user", e);
       setBlockUI(false);
       setFormToast({
         key: "error",

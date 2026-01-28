@@ -360,8 +360,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             {t("ASSIGNMENTS")}
           </h2>
           {assignments
-            .filter((assignment) => !assignment.isDeleted)
-            .map((assignment, index) => (
+            .map((assignment, index) => !assignment.isDeleted && (
               <div
                 className={"org-user-assignment"}
                 style={{
