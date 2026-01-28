@@ -82,62 +82,79 @@ public class BomValidator {
     private void validateBomRequest(BomBulkRequest request) {
         Map<String, String> errorMap = new HashMap<>();
 
-        if (request.getBillOfMaterials() == null || request.getBillOfMaterials().size() == 0) {
+        validateBomPresence(request);
+
+        for (BillOfMaterial billOfMaterial : request.getBillOfMaterials()) {
+            validateSingleBom(request, billOfMaterial, errorMap);
+        }
+
+        if (!errorMap.isEmpty()) {
+            throw new CustomException(errorMap);
+        }
+    }
+
+    private void validateBomPresence(BomBulkRequest request) {
+        if (request.getBillOfMaterials() == null || request.getBillOfMaterials().isEmpty()) {
             log.error("Activity list is empty. Activity is mandatory");
             throw new CustomException("ACTIVITY", "Activity are mandatory");
         }
+    }
 
-        for (BillOfMaterial billOfMaterial : request.getBillOfMaterials()) {
-            if (billOfMaterial == null) {
-                log.error("Activity Assignment is mandatory in Activities");
-                throw new CustomException("Activity", "Activity is mandatory");
-            }
+    private void validateSingleBom(BomBulkRequest request, BillOfMaterial billOfMaterial, Map<String, String> errorMap) {
+        validateBomNotNull(billOfMaterial);
+        validateBomName(billOfMaterial);
+        validateAssignUser(billOfMaterial);
+        validateActivityFacilityIdAndExistence(request, billOfMaterial);
+        validateBomTenantId(billOfMaterial, errorMap);
+        validateBomDataPresence(billOfMaterial, errorMap);
+    }
 
-            if (billOfMaterial.getName() == null) {
-                log.error("Name is mandatory in FieldPlans");
-                throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
-            }
+    private void validateBomNotNull(BillOfMaterial billOfMaterial) {
+        if (billOfMaterial == null) {
+            log.error("Activity Assignment is mandatory in Activities");
+            throw new CustomException("Activity", "Activity is mandatory");
+        }
+    }
 
-            if (billOfMaterial.getAssignUser() == null) {
-                log.error("Assign User is mandatory in BOM");
-                throw new CustomException("BOM_ASSIGN_USER", "Assign User is mandatory");
-            }
+    private void validateBomName(BillOfMaterial billOfMaterial) {
+        if (billOfMaterial.getName() == null) {
+            log.error("Name is mandatory in FieldPlans");
+            throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
+        }
+    }
 
-//            if (billOfMaterial.getFacilityId() == null) {
-//                log.error("Facility ID is mandatory in FieldPlans");
-//                throw new CustomException("Activity_FACILITY", "Facility ID is mandatory");
-//            }
-//
-//            // Get existing facility with facilityId from facility service
-//            Facility existingfacility = getFacilityById(billOfMaterial.getFacilityId());
-//            if (existingfacility == null) {
-//                log.error("Facility ID do not exist");
-//                throw new CustomException("Activity_ERROR", "Facility ID do not exist");
-//            }
+    private void validateAssignUser(BillOfMaterial billOfMaterial) {
+        if (billOfMaterial.getAssignUser() == null) {
+            log.error("Assign User is mandatory in BOM");
+            throw new CustomException("BOM_ASSIGN_USER", "Assign User is mandatory");
+        }
+    }
 
-            if (billOfMaterial.getActivityFacilityId() == null) {
-                log.error("Activity Facility ID is mandatory in FieldPlans");
-                throw new CustomException("Activity_FACILITY", "Activity Facility ID is mandatory");
-            }
-
-            // 1. Fetch the existing facility
-            List<ActivityFacility> activityFacilities = getActivityFacilityById(request.getRequestInfo(), billOfMaterial);
-            if (activityFacilities == null || activityFacilities.isEmpty()) {
-                throw new CustomException("ACTIVITY_FACILITY_NOT_FOUND", "Activity Facility not found with ID: " + billOfMaterial.getActivityFacilityId());
-            }
-
-            if (StringUtils.isBlank(billOfMaterial.getTenantId())) {
-                log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
-                errorMap.put("TENANT_ID", "Tenant ID is mandatory");
-            }
-            if (billOfMaterial.getData() == null) {
-                log.error(DATA_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
-                errorMap.put("ACTIVITIES", "Activity is mandatory");
-            }
+    private void validateActivityFacilityIdAndExistence(BomBulkRequest request, BillOfMaterial billOfMaterial) {
+        if (billOfMaterial.getActivityFacilityId() == null) {
+            log.error("Activity Facility ID is mandatory in FieldPlans");
+            throw new CustomException("Activity_FACILITY", "Activity Facility ID is mandatory");
         }
 
-        if (!errorMap.isEmpty())
-            throw new CustomException(errorMap);
+        List<ActivityFacility> activityFacilities = getActivityFacilityById(request.getRequestInfo(), billOfMaterial);
+        if (activityFacilities == null || activityFacilities.isEmpty()) {
+            throw new CustomException("ACTIVITY_FACILITY_NOT_FOUND",
+                    "Activity Facility not found with ID: " + billOfMaterial.getActivityFacilityId());
+        }
+    }
+
+    private void validateBomTenantId(BillOfMaterial billOfMaterial, Map<String, String> errorMap) {
+        if (StringUtils.isBlank(billOfMaterial.getTenantId())) {
+            log.error(TENANT_ID_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
+            errorMap.put("TENANT_ID", "Tenant ID is mandatory");
+        }
+    }
+
+    private void validateBomDataPresence(BillOfMaterial billOfMaterial, Map<String, String> errorMap) {
+        if (billOfMaterial.getData() == null) {
+            log.error(DATA_IS_MANDATORY_IN_ACTIVITY_REQUEST_BODY);
+            errorMap.put("ACTIVITIES", "Activity is mandatory");
+        }
     }
 
     private void validateRequestInfo(RequestInfo requestInfo) {

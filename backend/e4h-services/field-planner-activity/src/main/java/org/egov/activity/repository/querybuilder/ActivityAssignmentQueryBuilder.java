@@ -68,14 +68,8 @@ public class ActivityAssignmentQueryBuilder {
         String query = request.getCriteria().isCountQuery() ? ACTIVITY_FIELD_PLAN_COUNT_QUERY : FETCH_ACTIVITY_FIELD_PLAN;
         StringBuilder queryBuilder = new StringBuilder(query);
         ActivityAssignmentSearchCriteria criteria = request.getCriteria();
-
-        // Get user info
-        var userInfo = request.getRequestInfo().getUserInfo();
-        String userUuid = userInfo.getUuid();
-        boolean isProjectManager = false;
-        if (userInfo.getRoles() != null) {
-            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
-        }
+        boolean isProjectManager = isUserProjectManager(request);
+        String userUuid = request.getRequestInfo().getUserInfo().getUuid();
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
 
@@ -92,8 +86,21 @@ public class ActivityAssignmentQueryBuilder {
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
     }
 
-    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityAssignmentSearchCriteria activityAssignment, StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
+    private boolean isUserProjectManager(ActivityAssignmentSearchRequest request) {
+        var userInfo = request.getRequestInfo().getUserInfo();
+        if (userInfo.getRoles() == null) {
+            return false;
+        }
+        return userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
+    }
 
+    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityAssignmentSearchCriteria activityAssignment, StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
+        addIdBasedFilters(preparedStmtList, activityAssignment, queryBuilder);
+        addRoleAndAssigneeFilters(preparedStmtList, activityAssignment, queryBuilder, userUuid, isProjectManager);
+        addTimeAndFieldPlanFilters(lastChangedSince, preparedStmtList, activityAssignment, queryBuilder);
+    }
+
+    private void addIdBasedFilters(List<Object> preparedStmtList, ActivityAssignmentSearchCriteria activityAssignment, StringBuilder queryBuilder) {
         if (!CollectionUtils.isEmpty(activityAssignment.getIds())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" aa.id IN (").append(createQuery(activityAssignment.getIds())).append(")");
@@ -111,7 +118,9 @@ public class ActivityAssignmentQueryBuilder {
             queryBuilder.append(" aa.activity_id IN (").append(createQuery(activityAssignment.getActivityId())).append(")");
             preparedStmtList.addAll(activityAssignment.getActivityId());
         }
+    }
 
+    private void addRoleAndAssigneeFilters(List<Object> preparedStmtList, ActivityAssignmentSearchCriteria activityAssignment, StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
         if (!CollectionUtils.isEmpty(activityAssignment.getRoles())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" aa.role ->> 'code' IN (").append(createQuery(activityAssignment.getRoles())).append(")");
@@ -123,25 +132,25 @@ public class ActivityAssignmentQueryBuilder {
             queryBuilder.append(" aa.assigned_to =? ");
             preparedStmtList.add(activityAssignment.getAssignedTo());
         }
-
-        if (lastChangedSince != null && lastChangedSince != 0) {
-            addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" ( aa.last_modified_time >= ? )");
-            preparedStmtList.add(lastChangedSince);
-        }
-
         // Check if not project manager role
         if (!isProjectManager && StringUtils.isNotBlank(userUuid)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" aa.assigned_to = ? ");
             preparedStmtList.add(userUuid);
         }
+    }
 
+    private void addTimeAndFieldPlanFilters(Long lastChangedSince, List<Object> preparedStmtList, ActivityAssignmentSearchCriteria activityAssignment, StringBuilder queryBuilder) {
         // Check if fp name is provided
         if (StringUtils.isNotBlank(activityAssignment.getFieldPlanCode())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" LOWER(fp.name) LIKE ? ");
             preparedStmtList.add("%" + activityAssignment.getFieldPlanCode().toLowerCase() + "%");
+        }
+        if (lastChangedSince != null && lastChangedSince != 0) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" ( aa.last_modified_time >= ? )");
+            preparedStmtList.add(lastChangedSince);
         }
     }
 

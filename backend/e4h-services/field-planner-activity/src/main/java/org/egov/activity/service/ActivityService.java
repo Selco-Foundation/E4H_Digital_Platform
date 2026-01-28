@@ -101,77 +101,75 @@ public class ActivityService {
         List<ActivityFacility> activityFacilities = request.getActivityFacilities();
         int facilityCount = activityFacilities != null ? activityFacilities.size() : 0;
         log.debug("Processing {} activity facilities", facilityCount);
-        List<ActivityFacilityUser> activityFacilityUsers = new ArrayList<>();
 
         try {
-            for (ActivityFacility activityFacility : activityFacilities) {
-                log.trace("Enriching activity facility with id: {}", activityFacility.getId());
-                activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
-                List<ActivityFacilityUser> usersFacility = new ArrayList<>();
-                // Get reviewer users. Can see facility activity on UI directly by getting field plan first
-                if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
-                    for (String userId : activityFacility.getReviewerUser()){
-                        ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
-                                .activityFacilityId(activityFacility.getId())
-                                .userId(userId)
-                                .tenantId(activityFacility.getTenantId())
-                                .isDeleted(false)
-                                .build();
-                        usersFacility.add(facilityUser);
-                    }
-                }
-
-                // Get staff users. Can see facility once activity facility status = ASSIGNED_TO_FIELD_STAFF
-                if(activityFacility.getFieldStaffUsers() != null && !activityFacility.getFieldStaffUsers().isEmpty()){
-                    for (String userId : activityFacility.getFieldStaffUsers()){
-                        ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
-                                .activityFacilityId(activityFacility.getId())
-                                .userId(userId)
-                                .tenantId(activityFacility.getTenantId())
-                                .isDeleted(false)
-                                .build();
-                        usersFacility.add(facilityUser);
-                    }
-                }
-
-                // Get supervisor users. Can see facility once activity facility status = ASSIGNED_TO_FIELD_STAFF
-                if(activityFacility.getFieldSupervisorUsers() != null && !activityFacility.getFieldSupervisorUsers().isEmpty()){
-                    for (String userId : activityFacility.getFieldSupervisorUsers()){
-                        ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
-                                .activityFacilityId(activityFacility.getId())
-                                .userId(userId)
-                                .tenantId(activityFacility.getTenantId())
-                                .isDeleted(false)
-                                .build();
-                        usersFacility.add(facilityUser);
-                    }
-                }
-                // remove Duplicate activity facility users if the same user is REVIEWER, STAFF and SUPERVISOR
-                Set<String> seenUsers = new HashSet<>();
-                usersFacility = usersFacility.stream().filter(a -> seenUsers.add(a.getUserId()))
-                        .toList();
-                activityFacilityUsers.addAll(usersFacility);
-            }
-
-
-            // Create linked users, so that reviewer, staff and supervisor are linked to each activity facility. Reviewer can see list of activities on UI.
-            if(activityFacilityUsers != null && !activityFacilityUsers.isEmpty()){
-                log.debug("Creating {} activity facility user mappings", activityFacilityUsers.size());
-                ActivityFacilityUserBulkRequest activityFacilityUserBulkRequest = ActivityFacilityUserBulkRequest.builder()
-                        .requestInfo(request.getRequestInfo())
-                        .activityFacilityUsers(activityFacilityUsers)
-                        .build();
-                facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
-            }
-
-            log.debug("Pushing activity facilities to topic: {}", activityConfiguration.getCreateActivityFacilityTopic());
-            producer.push(activityConfiguration.getCreateActivityFacilityTopic(), request);
-            log.info("Successfully created {} activity facilities", facilityCount);
+            List<ActivityFacilityUser> activityFacilityUsers = enrichFacilitiesAndCollectUsers(request, activityFacilities);
+            createLinkedUsersIfPresent(request, activityFacilityUsers);
+            pushCreateActivityFacilities(request, facilityCount);
         } catch (Exception exception) {
             log.error("Error occurred while creating activity facilities, count: {}", facilityCount, exception);
         }
 
         return activityFacilities;
+    }
+
+    private List<ActivityFacilityUser> enrichFacilitiesAndCollectUsers(ActivityFacilityBulkRequest request, List<ActivityFacility> activityFacilities) {
+        List<ActivityFacilityUser> activityFacilityUsers = new ArrayList<>();
+        for (ActivityFacility activityFacility : activityFacilities) {
+            log.trace("Enriching activity facility with id: {}", activityFacility.getId());
+            activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
+            List<ActivityFacilityUser> usersFacility = buildUsersForActivityFacility(activityFacility);
+            activityFacilityUsers.addAll(removeDuplicateUsers(usersFacility));
+        }
+        return activityFacilityUsers;
+    }
+
+    private List<ActivityFacilityUser> buildUsersForActivityFacility(ActivityFacility activityFacility) {
+        List<ActivityFacilityUser> usersFacility = new ArrayList<>();
+        addUsersForRole(activityFacility, activityFacility.getReviewerUser(), usersFacility);
+        addUsersForRole(activityFacility, activityFacility.getFieldStaffUsers(), usersFacility);
+        addUsersForRole(activityFacility, activityFacility.getFieldSupervisorUsers(), usersFacility);
+        return usersFacility;
+    }
+
+    private void addUsersForRole(ActivityFacility activityFacility, List<String> users, List<ActivityFacilityUser> usersFacility) {
+        if (users == null || users.isEmpty()) {
+            return;
+        }
+        for (String userId : users) {
+            ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
+                    .activityFacilityId(activityFacility.getId())
+                    .userId(userId)
+                    .tenantId(activityFacility.getTenantId())
+                    .isDeleted(false)
+                    .build();
+            usersFacility.add(facilityUser);
+        }
+    }
+
+    private List<ActivityFacilityUser> removeDuplicateUsers(List<ActivityFacilityUser> usersFacility) {
+        Set<String> seenUsers = new HashSet<>();
+        return usersFacility.stream()
+                .filter(a -> seenUsers.add(a.getUserId()))
+                .toList();
+    }
+
+    private void createLinkedUsersIfPresent(ActivityFacilityBulkRequest request, List<ActivityFacilityUser> activityFacilityUsers) throws Exception {
+        if (activityFacilityUsers == null || activityFacilityUsers.isEmpty()) {
+            return;
+        }
+        log.debug("Creating {} activity facility user mappings", activityFacilityUsers.size());
+        ActivityFacilityUserBulkRequest activityFacilityUserBulkRequest = ActivityFacilityUserBulkRequest.builder()
+                .requestInfo(request.getRequestInfo())
+                .activityFacilityUsers(activityFacilityUsers)
+                .build();
+        facilityUsersService.createActivityFacilityUsers(activityFacilityUserBulkRequest);
+    }
+
+    private void pushCreateActivityFacilities(ActivityFacilityBulkRequest request, int facilityCount) {
+        log.debug("Pushing activity facilities to topic: {}", activityConfiguration.getCreateActivityFacilityTopic());
+        producer.push(activityConfiguration.getCreateActivityFacilityTopic(), request);
+        log.info("Successfully created {} activity facilities", facilityCount);
     }
 
     public List<ActivityAssignment> createActivityAssignment(ActivityAssignmentBulkRequest request) {
@@ -369,7 +367,20 @@ public class ActivityService {
     public FacilityStatusWrapper updateFacilityWorkflow(FacilityWorkflowRequest request) throws Exception {
         log.trace("updateFacilityWorkflow method invoked for activityFacilityId: {}", request.getActivityFacilityId());
         log.info("Updating workflow for activity facility: {}, action: {}", request.getActivityFacilityId(), request.getWorkflow().getAction());
-        // 1. Fetch the existing facility
+        ActivityFacility existingActivityFacility = fetchExistingActivityFacilityForWorkflow(request);
+        ProcessInstance updatedWorkflow = transitionWorkflow(request, existingActivityFacility);
+        handleWorkflowTransactionsIfPresent(request, updatedWorkflow);
+        ActivityFacility updatedActivityFacility = buildUpdatedActivityFacility(existingActivityFacility, updatedWorkflow);
+        ActivityFacilityBulkRequest enrichedRequest = buildActivityFacilityBulkRequest(request, updatedActivityFacility);
+        log.debug("Updating activity facility after workflow transition");
+        handleUpdateActivityFacility(enrichedRequest, updatedActivityFacility, existingActivityFacility);
+        handlePostApprovalSideEffects(request, existingActivityFacility);
+
+        log.info("Workflow update completed for activity facility: {}, new status: {}", request.getActivityFacilityId(), updatedWorkflow.getState().getState());
+        return new FacilityStatusWrapper(updatedActivityFacility, updatedWorkflow.getState().getState(), null, null);
+    }
+
+    private ActivityFacility fetchExistingActivityFacilityForWorkflow(FacilityWorkflowRequest request) {
         ActivityFacilitySearchCriteria searchCriteria = ActivityFacilitySearchCriteria.builder()
                 .ids(List.of(request.getActivityFacilityId()))
                 .tenantId(activityConfiguration.getTenantId())
@@ -381,83 +392,88 @@ public class ActivityService {
                 .build();
 
         log.debug("Fetching existing activity facility for workflow update");
-        List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
-                activityConfiguration.getTenantId(), false, null);
+        List<ActivityFacility> activityFacilities = searchActivityFacility(
+                searchRequest,
+                activityConfiguration.getMaxLimit(),
+                activityConfiguration.getDefaultOffset(),
+                activityConfiguration.getTenantId(),
+                false,
+                null
+        );
 
         if (activityFacilities == null || activityFacilities.isEmpty()) {
             log.error("Activity facility not found for workflow update, id: {}", request.getActivityFacilityId());
             throw new CustomException("FACILITY_NOT_FOUND", "Activity Facility not found with ID: " + request.getActivityFacilityId());
         }
 
-        ActivityFacility existingActivityFacitlity = activityFacilities.get(0);
+        return activityFacilities.get(0);
+    }
 
-        // 2. Call workflow transition
-        ProcessInstance updatedWorkflow;
+    private ProcessInstance transitionWorkflow(FacilityWorkflowRequest request, ActivityFacility existingActivityFacility) {
         try {
             log.debug("Transitioning workflow with action: {}", request.getWorkflow().getAction());
-            updatedWorkflow = workflowService.transitionWorkflow(
-                    existingActivityFacitlity,
+            ProcessInstance updatedWorkflow = workflowService.transitionWorkflow(
+                    existingActivityFacility,
                     request.getWorkflow().getAction(),
                     request.getWorkflow().getDocuments(),
                     request.getRequestInfo(),
                     request.getWorkflow().getComments()
             );
             log.debug("Workflow transition successful, new state: {}", updatedWorkflow.getState() != null ? updatedWorkflow.getState().getState() : "null");
+            return updatedWorkflow;
         } catch (Exception e) {
             log.error("Failed to transition workflow for activity facility: {}, action: {}", request.getActivityFacilityId(), request.getWorkflow().getAction(), e);
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
                     "Failed to transition workflow for facility: " + request.getActivityFacilityId());
         }
+    }
 
-        if(request.getTransactions() != null && !request.getTransactions().isEmpty()) {
+    private void handleWorkflowTransactionsIfPresent(FacilityWorkflowRequest request, ProcessInstance updatedWorkflow) {
+        if (request.getTransactions() != null && !request.getTransactions().isEmpty()) {
             log.debug("Processing {} transactions for workflow update", request.getTransactions().size());
             handleTransactionsAndComment(request, updatedWorkflow);
         }
+    }
 
-        // 3. Inject workflow status into activity facility
-        existingActivityFacitlity.setStatus(updatedWorkflow.getState().getState());
+    private ActivityFacility buildUpdatedActivityFacility(ActivityFacility existingActivityFacility, ProcessInstance updatedWorkflow) {
+        existingActivityFacility.setStatus(updatedWorkflow.getState().getState());
         log.debug("Updated activity facility status to: {}", updatedWorkflow.getState().getState());
 
-        // 4. Create a new Activity Instance instance with enriched additionalDetails
-        ActivityFacility updatedActivityFacility = ActivityFacility.builder()
-                .id(existingActivityFacitlity.getId())
-                .tenantId(existingActivityFacitlity.getTenantId())
-                .activityId(existingActivityFacitlity.getActivityId())
-                .facilityId(existingActivityFacitlity.getFacilityId())
-                .fieldPlanId(existingActivityFacitlity.getFieldPlanId())
-                .status(existingActivityFacitlity.getStatus())
-                .assignedUser(existingActivityFacitlity.getAssignedUser())
-                .activatedAt(existingActivityFacitlity.getActivatedAt())
+        return ActivityFacility.builder()
+                .id(existingActivityFacility.getId())
+                .tenantId(existingActivityFacility.getTenantId())
+                .activityId(existingActivityFacility.getActivityId())
+                .facilityId(existingActivityFacility.getFacilityId())
+                .fieldPlanId(existingActivityFacility.getFieldPlanId())
+                .status(existingActivityFacility.getStatus())
+                .assignedUser(existingActivityFacility.getAssignedUser())
+                .activatedAt(existingActivityFacility.getActivatedAt())
                 .completedAt(System.currentTimeMillis())
-                .scheduledAt(existingActivityFacitlity.getScheduledAt())
+                .scheduledAt(existingActivityFacility.getScheduledAt())
                 .build();
+    }
 
-        // 5. Create project request wrapper
-        ActivityFacilityBulkRequest enrichedRequest = ActivityFacilityBulkRequest.builder()
+    private ActivityFacilityBulkRequest buildActivityFacilityBulkRequest(FacilityWorkflowRequest request, ActivityFacility updatedActivityFacility) {
+        return ActivityFacilityBulkRequest.builder()
                 .requestInfo(request.getRequestInfo())
                 .activityFacilities(List.of(updatedActivityFacility))
                 .build();
+    }
 
-        // 6. Perform enriched update using standard handler
-        log.debug("Updating activity facility after workflow transition");
-        handleUpdateActivityFacility(enrichedRequest, updatedActivityFacility, existingActivityFacitlity);
-
-        // Step 7: After successful workflow transition, if action is APPROVED_BY_QC_SPOC
-        if ("APPROVE".equalsIgnoreCase(request.getWorkflow().getAction())) {
-            log.info("Processing approval side effects for activity facility: {}", existingActivityFacitlity.getId());
-            // once facility is fetched we need to fetch assets for that facility
-            String activityFacilityId = existingActivityFacitlity.getId();
-            if (activityFacilityId != null) {
-                updateAssetsForFacility(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
-                // Step 8: Trigger installation completion side effects (Asset AMC creation and visit generation)
-                triggerInstallationCompletionSideEffects(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
-                // Step 9: Mark facility as ONM ready
-                markFacilityOnmReady(existingActivityFacitlity, request.getRequestInfo());
-            }
+    private void handlePostApprovalSideEffects(FacilityWorkflowRequest request, ActivityFacility existingActivityFacility) throws Exception {
+        if (!"APPROVE".equalsIgnoreCase(request.getWorkflow().getAction())) {
+            return;
         }
 
-        log.info("Workflow update completed for activity facility: {}, new status: {}", request.getActivityFacilityId(), updatedWorkflow.getState().getState());
-        return new FacilityStatusWrapper(updatedActivityFacility, updatedWorkflow.getState().getState(), null, null);
+        log.info("Processing approval side effects for activity facility: {}", existingActivityFacility.getId());
+        String activityFacilityId = existingActivityFacility.getId();
+        if (activityFacilityId == null) {
+            return;
+        }
+
+        updateAssetsForFacility(existingActivityFacility, request.getRequestInfo(), activityFacilityId);
+        triggerInstallationCompletionSideEffects(existingActivityFacility, request.getRequestInfo(), activityFacilityId);
+        markFacilityOnmReady(existingActivityFacility, request.getRequestInfo());
     }
 
     private void handleTransactionsAndComment(FacilityWorkflowRequest request, ProcessInstance updatedWorkflow) {
@@ -599,44 +615,13 @@ public class ActivityService {
         log.info("Starting bulk workflow update, isAllSelected: {}", facilityBulkApproveRequest.getIsAllSelected());
         List<String> activityFacilityIds = new ArrayList<>();
         int totalActivityFacilities = 0;
-        int finalActivityFacilities = 0;
+        int finalActivityFacilities;
 
-        if (facilityBulkApproveRequest.getIsAllSelected()) {
-            log.debug("Processing all selected activity facilities with filters");
-            // Case 1: Search all activityFacilitiesList using filters
-            if(facilityBulkApproveRequest.getFilters() == null){
-                throw new CustomException("INVALID_REQUEST", "Filters are required when isAllSelected is true");
-            }
+        BulkActivityFacilitySelection selection = resolveActivityFacilitiesForBulkUpdate(facilityBulkApproveRequest);
+        activityFacilityIds = selection.activityFacilityIds();
+        totalActivityFacilities = selection.totalActivityFacilities();
+        finalActivityFacilities = selection.finalActivityFacilities();
 
-            ActivityFacilitySearchCriteria searchCriteria = facilityBulkApproveRequest.getFilters().getSearchCriteria();
-            searchCriteria.setTenantId(activityConfiguration.getTenantId());
-
-            ActivityFacilitySearchRequest searchRequest = ActivityFacilitySearchRequest.builder()
-                    .criteria(searchCriteria)
-                    .requestInfo(facilityBulkApproveRequest.getRequestInfo())
-                    .build();
-
-            List<ActivityFacility> activityFacilities = searchActivityFacility(searchRequest, activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
-                    activityConfiguration.getTenantId(), false, null);
-            totalActivityFacilities = countAllFacilityActivities(searchRequest, activityConfiguration.getTenantId(), null, null);
-
-            //             // only those activity facilities whose status is SUBMITTED_BY_SUPERVISOR
-            List<ActivityFacility> activityFacilitiesList = activityFacilities.stream().filter(this::hasSubmittedBySupervisorStatus).toList();
-            log.debug("Filtered {} activity facilities with SUBMITTED_BY_SUPERVISOR status from {} total", activityFacilitiesList.size(), activityFacilities.size());
-
-            finalActivityFacilities = activityFacilitiesList.size();
-            activityFacilityIds = activityFacilitiesList.stream().map(ActivityFacility::getId).collect(Collectors.toList());
-        } else {
-            // Case 2: Use provided activity facility IDs
-            if (facilityBulkApproveRequest.getActivityFacilityIds() != null && !facilityBulkApproveRequest.getActivityFacilityIds().isEmpty()) {
-                activityFacilityIds = facilityBulkApproveRequest.getActivityFacilityIds();
-                totalActivityFacilities = activityFacilityIds.size();
-                log.debug("Processing {} provided activity facility IDs", totalActivityFacilities);
-            } else {
-                log.error("Activity facility IDs are required when isAllSelected is false");
-                throw new CustomException("INVALID_REQUEST", "activity facility IDs are required when isAllSelected is false");
-            }
-        }
         Map<String, Object> result = new HashMap<>();
         // Validate that we have projects to process
         if (activityFacilityIds.isEmpty()) {
@@ -651,23 +636,7 @@ public class ActivityService {
         log.info("Starting bulk workflow update for {} activity facilities", activityFacilityIds.size());
         List<String> failedActivityFacilityIDs = new ArrayList<>();
         List<String> succeededActivityFacilityIDs = new ArrayList<>();
-        for (String activityFacilityId : activityFacilityIds) {
-            try {
-                log.trace("Processing workflow update for activity facility: {}", activityFacilityId);
-                FacilityWorkflowRequest workflowRequest = FacilityWorkflowRequest.builder()
-                        .requestInfo(facilityBulkApproveRequest.getRequestInfo())
-                        .activityFacilityId(activityFacilityId)
-                        .workflow(facilityBulkApproveRequest.getWorkflow())
-                        .build();
-
-                FacilityStatusWrapper updatedProject = updateFacilityWorkflow(workflowRequest);
-                log.debug("Successfully updated workflow for activity facility: {}", activityFacilityId);
-                succeededActivityFacilityIDs.add(activityFacilityId);
-            } catch (Exception e) {
-                log.error("Failed to update workflow for activity facility: {}", activityFacilityId, e);
-                failedActivityFacilityIDs.add(activityFacilityId);
-            }
-        }
+        processBulkWorkflowUpdates(facilityBulkApproveRequest, activityFacilityIds, failedActivityFacilityIDs, succeededActivityFacilityIDs);
         log.info("Bulk workflow update completed. Succeeded: {}, Failed: {}", succeededActivityFacilityIDs.size(), failedActivityFacilityIDs.size());
 
         result.put("failedActivityFacilityIDs", failedActivityFacilityIDs);
@@ -678,6 +647,88 @@ public class ActivityService {
             result.put("totalActivityFacilities", totalActivityFacilities);
         }
         return result;
+    }
+
+    private record BulkActivityFacilitySelection(List<String> activityFacilityIds, int totalActivityFacilities, int finalActivityFacilities) {}
+
+    private BulkActivityFacilitySelection resolveActivityFacilitiesForBulkUpdate(FacilityBulkApproveRequest facilityBulkApproveRequest) {
+        if (facilityBulkApproveRequest.getIsAllSelected()) {
+            return resolveAllSelectedActivityFacilities(facilityBulkApproveRequest);
+        } else {
+            return resolveExplicitActivityFacilities(facilityBulkApproveRequest);
+        }
+    }
+
+    private BulkActivityFacilitySelection resolveAllSelectedActivityFacilities(FacilityBulkApproveRequest facilityBulkApproveRequest) {
+        log.debug("Processing all selected activity facilities with filters");
+        if (facilityBulkApproveRequest.getFilters() == null) {
+            throw new CustomException("INVALID_REQUEST", "Filters are required when isAllSelected is true");
+        }
+
+        ActivityFacilitySearchCriteria searchCriteria = facilityBulkApproveRequest.getFilters().getSearchCriteria();
+        searchCriteria.setTenantId(activityConfiguration.getTenantId());
+
+        ActivityFacilitySearchRequest searchRequest = ActivityFacilitySearchRequest.builder()
+                .criteria(searchCriteria)
+                .requestInfo(facilityBulkApproveRequest.getRequestInfo())
+                .build();
+
+        List<ActivityFacility> activityFacilities = searchActivityFacility(
+                searchRequest,
+                activityConfiguration.getMaxLimit(),
+                activityConfiguration.getDefaultOffset(),
+                activityConfiguration.getTenantId(),
+                false,
+                null
+        );
+        int totalActivityFacilities = countAllFacilityActivities(searchRequest, activityConfiguration.getTenantId(), null, null);
+
+        List<ActivityFacility> activityFacilitiesList = activityFacilities.stream()
+                .filter(this::hasSubmittedBySupervisorStatus)
+                .toList();
+        log.debug("Filtered {} activity facilities with SUBMITTED_BY_SUPERVISOR status from {} total", activityFacilitiesList.size(), activityFacilities.size());
+
+        int finalActivityFacilities = activityFacilitiesList.size();
+        List<String> activityFacilityIds = activityFacilitiesList.stream()
+                .map(ActivityFacility::getId)
+                .collect(Collectors.toList());
+
+        return new BulkActivityFacilitySelection(activityFacilityIds, totalActivityFacilities, finalActivityFacilities);
+    }
+
+    private BulkActivityFacilitySelection resolveExplicitActivityFacilities(FacilityBulkApproveRequest facilityBulkApproveRequest) {
+        if (facilityBulkApproveRequest.getActivityFacilityIds() == null || facilityBulkApproveRequest.getActivityFacilityIds().isEmpty()) {
+            log.error("Activity facility IDs are required when isAllSelected is false");
+            throw new CustomException("INVALID_REQUEST", "activity facility IDs are required when isAllSelected is false");
+        }
+        List<String> activityFacilityIds = facilityBulkApproveRequest.getActivityFacilityIds();
+        int totalActivityFacilities = activityFacilityIds.size();
+        log.debug("Processing {} provided activity facility IDs", totalActivityFacilities);
+
+        return new BulkActivityFacilitySelection(activityFacilityIds, totalActivityFacilities, 0);
+    }
+
+    private void processBulkWorkflowUpdates(FacilityBulkApproveRequest facilityBulkApproveRequest,
+                                            List<String> activityFacilityIds,
+                                            List<String> failedActivityFacilityIDs,
+                                            List<String> succeededActivityFacilityIDs) {
+        for (String activityFacilityId : activityFacilityIds) {
+            try {
+                log.trace("Processing workflow update for activity facility: {}", activityFacilityId);
+                FacilityWorkflowRequest workflowRequest = FacilityWorkflowRequest.builder()
+                        .requestInfo(facilityBulkApproveRequest.getRequestInfo())
+                        .activityFacilityId(activityFacilityId)
+                        .workflow(facilityBulkApproveRequest.getWorkflow())
+                        .build();
+
+                updateFacilityWorkflow(workflowRequest);
+                log.debug("Successfully updated workflow for activity facility: {}", activityFacilityId);
+                succeededActivityFacilityIDs.add(activityFacilityId);
+            } catch (Exception e) {
+                log.error("Failed to update workflow for activity facility: {}", activityFacilityId, e);
+                failedActivityFacilityIDs.add(activityFacilityId);
+            }
+        }
     }
 
     private boolean hasSubmittedBySupervisorStatus(ActivityFacility activityFacility) {
@@ -934,26 +985,60 @@ public class ActivityService {
         try {
             log.info("Triggering installation completion side effects for activity facility: {}", activityFacilityId);
 
-            // Get project ID from field plan
-            String projectId = null;
-            if (activityFacility.getFieldPlanId() != null) {
-                log.debug("Fetching field plan for fieldPlanId: {}", activityFacility.getFieldPlanId());
-                FieldPlan fieldPlan = activityValidator.getFieldPlanById(
-                        requestInfo,
-                        activityFacility.getFieldPlanId(),
-                        activityFacility.getTenantId());
-                if (fieldPlan != null) {
-                    projectId = fieldPlan.getProjectId();
-                    log.debug("Retrieved projectId: {} from field plan", projectId);
-                }
-            }
-
+            String projectId = resolveProjectId(activityFacility, requestInfo, activityFacilityId);
             if (projectId == null || projectId.isEmpty()) {
-                log.warn("Project ID not found for activity facility: {}. Skipping AMC side effects.", activityFacilityId);
                 return;
             }
 
-            // Fetch installed assets for this facility
+            List<Asset> installedAssets = fetchInstalledAssets(activityFacility, requestInfo, activityFacilityId);
+            if (installedAssets == null || installedAssets.isEmpty()) {
+                return;
+            }
+
+            Long installationDate = resolveInstallationDate(activityFacility);
+
+            log.debug("Calling AMC scheduler service for installation completion, projectId: {}, facilityId: {}",
+                    projectId, activityFacility.getFacilityId());
+            amcSchedulerService.processInstallationCompletion(
+                    projectId,
+                    activityFacility.getFacilityId(),
+                    activityFacility.getTenantId(),
+                    installedAssets,
+                    installationDate,
+                    requestInfo
+            );
+
+            log.info("Successfully triggered installation completion side effects for activity facility: {}, assets processed: {}",
+                    activityFacilityId, installedAssets.size());
+
+        } catch (Exception e) {
+            log.error("Error triggering installation completion side effects for activity facility: {}", activityFacilityId, e);
+        }
+    }
+
+    private String resolveProjectId(ActivityFacility activityFacility, RequestInfo requestInfo, String activityFacilityId) {
+        String projectId = null;
+        if (activityFacility.getFieldPlanId() != null) {
+            log.debug("Fetching field plan for fieldPlanId: {}", activityFacility.getFieldPlanId());
+            FieldPlan fieldPlan = activityValidator.getFieldPlanById(
+                    requestInfo,
+                    activityFacility.getFieldPlanId(),
+                    activityFacility.getTenantId());
+            if (fieldPlan != null) {
+                projectId = fieldPlan.getProjectId();
+                log.debug("Retrieved projectId: {} from field plan", projectId);
+            }
+        }
+
+        if (projectId == null || projectId.isEmpty()) {
+            log.warn("Project ID not found for activity facility: {}. Skipping AMC side effects.", activityFacilityId);
+        }
+
+        return projectId;
+    }
+
+    private List<Asset> fetchInstalledAssets(ActivityFacility activityFacility, RequestInfo requestInfo, String activityFacilityId) {
+        try {
             log.debug("Fetching installed assets for activity facility: {}", activityFacilityId);
             AssetSearchCriteria assetSearchCriteria = AssetSearchCriteria.builder()
                     .activityFacilityID(activityFacilityId)
@@ -977,33 +1062,28 @@ public class ActivityService {
             int assetCount = installedAssets != null ? installedAssets.size() : 0;
             if (installedAssets == null || installedAssets.isEmpty()) {
                 log.info("No installed assets found for activity facility: {}. Skipping AMC side effects.", activityFacilityId);
-                return;
+                return Collections.emptyList();
             }
             log.debug("Found {} installed assets for activity facility: {}", assetCount, activityFacilityId);
-
-            // Get installation date
-            Long installationDate = activityFacility.getAuditDetails().getLastModifiedTime();
-            if (installationDate == null) {
-                installationDate = System.currentTimeMillis();
-                log.debug("Using current timestamp as installation date");
-            }
-
-            // Call AMC scheduler service to process installation completion
-            log.debug("Calling AMC scheduler service for installation completion, projectId: {}, facilityId: {}", projectId, activityFacility.getFacilityId());
-            amcSchedulerService.processInstallationCompletion(
-                    projectId,
-                    activityFacility.getFacilityId(),
-                    activityFacility.getTenantId(),
-                    installedAssets,
-                    installationDate,
-                    requestInfo
-            );
-
-            log.info("Successfully triggered installation completion side effects for activity facility: {}, assets processed: {}", activityFacilityId, assetCount);
+            return installedAssets;
 
         } catch (Exception e) {
-            log.error("Error triggering installation completion side effects for activity facility: {}", activityFacilityId, e);
+            log.error("Error while fetching installed assets for activity facility: {}", activityFacilityId, e);
+            return Collections.emptyList();
         }
+    }
+
+    private Long resolveInstallationDate(ActivityFacility activityFacility) {
+        Long installationDate = activityFacility.getAuditDetails() != null
+                ? activityFacility.getAuditDetails().getLastModifiedTime()
+                : null;
+
+        if (installationDate == null) {
+            installationDate = System.currentTimeMillis();
+            log.debug("Using current timestamp as installation date");
+        }
+
+        return installationDate;
     }
 
 }

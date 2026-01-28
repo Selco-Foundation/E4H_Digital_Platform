@@ -75,18 +75,10 @@ public class ActivityQueryBuilder {
         ActivityFacilitySearchCriteria criteria = request.getCriteria();
         String query = criteria.isCountQuery() ? ACTIVITY_COUNT_QUERY : FETCH_ACTIVITY_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
+        boolean isProjectManager = isUserProjectManager(request);
+        String userUuid = request.getRequestInfo().getUserInfo().getUuid();
 
-        // Get user info
-        var userInfo = request.getRequestInfo().getUserInfo();
-        String userUuid = userInfo.getUuid();
-        boolean isProjectManager = false;
-        if (userInfo.getRoles() != null) {
-            isProjectManager = userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
-        }
-
-        if (!isProjectManager) {
-            queryBuilder.append(" JOIN activity_facility_users fu ON fu.activityfacilityid = fa.id ");
-        }
+        appendUserJoinIfRequired(queryBuilder, isProjectManager);
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
 
@@ -103,8 +95,27 @@ public class ActivityQueryBuilder {
         return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
     }
 
-    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityFacilitySearchCriteria activityFacility, StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
+    private boolean isUserProjectManager(ActivityFacilitySearchRequest request) {
+        var userInfo = request.getRequestInfo().getUserInfo();
+        if (userInfo.getRoles() == null) {
+            return false;
+        }
+        return userInfo.getRoles().stream().anyMatch(role -> PROJECT_MANAGER.equalsIgnoreCase(role.getCode()));
+    }
 
+    private void appendUserJoinIfRequired(StringBuilder queryBuilder, boolean isProjectManager) {
+        if (!isProjectManager) {
+            queryBuilder.append(" JOIN activity_facility_users fu ON fu.activityfacilityid = fa.id ");
+        }
+    }
+
+    private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityFacilitySearchCriteria activityFacility, StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
+        addBasicFilters(preparedStmtList, activityFacility, queryBuilder);
+        addFacilityAndStatusFilters(preparedStmtList, activityFacility, queryBuilder);
+        addUserAndTimeFilters(lastChangedSince, preparedStmtList, activityFacility, queryBuilder, userUuid, isProjectManager);
+    }
+
+    private void addBasicFilters(List<Object> preparedStmtList, ActivityFacilitySearchCriteria activityFacility, StringBuilder queryBuilder) {
         if (!CollectionUtils.isEmpty(activityFacility.getIds())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fa.id IN (").append(createQuery(activityFacility.getIds())).append(")");
@@ -122,7 +133,9 @@ public class ActivityQueryBuilder {
             queryBuilder.append(" fa.activity_id IN (").append(createQuery(activityFacility.getActivityId())).append(")");
             preparedStmtList.addAll(activityFacility.getActivityId());
         }
+    }
 
+    private void addFacilityAndStatusFilters(List<Object> preparedStmtList, ActivityFacilitySearchCriteria activityFacility, StringBuilder queryBuilder) {
         if (!CollectionUtils.isEmpty(activityFacility.getFacilityId())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" fa.facility_id IN (").append(createQuery(activityFacility.getFacilityId())).append(")");
@@ -153,7 +166,9 @@ public class ActivityQueryBuilder {
             queryBuilder.append(" fac.boundary_code IN (").append(createQuery(activityFacility.getBoundaryCodes())).append(")");
             preparedStmtList.addAll(activityFacility.getBoundaryCodes());
         }
+    }
 
+    private void addUserAndTimeFilters(Long lastChangedSince, List<Object> preparedStmtList, ActivityFacilitySearchCriteria activityFacility, StringBuilder queryBuilder, String userUuid, boolean isProjectManager) {
         // Check if not project manager role
         if (!isProjectManager && StringUtils.isNotBlank(userUuid)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
