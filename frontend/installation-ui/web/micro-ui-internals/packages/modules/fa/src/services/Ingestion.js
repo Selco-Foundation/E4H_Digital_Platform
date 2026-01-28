@@ -209,9 +209,6 @@ export const IngestionService = {
 
   downloadFacilityDataTemplate: async () => {
     const endpoint = "/ingestion-service/template/facilityIngestion";
-    const headers = {
-      "Content-Type": "application/json"
-    }
 
     await CustomRequest({
       url: endpoint,
@@ -219,7 +216,6 @@ export const IngestionService = {
       data: new FormData(),
       method: "POST",
       auth: true,
-      headers: headers,
       attachAuthHeaders: true,
       fileDownload: true,
       responseType: "blob",

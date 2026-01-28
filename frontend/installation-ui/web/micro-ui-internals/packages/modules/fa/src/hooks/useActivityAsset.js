@@ -36,11 +36,12 @@ const getAssetVoltage = (assetTypeID, assetDetails) => {
 }
 
 const fetchFileStoreDocuments = async (documents) => {
+  const documentsToFetch = documents || [];
   const fetchedDocuments = [];
-  for (const document of documents) {
+  for (const document of documentsToFetch) {
     if (document?.documentType?.toUpperCase() === "ASSET") {
       const fileStoreResponse = await FilestoreService.fetchDocumentFromFilestore(document?.fileStore);
-      fetchedDocuments.push(Digit.Utils.getFileUrl(fileStoreResponse[document?.fileStore]))
+      fetchedDocuments.push(Digit.Utils.getFileUrl(fileStoreResponse[document?.fileStore]));
     }
   }
 
@@ -104,7 +105,7 @@ const formatData = async (data) => {
     }
   }
 
-  return dataMap.values().toArray();
+  return [...dataMap.values()];
 }
 
 const fetchFacilityDetails = async (filter) => {

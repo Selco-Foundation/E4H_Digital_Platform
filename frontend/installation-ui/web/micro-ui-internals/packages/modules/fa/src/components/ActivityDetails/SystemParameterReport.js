@@ -2,7 +2,7 @@ import React from "react";
 import { PdfIcon } from "@egovernments/digit-ui-svg-components";
 import CustomFileIcon from "../Custom/CustomFileIcon";
 
-const SystemParameterReport = ({ file, supportingDocuments }) => {
+const SystemParameterReport = ({ file, supportingDocuments = [] }) => {
 
   return (
     <div style={{ padding: "20px" }}>

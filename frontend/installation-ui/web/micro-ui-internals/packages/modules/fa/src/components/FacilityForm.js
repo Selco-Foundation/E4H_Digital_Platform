@@ -323,7 +323,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
         defaultValues={defaultValues}
         config={addFacilityFormConfig}
         onSubmit={handleFormSubmit}
-        label={t("CORE_COMMON_SUBMIT")}
+        label={t("CORE_COMMON_SAVE")}
         heading={""}
         cardStyle={{ boxShadow: "none" }}
         submitInForm={false}

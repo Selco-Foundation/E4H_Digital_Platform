@@ -18,9 +18,9 @@ const FAModule = ({ stateCode, userType, tenants }) => {
   const { info } = Digit.UserService.getUser();
   const currentUserRoles = info?.roles?.map(role => role.code);
 
-  // if(!currentUserRoles?.includes("FACILITY_ADMIN")) {
-  //   return null;
-  // }
+  if(!currentUserRoles?.includes("FACILITY_ADMIN")) {
+    return null;
+  }
 
   if (isLoading) {
     return <Loader />;

@@ -13,9 +13,10 @@ const formatDate = (timestamp) => {
 };
 
 const fetchDocument = async (fileStoreId, fetchFileDetails = true) => {
+  let fileUrl;
   try {
     const fileStoreResponse = await FilestoreService.fetchDocumentFromFilestore(fileStoreId);
-    const fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[fileStoreId]);
+    fileUrl = Digit.Utils.getFileUrl(fileStoreResponse[fileStoreId]);
     let fileDetails;
     if (fetchFileDetails) {
       fileDetails = await FAService.fetchDocumentDetails(fileUrl);
@@ -24,6 +25,7 @@ const fetchDocument = async (fileStoreId, fetchFileDetails = true) => {
   } catch (error) {
     console.error(`Failed to fetch document ${fileStoreId}:`, error);
   }
+  return { fileUrl };
 };
 
 const fetchVisitReport = async (processInstances) => {

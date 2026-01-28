@@ -55,7 +55,7 @@ const FacilityAdminActions = ({ t }) => {
             tenant_id: tenantId,
             facility_name: formData?.facilityName,
             facility_type: facilityTypeCode,
-            isActive: formData?.isActive?.code === "YES",
+            isActive: formData?.isOperational?.code === "YES",
             isOnmReady: formData?.isOnmReady?.code === "YES",
             blockBoundaryCode: block?.code,
             address: {

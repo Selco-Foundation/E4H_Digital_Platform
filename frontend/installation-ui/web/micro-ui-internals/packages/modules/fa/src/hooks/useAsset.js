@@ -64,12 +64,12 @@ const formatData = async (data) => {
   return assets;
 }
 
-const fetchFacilityDetails = async (filter) => {
-  const facilityDetailsResponse = await AssetService.fetchAssets(filter);
+const fetchAssets = async (filter, limit, offset) => {
+  const facilityDetailsResponse = await AssetService.fetchAssets(filter, limit, offset);
   return await formatData(facilityDetailsResponse);
-}
+};
 
-const useAsset = (assetQueryFilter) => {
+const useAsset = (assetQueryFilter, limit = 1000, offset = 0) => {
 
   const { facility, assetFilterQuery } = assetQueryFilter;
 
@@ -97,8 +97,8 @@ const useAsset = (assetQueryFilter) => {
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["ASSET", filter],
-    () => fetchFacilityDetails(filter)
+    ["ASSET", filter, limit, offset],
+    () => fetchAssets(filter, limit, offset)
   );
 
   return {

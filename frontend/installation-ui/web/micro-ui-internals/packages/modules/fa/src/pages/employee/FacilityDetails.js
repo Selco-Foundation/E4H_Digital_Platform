@@ -119,7 +119,7 @@ const FacilityDetails = () => {
           tenant_id: tenantId,
           facility_name: formData?.facilityName,
           facility_type: facilityTypeCode,
-          isActive: formData?.isActive?.code === "YES",
+          isActive: formData?.isOperational?.code === "YES",
           isOnmReady: formData?.isOnmReady?.code === "YES",
           address: {
             tenantId: tenantId,
@@ -266,11 +266,11 @@ const FacilityDetails = () => {
         configNavItems={[
           {
             code: "ACTIVITY",
-            name: "Activity",
+            name: "ACTIVITY",
           },
           {
             code: "ASSET",
-            name: "Asset",
+            name: "ASSET",
           },
           {
             code: "AMC",
