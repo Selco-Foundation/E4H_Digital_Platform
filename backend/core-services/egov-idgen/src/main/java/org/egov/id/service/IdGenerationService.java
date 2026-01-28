@@ -242,75 +242,116 @@ public class IdGenerationService {
     private List getFormattedId(IdRequest idRequest, RequestInfo requestInfo, boolean autoCreateNewSeqFlag) throws Exception {
         log.trace("getFormattedId method invoked");
 
-        List<String> idFormatList = new LinkedList();
         String idFormat = idRequest.getFormat();
+        idFormat = applyTenantPlaceholders(idRequest, idFormat);
 
-        try{
+        List<String> attributes = extractAttributesFromFormat(idFormat);
+        Integer count = getCount(idRequest);
+
+        log.info("Generating {} formatted IDs", count);
+        List<String> idFormatList = buildFormattedIdList(idRequest, requestInfo, autoCreateNewSeqFlag, idFormat, attributes, count);
+
+        log.debug("Successfully generated {} formatted IDs", idFormatList.size());
+        return idFormatList;
+    }
+
+    /**
+     * Replaces tenant-based placeholders in the ID format.
+     */
+    private String applyTenantPlaceholders(IdRequest idRequest, String idFormat) {
+        try {
             if (!StringUtils.isEmpty(idFormat.trim()) && !StringUtils.isEmpty(idRequest.getTenantId())) {
                 log.debug("Replacing tenant placeholders in format with tenantId: {}", idRequest.getTenantId());
                 idFormat = idFormat.replace("[tenantid]", idRequest.getTenantId());
                 idFormat = idFormat.replace("[tenant_id]", idRequest.getTenantId().replace(".", "_"));
                 idFormat = idFormat.replace("[TENANT_ID]", idRequest.getTenantId().replace(".", "_").toUpperCase());
             }
-        }catch (Exception ex){
+        } catch (Exception ex) {
             if (StringUtils.isEmpty(idFormat)) {
                 log.error("Blank format encountered for idName: {}", idRequest.getIdName());
                 throw new CustomException("IDGEN_FORMAT_ERROR", "Blank format is not allowed");
             }
         }
+        return idFormat;
+    }
 
-        List<String> matchList = new ArrayList<String>();
+    /**
+     * Extracts attribute placeholders from the ID format.
+     */
+    private List<String> extractAttributesFromFormat(String idFormat) {
+        List<String> attributes = new ArrayList<>();
 
         Pattern regExpPattern = Pattern.compile("\\[(.*?)\\]");
         Matcher regExpMatcher = regExpPattern.matcher(idFormat);
 
-        Integer count = getCount(idRequest);
-        log.debug("Parsing format pattern, found {} placeholders, count: {}", 
-                idFormat.split("\\[").length - 1, count);
-
-        while (regExpMatcher.find()) {// Finds Matching Pattern in String
-            matchList.add(regExpMatcher.group(1));// Fetching Group from String
+        while (regExpMatcher.find()) {
+            attributes.add(regExpMatcher.group(1));
         }
-        log.debug("Extracted {} placeholders from format", matchList.size());
 
+        log.debug("Extracted {} placeholders from format", attributes.size());
+        return attributes;
+    }
+
+    /**
+     * Builds the final list of formatted IDs.
+     */
+    private List<String> buildFormattedIdList(IdRequest idRequest, RequestInfo requestInfo,
+                                              boolean autoCreateNewSeqFlag, String idFormat,
+                                              List<String> attributes, Integer count) throws Exception {
+
+        List<String> idFormatList = new LinkedList<>();
         HashMap<String, List<String>> sequences = new HashMap<>();
         String idFormatTemplate = idFormat;
         String cityName = null;
 
-        log.info("Generating {} formatted IDs", count);
         for (int i = 0; i < count; i++) {
             idFormat = idFormatTemplate;
 
-            for (String attributeName : matchList) {
+            for (String attributeName : attributes) {
                 log.trace("Processing attribute: {}", attributeName);
-
-                if (attributeName.substring(0, 3).equalsIgnoreCase("seq")) {
-                    if (!sequences.containsKey(attributeName)) {
-                        log.debug("Generating sequence numbers for: {}", attributeName);
-                        sequences.put(attributeName, generateSequenceNumber(attributeName, requestInfo, idRequest,autoCreateNewSeqFlag));
-                    }
-					idFormat = idFormat.replace("[" + attributeName + "]", sequences.get(attributeName).get(i));
-                } else if (attributeName.substring(0, 2).equalsIgnoreCase("fy")) {
-                    idFormat = idFormat.replace("[" + attributeName + "]",
-                            generateFinancialYearDateFormat(attributeName, requestInfo));
-                } else if (attributeName.substring(0, 2).equalsIgnoreCase("cy")) {
-                    idFormat = idFormat.replace("[" + attributeName + "]",
-                            generateCurrentYearDateFormat(attributeName, requestInfo));
-                } else if (attributeName.substring(0, 4).equalsIgnoreCase("city")) {
-                    if (cityName == null) {
-                        log.debug("Fetching city name from MDMS");
-                        cityName = mdmsService.getCity(requestInfo, idRequest);
-                    }
-                    idFormat = idFormat.replace("[" + attributeName + "]", cityName);
-                } else {
-                    idFormat = idFormat.replace("[" + attributeName + "]", generateRandomText(attributeName, requestInfo));
+                idFormat = applyAttributeValue(idRequest, requestInfo, autoCreateNewSeqFlag, sequences, i, idFormat, attributeName, cityName);
+                if (attributeName.substring(0, 4).equalsIgnoreCase("city") && cityName == null) {
+                    cityName = mdmsService.getCity(requestInfo, idRequest);
                 }
             }
+
             idFormatList.add(idFormat);
             log.trace("Generated formatted ID at index {}: {}", i, idFormat);
         }
-        log.debug("Successfully generated {} formatted IDs", idFormatList.size());
+
         return idFormatList;
+    }
+
+    /**
+     * Applies a single attribute value to the ID format string.
+     */
+    private String applyAttributeValue(IdRequest idRequest, RequestInfo requestInfo,
+                                       boolean autoCreateNewSeqFlag, HashMap<String, List<String>> sequences,
+                                       int index, String idFormat, String attributeName, String cityName) throws Exception {
+
+        if (attributeName.substring(0, 3).equalsIgnoreCase("seq")) {
+            if (!sequences.containsKey(attributeName)) {
+                log.debug("Generating sequence numbers for: {}", attributeName);
+                sequences.put(attributeName, generateSequenceNumber(attributeName, requestInfo, idRequest, autoCreateNewSeqFlag));
+            }
+            idFormat = idFormat.replace("[" + attributeName + "]", sequences.get(attributeName).get(index));
+        } else if (attributeName.substring(0, 2).equalsIgnoreCase("fy")) {
+            idFormat = idFormat.replace("[" + attributeName + "]",
+                    generateFinancialYearDateFormat(attributeName, requestInfo));
+        } else if (attributeName.substring(0, 2).equalsIgnoreCase("cy")) {
+            idFormat = idFormat.replace("[" + attributeName + "]",
+                    generateCurrentYearDateFormat(attributeName, requestInfo));
+        } else if (attributeName.substring(0, 4).equalsIgnoreCase("city")) {
+            if (cityName == null) {
+                log.debug("Fetching city name from MDMS");
+                cityName = mdmsService.getCity(requestInfo, idRequest);
+            }
+            idFormat = idFormat.replace("[" + attributeName + "]", cityName);
+        } else {
+            idFormat = idFormat.replace("[" + attributeName + "]", generateRandomText(attributeName, requestInfo));
+        }
+
+        return idFormat;
     }
 
     /**
