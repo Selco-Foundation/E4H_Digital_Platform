@@ -123,45 +123,14 @@ public class AssetService {
         StringBuilder query = new StringBuilder("SELECT * FROM asset WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
-        if (asset.getTenantId() != null && !asset.getTenantId().isBlank()) {
-            query.append(" AND tenant_id = ?");
-            params.add(asset.getTenantId());
-        }
-
-        if (asset.getAssetId() != null && !asset.getAssetId().isBlank()) {
-            query.append(" AND asset_id = ?");
-            params.add(asset.getAssetId());
-        }
-
-        if (asset.getWfStatus() != null && !asset.getWfStatus().isBlank()) {
-            query.append(" AND wf_status = ?");
-            params.add(asset.getWfStatus());
-        }
-
-        if (asset.getFacilityID() != null && !asset.getFacilityID().isBlank()) {
-            query.append(" AND facility_id = ?");
-            params.add(asset.getFacilityID());
-        }
-
-        if (asset.getActivityFacilityID() != null && !asset.getActivityFacilityID().isBlank()) {
-            query.append(" AND activity_facility_id = ?");
-            params.add(asset.getActivityFacilityID());
-        }
-
-        if (asset.getSerialNumber() != null && !asset.getSerialNumber().isBlank()) {
-            query.append(" AND serial_number = ?");
-            params.add(asset.getSerialNumber());
-        }
-
-        if (asset.getModelNumber() != null && !asset.getModelNumber().isBlank()) {
-            query.append(" AND model_number = ?");
-            params.add(asset.getModelNumber());
-        }
-
-        if (asset.getBrandID()!= null && !asset.getBrandID().isBlank()) {
-            query.append(" AND brand_id = ?");
-            params.add(asset.getBrandID());
-        }
+        addStringCondition(query, params, "tenant_id", asset.getTenantId());
+        addStringCondition(query, params, "asset_id", asset.getAssetId());
+        addStringCondition(query, params, "wf_status", asset.getWfStatus());
+        addStringCondition(query, params, "facility_id", asset.getFacilityID());
+        addStringCondition(query, params, "activity_facility_id", asset.getActivityFacilityID());
+        addStringCondition(query, params, "serial_number", asset.getSerialNumber());
+        addStringCondition(query, params, "model_number", asset.getModelNumber());
+        addStringCondition(query, params, "brand_id", asset.getBrandID());
 
         query.append(" ORDER BY created_time DESC LIMIT ? OFFSET ?");
         params.add(limit);
@@ -176,6 +145,13 @@ public class AssetService {
             log.error("Error executing asset search query | tenantId={} error={}", 
                     asset.getTenantId(), e.getMessage(), e);
             throw new CustomException("ASSET_SEARCH_ERROR", "Failed to search assets: " + e.getMessage());
+        }
+    }
+
+    private void addStringCondition(StringBuilder query, List<Object> params, String columnName, String value) {
+        if (value != null && !value.isBlank()) {
+            query.append(" AND ").append(columnName).append(" = ?");
+            params.add(value);
         }
     }
 
