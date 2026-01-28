@@ -33,6 +33,9 @@ public class Configuration {
     @Value("${egov.user.update.path}")
     private String userUpdateEndpoint;
 
+    @Value("${user.default.password}")
+    private String defaultUserPassword;
+
 
     //Idgen Config
     @Value("${egov.idgen.host}")
