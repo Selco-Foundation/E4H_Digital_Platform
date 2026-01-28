@@ -83,9 +83,7 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     }
 
     const nextDistrictCodes = nextDistrictMenu.map((d) => d.code);
-    const selectedDistrictCodes = selectedDistricts
-      .map((d) => d.code)
-      .filter((code) => nextDistrictCodes.includes(code)); // only valid districts under selected state(s)
+    const selectedDistrictCodes = selectedDistricts.map((d) => d.code).filter((code) => nextDistrictCodes.includes(code)); // only valid districts under selected state(s)
 
     if (!selectedDistrictCodes.length) {
       setBlockMenu([]);
@@ -97,7 +95,7 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
 
     const nextBlockMenu = (blockOptions || []).filter((b) => selectedDistrictCodes.includes(b.parentCode));
     setBlockMenu(nextBlockMenu);
-  }, [stateCodesKey, districtCodesKey, districtOptions, blockOptions]); // keep deps tight
+  }, [currentFilter, stateCodesKey, districtCodesKey, districtOptions, blockOptions]); // keep deps tight
 
   useEffect(() => {
     const boundaryFilterQuery = {};
