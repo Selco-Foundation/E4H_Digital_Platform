@@ -143,62 +143,78 @@ abstract public class BaseSMSService implements SMSService, SMSBodyBuilder {
     public MultiValueMap<String, String> getSmsRequestBody(Sms sms) {
         log.trace("getSmsRequestBody method invoked");
         MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
-        int configMapSize = smsProperties.getConfigMap().keySet().size();
-        log.debug("Building SMS request body with {} configuration entries", configMapSize);
-        
-        for (String key : smsProperties.getConfigMap().keySet()) {
-            String value = smsProperties.getConfigMap().get(key);
-            if (value.startsWith("$")) {
-                switch (value) {
-                    case "$username":
-                        map.add(key, smsProperties.getUsername());
-                        break;
-                    case "$password":
-                        map.add(key, smsProperties.getPassword());
-                        log.debug("Password placeholder resolved for key: {}", key);
-                        break;
-                    case "$senderid":
-                        map.add(key, smsProperties.getSenderid());
-                        break;
-                    case "$mobileno":
-                        String mobileNumber = smsProperties.getMobileNumberPrefix() + sms.getMobileNumber();
-                        map.add(key, mobileNumber);
-                        log.debug("Mobile number placeholder resolved");
-                        break;
-                    case "$message":
-                        map.add(key, sms.getMessage());
-                        log.debug("Message placeholder resolved, message length: {}", sms.getMessage() != null ? sms.getMessage().length() : 0);
-                        break;
-                    default:
-                        if (env.containsProperty(value.substring(1))) {
-                            map.add(key, env.getProperty(value.substring(1)));
-                        } else if (smsProperties.getExtraConfigMap().containsKey(value.substring(1))) {
-                            map.add(key, smsProperties.getExtraConfigMap().get(value.substring(1)));
-                        } else if (smsProperties.getCategoryMap().containsKey(value.substring(1))) {
-                            Map<String, Map<String, String>> categoryMap = smsProperties.getCategoryMap();
-                            Map<String, String> categoryValue = categoryMap.get(value.substring(1));
-                            if (sms.getCategory() == null && categoryValue.containsKey('*')) {
-                                map.add(key, categoryValue.get('*'));
-                            } else if (sms.getCategory() != null) {
-                                if (categoryValue.containsKey(sms.getCategory().toString())) {
-                                    map.add(key, categoryValue.get(sms.getCategory().toString()));
-                                } else if (categoryValue.containsKey('*')) {
-                                    map.add(key, categoryValue.get('*'));
-                                }
-                            }
-                        } else {
-                            map.add(key, value);
-                        }
-                        break;
-                }
-            } else {
-                map.add(key, value);
-            }
+        Map<String, String> configMap = smsProperties.getConfigMap();
+        log.debug("Building SMS request body with {} configuration entries", configMap.size());
 
+        for (String key : configMap.keySet()) {
+            String value = configMap.get(key);
+            resolveConfigEntry(key, value, sms).ifPresent(resolved -> map.add(key, resolved));
         }
 
         log.debug("SMS request body built with {} entries", map.size());
         return map;
+    }
+
+    private Optional<String> resolveConfigEntry(String key, String value, Sms sms) {
+        if (!value.startsWith("$")) {
+            return Optional.of(value);
+        }
+        return resolvePlaceholderValue(key, value, sms);
+    }
+
+    private Optional<String> resolvePlaceholderValue(String key, String value, Sms sms) {
+        switch (value) {
+            case "$username":
+                return Optional.of(smsProperties.getUsername());
+            case "$password":
+                log.debug("Password placeholder resolved for key: {}", key);
+                return Optional.of(smsProperties.getPassword());
+            case "$senderid":
+                return Optional.of(smsProperties.getSenderid());
+            case "$mobileno":
+                log.debug("Mobile number placeholder resolved");
+                return Optional.of(smsProperties.getMobileNumberPrefix() + sms.getMobileNumber());
+            case "$message":
+                log.debug("Message placeholder resolved, message length: {}",
+                        sms.getMessage() != null ? sms.getMessage().length() : 0);
+                return Optional.of(sms.getMessage());
+            default:
+                return resolveDynamicPlaceholder(value, sms);
+        }
+    }
+
+    private Optional<String> resolveDynamicPlaceholder(String value, Sms sms) {
+        String key = value.substring(1);
+        if (env.containsProperty(key)) {
+            return Optional.of(env.getProperty(key));
+        }
+        if (smsProperties.getExtraConfigMap().containsKey(key)) {
+            return Optional.of(smsProperties.getExtraConfigMap().get(key));
+        }
+        if (smsProperties.getCategoryMap().containsKey(key)) {
+            return resolveCategoryValue(key, sms);
+        }
+        return Optional.of(value);
+    }
+
+    private Optional<String> resolveCategoryValue(String placeholderKey, Sms sms) {
+        Map<String, String> categoryValue = smsProperties.getCategoryMap().get(placeholderKey);
+        if (categoryValue == null) {
+            return Optional.empty();
+        }
+        if (sms.getCategory() == null && categoryValue.containsKey("*")) {
+            return Optional.of(categoryValue.get("*"));
+        }
+        if (sms.getCategory() != null) {
+            String categoryKey = sms.getCategory().toString();
+            if (categoryValue.containsKey(categoryKey)) {
+                return Optional.of(categoryValue.get(categoryKey));
+            }
+            if (categoryValue.containsKey("*")) {
+                return Optional.of(categoryValue.get("*"));
+            }
+        }
+        return Optional.empty();
     }
 
     protected HttpEntity<MultiValueMap<String, String>> getRequest(Sms sms) {
