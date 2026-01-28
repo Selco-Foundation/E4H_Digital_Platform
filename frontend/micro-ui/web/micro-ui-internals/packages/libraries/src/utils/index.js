@@ -193,7 +193,7 @@ const didEmployeeHasAtleastOneRole = (roles = []) => {
 const pgrAccess = () => {
   const userInfo = Digit.UserService.getUser();
   const userRoles = userInfo?.info?.roles?.map((roleData) => roleData?.code);
-  const pgrRoles = ["COMPLAINT_RESOLVER", "COMPLAINT_ASSESSOR","COMPLAINANT","COMPLAINT_CLOSER","COMPLAINT", "COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2"];
+  const pgrRoles = ["COMPLAINT_RESOLVER", "COMPLAINT_ASSESSOR","COMPLAINANT","COMPLAINT_CLOSER","COMPLAINT", "COMPLAINT_FACILITATOR_1", "COMPLAINT_FACILITATOR_2", "VIEWER"];
 
   const PGR_ACCESS = userRoles?.filter((role) => pgrRoles.includes(role));
 
