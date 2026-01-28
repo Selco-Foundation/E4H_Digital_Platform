@@ -42,9 +42,6 @@ public class Configuration {
     @Value("${egov.user.host}")
     private String userHost;
 
-    @Value("${egov.user.context.path}")
-    private String userContextPath;
-
     @Value("${egov.user.create.path}")
     private String userCreateEndpoint;
 
@@ -86,6 +83,24 @@ public class Configuration {
     @Value("${org.user.kafka.create.topic}")
     private String createOrgUserTopic;
 
+    @Value("${org.user.kafka.update.topic}")
+    private String updateOrgUserTopic;
+
+    @Value("${org.user.kafka.delete.topic}")
+    private String deleteOrgUserTopic;
+
+    @Value("${egov.fieldplan.activity.host}")
+    private String fieldPlanActivityServiceHost;
+
+    @Value("${user.default.password}")
+    private String defaultUserPassword;
+
+    @Value("${egov.fieldplan.activity.assignment.search.url}")
+    private String fieldPlanActivitySearchUrl;
+
+    @Value("${egov.fieldplan.activity.facility.search.url}")
+    private String fieldPlanActivityFacilitySearchUrl;
+
     @Value("${egov.idgen.organisation.number.format}")
     private String orgNumberFormat;
 
@@ -126,7 +141,13 @@ public class Configuration {
     private String hrmsHost;
 
     @Value("${egov.hrms.search.endpoint}")
-    private String hrmsEndPoint;
+    private String hrmsSearchEndPoint;
+
+    @Value("${egov.hrms.create.endpoint}")
+    private String hrmsCreateEndPoint;
+
+    @Value("${egov.hrms.update.endpoint}")
+    private String hrmsUpdateEndPoint;
 
     // URLShortening
     @Value("${egov.url.shortner.host}")
@@ -209,4 +230,7 @@ public class Configuration {
 
     @Value("${state.level.tenant.id}")
     private String stateLevelTenantId;
+
+    @Value("${global.tenant.id}")
+    private String globalTenantId;
 }

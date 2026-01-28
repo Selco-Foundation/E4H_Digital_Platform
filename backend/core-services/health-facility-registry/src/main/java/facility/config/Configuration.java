@@ -72,10 +72,16 @@ public class Configuration {
     private String hrmsHost;
 
     @Value("${egov.hrms.search.endpoint}")
-    private String hrmsEndPoint;
+    private String hrmsSearchEndPoint;
+
+    @Value("${egov.hrms.update.endpoint}")
+    private String hrmsUpdateEndPoint;
 
     @Value("${egov.hrms.create.endpoint}")
-    private String hrmsCreateEndpoint;
+    private String hrmsCreateEndPoint;
+
+//    @Value("${egov.hrms.create.endpoint}")
+//    private String hrmsCreateEndpoint;
 
     @Value("${egov.hrms.default.department.code}")
     private String hrmsDefaultDepartmentCode;
@@ -92,6 +98,10 @@ public class Configuration {
     //SMSNotification
     @Value("${egov.sms.notification.topic}")
     private String smsNotificationTopic;
+
+    //Enc Service TenantId
+    @Value("${enc.service.tenant.id}")
+    private String encServiceTenantId;
 
 
     //Facility Search

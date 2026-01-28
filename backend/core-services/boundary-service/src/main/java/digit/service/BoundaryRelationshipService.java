@@ -118,6 +118,10 @@ public class BoundaryRelationshipService {
         return boundarySearchResponse;
     }
 
+    public Integer countBoundaryRelationships(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria) {
+        return boundaryRelationshipRepository.getBoundaryCount(boundaryRelationshipSearchCriteria);
+    }
+
     /**
      * Service method to fetch children boundary DTOs.
      * @param boundaries

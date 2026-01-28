@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.config.Configuration;
+import org.egov.tracer.model.CustomException;
+import org.egov.util.HRMSUtils;
 import org.egov.util.IdgenUtil;
 import org.egov.util.OrganisationUtil;
 import org.egov.web.models.*;
@@ -22,13 +24,15 @@ public class OrganisationEnrichmentService {
     private final OrganisationUtil organisationUtil;
 
     private final IdgenUtil idgenUtil;
+    private final HRMSUtils hrmsUtils;
 
     private final Configuration config;
 
     @Autowired
-    public OrganisationEnrichmentService(OrganisationUtil organisationUtil, IdgenUtil idgenUtil, Configuration config) {
+    public OrganisationEnrichmentService(OrganisationUtil organisationUtil, IdgenUtil idgenUtil, HRMSUtils hrmsUtils, Configuration config) {
         this.organisationUtil = organisationUtil;
         this.idgenUtil = idgenUtil;
+        this.hrmsUtils = hrmsUtils;
         this.config = config;
     }
 
@@ -42,9 +46,9 @@ public class OrganisationEnrichmentService {
         log.trace("OrganisationEnrichmentService::enrichCreateOrgRegistryWithoutWorkFlow entry");
         RequestInfo requestInfo = orgRequest.getRequestInfo();
         List<Organisation> organisationList = orgRequest.getOrganisations();
-        String tenantId = organisationList != null && !organisationList.isEmpty() 
+        String tenantId = organisationList != null && !organisationList.isEmpty()
                 ? organisationList.get(0).getTenantId() : "unknown";
-        log.info("Starting enrichment for organisation creation, tenant: {}, organisation count: {}", 
+        log.info("Starting enrichment for organisation creation, tenant: {}, organisation count: {}",
                 tenantId, organisationList != null ? organisationList.size() : 0);
 
         //set the audit details
@@ -69,14 +73,18 @@ public class OrganisationEnrichmentService {
         }).sum();
         log.debug("Total function application numbers needed: {}", idgenFuncApplicationNumberCount);
 
-        List<String> orgFunctionApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getFunctionApplicationNumberName()
-                , config.getFunctionApplicationNumberFormat(), ((int) idgenFuncApplicationNumberCount));
-        log.debug("Generated {} function application numbers", orgFunctionApplicationNumbers != null ? orgFunctionApplicationNumbers.size() : 0);
+//        List<String> orgFunctionApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getFunctionApplicationNumberName()
+//                , config.getFunctionApplicationNumberFormat(), ((int) idgenFuncApplicationNumberCount));
 
         int orgAppNumIdFormatIndex = 0;
         int funcAppNumIdFormatIndex = 0;
         int orgCodeIdFormatIndex = 0;
         for (Organisation organisation : organisationList) {
+            //Encrypt poc mobile number
+            String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(organisation.getOrgPocPhone());
+            if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                organisation.setOrgPocPhone(encryptedPocMobileNumber);
+            }
             organisation.setId(UUID.randomUUID().toString());
             organisation.setApplicationNumber(orgApplicationNumbers.get(orgAppNumIdFormatIndex));
             organisation.setCode(orgCodes.get(orgCodeIdFormatIndex));
@@ -111,7 +119,7 @@ public class OrganisationEnrichmentService {
             enrichTaxIdentifier(identifierList);
 
             //set id, audit details, application number for function
-            enrichFunction(requestInfo, functionList, orgFunctionApplicationNumbers, funcAppNumIdFormatIndex);
+//            enrichFunction(requestInfo, functionList, orgFunctionApplicationNumbers, funcAppNumIdFormatIndex);
 
             //jurisdiction
             enrichJurisdiction(jurisdictionList);
@@ -187,7 +195,7 @@ public class OrganisationEnrichmentService {
         if (!CollectionUtils.isEmpty(orgAddressList)) {
             for (Address address : orgAddressList) {
                 address.setId(UUID.randomUUID().toString());
-//                address.getGeoLocation().setId(UUID.randomUUID().toString());
+                address.getGeoLocation().setId(UUID.randomUUID().toString());
             }
         }
     }
@@ -208,9 +216,9 @@ public class OrganisationEnrichmentService {
         log.trace("OrganisationEnrichmentService::enrichUpdateOrgRegistryWithoutWorkFlow entry");
         RequestInfo requestInfo = orgRequest.getRequestInfo();
         List<Organisation> organisationList = orgRequest.getOrganisations();
-        String tenantId = organisationList != null && !organisationList.isEmpty() 
+        String tenantId = organisationList != null && !organisationList.isEmpty()
                 ? organisationList.get(0).getTenantId() : "unknown";
-        log.info("Starting enrichment for organisation update, tenant: {}, organisation count: {}", 
+        log.info("Starting enrichment for organisation update, tenant: {}, organisation count: {}",
                 tenantId, organisationList != null ? organisationList.size() : 0);
 
         //set the audit details for organisation
@@ -218,6 +226,31 @@ public class OrganisationEnrichmentService {
         log.debug("Audit details set for organisations");
 
         for (Organisation organisation : organisationList) {
+            // If org has a POC user (check if org_poc_username exists and has associated HRMS user)
+            if(organisation.getOrgPocUsername() !=null && !organisation.getOrgPocUsername().isEmpty()){
+                Employee employee = hrmsUtils.getUserById(orgRequest, organisation.getOrgPocUsername());
+                if (employee != null) {
+                    // Updating POC user details (name, phone, email) in HRMS
+                    employee.getUser().setName(organisation.getName());
+                    employee.getUser().setMobileNumber(organisation.getOrgPocPhone());
+                    employee.getUser().setEmailId(organisation.getOrgPocEmail());
+
+                    EmployeeRequest employeeRequest = EmployeeRequest.builder().requestInfo(orgRequest.getRequestInfo()).employees(List.of(employee)).build();
+                    List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+                    if (updatedEmployees != null && !updatedEmployees.isEmpty()) {
+                        // User updated successfully
+                        Employee employeeResp = updatedEmployees.get(0);
+                        log.info("Organisation with username {} updated successfully", organisation.getOrgPocUsername());
+                    }
+                }
+            }
+
+            // Encrypt org_poc_phone before storing in organisation table
+            String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(organisation.getOrgPocPhone());
+            if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                organisation.setOrgPocPhone(encryptedPocMobileNumber);
+            }
+
             List<Function> functionList = organisation.getFunctions();
             List<Identifier> identifierList = organisation.getIdentifiers();
             List<Document> documentList = organisation.getDocuments();

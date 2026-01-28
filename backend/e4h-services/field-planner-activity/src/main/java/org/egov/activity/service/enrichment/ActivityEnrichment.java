@@ -123,6 +123,14 @@ public class ActivityEnrichment {
                 activityFacility.setAssignedEmployeeUser(employee.getUser());
             }
         }
+
+        // Get Field plan infos from fieldplan service
+        if (activityFacility.getFieldPlanId() != null && !activityFacility.getFieldPlanId().isEmpty()) {
+            FieldPlan existingFieldPlan = activityValidator.getFieldPlanById(request.getRequestInfo(), activityFacility.getFieldPlanId(), activityFacility.getTenantId());
+            if (existingFieldPlan != null) {
+                activityFacility.setFieldPlan(existingFieldPlan);
+            }
+        }
     }
 
     public void enrichActivityRequestOnCreate(Activity activity, RequestInfo requestInfo) {

@@ -1,6 +1,9 @@
 package facility.web.models;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
+
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -10,6 +13,11 @@ public class FacilitySearchRequest {
     private String tenantId;
     private String facilityId;
     private String facilityName;
+    private String facilityPocName;
+    private String facilityPocPhone;
+    private String facilityPocEmail;
+    private String facilityStatus;
+    private String userId;
     private String hfrId;
     private String ninId;
     private String boundaryCode;

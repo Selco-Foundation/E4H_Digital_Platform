@@ -40,7 +40,7 @@ def add_dropdowns_to_excel(
     max_row = ws.max_row + max_extra_rows  # extend range
 
     dropdown_count = 0
-    
+
     # Create a hidden sheet for dropdown values if it doesn't exist
     hidden_sheet_name = "_DropdownValues"
     if hidden_sheet_name not in wb.sheetnames:
@@ -59,24 +59,24 @@ def add_dropdowns_to_excel(
                 if hidden_ws.cell(row=row, column=1).value is not None:
                     current_hidden_row = row + 2  # Leave a gap of 1 row
                     break
-    
+
     for column_header, options in dropdowns.items():
         if not options:
             continue
-        
+
         allow_blank = (allow_blank_map or {}).get(column_header, True)
-        
+
         # Find the column for this header
         col_letter = None
         for cell in ws[header_row]:
             if cell.value == column_header:
                 col_letter = cell.column_letter
                 break
-        
+
         if not col_letter:
             logger.warning(f"Column header '{column_header}' not found in sheet '{sheet_name}'")
             continue
-        
+
         # Write dropdown values to hidden sheet starting from current_hidden_row
         start_row = current_hidden_row
         for idx, option in enumerate(options, start=start_row):
@@ -89,14 +89,14 @@ def add_dropdowns_to_excel(
                 cell_value = raw_value
 
             hidden_ws.cell(row=idx, column=1).value = cell_value
-        
+
         end_row = start_row + len(options) - 1
-        
+
         # Create the formula reference to the hidden sheet
         # Format: '_DropdownValues'!$A$start_row:$A$end_row
         # Use INDIRECT for better compatibility, or direct reference
         formula = f"'{hidden_sheet_name}'!$A${start_row}:$A${end_row}"
-        
+
         # Create data validation with reference to hidden sheet
         dv = DataValidation(
             type="list",
@@ -109,11 +109,11 @@ def add_dropdowns_to_excel(
         dv.errorTitle = "Invalid Entry"
         dv.prompt = "Select a value from the dropdown"
         dv.promptTitle = "Select Value"
-        
+
         # Apply validation to the column (skip header row)
         dv.add(f"{col_letter}2:{col_letter}{max_row}")
         ws.add_data_validation(dv)
-        
+
         # Move to next position in hidden sheet (leave a gap of 1 row)
         current_hidden_row = end_row + 2
         dropdown_count += 1
@@ -271,6 +271,8 @@ def add_validations_to_excel(file_path: str,
 
     header_row = 1
     max_row = ws.max_row + max_extra_rows  # allow future rows for data entry
+    # Ensure max_row is at least 2 (header row is 1, data starts at row 2)
+    max_row = max(max_row, 2)
     header_cells = {cell.value.strip(): cell for cell in ws[header_row] if cell.value}
 
     for col_name, config in validations.items():

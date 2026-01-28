@@ -505,7 +505,7 @@ def safe_get(row, key, default=None):
     return default if pd.isna(val) else val
 
 
-def create_facility_payload(request_info: RequestInfo, row: Series, facility_schema: List[Dict[str, Any]]):
+def create_facility_payload(request_info: RequestInfo, row: Series, are_facilities_onm_ready:bool, facility_schema: List[Dict[str, Any]]):
     facility_type_name = safe_get(row, 'Type of HC (Mandatory)')
     facility_type_code = get_mdms_code_by_name(facility_schema, 'Type of HC', facility_type_name)
 
@@ -523,7 +523,7 @@ def create_facility_payload(request_info: RequestInfo, row: Series, facility_sch
                 'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
                 'facility_region': safe_get(row, 'Region', 'RURAL'),
                 'isActive': True,
-                'boundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
+                'blockBoundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
                 'address': {
                     'tenantId': 'in',
                     'latitude': safe_get(row, 'Latitude'),
@@ -533,14 +533,17 @@ def create_facility_payload(request_info: RequestInfo, row: Series, facility_sch
                     'district': safe_get(row, 'District'),
                     'block': safe_get(row, 'Block')
                 },
+                'facility_poc_name': safe_get(row, 'HC PoC Name (Mandatory)'),
+                'facility_poc_phone': safe_get(row, 'HC PoC Contact number (Mandatory)'),
+                'facility_poc_email': safe_get(row, 'HC PoC Email'),
+                'facility_status': 'ACTIVE',
+                'hfr_id': safe_get(row, 'HFR ID'),
+                'nin_id': safe_get(row, 'NIN ID'),
+                'isOnmReady': are_facilities_onm_ready,
                 'facility_details': {
                     'vendor_code': safe_get(row, 'Vendor Code (Mandatory)'),
                     'solar_solution_design_type': solar_solution_design_type_code,
-                    'pocName': safe_get(row, 'HC PoC Name (Mandatory)'),
-                    'pocDesignation': safe_get(row, 'HC PoC Designation'),
-                    'pocContact': safe_get(row, 'HC PoC Contact number (Mandatory)'),
-                    'hfr_id': safe_get(row, 'HFR ID'),
-                    'nin_id': safe_get(row, 'NIN ID')
+                    'pocDesignation': safe_get(row, 'HC PoC Designation')
                 }
             }
         ]

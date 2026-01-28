@@ -4,6 +4,7 @@ package facility;
 import org.egov.tracer.config.TracerConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.web.client.RestTemplate;
@@ -14,6 +15,7 @@ import java.security.cert.X509Certificate;
 
 @Import({TracerConfiguration.class})
 @SpringBootApplication
+//@EnableCaching
 public class Main {
 
     /**

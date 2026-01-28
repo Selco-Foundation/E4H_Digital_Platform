@@ -1,8 +1,11 @@
 package digit.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import digit.repository.impl.BoundaryRepositoryImpl;
 import digit.service.enrichment.BoundaryEntityEnricher;
 import digit.service.validator.BoundaryEntityValidator;
+import digit.util.HierarchyUtil;
 import digit.util.ResponseUtil;
 import digit.web.models.*;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +17,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+
+import static digit.constants.BoundaryConstants.MASTER_STATE_INFO;
+import static digit.constants.BoundaryConstants.MDMS_COMMON_MASTERS_MODULE_NAME;
 
 @Service
 @Slf4j
@@ -26,13 +30,15 @@ public class BoundaryService {
     private final ResponseUtil responseUtil;
 
     private final BoundaryRepositoryImpl repository;
+    private HierarchyUtil hierarchyUtil;
 
     public BoundaryService(BoundaryEntityValidator boundaryEntityValidator , ResponseUtil responseUtil,
-                           BoundaryRepositoryImpl repository) {
+                           BoundaryRepositoryImpl repository, HierarchyUtil hierarchyUtil) {
 
         this.boundaryEntityValidator = boundaryEntityValidator;
         this.responseUtil = responseUtil;
         this.repository = repository;
+        this.hierarchyUtil = hierarchyUtil;
     }
 
     /**
@@ -68,6 +74,9 @@ public class BoundaryService {
         log.info("Persisting boundaries to database");
         repository.create(boundaryRequest);
         log.info("Boundary creation process completed successfully, created {} boundaries", boundaryCount);
+
+        // If new state do not exist in MDMS common-master.StateInfo module, then create the new state in mdms
+        createMdmsStateInfo(boundaryRequest);
 
         return boundaryResponse;
     }
@@ -182,5 +191,30 @@ public class BoundaryService {
 
     private String getOrNull(List<String> list, int index) {
         return index < list.size() ? list.get(index) : null;
+    }
+
+    public void createMdmsStateInfo(BoundaryRequest request){
+        for (Boundary boundary : request.getBoundary()){
+            boolean isStateBoundaryType = hierarchyUtil.isValidStateBoundaryFormat(boundary.getCode());
+            if(!isStateBoundaryType)
+                continue;
+
+            String stateCode = boundary.getStateCode()!=null && !boundary.getStateCode().isEmpty() ? boundary.getStateCode() : hierarchyUtil.boundaryCodeToCode(boundary.getCode());
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode node = mapper.createObjectNode();
+            String name = hierarchyUtil.boundaryCodeToName(boundary.getCode());
+            node.put("code", stateCode);
+            node.put("name", name);
+            node.put("active", true);
+            node.put("boundaryCode", boundary.getCode());
+            Mdms mdms = Mdms.builder()
+                    .tenantId(boundary.getTenantId())
+                    .schemaCode(MDMS_COMMON_MASTERS_MODULE_NAME+"."+MASTER_STATE_INFO)
+                    .isActive(true)
+                    .data(node)
+                    .build();
+            MdmsRequest mdmsRequest = MdmsRequest.builder().requestInfo(request.getRequestInfo()).mdms(mdms).build();
+            boundaryEntityValidator.createStateInfoData(mdmsRequest);
+        }
     }
 }

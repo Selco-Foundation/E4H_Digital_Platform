@@ -22,7 +22,7 @@ public class OrgUserResponseSearch {
     private @NotNull @Valid ResponseInfo responseInfo = null;
 
     @JsonProperty("OrgUsers")
-    private @NotNull @Valid List<OrgUserEnriched> orgUsers = null;
+    private @NotNull @Valid List<OrgUser> orgUsers = null;
 
     @JsonProperty("TotalCount")
     private Integer totalCount = 0;

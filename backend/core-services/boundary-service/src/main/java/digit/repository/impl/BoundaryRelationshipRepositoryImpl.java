@@ -45,16 +45,16 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
     @Override
     public void create(BoundaryRelationshipRequest boundaryRelationshipRequest) {
         log.trace("create method invoked");
-        String code = boundaryRelationshipRequest.getBoundaryRelationship() != null 
+        String code = boundaryRelationshipRequest.getBoundaryRelationship() != null
                 ? boundaryRelationshipRequest.getBoundaryRelationship().getCode() : null;
         log.debug("Creating boundary relationship, code={}", code);
-        
+
         // Transform boundary relationship request
         log.debug("Converting boundary relationship request to DTO");
         BoundaryRelationshipRequestDTO boundaryRelationshipRequestDTO = convertContractPOJOToDTO(boundaryRelationshipRequest);
 
         // Push to event bus for creating asynchronously
-        log.debug("Publishing boundary relationship create request to Kafka, topic={}", 
+        log.debug("Publishing boundary relationship create request to Kafka, topic={}",
                 applicationProperties.getCreateBoundaryRelationshipTopic());
         producer.push(applicationProperties.getCreateBoundaryRelationshipTopic(), boundaryRelationshipRequestDTO);
         log.debug("Boundary relationship create request published to Kafka successfully");
@@ -68,14 +68,14 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
     @Override
     public void update(BoundaryRelationshipRequestDTO boundaryRelationshipRequestDTO) {
         log.trace("update method invoked");
-        String code = boundaryRelationshipRequestDTO.getBoundaryRelationshipDTO() != null 
+        String code = boundaryRelationshipRequestDTO.getBoundaryRelationshipDTO() != null
                 ? boundaryRelationshipRequestDTO.getBoundaryRelationshipDTO().getCode() : null;
-        int updateCount = boundaryRelationshipRequestDTO.getBoundaryRelationshipDTOList() != null 
+        int updateCount = boundaryRelationshipRequestDTO.getBoundaryRelationshipDTOList() != null
                 ? boundaryRelationshipRequestDTO.getBoundaryRelationshipDTOList().size() : 0;
         log.debug("Updating boundary relationship, code={}, total nodes to update={}", code, updateCount);
-        
+
         // Push to event bus for updating asynchronously
-        log.debug("Publishing boundary relationship update request to Kafka, topic={}", 
+        log.debug("Publishing boundary relationship update request to Kafka, topic={}",
                 applicationProperties.getUpdateBoundaryRelationshipTopic());
         producer.push(applicationProperties.getUpdateBoundaryRelationshipTopic(), boundaryRelationshipRequestDTO);
         log.debug("Boundary relationship update request published to Kafka successfully");
@@ -91,21 +91,32 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
     @Override
     public List<BoundaryRelationshipDTO> search(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria) {
         log.trace("search method invoked");
-        log.debug("Searching boundary relationships, tenantId={}, hierarchyType={}", 
+        log.debug("Searching boundary relationships, tenantId={}, hierarchyType={}",
                 boundaryRelationshipSearchCriteria.getTenantId(),
                 boundaryRelationshipSearchCriteria.getHierarchyType());
-        
+
         // Declare prepared statement list
         List<Object> preparedStmtList = new ArrayList<>();
 
         // Get query for searching boundary relationship
-        String query = boundaryRelationshipQueryBuilder.getBoundaryRelationshipSearchQuery(boundaryRelationshipSearchCriteria, preparedStmtList);
+        String query = boundaryRelationshipQueryBuilder.getBoundaryRelationshipSearchQuery(boundaryRelationshipSearchCriteria, preparedStmtList, false);
         log.debug("Executing boundary relationship search query");
 
         // Return search response based on provided search criteria
         List<BoundaryRelationshipDTO> results = jdbcTemplate.query(query, preparedStmtList.toArray(), boundaryRelationshipRowMapper);
         log.debug("Boundary relationship search query executed, found {} relationships", results.size());
         return results;
+    }
+
+    public Integer getBoundaryCount(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria) {
+        List<Object> preparedStatement = new ArrayList<>();
+        String query = boundaryRelationshipQueryBuilder.getBoundaryRelationshipSearchQuery(boundaryRelationshipSearchCriteria, preparedStatement, true);
+        if (query == null)
+            return 0;
+
+        Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
+        log.info("Total boundary count is : " + count);
+        return count;
     }
 
     /**
@@ -115,10 +126,10 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
      */
     private BoundaryRelationshipRequestDTO convertContractPOJOToDTO(BoundaryRelationshipRequest contractBean) {
         log.trace("convertContractPOJOToDTO method invoked");
-        String code = contractBean.getBoundaryRelationship() != null 
+        String code = contractBean.getBoundaryRelationship() != null
                 ? contractBean.getBoundaryRelationship().getCode() : null;
         log.debug("Converting boundary relationship POJO to DTO, code={}", code);
-        
+
         // Declare boundary relationship request DTO
         BoundaryRelationshipRequestDTO boundaryRelationshipRequestDTO = new BoundaryRelationshipRequestDTO();
 
