@@ -74,17 +74,24 @@ public class IMService {
      * @return
      */
     public IncidentRequest create(IncidentRequest request){
-        log.info("IMService::create for tenantId={} ",request.getIncident().getTenantId());
+        log.trace("IMService::create method invoked");
+        log.info("Creating incident for tenantId={}", request.getIncident().getTenantId());
         String tenantId = request.getIncident().getTenantId();
+        log.trace("Fetching MDMS data for create request");
         Object mdmsData = mdmsUtils.mDMSCall(request);
+        log.trace("Validating create request");
         validator.validateCreate(request, mdmsData);
+        log.trace("Fetching boundary from boundaryCode");
         Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
                 request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
         );
         if (boundary == null) {
+            log.error("Boundary data not found for code: {}", request.getIncident().getBoundaryCode());
             throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + request.getIncident().getBoundaryCode());
         }
+        log.trace("Enriching create request");
         enrichmentService.enrichCreateRequest(request, boundary);
+        log.trace("Checking for potential duplicates");
         RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
                 .tenantId(request.getIncident().getTenantId())
                 .boundaryCode(request.getIncident().getBoundaryCode())
@@ -100,24 +107,30 @@ public class IMService {
                 .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
                 .build();
         List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
-        if (incidentWrappers!=null && !incidentWrappers.isEmpty())
-            request.getIncident().setPotentialDuplicate(true);
-        else
-            request.getIncident().setPotentialDuplicate(false);
+        boolean isDuplicate = incidentWrappers != null && !incidentWrappers.isEmpty();
+        request.getIncident().setPotentialDuplicate(isDuplicate);
+        log.debug("Potential duplicate check completed, isDuplicate={}", isDuplicate);
 
         String startingStatus = request.getIncident().getApplicationStatus();
+        log.info("Updating workflow status for incident creation");
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
                 .indexView(new IndexView())
                 .build();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
+        log.trace("Publishing incident to create topic");
         producer.push(tenantId,config.getCreateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
+        log.trace("Enriching fields for indexing");
         enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+        log.trace("Publishing incident to indexer topic");
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
+        log.trace("Enriching fields for audit indexing");
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
+        log.trace("Publishing incident to audit indexer topic");
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
+        log.info("Incident created successfully with incidentId={}", request.getIncident().getIncidentId());
         return request;
     }
 
@@ -129,26 +142,37 @@ public class IMService {
      * @return
      */
     public List<IncidentWrapper> search(RequestInfo requestInfo, RequestSearchCriteria criteria){
-        log.info("IMService::search with criteria={}", criteria);
+        log.trace("IMService::search method invoked");
+        log.info("Searching incidents with criteria tenantId={}", criteria.getTenantId());
+        log.trace("Validating search criteria");
         validator.validateSearch(requestInfo, criteria);
 
+        log.trace("Enriching search request");
         enrichmentService.enrichSearchRequest(requestInfo, criteria);
 
-        if(criteria.isEmpty())
+        if(criteria.isEmpty()) {
+            log.debug("Search criteria is empty, returning empty list");
             return new ArrayList<>();
+        }
 
-        if(criteria.getMobileNumber()!=null && CollectionUtils.isEmpty(criteria.getUserIds()))
+        if(criteria.getMobileNumber()!=null && CollectionUtils.isEmpty(criteria.getUserIds())) {
+            log.debug("Mobile number provided but no userIds found, returning empty list");
             return new ArrayList<>();
+        }
 
         criteria.setIsPlainSearch(false);
-
+        log.trace("Fetching incidents from repository");
         List<IncidentWrapper> incidentWrappers = repository.getIncidentWrappers(criteria);
+        log.debug("Found {} incidents from repository", incidentWrappers != null ? incidentWrappers.size() : 0);
 
-        if(CollectionUtils.isEmpty(incidentWrappers))
-            return new ArrayList<>();;
+        if(CollectionUtils.isEmpty(incidentWrappers)) {
+            log.debug("No incidents found, returning empty list");
+            return new ArrayList<>();
+        }
 
          //to add later
         //userService.enrichUsers(serviceWrappers);
+        log.trace("Enriching workflow for incidents");
         List<IncidentWrapper> enrichedServiceWrappers = workflowService.enrichWorkflow(requestInfo,incidentWrappers);
         log.debug("Sorting {} incidents by createdTime desc", enrichedServiceWrappers.size());
         Map<Long, List<IncidentWrapper>> sortedWrappers = new TreeMap<>(Collections.reverseOrder());
@@ -165,6 +189,7 @@ public class IMService {
         for(Long createdTimeDesc : sortedWrappers.keySet()){
             sortedServiceWrappers.addAll(sortedWrappers.get(createdTimeDesc));
         }
+        log.info("Search completed, returning {} incidents", sortedServiceWrappers.size());
         return sortedServiceWrappers;
     }
 
@@ -175,30 +200,43 @@ public class IMService {
      * @return
      */
     public IncidentRequest update(IncidentRequest request){
-        log.info("IMService::update for tenantId={} incidentId={} currentStatus={}",
+        log.trace("IMService::update method invoked");
+        log.info("Updating incident tenantId={} incidentId={} currentStatus={}",
                 request.getIncident().getTenantId(), request.getIncident().getIncidentId(),
                 request.getIncident().getApplicationStatus());
         String tenantId = request.getIncident().getTenantId();
+        log.trace("Fetching MDMS data for update request");
         Object mdmsData = mdmsUtils.mDMSCall(request);
+        log.trace("Validating update request");
         validator.validateUpdate(request, mdmsData);
+        log.trace("Enriching update request");
         enrichmentService.enrichUpdateRequest(request);
         String startingStatus = request.getIncident().getApplicationStatus();
+        log.info("Updating workflow status for incident update");
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
                 .indexView(new IndexView())
                 .build();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
+        log.trace("Publishing incident to update topic");
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
+        log.trace("Fetching boundary for indexing");
         Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
                 request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
         );
+        log.trace("Enriching fields for indexing");
         enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+        log.trace("Updating business service");
         imUtils.updateBusinessService(wrapper,mdmsData);
+        log.trace("Publishing incident to indexer topic");
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
+        log.trace("Enriching fields for audit indexing");
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
+        log.trace("Publishing incident to audit indexer topic");
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
+        log.info("Incident updated successfully with incidentId={}", request.getIncident().getIncidentId());
         return request;
     }
 
@@ -209,19 +247,24 @@ public class IMService {
      * @return
      */
     public Integer count(RequestInfo requestInfo, RequestSearchCriteria criteria){
-        log.info("IMService::count with criteria={}", criteria);
+        log.trace("IMService::count method invoked");
+        log.info("Counting incidents with criteria tenantId={}", criteria.getTenantId());
         criteria.setIsPlainSearch(false);
+        log.trace("Fetching count from repository");
         Integer count = repository.getCount(criteria);
+        log.info("Count query completed, result={}", count);
         return count;
     }
 
 
     public List<IncidentWrapper> plainSearch(RequestInfo requestInfo, RequestSearchCriteria criteria) {
-        log.info("IMService::plainSearch with criteria={}", criteria);
+        log.trace("IMService::plainSearch method invoked");
+        log.info("Plain searching incidents with criteria tenantId={}", criteria.getTenantId());
+        log.trace("Validating plain search criteria");
         validator.validatePlainSearch(criteria);
 
         criteria.setIsPlainSearch(true);
-
+        log.debug("Setting default limit and offset if not provided");
         if(criteria.getLimit()==null)
             criteria.setLimit(config.getDefaultLimit());
 
@@ -231,13 +274,18 @@ public class IMService {
         if(criteria.getLimit()!=null && criteria.getLimit() > config.getMaxLimit())
             criteria.setLimit(config.getMaxLimit());
 
+        log.trace("Fetching incidents from repository");
         List<IncidentWrapper> incidentWrappers = repository.getIncidentWrappers(criteria);
+        log.debug("Found {} incidents from repository", incidentWrappers != null ? incidentWrappers.size() : 0);
 
         if(CollectionUtils.isEmpty(incidentWrappers)){
+            log.debug("No incidents found, returning empty list");
             return new ArrayList<>();
         }
 
+        log.trace("Enriching users for incidents");
         userService.enrichUsers(incidentWrappers);
+        log.trace("Enriching workflow for incidents");
         List<IncidentWrapper> enrichedServiceWrappers = workflowService.enrichWorkflow(requestInfo, incidentWrappers);
 
         log.debug("Sorting {} incidents by createdTime desc", enrichedServiceWrappers.size());
@@ -255,6 +303,7 @@ public class IMService {
         for(Long createdTimeDesc : sortedWrappers.keySet()){
         	sortedIncidentWrappers.addAll(sortedWrappers.get(createdTimeDesc));
         }
+        log.info("Plain search completed, returning {} incidents", sortedIncidentWrappers.size());
         return sortedIncidentWrappers;
     }
 

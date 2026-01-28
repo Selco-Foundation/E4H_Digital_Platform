@@ -48,7 +48,7 @@ public class V20251129153500__migrate_workflow_auto_escalation_to_tenant_in exte
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("🚀 Starting migration: Migrating MDMS data from {} to {}", SOURCE_TENANT_ID, TARGET_TENANT_ID);
+        log.info("Starting migration: Migrating MDMS data from {} to {}", SOURCE_TENANT_ID, TARGET_TENANT_ID);
 
         RestTemplate restTemplate = createRestTemplateWithTimeouts();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -142,10 +142,10 @@ public class V20251129153500__migrate_workflow_auto_escalation_to_tenant_in exte
             migrationLogger.println("========================================\n");
             migrationLogger.flush();
 
-            log.info("✅ Migration completed");
+            log.info("Migration completed");
             log.info("Schemas created: {}, skipped: {}", totalSchemasCreated, totalSchemasSkipped);
             log.info("Data records created: {}, skipped: {}", totalDataCreated, totalDataSkipped);
-            log.info("📝 Migration log file: {}", absoluteLogPath);
+            log.info("Migration log file: {}", absoluteLogPath);
         }
     }
 
@@ -690,7 +690,7 @@ public class V20251129153500__migrate_workflow_auto_escalation_to_tenant_in exte
     private PrintWriter initializeMigrationLogger(String logFilePath, String absolutePath) throws Exception {
         Files.createDirectories(Paths.get("./logs"));
         FileWriter fileWriter = new FileWriter(logFilePath, true);
-        log.info("📝 Migration log file created: {}", absolutePath);
+        log.info("Migration log file created: {}", absolutePath);
         return new PrintWriter(fileWriter, true);
     }
 

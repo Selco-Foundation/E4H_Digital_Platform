@@ -1,6 +1,7 @@
 package facility.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -9,6 +10,7 @@ import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
+@Slf4j
 public class FacilityQueryDao {
 
     private final JdbcTemplate jdbcTemplate;
@@ -23,6 +25,8 @@ public class FacilityQueryDao {
      * @return true if a facility with given HFR ID or NIN ID exists
      */
     public boolean existsByHfrIdOrNinId(String hfrId, String ninId, String tenantId) {
+        log.trace("Entering existsByHfrIdOrNinId method");
+        log.debug("Checking existence of facility with HFR ID or NIN ID for tenant {}", tenantId);
         StringBuilder sql = new StringBuilder("SELECT EXISTS (SELECT 1 FROM facility WHERE tenant_id = ?");
         List<Object> params = new ArrayList<>();
         params.add(tenantId);
@@ -49,7 +53,10 @@ public class FacilityQueryDao {
         );
 
         // Use safe Boolean comparison to avoid null-related bugs
-        return Boolean.TRUE.equals(exists);
+        boolean result = Boolean.TRUE.equals(exists);
+        log.debug("Facility {} by HFR ID or NIN ID for tenant {}", result ? "exists" : "does not exist", tenantId);
+        log.trace("Exiting existsByHfrIdOrNinId method");
+        return result;
     }
 
     /**
@@ -62,6 +69,8 @@ public class FacilityQueryDao {
      * @return true if such a facility exists
      */
     public boolean existsByFacilityNameAndBoundary(String tenantId, String facilityName, String boundaryCode) {
+        log.trace("Entering existsByFacilityNameAndBoundary method");
+        log.debug("Checking existence of facility with name and boundary code for tenant {}", tenantId);
         String sql = """
         SELECT EXISTS (
             SELECT 1 FROM facility
@@ -75,6 +84,9 @@ public class FacilityQueryDao {
                 Boolean.class
         );
 
-        return Boolean.TRUE.equals(exists);
+        boolean result = Boolean.TRUE.equals(exists);
+        log.debug("Facility {} by name and boundary code for tenant {}", result ? "exists" : "does not exist", tenantId);
+        log.trace("Exiting existsByFacilityNameAndBoundary method");
+        return result;
     }
 }

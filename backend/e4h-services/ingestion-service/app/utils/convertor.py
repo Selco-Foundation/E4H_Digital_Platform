@@ -10,12 +10,15 @@ from psycopg.types import none
 from pydantic import ValidationError
 from sqlalchemy import false, true
 
+from app.core.logging import AppLogger
 from app.schemas.boundary import Boundary
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor import Vendor
 from app.schemas.vendor_ingestion_shema_response import (
     MDMS, IngestionSchemaResponse, MDMSAuditDetails, MDMSColumn, MDMSData,
     MDMSDataSource, ResponseInfo)
+
+logger = AppLogger().get_logger()
 
 
 def format_facility_data_for_template(
@@ -79,8 +82,8 @@ def format_facility_data_for_template(
                 row[include_column_name] = include_value
                 # Debug logging
                 facility_id = facility.get("facility_id", "unknown")
-                print(
-                    f"DEBUG: Facility {facility_id} - include_in_project field: {facility.get('include_in_project', 'NOT_SET')} -> setting to: {include_value} in column: {include_column_name}")
+                logger.debug(
+                    f"Facility {facility_id} - include_in_project field: {facility.get('include_in_project', 'NOT_SET')} -> setting to: {include_value} in column: {include_column_name}")
 
             formatted_rows.append(row)
 
@@ -113,8 +116,8 @@ def format_facility_data_for_template(
                 row[include_column_name] = include_value
                 # Debug logging
                 facility_id = facility.get("facility_id", "unknown")
-                print(
-                    f"DEBUG: Facility {facility_id} - include_in_fieldplan field: {facility.get('include_in_fieldplan', 'NOT_SET')} -> setting to: {include_value} in column: {include_column_name}")
+                logger.debug(
+                    f"Facility {facility_id} - include_in_fieldplan field: {facility.get('include_in_fieldplan', 'NOT_SET')} -> setting to: {include_value} in column: {include_column_name}")
 
             formatted_rows.append(row)
 
@@ -137,10 +140,10 @@ def request_info_from_json(request_info_input: Union[str, Dict[str, Any]]) -> Re
         return RequestInfo(**data)
 
     except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON string: {e}")
+        logger.error(f"Invalid JSON string in request_info_from_json: {e}", exc_info=True)
         raise
     except Exception as e:
-        print(f"Error: Pydantic model creation failed: {e}")
+        logger.error(f"Pydantic model creation failed in request_info_from_json: {e}", exc_info=True)
         raise
 
 
@@ -165,7 +168,7 @@ def convert_json_to_object(json_str: str) -> Optional[IngestionSchemaResponse]:
             try:
                 response_info_data = ResponseInfo(**data['ResponseInfo'])
             except ValidationError as e:
-                print(f"Validation Error for ResponseInfo: {e}")
+                logger.warning(f"Validation error for ResponseInfo: {e}")
                 # Provide default or None
 
         # Process mdms list
@@ -220,7 +223,7 @@ def convert_json_to_object(json_str: str) -> Optional[IngestionSchemaResponse]:
                     mdms_obj = MDMS(**item)
                     mdms_objects.append(mdms_obj)
                 except ValidationError as e:
-                    print(f"Validation Error for MDMS item: {e}")
+                    logger.warning(f"Validation error for MDMS item: {e}")
                     # Skip invalid item
 
         # Create response object with proper field names
@@ -230,7 +233,7 @@ def convert_json_to_object(json_str: str) -> Optional[IngestionSchemaResponse]:
                 mdms=mdms_objects if mdms_objects else None
             )
         except ValidationError as e:
-            print(f"Validation Error when creating response object: {e}")
+            logger.warning(f"Validation error when creating response object: {e}")
             # Try with explicit field names matching the class definition
             return IngestionSchemaResponse(**{
                 "ResponseInfo": response_info_data,
@@ -238,13 +241,13 @@ def convert_json_to_object(json_str: str) -> Optional[IngestionSchemaResponse]:
             })
 
     except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON string. Details: {e}")
+        logger.error(f"Invalid JSON string in convert_json_to_object: {e}", exc_info=True)
         return None
     except ValidationError as e:
-        print(f"Error: Data validation failed. Details: {e}")
+        logger.error(f"Data validation failed in convert_json_to_object: {e}", exc_info=True)
         return None
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        logger.error(f"Unexpected error in convert_json_to_object: {e}", exc_info=True)
         return None
 
 

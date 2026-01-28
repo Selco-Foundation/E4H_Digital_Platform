@@ -35,7 +35,8 @@ public class MdmsUtil {
      * @return
      */
     public Map<String, Object> getMDMSData(RequestInfo requestInfo, String tenantId) {
-        log.info("MdmsUtil::getMDMSData called | tenantId={}", tenantId);
+        log.trace("MdmsUtil::getMDMSData called");
+        log.info("Fetching MDMS data | tenantId={}", tenantId);
         MdmsResponse response = fetchMDMSData(requestInfo, tenantId);
         Map<String, Object> masterData = new HashMap<>();
         Map<String, List<String>> eachMasterMap = new HashMap<>();
@@ -48,10 +49,12 @@ public class MdmsUtil {
                     masterData.put(AssetConstants.BRAND_CODE, eachMasterMap.get(AssetConstants.BRAND_CODE));
                     masterData.put(AssetConstants.SYSTEM_CODE, eachMasterMap.get(AssetConstants.SYSTEM_CODE));
                     masterData.put(AssetConstants.WARRANTY_DURATION, eachMasterMap.get(AssetConstants.WARRANTY_DURATION));
+                    log.debug("MDMS data extracted | tenantId={} keysCount={}", tenantId, masterData.keySet().size());
                 }
             }
         }
 
+        log.info("MDMS data fetched successfully | tenantId={} masterDataKeysCount={}", tenantId, masterData.keySet().size());
         return masterData;
     }
 
@@ -64,14 +67,17 @@ public class MdmsUtil {
      * @return
      */
     public MdmsResponse fetchMDMSData(RequestInfo requestInfo, String tenantId) {
-        log.info("MdmsUtil::fetchMDMSData called | tenantId={}", tenantId);
+        log.trace("MdmsUtil::fetchMDMSData called");
+        log.info("Fetching MDMS data from service | tenantId={}", tenantId);
         StringBuilder uri = new StringBuilder();
         MdmsCriteriaReq request = prepareMDMSRequest(uri, requestInfo, tenantId);
         MdmsResponse response = null;
         try {
+            log.debug("Calling MDMS service | uri={}", uri.toString());
             response = restTemplate.postForObject(uri.toString(), request, MdmsResponse.class);
+            log.debug("MDMS service call successful | tenantId={}", tenantId);
         } catch (Exception e) {
-            log.info("Exception while fetching from MDMS: ", e);
+            log.error("Error fetching MDMS data | tenantId={} error={}", tenantId, e.getMessage(), e);
             throw new CustomException(ErrorConstants.MDMS_SERVICE_ERROR_CODE, ErrorConstants.MDMS_SERVICE_ERROR_MSG);
         }
         return response;
@@ -86,7 +92,8 @@ public class MdmsUtil {
      * @return
      */
     public MdmsCriteriaReq prepareMDMSRequest(StringBuilder uri, RequestInfo requestInfo, String tenantId) {
-        log.info("MdmsUtil::prepareMDMSRequest called | tenantId={}", tenantId);
+        log.trace("MdmsUtil::prepareMDMSRequest called");
+        log.debug("Preparing MDMS request | tenantId={}", tenantId);
         Map<String, List<String>> mapOfModulesAndMasters = new HashMap<>();
         String[] assetMasters = {AssetConstants.ASSET_TYPE_CODE, AssetConstants.ASSET_COUNT_CODE, AssetConstants.BRAND_CODE,
                 AssetConstants.SYSTEM_CODE, AssetConstants.WARRANTY_DURATION};
@@ -106,6 +113,7 @@ public class MdmsUtil {
                 })
                 .toList());
         uri.append(configuration.getMdmsHost()).append(configuration.getMdmsSearchEndPoint());
+        log.debug("MDMS request URI prepared | uri={} mastersCount={}", uri.toString(), assetMasters.length);
         MdmsCriteria mdmsCriteria = MdmsCriteria.builder().tenantId(tenantId).moduleDetails(moduleDetails).build();
         return MdmsCriteriaReq.builder().requestInfo(requestInfo).mdmsCriteria(mdmsCriteria).build();
 

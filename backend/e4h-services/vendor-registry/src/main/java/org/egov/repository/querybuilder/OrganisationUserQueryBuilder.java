@@ -39,6 +39,9 @@ public class OrganisationUserQueryBuilder {
     }
 
     public String getOrganisationUserSearchQuery(OrgUserSearchRequest orgSearchRequest, URLParams urlParams, List<Object> preparedStmtList, Boolean isCountQuery) {
+        log.trace("OrganisationUserQueryBuilder::getOrganisationUserSearchQuery entry");
+        log.debug("Building organisation user search query, isCountQuery: {}", isCountQuery);
+        
         String query = Boolean.TRUE.equals(isCountQuery) ? ORGANISATIONS_USERS_COUNT_QUERY : FETCH_ORGANISATION_USER_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
         OrgUserSearchCriteria searchCriteria = orgSearchRequest.getCriteria();
@@ -103,31 +106,39 @@ public class OrganisationUserQueryBuilder {
     }
 
     private void addOrderByClause(StringBuilder queryBuilder, Pagination pagination) {
-        log.info("OrganisationQueryBuilder::getOrganisationQuery");
+        log.trace("OrganisationUserQueryBuilder::addOrderByClause entry");
         //default
         if (pagination == null || pagination.getSortBy() == null) {
             queryBuilder.append(" ORDER BY ou.createdtime ");
+            log.debug("Using default sort by createdtime");
         } else {
             switch (pagination.getSortBy()) {
                 case "name":
                     queryBuilder.append(" ORDER BY ou.name ");
+                    log.debug("Sorting by name");
                     break;
                 case "type":
                     queryBuilder.append(" ORDER BY ou.type ");
+                    log.debug("Sorting by type");
                     break;
                 default:
                     queryBuilder.append(" ORDER BY ou.createdtime ");
+                    log.debug("Using default sort by createdtime");
                     break;
             }
         }
 
-        if (pagination != null && pagination.getOrder() == "ASC")
+        if (pagination != null && pagination.getOrder() == "ASC") {
             queryBuilder.append(" ASC ");
-        else queryBuilder.append(" DESC ");
+            log.debug("Sort order: ASC");
+        } else {
+            queryBuilder.append(" DESC ");
+            log.debug("Sort order: DESC");
+        }
     }
 
     private String addPaginationWrapper(String query, List<Object> preparedStmtList, Pagination pagination) {
-        log.info("OrganisationQueryBuilder::addPaginationWrapper");
+        log.trace("OrganisationUserQueryBuilder::addPaginationWrapper entry");
         double limit = config.getDefaultLimit();
         double offset = config.getDefaultOffset();
         String finalQuery = PAGINATION_WRAPPER.replace("{}", query);
@@ -144,6 +155,8 @@ public class OrganisationUserQueryBuilder {
 
         preparedStmtList.add(offset);
         preparedStmtList.add(limit + offset);
+        
+        log.debug("Applied pagination - limit: {}, offset: {}", limit, offset);
 
         return finalQuery;
     }

@@ -106,120 +106,153 @@ public class ProjectFacilityService {
     }
 
     public ProjectFacility create(ProjectFacilityRequest request) {
-        log.info("received request to create project facility");
+        log.trace("Entering create (single facility)");
+        log.info("Received request to create project facility");
         ProjectFacilityBulkRequest bulkRequest = ProjectFacilityBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectFacilities(Collections.singletonList(request.getProjectFacility())).build();
-        log.info("creating bulk request");
-        return create(bulkRequest, false).get(0);
+        log.debug("Creating bulk request");
+        ProjectFacility result = create(bulkRequest, false).get(0);
+        log.trace("Exiting create (single facility)");
+        return result;
     }
 
 
     public List<ProjectFacility> create(ProjectFacilityBulkRequest request, boolean isBulk) {
-        log.info("received request to create bulk project facility");
+        log.trace("Entering create (bulk facilities)");
+        log.info("Received request to create bulk project facilities");
         Tuple<List<ProjectFacility>, Map<ProjectFacility, ErrorDetails>> tuple = validate(validators,
                 isApplicableForCreate, request,
                 isBulk);
 
         Map<ProjectFacility, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectFacility> validEntities = tuple.getX();
+        log.debug("Validation completed - {} valid facilities, {} errors", validEntities.size(), errorDetailsMap.size());
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info("Processing {} valid entities", validEntities.size());
+                log.debug("Enriching facilities before save");
                 enrichmentService.create(validEntities, request);
+                log.debug("Saving facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getCreateProjectFacilityTopic());
+                log.debug("Fetching associated project and facility details");
                 Project existingProject = searchProject(request);
                 Facility facility = getFacilityById(request);
+                log.debug("Enriching project with facility details");
                 Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "facility", facility);
                 existingProject.setAdditionalDetails(enrichedAdditionalDetails);
                 ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
+                log.debug("Pushing project update to Kafka");
                 producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
                 producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
-                log.info("successfully created project facility");
+                log.info("Successfully created {} project facilities", validEntities.size());
+            } else {
+                log.warn("No valid facilities to create after validation");
             }
         } catch (Exception exception) {
-            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating project facilities", exception);
             populateErrorDetails(request, errorDetailsMap, validEntities, exception, SET_PROJECT_FACILITIES);
         }
 
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting create (bulk facilities)");
         return validEntities;
     }
 
 
     public ProjectFacility update(ProjectFacilityRequest request) {
-        log.debug("received request to update project facility");
+        log.trace("Entering update (single facility)");
+        log.info("Received request to update project facility");
         ProjectFacilityBulkRequest bulkRequest = ProjectFacilityBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectFacilities(Collections.singletonList(request.getProjectFacility())).build();
-        log.info("creating bulk request");
-        return update(bulkRequest, false).get(0);
+        log.debug("Creating bulk request");
+        ProjectFacility result = update(bulkRequest, false).get(0);
+        log.trace("Exiting update (single facility)");
+        return result;
     }
 
     public List<ProjectFacility> update(ProjectFacilityBulkRequest request, boolean isBulk) {
-        log.info("received request to update bulk project facility");
+        log.trace("Entering update (bulk facilities)");
+        log.info("Received request to update bulk project facilities");
         Tuple<List<ProjectFacility>, Map<ProjectFacility, ErrorDetails>> tuple = validate(validators,
                 isApplicableForUpdate, request,
                 isBulk);
 
         Map<ProjectFacility, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectFacility> validEntities = tuple.getX();
+        log.debug("Validation completed - {} valid facilities, {} errors", validEntities.size(), errorDetailsMap.size());
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info("Processing {} valid entities", validEntities.size());
+                log.debug("Enriching facilities before update");
                 enrichmentService.update(validEntities, request);
+                log.debug("Saving updated facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getUpdateProjectFacilityTopic());
-                log.info("successfully updated bulk project facility");
+                log.info("Successfully updated {} project facilities", validEntities.size());
+            } else {
+                log.warn("No valid facilities to update after validation");
             }
         } catch (Exception exception) {
-            log.error("error occurred while updating project facility", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while updating project facilities", exception);
             populateErrorDetails(request, errorDetailsMap, validEntities, exception, SET_PROJECT_FACILITIES);
         }
 
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting update (bulk facilities)");
         return validEntities;
     }
 
     public ProjectFacility delete(ProjectFacilityRequest request) {
-        log.info("received request to delete a project facility");
+        log.trace("Entering delete (single facility)");
+        log.info("Received request to delete a project facility");
         ProjectFacilityBulkRequest bulkRequest = ProjectFacilityBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectFacilities(Collections.singletonList(request.getProjectFacility())).build();
-        log.info("creating bulk request");
-        return delete(bulkRequest, false).get(0);
+        log.debug("Creating bulk request");
+        ProjectFacility result = delete(bulkRequest, false).get(0);
+        log.trace("Exiting delete (single facility)");
+        return result;
     }
 
     public List<ProjectFacility> delete(ProjectFacilityBulkRequest request, boolean isBulk) {
+        log.trace("Entering delete (bulk facilities)");
+        log.info("Received request to delete bulk project facilities");
         Tuple<List<ProjectFacility>, Map<ProjectFacility, ErrorDetails>> tuple = validate(validators,
                 isApplicableForDelete, request,
                 isBulk);
 
         Map<ProjectFacility, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectFacility> validEntities = tuple.getX();
+        log.debug("Validation completed - {} valid facilities, {} errors", validEntities.size(), errorDetailsMap.size());
         try {
             if (!validEntities.isEmpty()) {
-                log.info("processing {} valid entities", validEntities.size());
+                log.info("Processing {} valid entities", validEntities.size());
+                log.debug("Enriching facilities before delete");
                 enrichmentService.delete(validEntities, request);
+                log.debug("Saving deleted facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getDeleteProjectFacilityTopic());
-                log.info("successfully deleted entities");
+                log.info("Successfully deleted {} project facilities", validEntities.size());
+            } else {
+                log.warn("No valid facilities to delete after validation");
             }
         } catch (Exception exception) {
-            log.error("error occurred while deleting entities: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while deleting project facilities", exception);
             populateErrorDetails(request, errorDetailsMap, validEntities, exception, SET_PROJECT_FACILITIES);
         }
 
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting delete (bulk facilities)");
         return validEntities;
     }
 
     private Tuple<List<ProjectFacility>, Map<ProjectFacility, ErrorDetails>> validate(List<Validator<ProjectFacilityBulkRequest, ProjectFacility>> validators,
                                                                                       Predicate<Validator<ProjectFacilityBulkRequest, ProjectFacility>> applicableValidators,
                                                                                       ProjectFacilityBulkRequest request, boolean isBulk) {
-        log.info("validating request");
+        log.trace("Entering validate for {} facilities", request.getProjectFacilities() != null ? request.getProjectFacilities().size() : 0);
+        log.debug("Validating request with {} validators", validators.size());
         Map<ProjectFacility, ErrorDetails> errorDetailsMap = new HashMap<>();
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors()).toList();
-        log.info("validation successful, found valid project facility");
+        log.debug("Validation completed - {} valid facilities out of {}", validEntities.size(), request.getProjectFacilities().size());
+        log.trace("Exiting validate");
         return new Tuple<>(validEntities, errorDetailsMap);
     }
 
@@ -229,22 +262,29 @@ public class ProjectFacilityService {
                                                   String tenantId,
                                                   Long lastChangedSince,
                                                   Boolean includeDeleted) throws Exception {
-        log.info("received request to search project facility");
+        log.trace("Entering search");
+        log.info("Received request to search project facilities");
 
         if (isSearchByIdOnly(projectFacilitySearchRequest.getProjectFacility())) {
-            log.info("searching project facility by id");
+            log.info("Searching project facilities by ID");
             List<String> ids = projectFacilitySearchRequest.getProjectFacility().getId();
-            log.info("fetching project facility with ids: {}", ids);
+            log.debug("Fetching project facilities with {} IDs", ids != null ? ids.size() : 0);
             List<ProjectFacility> projectfacilities = projectFacilityRepository.findById(ids, includeDeleted).stream()
                     .filter(lastChangedSince(lastChangedSince))
                     .filter(havingTenantId(tenantId))
                     .filter(includeDeleted(includeDeleted))
                     .toList();
+            log.info("Search by ID completed - found {} facilities", projectfacilities.size());
+            log.trace("Exiting search");
             return SearchResponse.<ProjectFacility>builder().response(projectfacilities).build();
         }
-        log.info("searching project facility using criteria");
-        return projectFacilityRepository.findWithCount(projectFacilitySearchRequest.getProjectFacility(),
+        log.info("Searching project facilities using criteria");
+        log.debug("Search parameters - limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
+        SearchResponse<ProjectFacility> result = projectFacilityRepository.findWithCount(projectFacilitySearchRequest.getProjectFacility(),
                 limit, offset, tenantId, lastChangedSince, includeDeleted);
+        log.info("Search by criteria completed - found {} facilities", result.getResponse() != null ? result.getResponse().size() : 0);
+        log.trace("Exiting search");
+        return result;
     }
 
     public Project searchProject(ProjectFacilityBulkRequest request) throws Exception {

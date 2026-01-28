@@ -38,6 +38,7 @@ public class OrganisationUtil {
      * @return
      */
     public void setAuditDetailsForOrganisation(String by, List<Organisation> organisationList, Boolean isCreate) {
+        log.trace("OrganisationUtil::setAuditDetailsForOrganisation entry");
         Long time = System.currentTimeMillis();
         for (Organisation organisation : organisationList) {
             if (Boolean.TRUE.equals(isCreate)) {
@@ -48,6 +49,7 @@ public class OrganisationUtil {
                 organisation.setAuditDetails(auditDetailsForUpdate);
             }
         }
+        log.debug("Set audit details for {} organisations, isCreate: {}", organisationList != null ? organisationList.size() : 0, isCreate);
     }
 
     /**
@@ -58,6 +60,7 @@ public class OrganisationUtil {
      * @return
      */
     public void setAuditDetailsForFunction(String by, List<Function> functionList, Boolean isCreate) {
+        log.trace("OrganisationUtil::setAuditDetailsForFunction entry");
         Long time = System.currentTimeMillis();
         for (Function function : functionList) {
             if (Boolean.TRUE.equals(isCreate)) {
@@ -68,15 +71,20 @@ public class OrganisationUtil {
                 function.setAuditDetails(auditDetailsForUpdate);
             }
         }
+        log.debug("Set audit details for {} functions, isCreate: {}", functionList != null ? functionList.size() : 0, isCreate);
     }
 
     public AuditDetails getAuditDetails(String by, AuditDetails auditDetails, Boolean isCreate) {
+        log.trace("OrganisationUtil::getAuditDetails entry");
         Long time = System.currentTimeMillis();
-        if (isCreate)
+        if (isCreate) {
+            log.debug("Creating new audit details for user: {}", by);
             return AuditDetails.builder().createdBy(by).lastModifiedBy(by).createdTime(time).lastModifiedTime(time).build();
-        else
+        } else {
+            log.debug("Updating audit details for user: {}", by);
             return AuditDetails.builder().createdBy(auditDetails.getCreatedBy()).lastModifiedBy(by)
                     .createdTime(auditDetails.getCreatedTime()).lastModifiedTime(time).build();
+        }
     }
 
     public String encryptMobileNumber(String mobileNumber){

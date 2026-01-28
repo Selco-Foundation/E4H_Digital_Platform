@@ -49,24 +49,57 @@ public class InboxController {
 	
 	@PostMapping(value = "/_search")
 	public ResponseEntity<InboxResponse> search(@Valid @RequestBody  InboxRequest inboxRequest) {
+		log.trace("Method invoked: search");
+		String tenantId = inboxRequest.getInbox() != null ? inboxRequest.getInbox().getTenantId() : null;
+		String moduleName = inboxRequest.getInbox() != null && inboxRequest.getInbox().getProcessSearchCriteria() != null 
+				? inboxRequest.getInbox().getProcessSearchCriteria().getModuleName() : null;
 		
-		InboxResponse response = inboxService.fetchInboxData(inboxRequest.getInbox(),inboxRequest.getRequestInfo());
-		
-		response.setResponseInfo(
-				responseInfoFactory.createResponseInfoFromRequestInfo(inboxRequest.getRequestInfo(), true));
-		return new ResponseEntity<>(response, HttpStatus.OK);
+		log.info("Received inbox search request - tenantId: {}, module: {}", tenantId, moduleName);
+		try {
+			log.debug("Processing inbox search request");
+			InboxResponse response = inboxService.fetchInboxData(inboxRequest.getInbox(),inboxRequest.getRequestInfo());
+			
+			response.setResponseInfo(
+					responseInfoFactory.createResponseInfoFromRequestInfo(inboxRequest.getRequestInfo(), true));
+			
+			int itemCount = response != null && response.getItems() != null ? response.getItems().size() : 0;
+			log.info("Inbox search completed successfully - itemCount: {}", itemCount);
+			return new ResponseEntity<>(response, HttpStatus.OK);
+		} catch (Exception e) {
+			log.error("Error occurred while searching inbox - tenantId: {}, module: {}", tenantId, moduleName, e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
 	}
 
 	@PostMapping(value = "/dss/_search")
 	public ResponseEntity<Map<String, BigDecimal>> getChartV2(@Valid @RequestBody InboxMetricCriteria request) {
-		Map<String, BigDecimal> response = dssInboxService.getAggregateData(request);
-		return new ResponseEntity<>(response, HttpStatus.OK);
+		log.trace("Method invoked: getChartV2");
+		log.info("Received DSS inbox search request");
+		try {
+			log.debug("Processing DSS inbox search request");
+			Map<String, BigDecimal> response = dssInboxService.getAggregateData(request);
+			int entryCount = response != null ? response.size() : 0;
+			log.info("DSS inbox search completed successfully - entryCount: {}", entryCount);
+			return new ResponseEntity<>(response, HttpStatus.OK);
+		} catch (Exception e) {
+			log.error("Error occurred while searching DSS inbox", e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
 	}
 
 	@PostMapping(value = "/elastic/_search")
 	public ResponseEntity<Map<String, Object>>  elasticSearch(@Valid @RequestBody InboxElasticSearchRequest request) {
-		Map<String, Object> data = null;
-		return new ResponseEntity<>(data, HttpStatus.OK);
+		log.trace("Method invoked: elasticSearch");
+		log.info("Received elastic search request");
+		try {
+			log.debug("Processing elastic search request");
+			Map<String, Object> data = null;
+			log.info("Elastic search completed");
+			return new ResponseEntity<>(data, HttpStatus.OK);
+		} catch (Exception e) {
+			log.error("Error occurred while performing elastic search", e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
 	}
 	
 }

@@ -43,20 +43,26 @@ public class OrganisationEnrichmentService {
      * @param orgRequest
      */
     public void enrichCreateOrgRegistryWithoutWorkFlow(OrgRequest orgRequest) {
-        log.info("OrganisationEnrichmentService::enrichCreateOrgRegistryWithoutWorkFlow");
+        log.trace("OrganisationEnrichmentService::enrichCreateOrgRegistryWithoutWorkFlow entry");
         RequestInfo requestInfo = orgRequest.getRequestInfo();
         List<Organisation> organisationList = orgRequest.getOrganisations();
+        String tenantId = organisationList != null && !organisationList.isEmpty()
+                ? organisationList.get(0).getTenantId() : "unknown";
+        log.info("Starting enrichment for organisation creation, tenant: {}, organisation count: {}",
+                tenantId, organisationList != null ? organisationList.size() : 0);
 
         //set the audit details
         organisationUtil.setAuditDetailsForOrganisation(requestInfo.getUserInfo().getUuid(), organisationList, Boolean.TRUE);
-        String tenantId = organisationList.get(0).getTenantId();
+        log.debug("Audit details set for organisations");
 
         //idgen to get the list of organisation application Numbers
         List<String> orgApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgApplicationNumberName()
                 , config.getOrgApplicationNumberFormat(), organisationList.size());
+        log.debug("Generated {} organisation application numbers", orgApplicationNumbers != null ? orgApplicationNumbers.size() : 0);
 
         //idgen to get the list of organisation codes
         List<String> orgCodes = idgenUtil.getIdList(requestInfo, tenantId, config.getOrgCodeName(), config.getOrgCodeFormat(), organisationList.size());
+        log.debug("Generated {} organisation codes", orgCodes != null ? orgCodes.size() : 0);
 
         //idgen to get the list of function application Numbers
         long idgenFuncApplicationNumberCount = organisationList.stream().mapToInt(org -> {
@@ -65,6 +71,7 @@ public class OrganisationEnrichmentService {
             }
             return 0;
         }).sum();
+        log.debug("Total function application numbers needed: {}", idgenFuncApplicationNumberCount);
 
 //        List<String> orgFunctionApplicationNumbers = idgenUtil.getIdList(requestInfo, tenantId, config.getFunctionApplicationNumberName()
 //                , config.getFunctionApplicationNumberFormat(), ((int) idgenFuncApplicationNumberCount));
@@ -120,8 +127,7 @@ public class OrganisationEnrichmentService {
             orgAppNumIdFormatIndex++;
             orgCodeIdFormatIndex++;
         }
-
-
+        log.info("Organisation enrichment completed successfully for tenant: {}", tenantId);
     }
 
     private void enrichJurisdiction(List<Jurisdiction> jurisdictionList) {
@@ -207,14 +213,17 @@ public class OrganisationEnrichmentService {
      * @param orgRequest
      */
     public void enrichUpdateOrgRegistryWithoutWorkFlow(OrgRequest orgRequest) {
-        log.info("OrganisationEnrichmentService::enrichUpdateOrgRegistryWithoutWorkFlow");
+        log.trace("OrganisationEnrichmentService::enrichUpdateOrgRegistryWithoutWorkFlow entry");
         RequestInfo requestInfo = orgRequest.getRequestInfo();
         List<Organisation> organisationList = orgRequest.getOrganisations();
+        String tenantId = organisationList != null && !organisationList.isEmpty()
+                ? organisationList.get(0).getTenantId() : "unknown";
+        log.info("Starting enrichment for organisation update, tenant: {}, organisation count: {}",
+                tenantId, organisationList != null ? organisationList.size() : 0);
 
         //set the audit details for organisation
         organisationUtil.setAuditDetailsForOrganisation(requestInfo.getUserInfo().getUuid(), organisationList, Boolean.FALSE);
-
-        String tenantId = organisationList.get(0).getTenantId();
+        log.debug("Audit details set for organisations");
 
         for (Organisation organisation : organisationList) {
             // If org has a POC user (check if org_poc_username exists and has associated HRMS user)
@@ -257,7 +266,7 @@ public class OrganisationEnrichmentService {
 
 
         }
-
+        log.info("Organisation enrichment completed successfully for tenant: {}", tenantId);
     }
 
     /**

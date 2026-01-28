@@ -45,50 +45,73 @@ public class AssetService {
     }
 
     public AssetCreateResponse createAsset(AssetCreateRequest request) {
-        log.info("AssetService::createAsset called for tenantId={}", request.getAssetDetail().getAsset().getTenantId());
-        List<String> ids = idgenUtil.getIdList(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId(),
-                "assetId", "ASSET-[SEQ_ASSET_ID]", 1);
-        List<String> documentIds = idgenUtil.getIdList(request.getRequestInfo(), request.getAssetDetail().getAsset().getTenantId(),
-                "documentId", "DOCUMENT-[SEQ_DOCUMENT_ID]", request.getAssetDetail().getAsset().getDocuments().size());
-        if (!ids.isEmpty())
-            request.getAssetDetail().getAsset().setAssetId(ids.get(0));
-        else
-            throw new CustomException(ErrorConstants.ID_GEN_SERVICE_ERROR_CODE, ErrorConstants.ID_GEN_SERVICE_ERROR_MSG);
-        if (request.getAssetDetail().getAsset().getAuditDetails() == null) {
-            log.debug("Setting audit details for assetId={}", request.getAssetDetail().getAsset().getAssetId());
-            AuditDetails auditDetails = AuditDetails.builder()
-                    .createdBy(request.getRequestInfo().getUserInfo().getUserName())
-                    .createdTime(System.currentTimeMillis())
-                    .lastModifiedBy(request.getRequestInfo().getUserInfo().getUserName())
-                    .lastModifiedTime(System.currentTimeMillis())
-                    .build();
-            request.getAssetDetail().getAsset().setAuditDetails(auditDetails);
-        }
-        IntStream.range(0, documentIds.size())
-                .forEach(i -> request.getAssetDetail().getAsset().getDocuments().get(i).setId(documentIds.get(i)));
+        log.trace("AssetService::createAsset called");
+        String tenantId = request.getAssetDetail().getAsset().getTenantId();
+        log.info("Creating asset for tenantId={}", tenantId);
+        try {
+            List<String> ids = idgenUtil.getIdList(request.getRequestInfo(), tenantId,
+                    "assetId", "ASSET-[SEQ_ASSET_ID]", 1);
+            log.debug("Generated asset IDs count={}", ids.size());
+            List<String> documentIds = idgenUtil.getIdList(request.getRequestInfo(), tenantId,
+                    "documentId", "DOCUMENT-[SEQ_DOCUMENT_ID]", request.getAssetDetail().getAsset().getDocuments().size());
+            log.debug("Generated document IDs count={}", documentIds.size());
+            
+            if (!ids.isEmpty()) {
+                request.getAssetDetail().getAsset().setAssetId(ids.get(0));
+            } else {
+                log.error("ID generation failed for asset | tenantId={}", tenantId);
+                throw new CustomException(ErrorConstants.ID_GEN_SERVICE_ERROR_CODE, ErrorConstants.ID_GEN_SERVICE_ERROR_MSG);
+            }
+            
+            if (request.getAssetDetail().getAsset().getAuditDetails() == null) {
+                log.debug("Setting audit details for assetId={}", request.getAssetDetail().getAsset().getAssetId());
+                AuditDetails auditDetails = AuditDetails.builder()
+                        .createdBy(request.getRequestInfo().getUserInfo().getUserName())
+                        .createdTime(System.currentTimeMillis())
+                        .lastModifiedBy(request.getRequestInfo().getUserInfo().getUserName())
+                        .lastModifiedTime(System.currentTimeMillis())
+                        .build();
+                request.getAssetDetail().getAsset().setAuditDetails(auditDetails);
+            }
+            IntStream.range(0, documentIds.size())
+                    .forEach(i -> request.getAssetDetail().getAsset().getDocuments().get(i).setId(documentIds.get(i)));
 
-        assetRepository.pushCreateAsset(request.getAssetDetail().getAsset());
-        return AssetCreateResponse.builder()
-                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
-                .asset(request.getAssetDetail().getAsset())
-                .build();
+            log.info("Pushing asset creation to repository | assetId={}", request.getAssetDetail().getAsset().getAssetId());
+            assetRepository.pushCreateAsset(request.getAssetDetail().getAsset());
+            log.info("Asset created successfully | assetId={} tenantId={}", 
+                    request.getAssetDetail().getAsset().getAssetId(), tenantId);
+            return AssetCreateResponse.builder()
+                    .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
+                    .asset(request.getAssetDetail().getAsset())
+                    .build();
+        } catch (CustomException e) {
+            log.error("Error creating asset | tenantId={} errorCode={}", tenantId, e.getCode(), e);
+            throw e;
+        } catch (Exception e) {
+            log.error("Unexpected error creating asset | tenantId={}", tenantId, e);
+            throw new CustomException("ASSET_CREATION_ERROR", "Failed to create asset: " + e.getMessage());
+        }
     }
 
     public List<Asset> fetchAssetsWithDocuments(Asset request, int limit, int offset) {
-        log.info("AssetService::fetchAssetsWithDocuments called | tenantId={} limit={} offset={}",
+        log.trace("AssetService::fetchAssetsWithDocuments called");
+        log.info("Fetching assets with documents | tenantId={} limit={} offset={}",
                 request.getTenantId(), limit, offset);
         List<Asset> assets = searchAssets(request, limit, offset);
         log.debug("Found {} assets for tenantId={}", assets.size(), request.getTenantId());
 
         if (!assets.isEmpty()) {
             List<String> assetIds = assets.stream().map(Asset::getAssetId).collect(Collectors.toList());
+            log.debug("Fetching documents for assetIds count={}", assetIds.size());
             Map<String, List<Document>> documentsMap = searchDocumentsByAssetIds(request.getTenantId(), assetIds);
 
+            log.info("Enriching assets with documents | assetsCount={}", assets.size());
             assets.forEach(asset -> {
                 List<Document> documents = documentsMap.getOrDefault(asset.getAssetId(), new ArrayList<>());
                 asset.setDocuments(documents);
                 log.debug("Enriched assetId={} with {} documents", asset.getAssetId(), documents.size());
             });
+            log.info("Assets enriched with documents successfully | assetsCount={}", assets.size());
         }
 
         return assets;
@@ -104,7 +127,8 @@ public class AssetService {
     }
 
     public List<Asset> searchAssets(Asset asset, int limit, int offset) {
-        log.info("AssetService::searchAssets called | tenantId={} assetId={} limit={} offset={}",
+        log.trace("AssetService::searchAssets called");
+        log.info("Searching assets | tenantId={} assetId={} limit={} offset={}",
                 asset.getTenantId(), asset.getAssetId(), limit, offset);
         StringBuilder query = new StringBuilder("SELECT * FROM asset WHERE 1=1");
         List<Object> params = new ArrayList<>();
@@ -168,9 +192,16 @@ public class AssetService {
         params.add(limit);
         params.add(offset);
 
-        log.debug("Executing asset search query={} with params={}", query, params);
-
-        return jdbcTemplate.query(query.toString(), params.toArray(), assetRowMapper.rowMapper);
+        log.debug("Executing asset search query | paramsCount={}", params.size());
+        try {
+            List<Asset> results = jdbcTemplate.query(query.toString(), params.toArray(), assetRowMapper.rowMapper);
+            log.debug("Asset search completed | resultsCount={}", results.size());
+            return results;
+        } catch (Exception e) {
+            log.error("Error executing asset search query | tenantId={} error={}", 
+                    asset.getTenantId(), e.getMessage(), e);
+            throw new CustomException("ASSET_SEARCH_ERROR", "Failed to search assets: " + e.getMessage());
+        }
     }
 
     public Integer countAssets(Asset asset) {
@@ -230,9 +261,11 @@ public class AssetService {
     }
 
     public Map<String, List<Document>> searchDocumentsByAssetIds(String tenantId, List<String> assetIds) {
-        log.info("AssetService::searchDocumentsByAssetIds called | tenantId={} assetIdsCount={}",
-                tenantId, assetIds == null ? 0 : assetIds.size());
+        log.trace("AssetService::searchDocumentsByAssetIds called");
+        int assetIdsCount = assetIds == null ? 0 : assetIds.size();
+        log.info("Searching documents by assetIds | tenantId={} assetIdsCount={}", tenantId, assetIdsCount);
         if (assetIds == null || assetIds.isEmpty()) {
+            log.debug("No assetIds provided, returning empty map");
             return new HashMap<>();
         }
 
@@ -248,42 +281,54 @@ public class AssetService {
         query.append(")");
         params.addAll(assetIds);
 
-        log.debug("Executing asset document search query={} with params={}", query, params);
-
-        return jdbcTemplate.query(query.toString(), params.toArray(), (rs) -> {
-            Map<String, List<Document>> documentsMap = new HashMap<>();
-            while (rs.next()) {
-                String assetId = rs.getString("asset_id");
-                Document document = documentRowMapper.mapDocument(rs);
-                documentsMap.computeIfAbsent(assetId, k -> new ArrayList<>()).add(document);
-            }
+        log.debug("Executing document search query | paramsCount={}", params.size());
+        try {
+            Map<String, List<Document>> documentsMap = jdbcTemplate.query(query.toString(), params.toArray(), (rs) -> {
+                Map<String, List<Document>> resultMap = new HashMap<>();
+                while (rs.next()) {
+                    String assetId = rs.getString("asset_id");
+                    Document document = documentRowMapper.mapDocument(rs);
+                    resultMap.computeIfAbsent(assetId, k -> new ArrayList<>()).add(document);
+                }
+                return resultMap;
+            });
+            log.debug("Document search completed | documentsMapSize={}", documentsMap.size());
             return documentsMap;
-        });
+        } catch (Exception e) {
+            log.error("Error executing document search query | tenantId={} assetIdsCount={} error={}", 
+                    tenantId, assetIdsCount, e.getMessage(), e);
+            throw new CustomException("DOCUMENT_SEARCH_ERROR", "Failed to search documents: " + e.getMessage());
+        }
     }
 
     public Asset updateAsset(String assetId, AssetCreateRequest request) {
-        log.info("AssetService::updateAsset called | assetId={}", assetId);
+        log.trace("AssetService::updateAsset called");
+        log.info("Updating asset | assetId={}", assetId);
         if (request == null || request.getAssetDetail() == null || request.getAssetDetail().getAsset() == null) {
+            log.error("Invalid update request | assetId={} request is null", assetId);
             throw new CustomException("INVALID_REQUEST", "Asset request cannot be null");
         }
         Asset updated = request.getAssetDetail().getAsset();
         if (!assetId.equals(updated.getAssetId())) {
+            log.error("Asset ID mismatch | pathAssetId={} requestAssetId={}", assetId, updated.getAssetId());
             throw new CustomException("ASSET_ID_MISMATCH", "Provided assetId does not match the asset's ID");
         }
 
-        // Check whether asset exists in the database
+        log.debug("Checking if asset exists | assetId={} tenantId={}", updated.getAssetId(), updated.getTenantId());
         List<Asset> existingAssets = searchAssets(Asset.builder().assetId(updated.getAssetId()).tenantId(updated.getTenantId()).build(), 10, 0);
         if (existingAssets == null || existingAssets.isEmpty()) {
+            log.error("Asset not found for update | assetId={} tenantId={}", assetId, updated.getTenantId());
             throw new CustomException("ASSET_NOT_FOUND", "Asset with ID " + assetId + " does not exist");
         }
 
-        // Update audit details
         if (updated.getAuditDetails() != null) {
             updated.getAuditDetails().setLastModifiedBy(request.getRequestInfo().getUserInfo().getUserName());
             updated.getAuditDetails().setLastModifiedTime(System.currentTimeMillis());
             log.debug("Updated audit details for assetId={}", updated.getAssetId());
         }
+        log.info("Pushing asset update to repository | assetId={}", assetId);
         assetRepository.pushUpdateAsset(updated);
+        log.info("Asset updated successfully | assetId={} tenantId={}", assetId, updated.getTenantId());
         return updated;
     }
 

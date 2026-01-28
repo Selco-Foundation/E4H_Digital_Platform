@@ -23,11 +23,14 @@ public class OrganisationUserEnrichmentService {
 
     /* Enrich OrgUser with id and audit details */
     public void enrichOrgUserRequestOnCreate(OrgUserRequest orgUser, RequestInfo requestInfo) {
+        log.trace("OrganisationUserEnrichmentService::enrichOrgUserRequestOnCreate entry");
         orgUser.setId(UUID.randomUUID().toString());
         orgUser.setIsDeleted(false);
-        log.info("fieldPlan id set to " + orgUser.getId());
+        log.debug("Generated organisation user ID: {}", orgUser.getId());
+
         AuditDetails auditDetails = organisationUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         orgUser.setAuditDetails(auditDetails);
+        log.debug("Audit details set for organisation user: {}", orgUser.getId());
     }
 
     public void enrichOrgUserRequestOnDelete(DeleteOrgUserRequest request) {

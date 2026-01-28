@@ -15,10 +15,11 @@ public class AsyncConfig implements AsyncConfigurer {
 
     @Override
     public Executor getAsyncExecutor() {
+        log.trace("AsyncConfig::getAsyncExecutor method invoked");
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 
         int availableProcessors = 2;
-        log.info("Available processors: {}", availableProcessors);
+        log.info("Configuring async executor with {} available processors", availableProcessors);
 
         executor.setCorePoolSize(availableProcessors);
 
@@ -31,7 +32,7 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
 
         executor.setTaskDecorator(runnable -> () -> {
-            log.info("Task started on thread: {}", Thread.currentThread().getName());
+            log.debug("Task started on thread: {}", Thread.currentThread().getName());
 
             try {
                 runnable.run();
@@ -39,7 +40,7 @@ public class AsyncConfig implements AsyncConfigurer {
                 log.error("Error executing task on thread: {}", Thread.currentThread().getName(), ex);
                 throw ex;
             } finally {
-                log.info("Task completed on thread: {}", Thread.currentThread().getName());
+                log.debug("Task completed on thread: {}", Thread.currentThread().getName());
             }
         });
 

@@ -37,7 +37,8 @@ public class SLAService {
     }
     
     public long computeTotalSla(String currentState, List<State> states, List<ProcessInstance> processInstances) {
-        log.info("SLAService::computeTotalSla called | currentState={}", currentState);
+        log.trace("SLAService::computeTotalSla method invoked");
+        log.info("Computing total SLA for currentState={}", currentState);
         Map<String, Long> stateToSlaMap = new HashMap<>();
         for (State state : states) {
             String key = state.getApplicationStatus();
@@ -77,9 +78,10 @@ public class SLAService {
     }
 
     public Priority getPriorityFromMDMS(IncidentRequest request, Object mdmsData) {
+        log.trace("SLAService::getPriorityFromMDMS method invoked");
         String serviceCode = request.getIncident().getIncidentSubType();
         String assetType = request.getIncident().getIncidentType();
-        log.info("SLAService::getPriorityFromMDMS called | assetType={} serviceCode={}", assetType, serviceCode);
+        log.info("Fetching priority from MDMS for assetType={} serviceCode={}", assetType, serviceCode);
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}", serviceCode);
         List<Object> res;
         try {
@@ -122,12 +124,16 @@ public class SLAService {
     }
 
     private String getStringValue(Map<String, Object> map, String key) {
+        log.trace("SLAService::getStringValue method invoked");
         Object value = map.get(key);
         return value != null ? String.valueOf(value) : null;
     }
 
     public Priority getPriorityFromIMPriorityTable(Incident incident) {
+        log.trace("SLAService::getPriorityFromIMPriorityTable method invoked");
         String stateTenantId = incident.getTenantId().split("\\.")[0];
+        log.debug("Fetching priority from IM priority table for tenantId={}, incidentType={}, incidentSubType={}", 
+                stateTenantId, incident.getIncidentType(), incident.getIncidentSubType());
         IMPrioritySearchCriteria criteria = IMPrioritySearchCriteria.builder()
                 .tenantId(stateTenantId)
                 .incidentType(incident.getIncidentType())

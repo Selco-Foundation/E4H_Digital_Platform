@@ -36,16 +36,17 @@ public class AmcConfigurationEnrichment {
 
     /* Enrich Project on Create Request */
     public void enrichAmcConfigurationOnCreate(AmcConfiguration amcConfiguration, RequestInfo requestInfo) {
+        log.trace("Entering enrichAmcConfigurationOnCreate method");
         //Enrich Project id and audit details
         enrichAmcConfigurationRequestOnCreate(amcConfiguration, requestInfo);
-        log.info("Enriched AMC request with id and Audit details");
-
+        log.info("AMC configuration enriched with ID and audit details, configurationId: {}", amcConfiguration.getId());
     }
 
     /* Enrich amcConfiguration with id and audit details */
     private void enrichAmcConfigurationRequestOnCreate(AmcConfiguration amcConfiguration, RequestInfo requestInfo) {
+        log.trace("Entering enrichAmcConfigurationRequestOnCreate method");
         amcConfiguration.setId(UUID.randomUUID().toString());
-        log.info("AMC configs id set to " + amcConfiguration.getId());
+        log.debug("Generated AMC configuration ID: {}", amcConfiguration.getId());
         enrichUserAssignmentOnCreate(amcConfiguration, requestInfo);
         AuditDetails auditDetails = amcConfigurationServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         amcConfiguration.setAuditDetails(auditDetails);
@@ -53,10 +54,11 @@ public class AmcConfigurationEnrichment {
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichAmcConfigurationRequestOnUpdate(AmcConfiguration amcConfiguration, AmcConfiguration amcConfigurationFromDB, RequestInfo requestInfo) {
+        log.trace("Entering enrichAmcConfigurationRequestOnUpdate method for configurationId: {}", amcConfiguration.getId());
         amcConfiguration.setAuditDetails(amcConfigurationFromDB.getAuditDetails());
         AuditDetails auditDetails = amcConfigurationServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), amcConfigurationFromDB.getAuditDetails(), false);
         amcConfiguration.setAuditDetails(auditDetails);
-        log.info("Enriched AMC configs audit details for amc " + amcConfiguration.getId());
+        log.info("AMC configuration audit details enriched for configurationId: {}", amcConfiguration.getId());
     }
 
     /* Enrich Document with id and audit details in create BOM request */
@@ -69,11 +71,12 @@ public class AmcConfigurationEnrichment {
     }
 
     private void setUUIDAndAuditDetailsForAssignmentCreate(AmcConfigurationAssignment assignment, RequestInfo requestInfo) {
+        log.trace("Entering setUUIDAndAuditDetailsForAssignmentCreate method");
         assignment.setId(UUID.randomUUID().toString());
         assignment.setActive(true);
         AuditDetails auditDetailsForAdd = amcConfigurationServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         assignment.setAuditDetails(auditDetailsForAdd);
-        log.info("Added amc configuration assignment with id " + assignment.getId());
+        log.debug("Created AMC configuration assignment with ID: {}", assignment.getId());
     }
 
 

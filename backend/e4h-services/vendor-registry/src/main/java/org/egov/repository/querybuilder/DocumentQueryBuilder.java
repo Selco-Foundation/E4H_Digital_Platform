@@ -16,6 +16,10 @@ public class DocumentQueryBuilder {
             "doc.document_uid as document_documentUid, doc.additional_details as document_additionalDetails, doc.is_active as document_active " +
             "FROM eg_org_document doc";
     public String getDocumentsSearchQuery(Set<String> organisationIds, Set<String> functionIds, List<Object> preparedStmtList) {
+        log.trace("DocumentQueryBuilder::getDocumentsSearchQuery entry");
+        log.debug("Building documents search query for {} organisation IDs, {} function IDs", 
+                organisationIds != null ? organisationIds.size() : 0, functionIds != null ? functionIds.size() : 0);
+        
         StringBuilder queryBuilder = null;
         queryBuilder = new StringBuilder(FETCH_DOCUMENT_QUERY);
 

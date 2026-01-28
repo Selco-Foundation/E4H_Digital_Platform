@@ -35,11 +35,19 @@ public class ProjectTaskConsumer {
     @KafkaListener(topics = "${project.task.consumer.bulk.create.topic}")
     public List<Task> bulkCreate(Map<String, Object> consumerRecord,
                                  @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        log.trace("Entering bulkCreate consumer for topic: {}", topic);
+        log.info("Received bulk create request for project tasks from topic: {}", topic);
         try {
+            log.debug("Converting consumer record to TaskBulkRequest");
             TaskBulkRequest request = objectMapper.convertValue(consumerRecord, TaskBulkRequest.class);
-            return projectTaskService.create(request, true);
+            log.debug("Processing {} tasks for bulk create", request.getTasks() != null ? request.getTasks().size() : 0);
+            List<Task> result = projectTaskService.create(request, true);
+            log.info("Successfully processed bulk create for {} tasks", result != null ? result.size() : 0);
+            log.trace("Exiting bulkCreate consumer");
+            return result;
         } catch (Exception exception) {
-            log.error("error in project task consumer bulk create", ExceptionUtils.getStackTrace(exception));
+            log.error("Error in project task consumer bulk create for topic: {}", topic, exception);
+            log.trace("Exiting bulkCreate consumer with error");
             return Collections.emptyList();
         }
     }
@@ -47,11 +55,19 @@ public class ProjectTaskConsumer {
     @KafkaListener(topics = "${project.task.consumer.bulk.update.topic}")
     public List<Task> bulkUpdate(Map<String, Object> consumerRecord,
                                  @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        log.trace("Entering bulkUpdate consumer for topic: {}", topic);
+        log.info("Received bulk update request for project tasks from topic: {}", topic);
         try {
+            log.debug("Converting consumer record to TaskBulkRequest");
             TaskBulkRequest request = objectMapper.convertValue(consumerRecord, TaskBulkRequest.class);
-            return projectTaskService.update(request, true);
+            log.debug("Processing {} tasks for bulk update", request.getTasks() != null ? request.getTasks().size() : 0);
+            List<Task> result = projectTaskService.update(request, true);
+            log.info("Successfully processed bulk update for {} tasks", result != null ? result.size() : 0);
+            log.trace("Exiting bulkUpdate consumer");
+            return result;
         } catch (Exception exception) {
-            log.error("error in project task consumer bulk update", ExceptionUtils.getStackTrace(exception));
+            log.error("Error in project task consumer bulk update for topic: {}", topic, exception);
+            log.trace("Exiting bulkUpdate consumer with error");
             return Collections.emptyList();
         }
     }
@@ -59,11 +75,19 @@ public class ProjectTaskConsumer {
     @KafkaListener(topics = "${project.task.consumer.bulk.delete.topic}")
     public List<Task> bulkDelete(Map<String, Object> consumerRecord,
                                  @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        log.trace("Entering bulkDelete consumer for topic: {}", topic);
+        log.info("Received bulk delete request for project tasks from topic: {}", topic);
         try {
+            log.debug("Converting consumer record to TaskBulkRequest");
             TaskBulkRequest request = objectMapper.convertValue(consumerRecord, TaskBulkRequest.class);
-            return projectTaskService.delete(request, true);
+            log.debug("Processing {} tasks for bulk delete", request.getTasks() != null ? request.getTasks().size() : 0);
+            List<Task> result = projectTaskService.delete(request, true);
+            log.info("Successfully processed bulk delete for {} tasks", result != null ? result.size() : 0);
+            log.trace("Exiting bulkDelete consumer");
+            return result;
         } catch (Exception exception) {
-            log.error("error in project task consumer bulk delete", ExceptionUtils.getStackTrace(exception));
+            log.error("Error in project task consumer bulk delete for topic: {}", topic, exception);
+            log.trace("Exiting bulkDelete consumer with error");
             return Collections.emptyList();
         }
     }

@@ -21,7 +21,12 @@ public class UaNullIdValidator implements Validator<UserActionBulkRequest, UserA
 
     @Override
     public Map<UserAction, List<Error>> validate(UserActionBulkRequest request) {
-        log.info("validating for null id");
-        return validateForNullId(request, GET_USER_ACTION);
+        log.trace("Entering validate (UaNullIdValidator)");
+        log.info("Validating for null ID");
+        log.debug("Validating {} user actions for null ID", request.getUserActions() != null ? request.getUserActions().size() : 0);
+        Map<UserAction, List<Error>> result = validateForNullId(request, GET_USER_ACTION);
+        log.debug("Null ID validation completed - found {} errors", result != null ? result.size() : 0);
+        log.trace("Exiting validate (UaNullIdValidator)");
+        return result;
     }
 }

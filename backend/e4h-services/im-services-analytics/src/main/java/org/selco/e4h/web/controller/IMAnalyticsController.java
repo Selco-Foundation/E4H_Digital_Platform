@@ -31,12 +31,16 @@ public class IMAnalyticsController {
             @Valid @RequestBody SLARequest request,
             @RequestParam(name = "transform", defaultValue = "false") boolean transform
     ) {
+        log.trace("SLA computation endpoint invoked, tenantId: {}, transform: {}", 
+            request != null ? request.getTenantId() : "null", transform);
+        log.info("SLA computation triggered for tenant: {}, transform={}", 
+            request != null ? request.getTenantId() : "null", transform);
         try {
-            log.info("SLA computation triggered for tenant: {}, transform={}", request.getTenantId(), transform);
-            slaService.computeAndUpdateSLA(request, transform);
+            slaService.computeAndUpdateSLA(request, transform, false);
+            log.info("SLA computation completed successfully for tenant: {}", request.getTenantId());
             return ResponseEntity.ok("SLA computation completed successfully");
         } catch (Exception e) {
-            log.error("Error during SLA computation for tenant: {}", request.getTenantId(), e);
+            log.error("Error during SLA computation for tenant: {}", request != null ? request.getTenantId() : "null", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("SLA computation failed: " + e.getMessage());
         }
@@ -44,18 +48,34 @@ public class IMAnalyticsController {
 
     @GetMapping("/update_phc")
     public String getTicketByTenantId() {
-        incidentService.scriptUpdatePHCAgregation();
-        return "Script done!";
+        log.trace("PHC update endpoint invoked");
+        log.info("Starting PHC aggregation update");
+        try {
+            incidentService.scriptUpdatePHCAgregation();
+            log.info("PHC aggregation update completed");
+            return "Script done!";
+        } catch (Exception e) {
+            log.error("Error during PHC aggregation update", e);
+            return "Script failed: " + e.getMessage();
+        }
     }
 
     @PostMapping("/test_update_phc")
     public String sendDummyTopicIncident(@Valid @RequestBody IncidentRequest incidentRequest) {
-        Map<String, Object> producerRecord = new HashMap<>();
-        producerRecord.put("topic", "save-im-request");
-        producerRecord.put("value", incidentRequest);
-//        producerService.getTicket("sk.shyagyongrumtek");
-        producerService.sendIncident("process-audit-records", producerRecord);
-        return "User sent!";
+        log.trace("Test update PHC endpoint invoked");
+        log.info("Sending test incident to Kafka");
+        try {
+            Map<String, Object> producerRecord = new HashMap<>();
+            producerRecord.put("topic", "save-im-request");
+            producerRecord.put("value", incidentRequest);
+            log.debug("Prepared producer record with topic: save-im-request");
+            producerService.sendIncident("process-audit-records", producerRecord);
+            log.info("Successfully sent test incident to Kafka");
+            return "User sent!";
+        } catch (Exception e) {
+            log.error("Error sending test incident to Kafka", e);
+            return "Failed: " + e.getMessage();
+        }
     }
 //
 //    @PostMapping("/test_update_vendor")

@@ -24,6 +24,7 @@ public class QueryBuilderUtil {
     public static FacilityService facilityService;
 
     public static QueryBuilderResult buildWhereClause(FacilitySearchRequest request) {
+        log.trace("Entering buildWhereClause method");
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
@@ -83,36 +84,44 @@ public class QueryBuilderUtil {
             params.add(request.getIsOnmReady());
         }
 
+        log.debug("Built WHERE clause with {} parameters", params.size());
+        log.trace("Exiting buildWhereClause method");
         return new QueryBuilderResult(whereClause.toString(), params);
     }
 
     public static QueryBuilderResult buildBulkWhereClause(FacilityBulkSearchCriteria criteria, RequestInfo requestInfo, List<String> onmNonReadyAllowedRoles) {
+        log.trace("Entering buildBulkWhereClause method");
         StringBuilder whereClause = new StringBuilder(" WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
         if (!CollectionUtils.isEmpty(criteria.getTenantIds())) {
             whereClause.append(" AND fac.tenant_id in ( ").append(createQuery(criteria.getTenantIds().size())).append(" )");
             params.addAll(criteria.getTenantIds());
+            log.debug("Added {} tenant IDs to WHERE clause", criteria.getTenantIds().size());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getFacilityIds())) {
             whereClause.append(" AND fac.id in ( ").append(createQuery(criteria.getFacilityIds().size())).append(" )");
             params.addAll(criteria.getFacilityIds());
+            log.debug("Added {} facility IDs to WHERE clause", criteria.getFacilityIds().size());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getFacilityNames())) {
             whereClause.append(" AND fac.facility_name ILIKE ANY ( ARRAY [ ").append(createQuery(criteria.getFacilityNames().size())).append(" ] )");
             params.addAll(criteria.getFacilityNames().stream().map((facilityName) -> "%" + facilityName + "%").toList());
+            log.debug("Added {} facility names to WHERE clause", criteria.getFacilityNames().size());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getHfrIds())) {
             whereClause.append(" AND hfr_id in ( ").append(createQuery(criteria.getHfrIds().size())).append(" )");
             params.addAll(criteria.getHfrIds());
+            log.debug("Added {} HFR IDs to WHERE clause", criteria.getHfrIds().size());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getNinIds())) {
             whereClause.append(" AND nin_id in ( ").append(createQuery(criteria.getNinIds().size())).append(" )");
             params.addAll(criteria.getNinIds());
+            log.debug("Added {} NIN IDs to WHERE clause", criteria.getNinIds().size());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getFacilityPocNames())) {
@@ -138,6 +147,7 @@ public class QueryBuilderUtil {
         if (!CollectionUtils.isEmpty(criteria.getBoundaryCodes())) {
             whereClause.append(" AND boundary_code in ( ").append(createQuery(criteria.getBoundaryCodes().size())).append(" )");
             params.addAll(criteria.getBoundaryCodes());
+            log.debug("Added {} boundary codes to WHERE clause", criteria.getBoundaryCodes().size());
         }
 
         List<Role> currentUserRoles = Optional.ofNullable(requestInfo)
@@ -148,12 +158,16 @@ public class QueryBuilderUtil {
         if (currentUserRoles.stream().noneMatch((role -> onmNonReadyAllowedRoles.contains(role.getCode())))) {
             whereClause.append(" AND is_onm_ready = ?");
             params.add(true);
+            log.debug("Added is_onm_ready filter (true) based on user roles");
 
         } else if (criteria.getIsOnmReady() != null) {
             whereClause.append(" AND is_onm_ready = ?");
             params.add(criteria.getIsOnmReady());
+            log.debug("Added is_onm_ready filter: {}", criteria.getIsOnmReady());
         }
 
+        log.debug("Built bulk WHERE clause with {} parameters", params.size());
+        log.trace("Exiting buildBulkWhereClause method");
         return new QueryBuilderResult(whereClause.toString(), params);
     }
 
@@ -165,6 +179,7 @@ public class QueryBuilderUtil {
      * @return
      */
     public static String createQuery(Integer size) {
+        log.trace("Entering createQuery method with size: {}", size);
         StringBuilder builder = new StringBuilder();
 
         IntStream.range(0, size).forEach(i -> {
@@ -173,6 +188,8 @@ public class QueryBuilderUtil {
                 builder.append(",");
         });
 
-        return builder.toString();
+        String result = builder.toString();
+        log.trace("Exiting createQuery method");
+        return result;
     }
 }

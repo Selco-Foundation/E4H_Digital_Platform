@@ -34,19 +34,26 @@ public class MDMSUtils {
     private final FieldPlannerConfiguration config;
 
     public Object mDMSCall(FieldPlanRequest request, String tenantId) {
+        log.trace("Entering mDMSCall method for tenant: {}", tenantId);
+        log.debug("Calling MDMS service for tenant: {}", tenantId);
+        
         RequestInfo requestInfo = request.getRequestInfo();
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId);
         Object result = null;
         try {
             result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
+            log.debug("MDMS service call completed successfully for tenant: {}", tenantId);
         } catch (Exception e) {
-            log.error("error while calling mdms", ExceptionUtils.getStackTrace(e));
+            log.error("Error while calling MDMS service for tenant: {}", tenantId, e);
             throw new CustomException("MDMS_ERROR", "error while calling mdms");
         }
+        log.trace("Exiting mDMSCall method");
         return result;
     }
 
     public MdmsCriteriaReq getMDMSRequest(RequestInfo requestInfo, String tenantId) {
+        log.trace("Entering getMDMSRequest method for tenant: {}", tenantId);
+        log.debug("Building MDMS request criteria");
 
         ModuleDetail activitiesMDMSModuleDetail = getActivitiesModuleRequestData();
         ModuleDetail stateInfoModuleDetail = getStateModuleRequestData();
@@ -56,16 +63,19 @@ public class MDMSUtils {
         moduleDetails.add(activitiesMDMSModuleDetail);
         moduleDetails.add(stateInfoModuleDetail);
         moduleDetails.add(tenantModuleDetail);
+        log.debug("Added {} module details to MDMS request", moduleDetails.size());
 
         MdmsCriteria mdmsCriteria = MdmsCriteria.builder().moduleDetails(moduleDetails).tenantId(tenantId)
                 .build();
 
         MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder().mdmsCriteria(mdmsCriteria)
                 .requestInfo(requestInfo).build();
+        log.trace("Exiting getMDMSRequest method");
         return mdmsCriteriaReq;
     }
 
     private ModuleDetail getActivitiesModuleRequestData() {
+        log.trace("Entering getActivitiesModuleRequestData method");
         List<MasterDetail> projectActivitiesMasterDetails = new ArrayList<>();
 
         MasterDetail departmentMasterDetails = MasterDetail.builder().name(MASTER_ACTIVITIES)
@@ -74,11 +84,13 @@ public class MDMSUtils {
 
         ModuleDetail projectDepartmentModuleDetail = ModuleDetail.builder().masterDetails(projectActivitiesMasterDetails)
                 .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
-
+        log.debug("Created activities module detail");
+        log.trace("Exiting getActivitiesModuleRequestData method");
         return projectDepartmentModuleDetail;
     }
 
     private ModuleDetail getStateModuleRequestData() {
+        log.trace("Entering getStateModuleRequestData method");
         List<MasterDetail> projectStateInfoMasterDetails = new ArrayList<>();
 
         MasterDetail departmentMasterDetails = MasterDetail.builder().name(MASTER_STATE_INFO)
@@ -87,15 +99,21 @@ public class MDMSUtils {
 
         ModuleDetail projectDepartmentModuleDetail = ModuleDetail.builder().masterDetails(projectStateInfoMasterDetails)
                 .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
-
+        log.debug("Created state info module detail");
+        log.trace("Exiting getStateModuleRequestData method");
         return projectDepartmentModuleDetail;
     }
 
     public StringBuilder getMdmsSearchUrl() {
-        return new StringBuilder().append(config.getMdmsHost()).append(config.getMdmsEndPoint());
+        log.trace("Entering getMdmsSearchUrl method");
+        StringBuilder url = new StringBuilder().append(config.getMdmsHost()).append(config.getMdmsEndPoint());
+        log.debug("MDMS search URL: {}", url);
+        log.trace("Exiting getMdmsSearchUrl method");
+        return url;
     }
 
     private ModuleDetail getTenantModuleRequestData() {
+        log.trace("Entering getTenantModuleRequestData method");
         List<MasterDetail> tenantMasterDetails = new ArrayList<>();
 
         MasterDetail tenantMasterDetail = MasterDetail.builder().name(MASTER_TENANTS)
@@ -105,7 +123,8 @@ public class MDMSUtils {
 
         ModuleDetail tenantModuleDetail = ModuleDetail.builder().masterDetails(tenantMasterDetails)
                 .moduleName(MDMS_TENANT_MODULE_NAME).build();
-
+        log.debug("Created tenant module detail");
+        log.trace("Exiting getTenantModuleRequestData method");
         return tenantModuleDetail;
     }
 

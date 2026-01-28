@@ -99,127 +99,161 @@ public class ProjectStaffService {
     }
 
     public ProjectStaff create(ProjectStaffRequest request) {
-        log.info("received request to create project staff");
+        log.trace("Entering create (single staff)");
+        log.info("Received request to create project staff");
         ProjectStaffBulkRequest bulkRequest = ProjectStaffBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectStaff(Collections.singletonList(request.getProjectStaff())).build();
-        log.info(CREATING_BULK_REQUEST);
-        return create(bulkRequest, false).get(0);
+        log.debug(CREATING_BULK_REQUEST);
+        ProjectStaff result = create(bulkRequest, false).get(0);
+        log.trace("Exiting create (single staff)");
+        return result;
     }
 
 
     public List<ProjectStaff> create(ProjectStaffBulkRequest request, boolean isBulk) {
-        log.info("received request to create bulk project staff");
+        log.trace("Entering create (bulk staff)");
+        log.info("Received request to create bulk project staff");
         Tuple<List<ProjectStaff>, Map<ProjectStaff, ErrorDetails>> tuple = validate(validators,
                 isApplicableForCreate, request,
                 isBulk);
 
         Map<ProjectStaff, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectStaff> validEntities = tuple.getX();
+        log.debug("Validation completed - {} valid staff, {} errors", validEntities.size(), errorDetailsMap.size());
         try {
             if (!validEntities.isEmpty()) {
                 log.info(PROCESSING_VALID_ENTITIES, validEntities.size());
+                log.debug("Enriching staff before save");
                 enrichmentService.create(validEntities, request);
                 // Pushing the data as ProjectStaffBulkRequest for Attendance Service Consumer
+                log.debug("Pushing staff data to attendance service topic");
                 producer.push(projectConfiguration.getProjectStaffAttendanceTopic(), new ProjectStaffBulkRequest(request.getRequestInfo(), validEntities));
                 // Pushing the data as list for persister consumer
+                log.debug("Saving staff to repository");
                 projectStaffRepository.save(validEntities, projectConfiguration.getCreateProjectStaffTopic());
+                log.debug("Fetching associated project and employee details");
                 Project existingProject = searchProject(request);
                 Employee employee = getUserById(request);
+                log.debug("Enriching project with assigned employee details");
                 Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(existingProject.getAdditionalDetails(), "assignedTo", employee.getUser());
                 existingProject.setAdditionalDetails(enrichedAdditionalDetails);
                 ProjectRequest projectRequest = ProjectRequest.builder().requestInfo(request.getRequestInfo()).projects(List.of(existingProject)).build();
+                log.debug("Pushing project update to Kafka");
                 producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
                 producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
-                log.info("successfully created project staff");
+                log.info("Successfully created {} project staff", validEntities.size());
+            } else {
+                log.warn("No valid staff to create after validation");
             }
         } catch (Exception exception) {
-            log.error("error occurred while creating project staff: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating project staff", exception);
             populateErrorDetails(request, errorDetailsMap, validEntities, exception, SET_STAFF);
         }
 
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting create (bulk staff)");
         return validEntities;
     }
 
 
     public ProjectStaff update(ProjectStaffRequest request) {
-        log.debug("received request to update project staff");
+        log.trace("Entering update (single staff)");
+        log.info("Received request to update project staff");
         ProjectStaffBulkRequest bulkRequest = ProjectStaffBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectStaff(Collections.singletonList(request.getProjectStaff())).build();
-        log.info(CREATING_BULK_REQUEST);
-        return update(bulkRequest, false).get(0);
+        log.debug(CREATING_BULK_REQUEST);
+        ProjectStaff result = update(bulkRequest, false).get(0);
+        log.trace("Exiting update (single staff)");
+        return result;
     }
 
     public List<ProjectStaff> update(ProjectStaffBulkRequest request, boolean isBulk) {
-        log.info("received request to update bulk project staff");
+        log.trace("Entering update (bulk staff)");
+        log.info("Received request to update bulk project staff");
         Tuple<List<ProjectStaff>, Map<ProjectStaff, ErrorDetails>> tuple = validate(validators,
                 isApplicableForUpdate, request,
                 isBulk);
 
         Map<ProjectStaff, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectStaff> validEntities = tuple.getX();
+        log.debug("Validation completed - {} valid staff, {} errors", validEntities.size(), errorDetailsMap.size());
         try {
             if (!validEntities.isEmpty()) {
                 log.info(PROCESSING_VALID_ENTITIES, validEntities.size());
+                log.debug("Enriching staff before update");
                 enrichmentService.update(validEntities, request);
+                log.debug("Saving updated staff to repository");
                 projectStaffRepository.save(validEntities, projectConfiguration.getUpdateProjectStaffTopic());
-                log.info("successfully updated bulk project staff");
+                log.info("Successfully updated {} project staff", validEntities.size());
+            } else {
+                log.warn("No valid staff to update after validation");
             }
         } catch (Exception exception) {
-            log.error("error occurred while updating project staff", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while updating project staff", exception);
             populateErrorDetails(request, errorDetailsMap, validEntities, exception, SET_STAFF);
         }
 
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting update (bulk staff)");
         return validEntities;
     }
 
     public ProjectStaff delete(ProjectStaffRequest request) {
-        log.info("received request to delete a project staff");
+        log.trace("Entering delete (single staff)");
+        log.info("Received request to delete a project staff");
         ProjectStaffBulkRequest bulkRequest = ProjectStaffBulkRequest.builder().requestInfo(request.getRequestInfo())
                 .projectStaff(Collections.singletonList(request.getProjectStaff())).build();
-        log.info(CREATING_BULK_REQUEST);
-        return delete(bulkRequest, false).get(0);
+        log.debug(CREATING_BULK_REQUEST);
+        ProjectStaff result = delete(bulkRequest, false).get(0);
+        log.trace("Exiting delete (single staff)");
+        return result;
     }
 
     public List<ProjectStaff> delete(ProjectStaffBulkRequest request, boolean isBulk) {
+        log.trace("Entering delete (bulk staff)");
+        log.info("Received request to delete bulk project staff");
         Tuple<List<ProjectStaff>, Map<ProjectStaff, ErrorDetails>> tuple = validate(validators,
                 isApplicableForDelete, request,
                 isBulk);
 
         Map<ProjectStaff, ErrorDetails> errorDetailsMap = tuple.getY();
         List<ProjectStaff> validEntities = tuple.getX();
+        log.debug("Validation completed - {} valid staff, {} errors", validEntities.size(), errorDetailsMap.size());
         try {
             if (!validEntities.isEmpty()) {
                 log.info(PROCESSING_VALID_ENTITIES, validEntities.size());
+                log.debug("Enriching staff before delete");
                 enrichmentService.delete(validEntities, request);
+                log.debug("Saving deleted staff to repository");
                 projectStaffRepository.save(validEntities, projectConfiguration.getDeleteProjectStaffTopic());
-                log.info("successfully deleted entities");
+                log.info("Successfully deleted {} project staff", validEntities.size());
+            } else {
+                log.warn("No valid staff to delete after validation");
             }
         } catch (Exception exception) {
-            log.error("error occurred while deleting entities: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while deleting project staff", exception);
             populateErrorDetails(request, errorDetailsMap, validEntities, exception, SET_STAFF);
         }
 
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting delete (bulk staff)");
         return validEntities;
     }
 
     private Tuple<List<ProjectStaff>, Map<ProjectStaff, ErrorDetails>> validate(List<Validator<ProjectStaffBulkRequest, ProjectStaff>> validators,
                                                                                 Predicate<Validator<ProjectStaffBulkRequest, ProjectStaff>> applicableValidators,
                                                                                 ProjectStaffBulkRequest request, boolean isBulk) {
-        log.info("validating request");
+        log.trace("Entering validate for {} staff", request.getProjectStaff() != null ? request.getProjectStaff().size() : 0);
+        log.debug("Validating request with {} validators", validators.size());
         Map<ProjectStaff, ErrorDetails> errorDetailsMap = new HashMap<>();
         if (!errorDetailsMap.isEmpty() && !isBulk) {
-            log.error("validation error occurred. error details: {}", errorDetailsMap.values().toString());
+            log.error("Validation error occurred. Error details: {}", errorDetailsMap.values());
             throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());
         }
         List<ProjectStaff> validEntities = request.getProjectStaff().stream()
                 .filter(notHavingErrors()).toList();
-        log.info("validation successful, found valid project staff");
+        log.debug("Validation completed - {} valid staff out of {}", validEntities.size(), request.getProjectStaff().size());
+        log.trace("Exiting validate");
         return new Tuple<>(validEntities, errorDetailsMap);
     }
 

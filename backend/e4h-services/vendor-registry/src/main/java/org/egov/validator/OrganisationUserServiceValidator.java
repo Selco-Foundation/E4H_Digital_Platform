@@ -74,6 +74,7 @@ public class OrganisationUserServiceValidator {
     }
 
     private void validateRequestInfo(RequestInfo requestInfo) {
+        log.trace("OrganisationUserServiceValidator::validateRequestInfo entry");
         if (requestInfo == null) {
             log.error("Request info is mandatory");
             throw new CustomException("REQUEST_INFO", "Request info is mandatory");
@@ -86,6 +87,7 @@ public class OrganisationUserServiceValidator {
             log.error("UUID is mandatory in UserInfo");
             throw new CustomException("USERINFO_UUID", "UUID is mandatory");
         }
+        log.debug("Request info validation completed");
     }
 
     private void validateUserOrgCreation(OrgUserRequest request) {
@@ -392,25 +394,36 @@ public class OrganisationUserServiceValidator {
             request.getUser().setJurisdictions(employee.getJurisdictions());
         }
 
-        if (!errorMap.isEmpty())
+        if (!errorMap.isEmpty()) {
+            log.error("Validation failed with {} errors", errorMap.size());
             throw new CustomException(errorMap);
+        }
+        log.debug("Organisation user request validation completed");
     }
 
     /* Validates search FieldPlan request body and parameters*/
     public void validateSearchOrgUsersRequest(OrgUserSearchRequest request, Integer limit, Integer offset, String tenantId) {
+        log.trace("OrganisationUserServiceValidator::validateSearchOrgUsersRequest entry");
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
+        log.info("Starting validation for organisation user search, tenant: {}", tenantId);
 
         //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
+        log.debug("Request info validation completed");
+
         //Verify if search fieldplan request is valid
         validateSearchOrgUsersCriteria(request.getCriteria(), tenantId);
+        log.debug("Search criteria validation completed");
         //Verify MDMS Data
         // TODO: Uncomment and fix as per HCM once we get clarity
         // validateRequestMDMSData(project, tenantId, errorMap);
 
-        if (!errorMap.isEmpty())
+        if (!errorMap.isEmpty()) {
+            log.error("Search validation failed with {} errors", errorMap.size());
             throw new CustomException(errorMap);
+        }
+        log.info("Organisation user search validation completed successfully");
     }
 
     private void validateSearchOrgUsersCriteria(OrgUserSearchCriteria criteria, String tenantId) {
@@ -419,7 +432,7 @@ public class OrganisationUserServiceValidator {
             throw new CustomException("OrgSearch", "criteria is mandatory");
         }
         if (StringUtils.isBlank(criteria.getTenantId())) {
-            log.error("Tenant ID is mandatory");
+            log.error("Tenant ID is mandatory in search criteria");
             throw new CustomException("TENANT_ID", "Tenant ID is mandatory");
         }
         if ((criteria.getId()==null || criteria.getId().isEmpty()) && (criteria.getUserId()==null || criteria.getUserId().isEmpty())
@@ -430,9 +443,10 @@ public class OrganisationUserServiceValidator {
         }
 
         if (!criteria.getTenantId().equals(tenantId)) {
-            log.error("Tenant Id must be same in URL param as well as project request body");
+            log.warn("Tenant ID mismatch: URL param {} does not match request body {}", tenantId, criteria.getTenantId());
             throw new CustomException("MULTIPLE_TENANTS", "Tenant Id must be same in URL param and project request");
         }
+        log.debug("Search criteria validation completed");
     }
 
     public void validateDeleteOrgUserRequest(DeleteOrgUserRequest request) {

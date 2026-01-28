@@ -56,8 +56,10 @@ public class OrganisationUserService {
             organisationEnrichmentService.enrichOrgUserRequestOnCreate(request, request.getRequestInfo());
             log.info("successfully created org user");
             organizationProducer.push(configuration.getCreateOrgUserTopic(), request);
+            log.info("Organisation user creation message pushed to Kafka topic: {}", configuration.getCreateOrgUserTopic());
         } catch (Exception exception) {
-            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating organisation user", exception);
+            throw exception;
         }
 
         return request;
@@ -65,6 +67,8 @@ public class OrganisationUserService {
 
     public List<OrgUser> searchOrganisationUsers(OrgUserSearchRequest request, URLParams urlParams) {
         validator.validateSearchOrgUsersRequest(request, urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());
+        log.debug("Search request validation completed");
+
         List<OrgUser> orgUserList = userRepository.getOrgUsers(request, urlParams);
         return orgUserList;
     }

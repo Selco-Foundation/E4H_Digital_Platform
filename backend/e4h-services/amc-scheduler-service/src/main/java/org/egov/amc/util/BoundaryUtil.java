@@ -2,6 +2,7 @@ package org.egov.amc.util;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.web.models.Boundary;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class BoundaryUtil {
     @Autowired
     private RestTemplate restTemplate;
@@ -36,6 +38,7 @@ public class BoundaryUtil {
 
 //    @Cacheable(value="boundaryConfiguration")
     public Map<String, Boundary> getBoundaryByCode() {
+        log.trace("Entering getBoundaryByCode method");
         Map<String, Boundary> listBlock = null;
         String params = "?boundaryType="+boundaryType+"&includeChildren=true&tenantId=in&hierarchyType="+boundaryHierarchyType;
         StringBuilder uri = new StringBuilder();
@@ -43,13 +46,17 @@ public class BoundaryUtil {
         RequestInfo requestInfo = new RequestInfo();
         Object response = null;
         try {
+            log.debug("Calling boundary service at URI: {}", uri);
             response = restTemplate.postForObject(uri.toString(), requestInfo, Map.class);
             if (response == null) {
-              throw new CustomException("CONFIG_ERROR", "Boundary service returned null response");
+                log.error("Boundary service returned null response for URI: {}", uri);
+                throw new CustomException("CONFIG_ERROR", "Boundary service returned null response");
             }
             String jsonString = objectMapper.writeValueAsString(response);
             listBlock = extractBlockToDistrictMapping(jsonString);
+            log.debug("Successfully fetched {} boundary mappings", listBlock != null ? listBlock.size() : 0);
         }catch(Exception e) {
+            log.error("Error in fetching boundary data from service, URI: {}", uri, e);
             throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
         }
 

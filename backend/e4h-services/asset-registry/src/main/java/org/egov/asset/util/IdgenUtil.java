@@ -37,7 +37,8 @@ public class IdgenUtil {
     }
 
     public List<String> getIdList(RequestInfo requestInfo, String tenantId, String idName, String idformat, Integer count) {
-        log.info("IdgenUtil::getIdList called | tenantId={} idName={} idformat={} count={}", tenantId, idName, idformat, count);
+        log.trace("IdgenUtil::getIdList called");
+        log.info("Generating IDs | tenantId={} idName={} idformat={} count={}", tenantId, idName, idformat, count);
         List<IdRequest> reqList = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             reqList.add(IdRequest.builder().idName(idName).format(idformat).tenantId(tenantId).build());
@@ -45,13 +46,17 @@ public class IdgenUtil {
 
         IdGenerationRequest request = IdGenerationRequest.builder().idRequests(reqList).requestInfo(requestInfo).build();
         StringBuilder uri = new StringBuilder(configs.getIdGenHost()).append(configs.getIdGenPath());
+        log.debug("Fetching IDs from idgen service | uri={} requestCount={}", uri.toString(), reqList.size());
         IdGenerationResponse response = restRepo.fetchResult(uri, request, IdGenerationResponse.class);
 
         List<IdResponse> idResponses = response.getIdResponses();
 
-        if (CollectionUtils.isEmpty(idResponses))
+        if (CollectionUtils.isEmpty(idResponses)) {
+            log.error("No IDs returned from idgen service | tenantId={} idName={} count={}", tenantId, idName, count);
             throw new CustomException(IDGEN_ERROR, NO_IDS_FOUND_ERROR);
+        }
 
+        log.debug("Successfully generated IDs | tenantId={} idName={} idsCount={}", tenantId, idName, idResponses.size());
         return idResponses.stream().map(IdResponse::getId).collect(Collectors.toList());
     }
 }

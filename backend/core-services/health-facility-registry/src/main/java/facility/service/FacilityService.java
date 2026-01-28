@@ -85,23 +85,28 @@ public class FacilityService {
      */
     @Transactional(rollbackFor = Exception.class)
     public List<Facility> createFacility(FacilityCreateRequest request) {
+        log.trace("Entering createFacility method");
         List<FacilityCreate> facilities = request.getFacilities();
+        log.info("Processing facility create request for {} facilities", facilities.size());
 
         // Group facility create requests by tenant ID for batch validation and processing
         Map<String, List<FacilityCreate>> facilitiesByTenant = facilities.stream()
                 .collect(Collectors.groupingBy(FacilityCreate::getTenantId));
+        log.debug("Grouped facilities into {} tenant groups", facilitiesByTenant.size());
 
         List<Facility> validatedFacilities = new ArrayList<>();
 
         for (Map.Entry<String, List<FacilityCreate>> entry : facilitiesByTenant.entrySet()) {
             String tenantId = entry.getKey();
             List<FacilityCreate> facilityCreateList = entry.getValue();
+            log.info("Processing {} facilities for tenant {}", facilityCreateList.size(), tenantId);
             List<Facility> tenantFacilities = new ArrayList<>();
 
             // Validate block boundary codes in bulk
             Set<String> blockBoundaryCodes = facilityCreateList.stream()
                     .map(FacilityCreate::getBlockBoundaryCode)
                     .collect(Collectors.toSet());
+            log.debug("Validating {} unique block boundary codes for tenant {}", blockBoundaryCodes.size(), tenantId);
             boundaryValidator.validateBoundaries(blockBoundaryCodes, tenantId, request.getRequestInfo());
 
             List<Boundary> boundaryList = new ArrayList<>();
@@ -173,15 +178,18 @@ public class FacilityService {
             }
 
             // Validate facilities against MDMS master data
+            log.info("Validating {} facilities against MDMS for tenant {}", tenantFacilities.size(), tenantId);
             facilityMdmsValidator.validateAgainstMDMS(tenantFacilities, tenantId, request.getRequestInfo());
 
             //todo: handle boundary or boundary relation creation failure??
+            log.info("Creating {} boundaries for tenant {}", boundaryList.size(), tenantId);
             BoundaryCreateRequest boundaryCreateRequest = BoundaryCreateRequest.builder()
                     .requestInfo(request.getRequestInfo())
                     .boundary(boundaryList)
                     .build();
             boundaryService.createBoundaries(boundaryCreateRequest);
 
+            log.info("Creating {} boundary relationships for tenant {}", boundaryRelationList.size(), tenantId);
             for (BoundaryRelation boundaryRelation: boundaryRelationList) {
                 BoundaryRelationshipRequest boundaryRelationshipRequest = BoundaryRelationshipRequest.builder()
                         .requestInfo(request.getRequestInfo())
@@ -190,6 +198,7 @@ public class FacilityService {
                 boundaryService.createBoundaryRelationship(boundaryRelationshipRequest);
             }
 
+            log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
             for (Facility facility : tenantFacilities) {
                 try {
                     String encryptedPocMobileNumber = encryptMobileNumber(facility.getFacilityPocPhone());
@@ -202,11 +211,13 @@ public class FacilityService {
                 Long time = System.currentTimeMillis();
                 facility.setAuditDetails(AuditDetails.builder().createdBy(request.getRequestInfo().getUserInfo().getUuid()).lastModifiedBy(request.getRequestInfo().getUserInfo().getUuid()).createdTime(time).lastModifiedTime(time).build());
 
+                log.trace("Processing facility: {}", facility.getFacilityId());
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
                 
                 // If facility is ONM ready, create POC user and push to Kibana for indexing
                 if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
+                    log.info("Facility {} is ONM ready, creating POC user and pushing to Kibana", facility.getFacilityId());
                     // Create POC user if not exists (check by phone number uniqueness)
                     createFacilityPOCUserIfNotExists(facility, tenantId, request.getRequestInfo());
 
@@ -219,6 +230,8 @@ public class FacilityService {
             }
         }
 
+        log.info("Successfully created {} facilities", validatedFacilities.size());
+        log.trace("Exiting createFacility method");
         return validatedFacilities;
     }
 
@@ -227,16 +240,22 @@ public class FacilityService {
      * in the given tenant. Throws a CustomException if duplicate found.
      */
     private void validateFacilityNameBoundaryCodeUnique(Facility facility, String tenantId) {
+        log.trace("Entering validateFacilityNameBoundaryCodeUnique method");
         if (facility.getFacilityName() != null && facility.getBoundaryCode() != null) {
+            log.debug("Checking uniqueness of facility name and boundary code for tenant {}", tenantId);
             boolean exists = facilityQueryDao.existsByFacilityNameAndBoundary(
                     tenantId, facility.getFacilityName(), facility.getBoundaryCode()
             );
 
             if (exists) {
+                log.warn("Duplicate facility found: name={}, boundaryCode={}, tenantId={}",
+                        sanitizeForLog(facility.getFacilityName()), facility.getBoundaryCode(), tenantId);
                 throw new CustomException("FACILITY_DUPLICATE_NAME_LOCATION",
                         "A facility with the same name and boundary already exists in this tenant");
             }
+            log.debug("Facility name and boundary code are unique");
         }
+        log.trace("Exiting validateFacilityNameBoundaryCodeUnique method");
     }
 
     /**
@@ -244,18 +263,23 @@ public class FacilityService {
      * in the same tenant. Throws a CustomException if duplicate found.
      */
     private void validateHfrOrNinUniqueness(Facility facility, String tenantId) {
+        log.trace("Entering validateHfrOrNinUniqueness method");
         if (facility != null) {
             String hfrId = facility.getHfrId();
             String ninId = facility.getNinId();
 
             if ((hfrId != null && !hfrId.isBlank()) || (ninId != null && !ninId.isBlank())) {
+                log.debug("Checking uniqueness of HFR ID or NIN ID for tenant {}", tenantId);
                 boolean exists = facilityQueryDao.existsByHfrIdOrNinId(hfrId, ninId, tenantId);
                 if (exists) {
+                    log.warn("Duplicate HFR ID or NIN ID found for tenant {}", tenantId);
                     throw new CustomException("FACILITY_DUPLICATE_ID",
                             "Facility with same HFR ID or NIN ID already exists in tenant " + tenantId);
                 }
+                log.debug("HFR ID and NIN ID are unique");
             }
         }
+        log.trace("Exiting validateHfrOrNinUniqueness method");
     }
 
     /**
@@ -306,12 +330,15 @@ public class FacilityService {
      * @return updated facility data
      */
     public Facility updateFacility(FacilityUpdateRequest request) {
+        log.trace("Entering updateFacility method");
         FacilityUpdateRequestFacilityUpdate update = request.getFacilityUpdate();
 
         if (update.getFacilityId() == null || update.getTenantId() == null) {
+            log.error("Update request missing facilityId or tenantId");
             throw new IllegalArgumentException("facilityId and tenantId must be provided for update");
         }
 
+        log.info("Updating facility {} for tenant {}", update.getFacilityId(), update.getTenantId());
         var userInfo = request.getRequestInfo().getUserInfo();
         if (userInfo.getRoles() != null) {
             boolean isFacilityAdmin = userInfo.getRoles().stream().anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
@@ -332,7 +359,7 @@ public class FacilityService {
         try {
             existingFacility = jdbcTemplate.queryForObject(fetchFullFacilitySql, new Object[]{update.getFacilityId(), update.getTenantId()}, facilityRowMapper.rowMapper);
         } catch (EmptyResultDataAccessException e) {
-            log.warn("Facility not found for update: {}", update.getFacilityId());
+            log.warn("Facility {} not found for tenant {}, returning null", update.getFacilityId(), update.getTenantId());
             return null;
         }
         FacilityAddress address = update.getAddress();
@@ -359,8 +386,10 @@ public class FacilityService {
         facility.setUserId(update.getUserId());
 
         // Validate with MDMS and boundary APIs
+        log.info("Validating facility update against MDMS and boundaries");
         facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
         if (facility.getBoundaryCode() != null) {
+            log.debug("Validating boundary code: {}", facility.getBoundaryCode());
             boundaryValidator.validateBoundaries(
                     Set.of(facility.getBoundaryCode()),
                     update.getTenantId(),
@@ -376,10 +405,12 @@ public class FacilityService {
             updatedHRMSUser(request, existingFacility, facility);
         }
 
+        log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
         
         // If user sent isOnmReady = true, handle POC user creation and Kibana push
         if (Boolean.TRUE.equals(update.getIsOnmReady())) {
+            log.info("Facility {} is marked as ONM ready, processing POC user and Kibana push", update.getFacilityId());
             // Merge update request data with existing facility data to get complete facility info
             Facility facilityForProcessing = Facility.builder()
                     .facilityId(facility.getFacilityId())
@@ -444,6 +475,8 @@ public class FacilityService {
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
         }
         
+        log.info("Successfully updated facility {}", update.getFacilityId());
+        log.trace("Exiting updateFacility method");
         return facility;
     }
 
@@ -454,7 +487,10 @@ public class FacilityService {
      * @return List of facilities matching the filter
      */
     public List<Facility> searchFacilities(FacilitySearchRequest request) {
+        log.trace("Entering searchFacilities method");
+        log.info("Searching facilities with limit={}, offset={}", request.getLimit(), request.getOffset());
         QueryBuilderResult result = QueryBuilderUtil.buildWhereClause(request);
+        log.debug("Built query with {} parameters", result.getParams().size());
 
         StringBuilder query = new StringBuilder("SELECT * FROM facility");
         query.append(result.getWhereClause());
@@ -465,6 +501,8 @@ public class FacilityService {
         allParams.add(request.getOffset());
 
         List<Facility> facilityList = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
+        log.info("Found {} facilities matching search criteria", facilityList.size());
+        log.trace("Exiting searchFacilities method");
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         for (Facility facility: facilityList){
             try{
@@ -497,6 +535,7 @@ public class FacilityService {
      * @return List of facilities matching the filter
      */
     public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request) {
+        log.trace("Entering bulkSearchFacilities method");
         List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(request.getFacilityBulkSearchCriteria());
         if(listFacilityCodes !=null && !listFacilityCodes.isEmpty()){
             if(request.getFacilityBulkSearchCriteria().getBoundaryCodes()==null)
@@ -524,7 +563,7 @@ public class FacilityService {
         }
 
         log.info("Bulk Search Query: {}", query);
-        log.info("Bulk Search Params: {}", allParams);
+        log.info("Bulk Search Params count: {}", allParams.size());
         List<Facility> facilityList = jdbcTemplate.query(query.toString(), facilityRowMapperV2, allParams.toArray());
         Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
         for (Facility facility: facilityList){
@@ -561,32 +600,45 @@ public class FacilityService {
      * @return a FacilitySummary object
      */
     public FacilitySummary getFacilitySummary(String facilityId) {
+        log.trace("Entering getFacilitySummary method for facility: {}", facilityId);
         String sql = "SELECT facility_name, facility_type FROM facility WHERE facility_id = ?";
         try {
-            return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
+            FacilitySummary summary = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
                 String name = rs.getString("facility_name");
                 String type = rs.getString("facility_type");
-                FacilitySummary summary = new FacilitySummary();
-                summary.setSummary("Facility '" + name + "' is of type '" + type + "'.");
-                return summary;
+                FacilitySummary result = new FacilitySummary();
+                result.setSummary("Facility '" + name + "' is of type '" + type + "'.");
+                return result;
             }, facilityId);
+            log.debug("Retrieved facility summary for facility: {}", facilityId);
+            log.trace("Exiting getFacilitySummary method");
+            return summary;
         } catch (EmptyResultDataAccessException e) {
+            log.warn("Facility summary not found for facility: {}", facilityId);
             return null;
         }
     }
 
     public int countFacilities(FacilitySearchRequest request) {
+        log.trace("Entering countFacilities method");
         QueryBuilderResult result = QueryBuilderUtil.buildWhereClause(request);
         String query = "SELECT COUNT(*) FROM facility" + result.getWhereClause();
-        return jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
+        int count = jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
+        log.debug("Facility count: {}", count);
+        log.trace("Exiting countFacilities method");
+        return count;
     }
 
     public int countFacilitiesForBulkSearch(FacilityBulkSearchRequest request) {
+        log.trace("Entering countFacilitiesForBulkSearch method");
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
         String query = "SELECT COUNT(*) FROM facility fac" + result.getWhereClause();
-        return jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
+        int count = jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
+        log.debug("Bulk search facility count: {}", count);
+        log.trace("Exiting countFacilitiesForBulkSearch method");
+        return count;
     }
 
     /**
@@ -597,10 +649,14 @@ public class FacilityService {
      * @return null if input is null, otherwise the sanitized string with \r and \n replaced by spaces
      */
     private String sanitizeForLog(String value) {
+        log.trace("Entering sanitizeForLog method");
         if (value == null) {
+            log.trace("Exiting sanitizeForLog method, input was null");
             return null;
         }
-        return value.replace('\r', ' ').replace('\n', ' ');
+        String result = value.replace('\r', ' ').replace('\n', ' ');
+        log.trace("Exiting sanitizeForLog method");
+        return result;
     }
     public void migrateFacilityData() {
         StringBuilder query = new StringBuilder("SELECT * FROM facility");

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.web.models.AmcConfiguration;
 import org.egov.amc.web.models.Asset;
 import org.egov.amc.web.models.AssetAmc;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 @Repository
+@Slf4j
 public class AssetAmcMapper implements RowMapper<AssetAmc> {
 
     @Autowired
@@ -29,6 +31,7 @@ public class AssetAmcMapper implements RowMapper<AssetAmc> {
 
     @Override
     public AssetAmc mapRow(ResultSet rs, int rowNum) throws SQLException {
+        log.trace("Entering mapRow method for asset AMC, rowNum: {}", rowNum);
 
         Asset asset = getAssetObjFromResultSet(rs);
         AmcConfiguration amcConfiguration = getAmcConfigurationObjFromResultSet(rs);
@@ -37,6 +40,7 @@ public class AssetAmcMapper implements RowMapper<AssetAmc> {
         assetAmc.setAsset(asset);
         assetAmc.setAmcConfiguration(amcConfiguration);
 
+        log.trace("Completed mapping asset AMC row, assetAmcId: {}", assetAmc.getId());
         return assetAmc;
     }
 
@@ -66,15 +70,18 @@ public class AssetAmcMapper implements RowMapper<AssetAmc> {
         String addDetails = rs.getString("asset_additional_details");
         try {
             if (detailsJson != null) {
+                log.debug("Parsing asset details JSON for assetId: {}", asset.getAssetId());
                 asset.setAssetDetails(objectMapper.readValue(detailsJson, new TypeReference<>() {
                 }));
             }
             if(addDetails!=null){
+                log.debug("Parsing asset additional details JSON for assetId: {}", asset.getAssetId());
                 asset.setAdditionalDetails(objectMapper.readValue(addDetails, new TypeReference<Map<String, Object>>() {
                 }));
             }
 
         }catch (JsonProcessingException e) {
+            log.error("Error parsing JSONB fields in asset record for assetId: {}", asset.getAssetId(), e);
             throw new RuntimeException("Error parsing JSONB fields", e);
         }
 
@@ -143,6 +150,7 @@ public class AssetAmcMapper implements RowMapper<AssetAmc> {
                 return objectMapper.readTree(obj.getValue());
             }
         } catch (IOException e) {
+            log.error("Failed to parse JSON object for column: {}", columnName, e);
             throw new CustomException("PARSING ERROR", "Failed to parse JSON object for column: " + columnName);
         }
         return null;
@@ -152,17 +160,24 @@ public class AssetAmcMapper implements RowMapper<AssetAmc> {
      * Convert JSONB column into List<Map<String,Object>>
      */
     public List<Map<String, Object>> getAssetTypes(String columnName, ResultSet rs) throws SQLException {
+        log.trace("Entering getAssetTypes method for column: {}", columnName);
         try {
             Object obj = rs.getObject(columnName);
-            if (obj == null) return null;
+            if (obj == null) {
+                log.debug("Asset types column {} is null", columnName);
+                return null;
+            }
 
             String json = (obj instanceof PGobject)
                     ? ((PGobject) obj).getValue()
                     : obj.toString();
 
-            return objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>(){});
+            List<Map<String, Object>> assetTypes = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>(){});
+            log.debug("Parsed {} asset type(s) from column: {}", assetTypes != null ? assetTypes.size() : 0, columnName);
+            return assetTypes;
         }
         catch (IOException e) {
+            log.error("Failed to parse assetTypes JSON for column: {}", columnName, e);
             throw new CustomException("PARSING ERROR", "Failed to parse assetTypes");
         }
     }

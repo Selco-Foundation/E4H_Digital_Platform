@@ -57,6 +57,9 @@ public class OrganisationFunctionQueryBuilder {
     }
 
     public String getOrganisationSearchQuery(OrgSearchRequest orgSearchRequest, Set<String> orgIds, List<Object> preparedStmtList, Boolean isCountQuery) {
+        log.trace("OrganisationFunctionQueryBuilder::getOrganisationSearchQuery entry");
+        log.debug("Building organisation search query, isCountQuery: {}, orgIds count: {}", isCountQuery, orgIds != null ? orgIds.size() : 0);
+        
         String query = Boolean.TRUE.equals(isCountQuery) ? ORGANISATIONS_COUNT_QUERY : FETCH_ORGANISATION_FUNCTION_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
         OrgSearchCriteria searchCriteria = orgSearchRequest.getSearchCriteria();
@@ -238,31 +241,39 @@ public class OrganisationFunctionQueryBuilder {
     }
 
     private void addOrderByClause(StringBuilder queryBuilder, Pagination pagination) {
-        log.info("OrganisationQueryBuilder::getOrganisationQuery");
+        log.trace("OrganisationFunctionQueryBuilder::addOrderByClause entry");
         //default
         if (pagination == null || pagination.getSortBy() == null) {
             queryBuilder.append(" ORDER BY org.created_time ");
+            log.debug("Using default sort by created_time");
         } else {
             switch (pagination.getSortBy()) {
                 case "name":
                     queryBuilder.append(" ORDER BY org.name ");
+                    log.debug("Sorting by name");
                     break;
                 case "type":
                     queryBuilder.append(" ORDER BY orgFunction.type ");
+                    log.debug("Sorting by type");
                     break;
                 default:
                     queryBuilder.append(" ORDER BY est.created_time ");
+                    log.debug("Using default sort by created_time");
                     break;
             }
         }
 
-        if (pagination != null && pagination.getOrder() == "ASC")
+        if (pagination != null && pagination.getOrder() == "ASC") {
             queryBuilder.append(" ASC ");
-        else queryBuilder.append(" DESC ");
+            log.debug("Sort order: ASC");
+        } else {
+            queryBuilder.append(" DESC ");
+            log.debug("Sort order: DESC");
+        }
     }
 
     private String addPaginationWrapper(String query, List<Object> preparedStmtList, Pagination pagination) {
-        log.info("OrganisationQueryBuilder::addPaginationWrapper");
+        log.trace("OrganisationFunctionQueryBuilder::addPaginationWrapper entry");
         double limit = config.getDefaultLimit();
         double offset = config.getDefaultOffset();
         String finalQuery = PAGINATION_WRAPPER.replace("{}", query);
@@ -279,16 +290,21 @@ public class OrganisationFunctionQueryBuilder {
 
         preparedStmtList.add(offset);
         preparedStmtList.add(limit + offset);
+        
+        log.debug("Applied pagination - limit: {}, offset: {}", limit, offset);
 
         return finalQuery;
     }
 
     public String getSearchCountQueryString(OrgSearchRequest orgSearchRequest, Set<String> orgIdsFromIdentifierAndBoundarySearch, List<Object> preparedStmtList) {
-        log.info("OrganisationSearchQueryBuilder::getSearchCountQueryString");
+        log.trace("OrganisationFunctionQueryBuilder::getSearchCountQueryString entry");
         String query = getOrganisationSearchQuery(orgSearchRequest, orgIdsFromIdentifierAndBoundarySearch, preparedStmtList, true);
-        if (query != null)
+        if (query != null) {
+            log.debug("Generated count query successfully");
             return COUNT_WRAPPER.replace("{INTERNAL_QUERY}", query);
-        else
+        } else {
+            log.warn("Count query generation returned null");
             return query;
+        }
     }
 }

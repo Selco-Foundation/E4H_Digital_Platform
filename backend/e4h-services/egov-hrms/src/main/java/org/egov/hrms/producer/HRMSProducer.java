@@ -18,9 +18,10 @@ public class HRMSProducer {
     private CustomKafkaTemplate<String, Object> kafkaTemplate;
 
     public void push(String tenantId, String topic, Object value) {
-    	
+    	log.trace("HRMSProducer.push invoked for tenant: {}, topic: {}", tenantId, topic);
 		String updatedTopic = centralInstanceUtil.getStateSpecificTopicName(tenantId, topic);
-		log.info("The Kafka topic for the tenantId : " + tenantId + " is : " + updatedTopic);
-        kafkaTemplate.send(updatedTopic, value);
+		log.debug("Pushing message to Kafka topic: {} for tenant: {}", updatedTopic, tenantId);
+		kafkaTemplate.send(updatedTopic, value);
+		log.debug("Message pushed successfully to Kafka topic: {}", updatedTopic);
     }
 }

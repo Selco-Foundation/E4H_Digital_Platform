@@ -2,6 +2,7 @@ package digit.repository.querybuilder;
 
 import digit.util.QueryUtil;
 import digit.web.models.BoundaryRelationshipSearchCriteria;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -9,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 
 @Component
+@Slf4j
 public class BoundaryRelationshipQueryBuilder {
 
     private static String BOUNDARY_RELATIONSHIP_BASE_SEARCH_QUERY = "SELECT id, tenantid, code, hierarchytype, boundarytype, parent, ancestralmaterializedpath, createdtime, createdby, lastmodifiedtime, lastmodifiedby" +

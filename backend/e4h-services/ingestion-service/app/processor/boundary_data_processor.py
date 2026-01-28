@@ -50,11 +50,13 @@ class BoundaryDataProcessor:
     def process_data(self):
         """Process and validate boundary data"""
 
+        logger.trace("Starting boundary data processing")
         if isinstance(self.data_loader, BoundaryExcelDataLoader):
             boundary_df = self.data_loader.get_boundary_data()
-            logger.info(boundary_df.head(2))
+            logger.info(f"Loaded {len(boundary_df)} boundary records for processing")
+            logger.debug(f"Boundary data sample: {len(boundary_df.head(2))} rows")
         else:
-            logger.warning("Data loader is not compatible")
+            logger.warning("Data loader is not compatible with BoundaryExcelDataLoader")
             return pd.DataFrame()
 
         boundary_df["status"] = None
