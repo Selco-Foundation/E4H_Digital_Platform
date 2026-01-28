@@ -5,6 +5,8 @@ import { useHistory, useLocation } from "react-router-dom";
 
 import useNormalizedBoundary from "../../hooks/useNormalizedBoundary";
 import Filter from "../../components/BoundaryTable/Filter";
+import BoundaryModal from "../../components/BoundaryModal";
+import BoundaryAdminActions from "../../components/BoundaryTable/BoundaryAdminActions";
 
 const ROOT_BOUNDARY_TYPE = "Block";
 
@@ -12,6 +14,7 @@ const BoundaryTable = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const location = useLocation();
+  const [showBoundaryModal, setShowBoundaryModal] = useState(false);
 
   const queryParams = new URLSearchParams(window.location.search);
 
@@ -128,6 +131,11 @@ const BoundaryTable = () => {
   ];
 
   const renderBoundaries = () => {
+
+    if(isLoading) {
+      return <Loader />;
+    }
+
     if (rows && rows.length > 0) {
       return (
         <div style={{ backgroundColor: "white", padding: "20px", minWidth: "700px" }}>
@@ -173,24 +181,6 @@ const BoundaryTable = () => {
 
   return (
     <div style={{ marginTop: "20px", padding: "0px 10px", overflow: "auto" }}>
-      {isLoading && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            height: "100%",
-            width: "100%",
-            zIndex: 5,
-            backgroundColor: "rgba(255, 255, 255, 0.7)",
-            position: "fixed",
-            top: 0,
-            left: 0,
-          }}
-        >
-          <Loader />
-        </div>
-      )}
 
       <div
         style={{
@@ -214,22 +204,7 @@ const BoundaryTable = () => {
           {t("FA_LABEL_BOUNDARIES")}
         </div>
 
-        <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end", flexWrap: "wrap" }}>
-          <Button
-            variation={"secondary"}
-            label={t("FA_ADD_BOUNDARY")}
-            onButtonClick={() =>
-              history.push(`${location.pathname.replace(/\/boundaries\/?$/, "")}/boundary/create`)
-            }
-          />
-          <Button
-            variation={"secondary"}
-            label={t("FA_BULK_ADD")}
-            onButtonClick={() =>
-              history.push(`${location.pathname.replace(/\/boundaries\/?$/, "")}/boundary/upload`)
-            }
-          />
-        </div>
+        <BoundaryAdminActions t={t} />
       </div>
 
       <div style={{ width: "100%", display: "flex", gap: "15px" }}>
