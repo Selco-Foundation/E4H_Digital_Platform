@@ -25,11 +25,13 @@
     "dev:pm": "cd packages/modules/pm && yarn start",
     "dev:amc": "cd packages/modules/amc && yarn start",
     "dev:fa": "cd packages/modules/fa && yarn start",
+    "dev:org": "cd packages/modules/org && yarn start",
     "build": "run-p build:**",
     "build:qc": "cd packages/modules/qc && yarn build",
     "build:pm": "cd packages/modules/pm && yarn build",
     "build:amc": "cd packages/modules/amc && yarn build",
     "build:fa": "cd packages/modules/fa && yarn build",
+    "build:org": "cd packages/modules/org && yarn build",
     "deploy:jenkins": "./scripts/jenkins.sh",
     "clean": "rm -rf node_modules"
   },
