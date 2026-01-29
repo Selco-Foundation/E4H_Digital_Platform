@@ -33,6 +33,9 @@ public class Configuration {
     @Value("${egov.user.update.path}")
     private String userUpdateEndpoint;
 
+    @Value("${user.default.password}")
+    private String defaultUserPassword;
+
 
     //Idgen Config
     @Value("${egov.idgen.host}")
@@ -69,13 +72,22 @@ public class Configuration {
     private String hrmsHost;
 
     @Value("${egov.hrms.search.endpoint}")
-    private String hrmsEndPoint;
+    private String hrmsSearchEndPoint;
+
+    @Value("${egov.hrms.update.endpoint}")
+    private String hrmsUpdateEndPoint;
 
     @Value("${egov.hrms.create.endpoint}")
-    private String hrmsCreateEndpoint;
+    private String hrmsCreateEndPoint;
+
+//    @Value("${egov.hrms.create.endpoint}")
+//    private String hrmsCreateEndpoint;
 
     @Value("${egov.hrms.default.department.code}")
     private String hrmsDefaultDepartmentCode;
+
+    @Value("${egov.hrms.default.designation.code}")
+    private String hrmsDefaultDesignationCode;
 
 
     //URLShortening
@@ -89,6 +101,10 @@ public class Configuration {
     //SMSNotification
     @Value("${egov.sms.notification.topic}")
     private String smsNotificationTopic;
+
+    //Enc Service TenantId
+    @Value("${enc.service.tenant.id}")
+    private String encServiceTenantId;
 
 
     //Facility Search

@@ -143,10 +143,10 @@ public class IndividualService {
         Role role = getOrgAdminRole();
 
         OrgSearchCriteria orgSearchCriteria = OrgSearchCriteria.builder()
-                .id(new ArrayList<>()).tenantId(tenantId).build();
+                .ids(new ArrayList<>()).tenantId(tenantId).build();
 
         for(Organisation organisation : organisationList) {
-            orgSearchCriteria.getId().add(organisation.getId());
+            orgSearchCriteria.getIds().add(organisation.getId());
         }
         OrgSearchRequest orgSearch = OrgSearchRequest.builder().requestInfo(requestInfo)
                 .searchCriteria(orgSearchCriteria).build();

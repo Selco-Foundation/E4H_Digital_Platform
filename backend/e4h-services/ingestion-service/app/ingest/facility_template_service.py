@@ -220,6 +220,8 @@ class FacilityTemplateService:
                 header_name = f"{col.get('name')} {mandatory_indicator}".strip()
                 output_list.append(header_name)
 
+                allow_blank_map[header_name] = not col.get("required", False)
+
                 mdms_values = col.get("mdms_values")
                 if mdms_values:
                     dropdown_options = [item.get("name") for item in mdms_values if item.get("name")]
@@ -255,6 +257,7 @@ class FacilityTemplateService:
             )
             vendor_writer.write_data(df_vendor)
 
+            remove_default_empty_sheet(output_path)
             logger.info(f"Successfully created template file at {output_path}")
         except Exception as e:
             logger.error(f"Error generating template file: {e}")
@@ -395,6 +398,7 @@ class FacilityTemplateService:
         if response_json and 'organisations' in response_json:
             for vendor in response_json['organisations']:
                 vendors.append({
+                    "Vendor Id": vendor.get('id', ''),
                     "Vendor Code": vendor.get('code', ''),
                     "Vendor Name": vendor.get('name', ''),
                     "Vendor Application Number": vendor.get('applicationNumber', ''),

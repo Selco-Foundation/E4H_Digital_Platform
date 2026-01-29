@@ -230,6 +230,9 @@ public class ActivityService {
             log.trace("Enriching activity facility with id: {}", activityFacility.getId());
             activityEnrichment.enrichActivityFacilityOnSearch(request, activityFacility);
 
+            if(activityFacility.getFacility() == null)
+                continue;
+
             Object additionalDetails = activityFacility.getFacility().getAdditionalDetails();
             String boundaryCode = activityFacility.getFacility().getBoundaryCode();
             log.trace("Processing facilityId={} with boundaryCode={}", activityFacility.getFacility().getId(), boundaryCode);

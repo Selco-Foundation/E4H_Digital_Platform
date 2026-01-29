@@ -52,9 +52,9 @@ public class OrganisationServiceValidator {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = orgRequest.getRequestInfo();
         List<Organisation> organisationList = orgRequest.getOrganisations();
-        String tenantId = organisationList != null && !organisationList.isEmpty() 
+        String tenantId = organisationList != null && !organisationList.isEmpty()
                 ? organisationList.get(0).getTenantId() : "unknown";
-        log.info("Starting validation for organisation creation, tenant: {}, organisation count: {}", 
+        log.info("Starting validation for organisation creation, tenant: {}, organisation count: {}",
                 tenantId, organisationList != null ? organisationList.size() : 0);
 
         validateRequestInfo(requestInfo);
@@ -122,14 +122,18 @@ public class OrganisationServiceValidator {
         Object mdmsData = mdmsUtil.mDMSCall(requestInfo, tenantId);
 
         Set<String> orgTypeReqSet = new HashSet<>();
-        Set<String> orgFuncCategoryReqSet = new HashSet<>();
-        Set<String> orgFuncClassReqSet = new HashSet<>();
+        Map<String, Set<String>> orgSubTypeReqMap = new HashMap<>();
+        Set<String> orgStatusReqSet = new HashSet<>();
+//        Set<String> orgFuncCategoryReqSet = new HashSet<>();
+//        Set<String> orgFuncClassReqSet = new HashSet<>();
         Set<String> orgIdentifierReqSet = new HashSet<>();
 
         for (Organisation organisation : organisationList) {
-            if (!CollectionUtils.isEmpty(organisation.getFunctions())) {
-                enrichOrgTypeAndFuncCategory(organisation, orgTypeReqSet, orgFuncCategoryReqSet, orgFuncClassReqSet);
-            }
+            enrichOrgTypeAndOrgSubTypeAndOrgStatus(organisation, orgTypeReqSet, orgSubTypeReqMap, orgStatusReqSet);
+
+//            if (!CollectionUtils.isEmpty(organisation.getFunctions())) {
+//                enrichOrgTypeAndFuncCategory(organisation, orgTypeReqSet, orgFuncCategoryReqSet, orgFuncClassReqSet);
+//            }
             if (!CollectionUtils.isEmpty(organisation.getIdentifiers())) {
                 for (Identifier identifier : organisation.getIdentifiers()) {
                     if (StringUtils.isNotBlank(identifier.getType())) {
@@ -139,14 +143,20 @@ public class OrganisationServiceValidator {
             }
         }
         log.debug("MDMS validation - org types: {}, identifiers: {}", orgTypeReqSet.size(), orgIdentifierReqSet.size());
-        
+
         final String jsonPathForOrgType = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_TYPE + ".*";
+        final String jsonPathForOrgSubType = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_SUB_TYPE + ".*";
+        final String jsonPathForOrgStatus = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_STATUS + ".*";
         final String jsonPathForOrgIdentifier = MDMS_RES + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ORG_TAX_IDENTIFIER + ".*";
 
         List<Object> orgTypeRes = null;
+        List<Object> orgSubTypeRes = null;
+        List<Object> orgStatusRes = null;
         List<Object> orgIdentifierRes = null;
         try {
             orgTypeRes = JsonPath.read(mdmsData, jsonPathForOrgType);
+            orgSubTypeRes = JsonPath.read(mdmsData, jsonPathForOrgSubType);
+            orgStatusRes = JsonPath.read(mdmsData, jsonPathForOrgStatus);
             orgIdentifierRes = JsonPath.read(mdmsData, jsonPathForOrgIdentifier);
         } catch (Exception e) {
             log.error("Failed to parse MDMS response using JsonPath", e);
@@ -155,11 +165,36 @@ public class OrganisationServiceValidator {
 
         //org type
         validateOrgType(orgTypeReqSet, orgTypeRes, errorMap);
+        //org sub type
+        validateOrgSubType(orgSubTypeReqMap, orgSubTypeRes, errorMap);
+        //org status
+        validateOrgStatus(orgStatusReqSet, orgStatusRes, errorMap);
 
 
         //org identifier type
         validateOrgIdentifierType(orgIdentifierReqSet, orgIdentifierRes, errorMap);
 
+    }
+
+    private void enrichOrgTypeAndOrgSubTypeAndOrgStatus(Organisation organisation, Set<String> orgTypeReqSet, Map<String, Set<String>> orgSubTypeReqMap, Set<String> orgStatusReqSet) {
+        if (organisation.getOrgType()!=null && StringUtils.isNotBlank(organisation.getOrgType())) {
+            orgTypeReqSet.add(organisation.getOrgType());
+            Set<String> orgSubTypeReqSet = orgSubTypeReqMap.get(organisation.getOrgType());
+            if(orgSubTypeReqSet==null){
+                orgSubTypeReqMap.put(organisation.getOrgType(), new HashSet<>());
+            }
+            else{
+                orgSubTypeReqMap.put(organisation.getOrgType(), orgSubTypeReqSet);
+            }
+        }
+        if (organisation.getOrgSubType()!=null && StringUtils.isNotBlank(organisation.getOrgSubType())) {
+            Set<String> orgSubTypeReqSet = orgSubTypeReqMap.get(organisation.getOrgType());
+            orgSubTypeReqSet.add(organisation.getOrgSubType());
+            orgSubTypeReqMap.put(organisation.getOrgType(), orgSubTypeReqSet);
+        }
+        if (organisation.getOrgStatus()!=null && StringUtils.isNotBlank(organisation.getOrgStatus().name())) {
+            orgStatusReqSet.add(organisation.getOrgStatus().name());
+        }
     }
 
     private void enrichOrgTypeAndFuncCategory(Organisation organisation, Set<String> orgTypeReqSet, Set<String> orgFuncCategoryReqSet, Set<String> orgFuncClassReqSet) {
@@ -228,6 +263,37 @@ public class OrganisationServiceValidator {
         }
     }
 
+    private void validateOrgSubType(Map<String, Set<String>> orgSubTypeReqMap, List<Object> orgSubTypeRes, Map<String, String> errorMap) {
+        for (Map.Entry<String, Set<String>> entry : orgSubTypeReqMap.entrySet()) {
+            String key = entry.getKey();
+            Set<String> orgSubTypeReqSet = entry.getValue();
+
+            if (key.equals("VENDOR") && CollectionUtils.isEmpty(orgSubTypeReqSet)) {
+                errorMap.put("INVALID_ORG_TYPE", "The org sub type is not configured in MDMS");
+            } else {
+                if (!CollectionUtils.isEmpty(orgSubTypeReqSet)) {
+                    orgSubTypeReqSet.removeAll(orgSubTypeRes);
+                    if (!CollectionUtils.isEmpty(orgSubTypeReqSet)) {
+                        errorMap.put("INVALID_ORG_TYPE", "The org sub types: " + orgSubTypeReqSet + NOT_PRESENT_IN_MDMS);
+                    }
+                }
+            }
+        }
+    }
+
+    private void validateOrgStatus(Set<String> orgStatusReqSet, List<Object> orgStatusRes, Map<String, String> errorMap) {
+        if (CollectionUtils.isEmpty(orgStatusRes)) {
+            errorMap.put("INVALID_ORG_TYPE", "The org status is not configured in MDMS");
+        } else {
+            if (!CollectionUtils.isEmpty(orgStatusReqSet)) {
+                orgStatusReqSet.removeAll(orgStatusRes);
+                if (!CollectionUtils.isEmpty(orgStatusReqSet)) {
+                    errorMap.put("INVALID_ORG_TYPE", "The org statuses: " + orgStatusReqSet + NOT_PRESENT_IN_MDMS);
+                }
+            }
+        }
+    }
+
     private void validateOrganisationDetails(List<Organisation> organisationList) {
         log.trace("OrganisationServiceValidator::validateOrganisationDetails entry");
         if (organisationList == null || organisationList.isEmpty()) {
@@ -242,6 +308,9 @@ public class OrganisationServiceValidator {
             if (StringUtils.isBlank(organisation.getName())) {
                 log.error("Organisation name is missing for tenant: {}", organisation.getTenantId());
                 throw new CustomException("ORG_NAME", "Organisation name is mandatory");
+            }
+            if (StringUtils.isBlank(organisation.getOrgType())) {
+                throw new CustomException("ORG_TYPE", "Organisation type is mandatory");
             }
             validateAddress(organisation);
         }
@@ -288,9 +357,9 @@ public class OrganisationServiceValidator {
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = orgRequest.getRequestInfo();
         List<Organisation> organisationList = orgRequest.getOrganisations();
-        String tenantId = organisationList != null && !organisationList.isEmpty() 
+        String tenantId = organisationList != null && !organisationList.isEmpty()
                 ? organisationList.get(0).getTenantId() : "unknown";
-        log.info("Starting validation for organisation update, tenant: {}, organisation count: {}", 
+        log.info("Starting validation for organisation update, tenant: {}, organisation count: {}",
                 tenantId, organisationList != null ? organisationList.size() : 0);
 
         validateRequestInfo(requestInfo);
@@ -331,7 +400,7 @@ public class OrganisationServiceValidator {
 
         //check the org id exist in the system or not
         OrgSearchCriteria searchCriteria = OrgSearchCriteria.builder()
-                .id(orgIds)
+                .ids(orgIds)
                 .tenantId(organisationList.get(0).getTenantId())
                 .includeDeleted(Boolean.FALSE)
                 .build();
@@ -377,19 +446,19 @@ public class OrganisationServiceValidator {
             throw new CustomException("ORGANISATION", "Search criteria is mandatory");
         }
 
-        if (searchCriteria.getContactMobileNumber()== null && StringUtils.isBlank(searchCriteria.getTenantId())) {
-            log.warn("Tenant ID is mandatory in Organisation request body if mobile number is not passed");
+        if (searchCriteria.getOrgPocPhone()== null && StringUtils.isBlank(searchCriteria.getTenantId())) {
+            log.error("Tenant ID is mandatory in Organisation request body if mobile number is not passed");
             errorMap.put("TENANT_ID", "Tenant ID is mandatory");
         }
 
         if ((searchCriteria.getFunctions() != null && searchCriteria.getFunctions().getValidFrom() != null && searchCriteria.getFunctions().getValidTo() != null) &&
                 (searchCriteria.getFunctions().getValidFrom().compareTo(searchCriteria.getFunctions().getValidTo()) > 0)) {
-            log.warn("Invalid date range: valid from date is greater than valid to date");
+            log.error(VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO);
             throw new CustomException("INVALID_DATE", VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO);
         }
 
         if (searchCriteria.getCreatedTo() != null && searchCriteria.getCreatedFrom() == null) {
-            log.warn("Created from date is required when created to date is passed");
+            log.error(VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO);
             throw new CustomException(INVALID_ORG_SEARCH_DATE, "Created From date in search parameters is required when created to date is passed");
         }
 

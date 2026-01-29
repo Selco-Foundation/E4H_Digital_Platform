@@ -16,22 +16,18 @@ public class BoundaryRelationshipQueryBuilder {
     private static String BOUNDARY_RELATIONSHIP_BASE_SEARCH_QUERY = "SELECT id, tenantid, code, hierarchytype, boundarytype, parent, ancestralmaterializedpath, createdtime, createdby, lastmodifiedtime, lastmodifiedby" +
             " FROM boundary_relationship ";
 
+    private static String COUNT_BOUNDARY_RELATIONSHIP_BASE_SEARCH_QUERY = "SELECT count(*) FROM boundary_relationship ";
+
     private static String ORDER_BY_CLAUSE = " order by createdtime desc ";
 
-    public String getBoundaryRelationshipSearchQuery(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria, List<Object> preparedStmtList) {
-        log.trace("getBoundaryRelationshipSearchQuery method invoked");
-        log.debug("Building boundary relationship search query, tenantId={}, hierarchyType={}", 
-                boundaryRelationshipSearchCriteria.getTenantId(),
-                boundaryRelationshipSearchCriteria.getHierarchyType());
-        String query = buildQuery(boundaryRelationshipSearchCriteria, preparedStmtList);
-        query += ORDER_BY_CLAUSE;
-        log.debug("Boundary relationship search query built, parameters count={}", preparedStmtList.size());
+    public String getBoundaryRelationshipSearchQuery(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria, List<Object> preparedStmtList, Boolean isCountQuery) {
+        String query = buildQuery(boundaryRelationshipSearchCriteria, preparedStmtList, isCountQuery);
         return query;
     }
 
-    private String buildQuery(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria, List<Object> preparedStmtList) {
-        log.trace("buildQuery method invoked");
-        StringBuilder builder = new StringBuilder(BOUNDARY_RELATIONSHIP_BASE_SEARCH_QUERY);
+    private String buildQuery(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria, List<Object> preparedStmtList, Boolean isCountQuery) {
+        String query = Boolean.TRUE.equals(isCountQuery) ? COUNT_BOUNDARY_RELATIONSHIP_BASE_SEARCH_QUERY : BOUNDARY_RELATIONSHIP_BASE_SEARCH_QUERY;
+        StringBuilder builder = new StringBuilder(query);
 
         if (!ObjectUtils.isEmpty(boundaryRelationshipSearchCriteria.getTenantId())) {
             QueryUtil.addClauseIfRequired(builder, preparedStmtList);
@@ -82,6 +78,12 @@ public class BoundaryRelationshipQueryBuilder {
             builder.append(" && string_to_array(ancestralmaterializedpath, '|') ");
             QueryUtil.addToPreparedStatement(preparedStmtList, new HashSet<>(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes()));
         }
+
+        if (Boolean.TRUE.equals(isCountQuery)) {
+            return builder.toString();
+        }
+
+        builder.append(ORDER_BY_CLAUSE);
 
         return builder.toString();
     }

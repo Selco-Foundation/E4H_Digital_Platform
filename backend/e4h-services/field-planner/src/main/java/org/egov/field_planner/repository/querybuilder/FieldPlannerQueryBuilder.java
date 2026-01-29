@@ -28,9 +28,14 @@ public class FieldPlannerQueryBuilder {
     private static final String FETCH_FIELDPLAN_QUERY = "SELECT fp.id as fieldPlanId, fp.tenant_id as fp_tenantId, fp.name as fp_name, fp.project_id as fp_projectId, fp.health_facility_number as fp_healthFacilityNumber, " +
             "fp.geography_scope as fp_geographyScope, fp.selected_activities as fp_selectedActivities, fp.status as fp_status, fp.start_date as fp_startDate, fp.end_date as fp_endDate, " +
             "fp.additional_details as fp_additionalDetails, fp.isdeleted as fp_isDeleted, fp.created_by as fp_createdBy, fp.last_modified_by as fp_lastModifiedBy, fp.created_time as fp_createdTime, " +
-            "fp.last_modified_time as fp_lastModifiedTime " +
+            "fp.last_modified_time as fp_lastModifiedTime, prj.id as projectId, prj.tenantId as project_tenantId, prj.projectNumber as project_projectNumber, prj.name as project_name, prj.projectType as project_projectType, " +
+            "prj.projectTypeId as project_projectTypeId, prj.projectSubType as project_projectSubtype, " +
+            "prj.department as project_department, prj.description as project_description, prj.referenceId as project_referenceId, prj.startDate as project_startDate, prj.endDate as project_endDate, " +
+            "prj.isTaskEnabled as project_isTaskEnabled, prj.parent as project_parent, prj.projectHierarchy as project_projectHierarchy, prj.natureOfWork as project_natureOfWork, prj.additionalDetails as project_additionalDetails, " +
+            "prj.isDeleted as project_isDeleted, prj.rowVersion as project_rowVersion, prj.createdBy as project_createdBy, prj.lastModifiedBy as project_lastModifiedBy, prj.createdTime as project_createdTime, " +
+            "prj.lastModifiedTime as project_lastModifiedTime " +
             " " +
-            "from field_plans fp ";
+            "from field_plans fp LEFT JOIN project prj ON prj.id = fp.project_id ";
     private static final String FIELDPLAN_COUNT_QUERY = "SELECT COUNT(*) FROM field_plans fp ";
 
     private final String paginationWrapper = "SELECT * FROM " +
@@ -83,7 +88,7 @@ public class FieldPlannerQueryBuilder {
         StringBuilder queryBuilder = new StringBuilder(FETCH_FIELDPLAN_QUERY);
         if (StringUtils.isNotBlank(fieldPlan.getName())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" LOWER(name) LIKE ? ");
+            queryBuilder.append(" LOWER(fp.name) LIKE ? ");
             preparedStmtList.add(fieldPlan.getName().toLowerCase() + "%");
             log.debug("Added name filter to query");
         }
