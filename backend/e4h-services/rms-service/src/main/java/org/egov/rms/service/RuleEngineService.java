@@ -261,7 +261,8 @@ public class RuleEngineService {
             if (facilityId != null && facility.getBatteryHealthInfo() != null) {
                 // Determine alert subtype based on battery health info
                 Alert.AlertSubType alertSubType = Alert.AlertSubType.DEEP_DISCHARGING;
-                if (facility.getBatteryHealthInfo().equalsIgnoreCase("overcharge")) {
+                if (facility.getBatteryHealthInfo().equalsIgnoreCase("overcharge") ||
+                        facility.getBatteryHealthInfo().equalsIgnoreCase("poorHealth")) {
                     alertSubType = Alert.AlertSubType.OVERCHARGING;
                 } else if (facility.getBatteryHealthInfo().equalsIgnoreCase("deepDischarge") || 
                           facility.getBatteryHealthInfo().toLowerCase().contains("discharge")) {
