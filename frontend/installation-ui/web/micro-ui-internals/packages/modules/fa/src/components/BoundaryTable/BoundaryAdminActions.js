@@ -4,6 +4,7 @@ import { useHistory } from "react-router-dom";
 import BoundaryModal from "../BoundaryModal";
 import { BoundaryService } from "../../services/Boundary";
 import { useQueryClient } from "react-query";
+import { LocalizationService } from "../../services/Localization";
 
 const getCode = (val) => {
   if (!val) return "";
@@ -76,6 +77,8 @@ const BoundaryAdminActions = ({ t }) => {
         state: stateVal,
         district: districtVal,
         block: blockVal,
+        isStateTextMode: isStateTextMode,
+        isDistrictTextMode: isDistrictTextMode,
       });
 
       const isAlreadyExists = (e) => {
@@ -109,7 +112,7 @@ const BoundaryAdminActions = ({ t }) => {
         }
       };
 
-      const createBoundaryAndRel = async ({ code, boundaryType, parent, geographyDetails, ignoreIfExists }) => {
+      const createBoundaryAndRel = async ({ name, code, boundaryType, parent, geographyDetails, ignoreIfExists }) => {
         try {
           await BoundaryService.createBoundary({
             Boundary: [
@@ -117,7 +120,6 @@ const BoundaryAdminActions = ({ t }) => {
                 tenantId,
                 code,
                 geometry: null,
-                additionalDetails: { geographyDetails },
               },
             ],
           });
@@ -138,42 +140,58 @@ const BoundaryAdminActions = ({ t }) => {
         } catch (e) {
           if (!ignoreIfExists || !isAlreadyExists(e)) throw e;
         }
+
+        const localizationPayload = {
+          tenantId: tenantId,
+          messages: [
+            {
+              code: `Boundary_${code}`,
+              message: name,
+              module: "rainmaker-in",
+              locale: "en_IN",
+            },
+          ],
+        };
+        await LocalizationService.upsertLocalization(localizationPayload);
       };
 
       if (isStateTextMode) {
         await createBoundaryAndRel({
+          name: stateVal,
           code: computed.state,
           boundaryType: "State",
           parent: computed.country,
-          geographyDetails: { country: computed.country, state: computed.state },
           ignoreIfExists: true,
         });
       }
 
       if (isDistrictTextMode) {
         await createBoundaryAndRel({
+          name: districtVal,
           code: computed.district,
           boundaryType: "District",
           parent: computed.state,
-          geographyDetails: { country: computed.country, state: computed.state, district: computed.district },
           ignoreIfExists: true,
         });
       }
 
       await createBoundaryAndRel({
-        code: computed.code,
+        name: blockVal,
+        code: computed.block,
         boundaryType: "Block",
         parent: computed.district,
-        geographyDetails: {
-          country: computed.country,
-          state: computed.state,
-          district: computed.district,
-          block: computed.block,
-        },
         ignoreIfExists: false,
       });
 
       await queryClient.invalidateQueries(["NORMALIZED_BOUNDARY"]);
+
+      const existingModules = Digit.PersistantStorage.get("Locale.en_IN.List");
+      Digit.PersistantStorage.set("Locale.en_IN.List", existingModules.filter((module) => module !== "rainmaker-in"));
+      await Digit.LocalizationService.getUpdatedMessages({
+        modules: ["rainmaker-in"],
+        locale: "en_IN",
+        tenantId: tenantId,
+      });
       setBlockUI(false);
       setShowBoundaryModal(false);
       setToast({ key: "success", label: "FA_TOAST_BOUNDARY_CREATION_SUCCESS" });
@@ -196,8 +214,9 @@ const BoundaryAdminActions = ({ t }) => {
             alignItems: "center",
             height: "100%",
             width: "100%",
-            zIndex: 5,
-            backgroundColor: "rgba(255, 255, 255, 0.7)",
+            zIndex: 10000005,
+            backgroundColor: "gray",
+            opacity: 0.5,
             position: "fixed",
             top: 0,
             left: 0,
