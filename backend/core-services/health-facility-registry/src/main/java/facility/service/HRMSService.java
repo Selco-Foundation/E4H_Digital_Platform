@@ -131,7 +131,7 @@ public class HRMSService {
 
             // Build employee object
             Map<String, Object> employee = new HashMap<>();
-            employee.put("code", null); // HRMS will generate employee code
+            employee.put("code", facilityDetails.getHfrId());
             employee.put("employeeStatus", "EMPLOYED");
             employee.put("employeeType", "PERMANENT");
             employee.put("dateOfAppointment", currentTimestamp);
