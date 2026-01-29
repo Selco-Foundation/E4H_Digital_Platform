@@ -72,8 +72,8 @@ public class FieldPlannerServiceUtil {
         // Validate state name is not placeholder/invalid
         if (stateName != null && !stateName.equalsIgnoreCase("nan") &&
                 !stateName.equalsIgnoreCase("XYZ") && stateName.trim().length() > 0) {
-            return boundaryCodeToName(stateName.trim());
             log.trace("Exiting extractStateName method");
+            return boundaryCodeToName(stateName.trim());
         }
 
         log.warn("Invalid state name found in boundary: {}, returning null", stateName);
