@@ -186,12 +186,13 @@ class AssetRepository {
       );
       if (draft) return;
 
+      final tenantId = envConfig.variables.tenantId;
       final resp = await _dio.post(
-        '/asset-registry/v1/asset/_search?tenantId=${envConfig.variables.tenantId}',
+        '/asset-registry/v1/asset/_search?tenantId=$tenantId&limit=1000',
         data: {
           'criteria': {
-            'tenantId': envConfig.variables.tenantId,
-            'activityFacilityID': activityFacilityId,
+            'tenantId': tenantId,
+            'activityFacilityID': activityFacilityId
           }
         },
       );
@@ -426,7 +427,8 @@ class AssetRepository {
     };
 
     if (sn.isNotEmpty) {
-      criteria['serialNumber'] = [sn];
+      // criteria['serialNumber'] = [sn];
+      criteria['serialNumber'] = sn;
     }
 
     if (mn.isNotEmpty) {

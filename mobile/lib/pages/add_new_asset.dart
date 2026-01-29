@@ -87,6 +87,8 @@ class AddNewAssetPage extends StatefulWidget {
 }
 
 class _AddNewAssetPageState extends State<AddNewAssetPage> {
+  bool _isSaving = false;
+
   String? _currentActivityFacilityId;
   ActivityFacilityWorkflow? activityFacilityWorkflow;
   final List<AssetModel> _assets = [AssetModel(serialNumber: '')];
@@ -372,8 +374,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               orElse: () => 0,
             ),
             builder: (ctx, maxAssets) {
-              final isDisabled = _assets.length != maxAssets ||
-                  _assets.any((a) => !_isAssetComplete(a, currentAssetType));
+              final isDisabled = (_assets.length != maxAssets ||
+                      _assets.any(
+                          (a) => !_isAssetComplete(a, currentAssetType))) ||
+                  _isSaving;
 
               return Scaffold(
                 body: ScrollableContent(
@@ -389,45 +393,70 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     isDisabled: isDisabled,
                     onPress: () async {
                       if (isDisabled) return;
-                      context.read<CacheAddNewAssetBloc>().add(
-                          CacheAddNewAssetEvent.deleteAll(
-                              _currentActivityFacilityId!, currentAssetType));
+                      if (_isSaving) return;
 
-                      await context
-                          .read<CacheAddNewAssetBloc>()
-                          .stream
-                          .firstWhere((state) => state.maybeWhen(
-                                deleted: () => true,
-                                error: (_) => true,
-                                orElse: () => false,
-                              ));
+                      setState(() {
+                        _isSaving = true;
+                      });
 
-                      for (final asset in _assets) {
-                        final newAsset = CacheAddNewAsset(
-                          assetId: asset.assetId,
-                          documentId: asset.documentId,
-                          activityFacilityId: _currentActivityFacilityId!,
-                          assetType: currentAssetType,
-                          itemNumber: asset.capacity,
-                          serialNumber: asset.serialNumber,
-                          documentType: "ASSET",
-                          photoPath: asset.photoPath!,
-                          longitude: asset.longitude!,
-                          latitude: asset.latitude!,
-                          capacityUnit: asset.capacityUnit ?? assetCapacityUom,
-                          panelCapacity: asset.panelCapacity,
-                          batteryCapacity: asset.batteryCapacity,
-                          batteryVoltage: asset.batteryVoltage,
-                          batteryType: asset.batteryType,
-                          voltageUnit: voltageUom ?? asset.voltageUnit,
-                          inverterCapacity: asset.inverterCapacity,
-                          inverterCapacityUnit:
-                              asset.inverterCapacityUnit ?? assetCapacityUom,
-                          currentUnit: asset.currentUnit,
-                        );
-                        context
+                      try {
+                        final entries = _assets.map((asset) {
+                          return CacheAddNewAsset(
+                            assetId: asset.assetId,
+                            documentId: asset.documentId,
+                            activityFacilityId: _currentActivityFacilityId!,
+                            assetType: currentAssetType,
+                            itemNumber: asset.capacity,
+                            serialNumber: asset.serialNumber,
+                            documentType: "ASSET",
+                            photoPath: asset.photoPath!,
+                            longitude: asset.longitude!,
+                            latitude: asset.latitude!,
+                            capacityUnit:
+                                asset.capacityUnit ?? assetCapacityUom,
+                            panelCapacity: asset.panelCapacity,
+                            batteryCapacity: asset.batteryCapacity,
+                            batteryVoltage: asset.batteryVoltage,
+                            batteryType: asset.batteryType,
+                            voltageUnit: voltageUom ?? asset.voltageUnit,
+                            inverterCapacity: asset.inverterCapacity,
+                            inverterCapacityUnit:
+                                asset.inverterCapacityUnit ?? assetCapacityUom,
+                            currentUnit: asset.currentUnit,
+                          );
+                        }).toList();
+
+                        context.read<CacheAddNewAssetBloc>().add(
+                              CacheAddNewAssetEvent.replaceAll(
+                                _currentActivityFacilityId!,
+                                currentAssetType,
+                                entries,
+                              ),
+                            );
+
+                        final result = await context
                             .read<CacheAddNewAssetBloc>()
-                            .add(CacheAddNewAssetEvent.add(newAsset));
+                            .stream
+                            .firstWhere((state) => state.maybeWhen(
+                                  loaded: (_) => true,
+                                  error: (_) => true,
+                                  orElse: () => false,
+                                ));
+
+                        final errMsg = result.maybeWhen(
+                          error: (m) => m,
+                          orElse: () => null,
+                        );
+
+                        if (errMsg != null) {
+                          throw Exception(errMsg);
+                        }
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            _isSaving = false;
+                          });
+                        }
                       }
                       if (_currentActivityFacilityId != null) {
                         context.read<CacheAssetCountBloc>().add(
@@ -622,6 +651,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
                   final file = snapshot.data;
                   return ImageUploader(
+                    imageQuality: 60, // 0..100 (lower => smaller)
+                    maxWidth: 1280,
+                    maxHeight: 1280,
+                    requestFullMetadata: false,
                     initialImages: file != null ? [file] : [],
                     onImagesSelected: (List<File> imageFile) async {
                       if (imageFile.isEmpty) return;

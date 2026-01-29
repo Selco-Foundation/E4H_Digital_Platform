@@ -24,6 +24,9 @@ mixin _$CacheAddNewAssetEvent {
     required TResult Function(int id) delete,
     required TResult Function(String activityFacilityId, String assetType)
         deleteAll,
+    required TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)
+        replaceAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -33,6 +36,9 @@ mixin _$CacheAddNewAssetEvent {
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
     TResult? Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -42,6 +48,9 @@ mixin _$CacheAddNewAssetEvent {
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
     TResult Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -52,6 +61,7 @@ mixin _$CacheAddNewAssetEvent {
     required TResult Function(CacheAddNewAssetEventUpdate value) update,
     required TResult Function(CacheAddNewAssetEventDelete value) delete,
     required TResult Function(CacheAddNewAssetEventDeleteAll value) deleteAll,
+    required TResult Function(CacheAddNewAssetEventReplaceAll value) replaceAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -61,6 +71,7 @@ mixin _$CacheAddNewAssetEvent {
     TResult? Function(CacheAddNewAssetEventUpdate value)? update,
     TResult? Function(CacheAddNewAssetEventDelete value)? delete,
     TResult? Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult? Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -70,6 +81,7 @@ mixin _$CacheAddNewAssetEvent {
     TResult Function(CacheAddNewAssetEventUpdate value)? update,
     TResult Function(CacheAddNewAssetEventDelete value)? delete,
     TResult Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -178,6 +190,9 @@ class _$CacheAddNewAssetEventGetImpl implements CacheAddNewAssetEventGet {
     required TResult Function(int id) delete,
     required TResult Function(String activityFacilityId, String assetType)
         deleteAll,
+    required TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)
+        replaceAll,
   }) {
     return get(activityFacilityId, assetType);
   }
@@ -190,6 +205,9 @@ class _$CacheAddNewAssetEventGetImpl implements CacheAddNewAssetEventGet {
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
     TResult? Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
   }) {
     return get?.call(activityFacilityId, assetType);
   }
@@ -202,6 +220,9 @@ class _$CacheAddNewAssetEventGetImpl implements CacheAddNewAssetEventGet {
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
     TResult Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
     required TResult orElse(),
   }) {
     if (get != null) {
@@ -218,6 +239,7 @@ class _$CacheAddNewAssetEventGetImpl implements CacheAddNewAssetEventGet {
     required TResult Function(CacheAddNewAssetEventUpdate value) update,
     required TResult Function(CacheAddNewAssetEventDelete value) delete,
     required TResult Function(CacheAddNewAssetEventDeleteAll value) deleteAll,
+    required TResult Function(CacheAddNewAssetEventReplaceAll value) replaceAll,
   }) {
     return get(this);
   }
@@ -230,6 +252,7 @@ class _$CacheAddNewAssetEventGetImpl implements CacheAddNewAssetEventGet {
     TResult? Function(CacheAddNewAssetEventUpdate value)? update,
     TResult? Function(CacheAddNewAssetEventDelete value)? delete,
     TResult? Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult? Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
   }) {
     return get?.call(this);
   }
@@ -242,6 +265,7 @@ class _$CacheAddNewAssetEventGetImpl implements CacheAddNewAssetEventGet {
     TResult Function(CacheAddNewAssetEventUpdate value)? update,
     TResult Function(CacheAddNewAssetEventDelete value)? delete,
     TResult Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
     required TResult orElse(),
   }) {
     if (get != null) {
@@ -337,6 +361,9 @@ class _$CacheAddNewAssetEventAddImpl implements CacheAddNewAssetEventAdd {
     required TResult Function(int id) delete,
     required TResult Function(String activityFacilityId, String assetType)
         deleteAll,
+    required TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)
+        replaceAll,
   }) {
     return add(entry);
   }
@@ -349,6 +376,9 @@ class _$CacheAddNewAssetEventAddImpl implements CacheAddNewAssetEventAdd {
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
     TResult? Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
   }) {
     return add?.call(entry);
   }
@@ -361,6 +391,9 @@ class _$CacheAddNewAssetEventAddImpl implements CacheAddNewAssetEventAdd {
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
     TResult Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
     required TResult orElse(),
   }) {
     if (add != null) {
@@ -377,6 +410,7 @@ class _$CacheAddNewAssetEventAddImpl implements CacheAddNewAssetEventAdd {
     required TResult Function(CacheAddNewAssetEventUpdate value) update,
     required TResult Function(CacheAddNewAssetEventDelete value) delete,
     required TResult Function(CacheAddNewAssetEventDeleteAll value) deleteAll,
+    required TResult Function(CacheAddNewAssetEventReplaceAll value) replaceAll,
   }) {
     return add(this);
   }
@@ -389,6 +423,7 @@ class _$CacheAddNewAssetEventAddImpl implements CacheAddNewAssetEventAdd {
     TResult? Function(CacheAddNewAssetEventUpdate value)? update,
     TResult? Function(CacheAddNewAssetEventDelete value)? delete,
     TResult? Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult? Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
   }) {
     return add?.call(this);
   }
@@ -401,6 +436,7 @@ class _$CacheAddNewAssetEventAddImpl implements CacheAddNewAssetEventAdd {
     TResult Function(CacheAddNewAssetEventUpdate value)? update,
     TResult Function(CacheAddNewAssetEventDelete value)? delete,
     TResult Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
     required TResult orElse(),
   }) {
     if (add != null) {
@@ -494,6 +530,9 @@ class _$CacheAddNewAssetEventUpdateImpl implements CacheAddNewAssetEventUpdate {
     required TResult Function(int id) delete,
     required TResult Function(String activityFacilityId, String assetType)
         deleteAll,
+    required TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)
+        replaceAll,
   }) {
     return update(entry);
   }
@@ -506,6 +545,9 @@ class _$CacheAddNewAssetEventUpdateImpl implements CacheAddNewAssetEventUpdate {
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
     TResult? Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
   }) {
     return update?.call(entry);
   }
@@ -518,6 +560,9 @@ class _$CacheAddNewAssetEventUpdateImpl implements CacheAddNewAssetEventUpdate {
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
     TResult Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
     required TResult orElse(),
   }) {
     if (update != null) {
@@ -534,6 +579,7 @@ class _$CacheAddNewAssetEventUpdateImpl implements CacheAddNewAssetEventUpdate {
     required TResult Function(CacheAddNewAssetEventUpdate value) update,
     required TResult Function(CacheAddNewAssetEventDelete value) delete,
     required TResult Function(CacheAddNewAssetEventDeleteAll value) deleteAll,
+    required TResult Function(CacheAddNewAssetEventReplaceAll value) replaceAll,
   }) {
     return update(this);
   }
@@ -546,6 +592,7 @@ class _$CacheAddNewAssetEventUpdateImpl implements CacheAddNewAssetEventUpdate {
     TResult? Function(CacheAddNewAssetEventUpdate value)? update,
     TResult? Function(CacheAddNewAssetEventDelete value)? delete,
     TResult? Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult? Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
   }) {
     return update?.call(this);
   }
@@ -558,6 +605,7 @@ class _$CacheAddNewAssetEventUpdateImpl implements CacheAddNewAssetEventUpdate {
     TResult Function(CacheAddNewAssetEventUpdate value)? update,
     TResult Function(CacheAddNewAssetEventDelete value)? delete,
     TResult Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
     required TResult orElse(),
   }) {
     if (update != null) {
@@ -651,6 +699,9 @@ class _$CacheAddNewAssetEventDeleteImpl implements CacheAddNewAssetEventDelete {
     required TResult Function(int id) delete,
     required TResult Function(String activityFacilityId, String assetType)
         deleteAll,
+    required TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)
+        replaceAll,
   }) {
     return delete(id);
   }
@@ -663,6 +714,9 @@ class _$CacheAddNewAssetEventDeleteImpl implements CacheAddNewAssetEventDelete {
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
     TResult? Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
   }) {
     return delete?.call(id);
   }
@@ -675,6 +729,9 @@ class _$CacheAddNewAssetEventDeleteImpl implements CacheAddNewAssetEventDelete {
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
     TResult Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
     required TResult orElse(),
   }) {
     if (delete != null) {
@@ -691,6 +748,7 @@ class _$CacheAddNewAssetEventDeleteImpl implements CacheAddNewAssetEventDelete {
     required TResult Function(CacheAddNewAssetEventUpdate value) update,
     required TResult Function(CacheAddNewAssetEventDelete value) delete,
     required TResult Function(CacheAddNewAssetEventDeleteAll value) deleteAll,
+    required TResult Function(CacheAddNewAssetEventReplaceAll value) replaceAll,
   }) {
     return delete(this);
   }
@@ -703,6 +761,7 @@ class _$CacheAddNewAssetEventDeleteImpl implements CacheAddNewAssetEventDelete {
     TResult? Function(CacheAddNewAssetEventUpdate value)? update,
     TResult? Function(CacheAddNewAssetEventDelete value)? delete,
     TResult? Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult? Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
   }) {
     return delete?.call(this);
   }
@@ -715,6 +774,7 @@ class _$CacheAddNewAssetEventDeleteImpl implements CacheAddNewAssetEventDelete {
     TResult Function(CacheAddNewAssetEventUpdate value)? update,
     TResult Function(CacheAddNewAssetEventDelete value)? delete,
     TResult Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
     required TResult orElse(),
   }) {
     if (delete != null) {
@@ -821,6 +881,9 @@ class _$CacheAddNewAssetEventDeleteAllImpl
     required TResult Function(int id) delete,
     required TResult Function(String activityFacilityId, String assetType)
         deleteAll,
+    required TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)
+        replaceAll,
   }) {
     return deleteAll(activityFacilityId, assetType);
   }
@@ -833,6 +896,9 @@ class _$CacheAddNewAssetEventDeleteAllImpl
     TResult? Function(CacheAddNewAsset entry)? update,
     TResult? Function(int id)? delete,
     TResult? Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
   }) {
     return deleteAll?.call(activityFacilityId, assetType);
   }
@@ -845,6 +911,9 @@ class _$CacheAddNewAssetEventDeleteAllImpl
     TResult Function(CacheAddNewAsset entry)? update,
     TResult Function(int id)? delete,
     TResult Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
     required TResult orElse(),
   }) {
     if (deleteAll != null) {
@@ -861,6 +930,7 @@ class _$CacheAddNewAssetEventDeleteAllImpl
     required TResult Function(CacheAddNewAssetEventUpdate value) update,
     required TResult Function(CacheAddNewAssetEventDelete value) delete,
     required TResult Function(CacheAddNewAssetEventDeleteAll value) deleteAll,
+    required TResult Function(CacheAddNewAssetEventReplaceAll value) replaceAll,
   }) {
     return deleteAll(this);
   }
@@ -873,6 +943,7 @@ class _$CacheAddNewAssetEventDeleteAllImpl
     TResult? Function(CacheAddNewAssetEventUpdate value)? update,
     TResult? Function(CacheAddNewAssetEventDelete value)? delete,
     TResult? Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult? Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
   }) {
     return deleteAll?.call(this);
   }
@@ -885,6 +956,7 @@ class _$CacheAddNewAssetEventDeleteAllImpl
     TResult Function(CacheAddNewAssetEventUpdate value)? update,
     TResult Function(CacheAddNewAssetEventDelete value)? delete,
     TResult Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
     required TResult orElse(),
   }) {
     if (deleteAll != null) {
@@ -904,6 +976,211 @@ abstract class CacheAddNewAssetEventDeleteAll implements CacheAddNewAssetEvent {
   @JsonKey(ignore: true)
   _$$CacheAddNewAssetEventDeleteAllImplCopyWith<
           _$CacheAddNewAssetEventDeleteAllImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$CacheAddNewAssetEventReplaceAllImplCopyWith<$Res> {
+  factory _$$CacheAddNewAssetEventReplaceAllImplCopyWith(
+          _$CacheAddNewAssetEventReplaceAllImpl value,
+          $Res Function(_$CacheAddNewAssetEventReplaceAllImpl) then) =
+      __$$CacheAddNewAssetEventReplaceAllImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call(
+      {String activityFacilityId,
+      String assetType,
+      List<CacheAddNewAsset> entries});
+}
+
+/// @nodoc
+class __$$CacheAddNewAssetEventReplaceAllImplCopyWithImpl<$Res>
+    extends _$CacheAddNewAssetEventCopyWithImpl<$Res,
+        _$CacheAddNewAssetEventReplaceAllImpl>
+    implements _$$CacheAddNewAssetEventReplaceAllImplCopyWith<$Res> {
+  __$$CacheAddNewAssetEventReplaceAllImplCopyWithImpl(
+      _$CacheAddNewAssetEventReplaceAllImpl _value,
+      $Res Function(_$CacheAddNewAssetEventReplaceAllImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? activityFacilityId = null,
+    Object? assetType = null,
+    Object? entries = null,
+  }) {
+    return _then(_$CacheAddNewAssetEventReplaceAllImpl(
+      null == activityFacilityId
+          ? _value.activityFacilityId
+          : activityFacilityId // ignore: cast_nullable_to_non_nullable
+              as String,
+      null == assetType
+          ? _value.assetType
+          : assetType // ignore: cast_nullable_to_non_nullable
+              as String,
+      null == entries
+          ? _value._entries
+          : entries // ignore: cast_nullable_to_non_nullable
+              as List<CacheAddNewAsset>,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$CacheAddNewAssetEventReplaceAllImpl
+    implements CacheAddNewAssetEventReplaceAll {
+  const _$CacheAddNewAssetEventReplaceAllImpl(this.activityFacilityId,
+      this.assetType, final List<CacheAddNewAsset> entries)
+      : _entries = entries;
+
+  @override
+  final String activityFacilityId;
+  @override
+  final String assetType;
+  final List<CacheAddNewAsset> _entries;
+  @override
+  List<CacheAddNewAsset> get entries {
+    if (_entries is EqualUnmodifiableListView) return _entries;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_entries);
+  }
+
+  @override
+  String toString() {
+    return 'CacheAddNewAssetEvent.replaceAll(activityFacilityId: $activityFacilityId, assetType: $assetType, entries: $entries)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$CacheAddNewAssetEventReplaceAllImpl &&
+            (identical(other.activityFacilityId, activityFacilityId) ||
+                other.activityFacilityId == activityFacilityId) &&
+            (identical(other.assetType, assetType) ||
+                other.assetType == assetType) &&
+            const DeepCollectionEquality().equals(other._entries, _entries));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, activityFacilityId, assetType,
+      const DeepCollectionEquality().hash(_entries));
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$CacheAddNewAssetEventReplaceAllImplCopyWith<
+          _$CacheAddNewAssetEventReplaceAllImpl>
+      get copyWith => __$$CacheAddNewAssetEventReplaceAllImplCopyWithImpl<
+          _$CacheAddNewAssetEventReplaceAllImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String activityFacilityId, String assetType) get,
+    required TResult Function(CacheAddNewAsset entry) add,
+    required TResult Function(CacheAddNewAsset entry) update,
+    required TResult Function(int id) delete,
+    required TResult Function(String activityFacilityId, String assetType)
+        deleteAll,
+    required TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)
+        replaceAll,
+  }) {
+    return replaceAll(activityFacilityId, assetType, entries);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String activityFacilityId, String assetType)? get,
+    TResult? Function(CacheAddNewAsset entry)? add,
+    TResult? Function(CacheAddNewAsset entry)? update,
+    TResult? Function(int id)? delete,
+    TResult? Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult? Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
+  }) {
+    return replaceAll?.call(activityFacilityId, assetType, entries);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String activityFacilityId, String assetType)? get,
+    TResult Function(CacheAddNewAsset entry)? add,
+    TResult Function(CacheAddNewAsset entry)? update,
+    TResult Function(int id)? delete,
+    TResult Function(String activityFacilityId, String assetType)? deleteAll,
+    TResult Function(String activityFacilityId, String assetType,
+            List<CacheAddNewAsset> entries)?
+        replaceAll,
+    required TResult orElse(),
+  }) {
+    if (replaceAll != null) {
+      return replaceAll(activityFacilityId, assetType, entries);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(CacheAddNewAssetEventGet value) get,
+    required TResult Function(CacheAddNewAssetEventAdd value) add,
+    required TResult Function(CacheAddNewAssetEventUpdate value) update,
+    required TResult Function(CacheAddNewAssetEventDelete value) delete,
+    required TResult Function(CacheAddNewAssetEventDeleteAll value) deleteAll,
+    required TResult Function(CacheAddNewAssetEventReplaceAll value) replaceAll,
+  }) {
+    return replaceAll(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(CacheAddNewAssetEventGet value)? get,
+    TResult? Function(CacheAddNewAssetEventAdd value)? add,
+    TResult? Function(CacheAddNewAssetEventUpdate value)? update,
+    TResult? Function(CacheAddNewAssetEventDelete value)? delete,
+    TResult? Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult? Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
+  }) {
+    return replaceAll?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(CacheAddNewAssetEventGet value)? get,
+    TResult Function(CacheAddNewAssetEventAdd value)? add,
+    TResult Function(CacheAddNewAssetEventUpdate value)? update,
+    TResult Function(CacheAddNewAssetEventDelete value)? delete,
+    TResult Function(CacheAddNewAssetEventDeleteAll value)? deleteAll,
+    TResult Function(CacheAddNewAssetEventReplaceAll value)? replaceAll,
+    required TResult orElse(),
+  }) {
+    if (replaceAll != null) {
+      return replaceAll(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class CacheAddNewAssetEventReplaceAll
+    implements CacheAddNewAssetEvent {
+  const factory CacheAddNewAssetEventReplaceAll(final String activityFacilityId,
+          final String assetType, final List<CacheAddNewAsset> entries) =
+      _$CacheAddNewAssetEventReplaceAllImpl;
+
+  String get activityFacilityId;
+  String get assetType;
+  List<CacheAddNewAsset> get entries;
+  @JsonKey(ignore: true)
+  _$$CacheAddNewAssetEventReplaceAllImplCopyWith<
+          _$CacheAddNewAssetEventReplaceAllImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
