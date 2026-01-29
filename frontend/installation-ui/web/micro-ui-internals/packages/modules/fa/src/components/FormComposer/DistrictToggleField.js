@@ -79,7 +79,7 @@ const DistrictToggleField = (props) => {
           pointerEvents: !isTextMode && dropdownDisabled ? "none" : "auto",
         }}
       >
-        {isTextMode ? (
+        {stateIsTextMode || isTextMode ? (
           <TextInput value={districtValue} onChange={onDistrictTextChange} style={{ width: "100%" }} />
         ) : (
           <CustomDropdown
@@ -98,7 +98,7 @@ const DistrictToggleField = (props) => {
       </div>
 
       <div style={{ padding: "5px" }}>
-        <ToggleLink label={""} onClick={toggleMode} />
+        <ToggleLink disable={stateIsTextMode} label={""} onClick={toggleMode} />
       </div>
     </div>
   );
