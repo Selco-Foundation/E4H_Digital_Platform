@@ -285,18 +285,51 @@ public class FacilityService {
     /**
      * Creates POC user as HRMS employee if not exists (checks by phone number uniqueness).
      * Validates required fields (HFR ID, POC contact, POC name) before attempting creation.
+     * Supports both direct fields (facilityPocName, facilityPocPhone, hfrId) and nested facilityDetails.
      *
      * @param facility The facility for which to create POC user
      * @param requestInfo RequestInfo for API calls
      */
     private void createFacilityPOCUserIfNotExists(Facility facility, String tenantId, RequestInfo requestInfo) {
         HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
+        
+        // If facilityDetails is null or missing values, populate from direct fields
+        if (facilityDetails == null) {
+            facilityDetails = HealthFacilityDetails.builder().build();
+            facility.setFacilityDetails(facilityDetails);
+        }
+        
+        // Populate facilityDetails from direct fields if missing (trim whitespace)
+        if ((facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()) 
+                && facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()) {
+            facilityDetails.setHfrId(facility.getHfrId().trim());
+        }
+        
+        if ((facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()) 
+                && facility.getFacilityPocPhone() != null && !facility.getFacilityPocPhone().trim().isBlank()) {
+            facilityDetails.setPocContact(facility.getFacilityPocPhone().trim());
+        }
+        
+        if (facilityDetails.getPocName() == null 
+                && facility.getFacilityPocName() != null && !facility.getFacilityPocName().trim().isBlank()) {
+            facilityDetails.setPocName(facility.getFacilityPocName().trim());
+        }
+        
+        if (facilityDetails.getPocEmail() == null 
+                && facility.getFacilityPocEmail() != null && !facility.getFacilityPocEmail().trim().isBlank()) {
+            facilityDetails.setPocEmail(facility.getFacilityPocEmail().trim());
+        }
 
-        if (facilityDetails == null || facilityDetails.getHfrId() == null ||
-            facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null ||
-            facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
-            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name",
-                    sanitizeForLog(facility.getFacilityId()));
+        // Validate required fields
+        if (facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank() ||
+            facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank() ||
+            facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
+            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name. " +
+                    "HFR ID: {}, POC Contact: {}, POC Name: {}",
+                    sanitizeForLog(facility.getFacilityId()),
+                    sanitizeForLog(facilityDetails.getHfrId()),
+                    sanitizeForLog(facilityDetails.getPocContact()),
+                    sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
             return;
         }
 
