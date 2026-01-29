@@ -400,6 +400,7 @@ public class ActivityService {
                 .activatedAt(existingActivityFacitlity.getActivatedAt())
                 .completedAt(System.currentTimeMillis())
                 .scheduledAt(existingActivityFacitlity.getScheduledAt())
+                .additionalDetails(existingActivityFacitlity.getAdditionalDetails())
                 .build();
 
         // 5. Create project request wrapper
