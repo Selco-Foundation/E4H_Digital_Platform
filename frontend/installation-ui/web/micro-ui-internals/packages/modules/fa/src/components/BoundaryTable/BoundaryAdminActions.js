@@ -225,9 +225,41 @@ const BoundaryAdminActions = ({ t }) => {
           <Loader />
         </div>
       )}
-      <Button variation={"secondary"} label={t("FA_ADD_BOUNDARY")} onButtonClick={() => setShowBoundaryModal(true)} />
       <Button
         variation={"secondary"}
+        style={{
+          backgroundColor: "white",
+          border: "1px solid #d35400",
+          color: "#d35400",
+          padding: "8px 20px",
+          cursor: "pointer",
+          fontWeight: "bold",
+          fontSize: "16px",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "5px",
+          height: "40px",
+        }}
+        label={t("FA_ADD_BOUNDARY")}
+        onButtonClick={() => setShowBoundaryModal(true)}
+      />
+      <Button
+        variation={"secondary"}
+        style={{
+          backgroundColor: "white",
+          border: "1px solid #d35400",
+          color: "#d35400",
+          padding: "8px 20px",
+          cursor: "pointer",
+          fontWeight: "bold",
+          fontSize: "16px",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          gap: "5px",
+          height: "40px",
+        }}
         label={t("FA_BULK_ADD")}
         onButtonClick={() => history.push(`${location.pathname.replace(/\/boundaries\/?$/, "")}/boundary/upload`)}
       />
