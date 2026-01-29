@@ -301,24 +301,24 @@ public class FacilityService {
             facilityDetails = HealthFacilityDetails.builder().build();
             facility.setFacilityDetails(facilityDetails);
         }
-        
+
         // Populate facilityDetails from direct fields if missing (trim whitespace)
-        if ((facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()) 
+        if ((facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank())
                 && facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()) {
             facilityDetails.setHfrId(facility.getHfrId().trim());
         }
-        
-        if ((facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()) 
+
+        if ((facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank())
                 && plainPocMobileNumber != null && !plainPocMobileNumber.trim().isBlank()) {
             facilityDetails.setPocContact(plainPocMobileNumber.trim());
         }
-        
-        if (facilityDetails.getPocName() == null 
+
+        if (facilityDetails.getPocName() == null
                 && facility.getFacilityPocName() != null && !facility.getFacilityPocName().trim().isBlank()) {
             facilityDetails.setPocName(facility.getFacilityPocName().trim());
         }
-        
-        if (facilityDetails.getPocEmail() == null 
+
+        if (facilityDetails.getPocEmail() == null
                 && facility.getFacilityPocEmail() != null && !facility.getFacilityPocEmail().trim().isBlank()) {
             facilityDetails.setPocEmail(facility.getFacilityPocEmail().trim());
         }
