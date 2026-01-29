@@ -200,6 +200,8 @@ public class FacilityService {
 
             log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
             for (Facility facility : tenantFacilities) {
+                // Keep original (unencrypted) POC mobile number for HRMS user creation
+                String originalPocMobileNumber = facility.getFacilityPocPhone();
                 try {
                     String encryptedPocMobileNumber = encryptMobileNumber(facility.getFacilityPocPhone());
                     if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
@@ -219,7 +221,7 @@ public class FacilityService {
                 if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
                     log.info("Facility {} is ONM ready, creating POC user and pushing to Kibana", facility.getFacilityId());
                     // Create POC user if not exists (check by phone number uniqueness)
-                    createFacilityPOCUserIfNotExists(facility, tenantId, request.getRequestInfo());
+                    createFacilityPOCUserIfNotExists(facility, tenantId, request.getRequestInfo(), originalPocMobileNumber);
 
                     // Push to Kibana for indexing
                     FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
@@ -290,7 +292,8 @@ public class FacilityService {
      * @param facility The facility for which to create POC user
      * @param requestInfo RequestInfo for API calls
      */
-    private void createFacilityPOCUserIfNotExists(Facility facility, String tenantId, RequestInfo requestInfo) {
+    private void createFacilityPOCUserIfNotExists(Facility facility, String tenantId, RequestInfo requestInfo,
+                                                  String plainPocMobileNumber) {
         HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
         
         // If facilityDetails is null or missing values, populate from direct fields
@@ -306,8 +309,8 @@ public class FacilityService {
         }
         
         if ((facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()) 
-                && facility.getFacilityPocPhone() != null && !facility.getFacilityPocPhone().trim().isBlank()) {
-            facilityDetails.setPocContact(facility.getFacilityPocPhone().trim());
+                && plainPocMobileNumber != null && !plainPocMobileNumber.trim().isBlank()) {
+            facilityDetails.setPocContact(plainPocMobileNumber.trim());
         }
         
         if (facilityDetails.getPocName() == null 
@@ -463,7 +466,12 @@ public class FacilityService {
 
             // Always check/create POC user when isOnmReady is true (whether transitioning or already true)
             // This ensures POC user is created if missing, even if facility was already ONM ready
-            createFacilityPOCUserIfNotExists(facilityForProcessing, update.getTenantId(), request.getRequestInfo());
+            createFacilityPOCUserIfNotExists(
+                    facilityForProcessing,
+                    update.getTenantId(),
+                    request.getRequestInfo(),
+                    facilityForProcessing.getFacilityPocPhone()
+            );
 
             // Check if facility already exists in Kibana, if not then push
             boolean existsInKibana = facilityKibanaMapper.existsInKibana(
