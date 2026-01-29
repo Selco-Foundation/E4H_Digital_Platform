@@ -155,10 +155,13 @@ public class HRMSService {
             // Add assignments with designation and department
             List<Map<String, Object>> assignments = new ArrayList<>();
             Map<String, Object> assignment = new HashMap<>();
-            
-            // Add designation code if available
+            String designationCode = null;
             if (facilityDetails.getPocDesignation() != null && !facilityDetails.getPocDesignation().isBlank()) {
-                String designationCode = facilityDetails.getPocDesignation();
+                designationCode = facilityDetails.getPocDesignation();
+            } else if (configs.getHrmsDefaultDesignationCode() != null && !configs.getHrmsDefaultDesignationCode().isBlank()) {
+                designationCode = configs.getHrmsDefaultDesignationCode();
+            }
+            if (designationCode != null) {
                 assignment.put("designation", designationCode);
             }
             assignment.put("department", configs.getHrmsDefaultDepartmentCode());
