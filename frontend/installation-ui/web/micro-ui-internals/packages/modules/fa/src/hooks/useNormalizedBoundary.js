@@ -141,8 +141,8 @@ const useNormalizedBoundary = (boundaryType, codes, limit, offset, queryOptions 
     : "";
 
   const queryKey = isTableMode
-    ? ["BOUNDARY_TABLE", boundaryType, limit, offset, tableFilterKey]
-    : ["BOUNDARY", boundaryType, codesKey];
+    ? ["NORMALIZED_BOUNDARY", boundaryType, limit, offset, tableFilterKey]
+    : ["NORMALIZED_BOUNDARY", boundaryType, codesKey];
 
   const queryFn = () =>
     isTableMode ? fetchBoundaryTableRows(boundaryType || "Block", limit, offset, tableFilter) : fetchBoundaryHierarchy(boundaryType, codes);
@@ -157,7 +157,7 @@ const useNormalizedBoundary = (boundaryType, codes, limit, offset, queryOptions 
     isError,
     error,
     data,
-    revalidate: () => queryClient.invalidateQueries(isTableMode ? ["BOUNDARY_TABLE"] : ["BOUNDARY"]),
+    revalidate: () => queryClient.invalidateQueries(["NORMALIZED_BOUNDARY"]),
   };
 };
 

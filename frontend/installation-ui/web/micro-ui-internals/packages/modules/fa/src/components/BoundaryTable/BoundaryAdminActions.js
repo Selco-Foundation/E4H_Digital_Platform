@@ -3,6 +3,7 @@ import { Loader, Button, Toast } from "@egovernments/digit-ui-react-components";
 import { useHistory } from "react-router-dom";
 import BoundaryModal from "../BoundaryModal";
 import { BoundaryService } from "../../services/Boundary";
+import { useQueryClient } from "react-query";
 
 const getCode = (val) => {
   if (!val) return "";
@@ -22,6 +23,7 @@ const BoundaryAdminActions = ({ t }) => {
   const [mobileView, setMobileView] = useState(window.innerWidth <= 836);
   const [isStateTextMode, setIsStateTextMode] = useState(false);
   const [isDistrictTextMode, setIsDistrictTextMode] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (toast) setTimeout(() => setToast(null), 2500);
@@ -170,6 +172,8 @@ const BoundaryAdminActions = ({ t }) => {
         },
         ignoreIfExists: false,
       });
+
+      await queryClient.invalidateQueries(["NORMALIZED_BOUNDARY"]);
       setBlockUI(false);
       setShowBoundaryModal(false);
       setToast({ key: "success", label: "FA_TOAST_BOUNDARY_CREATION_SUCCESS" });
