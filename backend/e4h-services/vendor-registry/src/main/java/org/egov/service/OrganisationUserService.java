@@ -8,13 +8,11 @@ import org.egov.common.models.core.URLParams;
 import org.egov.config.Configuration;
 import org.egov.kafka.OrganizationProducer;
 import org.egov.repository.OrganisationUserRepository;
-import org.egov.util.OrganisationUtil;
 import org.egov.validator.OrganisationUserServiceValidator;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 
@@ -32,63 +30,82 @@ public class OrganisationUserService {
 
     private final Configuration configuration;
 
-
-    private final OrganisationUtil organisationUtil;
-
     private final NotificationService notificationService;
 
     private final ObjectMapper mapper;
 
     @Autowired
-    public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, OrganisationUtil organisationUtil, NotificationService notificationService, ObjectMapper mapper) {
+    public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, NotificationService notificationService, ObjectMapper mapper) {
         this.validator = validator;
         this.userRepository = userRepository;
         this.organisationEnrichmentService = organisationEnrichmentService;
         this.organizationProducer = organizationProducer;
         this.configuration = configuration;
-        this.organisationUtil = organisationUtil;
         this.notificationService = notificationService;
         this.mapper = mapper;
     }
 
 
-    public List<OrgUser> createOrgUser(OrgUserRequest request) {
-        log.info("received request to create bulk fieldplan facility");
+    public OrgUserRequest createOrgUser(OrgUserRequest request) {
+        log.info("received request to create org user {} ", request );
 
         validator.validateCreateOrgUserRequest(request);
-        List<OrgUser> orgUserList = request.getOrgUsers();
+//        List<OrgUser> orgUserList = request.getOrgUsers();
         try {
-            for (OrgUser orgUser : orgUserList) {
-                log.info("processing {} valid entities", orgUserList);
-                organisationEnrichmentService.enrichOrgUserRequestOnCreate(orgUser, request.getRequestInfo());
-            }
+            log.info("processing  {} valid entities", request.getUser());
+            organisationEnrichmentService.enrichOrgUserRequestOnCreate(request, request.getRequestInfo());
             log.info("successfully created org user");
             organizationProducer.push(configuration.getCreateOrgUserTopic(), request);
+            log.info("Organisation user creation message pushed to Kafka topic: {}", configuration.getCreateOrgUserTopic());
+        } catch (Exception exception) {
+            log.error("Error occurred while creating organisation user", exception);
+            throw exception;
+        }
+
+        return request;
+    }
+
+    public List<OrgUser> searchOrganisationUsers(OrgUserSearchRequest request, URLParams urlParams) {
+        validator.validateSearchOrgUsersRequest(request, urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());
+        log.debug("Search request validation completed");
+
+        List<OrgUser> orgUserList = userRepository.getOrgUsers(request, urlParams);
+        return orgUserList;
+    }
+
+    public Integer countOrganisationUsers(OrgUserSearchRequest request) {
+        return userRepository.getOrganisationsCount(request);
+    }
+
+    public OrgUserRequest updateOrgUser(OrgUserRequest request) {
+        log.info("received request to create org user {} ", request );
+
+        validator.validateUpdateOrgUserRequest(request);
+//        List<OrgUser> orgUserList = request.getOrgUsers();
+        try {
+            log.info("processing  {} valid entities", request.getUser());
+            organisationEnrichmentService.enrichOrgUserRequestOnUpdate(request);
+            log.info("successfully created org user");
+            organizationProducer.push(configuration.getUpdateOrgUserTopic(), request);
         } catch (Exception exception) {
             log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
         }
 
-        return orgUserList;
+        return request;
     }
 
-    public List<OrgUserEnriched> searchOrganisationUsers(OrgUserSearchRequest request, URLParams urlParams) {
-        validator.validateSearchOrgUsersRequest(request, urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());
-        List<OrgUser> orgUserList = userRepository.getOrgUsers(request, urlParams);
-        List<OrgUserEnriched> orgUserEnricheds = new ArrayList<>();
-        for (OrgUser orgUser: orgUserList){
-            Employee employee = organisationUtil.getUserById(request, orgUser.getUserId());
-            OrgUserEnriched enriched = OrgUserEnriched.builder()
-                    .user(employee.getUser())
-                    .userId(orgUser.getUserId())
-                    .tenantId(orgUser.getTenantId())
-                    .organizationId(orgUser.getOrganizationId())
-                    .id(orgUser.getId())
-                    .auditDetails(orgUser.getAuditDetails())
-                    .additionalDetails(orgUser.getAdditionalDetails())
-                    .isDeleted(orgUser.getIsDeleted())
-                    .build();
-            orgUserEnricheds.add(enriched);
+    public DeleteOrgUserRequest deleteUserOrg(DeleteOrgUserRequest request) {
+        log.info("received request to delete bulk activity facility staff");
+        validator.validateDeleteOrgUserRequest(request);
+        try {
+            request.setIsDeleted(true);
+            organisationEnrichmentService.enrichOrgUserRequestOnDelete(request);
+            organizationProducer.push(configuration.getDeleteOrgUserTopic(), request);
+            log.info("successfully deleted org user");
+        } catch (Exception exception) {
+            log.error("error occurred while deleting org user", ExceptionUtils.getStackTrace(exception));
         }
-        return orgUserEnricheds;
+
+        return request;
     }
 }

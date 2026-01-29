@@ -5,6 +5,8 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Generated;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.Builder;
@@ -32,8 +34,8 @@ public class FacilityUpdateRequestFacilityUpdate {
     private String tenantId;
 
     /** Facility identifier (read‑only) */
-    @Schema(name = "facilityId", accessMode = Schema.AccessMode.READ_ONLY, description = "The facility to be updated. This cannot be overwritten.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-    @JsonProperty("facilityId")
+    @Schema(name = "facility_id", accessMode = Schema.AccessMode.READ_ONLY, description = "The facility to be updated. This cannot be overwritten.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @JsonProperty("facility_id")
     private String facilityId;
 
     /** Exact facility type under a category */
@@ -71,7 +73,46 @@ public class FacilityUpdateRequestFacilityUpdate {
     @JsonProperty("facility_details")
     private HealthFacilityDetails facilityDetails = null;
 
+    @Size(min = 10, max = 10)
+    @JsonProperty("hfr_id")
+    private String hfrId;
+
+    @Size(min = 12, max = 12)
+    @JsonProperty("nin_id")
+    private String ninId;
+
+    @JsonProperty("facility_poc_phone")
+    @Pattern(
+            regexp = "^\\d{10}$",
+            message = "PoC contact number must be a valid 10-digit Indian mobile number"
+    )
+    private String pocContact;
+
+    @JsonProperty("facility_poc_name")
+    @Pattern(
+            regexp = "^[a-zA-Z\\s]+$",
+            message = "POC Name pattern is incorrect"
+    )
+    private String pocName;
+
+    @JsonProperty("facility_poc_email")
+    private String pocEmail;
+
+    @JsonProperty("facility_status")
+    private String status;
+
+    @JsonProperty("pocDesignation")
+    @Pattern(
+            regexp = "^[a-zA-Z\\s]+$",
+            message = "POC Designation pattern is incorrect"
+    )
+    private String pocDesignation;
+
     @Schema(name = "isOnmReady", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("isOnmReady")
     private Boolean isOnmReady;
+
+//    @Schema(name = "user_id", accessMode = Schema.AccessMode.READ_ONLY, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @JsonProperty("user_id")
+    private String userId;
 }

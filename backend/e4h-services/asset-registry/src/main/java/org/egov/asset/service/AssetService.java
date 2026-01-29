@@ -17,6 +17,7 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -87,6 +88,15 @@ public class AssetService {
         return assets;
     }
 
+    public Integer getAssetsCount(Asset request) {
+        log.info("AssetService::fetchAssetsWithDocuments called | tenantId={}",
+                request.getTenantId());
+         Integer count = countAssets(request);
+        log.info("Total Assets count is : " + count);
+
+        return count;
+    }
+
     public List<Asset> searchAssets(Asset asset, int limit, int offset) {
         StringBuilder query = new StringBuilder("SELECT * FROM asset WHERE 1=1");
         List<Object> params = new ArrayList<>();
@@ -101,9 +111,19 @@ public class AssetService {
             params.add(asset.getAssetId());
         }
 
+        if (!CollectionUtils.isEmpty(asset.getAssetTypeSearch())) {
+            query.append(" AND asset_type_id IN (").append(createQuery(asset.getAssetTypeSearch())).append(")");
+            params.addAll(asset.getAssetTypeSearch());
+        }
+
         if (asset.getWfStatus() != null && !asset.getWfStatus().isBlank()) {
             query.append(" AND wf_status = ?");
             params.add(asset.getWfStatus());
+        }
+
+        if (asset.getIsOperational() != null) {
+            query.append(" AND is_operational = ?");
+            params.add(asset.getIsOperational());
         }
 
         if (asset.getFacilityID() != null && !asset.getFacilityID().isBlank()) {
@@ -116,9 +136,14 @@ public class AssetService {
             params.add(asset.getActivityFacilityID());
         }
 
-        if (asset.getSerialNumber() != null && !asset.getSerialNumber().isBlank()) {
-            query.append(" AND serial_number = ?");
-            params.add(asset.getSerialNumber());
+//        if (asset.getSerialNumber() != null && !asset.getSerialNumber().isBlank()) {
+//            query.append(" AND serial_number = ?");
+//            params.add(asset.getSerialNumber());
+//        }
+
+        if (!CollectionUtils.isEmpty(asset.getSerialNumberSearch())) {
+            query.append(" AND serial_number IN (").append(createQuery(asset.getSerialNumberSearch())).append(")");
+            params.addAll(asset.getSerialNumberSearch());
         }
 
         if (asset.getModelNumber() != null && !asset.getModelNumber().isBlank()) {
@@ -136,6 +161,62 @@ public class AssetService {
         params.add(offset);
 
         return jdbcTemplate.query(query.toString(), params.toArray(), assetRowMapper.rowMapper);
+    }
+
+    public Integer countAssets(Asset asset) {
+        log.info("AssetService::searchAssets called | tenantId={} assetId={}",
+                asset.getTenantId(), asset.getAssetId());
+        StringBuilder query = new StringBuilder("SELECT COUNT(*) FROM asset WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+
+        if (asset.getTenantId() != null && !asset.getTenantId().isBlank()) {
+            query.append(" AND tenant_id = ?");
+            params.add(asset.getTenantId());
+        }
+
+        if (asset.getAssetId() != null && !asset.getAssetId().isBlank()) {
+            query.append(" AND asset_id = ?");
+            params.add(asset.getAssetId());
+        }
+
+        if (asset.getAssetTypeID() != null && !asset.getAssetTypeID().isBlank()) {
+            query.append(" AND asset_type_id = ?");
+            params.add(asset.getAssetTypeID());
+        }
+
+        if (asset.getWfStatus() != null && !asset.getWfStatus().isBlank()) {
+            query.append(" AND wf_status = ?");
+            params.add(asset.getWfStatus());
+        }
+
+        if (asset.getFacilityID() != null && !asset.getFacilityID().isBlank()) {
+            query.append(" AND facility_id = ?");
+            params.add(asset.getFacilityID());
+        }
+
+        if (asset.getActivityFacilityID() != null && !asset.getActivityFacilityID().isBlank()) {
+            query.append(" AND activity_facility_id = ?");
+            params.add(asset.getActivityFacilityID());
+        }
+
+        if (!CollectionUtils.isEmpty(asset.getSerialNumberSearch())) {
+            query.append(" AND serial_number IN (").append(createQuery(asset.getSerialNumberSearch())).append(")");
+            params.addAll(asset.getSerialNumberSearch());
+        }
+
+        if (asset.getModelNumber() != null && !asset.getModelNumber().isBlank()) {
+            query.append(" AND model_number = ?");
+            params.add(asset.getModelNumber());
+        }
+
+        if (asset.getBrandID()!= null && !asset.getBrandID().isBlank()) {
+            query.append(" AND brand_id = ?");
+            params.add(asset.getBrandID());
+        }
+
+        log.debug("Executing asset search count={} with params={}", query, params);
+
+        return jdbcTemplate.queryForObject(query.toString(), params.toArray(), Integer.class);
     }
 
     public Map<String, List<Document>> searchDocumentsByAssetIds(String tenantId, List<String> assetIds) {
@@ -188,5 +269,15 @@ public class AssetService {
         }
         assetRepository.pushUpdateAsset(updated);
         return updated;
+    }
+
+    private String createQuery(Collection<String> ids) {
+        StringBuilder builder = new StringBuilder();
+        int length = ids.size();
+        for (int i = 0; i < length; i++) {
+            builder.append(" ? ");
+            if (i != length - 1) builder.append(",");
+        }
+        return builder.toString();
     }
 }

@@ -83,14 +83,14 @@ public class MDMSUtil {
                 .filter(ACTIVE_CODE_FILTER).build();
         MasterDetail orgTaxIdentifierMaster = MasterDetail.builder().name(MASTER_ORG_TAX_IDENTIFIER)
                 .filter(ACTIVE_CODE_FILTER).build();
-        MasterDetail orgFunCategoryMaster = MasterDetail.builder().name(MASTER_ORG_FUNC_CATEGORY)
-                .filter(ACTIVE_CODE_FILTER).build();
+//        MasterDetail orgFunCategoryMaster = MasterDetail.builder().name(MASTER_ORG_FUNC_CATEGORY)
+//                .filter(ACTIVE_CODE_FILTER).build();
         MasterDetail orgTypeMaster = MasterDetail.builder().name(MASTER_ORG_TYPE)
                 .filter(ACTIVE_CODE_FILTER).build();
-        commonMasterModulesDetails.add(orgFuncMaster);
+//        commonMasterModulesDetails.add(orgFuncMaster);
         commonMasterModulesDetails.add(orgTaxIdentifierMaster);
-        commonMasterModulesDetails.add(orgFunCategoryMaster);
-        commonMasterModulesDetails.add(orgTypeMaster);
+//        commonMasterModulesDetails.add(orgFunCategoryMaster);
+//        commonMasterModulesDetails.add(orgTypeMaster);
         return ModuleDetail.builder().masterDetails(commonMasterModulesDetails)
                 .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
     }
@@ -103,9 +103,14 @@ public class MDMSUtil {
     private ModuleDetail prepareOrganizationModuleDetails(){
         log.info("MDMSUtil::prepareOrganizationModuleDetails");
         List<MasterDetail> organizationModulesDetails = new ArrayList<>();
-        MasterDetail orgTypeMaster = MasterDetail.builder().name(MASTER_ORG_TYPE)
-                .filter(ACTIVE_TYPE_FILTER).build();
+        MasterDetail orgTypeMaster = MasterDetail.builder().name(MASTER_ORG_TYPE).filter(CODE_FILTER).build();
+        MasterDetail orgSubTypeMaster = MasterDetail.builder().name(MASTER_ORG_SUB_TYPE).filter(CODE_FILTER).build();
+        MasterDetail orgStatusMaster = MasterDetail.builder().name(MASTER_ORG_STATUS).filter(CODE_FILTER).build();
+        MasterDetail orgRolesMaster = MasterDetail.builder().name(MASTER_ORG_ROLES).build();
         organizationModulesDetails.add(orgTypeMaster);
+        organizationModulesDetails.add(orgSubTypeMaster);
+        organizationModulesDetails.add(orgStatusMaster);
+        organizationModulesDetails.add(orgRolesMaster);
         return ModuleDetail.builder().masterDetails(organizationModulesDetails)
                 .moduleName(MDMS_ORGANIZATION_MODULE_NAME).build();
     }

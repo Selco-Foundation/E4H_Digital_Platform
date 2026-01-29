@@ -36,16 +36,25 @@ public class FieldPlannerServiceUtil {
     }
 
     public AuditDetails getAuditDetails(String by, AuditDetails auditDetails, Boolean isCreate) {
+        log.trace("Entering getAuditDetails method, isCreate: {}", isCreate);
         Long time = System.currentTimeMillis();
-        if (isCreate)
-            return AuditDetails.builder().createdBy(by).lastModifiedBy(by).createdTime(time).lastModifiedTime(time).build();
-        else
-            return AuditDetails.builder().createdBy(auditDetails.getCreatedBy()).lastModifiedBy(by)
+        AuditDetails result;
+        if (isCreate) {
+            result = AuditDetails.builder().createdBy(by).lastModifiedBy(by).createdTime(time).lastModifiedTime(time).build();
+            log.debug("Created new audit details for user: {}", by);
+        } else {
+            result = AuditDetails.builder().createdBy(auditDetails.getCreatedBy()).lastModifiedBy(by)
                     .createdTime(auditDetails.getCreatedTime()).lastModifiedTime(time).build();
+            log.debug("Updated audit details, last modified by: {}", by);
+        }
+        log.trace("Exiting getAuditDetails method");
+        return result;
     }
 
     public String extractStateName(String boundary) {
+        log.trace("Entering extractStateName method");
         if (boundary == null || boundary.trim().isEmpty()) {
+            log.debug("Boundary is null or empty, returning null");
             return null;
         }
 
@@ -54,18 +63,60 @@ public class FieldPlannerServiceUtil {
 
         if (boundaryParts.length >= 2 && "India".equalsIgnoreCase(boundaryParts[0])) {
             stateName = boundaryParts[1];
+            log.debug("Extracted state name from India boundary: {}", stateName);
         } else if (boundaryParts.length >= 1) {
             stateName = boundaryParts[0];
+            log.debug("Extracted state name from boundary: {}", stateName);
         }
 
         // Validate state name is not placeholder/invalid
         if (stateName != null && !stateName.equalsIgnoreCase("nan") &&
                 !stateName.equalsIgnoreCase("XYZ") && stateName.trim().length() > 0) {
-            return stateName.trim();
+            return boundaryCodeToName(stateName.trim());
+            log.trace("Exiting extractStateName method");
         }
 
         log.warn("Invalid state name found in boundary: {}, returning null", stateName);
+        log.trace("Exiting extractStateName method");
         return null;
+    }
+
+    // Output India_AssamBiswanath → Assam Biswanath
+    public String boundaryCodeToName(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return "";
+        }
+
+        // Nettoyage
+        String cleaned = boundaryCode.trim();
+
+        // Supprimer "India_" si présent
+        if (cleaned.startsWith("India_")) {
+            cleaned = cleaned.substring("India_".length());
+        }
+
+        // Remplacer _ par espace
+        cleaned = cleaned.replace("_", " ");
+
+        // Ajouter des espaces avant les majuscules (CamelCase)
+        cleaned = cleaned.replaceAll("(?<=[a-z])(?=[A-Z])", " ");
+
+        // Normaliser les espaces multiples
+        cleaned = cleaned.replaceAll("\\s+", " ").trim();
+
+        // Mettre en forme (Majuscule au début de chaque mot)
+        String[] words = cleaned.split(" ");
+        StringBuilder result = new StringBuilder();
+
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                        .append(word.substring(1).toLowerCase())
+                        .append(" ");
+            }
+        }
+
+        return result.toString().trim();
     }
 
 
@@ -76,14 +127,23 @@ public class FieldPlannerServiceUtil {
      * @return A map with project IDs as keys and project objects as values.
      */
     public Map<String, Project> createProjectMap(List<Project> projects) {
-        return projects.stream()
+        log.trace("Entering createProjectMap method");
+        log.debug("Creating project map from {} projects", projects.size());
+        Map<String, Project> result = projects.stream()
                 .collect(Collectors.toMap(p -> String.valueOf(p.getId()), Function.identity()));
+        log.debug("Created project map with {} entries", result.size());
+        log.trace("Exiting createProjectMap method");
+        return result;
     }
 
     public void mergeAdditionalDetails(FieldPlan fieldPlan, FieldPlan fieldPlanFromDb) {
+        log.trace("Entering mergeAdditionalDetails method for field plan ID: {}", fieldPlan.getId());
+        log.debug("Merging additional details for field plan");
         JsonNode json = jsonMerge(objectMapper.valueToTree(fieldPlanFromDb.getAdditionalDetails()),
                 objectMapper.valueToTree(fieldPlan.getAdditionalDetails()));
         fieldPlan.setAdditionalDetails(objectMapper.convertValue(json, Map.class));
+        log.debug("Additional details merged successfully");
+        log.trace("Exiting mergeAdditionalDetails method");
     }
 
     /**
@@ -94,12 +154,17 @@ public class FieldPlannerServiceUtil {
      * @return
      */
     public JsonNode jsonMerge(JsonNode mainNode, JsonNode updateNode) {
-
-        if (isNull(mainNode) || mainNode.isNull())
+        log.trace("Entering jsonMerge method");
+        if (isNull(mainNode) || mainNode.isNull()) {
+            log.debug("Main node is null, returning update node");
             return updateNode;
-        if (isNull(updateNode) || updateNode.isNull())
+        }
+        if (isNull(updateNode) || updateNode.isNull()) {
+            log.debug("Update node is null, returning main node");
             return mainNode;
+        }
 
+        log.debug("Merging JSON nodes");
         Iterator<String> fieldNames = updateNode.fieldNames();
         while (fieldNames.hasNext()) {
             String fieldName = fieldNames.next();
@@ -116,11 +181,14 @@ public class FieldPlannerServiceUtil {
             }
 
         }
+        log.trace("Exiting jsonMerge method");
         return mainNode;
     }
 
     private String getDuration(FieldPlan fieldPlan) {
+        log.trace("Entering getDuration method");
         if (fieldPlan.getStartDate() == null || fieldPlan.getEndDate() == null) {
+            log.error("Start date or end date is null for field plan");
             throw new RuntimeException("Start date and end date are required for fieldPlan name generation");
         }
 
@@ -136,19 +204,28 @@ public class FieldPlannerServiceUtil {
 
         int startYear = startDate.getYear();
         int endYear = endDate.getYear();
+        log.debug("Calculated duration: startYear={}, endYear={}", startYear, endYear);
 
         // Format as YYYY-YY
-        return String.format("%d-%02d", startYear, endYear % 100);
+        String duration = String.format("%d-%02d", startYear, endYear % 100);
+        log.trace("Exiting getDuration method");
+        return duration;
     }
 
     public static String replaceActivityAssignmentEmailBody(String role, String fieldPlanName, String username, String password, String contenue){
-        return contenue.replace(":role",role )
+        log.trace("Entering replaceActivityAssignmentEmailBody method");
+        log.debug("Replacing email body placeholders for role: {}, field plan: {}", role, fieldPlanName);
+        String result = contenue.replace(":role",role )
                 .replace(":fieldPlanName", fieldPlanName)
                 .replace(":login_agent", username)
                 .replace(":password_agent", password);
+        log.trace("Exiting replaceActivityAssignmentEmailBody method");
+        return result;
     }
 
     public void sendEmailViaKafka(String emailId, String subject, String body, String tenantId) {
+        log.trace("Entering sendEmailViaKafka method");
+        log.info("Sending email via Kafka for user: {}, tenant: {}", emailId, tenantId);
         try {
             // Create Email object following egov-notification-mail contract
             Map<String, Object> email = new HashMap<>();
@@ -177,5 +254,6 @@ public class FieldPlannerServiceUtil {
             log.error("Error sending email via Kafka for user: {}", emailId, e);
             throw new RuntimeException("Failed to send email via Kafka", e);
         }
+        log.trace("Exiting sendEmailViaKafka method");
     }
 }

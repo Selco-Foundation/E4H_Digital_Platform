@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum ApplicationStatus {
-    DEBARRED("DEBARRED"),
+    SUSPENDED("SUSPENDED"),
 
     ACTIVE("ACTIVE"),
 
