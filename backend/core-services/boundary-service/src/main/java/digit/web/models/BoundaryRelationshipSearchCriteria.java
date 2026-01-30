@@ -64,7 +64,7 @@ public class BoundaryRelationshipSearchCriteria {
     @Builder.Default
     private List<String> currentBoundaryCodes = new ArrayList<>();
 
-    @JsonIgnore
+    @JsonProperty("parentCodes")
     private List<String> parentCodes = null;
 
 }
