@@ -85,7 +85,7 @@ const BoundaryForm = ({ t, onSubmit, formToast, setFormToast, isStateTextMode, s
 
   return (
     <div
-      className="create-project-wrapper"
+      className={"admin-form"}
       style={{
         position: "relative",
         paddingBottom: "30px",
@@ -96,14 +96,13 @@ const BoundaryForm = ({ t, onSubmit, formToast, setFormToast, isStateTextMode, s
       <FormComposerV2
         config={config}
         onSubmit={onSubmit}
-        label={t("CORE_COMMON_SUBMIT")}
+        label={t("CORE_COMMON_SAVE")}
         defaultValues={{}}
-        showMultipleCardsWithoutNavs={true}
-        noBreakLine={true}
+        heading={""}
         cardStyle={{ boxShadow: "none" }}
-        actionClassName={"reverse-actionbar"}
+        submitInForm={false}
+        actionClassName={"reverse-actionbar-fixed"}
       />
-
       {formToast && (
         <Toast
           error={formToast.key === "error"}
