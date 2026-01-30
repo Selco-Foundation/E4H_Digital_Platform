@@ -236,32 +236,93 @@ public class BoundaryEntityValidator {
         log.debug("No duplicate boundaries found in request");
     }
 
-    private void validateStateCode(BoundaryRequest request){
-        for (Boundary boundary : request.getBoundary()){
-            boolean isStateBoundaryType = hierarchyUtil.isValidStateBoundaryFormat(boundary.getCode());
-            if(!isStateBoundaryType)
-                continue;
+//    public boolean validateStateCode(BoundaryRequest request){
+//        boolean response = true;
+//        for (Boundary boundary : request.getBoundary()){
+//            boolean isStateBoundaryType = hierarchyUtil.isValidStateBoundaryFormat(boundary.getCode());
+//            if(!isStateBoundaryType)
+//                continue;
+//
+//            String stateBoundaryCode = boundary.getCode();
+//            String stateCode = boundary.getStateCode()!=null && !boundary.getStateCode().isEmpty() ? boundary.getStateCode() : hierarchyUtil.boundaryCodeToCode(boundary.getCode());
+//            Object mdmsData = mdmsUtils.mDMSCall(request.getRequestInfo(), boundary.getTenantId());
+//            String mdmsRes = "$.MdmsRes.";
+//            final String jsonPathForStateInfo = mdmsRes + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_STATE_INFO;
+//            List<Object> stateInfoRes = null;
+//            stateInfoRes = JsonPath.read(mdmsData, jsonPathForStateInfo);
+//            for (Object map : stateInfoRes) {
+//                LinkedHashMap<String, Object> stateInfo = (LinkedHashMap<String, Object>) map;
+//                String boundaryCode = (String) stateInfo.get("boundaryCode");
+//                String code = (String) stateInfo.get("code");
+//                if ((stateBoundaryCode!=null && stateBoundaryCode.equalsIgnoreCase(boundaryCode))) {
+//                    response = false;
+////                    throw new CustomException("STATE_BOUNDARY_CODE_EXIST", "The State boundary code already exist: " + boundary.getCode());
+//                }
+//                if ((stateBoundaryCode!=null && stateBoundaryCode.equalsIgnoreCase(boundaryCode)) || (stateCode!=null && stateCode.equalsIgnoreCase(code))) {
+//                    response = false;
+////                    throw new CustomException("STATE_BOUNDARY_CODE_EXIST", "The State code already exist: " + boundary.getStateCode());
+//                }
+//            }
+//        }
+//        return response;
+//    }
 
-            String stateBoundaryCode = boundary.getCode();
-            String stateCode = boundary.getStateCode()!=null && !boundary.getStateCode().isEmpty() ? boundary.getStateCode() : hierarchyUtil.boundaryCodeToCode(boundary.getCode());
-            Object mdmsData = mdmsUtils.mDMSCall(request.getRequestInfo(), boundary.getTenantId());
-            String mdmsRes = "$.MdmsRes.";
-            final String jsonPathForStateInfo = mdmsRes + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_STATE_INFO;
-            List<Object> stateInfoRes = null;
-            stateInfoRes = JsonPath.read(mdmsData, jsonPathForStateInfo);
-            for (Object map : stateInfoRes) {
-                LinkedHashMap<String, Object> stateInfo = (LinkedHashMap<String, Object>) map;
-                String boundaryCode = (String) stateInfo.get("boundaryCode");
-                String code = (String) stateInfo.get("code");
-                if ((stateBoundaryCode!=null && stateBoundaryCode.equalsIgnoreCase(boundaryCode))) {
-                    throw new CustomException("STATE_BOUNDARY_CODE_EXIST", "The State boundary code already exist: " + boundary.getCode());
-                }
-                if ((stateBoundaryCode!=null && stateBoundaryCode.equalsIgnoreCase(boundaryCode)) || (stateCode!=null && stateCode.equalsIgnoreCase(code))) {
-                    throw new CustomException("STATE_BOUNDARY_CODE_EXIST", "The State code already exist: " + boundary.getStateCode());
-                }
+    public boolean validateStateCode(BoundaryRequest request) {
+
+        // Appel MDMS une seule fois
+        Object mdmsData = mdmsUtils.mDMSCall(
+                request.getRequestInfo(),
+                request.getBoundary().get(0).getTenantId()
+        );
+
+        String jsonPath = "$.MdmsRes." + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_STATE_INFO;
+
+        List<LinkedHashMap<String, Object>> stateInfoList =
+                JsonPath.read(mdmsData, jsonPath);
+
+        // Construire des sets pour recherche rapide
+        Set<String> existingBoundaryCodes = new HashSet<>();
+        Set<String> existingStateCodes = new HashSet<>();
+
+        for (Map<String, Object> stateInfo : stateInfoList) {
+            String boundaryCode = (String) stateInfo.get("boundaryCode");
+            String code = (String) stateInfo.get("code");
+
+            if (boundaryCode != null) {
+                existingBoundaryCodes.add(boundaryCode.toLowerCase());
+            }
+            if (code != null) {
+                existingStateCodes.add(code.toLowerCase());
             }
         }
+
+        // Validation
+        for (Boundary boundary : request.getBoundary()) {
+
+            if (!hierarchyUtil.isValidStateBoundaryFormat(boundary.getCode())) {
+                continue;
+            }
+
+            String stateBoundaryCode = safeLower(boundary.getCode());
+            String stateCode = safeLower(
+                    boundary.getStateCode() != null && !boundary.getStateCode().isEmpty()
+                            ? boundary.getStateCode()
+                            : hierarchyUtil.boundaryCodeToCode(boundary.getCode())
+            );
+
+            if (existingBoundaryCodes.contains(stateBoundaryCode)
+                    || existingStateCodes.contains(stateCode)) {
+                return false;
+            }
+        }
+
+        return true;
     }
+
+    private String safeLower(String value) {
+        return value == null ? null : value.toLowerCase();
+    }
+
 
 
     public MdmsResponseV2 createStateInfoData(Object request) {

@@ -41,7 +41,6 @@ public class BoundaryRelationshipSearchCriteria {
     @JsonProperty("parent")
     private String parent = null;
 
-
     @JsonProperty("includeChildren")
     @Builder.Default
     private Boolean includeChildren = Boolean.FALSE;

@@ -8,6 +8,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @Slf4j
@@ -49,8 +50,11 @@ public class BoundaryRelationshipQueryBuilder {
 
         if(!CollectionUtils.isEmpty(boundaryRelationshipSearchCriteria.getParentCodes())) {
             QueryUtil.addClauseIfRequired(builder, preparedStmtList);
-            builder.append(" parent IN ( ").append(QueryUtil.createQuery(boundaryRelationshipSearchCriteria.getParentCodes().size())).append(" )");
-            QueryUtil.addToPreparedStatement(preparedStmtList, new HashSet<>(boundaryRelationshipSearchCriteria.getParentCodes()));
+            Set<String> parentCodesSet = new HashSet<>(boundaryRelationshipSearchCriteria.getParentCodes());
+            int size = parentCodesSet.size();
+            builder.append(" ( ancestralmaterializedpath ILIKE ANY (ARRAY [ ").append(QueryUtil.createQuery(size)).append(" ]) OR code IN ( ").append(QueryUtil.createQuery(size)).append(" ) ) ");
+            parentCodesSet.forEach(code -> preparedStmtList.add("%" + code + "%"));
+            QueryUtil.addToPreparedStatement(preparedStmtList, parentCodesSet);
         }
 
         if(!boundaryRelationshipSearchCriteria.getIsSearchForRootNode()) {
@@ -66,6 +70,13 @@ public class BoundaryRelationshipQueryBuilder {
                 QueryUtil.addToPreparedStatement(preparedStmtList, new HashSet<>(boundaryRelationshipSearchCriteria.getCodes()));
             }
         }
+
+//        if(!CollectionUtils.isEmpty(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes())) {
+//            QueryUtil.addClauseIfRequired(builder, preparedStmtList);
+//            builder.append(" ARRAY [ ").append(QueryUtil.createQuery(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes().size())).append(" ]").append("::text[] ");
+//            builder.append(" && string_to_array(ancestralmaterializedpath, '|') ");
+//            QueryUtil.addToPreparedStatement(preparedStmtList, new HashSet<>(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes()));
+//        }
 
         if(boundaryRelationshipSearchCriteria.getIsSearchForRootNode()) {
             QueryUtil.addClauseIfRequired(builder, preparedStmtList);

@@ -76,7 +76,9 @@ public class BoundaryService {
         log.info("Boundary creation process completed successfully, created {} boundaries", boundaryCount);
 
         // If new state do not exist in MDMS common-master.StateInfo module, then create the new state in mdms
-        createMdmsStateInfo(boundaryRequest);
+        boolean isValidSateCode = boundaryEntityValidator.validateStateCode(boundaryRequest);
+        if (isValidSateCode)
+            createMdmsStateInfo(boundaryRequest);
 
         return boundaryResponse;
     }
