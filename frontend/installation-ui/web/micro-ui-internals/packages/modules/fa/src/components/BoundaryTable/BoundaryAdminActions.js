@@ -184,6 +184,7 @@ const BoundaryAdminActions = ({ t }) => {
       });
 
       await queryClient.invalidateQueries(["NORMALIZED_BOUNDARY"]);
+      await queryClient.invalidateQueries(["BOUNDARY"]);
 
       const existingModules = Digit.PersistantStorage.get("Locale.en_IN.List");
       Digit.PersistantStorage.set("Locale.en_IN.List", existingModules.filter((module) => module !== "rainmaker-in"));
