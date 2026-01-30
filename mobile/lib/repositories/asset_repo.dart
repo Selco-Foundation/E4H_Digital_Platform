@@ -427,8 +427,7 @@ class AssetRepository {
     };
 
     if (sn.isNotEmpty) {
-      // criteria['serialNumber'] = [sn];
-      criteria['serialNumber'] = sn;
+      criteria['serialNumber'] = [sn];
     }
 
     if (mn.isNotEmpty) {
