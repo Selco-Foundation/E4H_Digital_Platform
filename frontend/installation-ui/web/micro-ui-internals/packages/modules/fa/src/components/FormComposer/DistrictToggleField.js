@@ -33,7 +33,7 @@ const DistrictToggleField = (props) => {
   const boundaryLabel = (code) => t(`Boundary_${code}`);
   const districts = (boundaryData && boundaryData.districts) || [];
   const districtOptions = (districts || [])
-    .filter((d) => !!stateValue && d.stateCode === stateValue)
+    .filter((d) => !!stateValue && d.parentCode === stateValue)
     .map((d) => ({
       code: d.code,
       name: boundaryLabel(d.code),

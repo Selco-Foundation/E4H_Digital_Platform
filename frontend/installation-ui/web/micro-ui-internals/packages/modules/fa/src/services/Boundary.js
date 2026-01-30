@@ -55,46 +55,25 @@ export const BoundaryService = {
     };
   },
 
-  fetchNormalizedBoundaryRelations: async (boundaryType, codes) => {
-    const endpoint = "/boundary-service/boundary-relationships/_search";
-    const normalizedCodes = Array.isArray(codes) ? codes.filter(Boolean) : codes ? [codes] : null;
-
-    const params = {
-      tenantId: "in",
-      includeChildren: true,
-      includeParents: boundaryType !== "State",
-      hierarchyType: "SELCO",
-      boundaryType,
+  fetchAllBoundaries: async (queryFilter, limit = 10, offset = 0) => {
+    const endpoint = "/boundary-service/boundary/v2/getAllBoundaries";
+    const headers = {
+      "Content-Type": "application/json",
     };
-
-    if (normalizedCodes && normalizedCodes.length) {
-      params.codes = normalizedCodes.join(",");
-    }
-
-    const headers = { "Content-Type": "application/json" };
+    const params = {
+      tenantId: Digit.ULBService.getCurrentTenantId(),
+      offset,
+      limit,
+    };
 
     return await Request({
       url: endpoint,
+      data: queryFilter,
       userService: true,
       method: "POST",
       auth: true,
-      params,
-      headers,
-    });
-  },
-
-  fetchAllBoundaries: async ({ page = 0, size = 10, tenantId = "in", hierarchyType = "SELCO", boundaryType = "Block" } = {}) => {
-    return await Request({
-      url: "/boundary-service/boundary/getAllBoundaries",
-      userService: true,
-      method: "GET",
-      auth: true,
-      params: { page, size, tenantId, hierarchyType, boundaryType },
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        tenantId: "in",
-        ...authHeaders(),
-      },
+      params: params,
+      headers: headers,
     });
   },
 

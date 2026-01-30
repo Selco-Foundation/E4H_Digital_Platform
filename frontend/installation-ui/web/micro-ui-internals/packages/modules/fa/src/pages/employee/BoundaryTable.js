@@ -14,7 +14,6 @@ const BoundaryTable = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const location = useLocation();
-  const [showBoundaryModal, setShowBoundaryModal] = useState(false);
 
   const queryParams = new URLSearchParams(window.location.search);
 
@@ -28,6 +27,9 @@ const BoundaryTable = () => {
         return null;
       }
     })() || {
+      boundary: {
+        boundaryType: ROOT_BOUNDARY_TYPE,
+      },
       boundaryFilter: { state: [], district: [], block: [] },
       boundaryFilterQuery: {},
     }
@@ -57,25 +59,11 @@ const BoundaryTable = () => {
     }
   }, [boundaryQueryFilter, pageSize]);
 
-  const handleFilterChange = useCallback((filters) => {
-    setBoundaryQueryFilter((prev) => {
-      const next = { ...prev, ...filters };
-      if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
-      return next;
-    });
-  }, []);
-
-  const boundaryFilter = boundaryQueryFilter?.boundaryFilter || { state: [], district: [], block: [] };
-
-  const tableFilter = {
-    stateCodes: (boundaryFilter.state || []).map((s) => s.code),
-    districtCodes: (boundaryFilter.district || []).map((d) => d.code),
-    blockCodes: (boundaryFilter.block || []).map((b) => b.code),
+  const handleFilterChange = (filters) => {
+    setBoundaryQueryFilter((prev) => ({ ...prev, ...filters }));
   };
 
-  const { isLoading, data } = useNormalizedBoundary(ROOT_BOUNDARY_TYPE, undefined, pageSize, pageOffset, {
-    _tableFilter: tableFilter,
-  });
+  const { isLoading, data } = useNormalizedBoundary(boundaryQueryFilter, pageSize, pageOffset);
 
   const totalCount = data?.totalCount || 0;
   const rows = data?.boundaries || [];

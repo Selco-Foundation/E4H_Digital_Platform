@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
-import useNormalizedBoundary from "../hooks/useNormalizedBoundary";
+import useBoundary from "../hooks/useBoundary";
 
 const BoundaryForm = ({ t, onSubmit, formToast, setFormToast, isStateTextMode, setIsStateTextMode, isDistrictTextMode, setIsDistrictTextMode }) => {
 
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
 
-  const { data: boundaryData, isLoading: isBoundaryLoading } = useNormalizedBoundary("State");
+  const { data: boundaryData, isLoading: isBoundaryLoading } = useBoundary("");
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);

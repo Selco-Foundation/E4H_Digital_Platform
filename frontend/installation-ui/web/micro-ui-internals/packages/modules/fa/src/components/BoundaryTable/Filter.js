@@ -1,18 +1,12 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { RemoveableTag, Loader } from "@egovernments/digit-ui-react-components";
 import RefreshButton from "../RefreshButton";
-import useNormalizedBoundary from "../../hooks/useNormalizedBoundary";
+import useBoundary from "../../hooks/useBoundary";
 import CustomFilterIcon from "../Custom/CustomFilterIcon";
 import CustomDropdown from "../Custom/CustomDropdown";
 
-const codesKey = (arr = []) =>
-  (arr || [])
-    .map((x) => x?.code)
-    .filter(Boolean)
-    .sort()
-    .join("|");
-
 const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
+
   const [stateMenu, setStateMenu] = useState([]);
   const [districtOptions, setDistrictOptions] = useState([]);
   const [districtMenu, setDistrictMenu] = useState([]);
@@ -27,75 +21,45 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
     }
   );
 
-  const lastSentRef = useRef("");
-
-  const { isLoading, data } = useNormalizedBoundary("State");
+  const { isLoading, data } = useBoundary("");
 
   useEffect(() => {
     if (!data) return;
-
     setStateMenu((data.states || []).map((state) => ({ ...state, name: t(`Boundary_${state.code}`) })));
-
     setDistrictOptions(
       (data.districts || []).map((district) => ({
         ...district,
-        parentCode: district.parentCode || district.stateCode || "",
         name: t(`Boundary_${district.code}`),
       }))
     );
-
     setBlockOptions(
       (data.blocks || []).map((block) => ({
         ...block,
-        parentCode: block.parentCode || block.districtCode || "",
         name: t(`Boundary_${block.code}`),
       }))
     );
   }, [data, t]);
 
-  const stateCodesKey = codesKey(currentFilter.state);
-  const districtCodesKey = codesKey(currentFilter.district);
-
   useEffect(() => {
-    if (!districtOptions?.length && !blockOptions?.length) return;
+    const selectedStateCodes = currentFilter.state.map((state) => state.code);
+    if (selectedStateCodes?.length) {
+      const newDistrictMenu = districtOptions
+        .filter((district) => selectedStateCodes.includes(district?.parentCode))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
 
-    const selectedStates = currentFilter.state || [];
-    const selectedDistricts = currentFilter.district || [];
-
-    if (!selectedStates.length) {
-      setDistrictMenu([]);
-      setBlockMenu([]);
-      return;
+      setDistrictMenu(newDistrictMenu);
     }
 
-    const selectedStateCodes = selectedStates.map((s) => s.code);
+    const selectedDistrictCodes = currentFilter.district.map((district) => district.code);
+    if (selectedDistrictCodes?.length) {
+      const newBlockMenu = blockOptions
+        .filter((block) => selectedDistrictCodes.includes(block?.parentCode))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
 
-    const nextDistrictMenu = (districtOptions || []).filter((d) => selectedStateCodes.includes(d.parentCode));
-    setDistrictMenu(nextDistrictMenu);
-
-    if (!selectedDistricts.length) {
-      setBlockMenu([]);
-
-      if ((currentFilter.block || []).length > 0) {
-        setCurrentFilter((prev) => ({ ...prev, block: [] }));
-      }
-      return;
+      setBlockMenu(newBlockMenu);
     }
 
-    const nextDistrictCodes = nextDistrictMenu.map((d) => d.code);
-    const selectedDistrictCodes = selectedDistricts.map((d) => d.code).filter((code) => nextDistrictCodes.includes(code)); // only valid districts under selected state(s)
-
-    if (!selectedDistrictCodes.length) {
-      setBlockMenu([]);
-      if ((currentFilter.block || []).length > 0) {
-        setCurrentFilter((prev) => ({ ...prev, block: [] }));
-      }
-      return;
-    }
-
-    const nextBlockMenu = (blockOptions || []).filter((b) => selectedDistrictCodes.includes(b.parentCode));
-    setBlockMenu(nextBlockMenu);
-  }, [currentFilter, stateCodesKey, districtCodesKey, districtOptions, blockOptions]); // keep deps tight
+  }, [currentFilter, districtOptions, blockOptions]);
 
   useEffect(() => {
     const boundaryFilterQuery = {};
@@ -108,61 +72,32 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
       boundaryFilterQuery.boundary = currentFilter.state.map((s) => s.code);
     }
 
-    const payload = {
+    onFilterChange({
       boundaryFilter: { ...currentFilter },
       boundaryFilterQuery,
-    };
-
-    const key = JSON.stringify(payload);
-    if (key !== lastSentRef.current) {
-      lastSentRef.current = key;
-      if (typeof onFilterChange === "function") onFilterChange(payload);
-    }
+    });
   }, [currentFilter]);
 
   const handleStateChange = (selectedState) => {
-    if (!selectedState?.code) return;
-
-    if (currentFilter.state.every((s) => s.code !== selectedState.code)) {
-      const newSelectedStates = [...currentFilter.state, selectedState];
-      const selectedStateCodes = newSelectedStates.map((s) => s.code);
-
-      const newDistrictMenu = districtOptions.filter((d) => selectedStateCodes.includes(d.parentCode));
-      setDistrictMenu(newDistrictMenu);
-
-      const selectedDistrictCodes = (currentFilter.district || []).map((d) => d.code);
-      const newBlockMenu =
-        selectedDistrictCodes.length > 0 ? blockOptions.filter((b) => selectedDistrictCodes.includes(b.parentCode)) : [];
-      setBlockMenu(newBlockMenu);
-
+    if (currentFilter.state.every((state) => state.code !== selectedState.code)) {
       setCurrentFilter({
         ...currentFilter,
-        state: newSelectedStates,
+        state: [...currentFilter.state, selectedState],
       });
     }
   };
 
   const handleDistrictChange = (selectedDistrict) => {
-    if (!selectedDistrict?.code) return;
-
-    if (currentFilter.district.every((d) => d.code !== selectedDistrict.code)) {
-      const newSelectedDistricts = [...currentFilter.district, selectedDistrict];
-      const selectedDistrictCodes = newSelectedDistricts.map((d) => d.code);
-
-      const newBlockMenu = blockOptions.filter((b) => selectedDistrictCodes.includes(b.parentCode));
-      setBlockMenu(newBlockMenu);
-
+    if (currentFilter.district.every((district) => district.code !== selectedDistrict.code)) {
       setCurrentFilter({
         ...currentFilter,
-        district: newSelectedDistricts,
+        district: [...currentFilter.district, selectedDistrict],
       });
     }
   };
 
   const handleBlockChange = (selectedBlock) => {
-    if (!selectedBlock?.code) return;
-
-    if (currentFilter.block.every((b) => b.code !== selectedBlock.code)) {
+    if (currentFilter.block.every((block) => block.code !== selectedBlock.code)) {
       setCurrentFilter({
         ...currentFilter,
         block: [...currentFilter.block, selectedBlock],
@@ -171,64 +106,44 @@ const Filter = ({ t, onFilterChange, boundaryQueryFilter, type }) => {
   };
 
   const onRemove = (index, key) => {
-    const afterRemove = (currentFilter[key] || []).filter((_, i) => i !== index);
+    let afterRemove = currentFilter[key].filter((value, i) => i !== index);
 
     if (key === "state") {
-      const remainingStateCodes = afterRemove.map((s) => s.code);
-
-      const newDistrictMenu = districtOptions.filter((d) => remainingStateCodes.includes(d.parentCode));
-      const newSelectedDistricts = (currentFilter.district || []).filter((d) => remainingStateCodes.includes(d.parentCode));
-      const remainingDistrictCodes = newSelectedDistricts.map((d) => d.code);
-
-      const newBlockMenu = blockOptions.filter((b) => remainingDistrictCodes.includes(b.parentCode));
-      const newSelectedBlocks = (currentFilter.block || []).filter((b) => remainingDistrictCodes.includes(b.parentCode));
+      const newSelectedStateCodes = afterRemove.map((state) => state.code);
+      const newDistrictMenu = districtOptions.filter((district) => newSelectedStateCodes.includes(district.parentCode));
+      const newSelectedDistricts = currentFilter.district.filter((district) => newSelectedStateCodes.includes(district.parentCode));
+      const newSelectedDistrictCodes = afterRemove.map((district) => district.code);
+      const newBlockMenu = blockOptions.filter((block) => newSelectedDistrictCodes.includes(block.parentCode));
+      const newSelectedBlocks = currentFilter.block.filter((block) => newSelectedDistrictCodes.includes(block.parentCode));
 
       setDistrictMenu(newDistrictMenu);
       setBlockMenu(newBlockMenu);
-
       setCurrentFilter({
         ...currentFilter,
         state: afterRemove,
         district: newSelectedDistricts,
         block: newSelectedBlocks,
       });
-      return;
-    }
-
-    if (key === "district") {
-      const remainingDistrictCodes = afterRemove.map((d) => d.code);
-
-      if (!remainingDistrictCodes.length) {
-        setBlockMenu([]);
-        setCurrentFilter({
-          ...currentFilter,
-          district: afterRemove,
-          block: [],
-        });
-        return;
-      }
-
-      const newBlockMenu = blockOptions.filter((b) => remainingDistrictCodes.includes(b.parentCode));
-      const newSelectedBlocks = (currentFilter.block || []).filter((b) => remainingDistrictCodes.includes(b.parentCode));
+    } else if (key === "district") {
+      const newSelectedDistrictCodes = afterRemove.map((district) => district.code);
+      const newBlockMenu = blockOptions.filter((block) => newSelectedDistrictCodes.includes(block.parentCode));
+      const newSelectedBlocks = currentFilter.block.filter((block) => newSelectedDistrictCodes.includes(block.parentCode));
 
       setBlockMenu(newBlockMenu);
-
       setCurrentFilter({
         ...currentFilter,
         district: afterRemove,
         block: newSelectedBlocks,
       });
-      return;
+    } else {
+      setCurrentFilter({ ...currentFilter, [key]: afterRemove });
     }
-
-    setCurrentFilter({ ...currentFilter, [key]: afterRemove });
   };
 
   const onClearAll = () => {
     setCurrentFilter({ state: [], district: [], block: [] });
     setDistrictMenu([]);
     setBlockMenu([]);
-    lastSentRef.current = "";
   };
 
   if (isLoading) return <Loader />;
