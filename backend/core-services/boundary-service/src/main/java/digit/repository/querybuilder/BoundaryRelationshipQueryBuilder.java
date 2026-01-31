@@ -1,5 +1,6 @@
 package digit.repository.querybuilder;
 
+import digit.config.ApplicationProperties;
 import digit.util.QueryUtil;
 import digit.web.models.BoundaryRelationshipSearchCriteria;
 import lombok.extern.slf4j.Slf4j;
@@ -14,12 +15,24 @@ import java.util.Set;
 @Slf4j
 public class BoundaryRelationshipQueryBuilder {
 
+    private ApplicationProperties applicationProperties;
+
     private static String BOUNDARY_RELATIONSHIP_BASE_SEARCH_QUERY = "SELECT id, tenantid, code, hierarchytype, boundarytype, parent, ancestralmaterializedpath, createdtime, createdby, lastmodifiedtime, lastmodifiedby" +
             " FROM boundary_relationship ";
 
     private static String COUNT_BOUNDARY_RELATIONSHIP_BASE_SEARCH_QUERY = "SELECT count(*) FROM boundary_relationship ";
 
     private static String ORDER_BY_CLAUSE = " order by createdtime desc ";
+
+    private final String paginationWrapper = "SELECT * FROM " +
+            "(SELECT *, DENSE_RANK() OVER (ORDER BY createdtime DESC , id) offset_ FROM " +
+            "({})" +
+            " result) result_offset " +
+            "WHERE offset_ > ? AND offset_ <= ?";
+
+    public BoundaryRelationshipQueryBuilder(ApplicationProperties applicationProperties) {
+        this.applicationProperties = applicationProperties;
+    }
 
     public String getBoundaryRelationshipSearchQuery(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria, List<Object> preparedStmtList, Boolean isCountQuery) {
         String query = buildQuery(boundaryRelationshipSearchCriteria, preparedStmtList, isCountQuery);
@@ -71,13 +84,6 @@ public class BoundaryRelationshipQueryBuilder {
             }
         }
 
-//        if(!CollectionUtils.isEmpty(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes())) {
-//            QueryUtil.addClauseIfRequired(builder, preparedStmtList);
-//            builder.append(" ARRAY [ ").append(QueryUtil.createQuery(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes().size())).append(" ]").append("::text[] ");
-//            builder.append(" && string_to_array(ancestralmaterializedpath, '|') ");
-//            QueryUtil.addToPreparedStatement(preparedStmtList, new HashSet<>(boundaryRelationshipSearchCriteria.getCurrentBoundaryCodes()));
-//        }
-
         if(boundaryRelationshipSearchCriteria.getIsSearchForRootNode()) {
             QueryUtil.addClauseIfRequired(builder, preparedStmtList);
             builder.append(" parent IS NULL ");
@@ -96,7 +102,34 @@ public class BoundaryRelationshipQueryBuilder {
 
         builder.append(ORDER_BY_CLAUSE);
 
-        return builder.toString();
+        // 🔥 APPLIQUER LA PAGINATION ICI
+        return addPaginationWrapper(
+                builder.toString(),
+                preparedStmtList,
+                boundaryRelationshipSearchCriteria.getLimit(),
+                boundaryRelationshipSearchCriteria.getOffset()
+        );
+    }
+
+    private String addPaginationWrapper(String query, List<Object> preparedStmtList, Integer limitParam, Integer offsetParam) {
+        int limit = applicationProperties.getDefaultLimit();
+        int offset = applicationProperties.getDefaultOffset();
+        String finalQuery = paginationWrapper.replace("{}", query);
+
+        if (limitParam != null) {
+            if (limitParam <= applicationProperties.getMaxDefaultLimit())
+                limit = limitParam;
+            else
+                limit = applicationProperties.getMaxDefaultLimit();
+        }
+
+        if (offsetParam != null)
+            offset = offsetParam;
+
+        preparedStmtList.add(offset);
+        preparedStmtList.add(limit + offset);
+
+        return finalQuery;
     }
 
 }

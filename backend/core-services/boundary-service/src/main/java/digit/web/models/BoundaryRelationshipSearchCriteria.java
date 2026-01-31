@@ -66,4 +66,10 @@ public class BoundaryRelationshipSearchCriteria {
     @JsonProperty("parentCodes")
     private List<String> parentCodes = null;
 
+    @JsonProperty("offset")
+    private int offset;
+
+    @JsonProperty("limit")
+    private int limit;
+
 }

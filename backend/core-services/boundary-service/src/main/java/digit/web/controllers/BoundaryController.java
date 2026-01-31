@@ -163,6 +163,8 @@ public class BoundaryController {
 
         criteria.getCriteria().setIncludeChildren(false);
         criteria.getCriteria().setIncludeParents(true);
+        criteria.getCriteria().setLimit(limit);
+        criteria.getCriteria().setOffset(offset);
 
         BoundarySearchResponse response = boundaryRelationshipService.getBoundaryRelationships(criteria.getCriteria(), null);
         log.info(String.valueOf(response));
@@ -174,14 +176,10 @@ public class BoundaryController {
             }
         }
 
-        // Paginate
-        int start = offset * limit;
-        int end = Math.min(start + limit, flatList.size());
-        List<FlatBoundaryResponse> paginated = (start < flatList.size()) ? flatList.subList(start, end) : Collections.emptyList();
         BoundaryRelationshipV2Response response1 = BoundaryRelationshipV2Response.builder()
                 .responseInfo(null)
-                .totalCount(criteria.getCriteria().getCodes() !=null ? flatList.size() : count)
-                .paginated(paginated)
+                .totalCount(count)
+                .paginated(flatList)
                 .build();
 
         return ResponseEntity.ok(response1);
