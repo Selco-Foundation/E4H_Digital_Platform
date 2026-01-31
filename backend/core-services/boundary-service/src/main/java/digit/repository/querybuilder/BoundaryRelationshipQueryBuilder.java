@@ -102,13 +102,15 @@ public class BoundaryRelationshipQueryBuilder {
 
         builder.append(ORDER_BY_CLAUSE);
 
+        return builder.toString();
+
         // 🔥 APPLIQUER LA PAGINATION ICI
-        return addPaginationWrapper(
-                builder.toString(),
-                preparedStmtList,
-                boundaryRelationshipSearchCriteria.getLimit(),
-                boundaryRelationshipSearchCriteria.getOffset()
-        );
+//        return addPaginationWrapper(
+//                builder.toString(),
+//                preparedStmtList,
+//                boundaryRelationshipSearchCriteria.getLimit(),
+//                boundaryRelationshipSearchCriteria.getOffset()
+//        );
     }
 
     private String addPaginationWrapper(String query, List<Object> preparedStmtList, Integer limitParam, Integer offsetParam) {
