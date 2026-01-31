@@ -61,7 +61,7 @@ public class BoundaryEntityValidator {
         int boundaryCount = boundaryRequest.getBoundary() != null ? boundaryRequest.getBoundary().size() : 0;
         log.debug("Validating boundary create request, boundary count={}", boundaryCount);
         // Check if new state code code or state boundary code already exist in MDMS common-master.StateInfo module. Only call for state
-        validateStateCode(boundaryRequest);
+//        validateStateCode(boundaryRequest);
 
         // validate the geometry
         log.debug("Validating boundary geometry");
