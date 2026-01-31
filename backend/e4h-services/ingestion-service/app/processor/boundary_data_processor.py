@@ -343,5 +343,5 @@ class BoundaryDataProcessor:
         # Split sur espaces
         parts = cleaned.split()
 
-        # Capitalize chaque mot et concatène
-        return "".join(word.capitalize() for word in parts)
+        # Met juste la première lettre en majuscule, sans forcer le reste en minuscule
+        return "".join(word[:1].upper() + word[1:] for word in parts)
