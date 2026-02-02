@@ -6,7 +6,6 @@ import {useSelector} from "react-redux";
 import FacilityTable from "./FacilityTable";
 import FacilityDetails from "./FacilityDetails";
 import BoundaryTable from "./BoundaryTable";
-import CreateBoundary from "./CreateBoundary";
 import UploadBoundary from "./UploadBoundary";
 import Response from "@selco/digit-ui-module-pm/src/pages/employee/Response";
 import ActivityDetails from "./ActivityDetails";
@@ -102,13 +101,6 @@ const FAApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.boundaries]}
           />
           <BoundaryTable/>
-        </Route>
-        <Route path={`${path}/boundary/create`} exact={true}>
-          <BreadCrumb
-            spanStyle={{color: "#0B0C0C"}}
-            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.boundaryCreation]}
-          />
-          <CreateBoundary/>
         </Route>
         <Route path={`${path}/boundary/upload`} exact={true}>
           <BreadCrumb

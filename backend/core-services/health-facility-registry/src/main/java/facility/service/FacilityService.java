@@ -301,24 +301,24 @@ public class FacilityService {
             facilityDetails = HealthFacilityDetails.builder().build();
             facility.setFacilityDetails(facilityDetails);
         }
-        
+
         // Populate facilityDetails from direct fields if missing (trim whitespace)
-        if ((facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()) 
+        if ((facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank())
                 && facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()) {
             facilityDetails.setHfrId(facility.getHfrId().trim());
         }
-        
-        if ((facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()) 
+
+        if ((facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank())
                 && plainPocMobileNumber != null && !plainPocMobileNumber.trim().isBlank()) {
             facilityDetails.setPocContact(plainPocMobileNumber.trim());
         }
-        
-        if (facilityDetails.getPocName() == null 
+
+        if (facilityDetails.getPocName() == null
                 && facility.getFacilityPocName() != null && !facility.getFacilityPocName().trim().isBlank()) {
             facilityDetails.setPocName(facility.getFacilityPocName().trim());
         }
-        
-        if (facilityDetails.getPocEmail() == null 
+
+        if (facilityDetails.getPocEmail() == null
                 && facility.getFacilityPocEmail() != null && !facility.getFacilityPocEmail().trim().isBlank()) {
             facilityDetails.setPocEmail(facility.getFacilityPocEmail().trim());
         }
@@ -577,7 +577,15 @@ public class FacilityService {
      */
     public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request) {
         log.trace("Entering bulkSearchFacilities method");
-        List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(request.getFacilityBulkSearchCriteria());
+        FacilityBulkSearchCriteria criteria = request.getFacilityBulkSearchCriteria();
+        List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(criteria);
+        // When searching by state, district, or block with no facilities in that boundary, return empty list
+        boolean isBoundarySearch = (criteria.getState() != null && !criteria.getState().isEmpty())
+                || (criteria.getDistrict() != null && !criteria.getDistrict().isEmpty())
+                || (criteria.getBlock() != null && !criteria.getBlock().isEmpty());
+        if (isBoundarySearch && (listFacilityCodes == null || listFacilityCodes.isEmpty())) {
+            return Collections.emptyList();
+        }
         if(listFacilityCodes !=null && !listFacilityCodes.isEmpty()){
             if(request.getFacilityBulkSearchCriteria().getBoundaryCodes()==null)
                 request.getFacilityBulkSearchCriteria().setBoundaryCodes(new ArrayList<>());
@@ -594,7 +602,7 @@ public class FacilityService {
         StringBuilder query = new StringBuilder("SELECT * FROM facility fac");
         query.append(" LEFT JOIN facility_address fa ON fac.addressid = fa.id ");
         query.append(result.getWhereClause());
-        query.append(" ORDER BY created_at DESC ");
+        query.append(" ORDER BY updated_at DESC NULLS LAST ");
 
         List<Object> allParams = new ArrayList<>(result.getParams());
         if (!Boolean.TRUE.equals(request.getFacilityBulkSearchCriteria().getSendNonPaginatedResponse())) {

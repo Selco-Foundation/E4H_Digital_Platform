@@ -3,21 +3,22 @@ import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-comp
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import { IngestionService } from "../../services/Ingestion";
+import { useQueryClient } from "react-query";
 
 const DEFAULT_SHEET_NAME = "Boundary Data";
 
 const UploadBoundaryData = () => {
-  const { t } = useTranslation();
-  const history = useHistory();
 
+  const { t } = useTranslation();
+  const tenantId = Digit.ULBService.getStateId();
+  const history = useHistory();
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [toast, setToast] = useState(null);
   const [blockUI, setBlockUI] = useState(false);
-
   const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
-
   const uploadSeqRef = useRef(0);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -89,6 +90,19 @@ const UploadBoundaryData = () => {
         data: res?.file?.data || pickedFile,
       });
 
+      await queryClient.invalidateQueries(["NORMALIZED_BOUNDARY"]);
+      await queryClient.invalidateQueries(["BOUNDARY"]);
+
+      const existingModules = Digit.PersistantStorage.get("Locale.en_IN.List");
+      Digit.PersistantStorage.set(
+        "Locale.en_IN.List",
+        existingModules.filter((module) => module !== "rainmaker-in")
+      );
+      await Digit.LocalizationService.getUpdatedMessages({
+        modules: ["rainmaker-in"],
+        locale: "en_IN",
+        tenantId: tenantId,
+      });
       setToast({ key: "success", label: t("FA_TOAST_BOUNDARY_DATA_UPLOAD_SUCCESS") });
     } catch (e) {
       if (seq !== uploadSeqRef.current) return;

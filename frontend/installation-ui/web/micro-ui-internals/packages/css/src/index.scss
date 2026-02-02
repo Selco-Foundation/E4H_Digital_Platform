@@ -909,6 +909,12 @@ input[type="number"] {
   transform: translateX(-50%) !important;
 }
 
+.admin-form {
+  .digit-toast-success {
+    bottom: 20% !important;
+  }
+}
+
 .org-user-assignment {
   .employeeCard {
     margin-bottom: 0 !important;

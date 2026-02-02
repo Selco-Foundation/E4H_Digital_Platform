@@ -10,10 +10,12 @@ from app.ingest.service.data_writer import DataWriter
 from app.ingest.service.validator import Validator
 from app.schemas.request_info import RequestInfo
 from app.utils.boundary_service_client import BoundaryServiceClient
+from app.utils.localization_service_client import LocalizationServiceClient
 
 from dotenv import load_dotenv
 load_dotenv()
 boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
+localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 
 logger = AppLogger().get_logger()
 
@@ -27,6 +29,7 @@ class BoundaryDataProcessor:
         self.validation_errors = []
         self.request_info = request_info
         self.boundary_service_client = BoundaryServiceClient(boundary_service_url)
+        self.localization_client = LocalizationServiceClient(localization_service_url)
 
         # Hierarchical structure to store boundary data
         self.hierarchy_levels = ["Country", "State", "District", "Block"]
@@ -78,6 +81,7 @@ class BoundaryDataProcessor:
         self._check_existing_boundaries()
         self._create_new_boundaries()
         self._create_boundary_relationships()
+        self._upsert_localization_for_boundaries()
 
         # Update the DataFrame with boundary creation results
         boundary_df = self._update_dataframe_with_results(boundary_df)
@@ -275,6 +279,40 @@ class BoundaryDataProcessor:
         except Exception as e:
             return False, str(e)
 
+    def _upsert_localization_for_boundaries(self):
+        """Upsert localization messages for all boundaries"""
+        if not self.request_info:
+            logger.warning("No RequestInfo; skipping localization upsert for boundaries")
+            return
+        messages = []
+        for level in self.hierarchy_levels:
+            for code, data in self.boundary_data[level].items():
+                full_code = data["full_code"]
+                if full_code in self.failed_boundaries:
+                    continue
+                # message = display name (e.g. "Karnataka", "Bangalore Urban"), not full code
+                display_name = data.get("name") or code
+                messages.append({
+                    "code": f"Boundary_{full_code}",
+                    "message": display_name,
+                    "module": "rainmaker-in",
+                    "locale": "en_IN",
+                })
+        if not messages:
+            return
+        chunk_size = 50
+        for i in range(0, len(messages), chunk_size):
+            chunk = messages[i : i + chunk_size]
+            try:
+                self.localization_client.upsert_messages(
+                    request_info=self.request_info,
+                    tenant_id="in",
+                    messages=chunk,
+                )
+                logger.info(f"Upserted localization for {len(chunk)} boundaries")
+            except Exception as e:
+                logger.error(f"Localization upsert failed for boundary batch: {e}", exc_info=True)
+
     def _update_dataframe_with_results(self, boundary_df):
         """Update the DataFrame with boundary creation results"""
         for index, row in boundary_df.iterrows():
@@ -343,5 +381,5 @@ class BoundaryDataProcessor:
         # Split sur espaces
         parts = cleaned.split()
 
-        # Capitalize chaque mot et concatène
-        return "".join(word.capitalize() for word in parts)
+        # Met juste la première lettre en majuscule, sans forcer le reste en minuscule
+        return "".join(word[:1].upper() + word[1:] for word in parts)
