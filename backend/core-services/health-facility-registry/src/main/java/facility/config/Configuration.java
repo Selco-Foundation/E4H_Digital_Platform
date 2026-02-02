@@ -86,6 +86,9 @@ public class Configuration {
     @Value("${egov.hrms.default.department.code}")
     private String hrmsDefaultDepartmentCode;
 
+    @Value("${egov.hrms.default.designation.code}")
+    private String hrmsDefaultDesignationCode;
+
 
     //URLShortening
     @Value("${egov.url.shortner.host}")
