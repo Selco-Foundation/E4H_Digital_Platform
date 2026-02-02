@@ -8,6 +8,8 @@ import DistrictSelector from "./components/FormComposer/DistrictSelector";
 import BlockSelector from "./components/FormComposer/BlockSelector";
 import DownloadTemplate from "./components/File/DownloadTemplate";
 import CustomUploadFile from "./components/File/CustomUploadFile";
+import StateToggleField from "./components/FormComposer/StateToggleField";
+import DistrictToggleField from "./components/FormComposer/DistrictToggleField";
 
 export const FAReducers = getRootReducer;
 
@@ -36,6 +38,8 @@ const componentsToRegister = {
   FABlockSelector: BlockSelector,
   FADownloadTemplate: DownloadTemplate,
   FAUploadFacilityData: CustomUploadFile,
+  FAStateToggleField: StateToggleField,
+  FADistrictToggleField: DistrictToggleField,
 };
 
 export const initFAComponents = () => {
