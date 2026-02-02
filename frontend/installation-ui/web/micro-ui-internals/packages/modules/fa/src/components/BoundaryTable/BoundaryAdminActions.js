@@ -262,7 +262,7 @@ const BoundaryAdminActions = ({ t }) => {
           height: "40px",
         }}
         label={t("FA_BULK_ADD")}
-        onButtonClick={() => history.push(`${location.pathname.replace(/\/boundaries\/?$/, "")}/boundary/upload`)}
+        onButtonClick={() => history.push(`/${window?.contextPath}/employee/fa/boundary/upload`)}
       />
       {showBoundaryModal && (
         <BoundaryModal

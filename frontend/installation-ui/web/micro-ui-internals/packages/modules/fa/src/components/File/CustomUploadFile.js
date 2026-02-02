@@ -105,6 +105,15 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
         </p>
       )}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={t("CORE_COMMON_BROWSE_IN_MY_FILES")}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openFileDialog();
+          }
+        }}
         style={{
           border: "1px dashed #ccc",
           borderRadius: "6px",

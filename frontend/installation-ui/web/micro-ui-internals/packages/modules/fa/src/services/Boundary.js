@@ -1,5 +1,4 @@
 import {Request} from "@egovernments/digit-ui-libraries";
-import {authHeaders} from "../components/Custom/CustomRequest";
 
 const DEFAULT_COUNTRY = "India";
 
