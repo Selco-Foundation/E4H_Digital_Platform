@@ -111,24 +111,19 @@ public class BoundaryController {
         return ResponseEntity.ok(paginated);
     }
 
-    @GetMapping("/v2/getAllBoundaries")
+    @PostMapping("/v2/getAllBoundaries")
     public ResponseEntity<BoundaryRelationshipV2Response> getAllBoundariesV2(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam String tenantId,
-            @RequestParam String hierarchyType,
-            @RequestParam String boundaryType) {
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit, @Valid @RequestBody BoundaryRelationshipSearchRequest criteria) {
 
-        BoundaryRelationshipSearchCriteria criteria = new BoundaryRelationshipSearchCriteria();
-        criteria.setTenantId(tenantId);
-        criteria.setHierarchyType(hierarchyType);
-        criteria.setIncludeChildren(false);
-        criteria.setIncludeParents(true);
-        criteria.setBoundaryType(boundaryType);
+        criteria.getCriteria().setIncludeChildren(false);
+        criteria.getCriteria().setIncludeParents(true);
+        criteria.getCriteria().setLimit(limit);
+        criteria.getCriteria().setOffset(offset);
 
-        BoundarySearchResponse response = boundaryRelationshipService.getBoundaryRelationships(criteria, null);
+        BoundarySearchResponse response = boundaryRelationshipService.getBoundaryRelationships(criteria.getCriteria(), null);
         log.info(String.valueOf(response));
-        Integer count = boundaryRelationshipService.countBoundaryRelationships(criteria);
+        Integer count = boundaryRelationshipService.countBoundaryRelationships(criteria.getCriteria());
         List<FlatBoundaryResponse> flatList = new ArrayList<>();
         for (HierarchyRelation tenantBoundary : response.getTenantBoundary()) {
             for (EnrichedBoundary country : tenantBoundary.getBoundary()) {
@@ -137,12 +132,13 @@ public class BoundaryController {
         }
 
         // Paginate
-        int start = page * size;
-        int end = Math.min(start + size, flatList.size());
+        int start = offset * limit;
+        int end = Math.min(start + limit, flatList.size());
         List<FlatBoundaryResponse> paginated = (start < flatList.size()) ? flatList.subList(start, end) : Collections.emptyList();
+
         BoundaryRelationshipV2Response response1 = BoundaryRelationshipV2Response.builder()
                 .responseInfo(null)
-                .totalCount(count)
+                .totalCount(criteria.getCriteria().getCodes() !=null ? flatList.size() : count)
                 .paginated(paginated)
                 .build();
 

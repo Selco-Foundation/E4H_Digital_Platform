@@ -577,7 +577,15 @@ public class FacilityService {
      */
     public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request) {
         log.trace("Entering bulkSearchFacilities method");
-        List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(request.getFacilityBulkSearchCriteria());
+        FacilityBulkSearchCriteria criteria = request.getFacilityBulkSearchCriteria();
+        List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(criteria);
+        // When searching by state, district, or block with no facilities in that boundary, return empty list
+        boolean isBoundarySearch = (criteria.getState() != null && !criteria.getState().isEmpty())
+                || (criteria.getDistrict() != null && !criteria.getDistrict().isEmpty())
+                || (criteria.getBlock() != null && !criteria.getBlock().isEmpty());
+        if (isBoundarySearch && (listFacilityCodes == null || listFacilityCodes.isEmpty())) {
+            return Collections.emptyList();
+        }
         if(listFacilityCodes !=null && !listFacilityCodes.isEmpty()){
             if(request.getFacilityBulkSearchCriteria().getBoundaryCodes()==null)
                 request.getFacilityBulkSearchCriteria().setBoundaryCodes(new ArrayList<>());
