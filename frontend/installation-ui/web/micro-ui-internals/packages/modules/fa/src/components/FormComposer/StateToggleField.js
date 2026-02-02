@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { TextInput } from "@egovernments/digit-ui-react-components";
 import CustomDropdown from "../Custom/CustomDropdown";
 import ToggleLink from "./ToggleLink";

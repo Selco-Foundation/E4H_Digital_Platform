@@ -1,12 +1,13 @@
 import CustomSwapHorizontalCircle from "../Custom/CustomSwapHorizontalCircle";
 import React from "react";
 
-const ToggleLink = ({ label, onClick, disable }) => {
+const ToggleLink = ({ label, onClick, disable, ariaLabel }) => {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disable}
+      aria-label={ariaLabel || label || "Toggle input mode"}
       style={{
         display: "inline-flex",
         alignItems: "center",
@@ -24,6 +25,7 @@ const ToggleLink = ({ label, onClick, disable }) => {
       }}
     >
       <CustomSwapHorizontalCircle size={28} color="#0B0C0C" style={{ opacity: disable ? 0.6 : 1 }} />
+      {!!label && <span style={{ opacity: 0.6 }}>{label}</span>}
       <span style={{ opacity: 0.6 }}>{label}</span>
     </button>
   );

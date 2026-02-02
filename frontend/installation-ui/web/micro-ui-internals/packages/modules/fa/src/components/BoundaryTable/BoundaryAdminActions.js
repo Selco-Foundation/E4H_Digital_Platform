@@ -21,7 +21,7 @@ const BoundaryAdminActions = ({ t }) => {
   const [showBoundaryModal, setShowBoundaryModal] = useState(false);
   const [toast, setToast] = useState(null);
   const [formToast, setFormToast] = useState(null);
-  const [mobileView, setMobileView] = useState(window.innerWidth <= 836);
+  const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
   const [isStateTextMode, setIsStateTextMode] = useState(false);
   const [isDistrictTextMode, setIsDistrictTextMode] = useState(false);
   const queryClient = useQueryClient();

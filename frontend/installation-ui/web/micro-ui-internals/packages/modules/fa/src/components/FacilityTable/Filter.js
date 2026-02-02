@@ -136,7 +136,7 @@ const Filter = ({ t, onFilterChange, projectQueryFilter }) => {
       const newSelectedStateCodes = afterRemove.map((state) => state.code);
       const newDistrictMenu = districtOptions.filter((district) => newSelectedStateCodes.includes(district.parentCode));
       const newSelectedDistricts = currentFilter.district.filter((district) => newSelectedStateCodes.includes(district.parentCode));
-      const newSelectedDistrictCodes = afterRemove.map((district) => district.code);
+      const newSelectedDistrictCodes = newSelectedDistricts.map((district) => district.code);
       const newBlockMenu = blockOptions.filter((block) => newSelectedDistrictCodes.includes(block.parentCode));
       const newSelectedBlocks = currentFilter.block.filter((block) => newSelectedDistrictCodes.includes(block.parentCode));
       const newSelectedBlockCodes = newSelectedBlocks.map((block) => block.code);

@@ -1,6 +1,5 @@
 import React from "react";
 import { PopUp, Button } from "@egovernments/digit-ui-react-components";
-import FacilityForm from "./FacilityForm";
 import BoundaryForm from "./BoundaryForm";
 
 const BoundaryModal = ({
