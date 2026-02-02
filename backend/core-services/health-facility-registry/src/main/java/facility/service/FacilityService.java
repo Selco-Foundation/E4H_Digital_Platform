@@ -594,7 +594,7 @@ public class FacilityService {
         StringBuilder query = new StringBuilder("SELECT * FROM facility fac");
         query.append(" LEFT JOIN facility_address fa ON fac.addressid = fa.id ");
         query.append(result.getWhereClause());
-        query.append(" ORDER BY created_at DESC ");
+        query.append(" ORDER BY updated_at DESC NULLS LAST ");
 
         List<Object> allParams = new ArrayList<>(result.getParams());
         if (!Boolean.TRUE.equals(request.getFacilityBulkSearchCriteria().getSendNonPaginatedResponse())) {
