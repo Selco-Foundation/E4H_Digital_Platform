@@ -40,7 +40,7 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
     } else {
       setError(name, {
         type: "manual",
-        message: `Allowed file types are ${allowedFileTypes.join(", ")}`
+        message: `${t("CUSTOM_FILE_UPLOAD_ALLOWED_TYPES")} ${allowedFileTypes.join(", ")}`
       });
       setFile(null);
     }
@@ -69,6 +69,9 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
 
     if (uploadedFile) {
       await validateAndSaveFile(uploadedFile);
+    }
+    if (e.target) {
+      e.target.value = "";
     }
   };
 
@@ -105,6 +108,15 @@ const CustomUploadFile = ({ setError, setValue, clearErrors, props }) => {
         </p>
       )}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={t("CORE_COMMON_BROWSE_IN_MY_FILES")}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openFileDialog();
+          }
+        }}
         style={{
           border: "1px dashed #ccc",
           borderRadius: "6px",
