@@ -58,8 +58,11 @@ public class BoundaryService {
         // delegating the request to repository to further persist in db
         repository.create(boundaryRequest);
 
-        // If new state do not exist in MDMS common-master.StateInfo module, then create the new state in mdms
-        createMdmsStateInfo(boundaryRequest);
+        // Check if new state code code or state boundary code already exist in MDMS common-master.StateInfo module. Only call for state
+        boolean isValidSateCode = boundaryEntityValidator.validateStateCode(boundaryRequest);
+        if (isValidSateCode)
+            // If new state do not exist in MDMS common-master.StateInfo module, then create the new state in mdms
+            createMdmsStateInfo(boundaryRequest);
 
         return boundaryResponse;
     }
