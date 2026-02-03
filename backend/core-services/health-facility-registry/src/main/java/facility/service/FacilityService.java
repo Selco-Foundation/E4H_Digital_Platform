@@ -383,13 +383,6 @@ public class FacilityService {
         }
 
         // Check if the facility exists in DB before attempting an update
-//        String checkSql = "SELECT COUNT(*) FROM facility WHERE id = ? AND tenant_id = ?";
-//        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, update.getFacilityId(), update.getTenantId());
-//        if (count == null || count == 0) {
-//            return null; // facility not found
-//        }
-
-        // Check if the facility exists in DB before attempting an update
         String fetchFullFacilitySql = "SELECT * FROM facility WHERE id = ? AND tenant_id = ?";
         Facility existingFacility;
         try {
@@ -457,6 +450,11 @@ public class FacilityService {
                     .facilityCategory(existingFacility.getFacilityCategory())
                     .facilityOwnership(existingFacility.getFacilityOwnership())
                     .facilityRegion(existingFacility.getFacilityRegion())
+                    .facilityPocName(existingFacility.getFacilityPocName())
+                    .facilityPocPhone(existingFacility.getFacilityPocPhone())
+                    .facilityPocEmail(existingFacility.getFacilityPocEmail())
+                    .hfrId(existingFacility.getHfrId())
+                    .ninId(existingFacility.getNinId())
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
                     .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
