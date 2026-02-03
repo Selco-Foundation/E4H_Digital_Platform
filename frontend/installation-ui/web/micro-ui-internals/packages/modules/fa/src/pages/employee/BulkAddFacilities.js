@@ -138,7 +138,7 @@ const BulkAddFacilities = () => {
             route: "facilities-is-onm-ready",
             nextRoute: "",
             populators: {
-              name: "downloadTemplate",
+              name: "onmReadyToggler",
             },
           },
         ],
