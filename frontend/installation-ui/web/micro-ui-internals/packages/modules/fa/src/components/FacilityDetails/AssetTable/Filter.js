@@ -101,12 +101,10 @@ const Filter = ({ t, onFilterChange, assetQueryFilter, serialNumberList }) => {
   };
 
   const handleAssetStatusChange = (selectedAssetStatus) => {
-    if (currentFilter.assetType.every((assetType) => assetType.code !== selectedAssetStatus.code)) {
-      setCurrentFilter({
-        ...currentFilter,
-        isOperational: [selectedAssetStatus],
-      });
-    }
+    setCurrentFilter({
+      ...currentFilter,
+      isOperational: [selectedAssetStatus],
+    });
   };
 
   const handleAssetSerialNumberChange = (selectedSerialNumber) => {
