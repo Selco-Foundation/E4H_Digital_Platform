@@ -183,19 +183,20 @@ public class FieldPlannerService {
         String concatenatedActivityCode = null;
         Map<String, Object> geographyDetails = fieldPlan.getGeographyDetails();
         String stateBoundary = (String)geographyDetails.get("state");
-        String state = fieldPlanServiceUtil.extractStateName(stateBoundary);
+        stateCode = boundaryCodeToCode(stateBoundary);
+//        String state = fieldPlanServiceUtil.extractStateName(stateBoundary);
         List<Map<String, Object>> activities = fieldPlan.getActivities();
         try {
             activitiesRes = JsonPath.read(mdmsData, jsonPathForActivities);
             stateInfoRes = JsonPath.read(mdmsData, jsonPathForStateInfo);
-            for (Object map : stateInfoRes) {
-                LinkedHashMap<String, Object> stateInfo = (LinkedHashMap<String, Object>) map;
-                String name = (String) stateInfo.get("name");
-                if (state.equalsIgnoreCase(name)) {
-                    stateCode = (String) stateInfo.get("code");
-                    break;
-                }
-            }
+//            for (Object map : stateInfoRes) {
+//                LinkedHashMap<String, Object> stateInfo = (LinkedHashMap<String, Object>) map;
+//                String name = (String) stateInfo.get("name");
+//                if (state.equalsIgnoreCase(name)) {
+//                    stateCode = (String) stateInfo.get("code");
+//                    break;
+//                }
+//            }
 
             concatenatedActivityCode = activities.stream()
                     .map(activity -> (String) activity.get("code"))
@@ -850,6 +851,48 @@ public class FieldPlannerService {
             throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
         }
         return employeeResponse.getEmployees().get(0);
+    }
+
+    // Output India_AndamanandNicobarIslands: → AN, India_Telangana → TE, India_Assam_Biswanath → AB
+    public static String boundaryCodeToCode(String input) {
+        if (input == null || input.isBlank()) {
+            return "";
+        }
+
+        // Nettoyage
+        String cleaned = input.trim();
+
+        // Supprimer "India_" si présent
+        if (cleaned.startsWith("India_")) {
+            cleaned = cleaned.substring("India_".length());
+        }
+
+        // Supprimer ":" et tout ce qui suit
+        int colonIndex = cleaned.indexOf(":");
+        if (colonIndex >= 0) {
+            cleaned = cleaned.substring(0, colonIndex);
+        }
+
+        // Enlever underscores
+        cleaned = cleaned.replace("_", "");
+
+        // Split CamelCase
+        String[] words = cleaned.split("(?=[A-Z])");
+
+        // Construire le code
+        StringBuilder code = new StringBuilder();
+
+        if (words.length >= 2) {
+            code.append(Character.toUpperCase(words[0].charAt(0)));
+            code.append(Character.toUpperCase(words[1].charAt(0)));
+        } else if (words.length == 1 && words[0].length() >= 2) {
+            code.append(Character.toUpperCase(words[0].charAt(0)));
+            code.append(Character.toUpperCase(words[0].charAt(1)));
+        } else if (words.length == 1) {
+            code.append(Character.toUpperCase(words[0].charAt(0)));
+        }
+
+        return code.toString();
     }
 
 }
