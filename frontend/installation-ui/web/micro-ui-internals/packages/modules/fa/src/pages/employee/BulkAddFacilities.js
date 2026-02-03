@@ -12,6 +12,7 @@ const BulkAddFacilities = () => {
   const [blockUI, setBlockUI] = useState(null);
   const [file, setFile] = useState(null);
   const [invalidDataError, setInvalidDataError] = useState(null);
+  const [isOnmReady, setIsOnmReady] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -42,11 +43,11 @@ const BulkAddFacilities = () => {
     }
   };
 
-  const handleFacilityDataUpload = async (chosenFile) => {
+  const handleFacilityDataUpload = async (chosenFile, onmReadyStatus) => {
     let uploadedFile;
     try {
       setBlockUI(true);
-      const response = await FAService.uploadFacilityDataTemplate(chosenFile);
+      const response = await FAService.uploadFacilityDataTemplate(chosenFile, onmReadyStatus);
       setBlockUI(false);
 
       if (response.errorCode === "INVALID_TEMPLATE") {
@@ -93,7 +94,7 @@ const BulkAddFacilities = () => {
   const config = useMemo(
     () => [
       {
-        key: "3",
+        key: "1",
         body: [
           {
             key: "downloadTemplate",
@@ -119,6 +120,30 @@ const BulkAddFacilities = () => {
         ],
       },
       {
+        key: "2",
+        body: [
+          {
+            key: "onmReadyToggler",
+            type: "component",
+            component: "FAOnmReadyToggler",
+            withoutLabelFieldPair: true,
+            withoutLabel: true,
+            disable: false,
+            customProps: {
+              name: "onmReadyToggler",
+              isOnmReady,
+              setIsOnmReady,
+              t,
+            },
+            route: "facilities-is-onm-ready",
+            nextRoute: "",
+            populators: {
+              name: "downloadTemplate",
+            },
+          },
+        ],
+      },
+      {
         key: "3",
         body: [
           {
@@ -132,7 +157,7 @@ const BulkAddFacilities = () => {
             customProps: {
               name: "uploadFacilityData",
               allowedFileTypes: [".xls", ".xlsx"],
-              handleFileUpload: handleFacilityDataUpload,
+              handleFileUpload: (file) => handleFacilityDataUpload(file, isOnmReady),
               invalidDataError: invalidDataError,
               errorViewLabel: "CORE_COMMON_VIEW_ERRORS",
               heading: "PM_CREATE_PROJECT_HEAD_UPLOAD_FACILITY_DATA",
@@ -153,7 +178,7 @@ const BulkAddFacilities = () => {
         ],
       },
     ],
-    [t, file, invalidDataError]
+    [t, isOnmReady, file, invalidDataError]
   );
 
   return (
