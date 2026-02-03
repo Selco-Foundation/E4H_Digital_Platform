@@ -56,7 +56,7 @@ export const FAService = {
     };
   },
 
-  uploadFacilityDataTemplate: async (file) => {
+  uploadFacilityDataTemplate: async (file, onmReadyStatus) => {
 
     let validatedFile;
     try {
@@ -89,7 +89,7 @@ export const FAService = {
     try {
       const uploadRequest = new FormData();
       uploadRequest.append("facility_file", validatedFile.data);
-      uploadRequest.append("are_facilities_onm_ready", false);
+      uploadRequest.append("are_facilities_onm_ready", onmReadyStatus);
       const uploadResponse = await IngestionService.uploadFacilityData(uploadRequest);
 
       const uploadedFile = extractBlobFile(uploadResponse);

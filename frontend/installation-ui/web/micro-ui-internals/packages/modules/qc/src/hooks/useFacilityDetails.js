@@ -151,7 +151,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
       facilityId: activityFacilityData?.activityFacility?.facilityId,
       facilityType: facility.facility_type,
       status: activityFacilityData?.activityFacility?.status,
-      block: activityFacilityData?.activityFacility?.facility?.boundaryCode,
+      block: activityFacilityData?.activityFacility?.facility?.additionalDetails?.block,
       district: activityFacilityData?.activityFacility?.facility?.additionalDetails?.district,
       assigned: assigneeDetails.name,
     },
