@@ -10,6 +10,7 @@ import DownloadTemplate from "./components/File/DownloadTemplate";
 import CustomUploadFile from "./components/File/CustomUploadFile";
 import StateToggleField from "./components/FormComposer/StateToggleField";
 import DistrictToggleField from "./components/FormComposer/DistrictToggleField";
+import OnmReadyToggler from "./components/FormComposer/ONMReadyToggler";
 
 export const FAReducers = getRootReducer;
 
@@ -40,6 +41,7 @@ const componentsToRegister = {
   FAUploadFacilityData: CustomUploadFile,
   FAStateToggleField: StateToggleField,
   FADistrictToggleField: DistrictToggleField,
+  FAOnmReadyToggler: OnmReadyToggler
 };
 
 export const initFAComponents = () => {
