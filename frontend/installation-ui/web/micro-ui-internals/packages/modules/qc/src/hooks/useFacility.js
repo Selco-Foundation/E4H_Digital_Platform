@@ -7,7 +7,7 @@ const formatFacilities = (facilities) => {
       facilityName: row?.activityFacility?.facility?.facility_name,
       facilityId: row?.activityFacility?.facilityId,
       status: row?.activityFacility?.status,
-      block: row?.activityFacility?.facility?.boundaryCode,
+      block: row?.activityFacility?.facility?.additionalDetails?.block,
       district: row?.activityFacility?.facility?.additionalDetails?.district,
       assigned: row?.activityFacility?.assignedEmployeeUser?.name,
   }));
