@@ -390,6 +390,7 @@ public class AssetValidator {
                 .wfStatus(asset.getWfStatus())
                 .facilityID(asset.getFacilityID())
                 .activityFacilityID(asset.getActivityFacilityID())
+                .serialNumberSearch(List.of(asset.getSerialNumber()))
                 .modelNumber(null)
                 .brandID(asset.getBrandID())
                 .build();
