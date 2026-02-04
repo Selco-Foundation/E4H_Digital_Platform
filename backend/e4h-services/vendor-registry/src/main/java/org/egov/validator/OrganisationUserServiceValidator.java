@@ -313,14 +313,14 @@ public class OrganisationUserServiceValidator {
 //                }
 
                 // This user not belong to another org
-                try {
-                    //Encrypt new mobile number
-                    String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(orgUser.getMobileNumber());
-                    if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                        orgUser.setMobileNumber(encryptedPocMobileNumber);
-                    }
-                }
-                catch (Exception e){}
+//                try {
+//                    //Encrypt new mobile number
+//                    String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(orgUser.getMobileNumber());
+//                    if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+//                        orgUser.setMobileNumber(encryptedPocMobileNumber);
+//                    }
+//                }
+//                catch (Exception e){}
 
                 employee.getUser().setMobileNumber(orgUser.getMobileNumber());
             }
