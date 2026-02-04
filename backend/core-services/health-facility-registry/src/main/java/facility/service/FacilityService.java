@@ -336,9 +336,11 @@ public class FacilityService {
             return;
         }
 
+
+        String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId(): facility.getNinId();
         // Check if employee already exists by mobile number
-        boolean employeeExists = hrmsService.employeeExistsByMobileNumber(
-                facilityDetails.getPocContact(),
+        boolean employeeExists = hrmsService.employeeExistsByUsername(
+                username,
                 tenantId,
                 requestInfo
         );
