@@ -462,6 +462,14 @@ public class FacilityService {
                     .isOnmReady(true)
                     .build();
 
+            try{
+                String decryptedMobileNumber = decryptMobileNumber(facilityForProcessing.getFacilityPocPhone());
+                if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                    facilityForProcessing.setFacilityPocPhone(decryptedMobileNumber);
+                }
+            }
+            catch(Exception e){}
+
             // Always check/create POC user when isOnmReady is true (whether transitioning or already true)
             // This ensures POC user is created if missing, even if facility was already ONM ready
             createFacilityPOCUserIfNotExists(
