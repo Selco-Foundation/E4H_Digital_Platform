@@ -434,6 +434,14 @@ public class FacilityService {
             updatedHRMSUser(request, existingFacility, facility);
         }
 
+        try {
+            String encryptedPocMobileNumber = encryptMobileNumber(request.getFacilityUpdate().getPocContact());
+            if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                request.getFacilityUpdate().setPocContact(encryptedPocMobileNumber);
+            }
+        }
+        catch (Exception e){}
+
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
         
@@ -450,11 +458,12 @@ public class FacilityService {
                     .facilityCategory(existingFacility.getFacilityCategory())
                     .facilityOwnership(existingFacility.getFacilityOwnership())
                     .facilityRegion(existingFacility.getFacilityRegion())
-                    .facilityPocName(existingFacility.getFacilityPocName())
-                    .facilityPocPhone(existingFacility.getFacilityPocPhone())
-                    .facilityPocEmail(existingFacility.getFacilityPocEmail())
-                    .hfrId(existingFacility.getHfrId())
-                    .ninId(existingFacility.getNinId())
+                    .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
+                    .facilityPocPhone(facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank() ? facility.getFacilityPocPhone(): existingFacility.getFacilityPocPhone())
+                    .facilityPocEmail(facility.getFacilityPocEmail()!=null && !facility.getFacilityPocEmail().isBlank() ? facility.getFacilityPocEmail(): existingFacility.getFacilityPocEmail())
+                    .hfrId(facility.getHfrId()!=null && !facility.getHfrId().isBlank() ? facility.getHfrId(): existingFacility.getHfrId())
+                    .ninId(facility.getNinId()!=null && !facility.getNinId().isBlank() ? facility.getNinId(): existingFacility.getNinId())
+                    .userId(facility.getUserId()!=null && !facility.getUserId().isBlank() ? facility.getUserId(): existingFacility.getUserId())
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
                     .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
