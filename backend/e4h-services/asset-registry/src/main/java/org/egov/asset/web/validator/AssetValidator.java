@@ -385,7 +385,15 @@ public class AssetValidator {
 
     private void validateExistingDuplicates(Asset asset, Map<String, String> errorMap) {
         log.debug("Checking for duplicate asset | assetId={} tenantId={}", asset.getAssetId(), asset.getTenantId());
-        List<Asset> assets = assetService.searchAssets(asset,1,0);
+        Asset assetSearch = Asset.builder()
+                .tenantId(asset.getTenantId())
+                .wfStatus(asset.getWfStatus())
+                .facilityID(asset.getFacilityID())
+                .activityFacilityID(asset.getActivityFacilityID())
+                .modelNumber(null)
+                .brandID(asset.getBrandID())
+                .build();
+        List<Asset> assets = assetService.searchAssets(assetSearch,1,0);
         if(!assets.isEmpty())
             errorMap.put(ErrorConstants.ASSET_DUPLICATE_VALIDATION_CODE, ErrorConstants.ASSET_DUPLICATE_VALIDATION_MSG);
     }
