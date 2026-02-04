@@ -28,6 +28,7 @@ public class User {
     @JsonProperty("uuid")
     private String uuid;
 
+    @NotNull
     @Size(max=180)
     @JsonProperty("userName")
     private String userName;

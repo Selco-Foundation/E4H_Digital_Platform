@@ -279,11 +279,11 @@ public class OrganisationUserServiceValidator {
         }
 
         // Get existing user with mobile number from hrms service
-        List<Employee> employees = hrmsUtils.getUserByPhoneNumber(request, orgUser.getMobileNumber());
+        List<Employee> employees = hrmsUtils.getUserByUsername(request, orgUser.getUserName());
         if (employees == null || employees.isEmpty()) {
             //If user doesn't exist
-            log.error("This user with this phone number do not exist: {}", orgUser.getMobileNumber());
-            throw new CustomException("Organization", "This user with this phone number do not exist: "+orgUser.getMobileNumber());
+            log.error("This user with this username do not exist: {}", orgUser.getUserName());
+            throw new CustomException("Organization", "This user with this username do not exist: "+orgUser.getUserName());
         }
 
         // Get employee details fetched from HRMS
@@ -302,23 +302,25 @@ public class OrganisationUserServiceValidator {
             if (changes.isMobileChanged()) {
                 log.error("phone number is being updated. Old phoneNumber {} with new phoneNumber {}", existingOrgUser.getUser().getMobileNumber(), orgUser.getMobileNumber());
                 // If user found, Check if user belong to another organisation record
-                List<String> uuids = employees.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
-                OrgUserSearchCriteria searchUserCriteria1 = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
-                OrgUserSearchRequest orgUserSearchRequest1 = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria1).build();
-                URLParams urlParams1 = URLParams.builder().limit(1).offset(0).build();
-                List<OrgUser> usersBis = userRepository.getOrgUsers(orgUserSearchRequest1, urlParams1);
-                if(usersBis != null && !usersBis.isEmpty()){
-                    log.error("This user already belong to another org");
-                    throw new CustomException("Organization", "This user already belong to another org");
-                }
+//                List<String> uuids = employees.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
+//                OrgUserSearchCriteria searchUserCriteria1 = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
+//                OrgUserSearchRequest orgUserSearchRequest1 = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria1).build();
+//                URLParams urlParams1 = URLParams.builder().limit(1).offset(0).build();
+//                List<OrgUser> usersBis = userRepository.getOrgUsers(orgUserSearchRequest1, urlParams1);
+//                if(usersBis != null && !usersBis.isEmpty()){
+//                    log.error("This user already belong to another org");
+//                    throw new CustomException("Organization", "This user already belong to another org");
+//                }
 
                 // This user not belong to another org
-
-                //Encrypt new mobile number
-                String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(orgUser.getMobileNumber());
-                if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
-                    orgUser.setMobileNumber(encryptedPocMobileNumber);
+                try {
+                    //Encrypt new mobile number
+                    String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(orgUser.getMobileNumber());
+                    if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                        orgUser.setMobileNumber(encryptedPocMobileNumber);
+                    }
                 }
+                catch (Exception e){}
 
                 employee.getUser().setMobileNumber(orgUser.getMobileNumber());
             }
