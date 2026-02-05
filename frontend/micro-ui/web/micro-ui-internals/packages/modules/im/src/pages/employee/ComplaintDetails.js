@@ -39,6 +39,7 @@ import { Close } from "../../Icons";
 import { useTranslation } from "react-i18next";
 import { isError, useQueryClient } from "react-query";
 import StarRated from "../../components/timelineInstances/StarRated";
+import _ from "lodash";
 
 const MapView = (props) => {
   return (
@@ -112,9 +113,12 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const reopenReasonMenu = [t(`CS_REOPEN_OPTION_ONE`), t(`CS_REOPEN_OPTION_TWO`), t(`CS_REOPEN_OPTION_THREE`), t(`CS_REOPEN_OPTION_FOUR`), t(`CS_REOPEN_OPTION_FIVE`)];
   const { isMdmsLoading, data: rejectSendBackReasons } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["RejectReasons", "SendBackReasons"]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
-  // const uploadFile = useCallback( () => {
+  const [oowIssue, setOowIssue] = useState(null);
+  const [oowRootCause, setOowRootCause] = useState(null);
+  const [oowRecommendedSolution, setOowRecommendedSolution] = useState(null);
+  const [oowTotalCostOfSolution, setOowTotalCostOfSolution] = useState(null);
+  const [oowTimeToResolve, setOowTimeToResolve] = useState(null);
 
-  //   }, [file]);
   useEffect(() => {
     if (selectedAction === "REJECT") {
       const uuid = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.uuid;
@@ -137,6 +141,15 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     else {
       setError(null);
       setComments(e.target.value);
+    }
+  }
+
+  function addOOWResponses(e, setField) {
+    if (e.target.value.length > 256) {
+      setError(t("CS_TEXT_LENGTH_LIMIT_EXCEED"));
+    } else {
+      setError(null);
+      setField(e.target.value);
     }
   }
 
@@ -264,12 +277,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             ? selectedSendBackReason?.additionalInputs?.[0].type === "textarea"
             : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
 
-        const isCommentsMandatory = (
-          isTextareaAction || 
-          selectedAction === "RESOLVE" || 
-          selectedAction === "OUT_OF_WARRANTY" || 
-          selectedAction === "SPARE_PART_NEEDED"
-        ) && !comments.trim();
+        const isCommentsMandatory = (isTextareaAction || selectedAction === "RESOLVE" || selectedAction === "SPARE_PART_NEEDED") && !comments.trim();
+
+        const oowMandateCondition = selectedAction === "OUT_OF_WARRANTY" && !(oowIssue && oowRootCause && oowRecommendedSolution && oowTimeToResolve);
 
         const validations = [
           { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_DECLINE_REASON" },
@@ -277,7 +287,12 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
           { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
-          { condition: (selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY") && uploadedFile.length === 0, message: "CS_MANDATORY_FILE_UPLOAD" },
+          { condition: oowMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
+          { condition: selectedAction === "OUT_OF_WARRANTY" && !oowTotalCostOfSolution, message: "CS_SOLUTION_COSE_MANDATORY" },
+          {
+            condition: (selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY") && uploadedFile.length === 0,
+            message: "CS_MANDATORY_FILE_UPLOAD",
+          },
         ];
 
         const error = validations.find(({ condition }) => condition);
@@ -286,19 +301,28 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           return;
         }
 
+        const oowResponses = {
+          oowIssue,
+          oowRootCause,
+          oowRecommendedSolution,
+          oowTimeToResolve,
+          oowTotalCostOfSolution,
+        };
+
         onAssign(
           selectedEmployee,
           comments,
           uploadedFile,
           selectedReopenReason,
           selectedRejectReason,
-          selectedSendBackReason
+          selectedSendBackReason,
+          oowResponses
         );
       }}
       error={error}
       setError={setError}
     >
-      <Card style={{ paddingTop: "0px" }}>
+      <Card style={{ paddingTop: "0px", maxHeight: "50vh", overflow: "auto", boxShadow: "none" }}>
         {selectedAction === "REJECT" ? (
           <React.Fragment>
             <CardLabel>{t("CS_DECLINE_COMPLAINT")}*</CardLabel>
@@ -351,7 +375,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <Dropdown selected={selectedReopenReason} option={reopenReasonMenu} select={onSelectReopenReason} />
           </React.Fragment>
         ) : null}
-        {selectedAction !== "SENDBACK" || selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ? (
+        {(selectedAction !== "SENDBACK" && selectedAction !== "OUT_OF_WARRANTY") ||
+        selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ? (
           <>
             {selectedAction !== "ASSIGN" &&
             selectedAction !== "REOPEN" &&
@@ -363,15 +388,27 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <TextArea name="comment" onChange={addComment} value={comments} />
           </>
         ) : null}
-        {selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY" ? (
+        {selectedAction === "OUT_OF_WARRANTY" && (
+          <React.Fragment>
+            <CardLabel>{t("OOW_ACTION_ISSUE_OBSERVATION")}*</CardLabel>
+            <TextArea name="oowIssue" onChange={(e) => addOOWResponses(e, setOowIssue)} value={oowIssue} />
+            <CardLabel>{t("OOW_ACTION_ISSUE_ROOT_CAUSE")}*</CardLabel>
+            <TextArea name="oowRootCause" onChange={(e) => addOOWResponses(e, setOowRootCause)} value={oowRootCause} />
+            <CardLabel>{t("OOW_ACTION_ISSUE_SOLUTION")}*</CardLabel>
+            <TextArea name="oowRecommendedSolution" onChange={(e) => addOOWResponses(e, setOowRecommendedSolution)} value={oowRecommendedSolution} />
+            <CardLabel>{t("OOW_ACTION_ISSUE_RESOLUTION_TIME")}*</CardLabel>
+            <TextInput t={t} type={"text"} onChange={(e) => addOOWResponses(e, setOowTimeToResolve)} value={oowTimeToResolve} />
+            <CardLabel>{t("OOW_ACTION_ISSUE_SOLUTION_COST")}*</CardLabel>
+            <TextInput t={t} type={"number"} onChange={(e) => addOOWResponses(e, setOowTotalCostOfSolution)} value={oowTotalCostOfSolution} />
+          </React.Fragment>
+        )}
+        {selectedAction === "OUT_OF_WARRANTY" ? (
+          <CardLabel>{t("CS_ACTION_QUOTATION_DOCUMENT")}*</CardLabel>
+        ) : selectedAction === "RESOLVE" ? (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}*</CardLabel>
         ) : (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}</CardLabel>
         )}
-
-        {/* {selectedAction==="RESOLVE" ? (
-        //   <CardLabelDesc>{t(`CS_UPLOAD_RESTRICTIONS`)}*</CardLabelDesc>
-        // ) : <CardLabelDesc>{t(`CS_UPLOAD_RESTRICTIONS`)}</CardLabelDesc>} */}
 
         <MultiUploadWrapper
           t={t}
@@ -379,13 +416,27 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           tenantId={complaintDetails?.incident?.tenantId || tenantId}
           requestSpecifcFileRemoval={uploadedFile?.[0]}
           getFormState={(e) => getData(e)}
-          allowedFileTypesRegex={selectedAction === "RESOLVE" ? /(docx|doc|pdf|xlsx|jpeg|png)$/i : /(pdf|jpg|jpeg|png)$/i}
+          allowedFileTypesRegex={
+            selectedAction === "OUT_OF_WARRANTY"
+              ? /(pdf)$/i
+              : selectedAction === "RESOLVE"
+              ? /(docx|doc|pdf|xlsx|jpeg|png)$/i
+              : /(pdf|jpg|jpeg|png)$/i
+          }
           allowedMaxSizeInMB={5}
-          acceptFiles={selectedAction === "RESOLVE" ? ".pdf, .xlsx, .docx, .doc, .jpeg, .png" : ".pdf, .jpg, .jpeg, .png"}
+          acceptFiles={
+            selectedAction === "OUT_OF_WARRANTY"
+              ? ".pdf"
+              : selectedAction === "RESOLVE"
+              ? ".pdf, .xlsx, .docx, .doc, .jpeg, .png"
+              : ".pdf, .jpg, .jpeg, .png"
+          }
           ulb={complaintDetails?.incident?.tenantId || tenantId}
           analyticsPage="ticket_details_page"
         />
-        {selectedAction === "RESOLVE" ? (
+        {selectedAction === "OUT_OF_WARRANTY" ? (
+          <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_OOW_FILE_DESC")}</CardLabelDesc>
+        ) : selectedAction === "RESOLVE" ? (
           <div style={{ marginTop: "6px", fontSize: "13px", color: "#36454F" }}>{t("RESOLVE_RESOLUTION_REPORT")}</div>
         ) : (
           <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_FILE_LIMIT")}</CardLabelDesc>
@@ -633,7 +684,8 @@ export const ComplaintDetails = (props) => {
     uploadedFile,
     selectedReopenReason,
     selectedRejectReason,
-    selectedSendBackReason
+    selectedSendBackReason,
+    oowResponses
   ) {
     setPopup(false);
     const response = await Digit.Complaint.assign(
@@ -645,7 +697,8 @@ export const ComplaintDetails = (props) => {
       tenant,
       selectedReopenReason,
       selectedRejectReason,
-      selectedSendBackReason
+      selectedSendBackReason,
+      oowResponses
     );
     if (response?.IncidentWrappers) {
       setAssignResponse(response);
@@ -675,6 +728,7 @@ export const ComplaintDetails = (props) => {
     const reopenReasons = Array.from(complaintDetails?.incident?.additionalDetail?.reopenreason || []).reverse();
     const rejectReasons = Array.from(complaintDetails?.incident?.additionalDetail?.rejectReason || []).reverse();
     const sendBackReasons = Array.from(complaintDetails?.incident?.additionalDetail?.sendBackReason || []).reverse();
+    const oowResponsesArray = Array.from(complaintDetails?.incident?.additionalDetail?.oowResponses || []).reverse();
 
     let arrNew = arr.map((abc) => {
       switch (abc.performedAction) {
@@ -684,10 +738,24 @@ export const ComplaintDetails = (props) => {
           return { ...abc, rejectReason: rejectReasons.shift() };
         case "SENDBACK":
           return { ...abc, sendBackReason: sendBackReasons.shift() };
+        case "OUT_OF_WARRANTY":
+          return { ...abc, oowResponses: oowResponsesArray.shift() };
         default:
           return abc;
       }
     });
+
+    const currentOowResponses =
+      checkpoint.performedAction === "OUT_OF_WARRANTY" && arrNew[index]?.oowResponses
+        ? {
+            OOW_ACTION_ISSUE_OBSERVATION: arrNew[index]?.oowResponses?.oowIssue,
+            OOW_ACTION_ISSUE_ROOT_CAUSE: arrNew[index]?.oowResponses?.oowRootCause,
+            OOW_ACTION_ISSUE_SOLUTION: arrNew[index]?.oowResponses?.oowRecommendedSolution,
+            OOW_ACTION_ISSUE_RESOLUTION_TIME: arrNew[index]?.oowResponses?.oowTimeToResolve,
+            OOW_ACTION_ISSUE_SOLUTION_COST: arrNew[index]?.oowResponses?.oowTotalCostOfSolution,
+          }
+        : null;
+
     const arr1 = arr;
     const { wfComment: comment, thumbnailsToShow } = checkpoint;
     function zoomImageTimeLineWrapper(imageSource, index, thumbnailsToShow, arr) {
@@ -791,6 +859,16 @@ export const ComplaintDetails = (props) => {
             <h1>{arrNew[index]?.rejectReason}</h1>
           </div>
         ) : null}
+        {currentOowResponses && (
+          <div>
+            {Object.keys(currentOowResponses).map((field, index) => (
+              <div key={`comment-${index}`} className="TLComments">
+                <h3>{t(field)}</h3>
+                <p style={{ overflowX: "scroll" }}>{currentOowResponses[field]}</p>
+              </div>
+            ))}
+          </div>
+        )}
         {comment ? (
           <div>
             {comment?.map((e, index) => (

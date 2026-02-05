@@ -1,16 +1,5 @@
 export const Complaint = {
-  create: async ({
-    cityCode,
-    comments,
-    district,
-    block,
-    uploadedFile,
-    complaintType,
-    subType,
-    systemFunctionality,
-    healthcentre,
-    tenantId,
-  }) => {
+  create: async ({ cityCode, comments, district, block, uploadedFile, complaintType, subType, systemFunctionality, healthcentre, tenantId }) => {
     const defaultData = {
       incident: {
         tenantId: tenantId,
@@ -25,7 +14,7 @@ export const Complaint = {
           fileStoreId: uploadedFile,
           reopenreason: [],
           rejectReason: [],
-          sendBackReason: []
+          sendBackReason: [],
         },
         source: Digit.Utils.browser.isWebview() ? "mobile" : "web",
       },
@@ -79,7 +68,8 @@ export const Complaint = {
     tenantId,
     selectedReopenReason,
     selectedRejectReason,
-    selectedSendBackReason
+    selectedSendBackReason,
+    oowResponses
   ) => {
     complaintDetails.workflow.action = action;
     complaintDetails.workflow.assignes = employeeData ? [employeeData.uuid] : null;
@@ -89,9 +79,10 @@ export const Complaint = {
       rejectReason: selectedRejectReason && { value: selectedRejectReason?.localizedCode },
       sendBackReason: selectedSendBackReason && {
         value: {
-          reason: selectedSendBackReason?.localizedCode
+          reason: selectedSendBackReason?.localizedCode,
         },
       },
+      oowResponses: oowResponses && { value: oowResponses },
     };
 
     Object.entries(reasonMap).forEach(([key, data]) => {
