@@ -49,7 +49,7 @@ public class AMCServiceConfiguration {
     private String defaultOtp;
 
     @Value("${egov.otp.bypass.validation}")
-    private Boolean byPassOtpValidation;
+    private boolean byPassOtpValidation;
 
     @Value("${egov.facility.host}")
     private String facilityServiceHost;
