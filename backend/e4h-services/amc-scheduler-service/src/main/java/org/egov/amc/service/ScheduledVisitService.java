@@ -85,8 +85,8 @@ public class ScheduledVisitService {
                     .build();
             List<ScheduledVisit> scheduledVisits = searchScheduledVisit(searchRequest, 1, 0, scheduledVisit.getTenantId(), null, null);
             if (scheduledVisits !=null && !scheduledVisits.isEmpty()){
-                log.warn("Visit number {} already exists for configuration {}, visitId: {}", 
-                        scheduledVisit.getVisitNumber(), scheduledVisit.getAmcConfigurationId(), 
+                log.warn("Visit number {} already exists for configuration {}, visitId: {}",
+                        scheduledVisit.getVisitNumber(), scheduledVisit.getAmcConfigurationId(),
                         scheduledVisits.get(0).getId());
                 throw new CustomException("CREATE_VISIT_ERROR", "A visit number: "+ scheduledVisit.getVisitNumber()+" already exist for configuration "+scheduledVisit.getAmcConfigurationId());
             }
@@ -99,7 +99,7 @@ public class ScheduledVisitService {
             scheduledVisitsEnrichment.enrichScheduledVisitOnCreate(scheduledVisit, request.getRequestInfo());
             log.trace("Enriching scheduled visit on create for visitId: {}", scheduledVisit.getId());
             log.info("Scheduled visit enriched with AMC configuration ID: {}", scheduledVisit.getAmcConfigurationId());
-            log.debug("Enriched scheduled visit details - visitNumber: {}, projectId: {}, facilityId: {}", 
+            log.debug("Enriched scheduled visit details - visitNumber: {}, projectId: {}, facilityId: {}",
                     scheduledVisit.getVisitNumber(), scheduledVisit.getProjectId(), scheduledVisit.getFacilityId());
             log.info("Pushed scheduled visit to kafka topic");
         }
@@ -185,9 +185,9 @@ public class ScheduledVisitService {
         if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
             OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), request.getRequestInfo().getUserInfo().getTenantId());
             if (otpResponse !=null && otpResponse.getOtp()!=null){
-                log.debug("OTP generated successfully for mobile number ending with: {}", 
-                        employee.getUser().getMobileNumber() != null && employee.getUser().getMobileNumber().length() > 4 
-                        ? employee.getUser().getMobileNumber().substring(employee.getUser().getMobileNumber().length() - 4) 
+                log.debug("OTP generated successfully for mobile number ending with: {}",
+                        employee.getUser().getMobileNumber() != null && employee.getUser().getMobileNumber().length() > 4
+                        ? employee.getUser().getMobileNumber().substring(employee.getUser().getMobileNumber().length() - 4)
                         : "N/A");
                 log.info("OTP generated for resend request, userId: {}", request.getRequestInfo().getUserInfo().getUuid());
                 return  otpResponse;
@@ -240,21 +240,30 @@ public class ScheduledVisitService {
         // if action is SUBMIT_OTP, check if OTP verification is working fine or not
         if ("SUBMIT_OTP".equalsIgnoreCase(request.getWorkflow().getAction())) {
             // We need to validate OTP to AMC_FIELD_STAFF
-            if (request.getVisitReport() == null || request.getVisitReport().getOtpReference() == null) {
+            if (existingVisit.getVisitReport() == null) {
+                throw new CustomException("INVALID_VISIT_STATE", "Visit report not found on existing visit");
+            }
+            if (request.getVisitReport().getOtpReference() == null) {
                 throw new CustomException("INVALID_OTP_REQUEST", "Visit report with OTP reference is required for SUBMIT_OTP action");
             }
-             if (existingVisit.getVisitReport() == null) {
-                 throw new CustomException("INVALID_VISIT_STATE", "Visit report not found on existing visit");
-             }
-            Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
-            if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
-                log.trace("Validating OTP for visitId: {}", existingVisit.getId());
-                OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
-                if (otpResponse !=null && otpResponse.getOtp()!=null){
-                    log.debug("OTP validated successfully for visitId: {}", existingVisit.getId());
-                    log.info("OTP validated for visit report submission, visitId: {}", existingVisit.getId());
-                    // We need to update visit report on existing visit after validation
-                    existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
+            // Check if we should bypass OTP validation and use default OTP
+            if (amcServiceConfiguration.getByPassOtpValidation()){
+                String defaultOtp = amcServiceConfiguration.getDefaultOtp();
+                if(request.getVisitReport().getOtpReference() ==null || !request.getVisitReport().getOtpReference().trim().equals(defaultOtp)){
+                    throw new CustomException("ERROR_OTP_GENERATION", "OTP validation unsuccessful");
+                }
+                log.info("OTP {} validated for default OTP", defaultOtp);
+                existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
+            }
+            else{
+                Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+                if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
+                    OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
+                    if (otpResponse !=null && otpResponse.getOtp()!=null){
+                        log.info("OTP {} validated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                        // We need to update visit report on existing visit after validation
+                        existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
+                    }
                 }
             }
         }
@@ -419,7 +428,7 @@ public class ScheduledVisitService {
             if (boundaryCode != null && listBlock != null) {
                 Boundary boundary = listBlock.get(boundaryCode);
                 if (boundary != null) {
-                    log.debug("Enriching scheduled visit with boundary details - visitId: {}, state: {}, district: {}, block: {}", 
+                    log.debug("Enriching scheduled visit with boundary details - visitId: {}, state: {}, district: {}, block: {}",
                             scheduledVisit.getId(), boundary.getState(), boundary.getDistrict(), boundary.getBlock());
                     Object additionalDetails = scheduledVisit.getFacility().getAdditionalDetails();
                     Object enrichedAdditionalDetails = mergeListIntoAdditionalDetails(additionalDetails, "boundary", boundary);
@@ -563,7 +572,7 @@ public class ScheduledVisitService {
             Object mdmsData = mdmsUtils.mDMSCall(mdmsRequest, visit.getTenantId());
             Integer noticePeriod = parseNoticePeriodFromMDMS(mdmsData, visit.getTenantId());
             log.debug("Notice period from MDMS: {} days for tenantId: {}", noticePeriod, visit.getTenantId());
-            
+
             if (noticePeriod == null) {
                 log.warn("Could not fetch notice period from MDMS for tenant: {}. Skipping auto-schedule check.", visit.getTenantId());
                 return;
@@ -581,7 +590,7 @@ public class ScheduledVisitService {
 
             // Check if scheduled_date < threshold_date
             if (visit.getScheduledDate() != null && visit.getScheduledDate() < thresholdDateMillis) {
-                log.debug("Visit scheduled date {} is before threshold date {}, applying SCHEDULE action", 
+                log.debug("Visit scheduled date {} is before threshold date {}, applying SCHEDULE action",
                         visit.getScheduledDate(), thresholdDateMillis);
                 log.info("Visit {} is nearing scheduled date. Applying SCHEDULE workflow action.", visit.getId());
                 

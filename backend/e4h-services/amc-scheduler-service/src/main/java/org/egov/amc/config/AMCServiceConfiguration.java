@@ -45,6 +45,11 @@ public class AMCServiceConfiguration {
     @Value("${egov.otp.validate.url}")
     private String otpServiceValidateUrl;
 
+    @Value("${egov.otp.default}")
+    private String defaultOtp;
+
+    @Value("${egov.otp.bypass.validation}")
+    private boolean byPassOtpValidation;
 
     @Value("${egov.facility.host}")
     private String facilityServiceHost;
