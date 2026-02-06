@@ -42,21 +42,26 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
 
     @Override
     public Map<String, Object> getESQuery(InboxRequest inboxRequest, Boolean isPaginationRequired, Boolean isSLA) {
-        log.info("➡️ Building ES query | tenantId='{}' | module='{}' | pagination={} | SLA={}",
-                inboxRequest.getInbox().getTenantId(),
-                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName(),
-                isPaginationRequired, isSLA);
+        log.trace("Method invoked: getESQuery");
+        String tenantId = inboxRequest.getInbox().getTenantId();
+        String moduleName = inboxRequest.getInbox().getProcessSearchCriteria().getModuleName();
+        
+        log.info("Building ElasticSearch query - tenantId: {}, module: {}, pagination: {}, SLA: {}",
+                tenantId, moduleName, isPaginationRequired, isSLA);
 
+        log.debug("Fetching inbox query configuration from MDMS");
         InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(
                 inboxRequest.getInbox().getTenantId(),
                 inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
-        log.debug("✅ Loaded configuration: allowedCriteria={}, sortParam={}",
-                configuration.getAllowedSearchCriteria(), configuration.getSortParam());
+        log.debug("Configuration loaded - allowedCriteria: {}, sortParam: {}",
+                configuration.getAllowedSearchCriteria().size(), 
+                configuration.getSortParam() != null ? "present" : "null");
 
         Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
         Map<String, Object> jurisdictionParams = inboxRequest.getInbox().getJurisdictionSearchCriteria();
+        log.debug("Initializing base ElasticSearch query");
         Map<String, Object> baseEsQuery = getBaseESQueryBody(inboxRequest, isPaginationRequired);
-        log.debug("📝 Base ES query initialized: {}", baseEsQuery);
+        log.debug("Base ElasticSearch query initialized");
 
         if (isPaginationRequired) {
             String sortClauseFieldPath = configuration.getSortParam().getPath();
@@ -64,11 +69,11 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                     ? SortParam.Order.valueOf((String) params.get(SORT_ORDER_CONSTANT))
                     : configuration.getSortParam().getOrder();
             addSortClauseToBaseQuery(baseEsQuery, sortClauseFieldPath, sortOrder);
-            log.debug("🔃 Added sort clause: field='{}', order='{}'", sortClauseFieldPath, sortOrder);
+            log.debug("Sort clause added - field: {}, order: {}", sortClauseFieldPath, sortOrder);
 
             List<String> sourceFilterPathList = configuration.getSourceFilterPathList();
             addSourceFilterToBaseQuery(baseEsQuery, sourceFilterPathList);
-            log.debug("📌 Added source filter: {}", sourceFilterPathList);
+            log.debug("Source filter added - filterCount: {}", sourceFilterPathList.size());
         }
 
         Map<String, Object> innerBoolClause =
@@ -83,40 +88,44 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             nameToPathMap.put(searchParam.getName(), searchParam.getPath());
             nameToOperator.put(searchParam.getName(), searchParam.getOperator());
         });
-        log.debug("⚙️ Search criteria mappings: {}", nameToPathMap);
+        log.debug("Search criteria mappings built - mappingCount: {}", nameToPathMap.size());
 
         // Special case for tenantId
         if (inboxRequest.getInbox().getProcessSearchCriteria().getTenantId().split("\\.").length == 1
                 && !inboxRequest.getInbox().getModuleSearchCriteria().get("tenantId").toString().contains(",")) {
             nameToOperator.put("tenantId", SearchParam.Operator.WILDCARD);
-            log.debug("🔍 Applied wildcard operator for tenantId");
+            log.debug("Applied wildcard operator for tenantId");
         }
 
+        log.debug("Adding module search criteria to must clause");
         addModuleSearchCriteriaToBaseQuery(params, nameToPathMap, nameToOperator, mustClauseList);
-        log.debug("📥 Added module search criteria to mustClauseList");
+        log.debug("Module search criteria added - mustClauseSize: {}", mustClauseList.size());
 
+        log.debug("Adding jurisdiction search criteria to must clause");
         addJurisdictionSearchCriteriaToBaseQuery(jurisdictionParams, nameToPathMap, nameToOperator, jurisdictionMustClauseList);
-        log.debug("📥 Added jurisdiction search criteria to mustClauseList");
+        log.debug("Jurisdiction search criteria added - jurisdictionMustClauseSize: {}", jurisdictionMustClauseList.size());
 
+        log.debug("Adding process search criteria to must clause");
         addProcessSearchCriteriaToBaseQuery(inboxRequest.getInbox().getProcessSearchCriteria(), nameToPathMap, nameToOperator, mustClauseList);
-        log.debug("📥 Added process search criteria to mustClauseList");
+        log.debug("Process search criteria added - mustClauseSize: {}", mustClauseList.size());
 
-        log.info("Final must clause list {} ", mustClauseList);
-        log.info("Final jurisdiction must clause list {} ", jurisdictionMustClauseList);
+        if (log.isDebugEnabled()) {
+            log.debug("Must clause list size: {}", mustClauseList.size());
+            log.debug("Jurisdiction must clause list size: {}", jurisdictionMustClauseList.size());
+        }
 
         // Group the different blocks of should into a single should block
+        log.debug("Extracting should clauses from must clause lists");
         List<Map<String, Object>> updatedMustClauseList = extractShouldClauses(mustClauseList);
         List<Map<String, Object>> updatedJurisdictionMustClauseList = extractJurisdictionShouldClauses(jurisdictionMustClauseList);
         List<Map<String, Object>> mergedMustClause = mergeMustClauseLists(updatedMustClauseList, updatedJurisdictionMustClauseList);
-        log.info("Final must clause list after conversion {} ", updatedMustClauseList);
-        log.info("Final jurisdiction must clause list after conversion {} ", updatedJurisdictionMustClauseList);
-        log.info("Final merge must clause list {} ", mergedMustClause);
+        log.debug("Must clauses merged - mergedSize: {}", mergedMustClause.size());
 
         innerBoolClause.put(MUST_KEY, mergedMustClause);
 
         // Add SLA filter if required
         if (params.containsKey("nearingSLA") && isSLA) {
-            log.info("⏳ Applying SLA filter (nearingSLA enabled)");
+            log.info("Applying SLA filter - nearingSLA enabled");
 
             Map<String, Object> query = (Map<String, Object>) baseEsQuery.get("query");
             Map<String, Object> boolClause = (Map<String, Object>) query.get("bool");
@@ -133,7 +142,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             mustNotClauseList.add(excludeIncidentTerm);
 
             boolClause.put("must_not", mustNotClauseList);
-            log.debug("🚫 Added SLA exclusions: terminated tickets + Incident service");
+            log.debug("SLA exclusions added - terminated tickets and Incident service");
 
             Map<String, Object> scriptInner = new HashMap<>();
             scriptInner.put("source",
@@ -148,13 +157,13 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             scriptClause.put("script", scriptInner);
 
             mustClauseList.add(Collections.singletonMap("script", scriptClause));
-            log.debug("⏱️ Added SLA painless script filter");
+            log.debug("SLA painless script filter added");
         }
 
-        log.info("✅ ES query built successfully for tenantId='{}' | module='{}'",
-                inboxRequest.getInbox().getTenantId(),
-                inboxRequest.getInbox().getProcessSearchCriteria().getModuleName());
-        log.info("📄 Final ES query: {}", baseEsQuery);
+        log.info("ElasticSearch query built successfully - tenantId: {}, module: {}", tenantId, moduleName);
+        if (log.isDebugEnabled()) {
+            log.debug("Final ElasticSearch query structure completed");
+        }
 
         return baseEsQuery;
     }
@@ -317,15 +326,19 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
         String tenantId = inboxRequest.getInbox().getTenantId();
         String moduleName = inboxRequest.getInbox().getProcessSearchCriteria().getModuleName();
 
-        log.info("➡️ Starting ES query build | tenantId={} | module={}", tenantId, moduleName);
+        log.trace("Method invoked: getESQueryProject");
+        log.info("Starting ElasticSearch query build for project - tenantId: {}, module: {}", tenantId, moduleName);
 
         // Récupération de la configuration depuis MDMS
+        log.debug("Fetching MDMS configuration");
         InboxQueryConfiguration configuration = mdmsUtil.getConfigFromMDMS(tenantId, moduleName);
-        log.debug("📄 MDMS configuration fetched: {}", configuration);
+        log.debug("MDMS configuration fetched - allowedCriteria: {}", 
+                configuration != null ? configuration.getAllowedSearchCriteria().size() : 0);
 
         Map<String, Object> params = inboxRequest.getInbox().getModuleSearchCriteria();
+        log.debug("Initializing base ElasticSearch query body");
         Map<String, Object> baseEsQuery = getBaseESQueryBody(inboxRequest, isPaginationRequired);
-        log.debug("🔹 Base ES query body initialized");
+        log.debug("Base ElasticSearch query body initialized");
 
         if (isPaginationRequired) {
             // Sort
@@ -334,12 +347,12 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                     ? SortParam.Order.valueOf((String) params.get(SORT_ORDER_CONSTANT))
                     : configuration.getSortParam().getOrder();
 
-            log.debug("📌 Adding sort clause | field={} | order={}", sortClauseFieldPath, sortOrder);
+            log.debug("Adding sort clause - field: {}, order: {}", sortClauseFieldPath, sortOrder);
             addSortClauseToBaseQuery(baseEsQuery, sortClauseFieldPath, sortOrder);
 
             // Source filter
             List<String> sourceFilterPathList = configuration.getSourceFilterPathList();
-            log.debug("📌 Adding source filter paths: {}", sourceFilterPathList);
+            log.debug("Adding source filter paths - count: {}", sourceFilterPathList.size());
             addSourceFilterToBaseQuery(baseEsQuery, sourceFilterPathList);
         }
 
@@ -355,19 +368,21 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             nameToOperator.put(searchParam.getName(), searchParam.getOperator());
         });
 
-        log.debug("🗺 Name to path map: {}", nameToPathMap);
-        log.debug("⚙ Name to operator map: {}", nameToOperator);
+        log.debug("Name to path map built - mappingCount: {}", nameToPathMap.size());
+        log.debug("Name to operator map built - mappingCount: {}", nameToOperator.size());
 
-        log.info("🔹 Adding module search criteria to ES query");
+        log.debug("Adding module search criteria to ElasticSearch query");
         addModuleSearchCriteriaToBaseQuery(params, nameToPathMap, nameToOperator, mustClauseList);
 
-        log.info("🔹 Adding process search criteria to ES query");
+        log.debug("Adding process search criteria to ElasticSearch query");
         addProcessSearchCriteriaToBaseQuery(inboxRequest.getInbox().getProcessSearchCriteria(), nameToPathMap, nameToOperator, mustClauseList);
 
         innerBoolClause.put(MUST_KEY, mustClauseList);
 
-        log.info("✅ ES query build completed | tenantId={} | module={}", tenantId, moduleName);
-        log.debug("📄 Final ES query: {}", baseEsQuery);
+        log.info("ElasticSearch query build completed for project - tenantId: {}, module: {}", tenantId, moduleName);
+        if (log.isDebugEnabled()) {
+            log.debug("Final ElasticSearch query structure completed");
+        }
 
         return baseEsQuery;
     }
@@ -663,18 +678,18 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                                           Map<String, SearchParam.Operator> nameToOperatorMap) {
 
         SearchParam.Operator operator = nameToOperatorMap.get(key);
-        log.debug("🔹 Preparing must clause for key='{}' with operator='{}' and value='{}'", key, operator, params.get(key));
+        log.trace("Preparing must clause - key: {}, operator: {}", key, operator);
 
         if (operator == null || operator.equals(SearchParam.Operator.EQUAL)) {
             if (params.get(key) instanceof List) {
-                log.debug("📌 Adding TERMS clause for key='{}' with values={}", key, params.get(key));
+                log.debug("Adding TERMS clause - key: {}, valueCount: {}", key, ((List<?>) params.get(key)).size());
                 Map<String, Object> termsClause = new HashMap<>();
                 termsClause.put("terms", new HashMap<>());
                 Map<String, Object> innerTermsClause = (Map<String, Object>) termsClause.get("terms");
                 innerTermsClause.put(addDataPathToSearchParamKey(key, nameToPathMap), params.get(key));
                 return termsClause;
             } else {
-                log.debug("📌 Adding TERM clause for key='{}' with value={}", key, params.get(key));
+                log.debug("Adding TERM clause - key: {}", key);
                 Map<String, Object> termClause = new HashMap<>();
                 termClause.put("term", new HashMap<>());
                 Map<String, Object> innerTermClause = (Map<String, Object>) termClause.get("term");
@@ -682,7 +697,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 return termClause;
             }
         } else if (operator.equals(SearchParam.Operator.LTE) || operator.equals(SearchParam.Operator.GTE)) {
-            log.debug("📌 Adding RANGE clause for key='{}' with operator='{}' and value={}", key, operator, params.get(key));
+            log.debug("Adding RANGE clause - key: {}, operator: {}", key, operator);
             Map<String, Object> rangeClause = new HashMap<>();
             rangeClause.put("range", new HashMap<>());
 //            Map<String, Object> innerRangeClause = (Map<String, Object>) rangeClause.get("range");
@@ -695,7 +710,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             ((Map<String, Object>) rangeClause.get("range")).put(addDataPathToSearchParamKey(key, nameToPathMap), innerRangeClause);
             return rangeClause;
         } else if (operator.equals(SearchParam.Operator.MUST_NOT)) {
-            log.debug("📌 Adding MUST_NOT clause for key='{}' with values={}", key, params.get(key));
+            log.debug("Adding MUST_NOT clause - key: {}", key);
             Map<String, Object> boolClause = new HashMap<>();
             boolClause.put("bool", new HashMap<>());
             Map<String, Object> mustNotClause = (Map<String, Object>) boolClause.get("bool");
@@ -706,21 +721,21 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             innerTermClause.put(addDataPathToSearchParamKey(key, nameToPathMap), params.get(key));
             return boolClause;
         } else if (operator.equals(SearchParam.Operator.SHOULD)) {
-            log.debug("📌 Adding SHOULD clause for key='{}' with values={}", key, params.get(key));
+            log.debug("Adding SHOULD clause - key: {}", key);
             Map<String, Object> shouldClause = new HashMap<>();
             shouldClause.put("should", new HashMap<>());
             Map<String, Object> termsClause = (Map<String, Object>) shouldClause.get("should");
             termsClause.put("terms", new HashMap<>());
             Map<String, Object> innerShouldClause = (Map<String, Object>) termsClause.get("terms");
             innerShouldClause.put(addDataPathToSearchParamKey(key, nameToPathMap), params.get(key));
-            log.info("SHOULD request : {}", shouldClause);
+            log.debug("SHOULD clause created - key: {}", key);
             return shouldClause;
         } else if (operator.equals(SearchParam.Operator.SLA_COMPARE)) {
-            log.debug("📌 SLA_COMPARE operator detected for key='{}', returning empty clause", key);
+            log.debug("SLA_COMPARE operator detected - key: {}, returning empty clause", key);
             return new HashMap<>();
         } else if (operator.equals(SearchParam.Operator.MULTI_MATCH)) {
             String searchValue = params.get("search").toString();
-            log.debug("📌 Adding MULTI_MATCH clause for search='{}'", searchValue);
+            log.debug("Adding MULTI_MATCH clause - searchValue length: {}", searchValue.length());
             Map<String, Object> multiMatch = new HashMap<>();
             multiMatch.put("query", searchValue);
             multiMatch.put("fields", nameToPathMap.get("search").split(","));
@@ -729,7 +744,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             parent.put("multi_match", multiMatch);
             return parent;
         } else {
-            log.error("❌ Unsupported operator '{}' for key='{}'", operator, key);
+            log.error("Unsupported operator - operator: {}, key: {}", operator, key);
             throw new CustomException(ErrorConstants.INVALID_OPERATOR_DATA, "Unsupported Operator : " + operator);
         }
     }
@@ -738,16 +753,16 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                                                                      Map<String, String> nameToPathMap,
                                                                      Map<String, SearchParam.Operator> nameToOperatorMap) {
         Object value = params.get(key);
-        log.debug("🔹 Preparing wildcard clause for key='{}' with value='{}'", key, value);
+        log.trace("Preparing wildcard clause - key: {}", key);
 
         List<Map<String, Object>> wildcardClauses = new ArrayList<>();
 
         if (value instanceof List) {
             List<Object> values = (List<Object>) value;
-            log.debug("📌 Value is a list with {} items for key='{}'", values.size(), key);
+            log.debug("Value is a list - key: {}, itemCount: {}", key, values.size());
 
             for (Object item : values) {
-                log.debug("   🔸 Adding wildcard for list item='{}'", item);
+                log.trace("Adding wildcard for list item - key: {}", key);
 
                 Map<String, Object> wildcardClause = new HashMap<>();
                 wildcardClause.put("wildcard", new HashMap<>());
@@ -765,7 +780,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                         JsonNode node = objectMapper.readTree(json);
                         innerWildcardClause.put(addDataPathToSearchParamKey(key, nameToPathMap), node);
                     } catch (JsonProcessingException e) {
-                        log.error("❌ Error while processing wildcard JSON for key='{}' and item='{}'", key, item, e);
+                        log.error("Error while processing wildcard JSON - key: {}", key, e);
                         throw new RuntimeException(e);
                     }
                 }
@@ -773,7 +788,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
                 wildcardClauses.add(wildcardClause);
             }
         } else {
-            log.debug("📌 Value is a single object for key='{}', value='{}'", key, value);
+            log.debug("Value is a single object - key: {}", key);
 
             Map<String, Object> wildcardClause = new HashMap<>();
             wildcardClause.put("wildcard", new HashMap<>());
@@ -788,7 +803,7 @@ public class InboxQueryBuilder implements QueryBuilderInterface {
             wildcardClauses.add(wildcardClause);
         }
 
-        log.debug("✅ Total {} wildcard clause(s) prepared for key='{}'", wildcardClauses.size(), key);
+        log.debug("Wildcard clauses prepared - key: {}, clauseCount: {}", key, wildcardClauses.size());
         return wildcardClauses;
     }
 

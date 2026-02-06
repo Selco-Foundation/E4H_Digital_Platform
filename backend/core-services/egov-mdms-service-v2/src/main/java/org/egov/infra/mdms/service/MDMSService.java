@@ -51,18 +51,27 @@ public class MDMSService {
 	 * @return
 	 */
 	public List<Mdms> create(MdmsRequest mdmsRequest) {
+		log.trace("MDMSService.create: method invoked");
+		String tenantId = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getTenantId() : "null";
+		String schemaCode = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getSchemaCode() : "null";
+		log.info("Processing MDMS create request for tenant: {}, schemaCode: {}", tenantId, schemaCode);
 
 		// Fetch schema against which data is getting created
+		log.debug("Fetching schema definition for schemaCode: {}", schemaCode);
 		JSONObject schemaObject = schemaUtil.getSchema(mdmsRequest);
 
 		// Validate incoming request
+		log.debug("Validating MDMS create request");
 		mdmsDataValidator.validateCreateRequest(mdmsRequest, schemaObject);
 
 		// Enrich incoming request
+		log.debug("Enriching MDMS create request");
 		mdmsDataEnricher.enrichCreateRequest(mdmsRequest, schemaObject);
 
 		// Emit mdms creation request event
+		log.debug("Publishing MDMS create request to Kafka");
 		mdmsDataRepository.create(mdmsRequest);
+		log.info("MDMS create request processed successfully for tenant: {}, schemaCode: {}", tenantId, schemaCode);
 
 		return Arrays.asList(mdmsRequest.getMdms());
 	}
@@ -73,6 +82,7 @@ public class MDMSService {
 	 * @return
 	 */
 	public Map<String, Map<String, JSONArray>> search(MdmsCriteriaReq mdmsCriteriaReq) {
+		log.trace("MDMSService.search: method invoked");
 		Map<String, Map<String, JSONArray>> tenantMasterMap = new HashMap<>();
 
 		/*
@@ -80,25 +90,34 @@ public class MDMSService {
 		 * concrete tenantId does not exist.
 		 */
 		String tenantId = new StringBuilder(mdmsCriteriaReq.getMdmsCriteria().getTenantId()).toString();
-		mdmsCriteriaReq.getMdmsCriteria().setTenantId(multiStateInstanceUtil.getStateLevelTenant(tenantId));
+		String stateLevelTenantId = multiStateInstanceUtil.getStateLevelTenant(tenantId);
+		log.debug("Converting tenantId: {} to state level tenantId: {}", tenantId, stateLevelTenantId);
+		mdmsCriteriaReq.getMdmsCriteria().setTenantId(stateLevelTenantId);
 
 		Map<String, String> schemaCodes = getSchemaCodes(mdmsCriteriaReq.getMdmsCriteria());
+		log.debug("Extracted schema codes count: {}", schemaCodes != null ? schemaCodes.size() : 0);
 		mdmsCriteriaReq.getMdmsCriteria().setSchemaCodeFilterMap(schemaCodes);
 
 		// Make a call to the repository layer to fetch data as per given criteria
+		log.info("Fetching MDMS data from repository");
 		tenantMasterMap = mdmsDataRepository.search(mdmsCriteriaReq.getMdmsCriteria());
+		log.debug("Repository returned data for tenant count: {}", tenantMasterMap != null ? tenantMasterMap.size() : 0);
 
 		// Apply filters to incoming data
+		log.debug("Applying filters to fetched data");
 		tenantMasterMap = applyFilterToData(tenantMasterMap, mdmsCriteriaReq.getMdmsCriteria().getSchemaCodeFilterMap());
 
 		// Perform fallback
+		log.debug("Performing fallback for tenantId: {}", tenantId);
 		Map<String, JSONArray> masterDataMap = FallbackUtil.backTrackTenantMasterDataMap(tenantMasterMap, tenantId);
 
 		// Return response in MDMS v1 search response format for backward compatibility
+		log.info("MDMS search request processed successfully");
 		return getModuleMasterMap(masterDataMap);
 	}
 
 	private Map<String, Map<String, JSONArray>> applyFilterToData(Map<String, Map<String, JSONArray>> tenantMasterMap, Map<String, String> schemaCodeFilterMap) {
+		log.trace("MDMSService.applyFilterToData: method invoked");
 		Map<String, Map<String, JSONArray>> tenantMasterMapPostFiltering = new HashMap<>();
 
 		tenantMasterMap.keySet().forEach(tenantId -> {
@@ -118,11 +137,15 @@ public class MDMSService {
 	}
 
 	private JSONArray filterMasters(JSONArray masters, String filterExp) {
+		log.trace("MDMSService.filterMasters: method invoked with filter expression");
+		log.debug("Filtering masters array of size: {} with expression", masters != null ? masters.size() : 0);
 		JSONArray filteredMasters = JsonPath.read(masters, filterExp);
+		log.debug("Filtered masters count: {}", filteredMasters != null ? filteredMasters.size() : 0);
 		return filteredMasters;
 	}
 
 	private Map<String, Map<String, JSONArray>> getModuleMasterMap(Map<String, JSONArray> masterMap) {
+		log.trace("MDMSService.getModuleMasterMap: method invoked");
 		Map<String, Map<String, JSONArray>> moduleMasterMap = new HashMap<>();
 
 		for (Map.Entry<String, JSONArray> entry : masterMap.entrySet()) {
@@ -133,10 +156,12 @@ public class MDMSService {
 			moduleMasterMap.computeIfAbsent(moduleName, k -> new HashMap<>())
 					.put(masterName, entry.getValue());
 		}
+		log.debug("Created module master map with module count: {}", moduleMasterMap.size());
 		return moduleMasterMap;
 	}
 
 	private Map<String, String> getSchemaCodes(MdmsCriteria mdmsCriteria) {
+		log.trace("MDMSService.getSchemaCodes: method invoked");
 		Map<String, String> schemaCodesFilterMap = new HashMap<>();
 		for (ModuleDetail moduleDetail : mdmsCriteria.getModuleDetails()) {
 			for (MasterDetail masterDetail : moduleDetail.getMasterDetails()) {
@@ -145,6 +170,7 @@ public class MDMSService {
 				schemaCodesFilterMap.put(key, value);
 			}
 		}
+		log.debug("Extracted schema codes count: {}", schemaCodesFilterMap.size());
 		return schemaCodesFilterMap;
 	}
 }

@@ -1,6 +1,6 @@
 import os
 from typing import List, Dict, Set, Tuple
-
+import re
 import pandas as pd
 
 from app.core.logging import AppLogger
@@ -10,10 +10,12 @@ from app.ingest.service.data_writer import DataWriter
 from app.ingest.service.validator import Validator
 from app.schemas.request_info import RequestInfo
 from app.utils.boundary_service_client import BoundaryServiceClient
+from app.utils.localization_service_client import LocalizationServiceClient
 
 from dotenv import load_dotenv
 load_dotenv()
 boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
+localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 
 logger = AppLogger().get_logger()
 
@@ -27,6 +29,7 @@ class BoundaryDataProcessor:
         self.validation_errors = []
         self.request_info = request_info
         self.boundary_service_client = BoundaryServiceClient(boundary_service_url)
+        self.localization_client = LocalizationServiceClient(localization_service_url)
 
         # Hierarchical structure to store boundary data
         self.hierarchy_levels = ["Country", "State", "District", "Block"]
@@ -50,11 +53,13 @@ class BoundaryDataProcessor:
     def process_data(self):
         """Process and validate boundary data"""
 
+        logger.trace("Starting boundary data processing")
         if isinstance(self.data_loader, BoundaryExcelDataLoader):
             boundary_df = self.data_loader.get_boundary_data()
-            logger.info(boundary_df.head(2))
+            logger.info(f"Loaded {len(boundary_df)} boundary records for processing")
+            logger.debug(f"Boundary data sample: {len(boundary_df.head(2))} rows")
         else:
-            logger.warning("Data loader is not compatible")
+            logger.warning("Data loader is not compatible with BoundaryExcelDataLoader")
             return pd.DataFrame()
 
         boundary_df["status"] = None
@@ -76,6 +81,7 @@ class BoundaryDataProcessor:
         self._check_existing_boundaries()
         self._create_new_boundaries()
         self._create_boundary_relationships()
+        self._upsert_localization_for_boundaries()
 
         # Update the DataFrame with boundary creation results
         boundary_df = self._update_dataframe_with_results(boundary_df)
@@ -95,10 +101,10 @@ class BoundaryDataProcessor:
     def _organize_boundary_data(self, boundary_df):
         """Organize boundary data into hierarchical structure with full codes"""
         for _, row in boundary_df.iterrows():
-            country = str(row.get('Country', '')).strip()
-            state = str(row.get('State', '')).strip()
-            district = str(row.get('District', '')).strip()
-            block = str(row.get('Block', '')).strip()
+            country = self.to_camel_case(str(row.get('Country', '')).strip())
+            state = self.to_camel_case(str(row.get('State', '')).strip())
+            district = self.to_camel_case(str(row.get('District', '')).strip())
+            block = self.to_camel_case(str(row.get('Block', '')).strip())
 
             # Country level
             if country:
@@ -273,6 +279,40 @@ class BoundaryDataProcessor:
         except Exception as e:
             return False, str(e)
 
+    def _upsert_localization_for_boundaries(self):
+        """Upsert localization messages for all boundaries"""
+        if not self.request_info:
+            logger.warning("No RequestInfo; skipping localization upsert for boundaries")
+            return
+        messages = []
+        for level in self.hierarchy_levels:
+            for code, data in self.boundary_data[level].items():
+                full_code = data["full_code"]
+                if full_code in self.failed_boundaries:
+                    continue
+                # message = display name (e.g. "Karnataka", "Bangalore Urban"), not full code
+                display_name = data.get("name") or code
+                messages.append({
+                    "code": f"Boundary_{full_code}",
+                    "message": display_name,
+                    "module": "rainmaker-in",
+                    "locale": "en_IN",
+                })
+        if not messages:
+            return
+        chunk_size = 50
+        for i in range(0, len(messages), chunk_size):
+            chunk = messages[i : i + chunk_size]
+            try:
+                self.localization_client.upsert_messages(
+                    request_info=self.request_info,
+                    tenant_id="in",
+                    messages=chunk,
+                )
+                logger.info(f"Upserted localization for {len(chunk)} boundaries")
+            except Exception as e:
+                logger.error(f"Localization upsert failed for boundary batch: {e}", exc_info=True)
+
     def _update_dataframe_with_results(self, boundary_df):
         """Update the DataFrame with boundary creation results"""
         for index, row in boundary_df.iterrows():
@@ -331,3 +371,15 @@ class BoundaryDataProcessor:
                     boundary_df.loc[index, "error"] = ""
 
         return boundary_df
+
+    def to_camel_case(self, text: str) -> str:
+        if not text or not text.strip():
+            return ""
+
+        cleaned = re.sub(r"[_\-]+", " ", text.strip())
+
+        # Split sur espaces
+        parts = cleaned.split()
+
+        # Met juste la première lettre en majuscule, sans forcer le reste en minuscule
+        return "".join(word[:1].upper() + word[1:] for word in parts)

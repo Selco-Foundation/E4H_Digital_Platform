@@ -49,64 +49,68 @@ public class NotificationConsumer {
 
     @KafkaListener(topics = {"${im.kafka.create.topic}","${im.kafka.update.topic}"})
     public void listen(final HashMap<String, Object> record, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        log.trace("NotificationConsumer::listen method invoked");
         try {
         	IncidentRequest request = mapper.convertValue(record, IncidentRequest.class);
 
             String tenantId = request.getIncident().getTenantId();
+            String incidentId = request.getIncident().getIncidentId();
+
+            log.info("Processing notification for incidentId={}, tenantId={}, topic={}", incidentId, tenantId, topic);
 
             // Adding in MDC so that tracer can add it in header
             MDC.put(IMConstants.TENANTID_MDC_STRING, tenantId);
 
             notificationService.process(request, topic);
         } catch (Exception ex) {
-            StringBuilder builder = new StringBuilder("Error while listening to value: ").append(record)
-                    .append("on topic: ").append(topic);
-            log.error(builder.toString(), ex);
+            log.error("Error while processing notification from topic: {}", topic, ex);
         }
     }
     
     
     @KafkaListener(topics = { "${persister.auto.escalation.topic}"})
 	public void generateEscalationDemand(final HashMap<String, Object> record, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+		log.trace("NotificationConsumer::generateEscalationDemand method invoked");
 		ObjectMapper mapper = new ObjectMapper();
 		IMEscalationRequest processInstanceRequest = new IMEscalationRequest();
 		List<IncidentWrapper> incidents=new ArrayList<IncidentWrapper>();
 		RequestInfo requestInfo=new RequestInfo();
-       		Workflow workflow = new Workflow();
-			try {
-				log.info("Consuming record: " + record);
-				processInstanceRequest = mapper.convertValue(record, IMEscalationRequest.class);
-				requestInfo.setAuthToken(processInstanceRequest.getImEscalationInstance().get(0).getAuthToken());
-				requestInfo.setUserInfo(processInstanceRequest.getImEscalationInstance().get(0).getUserInfo());
+		Workflow workflow = new Workflow();
+		try {
+			log.info("Consuming escalation record from topic: {}", topic);
+			processInstanceRequest = mapper.convertValue(record, IMEscalationRequest.class);
+			requestInfo.setAuthToken(processInstanceRequest.getImEscalationInstance().get(0).getAuthToken());
+			requestInfo.setUserInfo(processInstanceRequest.getImEscalationInstance().get(0).getUserInfo());
 
-				RequestSearchCriteria criteria = new RequestSearchCriteria();
+			RequestSearchCriteria criteria = new RequestSearchCriteria();
 			criteria.setTenantId(processInstanceRequest.getImEscalationInstance().get(0).getTenantId());
-			criteria.setIncidentId(processInstanceRequest.getImEscalationInstance().get(0).getBusinessId());
+			String businessId = processInstanceRequest.getImEscalationInstance().get(0).getBusinessId();
+			criteria.setIncidentId(businessId);
+			log.debug("Searching for incident with businessId: {}", businessId);
 			incidents = imService.search(requestInfo,criteria);
-			log.info("exiting Search function2");
-
-			log.debug("BPA Received: " + processInstanceRequest.getImEscalationInstance().get(0).getBusinessId());
+			log.debug("Search completed, found {} incidents", incidents.size());
 
 		} catch (final Exception e) {
-			log.error("Error while listening to valueeee : " + record + " on topic: " + topic + ": " + e);
+			log.error("Error while processing escalation record from topic: {}", topic, e);
 		}
-		log.debug("BPA Received: " + processInstanceRequest.getImEscalationInstance().get(0).getBusinessId());
+		log.debug("Received escalation record with businessId: {}", 
+				processInstanceRequest.getImEscalationInstance().get(0).getBusinessId());
 
         if (!incidents.isEmpty()) {
-        	log.info("inside update");
+        	log.info("Processing escalation update for incidentId: {}", incidents.get(0).getIncident().getIncidentId());
 			workflow.setAssignes(new ArrayList<>());
-            	workflow.setAction("CLOSE"); 
-            	workflow.setVerificationDocuments(null);
+			workflow.setAction("CLOSE");
+			workflow.setVerificationDocuments(null);
         	IncidentRequest incidentRequest=new IncidentRequest();
         	incidentRequest.setIncident(incidents.get(0).getIncident());
         	incidentRequest.setRequestInfo(requestInfo);
         	incidentRequest.setWorkflow(workflow);
-		log.info("Proceeding for Update call");
-
-        	//bpasearch (response)  -> Approve bpa request
-		log.info("Proceeding for Update call2");
+			log.trace("Calling update service for escalation");
             imService.update(incidentRequest);
+            log.info("Escalation update completed successfully");
+		} else {
+				log.warn("No incidents found for escalation update");
+		}
 	}
-    }
 }
 

@@ -38,6 +38,9 @@ public class Boundary {
     @Valid
     private JsonNode geometry = null;
 
+    @JsonProperty("stateCode")
+    private String stateCode = null;
+
     @JsonProperty("auditDetails")
     private AuditDetails auditDetails = null;
 

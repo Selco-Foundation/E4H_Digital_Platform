@@ -49,7 +49,8 @@ public class WeeklyReportService {
      * Utility method to filter tickets by tenant and process them
      */
     private List<Map<String, Object>> filterTicketsByTenant(List<Map<String, Object>> tickets, String stateCode) {
-        return tickets.stream()
+        log.trace("Filtering tickets by tenant, stateCode: {}, total tickets: {}", stateCode, tickets != null ? tickets.size() : 0);
+        List<Map<String, Object>> filtered = tickets.stream()
             .filter(ticket -> {
                 Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
                 if (data == null) return false;
@@ -65,14 +66,20 @@ public class WeeklyReportService {
                 return ticketStateCode.equals(stateCode) || ticketStateCode.startsWith(stateCode + ".");
             })
             .collect(Collectors.toList());
+        log.debug("Filtered to {} tickets for stateCode: {}", filtered.size(), stateCode);
+        return filtered;
     }
 
     /**
      * Utility method to extract common ticket data fields
      */
     private TicketData extractTicketData(Map<String, Object> ticket) {
+        log.trace("Extracting ticket data from ticket map");
         Map<String, Object> data = (Map<String, Object>) ticket.get("Data");
-        if (data == null) return null;
+        if (data == null) {
+            log.debug("Ticket data is null");
+            return null;
+        }
 
         // Normalize filedDate from any of the possible locations and formats
         // Check multiple locations: Data.filedDate, root filedDate, Data.incident.filedDate, Data.incident.auditDetails.createdTime
@@ -92,27 +99,37 @@ public class WeeklyReportService {
                 }
             }
         }
+        log.debug("Extracted filedDate: {}", filedDate);
 
-        return TicketData.builder()
+        TicketData ticketData = TicketData.builder()
             .tenantId((String) data.get("tenantId"))
             .filedDate(filedDate)
             .systemFunctional((String) data.get("systemFunctional"))
             .state((String) data.get("state"))
             .data(data)
             .build();
+        log.debug("Extracted ticket data: tenantId={}, systemFunctional={}, state={}", 
+            ticketData.getTenantId(), ticketData.getSystemFunctional(), ticketData.getState());
+        return ticketData;
     }
 
     // Parse filedDate from number or formatted strings into epoch millis (IST)
     private Long parseFiledDate(Object filedDateObj) {
-        if (filedDateObj == null) return null;
+        log.trace("Parsing filed date from object, type: {}", filedDateObj != null ? filedDateObj.getClass().getSimpleName() : "null");
+        if (filedDateObj == null) {
+            log.debug("Filed date object is null");
+            return null;
+        }
         if (filedDateObj instanceof Number) {
             long v = ((Number) filedDateObj).longValue();
+            log.debug("Parsed filed date from Number: {}", v);
             return v == 0L ? null : v;
         }
         if (filedDateObj instanceof String s) {
             String str = s.trim();
             try {
                 long v = Long.parseLong(str);
+                log.debug("Parsed filed date from String (long): {}", v);
                 return v == 0L ? null : v;
             } catch (NumberFormatException ignored) { /* try date formats below */ }
 
@@ -128,9 +145,13 @@ public class WeeklyReportService {
                     java.text.SimpleDateFormat f = new java.text.SimpleDateFormat(p, java.util.Locale.ENGLISH);
                     f.setTimeZone(java.util.TimeZone.getTimeZone("Asia/Kolkata"));
                     java.util.Date d = f.parse(str);
-                    if (d != null) return d.getTime();
+                    if (d != null) {
+                        log.debug("Parsed filed date using pattern: {}, result: {}", p, d.getTime());
+                        return d.getTime();
+                    }
                 } catch (Exception ignored) {}
             }
+            log.debug("Could not parse filed date from string: {}", str);
         }
         return null;
     }
@@ -140,6 +161,7 @@ public class WeeklyReportService {
      * Generate weekly report data for a specific tenant
      */
     public WeeklyReportData generateWeeklyReportData(String stateCode, RequestInfo requestInfo) {
+        log.trace("Generating weekly report data for stateCode: {}", stateCode);
         try {
             log.info("Generating weekly report data for tenant: {}", stateCode);
             
@@ -148,6 +170,7 @@ public class WeeklyReportService {
             Date weekStart = weekDates[0];
             Date weekEnd = weekDates[1];
             Date today = new Date();
+            log.debug("Week date range: {} to {}", weekStart, weekEnd);
             
             // Format dates
             String weekStartStr = DATE_FORMAT.format(weekStart);
@@ -167,6 +190,10 @@ public class WeeklyReportService {
             // Get functional/non-functional counts at start and end of week
             FunctionalMetrics startMetrics = getFunctionalMetrics(stateCode, weekStart);
             FunctionalMetrics endMetrics = getFunctionalMetrics(stateCode, weekEnd);
+            log.debug("Start metrics - functional: {}, non-functional: {}", 
+                startMetrics.getFunctionalCount(), startMetrics.getNonFunctionalCount());
+            log.debug("End metrics - functional: {}, non-functional: {}", 
+                endMetrics.getFunctionalCount(), endMetrics.getNonFunctionalCount());
             
             // Calculate percentages
             int totalStart = startMetrics.getFunctionalCount() + startMetrics.getNonFunctionalCount();
@@ -216,10 +243,12 @@ public class WeeklyReportService {
      * Get functional/non-functional metrics for a specific date using Elasticsearch
      */
     private FunctionalMetrics getFunctionalMetrics(String stateCode, Date date) {
+        log.trace("Getting functional metrics for stateCode: {}, date: {}", stateCode, date);
         try {
             // Query Elasticsearch for tickets as of the specified date
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
             log.info("Fetched {} total tickets from ES for tenant: {}", tickets.size(), stateCode);
+            log.debug("Querying functional metrics for date: {}", date);
 
             // Filter tickets by tenant
             List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, stateCode);
@@ -286,12 +315,15 @@ public class WeeklyReportService {
      * Uses boundary.stateCode to identify state since all tickets are now under tenantId 'in'
      */
     private AgeBucketData getAgeBucketData(String stateCode) {
+        log.trace("Getting age bucket data for stateCode: {}", stateCode);
         try {
             // Query Elasticsearch for all open tickets
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            log.debug("Fetched {} tickets from Elasticsearch", tickets.size());
             
             // Filter tickets by boundary.stateCode (not tenantId, since all tickets are now under 'in')
             List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, stateCode);
+            log.debug("Filtered to {} tickets for stateCode: {}", filteredTickets.size(), stateCode);
 
             // Group tickets by facility and find oldest ticket per facility
             // Use facility key: facility name + district + block + stateCode to uniquely identify facilities
@@ -355,12 +387,15 @@ public class WeeklyReportService {
      * Uses boundary.stateCode to identify state since all tickets are now under tenantId 'in'
      */
     private Map<String, WeeklyReportData.StateAgeBucketData> getStateWiseAgeBucketData(String stateCode) {
+        log.trace("Getting state-wise age bucket data for stateCode: {}", stateCode);
         try {
             // Query Elasticsearch for all open tickets
             List<Map<String, Object>> tickets = elasticSearchClient.fetchRequiredTickets(0, 10000, false);
+            log.debug("Fetched {} tickets from Elasticsearch", tickets.size());
             
             // Filter tickets by boundary.stateCode (not tenantId, since all tickets are now under 'in')
             List<Map<String, Object>> filteredTickets = filterTicketsByTenant(tickets, stateCode);
+            log.debug("Filtered to {} tickets for stateCode: {}", filteredTickets.size(), stateCode);
 
             // Group tickets by state and facility, find oldest ticket per facility
             // Structure: stateCode (from boundary) -> facilityKey -> oldest TicketData
@@ -429,8 +464,11 @@ public class WeeklyReportService {
      * Helper method to safely get string value from map
      */
     private String getStringValue(Map<String, Object> map, String key) {
+        log.trace("Getting string value from map, key: {}", key);
         Object value = map.get(key);
-        return value != null ? value.toString() : "";
+        String result = value != null ? value.toString() : "";
+        log.debug("Retrieved value for key '{}': {}", key, result);
+        return result;
     }
     
     /**
@@ -439,26 +477,33 @@ public class WeeklyReportService {
      * @return The stateCode from boundary, or null if not found
      */
     private String extractBoundaryStateCode(TicketData ticketData) {
+        log.trace("Extracting boundary state code from ticket data");
         if (ticketData == null) {
+            log.debug("Ticket data is null");
             return null;
         }
         
         Map<String, Object> data = ticketData.getData();
         if (data == null) {
+            log.debug("Data map is null");
             return null;
         }
         
         Map<String, Object> incident = (Map<String, Object>) data.get("incident");
         if (incident == null) {
+            log.debug("Incident map is null");
             return null;
         }
         
         Map<String, Object> boundary = (Map<String, Object>) incident.get("boundary");
         if (boundary == null) {
+            log.debug("Boundary map is null");
             return null;
         }
         
-        return (String) boundary.get("stateCode");
+        String stateCode = (String) boundary.get("stateCode");
+        log.debug("Extracted state code: {}", stateCode);
+        return stateCode;
     }
     
     /**
@@ -469,13 +514,16 @@ public class WeeklyReportService {
      * @return Unique facility key
      */
     private String generateFacilityKey(Map<String, Object> data, String stateCode) {
+        log.trace("Generating facility key for stateCode: {}", stateCode);
         String facilityName = getStringValue(data, "tenantId_localized");
         if (facilityName == null || facilityName.isEmpty()) {
             facilityName = getStringValue(data, "tenantId");
         }
         String district = getStringValue(data, "district");
         String block = getStringValue(data, "block");
-        return facilityName + "|" + district + "|" + block + "|" + stateCode;
+        String key = facilityName + "|" + district + "|" + block + "|" + stateCode;
+        log.debug("Generated facility key: {}", key);
+        return key;
     }
     
     /**
@@ -484,9 +532,14 @@ public class WeeklyReportService {
      * @return true if ticket is valid non-functional ticket
      */
     private boolean isValidNonFunctionalTicket(TicketData ticketData) {
-        return ticketData != null
+        log.trace("Validating non-functional ticket");
+        boolean isValid = ticketData != null
             && SYSTEM_STATUS_NON_FUNCTIONAL.equals(ticketData.getSystemFunctional())
             && ticketData.getFiledDate() != null;
+        log.debug("Ticket validation result: {}, systemFunctional: {}, hasFiledDate: {}", 
+            isValid, ticketData != null ? ticketData.getSystemFunctional() : "null",
+            ticketData != null && ticketData.getFiledDate() != null);
+        return isValid;
     }
     
     /**
@@ -495,6 +548,7 @@ public class WeeklyReportService {
      * @return AgeBucketCounts with counts for each bucket
      */
     private AgeBucketCounts calculateAgeBucket(int ageInDays) {
+        log.trace("Calculating age bucket for age in days: {}", ageInDays);
         int lt1Wk = 0;
         int lt1Mo = 0;
         int lt3Mo = 0;
@@ -505,10 +559,13 @@ public class WeeklyReportService {
         // 3 Month: age in days > 90
         if (ageInDays >= 8 && ageInDays <= 30) {
             lt1Wk = 1;
+            log.debug("Age bucket: <1 Week");
         } else if (ageInDays >= 31 && ageInDays <= 90) {
             lt1Mo = 1;
+            log.debug("Age bucket: <1 Month");
         } else if (ageInDays > 90) {
             lt3Mo = 1;
+            log.debug("Age bucket: <3 Month");
         }
         
         return new AgeBucketCounts(lt1Wk, lt1Mo, lt3Mo);
@@ -523,10 +580,14 @@ public class WeeklyReportService {
     private void updateFacilityMapWithOldestTicket(Map<String, TicketData> facilityMap, 
                                                    String facilityKey, 
                                                    TicketData ticketData) {
+        log.trace("Updating facility map with oldest ticket, facilityKey: {}", facilityKey);
         TicketData existing = facilityMap.get(facilityKey);
         if (existing == null || existing.getFiledDate() == null ||
             ticketData.getFiledDate() < existing.getFiledDate()) {
             facilityMap.put(facilityKey, ticketData);
+            log.debug("Updated facility map with older ticket, filedDate: {}", ticketData.getFiledDate());
+        } else {
+            log.debug("Existing ticket is older, keeping existing entry");
         }
     }
     
@@ -549,6 +610,7 @@ public class WeeklyReportService {
      * Get previous week's Monday and Sunday dates
      */
     private Date[] getPreviousWeekDates() {
+        log.trace("Calculating previous week dates (Monday to Sunday)");
         Calendar cal = Calendar.getInstance();
         cal.setTimeZone(TimeZone.getTimeZone("Asia/Kolkata"));
         
@@ -556,6 +618,7 @@ public class WeeklyReportService {
         int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
         int daysToSubtract = (dayOfWeek == Calendar.SUNDAY) ? 7 : dayOfWeek - Calendar.MONDAY;
         cal.add(Calendar.DAY_OF_MONTH, -daysToSubtract - 7); // Go back one more week
+        log.debug("Calculated days to subtract: {}", daysToSubtract);
         
         // Set to start of day (Monday 00:00:00)
         cal.set(Calendar.HOUR_OF_DAY, 0);
@@ -563,6 +626,7 @@ public class WeeklyReportService {
         cal.set(Calendar.SECOND, 0);
         cal.set(Calendar.MILLISECOND, 0);
         Date weekStart = cal.getTime();
+        log.debug("Week start date: {}", weekStart);
         
         // Add 6 days to get to Sunday
         cal.add(Calendar.DAY_OF_MONTH, 6);
@@ -573,6 +637,7 @@ public class WeeklyReportService {
         cal.set(Calendar.SECOND, 59);
         cal.set(Calendar.MILLISECOND, 999);
         Date weekEnd = cal.getTime();
+        log.debug("Week end date: {}", weekEnd);
         
         return new Date[]{weekStart, weekEnd};
     }
@@ -582,7 +647,8 @@ public class WeeklyReportService {
      * Format state list for display
      */
     private String formatStateList(String tenantId, Set<String> states) {
-        log.info("formatStateList called with tenantId: {}, states: {}", tenantId, states);
+        log.trace("Formatting state list for tenantId: {}, states count: {}", tenantId, states != null ? states.size() : 0);
+        log.info("Formatting state list for tenantId: {}, states: {}", tenantId, states);
         
         if (states == null || states.isEmpty()) {
             // If no states with data, show the state name for the tenant
@@ -595,6 +661,7 @@ public class WeeklyReportService {
             .map(commonUtility::getStateDisplayName)
             .collect(Collectors.joining(", "));
         log.info("States with data, returning: {}", result);
+        log.debug("Formatted state list: {}", result);
         return result;
     }
     
@@ -604,7 +671,11 @@ public class WeeklyReportService {
      * business-day counts rather than raw wall-clock days.
      */
     private int computeBusinessDays(long startMs, long endMs) {
-        if (endMs <= startMs) return 0;
+        log.trace("Computing business days from {} to {}", startMs, endMs);
+        if (endMs <= startMs) {
+            log.debug("End time is before or equal to start time, returning 0");
+            return 0;
+        }
         TimeZone tz = TimeZone.getTimeZone("Asia/Kolkata");
         Calendar startCal = Calendar.getInstance(tz);
         Calendar endCal = Calendar.getInstance(tz);
@@ -625,6 +696,7 @@ public class WeeklyReportService {
             }
             startCal.add(Calendar.DAY_OF_MONTH, 1);
         }
+        log.debug("Computed {} business days (excluding Sundays)", days);
         return days;
     }
 

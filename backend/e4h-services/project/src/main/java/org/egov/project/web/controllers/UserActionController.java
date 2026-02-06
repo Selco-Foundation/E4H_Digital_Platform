@@ -72,6 +72,9 @@ public class UserActionController {
     public ResponseEntity<ResponseInfo> userActionV1BulkCreatePost(
             @ApiParam(value = "Capture linkage of Project and User Action UserAction.", required = true) @Valid @RequestBody UserActionBulkRequest request
     ) {
+        log.trace("Entering userActionV1BulkCreatePost");
+        log.info("Received bulk create request for user actions");
+        log.debug("Request URI: {}, User actions count: {}", httpServletRequest.getRequestURI(), request.getUserActions() != null ? request.getUserActions().size() : 0);
         // Set the API ID in the request info using the current request URI.
         request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
 
@@ -82,12 +85,14 @@ public class UserActionController {
             log.info("Successfully pushed user action bulk create request to Kafka");
         } catch (Exception e) {
             log.error("Failed to push user action bulk create request to Kafka", e);
+            log.trace("Exiting userActionV1BulkCreatePost with error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), false)
             );
         }
 
         // Create and return a ResponseInfo object with HTTP status ACCEPTED.
+        log.trace("Exiting userActionV1BulkCreatePost");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(
                 ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true)
         );
@@ -106,16 +111,20 @@ public class UserActionController {
             @Valid @ModelAttribute URLParams urlParams,
             @ApiParam(value = "Capture details of Project User Action UserAction.", required = true) @Valid @RequestBody UserActionSearchRequest request
     ) {
-        log.debug("Executing search with URLParams: {} and request: {}", urlParams, request);
+        log.trace("Entering userActionV2SearchPost");
+        log.info("Received search request for user actions");
+        log.debug("Search parameters - limit: {}, offset: {}, tenantId: {}", urlParams.getLimit(), urlParams.getOffset(), urlParams.getTenantId());
 
         // Perform the search using the userActionService.
         SearchResponse<UserAction> userActions;
         try {
             // Perform the search using the userActionService.
             userActions = userActionService.search(request, urlParams);
-            log.info("Successfully searched for user actions: {}", userActions.getResponse().size());
+            log.debug("Found {} user actions", userActions.getResponse() != null ? userActions.getResponse().size() : 0);
+            log.info("Successfully searched for user actions");
         } catch (Exception e) {
             log.error("Failed to search for user actions", e);
+            log.trace("Exiting userActionV2SearchPost with error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
 
@@ -127,6 +136,7 @@ public class UserActionController {
                 .build();
 
         // Return the response with HTTP status OK.
+        log.trace("Exiting userActionV2SearchPost");
         return ResponseEntity.status(HttpStatus.OK).body(response);
     }
 
@@ -141,20 +151,27 @@ public class UserActionController {
     public ResponseEntity<ResponseInfo> userActionV1BulkUpdatePost(
             @ApiParam(value = "Capture linkage of Project and User Action UserAction.", required = true) @Valid @RequestBody UserActionBulkRequest request
     ) {
+        log.trace("Entering userActionV1BulkUpdatePost");
+        log.info("Received bulk update request for user actions");
+        log.debug("Request URI: {}, User actions count: {}", httpServletRequest.getRequestURI(), request.getUserActions() != null ? request.getUserActions().size() : 0);
         // Set the API ID in the request info using the current request URI.
         request.getRequestInfo().setApiId(httpServletRequest.getRequestURI());
 
         try {
+            log.debug("Pushing user action bulk update request to Kafka topic");
             // Send the request to the Kafka topic for bulk update.
             producer.push(projectConfiguration.getBulkUpdateUserActionTopic(), request);
+            log.info("Successfully pushed user action bulk update request to Kafka");
         } catch (Exception e) {
             log.error("Failed to push user action bulk update request to Kafka", e);
+            log.trace("Exiting userActionV1BulkUpdatePost with error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
                     ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), false)
             );
         }
 
         // Create and return a ResponseInfo object with HTTP status ACCEPTED.
+        log.trace("Exiting userActionV1BulkUpdatePost");
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(
                 ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true)
         );

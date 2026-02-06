@@ -33,31 +33,56 @@ public class BoundaryService {
     private String boundaryRelationshipCreatePath;
 
     public BoundaryCreateResponse createBoundaries(BoundaryCreateRequest boundaryCreateRequest) {
+        log.trace("Entering createBoundaries method");
+        int boundaryCount = boundaryCreateRequest.getBoundary() != null ? boundaryCreateRequest.getBoundary().size() : 0;
+        log.info("Creating {} boundaries via boundary service", boundaryCount);
 
         // Construct the complete URI for boundary search
         String uri = UriComponentsBuilder
                 .fromUriString(boundaryHost)
                 .path(boundaryCreatePath)
                 .toUriString();
+        log.debug("Boundary create URI: {}", uri);
 
-        return mapper.convertValue(
-                serviceRequestRepository.fetchResult(new StringBuilder(uri), boundaryCreateRequest),
-                BoundaryCreateResponse.class
-        );
+        try {
+            BoundaryCreateResponse response = mapper.convertValue(
+                    serviceRequestRepository.fetchResult(new StringBuilder(uri), boundaryCreateRequest),
+                    BoundaryCreateResponse.class
+            );
+            log.info("Successfully created boundaries via boundary service");
+            log.trace("Exiting createBoundaries method");
+            return response;
+        } catch (Exception e) {
+            log.error("Error creating boundaries via boundary service: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     public BoundaryRelationshipResponse createBoundaryRelationship(BoundaryRelationshipRequest boundaryRelationshipRequest) {
+        log.trace("Entering createBoundaryRelationship method");
+        String boundaryCode = boundaryRelationshipRequest.getBoundaryRelationship() != null 
+                ? boundaryRelationshipRequest.getBoundaryRelationship().getCode() : null;
+        log.info("Creating boundary relationship for boundary code: {}", boundaryCode);
 
         // Construct the complete URI for boundary search
         String uri = UriComponentsBuilder
                 .fromUriString(boundaryHost)
                 .path(boundaryRelationshipCreatePath)
                 .toUriString();
+        log.debug("Boundary relationship create URI: {}", uri);
 
-        return mapper.convertValue(
-                serviceRequestRepository.fetchResult(new StringBuilder(uri), boundaryRelationshipRequest),
-                BoundaryRelationshipResponse.class
-        );
+        try {
+            BoundaryRelationshipResponse response = mapper.convertValue(
+                    serviceRequestRepository.fetchResult(new StringBuilder(uri), boundaryRelationshipRequest),
+                    BoundaryRelationshipResponse.class
+            );
+            log.info("Successfully created boundary relationship for boundary code: {}", boundaryCode);
+            log.trace("Exiting createBoundaryRelationship method");
+            return response;
+        } catch (Exception e) {
+            log.error("Error creating boundary relationship for boundary code {}: {}", boundaryCode, e.getMessage(), e);
+            throw e;
+        }
     }
 
 }

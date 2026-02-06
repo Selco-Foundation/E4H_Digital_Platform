@@ -41,77 +41,120 @@ public class ElasticSearchClient {
 
     @PostConstruct
     public void init() {
+        log.trace("Initializing ElasticSearchClient");
         this.INDEX_NAME = computedSlaImServicesIndex;
+        log.debug("Index name set to: {}", INDEX_NAME);
+        log.info("ElasticSearchClient initialized");
     }
 
     private static final String DOC_PATH = "_doc";
 
     public List<Map<String, Object>> fetchRequiredTickets(int from, int size ,boolean closedTickets) {
+        log.trace("Fetching required tickets from index: {}, from: {}, size: {}, closedTickets: {}", INDEX_NAME, from, size, closedTickets);
         return fetchTickets(INDEX_NAME, from, size, closedTickets);
     }
 
     public List<Map<String, Object>> fetchOldRequiredTicketsFromImServices(int from, int size, boolean closedTickets) {
+        log.trace("Fetching old required tickets from index: {}, from: {}, size: {}, closedTickets: {}", OLD_INDEX_NAME, from, size, closedTickets);
         return fetchTickets(OLD_INDEX_NAME, from, size,  closedTickets);
     }
 
     public Map<String, Object> getHFByBoundaryCode(String boundaryCode) {
+        log.trace("Getting health facility by boundary code: {}", boundaryCode);
         return fetchTicketByBoundaryCode(phcIndex, boundaryCode);
     }
 
     public List<Map<String, Object>> getAllPHC(int from, int size) {
+        log.trace("Getting all PHC documents, from: {}, size: {}", from, size);
         return fetchAllPHCs(phcIndex, from, size);
     }
 
+    public int getPHCDocsSize() {
+        log.trace("Getting PHC documents size");
+        return getPHCsSize(phcIndex);
+    }
+
     private List<Map<String, Object>> fetchTickets(String indexName, int from, int size, Boolean closedTickets) {
+        log.trace("Fetching tickets from index: {}, from: {}, size: {}, closedTickets: {}", indexName, from, size, closedTickets);
         String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
+        log.debug("Elasticsearch URI: {}", uri);
         Map<String, Object> query = buildRequiredTicketQuery(from, size, closedTickets);
         HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
 
         try {
+            log.debug("Executing Elasticsearch query");
             Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
-            return parseESHits(response);
+            List<Map<String, Object>> tickets = parseESHits(response);
+            log.info("Successfully fetched {} tickets from index: {}", tickets.size(), indexName);
+            return tickets;
         } catch (Exception e) {
-            log.error("Failed to fetch open tickets from index '{}'", indexName, e);
+            log.error("Failed to fetch tickets from index '{}'", indexName, e);
             return Collections.emptyList();
         }
     }
 
     private List<Map<String, Object>> fetchAllPHCs(String indexName, int from, int size) {
+        log.trace("Fetching all PHCs from index: {}, from: {}, size: {}", indexName, from, size);
         String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
         Map<String, Object> query = buildHFQuery(from, size);
         HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
         try {
+            log.debug("Executing Elasticsearch query for PHCs");
             Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
-            return parseESHits(response);
+            List<Map<String, Object>> phcs = parseESHits(response);
+            log.info("Successfully fetched {} PHC documents from index: {}", phcs.size(), indexName);
+            return phcs;
         } catch (Exception e) {
-            log.error("Failed to fetch open tickets from index '{}'", indexName, e);
+            log.error("Failed to fetch PHCs from index '{}'", indexName, e);
             return Collections.emptyList();
         }
     }
 
+    private int getPHCsSize(String indexName) {
+        log.trace("Getting PHCs size from index: {}", indexName);
+        String uri = getBaseUrl() + "/" + indexName + "/" + SEARCH_PATH;
+        Map<String, Object> query = buildHFQuery(0, 1);
+        HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
+        try {
+            log.debug("Executing Elasticsearch query to get total hits");
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            int totalHits = parseESTotalHits(response);
+            log.info("Total PHC documents in index {}: {}", indexName, totalHits);
+            return totalHits;
+        } catch (Exception e) {
+            log.error("Failed to get PHCs size from index '{}'", indexName, e);
+            return 0;
+        }
+    }
+
     private Map<String, Object> fetchTicketByBoundaryCode(String indexName, String boundaryCode) {
-        String uri = getBaseUrl() + "/" + indexName + "/" + DOC_PATH + "/" + boundaryCode;
-
+        log.trace("Fetching ticket by boundary code: {} from index: {}", boundaryCode, indexName);
+        String uri = getBaseUrl() + "/{index}/" + DOC_PATH + "/{id}";
+        log.debug("Elasticsearch URI: {}", uri);
         HttpEntity<String> entity = new HttpEntity<>(updateService.buildHeaders());
-
         try {
             ResponseEntity<Map> response = restTemplate.exchange(
                     uri,
                     HttpMethod.GET,
                     entity,
-                    Map.class
+                    Map.class,
+                    indexName,
+                    boundaryCode
             );
 
             log.info("Fetched ticket audit for boundaryCode={} from index={}", boundaryCode, indexName);
-            return response.getBody() != null ? response.getBody() : Collections.emptyMap();
+            Map<String, Object> body = response.getBody() != null ? response.getBody() : Collections.emptyMap();
+            log.debug("Retrieved ticket data, keys: {}", body.keySet());
+            return body;
 
         } catch (Exception e) {
-            log.error("Failed to fetch ticket audit from index '{}' with tenantId '{}'", indexName, boundaryCode, e);
+            log.error("Failed to fetch ticket audit from index '{}' with boundaryCode '{}'", indexName, boundaryCode, e);
             return Collections.emptyMap();
         }
     }
 
     private Map<String, Object> buildRequiredTicketQuery(int from, int size, Boolean closedTickets) {
+        log.trace("Building required ticket query, from: {}, size: {}, closedTickets: {}", from, size, closedTickets);
         Map<String, Object> query = new HashMap<>();
         Map<String, Object> bool = new HashMap<>();
 
@@ -123,6 +166,7 @@ public class ElasticSearchClient {
                     "Data.currentProcessInstance.state.applicationStatus.keyword",
                     List.of(REJECTED, CLOSED_AFTER_REJECTION, RESOLVED, CLOSED_AFTER_RESOLUTION)
             )));
+            log.debug("Added filters to exclude closed tickets");
         }
 
         bool.put("must_not", mustNot);
@@ -130,11 +174,13 @@ public class ElasticSearchClient {
         query.put("_source", true);
         query.put("from", from);
         query.put("size", size);
+        log.debug("Built query with pagination: from={}, size={}", from, size);
 
         return query;
     }
 
     private Map<String, Object> buildHFQuery(int from, int size) {
+        log.trace("Building health facility query, from: {}, size: {}", from, size);
         Map<String, Object> query = new HashMap<>();
         Map<String, Object> bool = new HashMap<>();
 
@@ -142,24 +188,59 @@ public class ElasticSearchClient {
         query.put("_source", true);
         query.put("from", from);
         query.put("size", size);
+        log.debug("Built HF query with pagination: from={}, size={}", from, size);
 
         return query;
     }
 
     private List<Map<String, Object>> parseESHits(Map<String, Object> response) {
+        log.trace("Parsing Elasticsearch hits from response");
         List<Map<String, Object>> resultList = new ArrayList<>();
-        if (response == null) return resultList;
+        if (response == null) {
+            log.debug("Response is null, returning empty list");
+            return resultList;
+        }
 
         Map<String, Object> hits = (Map<String, Object>) response.get("hits");
-        if (hits == null || !hits.containsKey("hits")) return resultList;
+        if (hits == null || !hits.containsKey("hits")) {
+            log.debug("No hits found in response");
+            return resultList;
+        }
 
         List<Map<String, Object>> rawHits = (List<Map<String, Object>>) hits.get("hits");
+        log.debug("Found {} raw hits in response", rawHits != null ? rawHits.size() : 0);
         for (Map<String, Object> hit : rawHits) {
             Map<String, Object> source = (Map<String, Object>) hit.get("_source");
             resultList.add(source);
         }
 
+        log.debug("Parsed {} documents from Elasticsearch response", resultList.size());
         return resultList;
+    }
+
+    private int parseESTotalHits(Map<String, Object> response) {
+        log.trace("Parsing total hits from Elasticsearch response");
+        int totalIndex = 0;
+        if (response == null) {
+            log.debug("Response is null, returning 0");
+            return totalIndex;
+        }
+
+        Map<String, Object> hits = (Map<String, Object>) response.get("hits");
+        if (hits == null || !hits.containsKey("total")) {
+            log.debug("No total hits found in response");
+            return totalIndex;
+        }
+
+        Map<String, Object> totalHits = (Map<String, Object>) hits.get("total");
+        if (totalHits == null || !totalHits.containsKey("value")) {
+            log.debug("No total hits value found");
+            return totalIndex;
+        }
+        totalIndex = (int)totalHits.get("value");
+        log.debug("Parsed total hits: {}", totalIndex);
+
+        return totalIndex;
     }
 
     /**
@@ -167,13 +248,18 @@ public class ElasticSearchClient {
      * Used by SLABreachDetectionService for escalation queries
      */
     public List<EscalationTicket> searchTickets(Map<String, Object> query) {
+        log.trace("Searching tickets with custom query");
         String uri = getBaseUrl() + "/" + INDEX_NAME + "/" + SEARCH_PATH;
+        log.debug("Elasticsearch search URI: {}", uri);
         HttpEntity<Object> entity = new HttpEntity<>(query, updateService.buildHeaders());
 
         try {
-            log.info("Executing Elasticsearch query: {}", query);
+            log.info("Executing Elasticsearch query on index: {}", INDEX_NAME);
+            log.debug("Query details: {}", query);
             Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
-            return parseEscalationTickets(response);
+            List<EscalationTicket> tickets = parseEscalationTickets(response);
+            log.info("Successfully executed search query, found {} tickets", tickets.size());
+            return tickets;
         } catch (Exception e) {
             log.error("Failed to execute search query on index '{}'", INDEX_NAME, e);
             return Collections.emptyList();
@@ -184,27 +270,38 @@ public class ElasticSearchClient {
      * Parse Elasticsearch response to EscalationTicket objects
      */
     private List<EscalationTicket> parseEscalationTickets(Map<String, Object> response) {
+        log.trace("Parsing escalation tickets from Elasticsearch response");
         List<org.selco.e4h.web.models.EscalationTicket> tickets = new ArrayList<>();
-        if (response == null) return tickets;
+        if (response == null) {
+            log.debug("Response is null, returning empty list");
+            return tickets;
+        }
 
         Map<String, Object> hits = (Map<String, Object>) response.get("hits");
-        if (hits == null || !hits.containsKey("hits")) return tickets;
+        if (hits == null || !hits.containsKey("hits")) {
+            log.debug("No hits found in response");
+            return tickets;
+        }
 
         List<Map<String, Object>> rawHits = (List<Map<String, Object>>) hits.get("hits");
+        log.debug("Found {} raw hits to parse", rawHits != null ? rawHits.size() : 0);
+        int parsedCount = 0;
         for (Map<String, Object> hit : rawHits) {
             try {
                 String documentId = (String) hit.get("_id");
+                log.debug("Parsing ticket with document ID: {}", documentId);
                 Map<String, Object> source = (Map<String, Object>) hit.get("_source");
                 EscalationTicket ticket = convertToEscalationTicket(source, documentId);
                 if (ticket != null) {
                     tickets.add(ticket);
+                    parsedCount++;
                 }
             } catch (Exception e) {
                 log.warn("Error parsing ticket from Elasticsearch hit: {}", hit.get("_id"), e);
             }
         }
 
-        log.info("Parsed {} escalation tickets from Elasticsearch response", tickets.size());
+        log.info("Parsed {} escalation tickets from Elasticsearch response", parsedCount);
         return tickets;
     }
 
@@ -357,18 +454,25 @@ public class ElasticSearchClient {
      * Safely extract Long value from Map
      */
     private Long getLongValue(Map<String, Object> map, String key) {
+        log.trace("Extracting Long value from map, key: {}", key);
         Object value = map.get(key);
-        if (value == null) return null;
+        if (value == null) {
+            log.debug("Value is null for key: {}", key);
+            return null;
+        }
         if (value instanceof Long) return (Long) value;
         if (value instanceof Integer) return ((Integer) value).longValue();
         if (value instanceof String) {
             try {
-                return Long.parseLong((String) value);
+                Long parsed = Long.parseLong((String) value);
+                log.debug("Parsed Long value for key '{}': {}", key, parsed);
+                return parsed;
             } catch (NumberFormatException e) {
                 log.warn("Could not parse Long value for key '{}': {}", key, value);
                 return null;
             }
         }
+        log.debug("Value type not supported for key '{}': {}", key, value.getClass().getSimpleName());
         return null;
     }
 
@@ -376,9 +480,13 @@ public class ElasticSearchClient {
      * Get long value from object with null safety
      */
     private Long getLongValue(Object value) {
+        log.trace("Converting object to Long value");
         if (value instanceof Number) {
-            return ((Number) value).longValue();
+            Long result = ((Number) value).longValue();
+            log.debug("Converted Number to Long: {}", result);
+            return result;
         }
+        log.debug("Object is not a Number, returning null");
         return null;
     }
 
@@ -386,18 +494,22 @@ public class ElasticSearchClient {
      * Extract vendor name from data
      */
     private String extractVendorName(Map<String, Object> data) {
+        log.trace("Extracting vendor name from data");
         // Try to get vendor name from mappedVendorName field
         String vendorName = (String) data.get("mappedVendorName");
         if (vendorName != null && !vendorName.isEmpty()) {
+            log.debug("Found vendor name: {}", vendorName);
             return vendorName;
         }
 
         // Try to get vendor name from mappedVendorUserName field
         String vendorUserName = (String) data.get("mappedVendorUserName");
         if (vendorUserName != null && !vendorUserName.isEmpty()) {
+            log.debug("Found vendor user name: {}", vendorUserName);
             return vendorUserName;
         }
 
+        log.debug("No vendor name found, returning default");
         return "Not Assigned";
     }
 
@@ -407,9 +519,11 @@ public class ElasticSearchClient {
      * Priority is the part after the underscore
      */
     private String extractPriorityFromBusinessService(Map<String, Object> data) {
+        log.trace("Extracting priority from business service");
         try {
             Map<String, Object> currentProcessInstance = (Map<String, Object>) data.get("currentProcessInstance");
             if (currentProcessInstance == null) {
+                log.debug("Current process instance is null, using default priority");
                 return "Medium"; // Default fallback
             }
 
@@ -417,10 +531,13 @@ public class ElasticSearchClient {
             if (businessServiceObj instanceof String businessService && businessService.contains("_")) {
                 String[] parts = businessService.split("_", 2);
                 if (parts.length > 1) {
-                    return parts[1]; // Return part after underscore (High, Low, Medium)
+                    String priority = parts[1]; // Return part after underscore (High, Low, Medium)
+                    log.debug("Extracted priority: {} from business service: {}", priority, businessService);
+                    return priority;
                 }
             }
 
+            log.debug("Could not extract priority from business service, using default");
             return "Medium"; // Default fallback
         } catch (Exception e) {
             log.warn("Error extracting priority from business service: {}", e.getMessage());
@@ -429,6 +546,9 @@ public class ElasticSearchClient {
     }
 
     private String getBaseUrl() {
-        return esHost + ":" + esPort;
+        log.trace("Getting Elasticsearch base URL");
+        String url = esHost + ":" + esPort;
+        log.debug("Elasticsearch base URL: {}", url);
+        return url;
     }
 }

@@ -11,9 +11,9 @@ public class FieldPlannerConstants {
     public static final String MASTER_ACTIVITIES = "Activities";
     //location
     public static final String DRAFT_STATUS = "DRAFT";
-    public static final String MASTER_ATTENDANCE_SESSION = "AttendanceSessions";
-    public static final String CODE = "code";
-    public static final String PROJECT_TYPE_FIELDPLAN = "FieldPlan";
+    public static final String FIELD_STAFF_ROLE = "INSTALLATION_REPORT_PART_A_EDITOR";
+    public static final String FIELD_SUPERVISOR_ROLE = "INSTALLATION_REPORT_PART_B_EDITOR";
+    public static final String INSTALLATION_REVIEWER_ROLE = "INSTALLATION_REPORT_APPROVER_QC_TEAM";
     public static final String PROJECT_TYPE_FACILITY = "Facility";
     public static final String HIERARCHY_TYPE = "SELCO";
     public static final String TENANTID = "in";

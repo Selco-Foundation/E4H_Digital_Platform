@@ -1,3 +1,4 @@
+import re
 from typing import Set, Dict, Tuple
 import pandas as pd
 
@@ -52,20 +53,20 @@ class BoundaryExcelDataLoader(DataLoader):
 
         # Only process rows with complete data
         self.boundary_df.loc[has_all_values, "BoundaryCode"] = (
-                self.boundary_df["Country"].str.strip() + "_" +
-                self.boundary_df["State"].str.strip() + "_" +
-                self.boundary_df["District"].str.strip() + "_" +
-                self.boundary_df["Block"].str.strip()
+                self.boundary_df.loc[has_all_values, "Country"].str.strip().apply(self.to_camel_case) + "_" +
+                self.boundary_df.loc[has_all_values, "State"].str.strip().apply(self.to_camel_case) + "_" +
+                self.boundary_df.loc[has_all_values, "District"].str.strip().apply(self.to_camel_case) + "_" +
+                self.boundary_df.loc[has_all_values, "Block"].str.strip().apply(self.to_camel_case)
         )
 
         # Create normalized hierarchy combinations for uniqueness checking
         self.unique_boundary_codes = set()
         for _, row in self.boundary_df[has_all_values].iterrows():
             combo = (
-                str(row['Country']).strip(),
-                str(row['State']).strip(),
-                str(row['District']).strip(),
-                str(row['Block']).strip()
+                self.to_camel_case(str(row['Country']).strip()),
+                self.to_camel_case(str(row['State']).strip()),
+                self.to_camel_case(str(row['District']).strip()),
+                self.to_camel_case(str(row['Block']).strip())
             )
             self.unique_boundary_codes.add(combo)
 
@@ -74,3 +75,15 @@ class BoundaryExcelDataLoader(DataLoader):
 
     def get_unique_boundary_codes(self) -> Set[Tuple[str, str, str, str]]:
         return self.unique_boundary_codes
+
+    def to_camel_case(self, text: str) -> str:
+        if not text or not text.strip():
+            return ""
+
+        cleaned = re.sub(r"[_\-]+", " ", text.strip())
+
+        # Split sur espaces
+        parts = cleaned.split()
+
+        # Met juste la première lettre en majuscule, sans forcer le reste en minuscule
+        return "".join(word[:1].upper() + word[1:] for word in parts)

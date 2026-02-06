@@ -42,8 +42,10 @@ public class UpdateUtils {
 	 * stacked up records in the queue are processed.
 	 */
 	public void orchestrateListenerOnESHealth() {
+		log.trace("Orchestrating Kafka listener based on Elasticsearch health");
+		log.info("Pausing Kafka listener due to Elasticsearch unavailability");
 		EventConsumerConfig.pauseContainer();
-		log.info("Polling ES....");
+		log.info("Starting Elasticsearch health polling");
 		final Runnable esPoller = new Runnable() {
 			boolean threadRun = true;
 
@@ -56,43 +58,51 @@ public class UpdateUtils {
 						final HttpHeaders headers = new HttpHeaders();
 						headers.add("Authorization", getESEncodedCredentials());
 						final HttpEntity entity = new HttpEntity(headers);
+						log.debug("Polling Elasticsearch health at: {}", url);
 						response = restTemplate.exchange(url.toString(), HttpMethod.GET, entity, Map.class);
 					} catch (Exception e) {
-						log.error("ES is DOWN..", e);
+						log.debug("Elasticsearch health check failed, will retry", e);
 					}
 					if (response != null) {
-						log.info("ES is UP!");
+						log.info("Elasticsearch is available, resuming Kafka listener");
 						EventConsumerConfig.resumeContainer();
 						threadRun = false;
 					}
 				}
 			}
 		};
-		scheduler.scheduleAtFixedRate(esPoller, 0, Long.valueOf(config.getPollInterval()), TimeUnit.SECONDS);
+		long pollInterval = Long.valueOf(config.getPollInterval());
+		scheduler.scheduleAtFixedRate(esPoller, 0, pollInterval, TimeUnit.SECONDS);
+		log.debug("Scheduled Elasticsearch health poller with interval: {} seconds", pollInterval);
 	}
 
 	public JSONArray constructArrayForUpdate(String kafkaJson, String jsonPath) throws Exception {
+		log.trace("Constructing JSON array for update, jsonPath: {}", jsonPath);
 		JSONArray kafkaJsonArray = null;
 		try {
 			kafkaJsonArray = new JSONArray(JsonPath.read(kafkaJson, jsonPath).toString());
+			log.debug("Successfully constructed JSON array with {} elements", kafkaJsonArray != null ? kafkaJsonArray.length() : 0);
 		} catch (PathNotFoundException e) {
 			log.error("JSON path not found: {}", jsonPath, e);
 			return null;
 		} catch (JSONException e) {
-			log.error("Error parsing JSON: {}", kafkaJson, e);
+			log.error("Error parsing JSON for path: {}", jsonPath, e);
+			log.debug("JSON content length: {}", kafkaJson != null ? kafkaJson.length() : 0);
 			throw e;
 		} catch (Exception e) {
-			log.error("Exception while constructing json array for bulk index: ", e);
-			log.error("Object: " + kafkaJson);
+			log.error("Exception while constructing JSON array for bulk index, jsonPath: {}", jsonPath, e);
+			log.debug("JSON content length: {}", kafkaJson != null ? kafkaJson.length() : 0);
 			throw e;
 		}
 		return kafkaJsonArray;
 	}
 
 	public String getESEncodedCredentials() {
+		log.trace("Encoding Elasticsearch credentials");
 		String credentials = config.getEsUsername() + ":" + config.getEsPassword();
 		byte[] credentialsBytes = credentials.getBytes();
 		byte[] base64CredentialsBytes = Base64.getEncoder().encode(credentialsBytes);
+		log.debug("Elasticsearch credentials encoded successfully");
 		return "Basic " + new String(base64CredentialsBytes);
 	}
 }

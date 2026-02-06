@@ -46,6 +46,7 @@ public class BoundaryService {
      */
     public List<String> getAncestorBoundaries(RequestInfo requestInfo, String tenantId, 
                                                List<String> boundaryCodes, String hierarchyType) {
+        log.trace("BoundaryService.getAncestorBoundaries invoked for tenant: {}", tenantId);
         if (CollectionUtils.isEmpty(boundaryCodes)) {
             log.info("No boundary codes provided, returning empty list");
             return new ArrayList<>();

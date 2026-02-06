@@ -30,8 +30,11 @@ public class FFmpegCommandGenerator {
      * @return The formatted FFmpeg command string.
      */
     public String getBaseCommand(String inputFilePath, String outputFilePath) {
+        log.trace("FFmpegCommandGenerator::getBaseCommand method invoked");
         final String ffmpegCpuLimitPercentage = config.getFfmpegCpuLimitPercentage();
-        return String.format(BASE_COMMAND, ffmpegCpuLimitPercentage, inputFilePath, outputFilePath);
+        String command = String.format(BASE_COMMAND, ffmpegCpuLimitPercentage, inputFilePath, outputFilePath);
+        log.debug("Generated base FFmpeg command for input: {}", inputFilePath);
+        return command;
     }
 
     /**
@@ -50,7 +53,10 @@ public class FFmpegCommandGenerator {
                                       String resolution,
                                       String audioBitRate,
                                       String outputFilePath) {
+        log.trace("FFmpegCommandGenerator::getOptimizedCommand method invoked");
         final String ffmpegCpuLimitPercentage = config.getFfmpegCpuLimitPercentage();
-        return String.format(OPTIMIZED_COMMAND, ffmpegCpuLimitPercentage, inputFilePath, preset, crf, resolution, audioBitRate, outputFilePath);
+        String command = String.format(OPTIMIZED_COMMAND, ffmpegCpuLimitPercentage, inputFilePath, preset, crf, resolution, audioBitRate, outputFilePath);
+        log.debug("Generated optimized FFmpeg command for input: {}, resolution: {}, preset: {}", inputFilePath, resolution, preset);
+        return command;
     }
 }

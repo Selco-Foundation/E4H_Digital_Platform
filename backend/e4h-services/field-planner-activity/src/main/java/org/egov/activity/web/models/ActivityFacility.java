@@ -2,8 +2,6 @@ package org.egov.activity.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,14 +32,20 @@ public class ActivityFacility {
     @JsonProperty("assignedEmployeeUser")
     private User assignedEmployeeUser = null;
 
-    @JsonProperty("spocUser")
-    private List<String> spocUser = null;
+    @JsonProperty("fieldStaffUsers")
+    private List<String> fieldStaffUsers = null;
+
+    @JsonProperty("fieldSupervisorUsers")
+    private List<String> fieldSupervisorUsers = null;
 
     @JsonProperty("reviewerUser")
     private List<String> reviewerUser = null;
 
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
+
+    @JsonProperty("fieldPlan")
+    private FieldPlan fieldPlan = null;
 
     @JsonProperty("id")
     protected String id;
@@ -51,6 +55,9 @@ public class ActivityFacility {
 
     @JsonProperty("activityId")
     protected String activityId;
+
+    @JsonProperty("activityType")
+    protected String activityType;
 
     @JsonProperty("scheduledAt")
     private Long scheduledAt = null;

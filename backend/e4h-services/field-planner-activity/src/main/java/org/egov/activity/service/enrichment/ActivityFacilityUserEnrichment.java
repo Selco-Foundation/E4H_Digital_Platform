@@ -34,32 +34,36 @@ public class ActivityFacilityUserEnrichment {
 
     /* Enrich Activity Facility Users on Create Request */
     public void enrichActivityFacilityUserOnCreate(ActivityFacilityUser facilityUser, RequestInfo requestInfo) {
+        log.trace("enrichActivityFacilityUserOnCreate method invoked");
         //Enrich Project id and audit details
         enrichActivityFacilityUserRequestOnCreate(facilityUser, requestInfo);
-        log.info("Enriched Activity Facility User request with id and Audit details");
-
+        log.debug("Enriched activity facility user with id: {}, userId: {}, activityFacilityId: {}", 
+                facilityUser.getId(), facilityUser.getUserId(), facilityUser.getActivityFacilityId());
     }
 
     /* Enrich FieldPlan with id and audit details */
     private void enrichActivityFacilityUserRequestOnCreate(ActivityFacilityUser facilityUser, RequestInfo requestInfo) {
+        log.trace("enrichActivityFacilityUserRequestOnCreate method invoked");
         facilityUser.setId(UUID.randomUUID().toString());
-        log.info("Facility user id set to " + facilityUser.getId());
+        log.debug("Activity facility user id set to: {}", facilityUser.getId());
         AuditDetails auditDetails = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         facilityUser.setAuditDetails(auditDetails);
     }
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichActivityFacilityUserRequestOnUpdate(ActivityFacilityUser facilityUser, RequestInfo requestInfo) {
+        log.trace("enrichActivityFacilityUserRequestOnUpdate method invoked for activityFacilityUserId: {}", facilityUser.getId());
         AuditDetails auditDetails = AuditDetails.builder().lastModifiedBy(requestInfo.getUserInfo().getUuid()).lastModifiedTime(System.currentTimeMillis()).build();;
         facilityUser.setAuditDetails(auditDetails);
-        log.info("Enriched activity audit details for project " + facilityUser.getId());
+        log.debug("Enriched activity facility user audit details for activityFacilityUserId: {}", facilityUser.getId());
     }
 
     private void setUUIDAndAuditDetailsForDocumentCreate(Document document, RequestInfo requestInfo, BillOfMaterial billOfMaterial) {
+        log.trace("setUUIDAndAuditDetailsForDocumentCreate method invoked for bomId: {}", billOfMaterial.getId());
         document.setId(UUID.randomUUID().toString());
         AuditDetails auditDetailsForAdd = fieldPlanServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         document.setAuditDetails(auditDetailsForAdd);
-        log.info("Added document with id " + document.getId() + FOR_BOM + billOfMaterial.getId());
+        log.debug("Added document with id: {} for BOM, bomId: {}", document.getId(), billOfMaterial.getId());
     }
 
 

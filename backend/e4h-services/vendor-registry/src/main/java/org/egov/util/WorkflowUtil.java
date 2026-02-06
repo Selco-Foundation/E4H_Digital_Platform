@@ -49,7 +49,9 @@ public class WorkflowUtil {
 	 * @return
 	 */
 	public BusinessService getBusinessService(RequestInfo requestInfo, String tenantId, String businessServiceCode) {
-
+		log.trace("WorkflowUtil::getBusinessService entry");
+		log.debug("Fetching business service for code: {}, tenant: {}", businessServiceCode, tenantId);
+		
 		StringBuilder url = getSearchURLWithParams(tenantId, businessServiceCode);
 		RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
 		Object result = repository.fetchResult(url, requestInfoWrapper);
@@ -57,13 +59,17 @@ public class WorkflowUtil {
 		try {
 			response = mapper.convertValue(result, BusinessServiceResponse.class);
 		} catch (IllegalArgumentException e) {
+			log.error("Failed to parse workflow business service response", e);
 			throw new CustomException("PARSING ERROR", "Failed to parse response of workflow business service search");
 		}
 
-		if (CollectionUtils.isEmpty(response.getBusinessServices()))
+		if (CollectionUtils.isEmpty(response.getBusinessServices())) {
+			log.error("Business service not found: {} for tenant: {}", businessServiceCode, tenantId);
 			throw new CustomException("BUSINESSSERVICE_NOT_FOUND",
 					"The businessService " + businessServiceCode + " is not found");
+		}
 
+		log.debug("Successfully retrieved business service: {}", businessServiceCode);
 		return response.getBusinessServices().get(0);
 	}
 
@@ -81,12 +87,17 @@ public class WorkflowUtil {
 	 */
 	public String updateWorkflowStatus(RequestInfo requestInfo, String tenantId, String businessId,
 									   String businessServiceCode, Workflow workflow, String wfModuleName) {
+		log.trace("WorkflowUtil::updateWorkflowStatus entry");
+		log.info("Updating workflow status for business ID: {}, service code: {}, tenant: {}", 
+				businessId, businessServiceCode, tenantId);
+		
 		ProcessInstance processInstance = getProcessInstanceForWorkflow(requestInfo, tenantId, businessId,
 				businessServiceCode, workflow, wfModuleName);
 		ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(requestInfo,
 				Collections.singletonList(processInstance));
 		State state = callWorkFlow(workflowRequest);
 
+		log.info("Workflow status updated to: {} for business ID: {}", state.getApplicationStatus(), businessId);
 		return state.getApplicationStatus();
 	}
 
@@ -98,12 +109,14 @@ public class WorkflowUtil {
 	 * @return
 	 */
 	private StringBuilder getSearchURLWithParams(String tenantId, String businessService) {
+		log.trace("WorkflowUtil::getSearchURLWithParams entry");
 		StringBuilder url = new StringBuilder(configs.getWfHost());
 		url.append(configs.getWfBusinessServiceSearchPath());
 		url.append("?tenantId=");
 		url.append(tenantId);
 		url.append("&businessServices=");
 		url.append(businessService);
+		log.debug("Constructed workflow search URL for tenant: {}, businessService: {}", tenantId, businessService);
 		return url;
 	}
 
@@ -120,7 +133,9 @@ public class WorkflowUtil {
 	 */
 	private ProcessInstance getProcessInstanceForWorkflow(RequestInfo requestInfo, String tenantId, String businessId,
 			String businessServiceCode, Workflow workflow, String wfModuleName) {
-
+		log.trace("WorkflowUtil::getProcessInstanceForWorkflow entry");
+		log.debug("Creating process instance for business ID: {}, action: {}", businessId, workflow.getAction());
+		
 		ProcessInstance processInstance = new ProcessInstance();
 		processInstance.setBusinessId(businessId);
 		processInstance.setAction(workflow.getAction());
@@ -141,8 +156,10 @@ public class WorkflowUtil {
 			});
 
 			processInstance.setAssignes(users);
+			log.debug("Assigned {} users to process instance", users.size());
 		}
 
+		log.debug("Process instance created successfully");
 		return processInstance;
 	}
 
@@ -153,6 +170,8 @@ public class WorkflowUtil {
 	 * @return
 	 */
 	public Map<String, Workflow> getWorkflow(List<ProcessInstance> processInstances) {
+		log.trace("WorkflowUtil::getWorkflow entry");
+		log.debug("Converting {} process instances to workflow map", processInstances != null ? processInstances.size() : 0);
 
 		Map<String, Workflow> businessIdToWorkflow = new HashMap<>();
 
@@ -170,6 +189,7 @@ public class WorkflowUtil {
 			businessIdToWorkflow.put(processInstance.getBusinessId(), workflow);
 		});
 
+		log.debug("Created workflow map with {} entries", businessIdToWorkflow.size());
 		return businessIdToWorkflow;
 	}
 
@@ -181,10 +201,14 @@ public class WorkflowUtil {
 	 * @return
 	 */
 	private State callWorkFlow(ProcessInstanceRequest workflowReq) {
+		log.trace("WorkflowUtil::callWorkFlow entry");
 		ProcessInstanceResponse response = null;
 		StringBuilder url = new StringBuilder(configs.getWfHost().concat(configs.getWfTransitionPath()));
+		log.debug("Calling workflow service for transition");
 		Object optional = repository.fetchResult(url, workflowReq);
 		response = mapper.convertValue(optional, ProcessInstanceResponse.class);
-		return response.getProcessInstances().get(0).getState();
+		State state = response.getProcessInstances().get(0).getState();
+		log.debug("Workflow transition completed, new state: {}", state.getApplicationStatus());
+		return state;
 	}
 }

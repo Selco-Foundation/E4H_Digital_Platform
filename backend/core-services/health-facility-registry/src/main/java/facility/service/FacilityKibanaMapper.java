@@ -67,9 +67,12 @@ public class FacilityKibanaMapper {
      * @return FacilityKibanaIndex object ready for indexing
      */
     public FacilityKibanaIndex toKibanaIndex(Facility facility, RequestInfo requestInfo) {
+        log.trace("Entering toKibanaIndex method");
         if (facility == null) {
+            log.warn("Facility is null, cannot convert to Kibana index");
             return null;
         }
+        log.info("Converting facility {} to Kibana index format", facility.getFacilityId());
 
         FacilityKibanaIndex.FacilityKibanaIndexBuilder builder = FacilityKibanaIndex.builder()
                 .facilityId(facility.getFacilityId())
@@ -137,22 +140,26 @@ public class FacilityKibanaMapper {
         BoundaryInfo boundaryInfo = buildBoundaryInfo(facility, boundaryCodes, blockCode, districtCode, stateCode, countryCode);
         builder.boundary(boundaryInfo);
         
-        // Log boundary object for debugging
+        // Log boundary object status (avoid logging full objects in INFO)
         if (boundaryInfo != null) {
-            log.info("Boundary object built for facility {}: facilityCode={}, blockCode={}, districtCode={}, stateCode={}, countryCode={}",
-                    facility.getFacilityId(), boundaryInfo.getFacilityCode(), boundaryInfo.getBlockCode(), 
-                    boundaryInfo.getDistrictCode(), boundaryInfo.getStateCode(), boundaryInfo.getCountryCode());
+            log.debug("Boundary object built for facility {}: facilityCode={}, blockCode={}, districtCode={}, stateCode={}, countryCode={}",
+                    sanitizeForLog(facility.getFacilityId()), sanitizeForLog(boundaryInfo.getFacilityCode()), sanitizeForLog(boundaryInfo.getBlockCode()), 
+                    sanitizeForLog(boundaryInfo.getDistrictCode()), sanitizeForLog(boundaryInfo.getStateCode()), sanitizeForLog(boundaryInfo.getCountryCode()));
         } else {
-            log.warn("Boundary object is null for facility {}", facility.getFacilityId());
+            log.warn("Boundary object is null for facility {}", sanitizeForLog(facility.getFacilityId()));
         }
 
         FacilityKibanaIndex result = builder.build();
-        // Log the full boundary object in the result
+        // Only log full boundary object in DEBUG level
         if (result.getBoundary() != null) {
-            log.info("Boundary in FacilityKibanaIndex: {}", result.getBoundary());
+            if (log.isDebugEnabled()) {
+                log.debug("Boundary in FacilityKibanaIndex for facility {}: {}", sanitizeForLog(facility.getFacilityId()), result.getBoundary());
+            }
         } else {
-            log.warn("Boundary is null in FacilityKibanaIndex for facility {}", facility.getFacilityId());
+            log.warn("Boundary is null in FacilityKibanaIndex for facility {}", sanitizeForLog(facility.getFacilityId()));
         }
+        log.info("Successfully converted facility {} to Kibana index format", facility.getFacilityId());
+        log.trace("Exiting toKibanaIndex method");
         return result;
     }
 
@@ -160,10 +167,12 @@ public class FacilityKibanaMapper {
      * Fetches boundary hierarchy from boundary service and extracts codes by boundary type
      */
     private BoundaryCodes fetchBoundaryHierarchy(Facility facility, RequestInfo requestInfo) {
+        log.trace("Entering fetchBoundaryHierarchy method");
         if (facility.getBoundaryCode() == null || facility.getTenantId() == null) {
-            log.warn("Cannot fetch boundary hierarchy: boundaryCode or tenantId is null");
+            log.warn("Cannot fetch boundary hierarchy: boundaryCode or tenantId is null for facility {}", facility.getFacilityId());
             return null;
         }
+        log.debug("Fetching boundary hierarchy for facility {} with boundaryCode: {}", facility.getFacilityId(), facility.getBoundaryCode());
 
         try {
             // Boundary service expects a standard RequestInfo wrapper as body
@@ -184,11 +193,14 @@ public class FacilityKibanaMapper {
             Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
 
             // Parse response and extract codes
-            return parseBoundaryHierarchy(response);
+            BoundaryCodes codes = parseBoundaryHierarchy(response);
+            log.debug("Successfully fetched boundary hierarchy for facility {}", facility.getFacilityId());
+            log.trace("Exiting fetchBoundaryHierarchy method");
+            return codes;
 
         } catch (Exception e) {
             log.error("Error fetching boundary hierarchy for facility {}: {}", 
-                     facility.getFacilityId(), e.getMessage(), e);
+                     sanitizeForLog(facility.getFacilityId()), e.getMessage(), e);
             return null;
         }
     }
@@ -198,6 +210,7 @@ public class FacilityKibanaMapper {
      */
     @SuppressWarnings("unchecked")
     private BoundaryCodes parseBoundaryHierarchy(Map<String, Object> response) {
+        log.trace("Entering parseBoundaryHierarchy method");
         BoundaryCodes codes = new BoundaryCodes();
 
         try {
@@ -225,6 +238,7 @@ public class FacilityKibanaMapper {
             log.error("Error parsing boundary hierarchy response: {}", e.getMessage(), e);
         }
 
+        log.trace("Exiting parseBoundaryHierarchy method");
         return codes;
     }
 
@@ -233,12 +247,15 @@ public class FacilityKibanaMapper {
      */
     @SuppressWarnings("unchecked")
     private void extractCodesFromHierarchy(Map<String, Object> boundaryNode, BoundaryCodes codes) {
+        log.trace("Entering extractCodesFromHierarchy method");
         if (boundaryNode == null) {
+            log.trace("Boundary node is null, exiting extractCodesFromHierarchy method");
             return;
         }
 
         String code = (String) boundaryNode.get("code");
         String boundaryType = (String) boundaryNode.get("boundaryType");
+        log.debug("Extracting codes from boundary node: code={}, type={}", code, boundaryType);
 
         // Extract code based on boundary type
         if (code != null && boundaryType != null) {
@@ -265,10 +282,12 @@ public class FacilityKibanaMapper {
         Object childrenObj = boundaryNode.get("children");
         if (childrenObj instanceof List) {
             List<Map<String, Object>> children = (List<Map<String, Object>>) childrenObj;
+            log.debug("Processing {} child boundary nodes", children.size());
             for (Map<String, Object> child : children) {
                 extractCodesFromHierarchy(child, codes);
             }
         }
+        log.trace("Exiting extractCodesFromHierarchy method");
     }
 
     /**
@@ -277,6 +296,7 @@ public class FacilityKibanaMapper {
      */
     private BoundaryInfo buildBoundaryInfo(Facility facility, BoundaryCodes codes,
                                           String blockCode, String districtCode, String stateCode, String countryCode) {
+        log.trace("Entering buildBoundaryInfo method");
         BoundaryInfo.BoundaryInfoBuilder builder = BoundaryInfo.builder();
         
         // Set facilityCode (always available)
@@ -298,6 +318,7 @@ public class FacilityKibanaMapper {
 
         BoundaryInfo result = builder.build();
         log.debug("Built BoundaryInfo: {}", result);
+        log.trace("Exiting buildBoundaryInfo method");
         return result;
     }
 
@@ -332,10 +353,13 @@ public class FacilityKibanaMapper {
      * @return true if facility exists in Kibana, false otherwise
      */
     public boolean existsInKibana(String facilityId, String tenantId, RequestInfo requestInfo) {
+        log.trace("Entering existsInKibana method");
         if (facilityId == null || tenantId == null) {
+            log.debug("Facility ID or tenant ID is null, returning false");
             return false;
         }
 
+        log.info("Checking if facility {} exists in Kibana for tenant {}", facilityId, tenantId);
         try {
             // Build Elasticsearch search query
             Map<String, Object> searchQuery = Map.of(
@@ -357,16 +381,22 @@ public class FacilityKibanaMapper {
             // Build headers with authentication
             HttpEntity<Object> entity = new HttpEntity<>(searchQuery, buildHeaders());
 
-            log.info("Executing Elasticsearch query to check facility existence: {}", searchQuery);
+            log.debug("Executing Elasticsearch query to check facility existence for facility: {}", facilityId);
+            if (log.isTraceEnabled()) {
+                log.trace("Elasticsearch query: {}", searchQuery);
+            }
             @SuppressWarnings("unchecked")
             Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
 
             // Parse response to check if document exists
-            return parseSearchResponse(response);
+            boolean exists = parseSearchResponse(response);
+            log.info("Facility {} {} in Kibana for tenant {}", facilityId, exists ? "exists" : "does not exist", tenantId);
+            log.trace("Exiting existsInKibana method");
+            return exists;
 
         } catch (Exception e) {
             log.warn("Error checking if facility {} exists in Kibana: {}. Assuming not present.", 
-                    facilityId, e.getMessage(), e);
+                    sanitizeForLog(facilityId), e.getMessage(), e);
             // If check fails, return false to allow push (fail open approach)
             return false;
         }
@@ -377,27 +407,33 @@ public class FacilityKibanaMapper {
      * Direct Elasticsearch access: {host}:{port}
      */
     private String getBaseUrl() {
+        log.trace("Entering getBaseUrl method");
         String host = esHost.endsWith("/") ? esHost.substring(0, esHost.length() - 1) : esHost;
         String port = esPort.startsWith(":") ? esPort : ":" + esPort;
-        return host + port;
+        String result = host + port;
+        log.trace("Exiting getBaseUrl method, base URL: {}", result);
+        return result;
     }
 
     /**
      * Builds HTTP headers with Elasticsearch authentication
      */
     private HttpHeaders buildHeaders() {
+        log.trace("Entering buildHeaders method");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
 
         // Add Basic Authentication if credentials are provided
         if (esUsername != null && !esUsername.isEmpty() && esPassword != null && !esPassword.isEmpty()) {
+            log.debug("Adding Basic Authentication to headers");
             String auth = esUsername + ":" + esPassword;
             byte[] encodedAuth = Base64.getEncoder().encode(auth.getBytes(StandardCharsets.UTF_8));
             String authHeader = "Basic " + new String(encodedAuth);
             headers.set("Authorization", authHeader);
         }
 
+        log.trace("Exiting buildHeaders method");
         return headers;
     }
 
@@ -406,6 +442,7 @@ public class FacilityKibanaMapper {
      */
     @SuppressWarnings("unchecked")
     private boolean parseSearchResponse(Map<String, Object> response) {
+        log.trace("Entering parseSearchResponse method");
         try {
             // Check for hits in response
             Object hitsObj = response.get("hits");
@@ -418,19 +455,42 @@ public class FacilityKibanaMapper {
                     Map<String, Object> totalMap = (Map<String, Object>) totalObj;
                     Object value = totalMap.get("value");
                     if (value instanceof Number) {
-                        return ((Number) value).intValue() > 0;
+                        boolean result = ((Number) value).intValue() > 0;
+                        log.debug("Parsed search response: {} documents found", ((Number) value).intValue());
+                        log.trace("Exiting parseSearchResponse method");
+                        return result;
                     }
                 } else if (totalObj instanceof Number) {
                     // ES 6.x format: {"total": 1}
-                    return ((Number) totalObj).intValue() > 0;
+                    boolean result = ((Number) totalObj).intValue() > 0;
+                    log.debug("Parsed search response: {} documents found", ((Number) totalObj).intValue());
+                    log.trace("Exiting parseSearchResponse method");
+                    return result;
                 }
             }
             
+            log.debug("No documents found in search response");
+            log.trace("Exiting parseSearchResponse method");
             return false;
         } catch (Exception e) {
             log.error("Error parsing search response: {}", e.getMessage(), e);
+            log.trace("Exiting parseSearchResponse method");
             return false;
         }
+    }
+
+    /**
+     * Sanitizes a string value for safe logging by removing control characters
+     * that could be used for log injection attacks (newlines, carriage returns).
+     * 
+     * @param value The string value to sanitize
+     * @return null if input is null, otherwise the sanitized string with \r and \n replaced by spaces
+     */
+    private String sanitizeForLog(String value) {
+        if (value == null) {
+            return null;
+        }
+        return value.replace('\r', ' ').replace('\n', ' ');
     }
 }
 

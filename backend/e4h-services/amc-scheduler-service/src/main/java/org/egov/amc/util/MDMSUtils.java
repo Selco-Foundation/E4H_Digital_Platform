@@ -2,7 +2,6 @@ package org.egov.amc.util;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.web.models.AmcConfigurationRequest;
 import org.egov.common.contract.request.RequestInfo;
@@ -33,13 +32,16 @@ public class MDMSUtils {
     private final AMCServiceConfiguration config;
 
     public Object mDMSCall(AmcConfigurationRequest request, String tenantId) {
+        log.trace("Entering mDMSCall method for tenantId: {}", tenantId);
         RequestInfo requestInfo = request.getRequestInfo();
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId);
         Object result = null;
         try {
+            log.debug("Calling MDMS service for tenantId: {}", tenantId);
             result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
+            log.debug("MDMS service call successful for tenantId: {}", tenantId);
         } catch (Exception e) {
-            log.error("error while calling mdms", ExceptionUtils.getStackTrace(e));
+            log.error("Error while calling MDMS service for tenantId: {}", tenantId, e);
             throw new CustomException("MDMS_ERROR", "error while calling mdms");
         }
         return result;

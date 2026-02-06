@@ -22,9 +22,11 @@ public class EscalationStatusService {
      * Publish success status
      */
     public void publishSuccessStatus(String escalationType, String escalationId, String tenantId, String recipientRole) {
+        log.trace("Publishing success status for escalation: {}, tenant: {}, role: {}", escalationId, tenantId, recipientRole);
         try {
             long escalationTime = System.currentTimeMillis();
             String uniqueId = generateUniqueId(escalationId, tenantId, recipientRole, escalationTime);
+            log.debug("Generated unique ID: {} for escalation status", uniqueId);
             
             EscalationStatus status = EscalationStatus.builder()
                 .id(uniqueId)
@@ -51,9 +53,11 @@ public class EscalationStatusService {
      * Publish failure status
      */
     public void publishFailureStatus(String escalationType, String escalationId, String tenantId, String recipientRole, String errorMessage) {
+        log.trace("Publishing failure status for escalation: {}, tenant: {}, role: {}", escalationId, tenantId, recipientRole);
         try {
             long escalationTime = System.currentTimeMillis();
             String uniqueId = generateUniqueId(escalationId, tenantId, recipientRole, escalationTime);
+            log.debug("Generated unique ID: {} for escalation status", uniqueId);
             
             EscalationStatus status = EscalationStatus.builder()
                 .id(uniqueId)
@@ -80,9 +84,11 @@ public class EscalationStatusService {
      * Publish general failure status (for overall process failures)
      */
     public void publishGeneralFailureStatus(String escalationType, String errorMessage) {
+        log.trace("Publishing general failure status for escalation type: {}", escalationType);
         try {
             long escalationTime = System.currentTimeMillis();
             String uniqueId = generateUniqueId("GENERAL", "in", "SYSTEM", escalationTime);
+            log.debug("Generated unique ID: {} for general escalation status", uniqueId);
             
             EscalationStatus status = EscalationStatus.builder()
                 .id(uniqueId)
@@ -103,16 +109,19 @@ public class EscalationStatusService {
             log.error("Error publishing general FAILED status for escalation type: {}", escalationType, e);
         }
     }
-    
+
     /**
      * Generate unique ID for escalation status
      * Format: escalationId_tenantId_recipientRole_escalationTime
      */
     private String generateUniqueId(String escalationId, String tenantId, String recipientRole, long escalationTime) {
-        return String.format("%s_%s_%s_%d", 
+        log.trace("Generating unique ID for escalation status");
+        String uniqueId = String.format("%s_%s_%s_%d", 
             escalationId != null ? escalationId : "null",
             tenantId != null ? tenantId : "null",
             recipientRole != null ? recipientRole : "null",
             escalationTime);
+        log.debug("Generated unique ID: {}", uniqueId);
+        return uniqueId;
     }
 }

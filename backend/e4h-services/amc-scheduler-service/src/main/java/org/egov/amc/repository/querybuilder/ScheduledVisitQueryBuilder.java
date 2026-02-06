@@ -78,11 +78,11 @@ public class ScheduledVisitQueryBuilder {
         if (StringUtils.isNotBlank(tenantId)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             if (!tenantId.contains(DOT)) {
-                log.info("State level tenant");
+                log.debug("Adding state level tenant clause for tenantId: {}", tenantId);
                 queryBuilder.append(" sv.tenant_id like ? ");
                 preparedStmtList.add(tenantId + '%');
             } else {
-                log.info("City level tenant");
+                log.debug("Adding city level tenant clause for tenantId: {}", tenantId);
                 queryBuilder.append(" sv.tenant_id=? ");
                 preparedStmtList.add(tenantId);
             }
@@ -90,9 +90,11 @@ public class ScheduledVisitQueryBuilder {
     }
 
     public String getScheduledVisitSearchQuery(ScheduledVisitSearchCriteria criteria, URLParams urlParams, List<Object> preparedStmtList) {
+        log.trace("Entering getScheduledVisitSearchQuery method, isCountQuery: {}", criteria.isCountQuery());
         //This uses a ternary operator to choose between SCHEDULED_VISIT_COUNT_QUERY or FETCH_FIELDPLAN_QUERY based on the value of isCountQuery.
         String query = criteria.isCountQuery() ? SCHEDULED_VISIT_COUNT_QUERY : FETCH_SCHEDULED_VISIT_QUERY;
         StringBuilder queryBuilder = new StringBuilder(query);
+        log.debug("Building scheduled visit search query, tenantId: {}", criteria.getTenantId());
 
         addClause(criteria.getTenantId(), preparedStmtList, queryBuilder);
         extracted(urlParams.getLastChangedSince(), preparedStmtList, criteria, queryBuilder);

@@ -33,23 +33,32 @@ public class VideoService {
     private static final String OUTPUT_DIR = "output";
 
     public StorageResponse processVideo(File inputFile, ProcessingContext context) {
+        log.trace("VideoService::processVideo method invoked");
         log.info("Starting video processing for videoId: {}", context.getVideoId());
 
+        log.trace("Preparing output directory");
         Path outputPath = prepareOutputDirectory();
 
         try {
             // Get original video dimensions
+            log.trace("Retrieving video dimensions");
             String[] originalDimensions = getVideoDimensions(inputFile);
 
             log.info("Original dimensions detected - Height: {} x Width: {}", originalDimensions[0], originalDimensions[1]);
 
             // Determine quality levels for the video
+            log.trace("Determining quality levels for video");
             List<VideoQualitySettings> qualities = videoUtil.determineQualityLevels(originalDimensions);
+            log.debug("Determined {} quality levels for video", qualities.size());
 
             // Create the master playlist
+            log.trace("Creating master playlist");
             MultipartFile multipartFile = fFmpegService.createMasterPlaylist(qualities, context, outputPath);
 
-            return uploaderService.uploadProcessedFile(context, List.of(multipartFile));
+            log.trace("Uploading processed file");
+            StorageResponse response = uploaderService.uploadProcessedFile(context, List.of(multipartFile));
+            log.info("Video processing completed successfully for videoId: {}", context.getVideoId());
+            return response;
 
         } catch (Exception e) {
             log.error("Error processing video for videoId: {}", context.getVideoId(), e);
@@ -59,7 +68,8 @@ public class VideoService {
     }
 
     private void cleanup(ProcessingContext context, File inputFile, Path outputPath) {
-        log.info("start cleaning...");
+        log.trace("VideoService::cleanup method invoked");
+        log.debug("Cleaning up temporary files for videoId: {}", context.getVideoId());
         storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
     }
 

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Map;
 
 @Component
 public class ActivityRowMapper implements RowMapper<ActivityFacility> {
@@ -25,16 +26,17 @@ public class ActivityRowMapper implements RowMapper<ActivityFacility> {
                     .fieldPlanId(resultSet.getString("fa_fieldPlanId"))
                     .facilityId(resultSet.getString("fa_facilityId"))
                     .activityId(resultSet.getString("fa_activityId"))
+                    .activityType(resultSet.getString("activity_type"))
                     .scheduledAt(resultSet.getLong("fa_scheduledAt"))
 //                    .assignedUser(resultSet.getString("fu.userid"))
                     .assignedUser(resultSet.getString("fa_assignedUser"))
                     .activatedAt(resultSet.getLong("fa_activatedAt"))
                     .completedAt(resultSet.getLong("fa_completedAt"))
                     .status(resultSet.getString("fa_status"))
-                    .additionalFields(
+                    .additionalDetails(
                             resultSet.getString("fa_additionalDetails") == null
                                     ? null
-                                    : objectMapper.readValue(resultSet.getString("fa_additionalDetails"), AdditionalFields.class))
+                                    : objectMapper.readValue(resultSet.getString("fa_additionalDetails"), Map.class))
                     .auditDetails(AuditDetails.builder()
                             .lastModifiedTime(resultSet.getLong("fa_lastModifiedTime"))
                             .createdTime(resultSet.getLong("fa_createdTime"))

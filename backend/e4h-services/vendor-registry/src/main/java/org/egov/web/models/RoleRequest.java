@@ -22,8 +22,8 @@ public class RoleRequest {
         this.tenantId = domainRole.getTenantId();
     }
 
-    public Role toDomain() {
-        return Role.builder()
+    public org.egov.web.models.Role toDomain() {
+        return org.egov.web.models.Role.builder()
                 .code(code)
                 .name(name)
                 .tenantId(tenantId)

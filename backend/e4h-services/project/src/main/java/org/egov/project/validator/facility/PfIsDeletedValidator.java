@@ -24,7 +24,9 @@ public class PfIsDeletedValidator implements Validator<ProjectFacilityBulkReques
 
     @Override
     public Map<ProjectFacility, List<Error>> validate(ProjectFacilityBulkRequest request) {
-        log.info("validating isDeleted field");
+        log.trace("Entering validate (PfIsDeletedValidator)");
+        log.info("Validating isDeleted field");
+        log.debug("Validating {} facilities for isDeleted field", request.getProjectFacilities() != null ? request.getProjectFacilities().size() : 0);
         HashMap<ProjectFacility, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors())
@@ -35,6 +37,8 @@ public class PfIsDeletedValidator implements Validator<ProjectFacilityBulkReques
                 populateErrorDetails(individual, error, errorDetailsMap);
             });
         }
+        log.debug("IsDeleted validation completed - found {} errors", errorDetailsMap.size());
+        log.trace("Exiting validate (PfIsDeletedValidator)");
         return errorDetailsMap;
     }
 }

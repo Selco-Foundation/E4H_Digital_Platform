@@ -21,38 +21,15 @@ public class KafkaProducerService {
     }
 
     public void sendIncident(String topic, Object incident) {
-        kafkaTemplate.send(topic, incident);
-        System.out.println("Sent incident: " + incident);
-    }
-
-    public void getTicket(String boundaryCode){
-        Map<String, Object> tickets = esClient.getHFByBoundaryCode(boundaryCode);
-        log.info("List tickets {}", tickets.size());
-        if(tickets!=null){
-            Map<String, Object> source = (Map<String, Object>)tickets.get("_source");
-            Map<String, Object> data = (Map<String, Object>)source.get("Data");
-            String block = (String)data.get("block");
-            String code = (String)data.get("code");
-            String district = (String)data.get("district");
-            boolean isLive = (boolean)data.get("isLive");
-            String name = (String)data.get("name");
-            String phcType = (String)data.get("phcType");
-            String type = (String)data.get("type");
-            String tenantId = (String)data.get("tenantId");
-            String existBoundaryCode = (String)data.get("boundaryCode");
-
-            IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
-            incidentStatusAgregation.setBlock(block);
-            incidentStatusAgregation.setCode(code);
-            incidentStatusAgregation.setDistrict(district);
-            incidentStatusAgregation.setLive(isLive);
-            incidentStatusAgregation.setName(name);
-            incidentStatusAgregation.setPhcType(phcType);
-            incidentStatusAgregation.setType(type);
-            incidentStatusAgregation.setTenantId(tenantId);
-            incidentStatusAgregation.setBoundaryCode(existBoundaryCode);
+        log.trace("Sending incident to Kafka topic: {}", topic);
+        try {
+            kafkaTemplate.send(topic, incident);
+            log.debug("Incident sent to Kafka topic: {}, incident type: {}", topic, incident != null ? incident.getClass().getSimpleName() : "null");
+            log.info("Successfully sent incident to Kafka topic: {}", topic);
+        } catch (Exception e) {
+            log.error("Failed to send incident to Kafka topic: {}", topic, e);
+            throw e;
         }
-        log.info("List tickets {}", tickets.size());
     }
 }
 

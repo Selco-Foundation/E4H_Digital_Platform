@@ -61,25 +61,33 @@ public class MinioRepository implements CloudFilesManager {
 
 	@Override
 	public void saveFiles(List<org.egov.filestore.domain.model.Artifact> artifacts) {
+		log.trace("Entering saveFiles method with artifactCount: {}", artifacts.size());
+		log.info("Saving {} files to MinIO", artifacts.size());
 
 		List<org.egov.filestore.persistence.entity.Artifact> persistList = new ArrayList<>();
 		artifacts.forEach(artifact -> {
+			log.trace("Processing artifact: {}", artifact.getFileLocation().getFileName());
 			FileLocation fileLocation = artifact.getFileLocation();
 			String completeName = fileLocation.getFileName();
 			int index = completeName.indexOf('/');
 			String fileNameWithPath = completeName.substring(index + 1, completeName.length());
+			log.debug("Uploading file to MinIO: {}", fileNameWithPath);
 			push(artifact.getMultipartFile(), fileNameWithPath);
 
-			if (artifact.getThumbnailImages() != null && !artifact.getThumbnailImages().isEmpty())
+			if (artifact.getThumbnailImages() != null && !artifact.getThumbnailImages().isEmpty()) {
+				log.debug("Uploading {} thumbnail images for file: {}", 
+						artifact.getThumbnailImages().size(), fileNameWithPath);
 				pushThumbnailImages(artifact);
+			}
 
 			fileLocation.setFileSource(minioConfig.getSource());
 			persistList.add(mapToEntity(artifact));
-
 		});
+		log.info("Successfully saved {} files to MinIO", persistList.size());
 	}
 
 	private void push(MultipartFile multipartFile, String fileNameWithPath) {
+		log.trace("Entering push method for fileName: {}", fileNameWithPath);
 		pushWithRetry(multipartFile, fileNameWithPath, properties.getVideoUploadRetry());
 	}
 
@@ -121,6 +129,7 @@ public class MinioRepository implements CloudFilesManager {
 	}
 
 	private void push(InputStream is, long contentLength, String contentType, String fileNameWithPath) {
+		log.trace("Entering push method (stream) for fileName: {}", fileNameWithPath);
 		pushWithRetry(is, contentLength, contentType, fileNameWithPath, properties.getVideoUploadRetry());
 	}
 
@@ -158,23 +167,30 @@ public class MinioRepository implements CloudFilesManager {
 	}
 
 	private void pushThumbnailImages(org.egov.filestore.domain.model.Artifact artifact) {
-
+		log.trace("Entering pushThumbnailImages method for fileName: {}", 
+				artifact.getFileLocation().getFileName());
 		try {
+			int thumbnailCount = artifact.getThumbnailImages().size();
+			log.debug("Uploading {} thumbnail images for fileName: {}", 
+					thumbnailCount, artifact.getFileLocation().getFileName());
 
 			for (Map.Entry<String, BufferedImage> entry : artifact.getThumbnailImages().entrySet()) {
+				log.trace("Processing thumbnail: {}", entry.getKey());
 				ByteArrayOutputStream os = new ByteArrayOutputStream();
 				ImageIO.write(entry.getValue(),
 						FilenameUtils.getExtension(artifact.getMultipartFile().getOriginalFilename()), os);
 				byte[] byteArray = os.toByteArray();
+				log.debug("Thumbnail size: {} bytes for key: {}", byteArray.length, entry.getKey());
 				ByteArrayInputStream is = new ByteArrayInputStream(byteArray);
 				push(is, byteArray.length, artifact.getMultipartFile().getContentType(), entry.getKey());
 				os.flush();
 			}
+			log.debug("Successfully uploaded {} thumbnail images", thumbnailCount);
 
 		} catch (Exception ioe) {
-
 			Map<String, String> map = new HashMap<>();
-			log.error("Exception while uploading the image: ", ioe);
+			log.error("Exception while uploading thumbnail images for fileName: {}", 
+					artifact.getFileLocation().getFileName(), ioe);
 			map.put("ERROR_MINIO_UPLOAD", "An error has occured while trying to upload image to filestore system .");
 			throw new CustomException(map);
 		}
@@ -182,97 +198,120 @@ public class MinioRepository implements CloudFilesManager {
 
 	@Override
 	public Map<String, String> getFiles(List<Artifact> artifacts) {
+		log.trace("Entering getFiles method with artifactCount: {}", artifacts.size());
+		log.info("Retrieving signed URLs for {} artifacts", artifacts.size());
 
 		Map<String, String> mapOfIdAndSASUrls = new HashMap<>();
 
 		for(Artifact artifact : artifacts) {
-			
+			log.trace("Processing artifact: {}", artifact.getFileStoreId());
 			String fileLocation = artifact.getFileLocation().getFileName();
 			String fileName = fileLocation.
 					substring(fileLocation.indexOf('/') + 1, fileLocation.length());
+			log.debug("Extracted fileName: {} from fileLocation: {}", fileName, fileLocation);
 			String signedUrl = getSignedUrl(fileName);
 			if (util.isFileAnImage(artifact.getFileName())) {
+				log.debug("File is an image, generating thumbnail signed URLs for: {}", fileName);
 				try {
 					signedUrl = setThumnailSignedURL(fileName, new StringBuilder(signedUrl));
+					log.debug("Generated thumbnail signed URLs successfully");
 				} catch (InvalidKeyException | ErrorResponseException | IllegalArgumentException
 						| InsufficientDataException | InternalException | InvalidBucketNameException
 						| InvalidExpiresRangeException | InvalidResponseException | NoSuchAlgorithmException
 						| XmlParserException | IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
+					log.error("Error generating thumbnail signed URLs for fileName: {}", fileName, e);
+					// Continue with original signed URL
 				}
 			}
 			
 			mapOfIdAndSASUrls.put(artifact.getFileStoreId(), signedUrl);
-			
 		}
+		log.info("Successfully generated {} signed URLs", mapOfIdAndSASUrls.size());
 		return mapOfIdAndSASUrls;
 	}
 		
 	private String setThumnailSignedURL(String fileName, StringBuilder url) throws InvalidKeyException, ErrorResponseException, IllegalArgumentException, InsufficientDataException, InternalException, InvalidBucketNameException, InvalidExpiresRangeException, InvalidResponseException, NoSuchAlgorithmException, XmlParserException, IOException {
+		log.trace("Entering setThumnailSignedURL method for fileName: {}", fileName);
+		log.debug("Generating thumbnail signed URLs for fileName: {}", fileName);
 		String[] imageFormats = { fileStoreConfig.get_large(), fileStoreConfig.get_medium(), fileStoreConfig.get_small() };
 		for (String  format : Arrays.asList(imageFormats)) {
 			url.append(",");
 			String replaceString = fileName.substring(fileName.lastIndexOf('.'), fileName.length());
 			String path = fileName.replaceAll(replaceString, format + replaceString);
+			log.debug("Generating signed URL for thumbnail format: {}, path: {}", format, path);
 			url.append(getSignedUrl(path));
 		}
+		log.debug("Successfully generated thumbnail signed URLs for fileName: {}", fileName);
 		return url.toString();
 	}
 	
 	public String getSignedUrl(String fileName) {
-
+		log.trace("Entering getSignedUrl method for fileName: {}", fileName);
 		String signedUrl = null;
 		try {
 			signedUrl = minioClient.getPresignedObjectUrl(io.minio.http.Method.GET, minioConfig.getBucketName(), fileName,
 					fileStoreConfig.getPreSignedUrlTimeOut(), new HashMap<String, String>());
+			log.debug("Generated signed URL successfully for fileName: {}", fileName);
 		} catch (InvalidKeyException | ErrorResponseException | IllegalArgumentException | InsufficientDataException
 				| InternalException | InvalidBucketNameException | InvalidExpiresRangeException
 				| InvalidResponseException | NoSuchAlgorithmException | XmlParserException | ServerException | IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error("Error generating signed URL for fileName: {}", fileName, e);
 		}
         return signedUrl;
 	}
 
 	public Resource read(FileLocation fileLocation) {
+		log.trace("Entering read method for fileName: {}, tenantId: {}", 
+				fileLocation.getFileName(), fileLocation.getTenantId());
+		log.info("Reading file from MinIO for fileName: {}, tenantId: {}", 
+				fileLocation.getFileName(), fileLocation.getTenantId());
 
 		Resource resource = null;
 		File f = new File(fileLocation.getFileStoreId());
 		File parentDir = f.getParentFile();
 		if (parentDir != null && !parentDir.exists()) {
-				parentDir.mkdirs(); // Create the directory (and any missing parent directories)
+			parentDir.mkdirs(); // Create the directory (and any missing parent directories)
+			log.debug("Created parent directory: {}", parentDir.getAbsolutePath());
 		}
 
 		if (fileLocation.getFileSource() == null || fileLocation.getFileSource().equals(minioConfig.getSource())) {
 			String fileName = fileLocation.getFileName().substring(fileLocation.getFileName().indexOf('/') + 1,
 					fileLocation.getFileName().length());
+			log.debug("Extracted fileName: {} from fileLocation", fileName);
 
 			try {
-				log.info("retrieving file from s3: {}/{}", minioConfig.getBucketName(), fileName);
+				log.info("Retrieving file from MinIO bucket: {}/{}", minioConfig.getBucketName(), fileName);
 				minioClient.getObject(minioConfig.getBucketName(), fileName, f.getAbsolutePath());
+				log.debug("File downloaded successfully to: {}", f.getAbsolutePath());
 			} catch (InvalidKeyException | ErrorResponseException | IllegalArgumentException |
                      InsufficientDataException | InternalException | InvalidBucketNameException |
                      InvalidResponseException | NoSuchAlgorithmException | XmlParserException | IOException |
                      ServerException e) {
-				log.error("Error while downloading the file ", e);
+				log.error("Error while downloading the file from MinIO for fileName: {}, bucket: {}", 
+						fileName, minioConfig.getBucketName(), e);
 				Map<String, String> map = new HashMap<>();
 				map.put("ERROR_MINIO_DOWNLOAD",
 						"An error has occured while trying to download image from filestore system .");
 				throw new CustomException(map);
 			}
 			resource = new FileSystemResource(Paths.get(f.getPath()).toFile());
+			log.debug("File resource created successfully");
+		} else {
+			log.warn("File source mismatch, expected: {}, actual: {}", 
+					minioConfig.getSource(), fileLocation.getFileSource());
 		}
 		return resource;
 	}
 
 	private Artifact mapToEntity(org.egov.filestore.domain.model.Artifact artifact) {
-
+		log.trace("Entering mapToEntity method for fileStoreId: {}", artifact.getFileLocation().getFileStoreId());
 		FileLocation fileLocation = artifact.getFileLocation();
-		return Artifact.builder().fileStoreId(fileLocation.getFileStoreId()).fileName(fileLocation.getFileName())
+		Artifact entity = Artifact.builder().fileStoreId(fileLocation.getFileStoreId()).fileName(fileLocation.getFileName())
 				.contentType(artifact.getMultipartFile().getContentType()).module(fileLocation.getModule())
 				.tag(fileLocation.getTag()).tenantId(fileLocation.getTenantId())
 				.fileSource(fileLocation.getFileSource()).build();
+		log.debug("Mapped artifact to entity for fileStoreId: {}", fileLocation.getFileStoreId());
+		return entity;
 	}
 
 }

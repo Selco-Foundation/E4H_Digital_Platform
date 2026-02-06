@@ -35,7 +35,9 @@ public class PsProjectIdValidator implements Validator<ProjectStaffBulkRequest, 
 
     @Override
     public Map<ProjectStaff, List<Error>> validate(ProjectStaffBulkRequest request) {
-        log.info("validating project id");
+        log.trace("Entering validate (PsProjectIdValidator)");
+        log.info("Validating project ID for staff");
+        log.debug("Validating {} staff", request.getProjectStaff() != null ? request.getProjectStaff().size() : 0);
         Map<ProjectStaff, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectStaff> entities = request.getProjectStaff();
         Class<?> objClass = getObjClass(entities);
@@ -44,17 +46,24 @@ public class PsProjectIdValidator implements Validator<ProjectStaffBulkRequest, 
                 .stream().filter(notHavingErrors()).toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
+            log.debug("Validating {} project IDs against repository", entityIds.size());
             List<String> existingProjectIds = projectRepository.validateIds(entityIds,
                     getIdFieldName(idMethod));
+            log.debug("Found {} existing project IDs", existingProjectIds != null ? existingProjectIds.size() : 0);
             List<ProjectStaff> invalidEntities = entities.stream().filter(notHavingErrors()).filter(entity ->
                             !existingProjectIds.contains(entity.getProjectId()))
                     .toList();
+            if (!invalidEntities.isEmpty()) {
+                log.warn("Found {} staff with invalid project IDs", invalidEntities.size());
+            }
             invalidEntities.forEach(ProjectStaff -> {
                 Error error = getErrorForNonExistentRelatedEntity(ProjectStaff.getProjectId());
                 populateErrorDetails(ProjectStaff, error, errorDetailsMap);
             });
         }
 
+        log.debug("Validation completed - {} errors found", errorDetailsMap.size());
+        log.trace("Exiting validate (PsProjectIdValidator)");
         return errorDetailsMap;
     }
 }

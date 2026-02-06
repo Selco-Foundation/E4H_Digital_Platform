@@ -120,6 +120,13 @@
 @import "./pages/employee/activitydetailstable.scss";
 @import "./pages/employee/qc/facilitytable.scss";
 @import "./pages/employee/amc/visittable.scss";
+@import "./pages/employee/fa/adminfacilitytable.scss";
+@import "pages/employee/formcomposer/reverseactionbarfixed.scss";
+@import "pages/employee/fa/facilitydetailstab.scss";
+@import "pages/employee/fa/facilitydetailstable.scss";
+@import "./pages/employee/org/orguserstable.scss";
+@import "./pages/employee/org/adminorganizationtable.scss";
+
 
 .wbh-header-container {
   display: flex !important;
@@ -893,4 +900,32 @@ input[type="number"] {
       margin-top: 40px;
     }
   }
+}
+
+.digit-toast-success {
+  min-width: fit-content;
+  max-width: 200px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+.admin-form {
+  .digit-toast-success {
+    bottom: 20% !important;
+  }
+}
+
+.org-user-assignment {
+  .employeeCard {
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+}
+
+.toggle-option-container {
+  width: 60px !important;
+}
+
+.digit-toggle-btn-wrap {
+  width: 60px !important;
 }

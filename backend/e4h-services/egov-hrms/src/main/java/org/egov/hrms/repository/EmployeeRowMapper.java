@@ -33,8 +33,11 @@ public class EmployeeRowMapper implements ResultSetExtractor<List<Employee>> {
 	 * Maps ResultSet to Employee POJO.
 	 */
 	public List<Employee> extractData(ResultSet rs) throws SQLException, DataAccessException {
+		log.trace("EmployeeRowMapper.extractData invoked");
 		Map<String, Employee> employeeMap = new HashMap<>();
+		int rowCount = 0;
 		while(rs.next()) {
+			rowCount++;
 			String currentid = rs.getString("employee_uuid");
 			Employee currentEmployee = employeeMap.get(currentid);
 			if(null == currentEmployee) {
@@ -49,7 +52,7 @@ public class EmployeeRowMapper implements ResultSetExtractor<List<Employee>> {
 			addChildrenToEmployee(rs, currentEmployee);
 			employeeMap.put(currentid, currentEmployee);
 		}
-		
+		log.debug("Row mapper processed {} rows, mapped {} unique employee(s)", rowCount, employeeMap.size());
 		return new ArrayList<>(employeeMap.values());
 
 	}

@@ -104,6 +104,7 @@ module.exports = function (app) {
     "/field-planner/",
     "/activity",
     "/asset-amc",
+    "/facility-service",
   ].forEach((location) => app.use(location, createProxy));
   ["/pb-egov-assets"].forEach((location) => app.use(location, assetsProxy));
   ["/mdms-v2/v2/_create"].forEach((location) => app.use(location, mdmsProxy));
