@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication
 @EnableCaching
-@Import({ TracerConfiguration.class })
+//@Import({ TracerConfiguration.class })
 public class Main {
 
     @Value("${app.timezone}")

@@ -1,5 +1,7 @@
 package org.egov.wf.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.wf.config.WorkflowConfig;
 import org.egov.wf.producer.Producer;
@@ -18,9 +20,11 @@ import org.springframework.util.ObjectUtils;
 import static java.util.Objects.isNull;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 
 @Service
+@Slf4j
 public class WorkflowService {
 
     private WorkflowConfig config;
@@ -47,13 +51,14 @@ public class WorkflowService {
 
     private Producer producer;
 
+    private ImServiceClient imServiceClient;
 
     @Autowired
     public WorkflowService(WorkflowConfig config, TransitionService transitionService,
                            EnrichmentService enrichmentService, WorkflowValidator workflowValidator,
                            StatusUpdateService statusUpdateService, WorKflowRepository workflowRepository,
                            WorkflowUtil util,BusinessServiceRepository businessServiceRepository,
-                           Producer producer) {
+                           Producer producer, ImServiceClient imServiceClient) {
         this.config = config;
         this.transitionService = transitionService;
         this.enrichmentService = enrichmentService;
@@ -63,6 +68,7 @@ public class WorkflowService {
         this.util = util;
         this.businessServiceRepository = businessServiceRepository;
         this.producer = producer;
+        this.imServiceClient = imServiceClient;
     }
 
 
@@ -99,6 +105,19 @@ public class WorkflowService {
         enrichmentService.enrichUsersFromSearch(requestInfo,processInstances);
         List<ProcessStateAndAction> processStateAndActions = enrichmentService.enrichNextActionForSearch(requestInfo,processInstances);
     //    workflowValidator.validateSearch(requestInfo,processStateAndActions);
+        enrichmentService.enrichAndUpdateSlaForSearch(processInstances);
+        return processInstances;
+    }
+
+    public List<ProcessInstance> searchProcessInstanceMigration(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
+        List<ProcessInstance> processInstances;
+        processInstances = workflowRepository.getProcessInstanceForMigration(criteria);
+        if(CollectionUtils.isEmpty(processInstances))
+            return processInstances;
+
+//        enrichmentService.enrichUsersFromSearch(requestInfo,processInstances);
+//        List<ProcessStateAndAction> processStateAndActions = enrichmentService.enrichNextActionForSearch(requestInfo,processInstances);
+//            workflowValidator.validateSearch(requestInfo,processStateAndActions);
         enrichmentService.enrichAndUpdateSlaForSearch(processInstances);
         return processInstances;
     }
@@ -320,5 +339,265 @@ public class WorkflowService {
             producer.push(config.getUpdateProcessInstanceTopic(),processInstanceRequest);
         }
         return processInstances;
+    }
+
+    // Used to update process instance v3 for this ticket number #1979
+    public void updateBusinessServiceV2(RequestInfo requestInfo){
+//        List<ProcessInstance> processInstancesTheft = proceedUpdateProcessInstanceTheft(requestInfo);
+        List<ProcessInstance> processInstancesSparePart = proceedUpdateProcessInstanceSparePartNeed(requestInfo);
+
+        Set<ProcessInstance> set = new LinkedHashSet<>();
+//        set.addAll(processInstancesTheft);
+        set.addAll(processInstancesSparePart);
+
+        List<ProcessInstance> mergedList = new ArrayList<>(set);
+
+        ProcessInstanceRequest processInstanceRequest = new ProcessInstanceRequest(requestInfo, mergedList);
+        producer.push(config.getUpdateProcessInstanceTopic(),processInstanceRequest);
+    }
+
+    public List<ProcessInstance> proceedUpdateProcessInstanceTheft(RequestInfo requestInfo) {
+        return updateProcessInstances(
+                requestInfo,
+                "PENDINGFORASSIGNMENT",
+                "PENDINGFORASSIGNMENT_THEFT",
+                true,
+                false
+        );
+    }
+
+    public List<ProcessInstance> proceedUpdateProcessInstanceSparePartNeed(RequestInfo requestInfo) {
+        return updateProcessInstances(
+                requestInfo,
+                "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
+                "PENDING_RESOLUTION_SPARE_PART_NEEDED",
+                false,
+                true
+        );
+    }
+
+
+    public List<ProcessInstance> updateProcessInstances(
+            RequestInfo requestInfo,
+            String sourceState,
+            String targetState,
+            boolean filterByTheftSubtype,
+            boolean copyAssignesFromPendingResolution
+    ) {
+
+        ObjectMapper mapper = new ObjectMapper();
+
+        List<BusinessServiceStateMigration> businessServicesAndStates =
+                workflowRepository.getBusinessServicesAndStatesV2();
+
+        Map<String, BusinessServiceStateMigration> stateMap =
+                businessServicesAndStates.stream()
+                        .collect(Collectors.toMap(
+                                bs -> bs.getBusinessService() + "_" + bs.getApplicationStatus(),
+                                bs -> bs
+                        ));
+
+        /* 1) récupérer les stateUuid source */
+        Set<String> sourceStateUuids =
+                businessServicesAndStates.stream()
+                        .filter(bs -> sourceState.equalsIgnoreCase(bs.getState()))
+                        .map(BusinessServiceStateMigration::getStateUuid)
+                        .collect(Collectors.toSet());
+
+        /* 2) chercher les process instances source */
+        ProcessInstanceSearchCriteria criteria = new ProcessInstanceSearchCriteria();
+        criteria.setTenantId("in");
+        criteria.setHistory(true);
+        criteria.setStatus(new ArrayList<>(sourceStateUuids));
+
+        List<ProcessInstance> processInstances = searchProcessInstanceMigration(requestInfo, criteria);
+
+        log.debug("IM request search returned response for proceedUpdateProcessInstance");
+
+        /* 3) filtrage THEFT si demandé */
+        if (filterByTheftSubtype && !processInstances.isEmpty()) {
+
+            List<String> businessIds =
+                    processInstances.stream()
+                            .map(ProcessInstance::getBusinessId)
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList());
+
+            Map<String, Object> imCriteria = new HashMap<>();
+            imCriteria.put("incidentId", businessIds);
+            imCriteria.put("incidentSubType", "Theft");
+
+            Object response = searchImServiceTicket(imCriteria, requestInfo);
+            IncidentResponse incidentResponse =
+                    mapper.convertValue(response, IncidentResponse.class);
+
+            Set<String> theftIncidentIds =
+                    incidentResponse.getIncidentWrappers().stream()
+                            .map(w -> w.getIncident().getIncidentId())
+                            .collect(Collectors.toSet());
+
+            processInstances =
+                    processInstances.stream()
+                            .filter(pi -> theftIncidentIds.contains(pi.getBusinessId()))
+                            .collect(Collectors.toList());
+        }
+
+        /* 4) mise à jour du state + récupération des assignes si nécessaire */
+        for (ProcessInstance pi : processInstances) {
+
+            BusinessServiceStateMigration migration =
+                    stateMap.get(pi.getBusinessService() + "_" + targetState);
+
+            if (migration == null) {
+                continue;
+            }
+
+            /* Cas SPARE_PART_NEEDED : récupérer les assignes depuis PENDING_RESOLUTION */
+            if (copyAssignesFromPendingResolution && pi.getBusinessId() != null) {
+                // Trouver le assign owner pour le ticket. Pour ca trouver la liste des process instance pour le businessId, ensuite recuperer le process instance qui est a PENDINGRESOLUTION, ensuite recuperer
+                // le uuid du assignee dans la table eg_wf_assignee_v2
+                BusinessServiceStateMigration pendingResolutionMigration =
+                        stateMap.get(pi.getBusinessService() + "_PENDINGRESOLUTION");
+
+                if (pendingResolutionMigration != null) {
+
+                    ProcessInstanceSearchCriteria searchByBusinessId = new ProcessInstanceSearchCriteria();
+                    searchByBusinessId.setBusinessIds(Collections.singletonList(pi.getBusinessId()));
+                    searchByBusinessId.setStatus(
+                            Collections.singletonList(pendingResolutionMigration.getStateUuid())
+                    );
+
+                    List<ProcessInstance> existingInstances =
+                            searchProcessInstanceMigration(requestInfo, searchByBusinessId);
+
+                    if (existingInstances != null && !existingInstances.isEmpty()) {
+                        pi.setAssignes(existingInstances.get(0).getAssignes());
+                    }
+                }
+            }
+
+            State state = State.builder()
+                    .uuid(migration.getStateUuid())
+                    .sla(migration.getStateSla())
+                    .build();
+
+            pi.setState(state);
+            pi.setStateSla(migration.getStateSla());
+        }
+
+        return processInstances;
+    }
+
+
+
+    // PENDINGFORASSIGNMENT and Issue Type == THEFT -> PENDINGFORASSIGNMENT_THEFT
+//    public List<ProcessInstance> proceedUpdateProcessInstanceTheft(RequestInfo requestInfo){
+//        ObjectMapper mapper = new ObjectMapper();
+//        List<BusinessServiceStateMigration> businessServicesAndStates = workflowRepository.getBusinessServicesAndStatesV2();
+//        Map<String,BusinessServiceStateMigration> bussinessServiceStateMap = new HashMap<>();
+//        businessServicesAndStates.forEach(businessServiceStateMigration -> {
+//            bussinessServiceStateMap.put(businessServiceStateMigration.getBusinessService()+"_"+businessServiceStateMigration.getApplicationStatus(), businessServiceStateMigration);
+//        });
+//        Set<String> pendingForAssignmentStateUuids =
+//                businessServicesAndStates.stream()
+//                        .filter(bs -> "PENDINGFORASSIGNMENT".equalsIgnoreCase(bs.getState()))
+//                        .map(BusinessServiceStateMigration::getStateUuid)
+//                        .collect(Collectors.toSet());
+//
+//        // Recherche des processInstances dont le statusUUID est PENDINGFORASSIGNMENT
+//        ProcessInstanceSearchCriteria instanceSearchCriteriaPendingForAssignmentStateUuids = new ProcessInstanceSearchCriteria();
+//        instanceSearchCriteriaPendingForAssignmentStateUuids.setStatus(new ArrayList<>(pendingForAssignmentStateUuids));
+//        List<ProcessInstance> processInstancesPendingForAssignment = search(requestInfo, instanceSearchCriteriaPendingForAssignmentStateUuids);
+//        List<String> businessIdList =
+//                processInstancesPendingForAssignment.stream()
+//                        .map(ProcessInstance::getBusinessId)
+//                        .collect(Collectors.toList());
+//
+//        // Recherche des businessId( A savoir incidentId) dont leur subtype est THEFT parmi la liste des processInstances trouvees precedemment
+//        Map<String, Object> criteria = new HashMap<>();
+//        criteria.put("incidentId", businessIdList);
+//        criteria.put("incidentSubType", "Theft");
+//        Object response = searchImServiceTicket(criteria, requestInfo);
+//        IncidentResponse incidentResponse = mapper.convertValue(response, IncidentResponse.class);
+//        List<String> theftIncidentIds =
+//                incidentResponse.getIncidentWrappers().stream()
+//                        .map(wrapper -> wrapper.getIncident().getIncidentId())
+//                        .collect(Collectors.toList());
+//
+//        // Liste des process instance qui ont comme subtype THEFT
+//        Set<String> theftIncidentIdSet = new HashSet<>(theftIncidentIds);
+//        List<ProcessInstance> filteredTheftProcessInstances =
+//                processInstancesPendingForAssignment.stream()
+//                        .filter(pi -> pi.getBusinessId() != null)
+//                        .filter(pi -> theftIncidentIdSet.contains(pi.getBusinessId()))
+//                        .collect(Collectors.toList());
+//
+//        for(ProcessInstance processInstance: filteredTheftProcessInstances){
+//            BusinessServiceStateMigration stateMigration = bussinessServiceStateMap.get(processInstance.getBusinessService()+"_PENDINGFORASSIGNMENT_THEFT");
+//            State state = State.builder().uuid(stateMigration.getStateUuid()).sla(stateMigration.getStateSla()).build();
+//
+//            processInstance.setState(state);
+//            processInstance.setStateSla(stateMigration.getStateSla());
+//        }
+//        return filteredTheftProcessInstances;
+//    }
+//
+////    // Used to update process instance v3 for this ticket number #1979 PENDINGFORASSIGNMENT and Issue Type == THEFT -> PENDINGFORASSIGNMENT_THEFT
+//    public List<ProcessInstance> proceedUpdateProcessInstanceSparePartNeed(RequestInfo requestInfo){
+//        List<BusinessServiceStateMigration> businessServicesAndStates = workflowRepository.getBusinessServicesAndStatesV2();
+//        Map<String,BusinessServiceStateMigration> bussinessServiceStateMap = new HashMap<>();
+//        businessServicesAndStates.forEach(businessServiceStateMigration -> {
+//            bussinessServiceStateMap.put(businessServiceStateMigration.getBusinessService()+"_"+businessServiceStateMigration.getApplicationStatus(), businessServiceStateMigration);
+//        });
+//        Set<String> pendingAssignmentSparePartNeededStateUuids =
+//                businessServicesAndStates.stream()
+//                        .filter(bs -> "PENDING_ASSIGNMENT_SPARE_PART_NEEDED"
+//                                .equalsIgnoreCase(bs.getState()))
+//                        .map(BusinessServiceStateMigration::getStateUuid)
+//                        .collect(Collectors.toSet());
+//
+//        // Recherche des processInstances dont le statusUUID est PENDING_ASSIGNMENT_SPARE_PART_NEEDED
+//        ProcessInstanceSearchCriteria instanceSearchCriteriaPendingForAssignmentStateUuids = new ProcessInstanceSearchCriteria();
+//        instanceSearchCriteriaPendingForAssignmentStateUuids.setStatus(new ArrayList<>(pendingAssignmentSparePartNeededStateUuids));
+//        List<ProcessInstance> processInstancesPendingAssignmentSparePartNeeded = search(requestInfo, instanceSearchCriteriaPendingForAssignmentStateUuids);
+//
+//        // Proceder a la mise a jour du status PENDING_ASSIGNMENT_SPARE_PART_NEEDED vers PENDING_RESOLUTION_SPARE_PART_NEEDED uuid
+//        for(ProcessInstance processInstance: processInstancesPendingAssignmentSparePartNeeded){
+//            BusinessServiceStateMigration stateMigration = bussinessServiceStateMap.get(processInstance.getBusinessService()+"_PENDING_RESOLUTION");
+//            // Trouver le assign owner pour le ticket. Pour ca trouver la liste des process instance pour le businessId, ensuite recuperer le process instance qui est a PENDINGRESOLUTION, ensuite recuperer
+//            // le uuid du assignee dans la table eg_wf_assignee_v2
+//            ProcessInstanceSearchCriteria instanceSearchCriteriaBusinessId = new ProcessInstanceSearchCriteria();
+//            instanceSearchCriteriaBusinessId.setBusinessIds(Collections.singletonList(processInstance.getBusinessId()));
+//            instanceSearchCriteriaBusinessId.setStatus(Collections.singletonList(stateMigration.getStateUuid()));
+//            List<ProcessInstance> processInstancesBusinessId = search(requestInfo, instanceSearchCriteriaPendingForAssignmentStateUuids);
+//            if (processInstancesBusinessId!=null && !processInstancesBusinessId.isEmpty()){
+//                ProcessInstance instancePendingResolution = processInstancesBusinessId.get(0);
+//                processInstance.setAssignes(instancePendingResolution.getAssignes());
+//            }
+//
+////            BusinessServiceStateMigration stateMigration = bussinessServiceStateMap.get(processInstance.getBusinessService()+"_PENDING_RESOLUTION_SPARE_PART_NEEDED");
+//            State state = State.builder().uuid(stateMigration.getStateUuid()).sla(stateMigration.getStateSla()).build();
+//
+//            processInstance.setState(state);
+//            processInstance.setStateSla(stateMigration.getStateSla());
+//        }
+//        return processInstancesPendingAssignmentSparePartNeeded;
+//    }
+
+    public Object searchImServiceTicket(Map<String, Object> searchCriteria, RequestInfo requestInfo){
+        // Call IM service request search API (POST /request/_search)
+        searchCriteria.put("limit", config.getMaxSearchLimit() != null ? config.getMaxSearchLimit() : 100);
+        searchCriteria.put("offset", config.getDefaultOffset() != null ? config.getDefaultOffset() : 0);
+        try {
+            Map<String, Object> incidentResponse = imServiceClient.requestSearch(requestInfo, searchCriteria);
+            // Use incidentResponse (contains responseInfo, IncidentWrappers) as needed
+            if (incidentResponse != null) {
+                log.debug("IM request search returned response for proceedUpdateProcessInstance");
+                return incidentResponse;
+            }
+        } catch (Exception e) {
+            log.warn("IM request search call failed in proceedUpdateProcessInstance: {}", e.getMessage());
+        }
+        return null;
     }
 }

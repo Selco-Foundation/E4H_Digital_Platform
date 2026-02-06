@@ -70,7 +70,25 @@ public class WorKflowRepository {
         return jdbcTemplate.query(query, preparedStmtList.toArray(), businessServiceStateRowMapper);
     }
 
+    public List<BusinessServiceStateMigration> getBusinessServicesAndStatesV2(){
+        List<Object> preparedStmtList = new ArrayList<>();
 
+        String query = queryBuilder.getBusinessServicesAndStatesV2();
+        log.debug("query for status search: "+query+" params: "+preparedStmtList);
+
+        return jdbcTemplate.query(query, preparedStmtList.toArray(), businessServiceStateRowMapper);
+    }
+
+    public List<ProcessInstance> getProcessInstanceForMigration(ProcessInstanceSearchCriteria criteria){
+        List<Object> preparedStmtList = new ArrayList<>();
+
+        String query = queryBuilder.getProcessInstanceMigration(criteria, preparedStmtList);
+        log.debug("query for status search: "+query+" params: "+preparedStmtList);
+
+        List<ProcessInstance> responseList = jdbcTemplate.query(query, preparedStmtList.toArray(), rowMapper);
+
+        return responseList;
+    }
 
     /**
      *

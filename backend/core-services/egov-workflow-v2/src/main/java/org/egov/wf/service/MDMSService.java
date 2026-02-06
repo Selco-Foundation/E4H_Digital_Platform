@@ -46,9 +46,9 @@ public class MDMSService {
     public void stateLevelMapping(){
         Map<String, Boolean> stateLevelMapping = new HashMap<>();
 
-        Object mdmsData = getBusinessServiceMDMS();
-        List<HashMap<String, Object>> configs = JsonPath.read(mdmsData,JSONPATH_BUSINESSSERVICE_STATELEVEL);
-
+//        Object mdmsData = getBusinessServiceMDMS();
+//        List<HashMap<String, Object>> configs = JsonPath.read(mdmsData,JSONPATH_BUSINESSSERVICE_STATELEVEL);
+        List<HashMap<String, Object>> configs = new ArrayList<>();
 
         for (Map map : configs){
 

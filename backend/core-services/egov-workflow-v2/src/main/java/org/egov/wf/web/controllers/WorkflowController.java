@@ -6,6 +6,7 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.wf.service.WorkflowService;
 import org.egov.wf.util.ResponseInfoFactory;
 import org.egov.wf.web.models.ProcessInstance;
@@ -121,11 +122,22 @@ public class WorkflowController {
         return new ResponseEntity<>(count,HttpStatus.OK);
     }
 
+    // Used to update process instance v1 for old ticket Incident Business to new Business Service(Incident_Low, Incident_Medium, Incident_High) this ticket number #1979
     @RequestMapping(value="/migration/_update", method = RequestMethod.POST)
     public ResponseEntity<ProcessInstanceResponse> processInstanceUpdate(@Valid @RequestBody ProcessInstanceRequest processInstanceRequest) {
         List<ProcessInstance> processInstances =  workflowService.proceedUpdateProcessInstance(processInstanceRequest.getRequestInfo(), processInstanceRequest.getProcessInstances());
         ProcessInstanceResponse response = ProcessInstanceResponse.builder().processInstances(processInstances)
                 .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(processInstanceRequest.getRequestInfo(), true))
+                .build();
+        return new ResponseEntity<>(response,HttpStatus.OK);
+    }
+
+    //  Used to update process instance v3 for this ticket number #1979
+    @RequestMapping(value="v2/migration/_update", method = RequestMethod.POST)
+    public ResponseEntity<ProcessInstanceResponse> processInstanceUpdate(@RequestBody RequestInfo requestInfo) {
+        workflowService.updateBusinessServiceV2(requestInfo);
+        ProcessInstanceResponse response = ProcessInstanceResponse.builder().processInstances(null)
+                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(requestInfo, true))
                 .build();
         return new ResponseEntity<>(response,HttpStatus.OK);
     }
