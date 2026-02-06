@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.web.models.Boundary;
+import facility.web.models.BoundaryRelationshipSearchCriteria;
 import facility.web.models.FacilityBulkSearchCriteria;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
@@ -30,6 +31,9 @@ public class BoundaryUtil {
     @Value("${egov.boundary.relationship.search.path}")
     private String boundaryUrl;
 
+    @Value("${egov.boundary.relationship.search.v2.path}")
+    private String boundaryV2Url;
+
     @Value("${egov.boundary.type}")
     private String boundaryType;
 
@@ -54,28 +58,38 @@ public class BoundaryUtil {
             }
             jsonString = objectMapper.writeValueAsString(response);
         }catch(Exception e) {
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+//            e.printStackTrace();
+            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary "+ e.getMessage());
         }
 
         return jsonString;
     }
 
-    public String getBoundaryData(String codes) {
+    public String getBoundaryData(List<String> codes) {
         String jsonString = null;
-        String params = "?codes="+codes+"&includeChildren=true&tenantId=in&hierarchyType="+boundaryHierarchyType;
+//        String params = "?codes="+codes+"&includeChildren=true&tenantId=in&hierarchyType="+boundaryHierarchyType;
         StringBuilder uri = new StringBuilder();
-        uri.append(boundaryHost).append(boundaryUrl).append(params);
+        uri.append(boundaryHost).append(boundaryV2Url);
         RequestInfo requestInfo = new RequestInfo();
+        BoundaryRelationshipSearchCriteria searchCriteria = BoundaryRelationshipSearchCriteria.builder()
+                .tenantId("in")
+                .includeChildren(true)
+                .hierarchyType(boundaryHierarchyType)
+                .codes(codes)
+                .build();
+        Map<String, Object> searchCriteriaRequest = new HashMap<>();
+        searchCriteriaRequest.put("RequestInfo", requestInfo);
+        searchCriteriaRequest.put("BoundaryRelationship", searchCriteria);
         Object response = null;
         try {
-            response = restTemplate.postForObject(uri.toString(), requestInfo, Map.class);
+            response = restTemplate.postForObject(uri.toString(), searchCriteriaRequest, Map.class);
             if (response == null) {
                 throw new CustomException("CONFIG_ERROR", "Boundary service returned null response");
             }
             jsonString = objectMapper.writeValueAsString(response);
         }catch(Exception e) {
-            e.printStackTrace();
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+//            e.printStackTrace();
+            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary "+e.getMessage());
         }
 
         return jsonString;
@@ -88,7 +102,7 @@ public class BoundaryUtil {
             listBlock = extractBlockToDistrictMapping(jsonString);
         }catch(Exception e) {
 //            e.printStackTrace();
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary "+ e.getMessage());
         }
 
         return listBlock;
@@ -230,8 +244,8 @@ public class BoundaryUtil {
             try {
                 listBlock = resolveFacilityCodes(criteria);
             }catch(Exception e) {
-//                e.printStackTrace();
-                throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+                e.printStackTrace();
+                throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary "+ e.getMessage());
             }
         }
 
@@ -261,37 +275,37 @@ public class BoundaryUtil {
         switch (level) {
 
             case BOUNDARY_CODE:
-                String boundaryCodes = criteria.getBoundaryCodes().stream()
+                List<String> boundaryCodes = criteria.getBoundaryCodes().stream()
                         .filter(Objects::nonNull)
                         .map(String::trim)
-                        .collect(Collectors.joining(","));
+                        .collect(Collectors.toList());
                 String jsonString = getBoundaryData(boundaryCodes);
                 JsonNode rootNode = objectMapper.readTree(jsonString);
                 return extractFacilityCodesByLevel(rootNode, criteria.getBoundaryCodes());
 
             case BLOCK_CODE:
-                String blockBoundaryCodes = criteria.getBlock().stream()
+                List<String> blockBoundaryCodes = criteria.getBlock().stream()
                         .filter(Objects::nonNull)
                         .map(String::trim)
-                        .collect(Collectors.joining(","));
+                        .collect(Collectors.toList());
                 String blockJsonString = getBoundaryData(blockBoundaryCodes);
                 JsonNode blockRootNode = objectMapper.readTree(blockJsonString);
                 return extractFacilityCodesByLevel(blockRootNode, criteria.getBlock());
 
             case DISTRICT_CODE:
-                String districtBoundaryCodes = criteria.getDistrict().stream()
+                List<String> districtBoundaryCodes = criteria.getDistrict().stream()
                         .filter(Objects::nonNull)
                         .map(String::trim)
-                        .collect(Collectors.joining(","));
+                        .collect(Collectors.toList());
                 String districtJsonString = getBoundaryData(districtBoundaryCodes);
                 JsonNode districtRootNode = objectMapper.readTree(districtJsonString);
                 return extractFacilityCodesByLevel(districtRootNode, criteria.getDistrict());
 
             case STATE_CODE:
-                String stateBoundaryCodes = criteria.getState().stream()
+                List<String> stateBoundaryCodes = criteria.getState().stream()
                         .filter(Objects::nonNull)
                         .map(String::trim)
-                        .collect(Collectors.joining(","));
+                        .collect(Collectors.toList());
                 String stateJsonString = getBoundaryData(stateBoundaryCodes);
                 JsonNode stateRootNode = objectMapper.readTree(stateJsonString);
                 return extractFacilityCodesByLevel(stateRootNode, criteria.getState());
