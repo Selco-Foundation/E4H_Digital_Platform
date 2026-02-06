@@ -81,6 +81,16 @@ public class WorkflowQueryBuilder {
                     "WHERE businessservice IN ('Incident_Low','Incident_Medium','Incident_High','Incident') " +
                     "ORDER BY state_tenantid";
 
+    private static final String SQL_QUERY_MIGRATION_BUSINESS_SERVICE_V2 =
+            "SELECT bs.businessservice as businessservice, bs.business as module_name, bs.tenantid as tenantid, " +
+                    "bs.uuid as businessservice_uuid, bs.businessservicesla as businessservicesla, " +
+                    "st.uuid as state_uuid, st.state as state, st.tenantid as state_tenantid, " +
+                    "st.applicationstatus as applicationstatus, st.sla as sla " +
+                    "FROM eg_wf_businessService_v2 bs " +
+                    "INNER JOIN eg_wf_state_v2 st ON st.businessServiceId = bs.uuid " +
+                    "WHERE businessservice IN ('Incident_Low','Incident_Medium','Incident_High') and bs.tenantid = 'in'" +
+                    "ORDER BY state_tenantid";
+
 
     private String getProcessInstanceSearchQueryWithoutPagination(ProcessInstanceSearchCriteria criteria, List<Object> preparedStmtList){
 
@@ -275,6 +285,19 @@ public class WorkflowQueryBuilder {
         return builder.toString();
     }
 
+    public String getBusinessServicesAndStatesV2(){
+
+        StringBuilder builder = new StringBuilder(SQL_QUERY_MIGRATION_BUSINESS_SERVICE_V2);
+
+        return builder.toString();
+    }
+
+    public String getProcessInstanceMigration(ProcessInstanceSearchCriteria criteria, List<Object> preparedStmtList){
+
+        String finalQuery = getProcessInstanceSearchQueryWithoutPagination(criteria,preparedStmtList);
+
+        return finalQuery;
+    }
 
     /**
      * Creates preparedStatement
