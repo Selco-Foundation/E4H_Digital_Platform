@@ -232,6 +232,8 @@ public class ScheduledVisitService {
                 if(request.getVisitReport().getOtpReference() ==null || !request.getVisitReport().getOtpReference().trim().equals(defaultOtp)){
                     throw new CustomException("ERROR_OTP_GENERATION", "OTP validation unsuccessful");
                 }
+                log.info("OTP {} validated for default OTP", defaultOtp);
+                existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
             }
             else{
                 Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
