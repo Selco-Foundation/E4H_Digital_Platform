@@ -109,9 +109,14 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const [selectedReopenReason, setSelectedReopenReason] = useState(null);
   const [selectedRejectReason, setSelectedRejectReason] = useState(null);
   const [selectedSendBackReason, setSelectedSendBackReason] = useState(null);
+  const [selectedOutOfScopeReason, setSelectedOutOfScopeReason] = useState(null);
   const state = Digit.ULBService.getStateId();
   const reopenReasonMenu = [t(`CS_REOPEN_OPTION_ONE`), t(`CS_REOPEN_OPTION_TWO`), t(`CS_REOPEN_OPTION_THREE`), t(`CS_REOPEN_OPTION_FOUR`), t(`CS_REOPEN_OPTION_FIVE`)];
-  const { isMdmsLoading, data: rejectSendBackReasons } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["RejectReasons", "SendBackReasons"]);
+  const { isMdmsLoading, data: rejectSendBackOutOfScopeReasons } = Digit.Hooks.pgr.useMDMS(state, "Incident", [
+    "RejectReasons",
+    "SendBackReasons",
+    "OutOfScopeReasons",
+  ]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   const [oowIssue, setOowIssue] = useState(null);
   const [oowRootCause, setOowRootCause] = useState(null);
@@ -161,6 +166,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   }
   function onSelectSendBackReason(reason) {
     setSelectedSendBackReason(reason);
+    setComments("");
+  }
+  function onSelectOutOfScopeReason(reason) {
+    setSelectedOutOfScopeReason(reason);
     setComments("");
   }
   const clearError = useCallback(() => {
@@ -250,6 +259,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               ? t("CS_COMMON_APPROVE")
               : selectedAction === "REVISE"
               ? t("CS_COMMON_REVISE")
+              : selectedAction === "MARK_OUT_OF_SCOPE"
+              ? t("CS_COMMON_MARK_OUT_OF_SCOPE")
               : t("CS_COMMON_SPARE_PART_NEEDED")
           }
         />
@@ -276,12 +287,16 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           ? t("CS_COMMON_APPROVE")
           : selectedAction === "REVISE"
           ? t("CS_COMMON_REVISE")
+          : selectedAction === "MARK_OUT_OF_SCOPE"
+          ? t("CS_COMMON_MARK_OUT_OF_SCOPE")
           : t("CS_COMMON_SPARE_PART_NEEDED")
       }
       actionSaveOnSubmit={() => {
         const isTextareaAction =
-          ["SENDBACK", "REJECT"].includes(selectedAction) &&
-          (selectedAction === "SENDBACK"
+          ["SENDBACK", "REJECT", "MARK_OUT_OF_SCOPE"].includes(selectedAction) &&
+          (selectedAction === "MARK_OUT_OF_SCOPE"
+            ? selectedOutOfScopeReason.additionalInputs?.[0].type === "textarea"
+            : selectedAction === "SENDBACK"
             ? selectedSendBackReason?.additionalInputs?.[0].type === "textarea"
             : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
 
@@ -327,7 +342,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           selectedReopenReason,
           selectedRejectReason,
           selectedSendBackReason,
-          oowResponses
+          oowResponses,
+          selectedOutOfScopeReason
         );
       }}
       error={error}
@@ -339,7 +355,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <CardLabel>{t("CS_DECLINE_COMPLAINT")}*</CardLabel>
             <Dropdown
               selected={selectedRejectReason}
-              option={rejectSendBackReasons?.Incident?.RejectReasons?.map((reason) => ({
+              option={rejectSendBackOutOfScopeReasons?.Incident?.RejectReasons?.map((reason) => ({
                 ...reason,
                 localizedCode: t(reason.code), // Use localized text if available, otherwise fallback to default name
               }))}
@@ -354,12 +370,27 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <CardLabel>{t("CS_SENDBACK_COMPLAINT")}*</CardLabel>
             <Dropdown
               selected={selectedSendBackReason}
-              option={rejectSendBackReasons?.Incident?.SendBackReasons?.map((reason) => ({
+              option={rejectSendBackOutOfScopeReasons?.Incident?.SendBackReasons?.map((reason) => ({
                 ...reason,
                 localizedCode: t(reason.code), // Use localized text if available, otherwise fallback to default name
               }))}
               optionKey={"localizedCode"}
               select={onSelectSendBackReason}
+            />
+          </React.Fragment>
+        ) : null}
+
+        {selectedAction === "MARK_OUT_OF_SCOPE" ? (
+          <React.Fragment>
+            <CardLabel>{t("CS_MARK_OUT_OF_SCOPE_COMPLAINT")}*</CardLabel>
+            <Dropdown
+              selected={selectedSendBackReason}
+              option={rejectSendBackOutOfScopeReasons?.Incident?.OutOfScopeReasons?.map((reason) => ({
+                ...reason,
+                localizedCode: t(reason.code), // Use localized text if available, otherwise fallback to default name
+              }))}
+              optionKey={"localizedCode"}
+              select={onSelectOutOfScopeReason}
             />
           </React.Fragment>
         ) : null}
@@ -386,8 +417,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <Dropdown selected={selectedReopenReason} option={reopenReasonMenu} select={onSelectReopenReason} />
           </React.Fragment>
         ) : null}
-        {(selectedAction !== "SENDBACK" && selectedAction !== "OUT_OF_WARRANTY") ||
-        selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ? (
+        {(selectedAction !== "SENDBACK" && selectedAction !== "MARK_OUT_OF_SCOPE" && selectedAction !== "OUT_OF_WARRANTY") ||
+        selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ||
+        selectedOutOfScopeReason?.additionalInputs?.[0].type === "textarea" ? (
           <>
             {selectedAction !== "ASSIGN" &&
             selectedAction !== "REOPEN" &&
@@ -694,6 +726,10 @@ export const ComplaintDetails = (props) => {
         setPopup(true);
         setDisplayMenu(false);
         break;
+      case "MARK_OUT_OF_SCOPE":
+        setPopup(true);
+        setDisplayMenu(false);
+        break;
       default:
         setDisplayMenu(false);
     }
@@ -706,7 +742,8 @@ export const ComplaintDetails = (props) => {
     selectedReopenReason,
     selectedRejectReason,
     selectedSendBackReason,
-    oowResponses
+    oowResponses,
+    selectedOutOfScopeReason
   ) {
     setPopup(false);
     const response = await Digit.Complaint.assign(
@@ -719,7 +756,8 @@ export const ComplaintDetails = (props) => {
       selectedReopenReason,
       selectedRejectReason,
       selectedSendBackReason,
-      oowResponses
+      oowResponses,
+      selectedOutOfScopeReason
     );
     if (response?.IncidentWrappers) {
       setAssignResponse(response);
@@ -750,6 +788,7 @@ export const ComplaintDetails = (props) => {
     const rejectReasons = Array.from(complaintDetails?.incident?.additionalDetail?.rejectReason || []).reverse();
     const sendBackReasons = Array.from(complaintDetails?.incident?.additionalDetail?.sendBackReason || []).reverse();
     const oowResponsesArray = Array.from(complaintDetails?.incident?.additionalDetail?.oowResponses || []).reverse();
+    const outOfScopeReasons = Array.from(complaintDetails?.incident?.additionalDetail?.outOfScopeReason || []).reverse();
 
     let arrNew = arr.map((abc) => {
       switch (abc.performedAction) {
@@ -761,6 +800,8 @@ export const ComplaintDetails = (props) => {
           return { ...abc, sendBackReason: sendBackReasons.shift() };
         case "OUT_OF_WARRANTY":
           return { ...abc, oowResponses: oowResponsesArray.shift() };
+        case "MARK_OUT_OF_SCOPE":
+          return { ...abc, outOfScopeReason: outOfScopeReasons.shift() };
         default:
           return abc;
       }
@@ -888,6 +929,12 @@ export const ComplaintDetails = (props) => {
                 <p style={{ overflowX: "scroll" }}>{currentOowResponses[field]}</p>
               </div>
             ))}
+          </div>
+        )}
+        {checkpoint.performedAction === "MARK_OUT_OF_SCOPE" && (
+          <div className="TLComments">
+            <h3>{t("WF_OUT_OF_SCOPE_REASON")}</h3>
+            <h1>{arrNew[index]?.outOfScopeReason}</h1>
           </div>
         )}
         {comment ? (

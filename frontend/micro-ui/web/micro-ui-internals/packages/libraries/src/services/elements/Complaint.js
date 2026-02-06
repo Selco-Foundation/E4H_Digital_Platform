@@ -69,7 +69,8 @@ export const Complaint = {
     selectedReopenReason,
     selectedRejectReason,
     selectedSendBackReason,
-    oowResponses
+    oowResponses,
+    selectedOutOfScopeReason
   ) => {
     complaintDetails.workflow.action = action;
     complaintDetails.workflow.assignes = employeeData ? [employeeData.uuid] : null;
@@ -83,6 +84,7 @@ export const Complaint = {
         },
       },
       oowResponses: oowResponses && { value: oowResponses },
+      outOfScopeReason: selectedOutOfScopeReason && { value: selectedOutOfScopeReason?.localizedCode },
     };
 
     Object.entries(reasonMap).forEach(([key, data]) => {
