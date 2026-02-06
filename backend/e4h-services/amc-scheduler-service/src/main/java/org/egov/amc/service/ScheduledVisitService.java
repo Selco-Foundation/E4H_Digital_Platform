@@ -220,19 +220,30 @@ public class ScheduledVisitService {
         // if action is SUBMIT_OTP, check if OTP verification is working fine or not
         if ("SUBMIT_OTP".equalsIgnoreCase(request.getWorkflow().getAction())) {
             // We need to validate OTP to AMC_FIELD_STAFF
-            if (request.getVisitReport() == null || request.getVisitReport().getOtpReference() == null) {
+            if (existingVisit.getVisitReport() == null) {
+                throw new CustomException("INVALID_VISIT_STATE", "Visit report not found on existing visit");
+            }
+            if (request.getVisitReport().getOtpReference() == null) {
                 throw new CustomException("INVALID_OTP_REQUEST", "Visit report with OTP reference is required for SUBMIT_OTP action");
             }
-             if (existingVisit.getVisitReport() == null) {
-                 throw new CustomException("INVALID_VISIT_STATE", "Visit report not found on existing visit");
-             }
-            Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
-            if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
-                OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
-                if (otpResponse !=null && otpResponse.getOtp()!=null){
-                    log.info("OTP {} validated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
-                    // We need to update visit report on existing visit after validation
-                    existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
+            // Check if we should bypass OTP validation and use default OTP
+            if (amcServiceConfiguration.getByPassOtpValidation()){
+                String defaultOtp = amcServiceConfiguration.getDefaultOtp();
+                if(request.getVisitReport().getOtpReference() ==null || !request.getVisitReport().getOtpReference().trim().equals(defaultOtp)){
+                    throw new CustomException("ERROR_OTP_GENERATION", "OTP validation unsuccessful");
+                }
+                log.info("OTP {} validated for default OTP", defaultOtp);
+                existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
+            }
+            else{
+                Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+                if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
+                    OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
+                    if (otpResponse !=null && otpResponse.getOtp()!=null){
+                        log.info("OTP {} validated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                        // We need to update visit report on existing visit after validation
+                        existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
+                    }
                 }
             }
         }
