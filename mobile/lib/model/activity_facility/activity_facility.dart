@@ -64,6 +64,8 @@ class ActivityFacility with ActivityFacilityMappable {
   String? fieldPlanId;
   String? facilityId;
 
+  FieldPlan? fieldPlan;
+
   String? status;
   DateTime? scheduledAt;
   DateTime? activatedAt;
@@ -76,6 +78,7 @@ class ActivityFacility with ActivityFacilityMappable {
   Facility? facility;
   String? description;
   int? rowVersion;
+  AdditionalDetails? additionalDetails;
 
   ActivityFacility({
     this.id = '',
@@ -83,6 +86,7 @@ class ActivityFacility with ActivityFacilityMappable {
     this.activityId,
     this.fieldPlanId,
     this.facilityId,
+    this.fieldPlan,
     this.status,
     this.scheduledAt,
     this.activatedAt,
@@ -93,6 +97,7 @@ class ActivityFacility with ActivityFacilityMappable {
     this.facility,
     this.description,
     this.rowVersion,
+    this.additionalDetails,
   });
 
   Map<String, dynamic> toMap() => {
@@ -101,6 +106,7 @@ class ActivityFacility with ActivityFacilityMappable {
         'activityId': activityId,
         'fieldPlanId': fieldPlanId,
         'facilityId': facilityId,
+        'fieldPlan': fieldPlan?.toMap(),
         'status': status,
         'scheduledAt': scheduledAt?.millisecondsSinceEpoch,
         'activatedAt': activatedAt?.millisecondsSinceEpoch,
@@ -111,6 +117,7 @@ class ActivityFacility with ActivityFacilityMappable {
         'facility': facility?.toMap(),
         'description': description,
         'rowVersion': rowVersion,
+        'additionalDetails': additionalDetails?.toMap(),
       };
 }
 
@@ -307,12 +314,267 @@ class Facility with FacilityMappable {
 
 @Embedded()
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
+class FieldPlan with FieldPlanMappable {
+  String? id;
+  String? tenantId;
+  String? name;
+  String? status;
+  int? healthFacilityNumber;
+
+  DateTime? startDateTime;
+  DateTime? endDateTime;
+
+  Project? project;
+
+  FieldPlan();
+
+  int? get startDate => startDateTime?.millisecondsSinceEpoch;
+  int? get endDate => endDateTime?.millisecondsSinceEpoch;
+
+  factory FieldPlan.fromMap(Map<String, dynamic> m) {
+    final fp = FieldPlan();
+    fp.id = m['id']?.toString();
+    fp.tenantId = m['tenantId']?.toString();
+    fp.name = m['name']?.toString();
+    fp.status = m['status']?.toString();
+    fp.healthFacilityNumber = m['healthFacilityNumber'] is int
+        ? (m['healthFacilityNumber'] as int)
+        : int.tryParse(m['healthFacilityNumber']?.toString() ?? '');
+    fp.startDateTime = m['startDate'] is int
+        ? DateTime.fromMillisecondsSinceEpoch(m['startDate'] as int)
+        : null;
+    fp.endDateTime = m['endDate'] is int
+        ? DateTime.fromMillisecondsSinceEpoch(m['endDate'] as int)
+        : null;
+
+    final pj = m['project'];
+    if (pj is Map) {
+      fp.project = Project.fromMap(Map<String, dynamic>.from(pj));
+    }
+    return fp;
+  }
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'tenantId': tenantId,
+        'name': name,
+        'status': status,
+        'healthFacilityNumber': healthFacilityNumber,
+        'startDate': startDate,
+        'endDate': endDate,
+        'project': project?.toMap(),
+      };
+}
+
+@Embedded()
+@MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
+class Project with ProjectMappable {
+  String? id;
+  String? tenantId;
+  String? projectNumber;
+  String? name;
+  String? projectType;
+  String? projectSubType;
+  String? referenceID;
+
+  DateTime? startDateTime;
+  DateTime? endDateTime;
+
+  ProjectAdditionalDetails? additionalDetails;
+
+  Project();
+
+  int? get startDate => startDateTime?.millisecondsSinceEpoch;
+  int? get endDate => endDateTime?.millisecondsSinceEpoch;
+
+  factory Project.fromMap(Map<String, dynamic> m) {
+    final p = Project();
+    p.id = m['id']?.toString();
+    p.tenantId = m['tenantId']?.toString();
+    p.projectNumber = m['projectNumber']?.toString();
+    p.name = m['name']?.toString();
+    p.projectType = m['projectType']?.toString();
+    p.projectSubType = m['projectSubType']?.toString();
+    p.referenceID = m['referenceID']?.toString();
+    p.startDateTime = m['startDate'] is int
+        ? DateTime.fromMillisecondsSinceEpoch(m['startDate'] as int)
+        : null;
+    p.endDateTime = m['endDate'] is int
+        ? DateTime.fromMillisecondsSinceEpoch(m['endDate'] as int)
+        : null;
+
+    final ad = m['additionalDetails'];
+    if (ad is Map) {
+      p.additionalDetails =
+          ProjectAdditionalDetails.fromMap(Map<String, dynamic>.from(ad));
+    }
+    return p;
+  }
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'tenantId': tenantId,
+        'projectNumber': projectNumber,
+        'name': name,
+        'projectType': projectType,
+        'projectSubType': projectSubType,
+        'referenceID': referenceID,
+        'startDate': startDate,
+        'endDate': endDate,
+        'additionalDetails': additionalDetails?.toMap(),
+      };
+}
+
+@Embedded()
+@MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
+class ProjectAdditionalDetails with ProjectAdditionalDetailsMappable {
+  String? status;
+  Facility? facility;
+  GeographyDetails? geographyDetails;
+
+  ProjectAdditionalDetails();
+
+  factory ProjectAdditionalDetails.fromMap(Map<String, dynamic> m) {
+    final a = ProjectAdditionalDetails();
+    a.status = m['status']?.toString();
+
+    final f = m['facility'];
+    if (f is Map) {
+      a.facility = Facility.fromMap(Map<String, dynamic>.from(f));
+    }
+
+    final g = m['geographyDetails'];
+    if (g is Map) {
+      a.geographyDetails =
+          GeographyDetails.fromMap(Map<String, dynamic>.from(g));
+    }
+
+    return a;
+  }
+
+  Map<String, dynamic> toMap() => {
+        'status': status,
+        'facility': facility?.toMap(),
+        'geographyDetails': geographyDetails?.toMap(),
+      };
+}
+
+@Embedded()
+@MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
+class GeographyDetails with GeographyDetailsMappable {
+  StateRef? state;
+  List<BlockRef>? blocks;
+
+  GeographyDetails();
+
+  factory GeographyDetails.fromMap(Map<String, dynamic> m) {
+    final g = GeographyDetails();
+
+    final s = m['state'];
+    if (s is Map) {
+      g.state = StateRef.fromMap(Map<String, dynamic>.from(s));
+    }
+
+    final bl = m['blocks'];
+    if (bl is List) {
+      g.blocks = bl
+          .whereType<Map>()
+          .map((e) => BlockRef.fromMap(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+
+    return g;
+  }
+
+  Map<String, dynamic> toMap() => {
+        'state': state?.toMap(),
+        'blocks': blocks?.map((e) => e.toMap()).toList(),
+      };
+}
+
+@Embedded()
+@MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
+class StateRef with StateRefMappable {
+  String? code;
+  String? name;
+
+  StateRef();
+
+  factory StateRef.fromMap(Map<String, dynamic> m) {
+    final s = StateRef();
+    s.code = m['code']?.toString();
+    s.name = m['name']?.toString();
+    return s;
+  }
+
+  Map<String, dynamic> toMap() => {
+        'code': code,
+        'name': name,
+      };
+}
+
+@Embedded()
+@MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
+class BlockRef with BlockRefMappable {
+  String? code;
+  String? name;
+  String? stateCode;
+  String? districtCode;
+
+  BlockRef();
+
+  factory BlockRef.fromMap(Map<String, dynamic> m) {
+    final b = BlockRef();
+    b.code = m['code']?.toString();
+    b.name = m['name']?.toString();
+    b.stateCode = m['stateCode']?.toString();
+    b.districtCode = m['districtCode']?.toString();
+    return b;
+  }
+
+  Map<String, dynamic> toMap() => {
+        'code': code,
+        'name': name,
+        'stateCode': stateCode,
+        'districtCode': districtCode,
+      };
+}
+
+@Embedded()
+@MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
+class AssetTypeAdditionalDetails with AssetTypeAdditionalDetailsMappable {
+  String? brandName;
+  String? brandCode;
+  String? capacity;
+
+  AssetTypeAdditionalDetails();
+
+  factory AssetTypeAdditionalDetails.fromMap(Map<String, dynamic> m) {
+    final a = AssetTypeAdditionalDetails();
+    a.brandName = m['brandName']?.toString();
+    a.brandCode = m['brandCode']?.toString();
+    a.capacity = m['capacity']?.toString();
+    return a;
+  }
+
+  Map<String, dynamic> toMap() => {
+        'brandName': brandName,
+        'brandCode': brandCode,
+        'capacity': capacity,
+      };
+}
+
+@Embedded()
+@MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class AdditionalDetails with AdditionalDetailsMappable {
   String? status;
 
   Facility? facility;
 
   String? systemCode;
+  AssetTypeAdditionalDetails? battery;
+  AssetTypeAdditionalDetails? inverter;
+  AssetTypeAdditionalDetails? panel;
 
   AdditionalDetails();
 
@@ -323,6 +585,24 @@ class AdditionalDetails with AdditionalDetailsMappable {
         ? Facility.fromMap(Map<String, dynamic>.from(m['facility']))
         : null;
     a.systemCode = m['systemCode']?.toString();
+    final b = m['battery'];
+    if (b is Map) {
+      a.battery =
+          AssetTypeAdditionalDetails.fromMap(Map<String, dynamic>.from(b));
+    }
+
+    final i = m['inverter'];
+    if (i is Map) {
+      a.inverter =
+          AssetTypeAdditionalDetails.fromMap(Map<String, dynamic>.from(i));
+    }
+
+    final p = m['panel'];
+    if (p is Map) {
+      a.panel =
+          AssetTypeAdditionalDetails.fromMap(Map<String, dynamic>.from(p));
+    }
+
     return a;
   }
 
@@ -330,5 +610,8 @@ class AdditionalDetails with AdditionalDetailsMappable {
         'status': status,
         'facility': facility?.toMap(),
         'systemCode': systemCode,
+        'battery': battery?.toMap(),
+        'inverter': inverter?.toMap(),
+        'panel': panel?.toMap(),
       };
 }

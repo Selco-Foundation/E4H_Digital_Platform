@@ -13,6 +13,7 @@ _$LoginModelImpl _$$LoginModelImplFromJson(Map<String, dynamic> json) =>
       tenantId: json['tenantId'] as String?,
       userType: json['userType'] as String?,
       grant_type: json['grant_type'] as String?,
+      scope: json['scope'] as String?,
     );
 
 Map<String, dynamic> _$$LoginModelImplToJson(_$LoginModelImpl instance) =>
@@ -22,4 +23,5 @@ Map<String, dynamic> _$$LoginModelImplToJson(_$LoginModelImpl instance) =>
       'tenantId': instance.tenantId,
       'userType': instance.userType,
       'grant_type': instance.grant_type,
+      'scope': instance.scope,
     };

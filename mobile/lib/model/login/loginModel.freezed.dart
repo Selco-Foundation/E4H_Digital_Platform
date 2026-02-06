@@ -25,6 +25,7 @@ mixin _$LoginModel {
   String? get tenantId => throw _privateConstructorUsedError;
   String? get userType => throw _privateConstructorUsedError;
   String? get grant_type => throw _privateConstructorUsedError;
+  String? get scope => throw _privateConstructorUsedError;
 
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
   @JsonKey(ignore: true)
@@ -43,7 +44,8 @@ abstract class $LoginModelCopyWith<$Res> {
       String? password,
       String? tenantId,
       String? userType,
-      String? grant_type});
+      String? grant_type,
+      String? scope});
 }
 
 /// @nodoc
@@ -64,6 +66,7 @@ class _$LoginModelCopyWithImpl<$Res, $Val extends LoginModel>
     Object? tenantId = freezed,
     Object? userType = freezed,
     Object? grant_type = freezed,
+    Object? scope = freezed,
   }) {
     return _then(_value.copyWith(
       username: freezed == username
@@ -86,6 +89,10 @@ class _$LoginModelCopyWithImpl<$Res, $Val extends LoginModel>
           ? _value.grant_type
           : grant_type // ignore: cast_nullable_to_non_nullable
               as String?,
+      scope: freezed == scope
+          ? _value.scope
+          : scope // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -103,7 +110,8 @@ abstract class _$$LoginModelImplCopyWith<$Res>
       String? password,
       String? tenantId,
       String? userType,
-      String? grant_type});
+      String? grant_type,
+      String? scope});
 }
 
 /// @nodoc
@@ -122,6 +130,7 @@ class __$$LoginModelImplCopyWithImpl<$Res>
     Object? tenantId = freezed,
     Object? userType = freezed,
     Object? grant_type = freezed,
+    Object? scope = freezed,
   }) {
     return _then(_$LoginModelImpl(
       username: freezed == username
@@ -144,6 +153,10 @@ class __$$LoginModelImplCopyWithImpl<$Res>
           ? _value.grant_type
           : grant_type // ignore: cast_nullable_to_non_nullable
               as String?,
+      scope: freezed == scope
+          ? _value.scope
+          : scope // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -156,7 +169,8 @@ class _$LoginModelImpl implements _LoginModel {
       required this.password,
       required this.tenantId,
       required this.userType,
-      required this.grant_type});
+      required this.grant_type,
+      this.scope});
 
   factory _$LoginModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$LoginModelImplFromJson(json);
@@ -171,10 +185,12 @@ class _$LoginModelImpl implements _LoginModel {
   final String? userType;
   @override
   final String? grant_type;
+  @override
+  final String? scope;
 
   @override
   String toString() {
-    return 'LoginModel(username: $username, password: $password, tenantId: $tenantId, userType: $userType, grant_type: $grant_type)';
+    return 'LoginModel(username: $username, password: $password, tenantId: $tenantId, userType: $userType, grant_type: $grant_type, scope: $scope)';
   }
 
   @override
@@ -191,13 +207,14 @@ class _$LoginModelImpl implements _LoginModel {
             (identical(other.userType, userType) ||
                 other.userType == userType) &&
             (identical(other.grant_type, grant_type) ||
-                other.grant_type == grant_type));
+                other.grant_type == grant_type) &&
+            (identical(other.scope, scope) || other.scope == scope));
   }
 
   @JsonKey(ignore: true)
   @override
   int get hashCode => Object.hash(
-      runtimeType, username, password, tenantId, userType, grant_type);
+      runtimeType, username, password, tenantId, userType, grant_type, scope);
 
   @JsonKey(ignore: true)
   @override
@@ -219,7 +236,8 @@ abstract class _LoginModel implements LoginModel {
       required final String? password,
       required final String? tenantId,
       required final String? userType,
-      required final String? grant_type}) = _$LoginModelImpl;
+      required final String? grant_type,
+      final String? scope}) = _$LoginModelImpl;
 
   factory _LoginModel.fromJson(Map<String, dynamic> json) =
       _$LoginModelImpl.fromJson;
@@ -234,6 +252,8 @@ abstract class _LoginModel implements LoginModel {
   String? get userType;
   @override
   String? get grant_type;
+  @override
+  String? get scope;
   @override
   @JsonKey(ignore: true)
   _$$LoginModelImplCopyWith<_$LoginModelImpl> get copyWith =>

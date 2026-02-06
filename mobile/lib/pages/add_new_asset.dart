@@ -122,8 +122,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
       context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
           selected: (proj) {
-        _currentActivityFacilityId = proj.activityFacility.id;
-        activityFacilityWorkflow = proj;
+        setState(() {
+          _currentActivityFacilityId = proj.activityFacility.id;
+          activityFacilityWorkflow = proj;
+          _applyPrefilledCapacityToAllAssets();
+        });
+
         context.read<CacheAssetCountBloc>().add(CacheAssetCountEvent.get(
             proj.activityFacility.id, currentAssetType));
         context.read<CacheAddNewAssetBloc>().add(
@@ -278,6 +282,56 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     setState(() => _assets[index].serialNumber = serial);
   }
 
+  String _prefilledCapacityFor(String assetType) {
+    final wf = activityFacilityWorkflow ??
+        context.read<SelectedActivityFacilityBloc>().state.maybeWhen(
+              selected: (proj) => proj,
+              orElse: () => null,
+            );
+
+    final ad = wf?.activityFacility.additionalDetails;
+    if (ad == null) return '';
+
+    switch (assetType.toLowerCase()) {
+      case 'battery':
+        return (ad.battery?.capacity ?? '').toString();
+      case 'inverter':
+        return (ad.inverter?.capacity ?? '').toString();
+      case 'panel':
+        return (ad.panel?.capacity ?? '').toString();
+      default:
+        return '';
+    }
+  }
+
+  void _applyPrefilledCapacityToAsset(AssetModel asset) {
+    final cap = _prefilledCapacityFor(currentAssetType);
+    if (cap.isEmpty) return;
+
+    asset.capacity = cap;
+
+    switch (currentAssetType.toLowerCase()) {
+      case 'battery':
+        asset.batteryCapacity = cap;
+        break;
+      case 'panel':
+        asset.panelCapacity = cap;
+        break;
+      case 'inverter':
+        asset.inverterCapacity = cap;
+        break;
+    }
+  }
+
+  void _applyPrefilledCapacityToAllAssets() {
+    final cap = _prefilledCapacityFor(currentAssetType);
+    if (cap.isEmpty) return;
+
+    for (final a in _assets) {
+      _applyPrefilledCapacityToAsset(a);
+    }
+  }
+
   bool _isAssetComplete(AssetModel a, String assetType) {
     if (a.serialNumber.isEmpty || a.photoPath == null) return false;
 
@@ -320,7 +374,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 setState(() {
                   _assets.clear();
                   for (final entry in entries) {
-                    _assets.add(AssetModel(
+                    final assetModel = AssetModel(
                       assetId: entry.assetId,
                       documentId: entry.documentId,
                       serialNumber: entry.serialNumber,
@@ -339,7 +393,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       inverterCapacityUnit:
                           entry.inverterCapacityUnit ?? assetCapacityUom,
                       currentUnit: entry.currentUnit,
-                    ));
+                    );
+                    _applyPrefilledCapacityToAsset(assetModel);
+                    _assets.add(assetModel);
                   }
                 });
 
@@ -690,21 +746,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 child: LabeledField(
                   label: 'Capacity',
                   capitalizedFirstLetter: false,
-                  child: DigitDropdown(
-                    sentenceCaseEnabled: false,
-                    items: assetCapacity
-                        .map((type) => DropdownItem(name: type, code: type))
-                        .toList(),
-                    selectedOption: DropdownItem(
-                      name: asset.capacity ?? '',
-                      code: asset.capacity ?? '',
+                  child: DigitTextFormInput(
+                    key: ValueKey(
+                        'inverter-cap-${_prefilledCapacityFor('inverter')}'),
+                    controller: TextEditingController(
+                      text: _prefilledCapacityFor('inverter'),
                     ),
-                    onSelect: (DropdownItem selected) {
-                      setState(() {
-                        asset.capacity = selected.code;
-                        asset.inverterCapacity = selected.code;
-                      });
-                    },
+                    isDisabled: true,
+                    readOnly: true,
+                    keyboardType: TextInputType.text,
                   ),
                 ),
               ),
@@ -812,22 +862,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   child: LabeledField(
                     label: 'Current',
                     capitalizedFirstLetter: false,
-                    child: DigitDropdown(
-                      sentenceCaseEnabled: false,
-                      items: assetCapacity
-                          .map((type) => DropdownItem(name: type, code: type))
-                          .toList(),
-                      selectedOption: DropdownItem(
-                        name: firstAsset.batteryCapacity ?? '',
-                        code: firstAsset.batteryCapacity ?? '',
+                    child: DigitTextFormInput(
+                      key: ValueKey(
+                          'battery-cap-${_prefilledCapacityFor('battery')}'),
+                      controller: TextEditingController(
+                        text: _prefilledCapacityFor('battery'),
                       ),
-                      onSelect: (DropdownItem sel) {
-                        setState(() {
-                          for (var asset in assets) {
-                            asset.batteryCapacity = sel.code;
-                          }
-                        });
-                      },
+                      isDisabled: true,
+                      readOnly: true,
+                      keyboardType: TextInputType.text,
                     ),
                   ),
                 ),
@@ -856,8 +899,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
   Widget _panelCapacity(ThemeData theme, DigitTextTheme textTheme,
       List<AssetModel> assets, String heading) {
-    final firstAsset =
-        assets.isNotEmpty ? assets.first : AssetModel(serialNumber: '');
+    // final firstAsset =
+    //     assets.isNotEmpty ? assets.first : AssetModel(serialNumber: '');
 
     return Column(
       children: [
@@ -875,22 +918,16 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   child: LabeledField(
                     label: 'Voltage',
                     capitalizedFirstLetter: false,
-                    child: DigitDropdown(
-                        sentenceCaseEnabled: false,
-                        items: assetCapacity
-                            .map((type) => DropdownItem(name: type, code: type))
-                            .toList(),
-                        selectedOption: DropdownItem(
-                          name: firstAsset.panelCapacity ?? '',
-                          code: firstAsset.panelCapacity ?? '',
-                        ),
-                        onSelect: (DropdownItem sel) {
-                          setState(() {
-                            for (var asset in assets) {
-                              asset.panelCapacity = sel.code;
-                            }
-                          });
-                        }),
+                    child: DigitTextFormInput(
+                      key: ValueKey(
+                          'panel-cap-${_prefilledCapacityFor('panel')}'),
+                      controller: TextEditingController(
+                        text: _prefilledCapacityFor('panel'),
+                      ),
+                      isDisabled: true,
+                      readOnly: true,
+                      keyboardType: TextInputType.text,
+                    ),
                   ),
                 ),
                 const SizedBox(width: spacer6),

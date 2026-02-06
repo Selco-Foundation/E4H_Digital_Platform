@@ -70,6 +70,22 @@ class ActivityFacilityConverter
         );
       } catch (_) {}
     }
+    if (m['additionalDetails'] is Map) {
+      try {
+        model.additionalDetails = AdditionalDetails.fromMap(
+          Map<String, dynamic>.from(m['additionalDetails'] as Map),
+        );
+      } catch (_) {}
+    }
+    // ✅ FieldPlan + Project (for AMC PDF / submission context)
+
+    if (m['fieldPlan'] is Map) {
+      try {
+        model.fieldPlan = FieldPlan.fromMap(
+          Map<String, dynamic>.from(m['fieldPlan'] as Map),
+        );
+      } catch (_) {}
+    }
 
     return model;
   }

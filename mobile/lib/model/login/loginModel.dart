@@ -1,7 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'loginModel.freezed.dart';
-
 part 'loginModel.g.dart';
 
 @freezed
@@ -12,6 +11,7 @@ class LoginModel with _$LoginModel {
     required String? tenantId,
     required String? userType,
     required String? grant_type,
+    String? scope,
   }) = _LoginModel;
 
   factory LoginModel.fromJson(Map<String, Object?> json) =>
