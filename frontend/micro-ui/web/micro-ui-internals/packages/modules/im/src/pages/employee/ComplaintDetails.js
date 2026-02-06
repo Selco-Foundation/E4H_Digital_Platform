@@ -246,6 +246,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               ? t("CS_COMMON_SENDbACK")
               : selectedAction === "OUT_OF_WARRANTY"
               ? t("CS_COMMON_OUT_OF_WARRANTY")
+              : selectedAction === "APPROVE"
+              ? t("CS_COMMON_APPROVE")
+              : selectedAction === "REVISE"
+              ? t("CS_COMMON_REVISE")
               : t("CS_COMMON_SPARE_PART_NEEDED")
           }
         />
@@ -268,6 +272,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           ? t("CS_COMMON_SENDbACK")
           : selectedAction === "OUT_OF_WARRANTY"
           ? t("CS_COMMON_OUT_OF_WARRANTY")
+          : selectedAction === "APPROVE"
+          ? t("CS_COMMON_APPROVE")
+          : selectedAction === "REVISE"
+          ? t("CS_COMMON_REVISE")
           : t("CS_COMMON_SPARE_PART_NEEDED")
       }
       actionSaveOnSubmit={() => {
@@ -277,7 +285,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             ? selectedSendBackReason?.additionalInputs?.[0].type === "textarea"
             : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
 
-        const isCommentsMandatory = (isTextareaAction || selectedAction === "RESOLVE" || selectedAction === "SPARE_PART_NEEDED") && !comments.trim();
+        const isCommentsMandatory =
+          (isTextareaAction || selectedAction === "RESOLVE" || selectedAction === "SPARE_PART_NEEDED" || selectedAction === "REVISE") &&
+          !comments.trim();
 
         const oowMandateCondition = selectedAction === "OUT_OF_WARRANTY" && !(oowIssue && oowRootCause && oowRecommendedSolution && oowTimeToResolve);
 
@@ -293,6 +303,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             condition: (selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY") && uploadedFile.length === 0,
             message: "CS_MANDATORY_FILE_UPLOAD",
           },
+          { condition: selectedAction === "REVISE" && comments?.length < 50, message: "CS_REVISE_ACTION_COMMENT_LENGTH" },
         ];
 
         const error = validations.find(({ condition }) => condition);
@@ -380,6 +391,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           <>
             {selectedAction !== "ASSIGN" &&
             selectedAction !== "REOPEN" &&
+            selectedAction !== "APPROVE" &&
             !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
@@ -657,6 +669,7 @@ export const ComplaintDetails = (props) => {
       case "REOPEN":
         setPopup(true);
         setDisplayMenu(false);
+        break;
       case "CLOSE":
         setPopup(true);
         setDisplayMenu(false);
@@ -670,6 +683,14 @@ export const ComplaintDetails = (props) => {
         setDisplayMenu(false);
         break;
       case "SPARE_PART_NEEDED":
+        setPopup(true);
+        setDisplayMenu(false);
+        break;
+      case "APPROVE":
+        setPopup(true);
+        setDisplayMenu(false);
+        break;
+      case "REVISE":
         setPopup(true);
         setDisplayMenu(false);
         break;
