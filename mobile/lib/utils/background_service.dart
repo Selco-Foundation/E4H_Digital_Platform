@@ -947,6 +947,7 @@ Future<void> _performSubmissionForActivityFacility({
           tenantId: tenantId,
           facilityId: facilityId,
           assignUserUuid: assignUserUuid,
+          userType: userType,
         );
       } catch (_) {
         throw Exception("BOM submission error");

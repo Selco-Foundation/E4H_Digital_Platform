@@ -26,7 +26,7 @@ class BomRepository {
   Future<Map<String, dynamic>> enrichWithActivityFacilityContext({
     required Isar isar,
     required String activityFacilityId,
-    required Map<String, dynamic> amcData,
+    required Map<String, dynamic> bomData,
   }) async {
     try {
       final row = await isar.cacheActivityFacilityWorkflows
@@ -34,7 +34,7 @@ class BomRepository {
           .activityFacilityIdEqualTo(activityFacilityId)
           .findFirst();
 
-      if (row == null) return amcData;
+      if (row == null) return bomData;
 
       final af = row.activityFacility;
 
@@ -49,7 +49,7 @@ class BomRepository {
       final projectBlock = _resolveProjectBlockOrStateName(
           af.facility?.boundaryCode?.toString(), false);
 
-      final enriched = Map<String, dynamic>.from(amcData);
+      final enriched = Map<String, dynamic>.from(bomData);
 
       if (facilityName != null && facilityName.trim().isNotEmpty) {
         enriched['health_facility_name'] = facilityName.trim();
@@ -72,7 +72,7 @@ class BomRepository {
 
       return enriched;
     } catch (_) {
-      return amcData;
+      return bomData;
     }
   }
 
@@ -267,12 +267,84 @@ class BomRepository {
     });
   }
 
+  // Future<void> submitMergedForProject({
+  //   required Isar isar,
+  //   required String activityFacilityId,
+  //   required String tenantId,
+  //   required String facilityId,
+  //   required String assignUserUuid,
+  //   getSolutionName,
+  // }) async {
+  //   await enrichProjectDocs(
+  //     isar: isar,
+  //     activityFacilityId: activityFacilityId,
+  //     tenantId: tenantId,
+  //     facilityId: facilityId,
+  //     assignUserUuid: assignUserUuid,
+  //   );
+  //
+  //   final dirty = (await getAllForProject(isar, activityFacilityId))
+  //       .where((d) => d.isDirty)
+  //       .toList();
+  //
+  //   if (dirty.isEmpty) return;
+  //   final mergedKV = <String, dynamic>{};
+  //   for (final d in dirty) {
+  //     final kv = extractKVFromRawDoc(d.dataMap);
+  //     mergedKV.addAll(kv);
+  //   }
+  //
+  //   final firstId = dirty
+  //       .firstWhere(
+  //         (d) => (d.serverBomId != null && d.serverBomId!.isNotEmpty),
+  //         orElse: () => CacheBomDoc()..serverBomId = null,
+  //       )
+  //       .serverBomId;
+  //   final isUpdate = firstId != null && firstId.isNotEmpty;
+  //   final solutionName = await ActivityFacilityRepository(isar)
+  //       .getSolutionDesignTypeFromCache(isar, activityFacilityId);
+  //   final apiName = (solutionName != null && solutionName.trim().isNotEmpty)
+  //       ? solutionName.trim()
+  //       : 'BOM.SolarSystem';
+  //   final payload = {
+  //     "bom": [
+  //       {
+  //         if (isUpdate) "id": firstId,
+  //         "tenantId": tenantId,
+  //         "name": apiName,
+  //         "facilityId": facilityId,
+  //         "activityFacilityId": activityFacilityId,
+  //         "assignUser": assignUserUuid,
+  //         "data": mergedKV,
+  //         "isActive": true,
+  //       }
+  //     ],
+  //     "isCascadingProjectDateUpdate": false,
+  //     "apiOperation": isUpdate ? "UPDATE" : "CREATE",
+  //   };
+  //
+  //   final path =
+  //       isUpdate ? 'activity/v1/bom/_update' : 'activity/v1/bom/_create';
+  //   final response = await _dio.post(path, data: payload);
+  //
+  //   AppLogger.instance.info("bom create/update ${response.data}");
+  //
+  //   await isar.writeTxn(() async {
+  //     for (final d in dirty) {
+  //       if (isUpdate) d.serverBomId = firstId;
+  //       d.isDirty = false;
+  //       await isar.cacheBomDocs.put(d);
+  //     }
+  //   });
+  // }
+
   Future<void> submitMergedForProject({
     required Isar isar,
     required String activityFacilityId,
     required String tenantId,
     required String facilityId,
     required String assignUserUuid,
+    required String userType,
     getSolutionName,
   }) async {
     await enrichProjectDocs(
@@ -283,33 +355,54 @@ class BomRepository {
       assignUserUuid: assignUserUuid,
     );
 
-    final dirty = (await getAllForProject(isar, activityFacilityId))
-        .where((d) => d.isDirty)
-        .toList();
-
+    // Only submit when something changed...
+    final allDocs = await getAllForProject(isar, activityFacilityId);
+    final dirty = allDocs.where((d) => d.isDirty).toList();
+    print("dirty.isEmpty ${dirty.isEmpty}");
     if (dirty.isEmpty) return;
-    final mergedKV = <String, dynamic>{};
-    for (final d in dirty) {
-      final kv = extractKVFromRawDoc(d.dataMap);
-      mergedKV.addAll(kv);
+
+    print("was dirty here");
+
+    // ...but upload the SAME merged KV that the PDF generator uses.
+    // (cacheActivityFacilityBomValues is the authoritative merged map across all BOM forms.)
+
+    var mergedKV = await getProjectBomKV(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
+
+    if (mergedKV == null) {
+      // Fallback: rebuild from all docs (not only dirty docs) so we never lose sections.
+      final fallback = <String, dynamic>{};
+      for (final d in allDocs) {
+        final kv = extractKVFromRawDoc(d.dataMap);
+        fallback.addAll(kv);
+      }
+      mergedKV = fallback;
     }
 
-    final firstId = dirty
+    // IMPORTANT: use ID from ANY doc (dirty or not), otherwise we keep "CREATE"-ing forever.
+    final existingId = allDocs
         .firstWhere(
-          (d) => (d.serverBomId != null && d.serverBomId!.isNotEmpty),
+          (d) => (d.serverBomId != null && d.serverBomId!.trim().isNotEmpty),
           orElse: () => CacheBomDoc()..serverBomId = null,
         )
         .serverBomId;
-    final isUpdate = firstId != null && firstId.isNotEmpty;
+
+    final isUpdate = existingId != null && existingId.trim().isNotEmpty;
+
     final solutionName = await ActivityFacilityRepository(isar)
         .getSolutionDesignTypeFromCache(isar, activityFacilityId);
+
     final apiName = (solutionName != null && solutionName.trim().isNotEmpty)
         ? solutionName.trim()
         : 'BOM.SolarSystem';
+
     final payload = {
       "bom": [
         {
-          if (isUpdate) "id": firstId,
+          if (isUpdate) "id": existingId,
           "tenantId": tenantId,
           "name": apiName,
           "facilityId": facilityId,
@@ -325,17 +418,60 @@ class BomRepository {
 
     final path =
         isUpdate ? 'activity/v1/bom/_update' : 'activity/v1/bom/_create';
+
     final response = await _dio.post(path, data: payload);
 
     AppLogger.instance.info("bom create/update ${response.data}");
 
+    // Persist server BOM id on CREATE (and keep it for future UPDATE calls).
+    final returnedId = _extractBomId(response.data);
+    final finalId = isUpdate ? (existingId ?? '') : ((returnedId ?? '').trim());
+
     await isar.writeTxn(() async {
-      for (final d in dirty) {
-        if (isUpdate) d.serverBomId = firstId;
-        d.isDirty = false;
+      for (final d in allDocs) {
+        if (finalId.isNotEmpty) {
+          d.serverBomId = finalId;
+        }
+        if (d.isDirty) d.isDirty = false;
         await isar.cacheBomDocs.put(d);
       }
     });
+  }
+
+  String? _extractBomId(dynamic data) {
+    if (data is Map) {
+      final bom = data["bom"] ?? data["BOM"] ?? data["Bom"];
+      if (bom is List && bom.isNotEmpty) {
+        final first = bom.first;
+        if (first is Map) {
+          final id = first["id"] ?? first["Id"] ?? first["ID"];
+          if (id is String && id.trim().isNotEmpty) return id.trim();
+        }
+      }
+
+      final direct = data["id"] ?? data["Id"] ?? data["ID"];
+      if (direct is String && direct.trim().isNotEmpty) return direct.trim();
+
+      for (final v in data.values) {
+        final got = _extractBomId(v);
+        if (got != null && got.trim().isNotEmpty) return got.trim();
+      }
+      return null;
+    }
+
+    if (data is List && data.isNotEmpty) {
+      return _extractBomId(data.first);
+    }
+
+    if (data is String && data.trim().isNotEmpty) {
+      try {
+        return _extractBomId(jsonDecode(data));
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return null;
   }
 
   Future<Map<String, dynamic>> searchBom({
@@ -433,7 +569,7 @@ class BomRepository {
       final enriched = await enrichWithActivityFacilityContext(
         isar: isar,
         activityFacilityId: activityFacilityId,
-        amcData: bomData,
+        bomData: bomData,
       );
 
       final tenantId = env.envConfig.variables.tenantId;
