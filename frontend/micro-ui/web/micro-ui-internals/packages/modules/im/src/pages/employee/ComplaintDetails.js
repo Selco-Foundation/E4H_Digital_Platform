@@ -123,6 +123,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const [oowRecommendedSolution, setOowRecommendedSolution] = useState(null);
   const [oowTotalCostOfSolution, setOowTotalCostOfSolution] = useState(null);
   const [oowTimeToResolve, setOowTimeToResolve] = useState(null);
+  const processInstances = workflowDetails?.data?.processInstances || [];
+  const oowActedVendor = processInstances.find((processInstance) => processInstance.action === "OUT_OF_WARRANTY")?.assigner;
 
   useEffect(() => {
     if (selectedAction === "REJECT") {
@@ -317,11 +319,12 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         const validations = [
           { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_DECLINE_REASON" },
           { condition: selectedAction === "SENDBACK" && !selectedSendBackReason, message: "CS_MANDATORY_SENDBACK_REASON" },
+          { condition: selectedAction === "MARK_OUT_OF_SCOPE" && !selectedOutOfScopeReason, message: "CS_MANDATORY_OUT_OF_SCOPE_REASON" },
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
           { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
           { condition: oowMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
-          { condition: selectedAction === "OUT_OF_WARRANTY" && !oowTotalCostOfSolution, message: "CS_SOLUTION_COSE_MANDATORY" },
+          { condition: selectedAction === "OUT_OF_WARRANTY" && !oowTotalCostOfSolution, message: "CS_SOLUTION_COST_MANDATORY" },
           {
             condition:
               (selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY" || selectedAction === "STATUS_UPDATE") &&
@@ -337,16 +340,16 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           return;
         }
 
-        const oowResponses = {
+        const oowResponses = selectedAction === "OUT_OF_WARRANTY" ? {
           oowIssue,
           oowRootCause,
           oowRecommendedSolution,
           oowTimeToResolve,
           oowTotalCostOfSolution,
-        };
+        } : null;
 
         onAssign(
-          selectedEmployee,
+          selectedAction === "REVISE" ? oowActedVendor : selectedEmployee,
           comments,
           uploadedFile,
           selectedReopenReason,
@@ -741,6 +744,7 @@ export const ComplaintDetails = (props) => {
         setDisplayMenu(false);
         break;
       case "STATUS_UPDATE":
+      case "SUBMIT":
         setPopup(true);
         setDisplayMenu(false);
         break;
