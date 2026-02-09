@@ -64,6 +64,12 @@ public class WorkflowConfig {
     @Value("${persister.update.processinstance.wf.topic}")
     private String updateProcessInstanceTopic;
 
+    @Value("${persister.add.assignee.wf.topic}")
+    private String addWfAssigneeTopic;
+
+    /** Topic for updating Kibana index (im-services) with only currentProcessInstance after migration. */
+    @Value("${egov.im.indexer.update.processinstance.topic:update-im-request-processinstance-indexer}")
+    private String updateImProcessInstanceIndexerTopic;
 
 
     //MDMS

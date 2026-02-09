@@ -84,11 +84,16 @@ public class WorkflowQueryBuilder {
     private static final String SQL_QUERY_MIGRATION_BUSINESS_SERVICE_V2 =
             "SELECT bs.businessservice as businessservice, bs.business as module_name, bs.tenantid as tenantid, " +
                     "bs.uuid as businessservice_uuid, bs.businessservicesla as businessservicesla, " +
-                    "st.uuid as state_uuid, st.state as state, st.tenantid as state_tenantid, " +
-                    "st.applicationstatus as applicationstatus, st.sla as sla " +
+                    "st.uuid as state_uuid, st.state as state, st.tenantid as state_tenantid, st.applicationstatus as applicationstatus, st.sla as sla, " +
+                    "st.businessserviceid as st_businessserviceid, " +
+                    "st.docuploadrequired as st_docuploadrequired, st.isstartstate as st_isstartstate, st.isterminatestate as st_isterminatestate, st.isstateupdatable as st_isstateupdatable, " +
+                    "st.createdby as st_createdby, st.createdtime as st_createdtime, st.lastmodifiedby as st_lastmodifiedby, st.lastmodifiedtime as st_lastmodifiedtime, " +
+                    "act.uuid as act_uuid, act.tenantid as act_tenantid, act.currentstate as act_currentstate, " +
+                    "act.action as act_action, act.nextstate as act_nextstate, act.roles as act_roles, act.active as act_active " +
                     "FROM eg_wf_businessService_v2 bs " +
                     "INNER JOIN eg_wf_state_v2 st ON st.businessServiceId = bs.uuid " +
-                    "WHERE businessservice IN ('Incident_Low','Incident_Medium','Incident_High') and bs.tenantid = 'in'" +
+                    "LEFT OUTER JOIN eg_wf_action_v2 act ON act.currentState = st.uuid AND act.active = TRUE " +
+                    "WHERE businessservice IN ('Incident_Low','Incident_Medium','Incident_High') and bs.tenantid = 'in' " +
                     "ORDER BY state_tenantid";
 
 
