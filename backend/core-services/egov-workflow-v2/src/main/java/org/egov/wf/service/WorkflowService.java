@@ -115,7 +115,7 @@ public class WorkflowService {
         if(CollectionUtils.isEmpty(processInstances))
             return processInstances;
 
-//        enrichmentService.enrichUsersFromSearch(requestInfo,processInstances);
+        enrichmentService.enrichUsersFromSearch(requestInfo,processInstances);
 //        List<ProcessStateAndAction> processStateAndActions = enrichmentService.enrichNextActionForSearch(requestInfo,processInstances);
 //            workflowValidator.validateSearch(requestInfo,processStateAndActions);
         enrichmentService.enrichAndUpdateSlaForSearch(processInstances);
@@ -343,11 +343,11 @@ public class WorkflowService {
 
     // Used to update process instance v3 for this ticket number #1979
     public void updateBusinessServiceV2(RequestInfo requestInfo){
-        List<ProcessInstance> processInstancesTheft = proceedUpdateProcessInstanceTheft(requestInfo);
+//        List<ProcessInstance> processInstancesTheft = proceedUpdateProcessInstanceTheft(requestInfo);
         List<ProcessInstance> processInstancesSparePart = proceedUpdateProcessInstanceSparePartNeed(requestInfo);
 
         Set<ProcessInstance> set = new LinkedHashSet<>();
-        set.addAll(processInstancesTheft);
+//        set.addAll(processInstancesTheft);
         set.addAll(processInstancesSparePart);
 
         List<ProcessInstance> mergedList = new ArrayList<>(set);
@@ -426,15 +426,16 @@ public class WorkflowService {
         /* 3) filtrage THEFT si demandé */
         if (filterByTheftSubtype && !processInstances.isEmpty()) {
 
-            List<String> businessIds =
-                    processInstances.stream()
-                            .map(ProcessInstance::getBusinessId)
-                            .filter(Objects::nonNull)
-                            .collect(Collectors.toList());
+//            List<String> businessIds =
+//                    processInstances.stream()
+//                            .map(ProcessInstance::getBusinessId)
+//                            .filter(Objects::nonNull)
+//                            .collect(Collectors.toList());
 
             Set<String> theftIncidentIdSet = new HashSet<>();
 
-            for (String businessId : businessIds) {
+            for (ProcessInstance instance : processInstances) {
+                String businessId = instance.getBusinessId();
                 if (businessId == null) continue;
 
                 Map<String, Object> imCriteria = new HashMap<>();
@@ -456,8 +457,10 @@ public class WorkflowService {
                         theftIncidentIdSet.add(wrapper.getIncident().getIncidentId());
                     }
                 });
+
             }
 
+            // Filtrer que les process instances dont leur business service subtype est THEFT
             processInstances =
                     processInstances.stream()
                             .filter(pi -> theftIncidentIdSet.contains(pi.getBusinessId()))
@@ -466,56 +469,58 @@ public class WorkflowService {
 
         /* 4) mise à jour du state + récupération des assignes si nécessaire */
         for (ProcessInstance pi : processInstances) {
+            if(pi.getBusinessId().trim().equals("NL-IN1310000406-0001")){
+                BusinessServiceStateMigration migration =
+                        stateMap.get(pi.getBusinessService() + "_" + targetState);
 
-            BusinessServiceStateMigration migration =
-                    stateMap.get(pi.getBusinessService() + "_" + targetState);
+                if (migration == null) {
+                    continue;
+                }
 
-            if (migration == null) {
-                continue;
-            }
+                /* Cas SPARE_PART_NEEDED : récupérer les assignes depuis PENDING_RESOLUTION */
+                if (copyAssignesFromPendingResolution && pi.getBusinessId() != null) {
+                    // Trouver le assign owner pour le ticket. Pour ca trouver la liste des process instance pour le businessId, ensuite recuperer le process instance qui est a PENDINGRESOLUTION, ensuite recuperer
+                    // le uuid du assignee dans la table eg_wf_assignee_v2
+                    BusinessServiceStateMigration pendingResolutionMigration =
+                            stateMap.get(pi.getBusinessService() + "_PENDINGRESOLUTION");
 
-            /* Cas SPARE_PART_NEEDED : récupérer les assignes depuis PENDING_RESOLUTION */
-            if (copyAssignesFromPendingResolution && pi.getBusinessId() != null) {
-                // Trouver le assign owner pour le ticket. Pour ca trouver la liste des process instance pour le businessId, ensuite recuperer le process instance qui est a PENDINGRESOLUTION, ensuite recuperer
-                // le uuid du assignee dans la table eg_wf_assignee_v2
-                BusinessServiceStateMigration pendingResolutionMigration =
-                        stateMap.get(pi.getBusinessService() + "_PENDINGRESOLUTION");
+                    if (pendingResolutionMigration != null) {
 
-                if (pendingResolutionMigration != null) {
+                        ProcessInstanceSearchCriteria searchByBusinessId = new ProcessInstanceSearchCriteria();
+                        searchByBusinessId.setTenantId("in");
+                        searchByBusinessId.setHistory(true);
+                        searchByBusinessId.setBusinessIds(Collections.singletonList(pi.getBusinessId()));
+                        searchByBusinessId.setStatus(
+                                Collections.singletonList(pendingResolutionMigration.getStateUuid())
+                        );
 
-                    ProcessInstanceSearchCriteria searchByBusinessId = new ProcessInstanceSearchCriteria();
-                    searchByBusinessId.setTenantId("in");
-                    searchByBusinessId.setHistory(true);
-                    searchByBusinessId.setBusinessIds(Collections.singletonList(pi.getBusinessId()));
-                    searchByBusinessId.setStatus(
-                            Collections.singletonList(pendingResolutionMigration.getStateUuid())
-                    );
+                        List<ProcessInstance> existingInstances =
+                                searchProcessInstanceMigration(requestInfo, searchByBusinessId);
 
-                    List<ProcessInstance> existingInstances =
-                            searchProcessInstanceMigration(requestInfo, searchByBusinessId);
-
-
-
-                    if (existingInstances != null && !existingInstances.isEmpty()) {
-                        Optional<ProcessInstance> mostRecent =
-                                existingInstances.stream()
-                                        .filter(process -> process.getAuditDetails() != null)
-                                        .max(Comparator.comparingLong(
-                                                process -> process.getAuditDetails().getLastModifiedTime()
-                                        ));
-                        if (mostRecent.isPresent()) {
-                            ProcessInstance latest = mostRecent.get();
-                            // use latest
-                            pi.setAssignes(latest.getAssignes());
-                            ProcessInstanceRequest processInstanceRequest = new ProcessInstanceRequest(requestInfo, Collections.singletonList(pi));
-                            producer.push(config.getAddWfAssigneeTopic(), processInstanceRequest);
+                        if (existingInstances != null && !existingInstances.isEmpty()) {
+                            Optional<ProcessInstance> mostRecent =
+                                    existingInstances.stream()
+                                            .filter(process -> process.getAuditDetails() != null)
+                                            .max(Comparator.comparingLong(
+                                                    process -> process.getAuditDetails().getLastModifiedTime()
+                                            ));
+                            if (mostRecent.isPresent()) {
+                                ProcessInstance latest = mostRecent.get();
+                                // use latest
+                                pi.setAssignes(latest.getAssignes());
+                                // Ajouter le processInstanceId de l'ancien SPARE_PART_NEEDED a eg_wf_assignee table. Comme ca apres Mise a jour status vers PENDING_RESOLUTION_SPARE_PART_NEEDED, celui ci aura un assignee
+                                ProcessInstanceRequest processInstanceRequest = new ProcessInstanceRequest(requestInfo, Collections.singletonList(pi));
+                                producer.push(config.getAddWfAssigneeTopic(), processInstanceRequest);
+                            }
                         }
                     }
                 }
-            }
 
-            pi.setState(migration.getStateObject());
-            pi.setStateSla(migration.getStateSla());
+                pi.setState(migration.getStateObject());
+                pi.setStateSla(migration.getStateSla());
+
+                return Collections.singletonList(pi);
+            }
         }
 
         return processInstances;
