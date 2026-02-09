@@ -134,10 +134,10 @@ public class WorkflowController {
 
     //  Used to update process instance v3 for this ticket number #1979
     @RequestMapping(value="v2/migration/_update", method = RequestMethod.POST)
-    public ResponseEntity<ProcessInstanceResponse> processInstanceUpdate(@RequestBody RequestInfo requestInfo) {
-        workflowService.updateBusinessServiceV2(requestInfo);
+    public ResponseEntity<ProcessInstanceResponse> processInstanceUpdate(@RequestBody RequestInfoWrapper requestInfoWrapper) {
+        workflowService.updateBusinessServiceV2(requestInfoWrapper.getRequestInfo());
         ProcessInstanceResponse response = ProcessInstanceResponse.builder().processInstances(null)
-                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(requestInfo, true))
+                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(requestInfoWrapper.getRequestInfo(), true))
                 .build();
         return new ResponseEntity<>(response,HttpStatus.OK);
     }

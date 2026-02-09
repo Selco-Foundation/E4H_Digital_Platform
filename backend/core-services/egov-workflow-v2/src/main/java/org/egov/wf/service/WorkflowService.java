@@ -343,7 +343,7 @@ public class WorkflowService {
 
     // Used to update process instance v3 for this ticket number #1979
     public void updateBusinessServiceV2(RequestInfo requestInfo){
-//        List<ProcessInstance> processInstancesTheft = proceedUpdateProcessInstanceTheft(requestInfo);
+        List<ProcessInstance> processInstancesTheft = proceedUpdateProcessInstanceTheft(requestInfo);
         List<ProcessInstance> processInstancesSparePart = proceedUpdateProcessInstanceSparePartNeed(requestInfo);
 
         Set<ProcessInstance> set = new LinkedHashSet<>();
@@ -353,7 +353,17 @@ public class WorkflowService {
         List<ProcessInstance> mergedList = new ArrayList<>(set);
 
         ProcessInstanceRequest processInstanceRequest = new ProcessInstanceRequest(requestInfo, mergedList);
-        producer.push(config.getUpdateProcessInstanceTopic(),processInstanceRequest);
+        producer.push(config.getUpdateProcessInstanceTopic(), processInstanceRequest);
+
+        // Update Kibana index (im-services) with only Data.currentProcessInstance for each migrated process instance
+        String indexerTopic = config.getUpdateImProcessInstanceIndexerTopic();
+        for (ProcessInstance pi : mergedList) {
+            if (pi.getBusinessId() == null) continue;
+            Map<String, Object> indexerPayload = new HashMap<>();
+            indexerPayload.put("incidentId", pi.getBusinessId());
+            indexerPayload.put("updatedProcessInstance", pi);
+            producer.push(indexerTopic, indexerPayload);
+        }
     }
 
     public List<ProcessInstance> proceedUpdateProcessInstanceTheft(RequestInfo requestInfo) {
@@ -375,7 +385,6 @@ public class WorkflowService {
                 true
         );
     }
-
 
     public List<ProcessInstance> updateProcessInstances(
             RequestInfo requestInfo,
@@ -423,22 +432,35 @@ public class WorkflowService {
                             .filter(Objects::nonNull)
                             .collect(Collectors.toList());
 
-            Map<String, Object> imCriteria = new HashMap<>();
-            imCriteria.put("incidentId", businessIds);
-            imCriteria.put("incidentSubType", "Theft");
+            Set<String> theftIncidentIdSet = new HashSet<>();
 
-            Object response = searchImServiceTicket(imCriteria, requestInfo);
-            IncidentResponse incidentResponse =
-                    mapper.convertValue(response, IncidentResponse.class);
+            for (String businessId : businessIds) {
+                if (businessId == null) continue;
 
-            Set<String> theftIncidentIds =
-                    incidentResponse.getIncidentWrappers().stream()
-                            .map(w -> w.getIncident().getIncidentId())
-                            .collect(Collectors.toSet());
+                Map<String, Object> imCriteria = new HashMap<>();
+                imCriteria.put("incidentId", businessId);
+                imCriteria.put("incidentSubType", "Theft");
+                imCriteria.put("tenantId", "in");
+
+                Object response = searchImServiceTicket(imCriteria, requestInfo);
+
+                if (response == null) continue;
+
+                IncidentResponse incidentResponse = mapper.convertValue(response, IncidentResponse.class);
+
+                if (incidentResponse.getIncidentWrappers() == null) continue;
+
+                incidentResponse.getIncidentWrappers().forEach(wrapper -> {
+                    if (wrapper.getIncident() != null &&
+                            wrapper.getIncident().getIncidentId() != null) {
+                        theftIncidentIdSet.add(wrapper.getIncident().getIncidentId());
+                    }
+                });
+            }
 
             processInstances =
                     processInstances.stream()
-                            .filter(pi -> theftIncidentIds.contains(pi.getBusinessId()))
+                            .filter(pi -> theftIncidentIdSet.contains(pi.getBusinessId()))
                             .collect(Collectors.toList());
         }
 
@@ -462,6 +484,8 @@ public class WorkflowService {
                 if (pendingResolutionMigration != null) {
 
                     ProcessInstanceSearchCriteria searchByBusinessId = new ProcessInstanceSearchCriteria();
+                    searchByBusinessId.setTenantId("in");
+                    searchByBusinessId.setHistory(true);
                     searchByBusinessId.setBusinessIds(Collections.singletonList(pi.getBusinessId()));
                     searchByBusinessId.setStatus(
                             Collections.singletonList(pendingResolutionMigration.getStateUuid())
@@ -470,18 +494,27 @@ public class WorkflowService {
                     List<ProcessInstance> existingInstances =
                             searchProcessInstanceMigration(requestInfo, searchByBusinessId);
 
+
+
                     if (existingInstances != null && !existingInstances.isEmpty()) {
-                        pi.setAssignes(existingInstances.get(0).getAssignes());
+                        Optional<ProcessInstance> mostRecent =
+                                existingInstances.stream()
+                                        .filter(process -> process.getAuditDetails() != null)
+                                        .max(Comparator.comparingLong(
+                                                process -> process.getAuditDetails().getLastModifiedTime()
+                                        ));
+                        if (mostRecent.isPresent()) {
+                            ProcessInstance latest = mostRecent.get();
+                            // use latest
+                            pi.setAssignes(latest.getAssignes());
+                            ProcessInstanceRequest processInstanceRequest = new ProcessInstanceRequest(requestInfo, Collections.singletonList(pi));
+                            producer.push(config.getAddWfAssigneeTopic(), processInstanceRequest);
+                        }
                     }
                 }
             }
 
-            State state = State.builder()
-                    .uuid(migration.getStateUuid())
-                    .sla(migration.getStateSla())
-                    .build();
-
-            pi.setState(state);
+            pi.setState(migration.getStateObject());
             pi.setStateSla(migration.getStateSla());
         }
 
@@ -514,18 +547,43 @@ public class WorkflowService {
 //                        .collect(Collectors.toList());
 //
 //        // Recherche des businessId( A savoir incidentId) dont leur subtype est THEFT parmi la liste des processInstances trouvees precedemment
-//        Map<String, Object> criteria = new HashMap<>();
-//        criteria.put("incidentId", businessIdList);
-//        criteria.put("incidentSubType", "Theft");
-//        Object response = searchImServiceTicket(criteria, requestInfo);
-//        IncidentResponse incidentResponse = mapper.convertValue(response, IncidentResponse.class);
-//        List<String> theftIncidentIds =
-//                incidentResponse.getIncidentWrappers().stream()
-//                        .map(wrapper -> wrapper.getIncident().getIncidentId())
-//                        .collect(Collectors.toList());
+////        Map<String, Object> criteria = new HashMap<>();
+////        criteria.put("incidentId", businessIdList);
+////        criteria.put("incidentSubType", "Theft");
+////        Object response = searchImServiceTicket(criteria, requestInfo);
+////        IncidentResponse incidentResponse = mapper.convertValue(response, IncidentResponse.class);
+////        List<String> theftIncidentIds =
+////                incidentResponse.getIncidentWrappers().stream()
+////                        .map(wrapper -> wrapper.getIncident().getIncidentId())
+////                        .collect(Collectors.toList());
+//        Set<String> theftIncidentIdSet = new HashSet<>();
+//
+//        for (String businessId : businessIdList) {
+//
+//            if (businessId == null) continue;
+//
+//            Map<String, Object> criteria = new HashMap<>();
+//            criteria.put("incidentId", businessId);
+//            criteria.put("incidentSubType", "Theft");
+//
+//            Object response = searchImServiceTicket(criteria, requestInfo);
+//
+//            if (response == null) continue;
+//
+//            IncidentResponse incidentResponse = mapper.convertValue(response, IncidentResponse.class);
+//
+//            if (incidentResponse.getIncidentWrappers() == null) continue;
+//
+//            incidentResponse.getIncidentWrappers().forEach(wrapper -> {
+//                if (wrapper.getIncident() != null &&
+//                        wrapper.getIncident().getIncidentId() != null) {
+//                    theftIncidentIdSet.add(wrapper.getIncident().getIncidentId());
+//                }
+//            });
+//        }
 //
 //        // Liste des process instance qui ont comme subtype THEFT
-//        Set<String> theftIncidentIdSet = new HashSet<>(theftIncidentIds);
+////        Set<String> theftIncidentIdSet = new HashSet<>(theftIncidentIds);
 //        List<ProcessInstance> filteredTheftProcessInstances =
 //                processInstancesPendingForAssignment.stream()
 //                        .filter(pi -> pi.getBusinessId() != null)
