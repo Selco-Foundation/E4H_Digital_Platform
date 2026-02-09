@@ -347,7 +347,7 @@ public class WorkflowService {
         List<ProcessInstance> processInstancesSparePart = proceedUpdateProcessInstanceSparePartNeed(requestInfo);
 
         Set<ProcessInstance> set = new LinkedHashSet<>();
-//        set.addAll(processInstancesTheft);
+        set.addAll(processInstancesTheft);
         set.addAll(processInstancesSparePart);
 
         List<ProcessInstance> mergedList = new ArrayList<>(set);
