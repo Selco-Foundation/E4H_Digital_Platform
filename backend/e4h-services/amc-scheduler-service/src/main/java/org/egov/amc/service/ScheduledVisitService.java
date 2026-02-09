@@ -227,7 +227,7 @@ public class ScheduledVisitService {
                 throw new CustomException("INVALID_OTP_REQUEST", "Visit report with OTP reference is required for SUBMIT_OTP action");
             }
             // Check if we should bypass OTP validation and use default OTP
-            if (amcServiceConfiguration.getByPassOtpValidation()){
+            if (amcServiceConfiguration.isByPassOtpValidation()){
                 String defaultOtp = amcServiceConfiguration.getDefaultOtp();
                 if(request.getVisitReport().getOtpReference() ==null || !request.getVisitReport().getOtpReference().trim().equals(defaultOtp)){
                     throw new CustomException("ERROR_OTP_GENERATION", "OTP validation unsuccessful");
