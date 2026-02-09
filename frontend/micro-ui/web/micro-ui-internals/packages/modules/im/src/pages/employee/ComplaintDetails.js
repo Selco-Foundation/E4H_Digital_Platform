@@ -261,6 +261,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               ? t("CS_COMMON_REVISE")
               : selectedAction === "MARK_OUT_OF_SCOPE"
               ? t("CS_COMMON_MARK_OUT_OF_SCOPE")
+              : selectedAction === "STATUS_UPDATE"
+              ? t("CS_COMMON_STATUS_UPDATE")
               : t("CS_COMMON_SPARE_PART_NEEDED")
           }
         />
@@ -289,6 +291,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           ? t("CS_COMMON_REVISE")
           : selectedAction === "MARK_OUT_OF_SCOPE"
           ? t("CS_COMMON_MARK_OUT_OF_SCOPE")
+          : selectedAction === "STATUS_UPDATE"
+          ? t("CS_COMMON_STATUS_UPDATE")
           : t("CS_COMMON_SPARE_PART_NEEDED")
       }
       actionSaveOnSubmit={() => {
@@ -301,7 +305,11 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
 
         const isCommentsMandatory =
-          (isTextareaAction || selectedAction === "RESOLVE" || selectedAction === "SPARE_PART_NEEDED" || selectedAction === "REVISE") &&
+          (isTextareaAction ||
+            selectedAction === "RESOLVE" ||
+            selectedAction === "SPARE_PART_NEEDED" ||
+            selectedAction === "REVISE" ||
+            selectedAction === "STATUS_UPDATE") &&
           !comments.trim();
 
         const oowMandateCondition = selectedAction === "OUT_OF_WARRANTY" && !(oowIssue && oowRootCause && oowRecommendedSolution && oowTimeToResolve);
@@ -315,7 +323,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: oowMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
           { condition: selectedAction === "OUT_OF_WARRANTY" && !oowTotalCostOfSolution, message: "CS_SOLUTION_COSE_MANDATORY" },
           {
-            condition: (selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY") && uploadedFile.length === 0,
+            condition:
+              (selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY" || selectedAction === "STATUS_UPDATE") &&
+              uploadedFile.length === 0,
             message: "CS_MANDATORY_FILE_UPLOAD",
           },
           { condition: selectedAction === "REVISE" && comments?.length < 50, message: "CS_REVISE_ACTION_COMMENT_LENGTH" },
@@ -448,7 +458,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         )}
         {selectedAction === "OUT_OF_WARRANTY" ? (
           <CardLabel>{t("CS_ACTION_QUOTATION_DOCUMENT")}*</CardLabel>
-        ) : selectedAction === "RESOLVE" ? (
+        ) : (selectedAction === "RESOLVE" || selectedAction === "STATUS_UPDATE") ? (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}*</CardLabel>
         ) : (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}</CardLabel>
@@ -727,6 +737,10 @@ export const ComplaintDetails = (props) => {
         setDisplayMenu(false);
         break;
       case "MARK_OUT_OF_SCOPE":
+        setPopup(true);
+        setDisplayMenu(false);
+        break;
+      case "STATUS_UPDATE":
         setPopup(true);
         setDisplayMenu(false);
         break;
