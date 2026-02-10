@@ -485,7 +485,7 @@ public class WorkflowService {
             log.trace("Updating Kibana document for incidentId={}", pi.getBusinessId());
 
             try {
-                esClient.updateProcessInstanceFields(pi);
+//                esClient.updateProcessInstanceFields(pi);
                 log.info("Kibana updated successfully for incidentId={}", pi.getBusinessId());
             } catch (Exception e) {
                 log.error("Failed to update Kibana for incidentId={}",
