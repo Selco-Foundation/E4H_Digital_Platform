@@ -535,6 +535,7 @@ export const ComplaintDetails = (props) => {
   const location = useLocation();
   const history = useHistory();
   const [isIpadView, setIsIpadView] = React.useState(window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth);
+  const [blockUI, setBlockUI] = useState(null);
   const onResize = () => {
     if (window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth) {
       setIsIpadView(true);
@@ -747,7 +748,7 @@ export const ComplaintDetails = (props) => {
     oowResponses,
     selectedOutOfScopeReason
   ) {
-    setPopup(false);
+    setBlockUI(true);
     const response = await Digit.Complaint.assign(
       complaintDetails,
       selectedAction,
@@ -761,16 +762,18 @@ export const ComplaintDetails = (props) => {
       oowResponses,
       selectedOutOfScopeReason
     );
-    if (response?.IncidentWrappers) {
-      setAssignResponse(response);
-    } else {
+    if (!response?.IncidentWrappers) {
       setError(response);
-      //setTimeout(() => setError(false), 10000);
+      setBlockUI(false);
+      return;
     }
 
     setToast(true);
     setLoader(true);
     await refreshData();
+    setPopup(false);
+    setAssignResponse(response);
+    setBlockUI(false);
     setLoader(false);
     setRerender(rerender + 1);
     setTimeout(() => setToast(false), 10000);
@@ -972,8 +975,29 @@ export const ComplaintDetails = (props) => {
   };
   return (
     <React.Fragment>
-      <div style={{ color: "#9e1b32", marginBottom: "10px", display:"flex", justifyContent: "end", marginRight: "15px" }}>
-        <div onClick={handleBack} style={{ width: "fit-content", cursor: "pointer" }}>{t("CS_COMMON_BACK")}</div>
+      {blockUI && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+            zIndex: 10000005,
+            backgroundColor: "gray",
+            opacity: 0.5,
+            position: "fixed",
+            top: 0,
+            left: 0,
+          }}
+        >
+          <Loader />
+        </div>
+      )}
+      <div style={{ color: "#9e1b32", marginBottom: "10px", display: "flex", justifyContent: "end", marginRight: "15px" }}>
+        <div onClick={handleBack} style={{ width: "fit-content", cursor: "pointer" }}>
+          {t("CS_COMMON_BACK")}
+        </div>
       </div>
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
@@ -1074,16 +1098,14 @@ export const ComplaintDetails = (props) => {
         />
       ) : null}
       {toast && assignResponse && assignResponse?.IncidentWrappers && <Toast label={t(`CS_ACTION_${selectedAction}_TEXT`)} onClose={closeToast} />}
-      {!isLoading &&
-        complaintDetails?.incident?.applicationStatus !== "CLOSEDAFTERRESOLUTION" &&
-        workflowDetails?.data?.nextActions?.length > 0 && (
-          <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
-            {displayMenu && workflowDetails?.data?.nextActions ? (
-              <Menu options={workflowDetails?.data?.nextActions.map((action) => action.action)} t={t} onSelect={onActionSelect} />
-            ) : null}
-            <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
-          </ActionBar>
-        )}
+      {!isLoading && complaintDetails?.incident?.applicationStatus !== "CLOSEDAFTERRESOLUTION" && workflowDetails?.data?.nextActions?.length > 0 && (
+        <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
+          {displayMenu && workflowDetails?.data?.nextActions ? (
+            <Menu options={workflowDetails?.data?.nextActions.map((action) => action.action)} t={t} onSelect={onActionSelect} />
+          ) : null}
+          <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
+        </ActionBar>
+      )}
       {error && error[0].message && <Toast error={error[0].message} label={error[0].message} onClose={closeToast} />}
     </React.Fragment>
   );
