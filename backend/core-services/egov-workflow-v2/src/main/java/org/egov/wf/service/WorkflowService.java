@@ -460,18 +460,18 @@ public class WorkflowService {
         log.info("Merged process instances count (after deduplication): {}", mergedList.size());
 
         /* 4) Push vers le workflow pour mise à jour des process instances */
-        log.debug("Pushing {} process instances to workflow update topic",
+        log.info("Pushing {} process instances to workflow update topic",
                 mergedList.size());
 
         ProcessInstanceRequest processInstanceRequest =
                 new ProcessInstanceRequest(requestInfo, mergedList);
-        producer.push(config.getUpdateProcessInstanceTopic(), processInstanceRequest);
+//        producer.push(config.getUpdateProcessInstanceTopic(), processInstanceRequest);
 
         log.info("Successfully pushed process instances to topic: {}",
                 config.getUpdateProcessInstanceTopic());
 
         // Update Kibana index (im-services) with only Data.currentProcessInstance for each migrated process instance
-        log.debug("Starting Kibana index update for migrated process instances");
+        log.info("Starting Kibana index update for migrated process instances");
 
         for (ProcessInstance pi : mergedList) {
 
@@ -486,7 +486,7 @@ public class WorkflowService {
 
             try {
                 esClient.updateProcessInstanceFields(pi);
-                log.debug("Kibana updated successfully for incidentId={}", pi.getBusinessId());
+                log.info("Kibana updated successfully for incidentId={}", pi.getBusinessId());
             } catch (Exception e) {
                 log.error("Failed to update Kibana for incidentId={}",
                         pi.getBusinessId(), e);
@@ -535,7 +535,7 @@ public class WorkflowService {
         List<BusinessServiceStateMigration> businessServicesAndStates =
                 workflowRepository.getBusinessServicesAndStatesV2();
 
-        log.debug("Fetched {} business service state migrations", businessServicesAndStates.size());
+        log.info("Fetched {} business service state migrations", businessServicesAndStates.size());
 
         Map<String, BusinessServiceStateMigration> stateMap =
                 businessServicesAndStates.stream()
