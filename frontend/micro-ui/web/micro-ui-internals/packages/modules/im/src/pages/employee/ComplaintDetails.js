@@ -134,6 +134,18 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     }
   }, [selectedAction]);
 
+  useEffect(() => {
+    const oowResponsesArray = complaintDetails?.incident?.additionalDetail?.oowResponses || [];
+    const prevOowResponses = oowResponsesArray.at(-1);
+    if (selectedAction === "SUBMIT" && prevOowResponses) {
+      setOowIssue(prevOowResponses.oowIssue);
+      setOowRootCause(prevOowResponses.oowRootCause);
+      setOowRecommendedSolution(prevOowResponses.oowRecommendedSolution);
+      setOowTotalCostOfSolution(prevOowResponses.oowTotalCostOfSolution);
+      setOowTimeToResolve(prevOowResponses.oowTimeToResolve);
+    }
+  },[selectedAction, complaintDetails]);
+
   function onSelectEmployee(employee) {
     setSelectedEmployee(employee);
   }
@@ -265,6 +277,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               ? t("CS_COMMON_MARK_OUT_OF_SCOPE")
               : selectedAction === "STATUS_UPDATE"
               ? t("CS_COMMON_STATUS_UPDATE")
+              : selectedAction === "SUBMIT"
+              ? t("CS_COMMON_SUBMIT")
               : t("CS_COMMON_SPARE_PART_NEEDED")
           }
         />
@@ -295,6 +309,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           ? t("CS_COMMON_MARK_OUT_OF_SCOPE")
           : selectedAction === "STATUS_UPDATE"
           ? t("CS_COMMON_STATUS_UPDATE")
+          : selectedAction === "SUBMIT"
+          ? t("CS_COMMON_SUBMIT")
           : t("CS_COMMON_SPARE_PART_NEEDED")
       }
       actionSaveOnSubmit={() => {
@@ -314,7 +330,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             selectedAction === "STATUS_UPDATE") &&
           !comments.trim();
 
-        const oowMandateCondition = selectedAction === "OUT_OF_WARRANTY" && !(oowIssue && oowRootCause && oowRecommendedSolution && oowTimeToResolve);
+        const oowMandateCondition =
+          ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !(oowIssue && oowRootCause && oowRecommendedSolution && oowTimeToResolve);
 
         const validations = [
           { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_DECLINE_REASON" },
@@ -324,11 +341,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
           { condition: oowMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
-          { condition: selectedAction === "OUT_OF_WARRANTY" && !oowTotalCostOfSolution, message: "CS_SOLUTION_COST_MANDATORY" },
+          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTotalCostOfSolution, message: "CS_SOLUTION_COST_MANDATORY" },
           {
-            condition:
-              (selectedAction === "RESOLVE" || selectedAction === "OUT_OF_WARRANTY" || selectedAction === "STATUS_UPDATE") &&
-              uploadedFile.length === 0,
+            condition: ["RESOLVE", "OUT_OF_WARRANTY", "STATUS_UPDATE", "SUBMIT"].includes(selectedAction) && uploadedFile.length === 0,
             message: "CS_MANDATORY_FILE_UPLOAD",
           },
           { condition: selectedAction === "REVISE" && comments?.length < 50, message: "CS_REVISE_ACTION_COMMENT_LENGTH" },
@@ -340,13 +355,15 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           return;
         }
 
-        const oowResponses = selectedAction === "OUT_OF_WARRANTY" ? {
-          oowIssue,
-          oowRootCause,
-          oowRecommendedSolution,
-          oowTimeToResolve,
-          oowTotalCostOfSolution,
-        } : null;
+        const oowResponses = ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction)
+          ? {
+              oowIssue,
+              oowRootCause,
+              oowRecommendedSolution,
+              oowTimeToResolve,
+              oowTotalCostOfSolution,
+            }
+          : null;
 
         onAssign(
           selectedAction === "REVISE" ? oowActedVendor : selectedEmployee,
@@ -430,7 +447,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <Dropdown selected={selectedReopenReason} option={reopenReasonMenu} select={onSelectReopenReason} />
           </React.Fragment>
         ) : null}
-        {(selectedAction !== "SENDBACK" && selectedAction !== "MARK_OUT_OF_SCOPE" && selectedAction !== "OUT_OF_WARRANTY") ||
+        {(selectedAction !== "SENDBACK" &&
+          selectedAction !== "MARK_OUT_OF_SCOPE" &&
+          selectedAction !== "OUT_OF_WARRANTY" &&
+          selectedAction !== "SUBMIT") ||
         selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ||
         selectedOutOfScopeReason?.additionalInputs?.[0].type === "textarea" ? (
           <>
@@ -445,7 +465,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <TextArea name="comment" onChange={addComment} value={comments} />
           </>
         ) : null}
-        {selectedAction === "OUT_OF_WARRANTY" && (
+        {["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (
           <React.Fragment>
             <CardLabel>{t("OOW_ACTION_ISSUE_OBSERVATION")}*</CardLabel>
             <TextArea name="oowIssue" onChange={(e) => addOOWResponses(e, setOowIssue)} value={oowIssue} />
@@ -459,9 +479,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <TextInput t={t} type={"number"} onChange={(e) => addOOWResponses(e, setOowTotalCostOfSolution)} value={oowTotalCostOfSolution} />
           </React.Fragment>
         )}
-        {selectedAction === "OUT_OF_WARRANTY" ? (
+        {["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) ? (
           <CardLabel>{t("CS_ACTION_QUOTATION_DOCUMENT")}*</CardLabel>
-        ) : (selectedAction === "RESOLVE" || selectedAction === "STATUS_UPDATE") ? (
+        ) : selectedAction === "RESOLVE" || selectedAction === "STATUS_UPDATE" ? (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}*</CardLabel>
         ) : (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}</CardLabel>
@@ -474,7 +494,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           requestSpecifcFileRemoval={uploadedFile?.[0]}
           getFormState={(e) => getData(e)}
           allowedFileTypesRegex={
-            selectedAction === "OUT_OF_WARRANTY"
+            ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction)
               ? /(pdf)$/i
               : selectedAction === "RESOLVE"
               ? /(docx|doc|pdf|xlsx|jpeg|png)$/i
@@ -482,7 +502,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           }
           allowedMaxSizeInMB={5}
           acceptFiles={
-            selectedAction === "OUT_OF_WARRANTY"
+            ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction)
               ? ".pdf"
               : selectedAction === "RESOLVE"
               ? ".pdf, .xlsx, .docx, .doc, .jpeg, .png"
@@ -491,7 +511,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           ulb={complaintDetails?.incident?.tenantId || tenantId}
           analyticsPage="ticket_details_page"
         />
-        {selectedAction === "OUT_OF_WARRANTY" ? (
+        {["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) ? (
           <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_OOW_FILE_DESC")}</CardLabelDesc>
         ) : selectedAction === "RESOLVE" ? (
           <div style={{ marginTop: "6px", fontSize: "13px", color: "#36454F" }}>{t("RESOLVE_RESOLUTION_REPORT")}</div>
@@ -696,53 +716,17 @@ export const ComplaintDetails = (props) => {
     setSelectedAction(action);
     switch (action) {
       case "ASSIGN":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "REASSIGN":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "RESOLVE":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "REJECT":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "REOPEN":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "CLOSE":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "SENDBACK":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "OUT_OF_WARRANTY":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "SPARE_PART_NEEDED":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "APPROVE":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "REVISE":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "MARK_OUT_OF_SCOPE":
-        setPopup(true);
-        setDisplayMenu(false);
-        break;
       case "STATUS_UPDATE":
       case "SUBMIT":
         setPopup(true);
@@ -817,6 +801,7 @@ export const ComplaintDetails = (props) => {
         case "SENDBACK":
           return { ...abc, sendBackReason: sendBackReasons.shift() };
         case "OUT_OF_WARRANTY":
+        case "SUBMIT":
           return { ...abc, oowResponses: oowResponsesArray.shift() };
         case "MARK_OUT_OF_SCOPE":
           return { ...abc, outOfScopeReason: outOfScopeReasons.shift() };
@@ -826,7 +811,7 @@ export const ComplaintDetails = (props) => {
     });
 
     const currentOowResponses =
-      checkpoint.performedAction === "OUT_OF_WARRANTY" && arrNew[index]?.oowResponses
+      ["OUT_OF_WARRANTY", "SUBMIT"].includes(checkpoint.performedAction) && arrNew[index]?.oowResponses
         ? {
             OOW_ACTION_ISSUE_OBSERVATION: arrNew[index]?.oowResponses?.oowIssue,
             OOW_ACTION_ISSUE_ROOT_CAUSE: arrNew[index]?.oowResponses?.oowRootCause,
