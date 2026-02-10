@@ -7,6 +7,7 @@ import org.egov.wf.config.WorkflowConfig;
 import org.egov.wf.producer.Producer;
 import org.egov.wf.repository.BusinessServiceRepository;
 import org.egov.wf.repository.WorKflowRepository;
+import org.egov.wf.util.ElasticSearchClient;
 import org.egov.wf.util.WorkflowConstants;
 import org.egov.wf.util.WorkflowUtil;
 import org.egov.wf.validator.WorkflowValidator;
@@ -50,6 +51,7 @@ public class WorkflowService {
     private BusinessMasterService businessMasterService;
 
     private Producer producer;
+    private final ElasticSearchClient esClient;
 
     private ImServiceClient imServiceClient;
 
@@ -57,8 +59,8 @@ public class WorkflowService {
     public WorkflowService(WorkflowConfig config, TransitionService transitionService,
                            EnrichmentService enrichmentService, WorkflowValidator workflowValidator,
                            StatusUpdateService statusUpdateService, WorKflowRepository workflowRepository,
-                           WorkflowUtil util,BusinessServiceRepository businessServiceRepository,
-                           Producer producer, ImServiceClient imServiceClient) {
+                           WorkflowUtil util, BusinessServiceRepository businessServiceRepository,
+                           Producer producer, ElasticSearchClient esClient, ImServiceClient imServiceClient) {
         this.config = config;
         this.transitionService = transitionService;
         this.enrichmentService = enrichmentService;
@@ -68,6 +70,7 @@ public class WorkflowService {
         this.util = util;
         this.businessServiceRepository = businessServiceRepository;
         this.producer = producer;
+        this.esClient = esClient;
         this.imServiceClient = imServiceClient;
     }
 
@@ -78,12 +81,23 @@ public class WorkflowService {
      * @return The list of processInstanceFromRequest objects after taking action
      */
     public List<ProcessInstance> transition(ProcessInstanceRequest request){
+        log.trace("Entering transition method");
         RequestInfo requestInfo = request.getRequestInfo();
+        int processInstanceCount = request.getProcessInstances() != null ? request.getProcessInstances().size() : 0;
+        log.info("Processing workflow transition request for {} process instance(s)", processInstanceCount);
 
         List<ProcessStateAndAction> processStateAndActions = transitionService.getProcessStateAndActions(request.getProcessInstances(),true);
+        log.debug("Retrieved processStateAndActions: {}", processStateAndActions.size());
+        
         enrichmentService.enrichProcessRequest(requestInfo,processStateAndActions);
+        log.debug("Enriched process request with user and SLA information");
+        
         workflowValidator.validateRequest(requestInfo,processStateAndActions);
+        log.debug("Validated transition request");
+        
         statusUpdateService.updateStatus(requestInfo,processStateAndActions);
+        log.info("Successfully completed workflow transition for {} process instance(s)", processInstanceCount);
+        log.trace("Exiting transition method");
         return request.getProcessInstances();
     }
 
@@ -95,17 +109,37 @@ public class WorkflowService {
      * @return List of processInstances based on search criteria
      */
     public List<ProcessInstance> search(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering search method");
+        log.info("Searching process instances with criteria - businessService: {}, tenantId: {}", 
+                criteria.getBusinessService(), criteria.getTenantId());
+        
         List<ProcessInstance> processInstances;
-        if(criteria.isNull())
+        if(criteria.isNull()) {
+            log.debug("Search criteria is null, fetching user-based process instances");
             processInstances = getUserBasedProcessInstances(requestInfo, criteria);
-        else processInstances = workflowRepository.getProcessInstances(criteria);
-        if(CollectionUtils.isEmpty(processInstances))
+        } else {
+            log.debug("Searching process instances from repository");
+            processInstances = workflowRepository.getProcessInstances(criteria);
+        }
+        
+        if(CollectionUtils.isEmpty(processInstances)) {
+            log.info("No process instances found for search criteria");
+            log.trace("Exiting search method - empty result");
             return processInstances;
+        }
 
+        log.debug("Found {} process instance(s), enriching with user data", processInstances.size());
         enrichmentService.enrichUsersFromSearch(requestInfo,processInstances);
+        
+        log.debug("Enriching next actions for search results");
         List<ProcessStateAndAction> processStateAndActions = enrichmentService.enrichNextActionForSearch(requestInfo,processInstances);
     //    workflowValidator.validateSearch(requestInfo,processStateAndActions);
+        
+        log.debug("Enriching and updating SLA for search results");
         enrichmentService.enrichAndUpdateSlaForSearch(processInstances);
+        
+        log.info("Search completed successfully, returning {} process instance(s)", processInstances.size());
+        log.trace("Exiting search method");
         return processInstances;
     }
 
@@ -124,25 +158,38 @@ public class WorkflowService {
 
 
     public Integer count(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering count method");
         Integer count;
         
      // Enrich slot sla limit in case of nearingSla count
         if(criteria.getIsNearingSlaCount()){
-
-            if(ObjectUtils.isEmpty(criteria.getBusinessService()))
+            log.info("Processing nearing SLA count request");
+            
+            if(ObjectUtils.isEmpty(criteria.getBusinessService())) {
+                log.error("Business service is mandatory for nearing SLA count but was not provided");
                 throw new CustomException("EG_WF_BUSINESSSRV_ERR", "Providing business service is mandatory for nearing escalation count");
+            }
 
+            log.debug("Fetching slot percentage and max business service SLA");
             Integer slotPercentage = mdmsService.fetchSlotPercentageForNearingSla(requestInfo);
             Long maxBusinessServiceSla = businessMasterService.getMaxBusinessServiceSla(criteria);
-            criteria.setSlotPercentageSlaLimit(maxBusinessServiceSla - slotPercentage * (maxBusinessServiceSla/100));
+            Long slotPercentageSlaLimit = maxBusinessServiceSla - slotPercentage * (maxBusinessServiceSla/100);
+            criteria.setSlotPercentageSlaLimit(slotPercentageSlaLimit);
+            log.debug("Calculated slot percentage SLA limit: {}", slotPercentageSlaLimit);
         }
         
         if(criteria.isNull()){
+            log.debug("Criteria is null, enriching from user and getting inbox count");
             enrichSearchCriteriaFromUser(requestInfo, criteria);
             count = workflowRepository.getInboxCount(criteria);
         }
-        else count = workflowRepository.getProcessInstancesCount(criteria);
+        else {
+            log.debug("Getting process instances count from repository");
+            count = workflowRepository.getProcessInstancesCount(criteria);
+        }
 
+        log.info("Count query completed, result: {}", count);
+        log.trace("Exiting count method");
         return count;
     }
 
@@ -158,18 +205,28 @@ public class WorkflowService {
      */
     private List<ProcessInstance> getUserBasedProcessInstances(RequestInfo requestInfo,
                                        ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering getUserBasedProcessInstances method");
 
         enrichSearchCriteriaFromUser(requestInfo, criteria);
+        log.debug("Enriched search criteria from user");
+        
         List<ProcessInstance> processInstances = workflowRepository.getProcessInstancesForUserInbox(criteria);
+        log.debug("Retrieved {} process instance(s) from user inbox", 
+                processInstances != null ? processInstances.size() : 0);
 
         processInstances = filterDuplicates(processInstances);
+        int finalCount = processInstances != null ? processInstances.size() : 0;
+        log.debug("After filtering duplicates: {} process instance(s)", finalCount);
+        log.trace("Exiting getUserBasedProcessInstances method");
 
         return processInstances;
 
     }
     public Integer getUserBasedProcessInstancesCount(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
-        Integer count;
-        count = workflowRepository.getProcessInstancesForUserInboxCount(criteria);
+        log.trace("Entering getUserBasedProcessInstancesCount method");
+        Integer count = workflowRepository.getProcessInstancesForUserInboxCount(criteria);
+        log.debug("User-based process instances count: {}", count);
+        log.trace("Exiting getUserBasedProcessInstancesCount method");
         return count;
     }
 
@@ -179,22 +236,36 @@ public class WorkflowService {
      * @return
      */
     private List<ProcessInstance> filterDuplicates(List<ProcessInstance> processInstances){
+        log.trace("Entering filterDuplicates method");
 
-        if(CollectionUtils.isEmpty(processInstances))
+        if(CollectionUtils.isEmpty(processInstances)) {
+            log.trace("Exiting filterDuplicates method - empty input");
             return processInstances;
+        }
 
+        int originalSize = processInstances.size();
         Map<String,ProcessInstance> businessIdToProcessInstanceMap = new LinkedHashMap<>();
 
         for(ProcessInstance processInstance : processInstances){
             businessIdToProcessInstanceMap.put(processInstance.getBusinessId(), processInstance);
         }
 
-        return new LinkedList<>(businessIdToProcessInstanceMap.values());
+        List<ProcessInstance> filtered = new LinkedList<>(businessIdToProcessInstanceMap.values());
+        int filteredSize = filtered.size();
+        if(originalSize != filteredSize) {
+            log.debug("Filtered duplicates: {} duplicate(s) removed", originalSize - filteredSize);
+        }
+        log.trace("Exiting filterDuplicates method");
+        return filtered;
     }
     
     public List statusCount(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering statusCount method");
+        log.info("Fetching status count for businessService: {}", criteria.getBusinessService());
+        
         List result;
         if(criteria.isNull() && !isNull(criteria.getBusinessService()) && !criteria.getBusinessService().equalsIgnoreCase(WorkflowConstants.FSM_MODULE)){
+        	log.debug("Criteria is null and not FSM module, enriching from user and getting inbox status count");
         	enrichSearchCriteriaFromUser(requestInfo, criteria);
             result = workflowRepository.getInboxStatusCount(criteria);
         }
@@ -212,6 +283,9 @@ public class WorkflowService {
         	result = workflowRepository.getProcessInstancesStatusCount(criteria);
         }
 
+        int resultSize = result != null ? result.size() : 0;
+        log.info("Status count query completed, returning {} status count(s)", resultSize);
+        log.trace("Exiting statusCount method");
         return result;
     }
 
@@ -221,6 +295,7 @@ public class WorkflowService {
      * @param criteria
      */
     private void enrichSearchCriteriaFromUser(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
+        log.trace("Entering enrichSearchCriteriaFromUser method");
 
         /*BusinessServiceSearchCriteria businessServiceSearchCriteria = new BusinessServiceSearchCriteria();
 
@@ -241,13 +316,20 @@ public class WorkflowService {
         criteria.setStatus(actionableStatuses);*/
 
         util.enrichStatusesInSearchCriteria(requestInfo, criteria);
+        log.debug("Enriched statuses in search criteria");
+        
         criteria.setAssignee(requestInfo.getUserInfo().getUuid());
-
+        log.debug("Set assignee in criteria to user UUID");
+        log.trace("Exiting enrichSearchCriteriaFromUser method");
 
     }
 
 
     public List<ProcessInstance> escalatedApplicationsSearch(RequestInfo requestInfo, ProcessInstanceSearchCriteria criteria) {
+        log.trace("Entering escalatedApplicationsSearch method");
+        log.info("Searching for escalated applications - businessService: {}, tenantId: {}", 
+                criteria.getBusinessService(), criteria.getTenantId());
+        
         List<String> escalatedApplicationsBusinessIds;
         List<ProcessInstance> escalatedApplications = new ArrayList<>();
         criteria.setIsEscalatedCount(false);
@@ -255,8 +337,12 @@ public class WorkflowService {
         //Set<String> statesToIgnore = enrichmentService.fetchStatesToIgnoreFromMdms(requestInfo, criteria.getTenantId());
         escalatedApplicationsBusinessIds = workflowRepository.fetchEscalatedApplicationsBusinessIdsFromDb(requestInfo,criteria);
         if(CollectionUtils.isEmpty(escalatedApplicationsBusinessIds)){
+            log.info("No escalated applications found");
+            log.trace("Exiting escalatedApplicationsSearch method - empty result");
             return escalatedApplications;
         }
+        
+        log.debug("Found {} escalated application business ID(s)", escalatedApplicationsBusinessIds.size());
         // SEARCH BASED ON FILTERED BUSINESS IDs DONE HERE
         ProcessInstanceSearchCriteria searchCriteria =  new ProcessInstanceSearchCriteria();
         searchCriteria.setBusinessIds(escalatedApplicationsBusinessIds);
@@ -295,13 +381,18 @@ public class WorkflowService {
 //                }
 //            }
 //        }
+        log.info("Escalated applications search completed, returning {} process instance(s)", 
+                escalatedApplications != null ? escalatedApplications.size() : 0);
+        log.trace("Exiting escalatedApplicationsSearch method");
         return escalatedApplications;
     }
 
     public Integer countEscalatedApplications(RequestInfo requestInfo,ProcessInstanceSearchCriteria criteria){
-        Integer count;
+        log.trace("Entering countEscalatedApplications method");
         criteria.setIsEscalatedCount(true);
-        count = workflowRepository.getEscalatedApplicationsCount(requestInfo,criteria);
+        Integer count = workflowRepository.getEscalatedApplicationsCount(requestInfo,criteria);
+        log.info("Escalated applications count: {}", count);
+        log.trace("Exiting countEscalatedApplications method");
         return count;
     }
 
@@ -356,13 +447,11 @@ public class WorkflowService {
         producer.push(config.getUpdateProcessInstanceTopic(), processInstanceRequest);
 
         // Update Kibana index (im-services) with only Data.currentProcessInstance for each migrated process instance
-        String indexerTopic = config.getUpdateImProcessInstanceIndexerTopic();
         for (ProcessInstance pi : mergedList) {
             if (pi.getBusinessId() == null) continue;
-            Map<String, Object> indexerPayload = new HashMap<>();
-            indexerPayload.put("incidentId", pi.getBusinessId());
-            indexerPayload.put("updatedProcessInstance", pi);
-            producer.push(indexerTopic, indexerPayload);
+//            Map<String, Object> ticket = esClient.getTicketByIncidentId(pi.getBusinessId());
+            log.trace("Getting Ticket by incident Id: {}", pi.getBusinessId());
+            esClient.updateProcessInstanceFields(pi);
         }
     }
 
@@ -425,13 +514,6 @@ public class WorkflowService {
 
         /* 3) filtrage THEFT si demandé */
         if (filterByTheftSubtype && !processInstances.isEmpty()) {
-
-//            List<String> businessIds =
-//                    processInstances.stream()
-//                            .map(ProcessInstance::getBusinessId)
-//                            .filter(Objects::nonNull)
-//                            .collect(Collectors.toList());
-
             Set<String> theftIncidentIdSet = new HashSet<>();
 
             for (ProcessInstance instance : processInstances) {
@@ -469,54 +551,60 @@ public class WorkflowService {
 
         /* 4) mise à jour du state + récupération des assignes si nécessaire */
         for (ProcessInstance pi : processInstances) {
-            BusinessServiceStateMigration migration =
-                    stateMap.get(pi.getBusinessService() + "_" + targetState);
+            if(pi.getBusinessId().trim().equals("NL-IN1310000406-0001")){
+                BusinessServiceStateMigration migration =
+                        stateMap.get(pi.getBusinessService() + "_" + targetState);
 
-            if (migration == null) {
-                continue;
-            }
+                if (migration == null) {
+                    continue;
+                }
 
-            /* Cas SPARE_PART_NEEDED : récupérer les assignes depuis PENDING_RESOLUTION */
-            if (copyAssignesFromPendingResolution && pi.getBusinessId() != null) {
-                // Trouver le assign owner pour le ticket. Pour ca trouver la liste des process instance pour le businessId, ensuite recuperer le process instance qui est a PENDINGRESOLUTION, ensuite recuperer
-                // le uuid du assignee dans la table eg_wf_assignee_v2
-                BusinessServiceStateMigration pendingResolutionMigration =
-                        stateMap.get(pi.getBusinessService() + "_PENDINGRESOLUTION");
+                /* Cas SPARE_PART_NEEDED : récupérer les assignes depuis PENDING_RESOLUTION */
+                if (copyAssignesFromPendingResolution && pi.getBusinessId() != null) {
+                    // Trouver le assign owner pour le ticket. Pour ca trouver la liste des process instance pour le businessId, ensuite recuperer le process instance qui est a PENDINGRESOLUTION, ensuite recuperer
+                    // le uuid du assignee dans la table eg_wf_assignee_v2
+                    BusinessServiceStateMigration pendingResolutionMigration =
+                            stateMap.get(pi.getBusinessService() + "_PENDINGRESOLUTION");
+                    // Rechercher le process instance PENDINGRESOLUTION qui correspond au businessId pour pouvoir recuperer le assignee et le mettre dans PENDING_RESOLUTION_SPARE_PART_NEEDED
+                    if (pendingResolutionMigration != null) {
+                        // Rechercher le process instance ayant comme statusid PENDINGRESOLUTION
+                        ProcessInstanceSearchCriteria searchByBusinessId = new ProcessInstanceSearchCriteria();
+                        searchByBusinessId.setTenantId("in");
+                        searchByBusinessId.setHistory(true);
+                        searchByBusinessId.setBusinessIds(Collections.singletonList(pi.getBusinessId()));
+                        searchByBusinessId.setStatus(
+                                Collections.singletonList(pendingResolutionMigration.getStateUuid())
+                        );
 
-                if (pendingResolutionMigration != null) {
+                        List<ProcessInstance> existingInstances =
+                                searchProcessInstanceMigration(requestInfo, searchByBusinessId);
 
-                    ProcessInstanceSearchCriteria searchByBusinessId = new ProcessInstanceSearchCriteria();
-                    searchByBusinessId.setTenantId("in");
-                    searchByBusinessId.setHistory(true);
-                    searchByBusinessId.setBusinessIds(Collections.singletonList(pi.getBusinessId()));
-                    searchByBusinessId.setStatus(
-                            Collections.singletonList(pendingResolutionMigration.getStateUuid())
-                    );
-
-                    List<ProcessInstance> existingInstances =
-                            searchProcessInstanceMigration(requestInfo, searchByBusinessId);
-
-                    if (existingInstances != null && !existingInstances.isEmpty()) {
-                        Optional<ProcessInstance> mostRecent =
-                                existingInstances.stream()
-                                        .filter(process -> process.getAuditDetails() != null)
-                                        .max(Comparator.comparingLong(
-                                                process -> process.getAuditDetails().getLastModifiedTime()
-                                        ));
-                        if (mostRecent.isPresent()) {
-                            ProcessInstance latest = mostRecent.get();
-                            // use latest
-                            pi.setAssignes(latest.getAssignes());
-                            // Ajouter le processInstanceId de l'ancien SPARE_PART_NEEDED a eg_wf_assignee table. Comme ca apres Mise a jour status vers PENDING_RESOLUTION_SPARE_PART_NEEDED, celui ci aura un assignee
-                            ProcessInstanceRequest processInstanceRequest = new ProcessInstanceRequest(requestInfo, Collections.singletonList(pi));
-                            producer.push(config.getAddWfAssigneeTopic(), processInstanceRequest);
+                        if (existingInstances != null && !existingInstances.isEmpty()) {
+                            // Recuperer le assignee dans le pi trouve
+                            Optional<ProcessInstance> mostRecent =
+                                    existingInstances.stream()
+                                            .filter(process -> process.getAuditDetails() != null)
+                                            .max(Comparator.comparingLong(
+                                                    process -> process.getAuditDetails().getLastModifiedTime()
+                                            ));
+                            if (mostRecent.isPresent()) {
+                                ProcessInstance latest = mostRecent.get();
+                                // use latest
+                                pi.setAssignes(latest.getAssignes());
+                                // Ajouter le processInstanceId de l'ancien SPARE_PART_NEEDED a eg_wf_assignee table. Comme ca apres Mise a jour status vers PENDING_RESOLUTION_SPARE_PART_NEEDED, celui ci aura un assignee
+                                ProcessInstanceRequest processInstanceRequest = new ProcessInstanceRequest(requestInfo, Collections.singletonList(pi));
+                                producer.push(config.getAddWfAssigneeTopic(), processInstanceRequest);
+                            }
                         }
                     }
                 }
-            }
 
-            pi.setState(migration.getStateObject());
-            pi.setStateSla(migration.getStateSla());
+                // Mis a jour avec le state target
+                pi.setState(migration.getStateObject());
+                pi.setStateSla(migration.getStateSla());
+
+                return Collections.singletonList(pi);
+            }
         }
 
         return processInstances;
