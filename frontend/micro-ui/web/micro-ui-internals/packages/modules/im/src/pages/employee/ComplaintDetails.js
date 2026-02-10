@@ -125,6 +125,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const [oowTimeToResolve, setOowTimeToResolve] = useState(null);
   const processInstances = workflowDetails?.data?.processInstances || [];
   const oowActedVendor = processInstances.find((processInstance) => processInstance.action === "OUT_OF_WARRANTY")?.assigner;
+  const currentOwner = processInstances[0]?.assignes?.[0];
 
   useEffect(() => {
     if (selectedAction === "REJECT") {
@@ -366,7 +367,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           : null;
 
         onAssign(
-          selectedAction === "REVISE" ? oowActedVendor : selectedEmployee,
+          selectedAction === "STATUS_UPDATE" ? currentOwner : selectedAction === "REVISE" ? oowActedVendor : selectedEmployee,
           comments,
           uploadedFile,
           selectedReopenReason,
