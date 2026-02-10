@@ -7,6 +7,7 @@ import org.egov.wf.config.WorkflowConfig;
 import org.egov.wf.producer.Producer;
 import org.egov.wf.repository.BusinessServiceRepository;
 import org.egov.wf.repository.WorKflowRepository;
+import org.egov.wf.util.ElasticSearchClient;
 import org.egov.wf.util.WorkflowConstants;
 import org.egov.wf.util.WorkflowUtil;
 import org.egov.wf.validator.WorkflowValidator;
@@ -16,7 +17,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.egov.tracer.model.CustomException;
 import org.springframework.util.ObjectUtils;
-import lombok.extern.slf4j.Slf4j;
 
 import static java.util.Objects.isNull;
 
@@ -51,6 +51,7 @@ public class WorkflowService {
     private BusinessMasterService businessMasterService;
 
     private Producer producer;
+    private final ElasticSearchClient esClient;
 
     private ImServiceClient imServiceClient;
 
@@ -58,8 +59,8 @@ public class WorkflowService {
     public WorkflowService(WorkflowConfig config, TransitionService transitionService,
                            EnrichmentService enrichmentService, WorkflowValidator workflowValidator,
                            StatusUpdateService statusUpdateService, WorKflowRepository workflowRepository,
-                           WorkflowUtil util,BusinessServiceRepository businessServiceRepository,
-                           Producer producer, ImServiceClient imServiceClient) {
+                           WorkflowUtil util, BusinessServiceRepository businessServiceRepository,
+                           Producer producer, ElasticSearchClient esClient, ImServiceClient imServiceClient) {
         this.config = config;
         this.transitionService = transitionService;
         this.enrichmentService = enrichmentService;
@@ -69,6 +70,7 @@ public class WorkflowService {
         this.util = util;
         this.businessServiceRepository = businessServiceRepository;
         this.producer = producer;
+        this.esClient = esClient;
         this.imServiceClient = imServiceClient;
     }
 
@@ -432,11 +434,11 @@ public class WorkflowService {
 
     // Used to update process instance v3 for this ticket number #1979
     public void updateBusinessServiceV2(RequestInfo requestInfo){
-//        List<ProcessInstance> processInstancesTheft = proceedUpdateProcessInstanceTheft(requestInfo);
+        List<ProcessInstance> processInstancesTheft = proceedUpdateProcessInstanceTheft(requestInfo);
         List<ProcessInstance> processInstancesSparePart = proceedUpdateProcessInstanceSparePartNeed(requestInfo);
 
         Set<ProcessInstance> set = new LinkedHashSet<>();
-//        set.addAll(processInstancesTheft);
+        set.addAll(processInstancesTheft);
         set.addAll(processInstancesSparePart);
 
         List<ProcessInstance> mergedList = new ArrayList<>(set);
@@ -445,13 +447,11 @@ public class WorkflowService {
         producer.push(config.getUpdateProcessInstanceTopic(), processInstanceRequest);
 
         // Update Kibana index (im-services) with only Data.currentProcessInstance for each migrated process instance
-        String indexerTopic = config.getUpdateImProcessInstanceIndexerTopic();
         for (ProcessInstance pi : mergedList) {
             if (pi.getBusinessId() == null) continue;
-            Map<String, Object> indexerPayload = new HashMap<>();
-            indexerPayload.put("incidentId", pi.getBusinessId());
-            indexerPayload.put("updatedProcessInstance", pi);
-            producer.push(indexerTopic, indexerPayload);
+//            Map<String, Object> ticket = esClient.getTicketByIncidentId(pi.getBusinessId());
+            log.trace("Getting Ticket by incident Id: {}", pi.getBusinessId());
+            esClient.updateProcessInstanceFields(pi);
         }
     }
 
@@ -514,13 +514,6 @@ public class WorkflowService {
 
         /* 3) filtrage THEFT si demandé */
         if (filterByTheftSubtype && !processInstances.isEmpty()) {
-
-//            List<String> businessIds =
-//                    processInstances.stream()
-//                            .map(ProcessInstance::getBusinessId)
-//                            .filter(Objects::nonNull)
-//                            .collect(Collectors.toList());
-
             Set<String> theftIncidentIdSet = new HashSet<>();
 
             for (ProcessInstance instance : processInstances) {
@@ -572,9 +565,9 @@ public class WorkflowService {
                     // le uuid du assignee dans la table eg_wf_assignee_v2
                     BusinessServiceStateMigration pendingResolutionMigration =
                             stateMap.get(pi.getBusinessService() + "_PENDINGRESOLUTION");
-
+                    // Rechercher le process instance PENDINGRESOLUTION qui correspond au businessId pour pouvoir recuperer le assignee et le mettre dans PENDING_RESOLUTION_SPARE_PART_NEEDED
                     if (pendingResolutionMigration != null) {
-
+                        // Rechercher le process instance ayant comme statusid PENDINGRESOLUTION
                         ProcessInstanceSearchCriteria searchByBusinessId = new ProcessInstanceSearchCriteria();
                         searchByBusinessId.setTenantId("in");
                         searchByBusinessId.setHistory(true);
@@ -587,6 +580,7 @@ public class WorkflowService {
                                 searchProcessInstanceMigration(requestInfo, searchByBusinessId);
 
                         if (existingInstances != null && !existingInstances.isEmpty()) {
+                            // Recuperer le assignee dans le pi trouve
                             Optional<ProcessInstance> mostRecent =
                                     existingInstances.stream()
                                             .filter(process -> process.getAuditDetails() != null)
@@ -605,6 +599,7 @@ public class WorkflowService {
                     }
                 }
 
+                // Mis a jour avec le state target
                 pi.setState(migration.getStateObject());
                 pi.setStateSla(migration.getStateSla());
 
