@@ -276,7 +276,7 @@ public class WorkflowService {
         if (action.equalsIgnoreCase("RESOLVE") || action.equalsIgnoreCase("REJECT")) {
             reassignWorkflow(workflow, request, "COMPLAINANT");
         } else if (action.equalsIgnoreCase("OUT_OF_WARRANTY")) {
-            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_1");
+            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
         }
         ProcessInstance processInstance = new ProcessInstance();
         processInstance.setBusinessId(incident.getIncidentId());
