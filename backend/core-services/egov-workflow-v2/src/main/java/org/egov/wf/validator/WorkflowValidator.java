@@ -161,7 +161,6 @@ public class WorkflowValidator {
              * in the resultant state
              */
             List<String> nextStateRoles = getRolesFromState(processStateAndAction.getResultantState());
-            log.info("List of roles available is {} , for this state {}", nextStateRoles, processStateAndAction.getResultantState().getState());
             if(isStateChanging && !CollectionUtils.isEmpty(processStateAndAction.getProcessInstanceFromRequest().getAssignes())){
                 processStateAndAction.getProcessInstanceFromRequest().getAssignes().forEach(assignee -> {
                     List<Role> assigneeRoles = assignee.getRoles();
