@@ -672,16 +672,6 @@ export const ComplaintDetails = (props) => {
     await revalidateComplaintDetails();
   };
 
-  useEffect(() => {
-    (async () => {
-      if (complaintDetails) {
-        setLoader(true);
-        await refreshData();
-        setLoader(false);
-      }
-    })();
-  }, []);
-
   function zoomView() {
     setFullscreen(!fullscreen);
   }
