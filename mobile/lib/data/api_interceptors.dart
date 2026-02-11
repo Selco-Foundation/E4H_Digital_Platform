@@ -16,7 +16,6 @@ class AuthTokenInterceptor extends Interceptor {
   final _lock = Lock();
   static const _maxRetries = 5;
 
-  /// Set this from UI (so you can dispatch AuthBloc.logout + route to login).
   static SessionExpiredCallback? onSessionExpired;
 
   static bool _logoutTriggered = false;
@@ -50,7 +49,7 @@ class AuthTokenInterceptor extends Interceptor {
     if (e is DioError) {
       final code = e.response?.statusCode;
 
-      if (code == 400 || code == 401 || code == 403) return true;
+      if (code == 401 || code == 403) return true;
 
       final data = e.response?.data;
       if (data is Map) {
@@ -114,7 +113,6 @@ class AuthTokenInterceptor extends Interceptor {
 
     final attempts = (err.requestOptions.extra['retryAttempts'] as int?) ?? 0;
     if (attempts >= _maxRetries) {
-      // return handler.next(err);
       await _triggerLogoutOnce();
       return handler.reject(_sessionExpiredError(err));
     }
@@ -125,8 +123,7 @@ class AuthTokenInterceptor extends Interceptor {
       });
     } catch (e) {
       // If refresh token is invalid/expired -> logout immediately
-      if (_refreshTokenLooksExpired(
-          e is Object ? e : Exception(e.toString()))) {
+      if (_refreshTokenLooksExpired(e)) {
         await _triggerLogoutOnce();
         return handler.reject(_sessionExpiredError(err));
       }

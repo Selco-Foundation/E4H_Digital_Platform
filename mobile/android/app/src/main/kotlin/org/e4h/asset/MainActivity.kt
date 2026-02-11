@@ -8,6 +8,9 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.io.FileOutputStream
+import kotlinx.coroutines.*
+import android.os.Handler
+import android.os.Looper
 
 class MainActivity : FlutterActivity() {
     override fun getRenderMode(): RenderMode = RenderMode.texture
@@ -27,12 +30,17 @@ class MainActivity : FlutterActivity() {
                     val maxW = call.argument<Int>("maxWidth") ?: 1600
                     val maxH = call.argument<Int>("maxHeight") ?: 1600
                     val quality = (call.argument<Int>("quality") ?: 70).coerceIn(0, 100)
-
-                    try {
-                        val outPath = compressImage(path, maxW, maxH, quality)
-                        result.success(outPath)
-                    } catch (e: Exception) {
-                        result.error("COMPRESS_FAILED", e.message, null)
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            val outPath = compressImage(path, maxW, maxH, quality)
+                            Handler(Looper.getMainLooper()).post {
+                                result.success(outPath)
+                            }
+                        } catch (e: Exception) {
+                            Handler(Looper.getMainLooper()).post {
+                                result.error("COMPRESS_FAILED", e.message, null)
+                            }
+                        }
                     }
                 } else {
                     result.notImplemented()

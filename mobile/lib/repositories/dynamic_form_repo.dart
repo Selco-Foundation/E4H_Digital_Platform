@@ -267,77 +267,6 @@ class BomRepository {
     });
   }
 
-  // Future<void> submitMergedForProject({
-  //   required Isar isar,
-  //   required String activityFacilityId,
-  //   required String tenantId,
-  //   required String facilityId,
-  //   required String assignUserUuid,
-  //   getSolutionName,
-  // }) async {
-  //   await enrichProjectDocs(
-  //     isar: isar,
-  //     activityFacilityId: activityFacilityId,
-  //     tenantId: tenantId,
-  //     facilityId: facilityId,
-  //     assignUserUuid: assignUserUuid,
-  //   );
-  //
-  //   final dirty = (await getAllForProject(isar, activityFacilityId))
-  //       .where((d) => d.isDirty)
-  //       .toList();
-  //
-  //   if (dirty.isEmpty) return;
-  //   final mergedKV = <String, dynamic>{};
-  //   for (final d in dirty) {
-  //     final kv = extractKVFromRawDoc(d.dataMap);
-  //     mergedKV.addAll(kv);
-  //   }
-  //
-  //   final firstId = dirty
-  //       .firstWhere(
-  //         (d) => (d.serverBomId != null && d.serverBomId!.isNotEmpty),
-  //         orElse: () => CacheBomDoc()..serverBomId = null,
-  //       )
-  //       .serverBomId;
-  //   final isUpdate = firstId != null && firstId.isNotEmpty;
-  //   final solutionName = await ActivityFacilityRepository(isar)
-  //       .getSolutionDesignTypeFromCache(isar, activityFacilityId);
-  //   final apiName = (solutionName != null && solutionName.trim().isNotEmpty)
-  //       ? solutionName.trim()
-  //       : 'BOM.SolarSystem';
-  //   final payload = {
-  //     "bom": [
-  //       {
-  //         if (isUpdate) "id": firstId,
-  //         "tenantId": tenantId,
-  //         "name": apiName,
-  //         "facilityId": facilityId,
-  //         "activityFacilityId": activityFacilityId,
-  //         "assignUser": assignUserUuid,
-  //         "data": mergedKV,
-  //         "isActive": true,
-  //       }
-  //     ],
-  //     "isCascadingProjectDateUpdate": false,
-  //     "apiOperation": isUpdate ? "UPDATE" : "CREATE",
-  //   };
-  //
-  //   final path =
-  //       isUpdate ? 'activity/v1/bom/_update' : 'activity/v1/bom/_create';
-  //   final response = await _dio.post(path, data: payload);
-  //
-  //   AppLogger.instance.info("bom create/update ${response.data}");
-  //
-  //   await isar.writeTxn(() async {
-  //     for (final d in dirty) {
-  //       if (isUpdate) d.serverBomId = firstId;
-  //       d.isDirty = false;
-  //       await isar.cacheBomDocs.put(d);
-  //     }
-  //   });
-  // }
-
   Future<void> submitMergedForProject({
     required Isar isar,
     required String activityFacilityId,
@@ -355,16 +284,9 @@ class BomRepository {
       assignUserUuid: assignUserUuid,
     );
 
-    // Only submit when something changed...
     final allDocs = await getAllForProject(isar, activityFacilityId);
     final dirty = allDocs.where((d) => d.isDirty).toList();
-    print("dirty.isEmpty ${dirty.isEmpty}");
     if (dirty.isEmpty) return;
-
-    print("was dirty here");
-
-    // ...but upload the SAME merged KV that the PDF generator uses.
-    // (cacheActivityFacilityBomValues is the authoritative merged map across all BOM forms.)
 
     var mergedKV = await getProjectBomKV(
       isar: isar,
@@ -373,7 +295,6 @@ class BomRepository {
     );
 
     if (mergedKV == null) {
-      // Fallback: rebuild from all docs (not only dirty docs) so we never lose sections.
       final fallback = <String, dynamic>{};
       for (final d in allDocs) {
         final kv = extractKVFromRawDoc(d.dataMap);
@@ -382,7 +303,6 @@ class BomRepository {
       mergedKV = fallback;
     }
 
-    // IMPORTANT: use ID from ANY doc (dirty or not), otherwise we keep "CREATE"-ing forever.
     final existingId = allDocs
         .firstWhere(
           (d) => (d.serverBomId != null && d.serverBomId!.trim().isNotEmpty),
@@ -418,12 +338,8 @@ class BomRepository {
 
     final path =
         isUpdate ? 'activity/v1/bom/_update' : 'activity/v1/bom/_create';
-
     final response = await _dio.post(path, data: payload);
-
     AppLogger.instance.info("bom create/update ${response.data}");
-
-    // Persist server BOM id on CREATE (and keep it for future UPDATE calls).
     final returnedId = _extractBomId(response.data);
     final finalId = isUpdate ? (existingId ?? '') : ((returnedId ?? '').trim());
 
