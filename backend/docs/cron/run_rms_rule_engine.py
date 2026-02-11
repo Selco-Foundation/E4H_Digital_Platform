@@ -1,17 +1,30 @@
 import requests
-import threading
+import sys
 
+# Endpoint and headers
 url = 'http://rms-service.core-dev:8080/rms-service/v1/trigger'
-headers = {'Content-Type': 'application/json'}
+headers = {
+    'Content-Type': 'application/json'
+}
 
-def trigger():
-    try:
-        requests.post(url, headers=headers, json={})
-    except:
-        pass  # ignore errors (fire-and-forget)
+# Empty JSON body (RMS trigger endpoint doesn't require payload)
+data = {}
 
-print("Triggering RMS rule engine...")
-threading.Thread(target=trigger, daemon=True).start()
+try:
+    print(f"Calling RMS rule engine trigger endpoint: {url}")
+    response = requests.post(url, headers=headers, json=data)
+    print(f"Status: {response.status_code}")
+    print(f"Response: {response.text}")
 
-print("Request sent. Exiting script.")
+    if response.status_code == 200:
+        print("RMS rule engine workflow executed successfully")
+    else:
+        print(f"RMS rule engine trigger returned status {response.status_code}")
+        sys.exit(1)
+
+except Exception as e:
+    print(f"Error calling RMS rule engine trigger endpoint: {e}")
+    sys.exit(1)
+
+
 
