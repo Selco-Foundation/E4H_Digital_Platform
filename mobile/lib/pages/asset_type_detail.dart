@@ -36,7 +36,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   String? _currentProjectId;
   String assetTypeTitle = "";
   late List<Warranty> assetWarranties = [];
-  // late List<Brand> assetBrands = [];
   final List<Mdms<AssetType>> assetTypeList = [];
 
   String? selectedWarranty;
@@ -65,12 +64,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
               .where((w) =>
                   w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
               .toList();
-
-          // assetBrands = brand.first.data.brand
-          //     .map((b) => b)
-          //     .where((w) =>
-          //         w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
-          //     .toList();
           return assetType;
         });
 
@@ -118,12 +111,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
           progress: 4,
         )));
   }
-
-  // String _brandNameFor(String? code) {
-  //   if (code == null || code.isEmpty) return '';
-  //   final b = assetBrands.firstWhereOrNull((x) => x.code == code);
-  //   return b?.name ?? '';
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -274,29 +261,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   },
                                 )),
                             LabeledField(
-                              // label: 'Brand',
-                              // labelStyle: textTheme.headingS.copyWith(
-                              //     color: theme.colorTheme.text.primary),
-                              // capitalizedFirstLetter: false,
-                              // child: DigitDropdown(
-                              //   sentenceCaseEnabled: false,
-                              //   selectedOption: DropdownItem(
-                              //     name: selectedBrandName ?? "",
-                              //     code: selectedBrandCode ?? "",
-                              //   ),
-                              //   items: assetBrands
-                              //       .map((type) => DropdownItem(
-                              //             name: type.name,
-                              //             code: type.code,
-                              //           ))
-                              //       .toList(),
-                              //   onSelect: (DropdownItem selected) {
-                              //     setState(() {
-                              //       selectedBrandCode = selected.code;
-                              //       selectedBrandName = selected.name;
-                              //     });
-                              //   },
-                              // )),
                               label: 'Brand',
                               labelStyle: textTheme.headingS.copyWith(
                                   color: theme.colorTheme.text.primary),

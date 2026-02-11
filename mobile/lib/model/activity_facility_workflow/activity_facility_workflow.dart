@@ -77,7 +77,7 @@ class ActivityFacilityConverter
         );
       } catch (_) {}
     }
-    // ✅ FieldPlan + Project (for AMC PDF / submission context)
+    // ✅ FieldPlan + Project (for PDF / submission context)
 
     if (m['fieldPlan'] is Map) {
       try {

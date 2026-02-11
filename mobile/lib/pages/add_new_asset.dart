@@ -899,9 +899,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
   Widget _panelCapacity(ThemeData theme, DigitTextTheme textTheme,
       List<AssetModel> assets, String heading) {
-    // final firstAsset =
-    //     assets.isNotEmpty ? assets.first : AssetModel(serialNumber: '');
-
     return Column(
       children: [
         DigitCard(

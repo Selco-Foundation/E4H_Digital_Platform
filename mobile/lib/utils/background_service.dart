@@ -210,23 +210,6 @@ class BackgroundServiceController {
     final running = await service.isRunning();
     AppLogger.instance.info('[UI] service.startService() -> running=$running');
 
-    // try {
-    //   await readyStream.first.timeout(const Duration(seconds: 8));
-    //   AppLogger.instance.info('[UI] kEvtReady received. Submitting job...');
-    // } catch (_) {
-    //   AppLogger.instance
-    //       .info('[UI] kEvtReady timeout; invoking after short delay');
-    //   await Future.delayed(const Duration(milliseconds: 300));
-    // }
-    //
-    // service.invoke(kMethodSubmit, {
-    //   'activityFacilityId': activityFacilityId,
-    //   'facilityId': facilityId,
-    //   'userType': userType,
-    //   'fromDraft': fromDraft,
-    // });
-    // Removed kEvtReady waiting + fallback delay:
-    // We force-start immediately to avoid long "waiting" delays.
     await _forceStartJobImmediately(
       service: service,
       method: kMethodSubmit,
@@ -273,24 +256,6 @@ class BackgroundServiceController {
     await service.startService();
     final running = await service.isRunning();
     AppLogger.instance.info('[UI] service.startService() -> running=$running');
-
-    // try {
-    //   await readyStream.first.timeout(const Duration(seconds: 8));
-    //   AppLogger.instance
-    //       .info('[UI] kEvtReady received. Submitting REJECTION job...');
-    // } catch (_) {
-    //   AppLogger.instance
-    //       .info('[UI] kEvtReady timeout; proceeding after 300ms fallback');
-    //   await Future.delayed(const Duration(milliseconds: 300));
-    // }
-
-    service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
-
-    // service.invoke(kMethodReject, <String, dynamic>{
-    //   'activityFacilityId': activityFacilityId,
-    //   'userType': userType,
-    //   'transactions': transactions,
-    // });
 
     await _forceStartJobImmediately(
       service: service,
@@ -343,24 +308,10 @@ class BackgroundServiceController {
       '[BG-CTL] service.startService() -> running=$running (visit submit)',
     );
 
-    // try {
-    //   await readyStream.first.timeout(const Duration(seconds: 5));
-    // } catch (e) {
-    //   AppLogger.instance.info(
-    //     '[BG-CTL] kEvtReady timeout for visit submit; invoking anyway',
-    //   );
-    //   await Future.delayed(const Duration(milliseconds: 300));
-    // }
-
     svc.invoke(kCmdForeground, {
       'title': 'Submitting visit report',
       'content': 'Preparing visit submission…',
     });
-
-    // svc.invoke(kMethodSubmitVisit, {
-    //   'scheduledVisitId': scheduledVisitId,
-    //   'userType': userType,
-    // });
 
     await _forceStartJobImmediately(
       service: svc,
