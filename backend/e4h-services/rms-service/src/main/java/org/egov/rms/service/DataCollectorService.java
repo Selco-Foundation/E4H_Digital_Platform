@@ -469,7 +469,7 @@ public class DataCollectorService {
                 requestBody.put("graphType", "batteryVoltage_Filtered");
                 requestBody.put("time_range", timeRange);
                 requestBody.put("frequency", "daily");
-                requestBody.put("aggregation", "avg");
+                requestBody.put("aggregation", "min");
                 requestBody.put("filters", filters);
 
                 Map<String, Object> pagination = new HashMap<>();

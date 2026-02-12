@@ -57,6 +57,16 @@ public class FacilityServiceClient {
                 
                 if (facilities != null && !facilities.isEmpty()) {
                     Map<String, Object> facility = facilities.get(0);
+
+                    if (facility.containsKey("facility_status")) {
+                        String status = String.valueOf(facility.get("facility_status"));
+
+                        if ("UNINSTALLED".equalsIgnoreCase(status)) {
+                            log.info("Facility {} is UNINSTALLED. Skipping further processing.", hfrId);
+                            return null;
+                        }
+                    }
+
                     FacilityDetails details = mapToFacilityDetails(facility);
                     if (details != null) {
                         log.debug("Successfully fetched facility for hfrId: {} - facilityId: {}, boundaryCode: {}", 
