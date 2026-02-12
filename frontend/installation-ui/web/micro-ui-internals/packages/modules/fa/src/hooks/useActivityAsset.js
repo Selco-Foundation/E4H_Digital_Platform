@@ -108,12 +108,12 @@ const formatData = async (data) => {
   return [...dataMap.values()];
 }
 
-const fetchFacilityDetails = async (filter) => {
-  const facilityDetailsResponse = await AssetService.fetchAssets(filter);
+const fetchFacilityDetails = async (filter, limit, offset) => {
+  const facilityDetailsResponse = await AssetService.fetchAssets(filter, limit, offset);
   return await formatData(facilityDetailsResponse);
 }
 
-const useActivityAsset = (activityFacilityId) => {
+const useActivityAsset = (activityFacilityId, limit = 1000, offset = 0) => {
 
   const filter = {
     criteria: {
@@ -124,8 +124,8 @@ const useActivityAsset = (activityFacilityId) => {
 
   const queryClient = useQueryClient();
   const { isLoading, isError, error, data } = useQuery(
-    ["ASSET", filter],
-    () => fetchFacilityDetails(filter)
+    ["ASSET", filter, limit, offset],
+    () => fetchFacilityDetails(filter, limit, offset)
   );
 
   return {

@@ -331,10 +331,9 @@ class ScheduledVisitRepository {
         .findFirst();
   }
 
-  Future<void> deleteAmcMediaUploads(
-      {required Isar isar, required String scheduledVisitId}) async {
-    await isar.writeTxn(() async {
-      final col = isar.cacheAmcMediaUploads;
+  Future<void> deleteAmcMediaUploads({required String scheduledVisitId}) async {
+    await _isar.writeTxn(() async {
+      final col = _isar.cacheAmcMediaUploads;
       final rec =
           await col.where().scheduledVisitIdEqualTo(scheduledVisitId).findAll();
       for (final r in rec) {
