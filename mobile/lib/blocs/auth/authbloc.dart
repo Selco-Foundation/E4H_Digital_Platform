@@ -38,6 +38,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         tenantId: envConfig.variables.tenantId,
         grant_type: 'password',
         userType: 'EMPLOYEE',
+        scope: 'read',
       ));
 
       _accesstoken = response.access_token;

@@ -122,6 +122,11 @@ class _HomePageState extends State<HomePage> {
           Navigator.of(context).pop();
           _syncRoute = null;
         }
+
+        if (isSessionExpiredMessage(errorMessage)) {
+          handleSessionExpired(context);
+          return;
+        }
         _showSyncDialog(context, error: errorMessage);
       },
       success: () {
@@ -193,7 +198,6 @@ class _HomePageState extends State<HomePage> {
                           label: "Sync Data",
                           onPressed: () {
                             Navigator.of(ctx).pop();
-                            // Kick off the same sync flow
                             context.read<AssetSubmissionBloc>().add(
                                 AssetSubmissionEvent.submitAllDrafts(
                                     userType: _userType));

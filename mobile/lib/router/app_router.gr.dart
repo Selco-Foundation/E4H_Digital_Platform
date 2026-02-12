@@ -128,7 +128,7 @@ abstract class _$AppRouter extends RootStackRouter {
           pageName: args.pageName,
           schemaName: args.schemaName,
           uniqueIdentifier: args.uniqueIdentifier,
-          activityFacilityId: args.projectId,
+          activityFacilityId: args.activityFacilityId,
           origin: args.origin,
           userType: args.userType,
         ),
@@ -574,7 +574,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
     required String pageName,
     String? schemaName,
     String? uniqueIdentifier,
-    required String projectId,
+    required String activityFacilityId,
     required FormOrigin origin,
     required String userType,
     List<PageRouteInfo>? children,
@@ -585,7 +585,7 @@ class DynamicFormsRoute extends PageRouteInfo<DynamicFormsRouteArgs> {
             pageName: pageName,
             schemaName: schemaName,
             uniqueIdentifier: uniqueIdentifier,
-            projectId: projectId,
+            activityFacilityId: activityFacilityId,
             origin: origin,
             userType: userType,
           ),
@@ -605,7 +605,7 @@ class DynamicFormsRouteArgs {
     required this.pageName,
     this.schemaName,
     this.uniqueIdentifier,
-    required this.projectId,
+    required this.activityFacilityId,
     required this.origin,
     required this.userType,
   });
@@ -618,7 +618,7 @@ class DynamicFormsRouteArgs {
 
   final String? uniqueIdentifier;
 
-  final String projectId;
+  final String activityFacilityId;
 
   final FormOrigin origin;
 
@@ -626,7 +626,7 @@ class DynamicFormsRouteArgs {
 
   @override
   String toString() {
-    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, projectId: $projectId, origin: $origin, userType: $userType}';
+    return 'DynamicFormsRouteArgs{key: $key, pageName: $pageName, schemaName: $schemaName, uniqueIdentifier: $uniqueIdentifier, activityFacilityId: $activityFacilityId, origin: $origin, userType: $userType}';
   }
 }
 
