@@ -264,6 +264,10 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
             state.maybeWhen(
               success: () => context.router.push(const AmcOtpRoute()),
               failure: (error) {
+                if (isSessionExpiredMessage(error)) {
+                  handleSessionExpired(context);
+                  return;
+                }
                 context.showSnackBar(SnackBar(content: Text("$error")));
               },
               orElse: () {},

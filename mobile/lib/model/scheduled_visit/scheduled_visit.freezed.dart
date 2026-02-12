@@ -1801,11 +1801,7 @@ mixin _$ScheduledVisitReport {
   String? get otpReference => throw _privateConstructorUsedError;
   @EpochDateTimeConverter()
   DateTime? get otpVerifiedAt => throw _privateConstructorUsedError;
-
-  /// Flexible { key: value, ... } map
   Map<String, dynamic>? get responses => throw _privateConstructorUsedError;
-
-  /// Reuse Document from workflow model
   List<Document>? get documents => throw _privateConstructorUsedError;
   Map<String, dynamic>? get additionalDetails =>
       throw _privateConstructorUsedError;
@@ -2015,11 +2011,7 @@ class _$ScheduledVisitReportImpl implements _ScheduledVisitReport {
   @override
   @EpochDateTimeConverter()
   final DateTime? otpVerifiedAt;
-
-  /// Flexible { key: value, ... } map
   final Map<String, dynamic>? _responses;
-
-  /// Flexible { key: value, ... } map
   @override
   Map<String, dynamic>? get responses {
     final value = _responses;
@@ -2029,10 +2021,7 @@ class _$ScheduledVisitReportImpl implements _ScheduledVisitReport {
     return EqualUnmodifiableMapView(value);
   }
 
-  /// Reuse Document from workflow model
   final List<Document>? _documents;
-
-  /// Reuse Document from workflow model
   @override
   List<Document>? get documents {
     final value = _documents;
@@ -2143,12 +2132,8 @@ abstract class _ScheduledVisitReport implements ScheduledVisitReport {
   @EpochDateTimeConverter()
   DateTime? get otpVerifiedAt;
   @override
-
-  /// Flexible { key: value, ... } map
   Map<String, dynamic>? get responses;
   @override
-
-  /// Reuse Document from workflow model
   List<Document>? get documents;
   @override
   Map<String, dynamic>? get additionalDetails;

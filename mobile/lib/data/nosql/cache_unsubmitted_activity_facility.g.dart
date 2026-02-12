@@ -86,10 +86,18 @@ const CacheUnsubmittedActivityFacilitySchema = CollectionSchema(
   links: {},
   embeddedSchemas: {
     r'ActivityFacility': ActivityFacilitySchema,
-    r'AddressModel': AddressModelSchema,
+    r'FieldPlan': FieldPlanSchema,
+    r'Project': ProjectSchema,
+    r'ProjectAdditionalDetails': ProjectAdditionalDetailsSchema,
     r'Facility': FacilitySchema,
     r'FacilityAddress': FacilityAddressSchema,
-    r'FacilityDetails': FacilityDetailsSchema
+    r'FacilityDetails': FacilityDetailsSchema,
+    r'GeographyDetails': GeographyDetailsSchema,
+    r'StateRef': StateRefSchema,
+    r'BlockRef': BlockRefSchema,
+    r'AddressModel': AddressModelSchema,
+    r'AdditionalDetails': AdditionalDetailsSchema,
+    r'AssetTypeAdditionalDetails': AssetTypeAdditionalDetailsSchema
   },
   getId: _cacheUnsubmittedActivityFacilityGetId,
   getLinks: _cacheUnsubmittedActivityFacilityGetLinks,

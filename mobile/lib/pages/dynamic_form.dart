@@ -141,8 +141,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
           _repo.upsertTransformedSchema(transformed);
           schemaJson = transformed;
         }
-      } catch (_) {
-      }
+      } catch (_) {}
     }
 
     if (!mounted) return;
@@ -566,7 +565,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                             } else {
                               context.router.push(DynamicFormsRoute(
                                 pageName: next,
-                                projectId: widget.activityFacilityId,
+                                activityFacilityId: widget.activityFacilityId,
                                 schemaName: currentKey,
                                 origin: widget.origin,
                                 userType: widget.userType,

@@ -14,7 +14,6 @@ import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../model/asset_type/asset_type.dart';
-import '../model/brand/brand.dart';
 import '../model/mdms/mdms.dart';
 import '../model/warranty/warranty.dart';
 import '../router/app_router.dart';
@@ -37,7 +36,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   String? _currentProjectId;
   String assetTypeTitle = "";
   late List<Warranty> assetWarranties = [];
-  late List<Brand> assetBrands = [];
   final List<Mdms<AssetType>> assetTypeList = [];
 
   String? selectedWarranty;
@@ -45,6 +43,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   String? selectedBrandName;
 
   final TextEditingController modelController = TextEditingController();
+  final TextEditingController brandController = TextEditingController();
 
   @override
   void initState() {
@@ -65,18 +64,29 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
               .where((w) =>
                   w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
               .toList();
-
-          assetBrands = brand.first.data.brand
-              .map((b) => b)
-              .where((w) =>
-                  w.assetTypeCode.toUpperCase() == assetTypeTitle.toUpperCase())
-              .toList();
           return assetType;
         });
 
     final selState = context.read<SelectedActivityFacilityBloc>().state;
     selState.whenOrNull(selected: (project) {
       _currentProjectId = project.activityFacility.id;
+
+      final ad = project.activityFacility.additionalDetails;
+      final typeDetails = assetTypeTitle == 'battery'
+          ? ad?.battery
+          : assetTypeTitle == 'inverter'
+              ? ad?.inverter
+              : assetTypeTitle == 'panel'
+                  ? ad?.panel
+                  : null;
+
+      final bCode = (typeDetails?.brandCode ?? '').trim();
+      final bName = (typeDetails?.brandName ?? '').trim();
+
+      selectedBrandCode = bCode.isEmpty ? null : bCode;
+      selectedBrandName = bName.isEmpty ? null : bName;
+      brandController.text = selectedBrandName ?? '';
+
       _updateProgress(project.activityFacility.id, assetTypeTitle);
       context.read<CacheAssetDetailBloc>().add(
             CacheAssetDetailEvent.get(
@@ -88,6 +98,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   @override
   void dispose() {
     modelController.dispose();
+    brandController.dispose();
     super.dispose();
   }
 
@@ -99,12 +110,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
           assetType: assetType,
           progress: 4,
         )));
-  }
-
-  String _brandNameFor(String? code) {
-    if (code == null || code.isEmpty) return '';
-    final b = assetBrands.firstWhereOrNull((x) => x.code == code);
-    return b?.name ?? '';
   }
 
   @override
@@ -119,8 +124,19 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
             final entry = entries.firstOrNull;
             if (entry != null) {
               setState(() {
-                selectedBrandCode = entry.brand;
-                selectedBrandName = _brandNameFor(selectedBrandCode);
+                // Only use cached brand code if ActivityFacility doesn't provide one
+                final cachedBrand = (entry.brand ?? '').trim();
+                if ((selectedBrandCode ?? '').trim().isEmpty &&
+                    cachedBrand.isNotEmpty) {
+                  selectedBrandCode = cachedBrand;
+                }
+
+                // Brand name stays sourced from ActivityFacility; fall back to showing code if needed
+                if ((selectedBrandName ?? '').trim().isEmpty &&
+                    (selectedBrandCode ?? '').trim().isNotEmpty) {
+                  selectedBrandName = selectedBrandCode;
+                }
+                brandController.text = selectedBrandName ?? '';
                 selectedWarranty = entry.warranty;
                 modelController.text = entry.model ?? '';
               });
@@ -245,29 +261,17 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   },
                                 )),
                             LabeledField(
-                                label: 'Brand',
-                                labelStyle: textTheme.headingS.copyWith(
-                                    color: theme.colorTheme.text.primary),
-                                capitalizedFirstLetter: false,
-                                child: DigitDropdown(
-                                  sentenceCaseEnabled: false,
-                                  selectedOption: DropdownItem(
-                                    name: selectedBrandName ?? "",
-                                    code: selectedBrandCode ?? "",
-                                  ),
-                                  items: assetBrands
-                                      .map((type) => DropdownItem(
-                                            name: type.name,
-                                            code: type.code,
-                                          ))
-                                      .toList(),
-                                  onSelect: (DropdownItem selected) {
-                                    setState(() {
-                                      selectedBrandCode = selected.code;
-                                      selectedBrandName = selected.name;
-                                    });
-                                  },
-                                )),
+                              label: 'Brand',
+                              labelStyle: textTheme.headingS.copyWith(
+                                  color: theme.colorTheme.text.primary),
+                              capitalizedFirstLetter: false,
+                              child: DigitTextFormInput(
+                                controller: brandController,
+                                isDisabled: true,
+                                readOnly: true,
+                                keyboardType: TextInputType.none,
+                              ),
+                            ),
                             LabeledField(
                               label: 'Model Number',
                               labelStyle: textTheme.headingS.copyWith(

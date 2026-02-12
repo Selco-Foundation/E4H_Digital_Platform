@@ -87,6 +87,8 @@ class AddNewAssetPage extends StatefulWidget {
 }
 
 class _AddNewAssetPageState extends State<AddNewAssetPage> {
+  bool _isSaving = false;
+
   String? _currentActivityFacilityId;
   ActivityFacilityWorkflow? activityFacilityWorkflow;
   final List<AssetModel> _assets = [AssetModel(serialNumber: '')];
@@ -120,8 +122,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
       context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
           selected: (proj) {
-        _currentActivityFacilityId = proj.activityFacility.id;
-        activityFacilityWorkflow = proj;
+        setState(() {
+          _currentActivityFacilityId = proj.activityFacility.id;
+          activityFacilityWorkflow = proj;
+          _applyPrefilledCapacityToAllAssets();
+        });
+
         context.read<CacheAssetCountBloc>().add(CacheAssetCountEvent.get(
             proj.activityFacility.id, currentAssetType));
         context.read<CacheAddNewAssetBloc>().add(
@@ -276,6 +282,56 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     setState(() => _assets[index].serialNumber = serial);
   }
 
+  String _prefilledCapacityFor(String assetType) {
+    final wf = activityFacilityWorkflow ??
+        context.read<SelectedActivityFacilityBloc>().state.maybeWhen(
+              selected: (proj) => proj,
+              orElse: () => null,
+            );
+
+    final ad = wf?.activityFacility.additionalDetails;
+    if (ad == null) return '';
+
+    switch (assetType.toLowerCase()) {
+      case 'battery':
+        return (ad.battery?.capacity ?? '').toString();
+      case 'inverter':
+        return (ad.inverter?.capacity ?? '').toString();
+      case 'panel':
+        return (ad.panel?.capacity ?? '').toString();
+      default:
+        return '';
+    }
+  }
+
+  void _applyPrefilledCapacityToAsset(AssetModel asset) {
+    final cap = _prefilledCapacityFor(currentAssetType);
+    if (cap.isEmpty) return;
+
+    asset.capacity = cap;
+
+    switch (currentAssetType.toLowerCase()) {
+      case 'battery':
+        asset.batteryCapacity = cap;
+        break;
+      case 'panel':
+        asset.panelCapacity = cap;
+        break;
+      case 'inverter':
+        asset.inverterCapacity = cap;
+        break;
+    }
+  }
+
+  void _applyPrefilledCapacityToAllAssets() {
+    final cap = _prefilledCapacityFor(currentAssetType);
+    if (cap.isEmpty) return;
+
+    for (final a in _assets) {
+      _applyPrefilledCapacityToAsset(a);
+    }
+  }
+
   bool _isAssetComplete(AssetModel a, String assetType) {
     if (a.serialNumber.isEmpty || a.photoPath == null) return false;
 
@@ -318,7 +374,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 setState(() {
                   _assets.clear();
                   for (final entry in entries) {
-                    _assets.add(AssetModel(
+                    final assetModel = AssetModel(
                       assetId: entry.assetId,
                       documentId: entry.documentId,
                       serialNumber: entry.serialNumber,
@@ -337,7 +393,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       inverterCapacityUnit:
                           entry.inverterCapacityUnit ?? assetCapacityUom,
                       currentUnit: entry.currentUnit,
-                    ));
+                    );
+                    _applyPrefilledCapacityToAsset(assetModel);
+                    _assets.add(assetModel);
                   }
                 });
 
@@ -372,8 +430,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               orElse: () => 0,
             ),
             builder: (ctx, maxAssets) {
-              final isDisabled = _assets.length != maxAssets ||
-                  _assets.any((a) => !_isAssetComplete(a, currentAssetType));
+              final isDisabled = (_assets.length != maxAssets ||
+                      _assets.any(
+                          (a) => !_isAssetComplete(a, currentAssetType))) ||
+                  _isSaving;
 
               return Scaffold(
                 body: ScrollableContent(
@@ -389,45 +449,70 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     isDisabled: isDisabled,
                     onPress: () async {
                       if (isDisabled) return;
-                      context.read<CacheAddNewAssetBloc>().add(
-                          CacheAddNewAssetEvent.deleteAll(
-                              _currentActivityFacilityId!, currentAssetType));
+                      if (_isSaving) return;
 
-                      await context
-                          .read<CacheAddNewAssetBloc>()
-                          .stream
-                          .firstWhere((state) => state.maybeWhen(
-                                deleted: () => true,
-                                error: (_) => true,
-                                orElse: () => false,
-                              ));
+                      setState(() {
+                        _isSaving = true;
+                      });
 
-                      for (final asset in _assets) {
-                        final newAsset = CacheAddNewAsset(
-                          assetId: asset.assetId,
-                          documentId: asset.documentId,
-                          activityFacilityId: _currentActivityFacilityId!,
-                          assetType: currentAssetType,
-                          itemNumber: asset.capacity,
-                          serialNumber: asset.serialNumber,
-                          documentType: "ASSET",
-                          photoPath: asset.photoPath!,
-                          longitude: asset.longitude!,
-                          latitude: asset.latitude!,
-                          capacityUnit: asset.capacityUnit ?? assetCapacityUom,
-                          panelCapacity: asset.panelCapacity,
-                          batteryCapacity: asset.batteryCapacity,
-                          batteryVoltage: asset.batteryVoltage,
-                          batteryType: asset.batteryType,
-                          voltageUnit: voltageUom ?? asset.voltageUnit,
-                          inverterCapacity: asset.inverterCapacity,
-                          inverterCapacityUnit:
-                              asset.inverterCapacityUnit ?? assetCapacityUom,
-                          currentUnit: asset.currentUnit,
-                        );
-                        context
+                      try {
+                        final entries = _assets.map((asset) {
+                          return CacheAddNewAsset(
+                            assetId: asset.assetId,
+                            documentId: asset.documentId,
+                            activityFacilityId: _currentActivityFacilityId!,
+                            assetType: currentAssetType,
+                            itemNumber: asset.capacity,
+                            serialNumber: asset.serialNumber,
+                            documentType: "ASSET",
+                            photoPath: asset.photoPath!,
+                            longitude: asset.longitude!,
+                            latitude: asset.latitude!,
+                            capacityUnit:
+                                asset.capacityUnit ?? assetCapacityUom,
+                            panelCapacity: asset.panelCapacity,
+                            batteryCapacity: asset.batteryCapacity,
+                            batteryVoltage: asset.batteryVoltage,
+                            batteryType: asset.batteryType,
+                            voltageUnit: voltageUom ?? asset.voltageUnit,
+                            inverterCapacity: asset.inverterCapacity,
+                            inverterCapacityUnit:
+                                asset.inverterCapacityUnit ?? assetCapacityUom,
+                            currentUnit: asset.currentUnit,
+                          );
+                        }).toList();
+
+                        context.read<CacheAddNewAssetBloc>().add(
+                              CacheAddNewAssetEvent.replaceAll(
+                                _currentActivityFacilityId!,
+                                currentAssetType,
+                                entries,
+                              ),
+                            );
+
+                        final result = await context
                             .read<CacheAddNewAssetBloc>()
-                            .add(CacheAddNewAssetEvent.add(newAsset));
+                            .stream
+                            .firstWhere((state) => state.maybeWhen(
+                                  loaded: (_) => true,
+                                  error: (_) => true,
+                                  orElse: () => false,
+                                ));
+
+                        final errMsg = result.maybeWhen(
+                          error: (m) => m,
+                          orElse: () => null,
+                        );
+
+                        if (errMsg != null) {
+                          throw Exception(errMsg);
+                        }
+                      } finally {
+                        if (mounted) {
+                          setState(() {
+                            _isSaving = false;
+                          });
+                        }
                       }
                       if (_currentActivityFacilityId != null) {
                         context.read<CacheAssetCountBloc>().add(
@@ -622,6 +707,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
                   final file = snapshot.data;
                   return ImageUploader(
+                    imageQuality: 60, // 0..100 (lower => smaller)
+                    maxWidth: 1280,
+                    maxHeight: 1280,
+                    requestFullMetadata: false,
                     initialImages: file != null ? [file] : [],
                     onImagesSelected: (List<File> imageFile) async {
                       if (imageFile.isEmpty) return;
@@ -657,21 +746,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 child: LabeledField(
                   label: 'Capacity',
                   capitalizedFirstLetter: false,
-                  child: DigitDropdown(
-                    sentenceCaseEnabled: false,
-                    items: assetCapacity
-                        .map((type) => DropdownItem(name: type, code: type))
-                        .toList(),
-                    selectedOption: DropdownItem(
-                      name: asset.capacity ?? '',
-                      code: asset.capacity ?? '',
+                  child: DigitTextFormInput(
+                    key: ValueKey(
+                        'inverter-cap-${_prefilledCapacityFor('inverter')}'),
+                    controller: TextEditingController(
+                      text: _prefilledCapacityFor('inverter'),
                     ),
-                    onSelect: (DropdownItem selected) {
-                      setState(() {
-                        asset.capacity = selected.code;
-                        asset.inverterCapacity = selected.code;
-                      });
-                    },
+                    isDisabled: true,
+                    readOnly: true,
+                    keyboardType: TextInputType.text,
                   ),
                 ),
               ),
@@ -779,22 +862,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   child: LabeledField(
                     label: 'Current',
                     capitalizedFirstLetter: false,
-                    child: DigitDropdown(
-                      sentenceCaseEnabled: false,
-                      items: assetCapacity
-                          .map((type) => DropdownItem(name: type, code: type))
-                          .toList(),
-                      selectedOption: DropdownItem(
-                        name: firstAsset.batteryCapacity ?? '',
-                        code: firstAsset.batteryCapacity ?? '',
+                    child: DigitTextFormInput(
+                      key: ValueKey(
+                          'battery-cap-${_prefilledCapacityFor('battery')}'),
+                      controller: TextEditingController(
+                        text: _prefilledCapacityFor('battery'),
                       ),
-                      onSelect: (DropdownItem sel) {
-                        setState(() {
-                          for (var asset in assets) {
-                            asset.batteryCapacity = sel.code;
-                          }
-                        });
-                      },
+                      isDisabled: true,
+                      readOnly: true,
+                      keyboardType: TextInputType.text,
                     ),
                   ),
                 ),
@@ -823,9 +899,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
   Widget _panelCapacity(ThemeData theme, DigitTextTheme textTheme,
       List<AssetModel> assets, String heading) {
-    final firstAsset =
-        assets.isNotEmpty ? assets.first : AssetModel(serialNumber: '');
-
     return Column(
       children: [
         DigitCard(
@@ -842,22 +915,16 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   child: LabeledField(
                     label: 'Voltage',
                     capitalizedFirstLetter: false,
-                    child: DigitDropdown(
-                        sentenceCaseEnabled: false,
-                        items: assetCapacity
-                            .map((type) => DropdownItem(name: type, code: type))
-                            .toList(),
-                        selectedOption: DropdownItem(
-                          name: firstAsset.panelCapacity ?? '',
-                          code: firstAsset.panelCapacity ?? '',
-                        ),
-                        onSelect: (DropdownItem sel) {
-                          setState(() {
-                            for (var asset in assets) {
-                              asset.panelCapacity = sel.code;
-                            }
-                          });
-                        }),
+                    child: DigitTextFormInput(
+                      key: ValueKey(
+                          'panel-cap-${_prefilledCapacityFor('panel')}'),
+                      controller: TextEditingController(
+                        text: _prefilledCapacityFor('panel'),
+                      ),
+                      isDisabled: true,
+                      readOnly: true,
+                      keyboardType: TextInputType.text,
+                    ),
                   ),
                 ),
                 const SizedBox(width: spacer6),
