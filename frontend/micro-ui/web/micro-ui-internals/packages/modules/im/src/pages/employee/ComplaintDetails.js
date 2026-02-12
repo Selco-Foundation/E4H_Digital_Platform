@@ -123,6 +123,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const [oowRecommendedSolution, setOowRecommendedSolution] = useState(null);
   const [oowTotalCostOfSolution, setOowTotalCostOfSolution] = useState(null);
   const [oowTimeToResolve, setOowTimeToResolve] = useState(null);
+  const [spcRootAnalysis, setSpcRootAnalysis] = useState(null);
+  const [spcSparePartToBeReplaced, setSpcSparePartToBeReplaced] = useState(null);
   const processInstances = workflowDetails?.data?.processInstances || [];
   const oowActedVendor = processInstances.find((processInstance) => processInstance.action === "OUT_OF_WARRANTY")?.assigner;
   const currentOwner = processInstances[0]?.assignes?.[0];
@@ -167,6 +169,24 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   function addOOWResponses(e, setField) {
     if (e.target.value.length > 256) {
       setError(t("CS_TEXT_LENGTH_LIMIT_EXCEED"));
+    } else {
+      setError(null);
+      setField(e.target.value);
+    }
+  }
+
+  function addSPCRootAnalysis(e, setField) {
+    if (e.target.value.length > 1000) {
+      setError(t("SPC_ROOT_ANALYSIS_LENGTH_LIMIT_EXCEED"));
+    } else {
+      setError(null);
+      setField(e.target.value);
+    }
+  }
+
+  function addSPCSparePartToBeReplaced(e, setField) {
+    if (e.target.value.length > 200) {
+      setError(t("SPC_PART_TO_BE_REPLACED_LENGTH_LIMIT_EXCEED"));
     } else {
       setError(null);
       setField(e.target.value);
@@ -326,13 +346,14 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         const isCommentsMandatory =
           (isTextareaAction ||
             selectedAction === "RESOLVE" ||
-            selectedAction === "SPARE_PART_NEEDED" ||
             selectedAction === "REVISE" ||
             selectedAction === "STATUS_UPDATE") &&
           !comments.trim();
 
         const oowMandateCondition =
           ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !(oowIssue && oowRootCause && oowRecommendedSolution && oowTimeToResolve);
+
+        const spcMandateCondition = selectedAction === "SPARE_PART_NEEDED" && !(spcRootAnalysis && spcSparePartToBeReplaced);
 
         const validations = [
           { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_DECLINE_REASON" },
@@ -342,10 +363,19 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
           { condition: oowMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
+          { condition: spcMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
           { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTotalCostOfSolution, message: "CS_SOLUTION_COST_MANDATORY" },
           {
             condition: ["RESOLVE", "OUT_OF_WARRANTY", "STATUS_UPDATE", "SUBMIT"].includes(selectedAction) && uploadedFile.length === 0,
             message: "CS_MANDATORY_FILE_UPLOAD",
+          },
+          {
+            condition: selectedAction === "SPARE_PART_NEEDED" && uploadedFile.length < 2,
+            message: "SPARE_PART_NEEDED_MIN_FILE_ERROR",
+          },
+          {
+            condition: selectedAction === "SPARE_PART_NEEDED" && uploadedFile.length > 3,
+            message: "SPARE_PART_NEEDED_MAX_FILE_ERROR",
           },
           { condition: selectedAction === "REVISE" && comments?.length < 50, message: "CS_REVISE_ACTION_COMMENT_LENGTH" },
         ];
@@ -366,6 +396,14 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             }
           : null;
 
+        const spcResponses =
+          selectedAction === "SPARE_PART_NEEDED"
+            ? {
+                spcRootAnalysis,
+                spcSparePartToBeReplaced,
+              }
+            : null;
+
         onAssign(
           selectedAction === "STATUS_UPDATE" ? currentOwner : selectedAction === "REVISE" ? oowActedVendor : selectedEmployee,
           comments,
@@ -374,7 +412,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           selectedRejectReason,
           selectedSendBackReason,
           oowResponses,
-          selectedOutOfScopeReason
+          selectedOutOfScopeReason,
+          spcResponses
         );
       }}
       error={error}
@@ -451,6 +490,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         {(selectedAction !== "SENDBACK" &&
           selectedAction !== "MARK_OUT_OF_SCOPE" &&
           selectedAction !== "OUT_OF_WARRANTY" &&
+          selectedAction !== "SPARE_PART_NEEDED" &&
           selectedAction !== "SUBMIT") ||
         selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ||
         selectedOutOfScopeReason?.additionalInputs?.[0].type === "textarea" ? (
@@ -480,9 +520,21 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <TextInput t={t} type={"number"} onChange={(e) => addOOWResponses(e, setOowTotalCostOfSolution)} value={oowTotalCostOfSolution} />
           </React.Fragment>
         )}
+        {selectedAction === "SPARE_PART_NEEDED" && (
+          <React.Fragment>
+            <CardLabel>{t("SPC_ACTION_ROOT_CAUSE_ANALYSIS")}*</CardLabel>
+            <TextArea name="spcRootAnalysis" onChange={(e) => addSPCRootAnalysis(e, setSpcRootAnalysis)} value={oowIssue} />
+            <CardLabel>{t("SPC_ACTION_SPARE_PART_TO_BE_REPLACED")}*</CardLabel>
+            <TextArea
+              name="spcSpartPartToBeReplaced"
+              onChange={(e) => addSPCSparePartToBeReplaced(e, setSpcSparePartToBeReplaced)}
+              value={oowRootCause}
+            />
+          </React.Fragment>
+        )}
         {["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) ? (
           <CardLabel>{t("CS_ACTION_QUOTATION_DOCUMENT")}*</CardLabel>
-        ) : selectedAction === "RESOLVE" || selectedAction === "STATUS_UPDATE" ? (
+        ) : ["RESOLVE", "STATUS_UPDATE", "SPARE_PART_NEEDED"].includes(selectedAction) ? (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}*</CardLabel>
         ) : (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}</CardLabel>
@@ -497,6 +549,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           allowedFileTypesRegex={
             ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction)
               ? /(pdf)$/i
+              : selectedAction === "SPARE_PART_NEEDED"
+              ? /(jpg|jpeg|png)$/i
               : selectedAction === "RESOLVE"
               ? /(docx|doc|pdf|xlsx|jpeg|png)$/i
               : /(pdf|jpg|jpeg|png)$/i
@@ -505,6 +559,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           acceptFiles={
             ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction)
               ? ".pdf"
+              : selectedAction === "SPARE_PART_NEEDED"
+              ? ".jpg, .jpeg, .png"
               : selectedAction === "RESOLVE"
               ? ".pdf, .xlsx, .docx, .doc, .jpeg, .png"
               : ".pdf, .jpg, .jpeg, .png"
@@ -516,6 +572,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_OOW_FILE_DESC")}</CardLabelDesc>
         ) : selectedAction === "RESOLVE" ? (
           <div style={{ marginTop: "6px", fontSize: "13px", color: "#36454F" }}>{t("RESOLVE_RESOLUTION_REPORT")}</div>
+        ) : selectedAction === "SPARE_PART_NEEDED" ? (
+          <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_SPARE_PART_NEEDED_FILE_LIMIT")}</CardLabelDesc>
         ) : (
           <CardLabelDesc style={{ marginTop: "8px", fontSize: "13px" }}> {t("CS_FILE_LIMIT")}</CardLabelDesc>
         )}
@@ -737,7 +795,8 @@ export const ComplaintDetails = (props) => {
     selectedRejectReason,
     selectedSendBackReason,
     oowResponses,
-    selectedOutOfScopeReason
+    selectedOutOfScopeReason,
+    spcResponses
   ) {
     setBlockUI(true);
     const response = await Digit.Complaint.assign(
@@ -751,7 +810,8 @@ export const ComplaintDetails = (props) => {
       selectedRejectReason,
       selectedSendBackReason,
       oowResponses,
-      selectedOutOfScopeReason
+      selectedOutOfScopeReason,
+      spcResponses
     );
     if (!response?.IncidentWrappers) {
       setError(response);
@@ -785,6 +845,7 @@ export const ComplaintDetails = (props) => {
     const sendBackReasons = Array.from(complaintDetails?.incident?.additionalDetail?.sendBackReason || []).reverse();
     const oowResponsesArray = Array.from(complaintDetails?.incident?.additionalDetail?.oowResponses || []).reverse();
     const outOfScopeReasons = Array.from(complaintDetails?.incident?.additionalDetail?.outOfScopeReason || []).reverse();
+    const spcResponsesArray = Array.from(complaintDetails?.incident?.additionalDetail?.spcResponses || []).reverse();
 
     let arrNew = arr.map((abc) => {
       switch (abc.performedAction) {
@@ -799,6 +860,8 @@ export const ComplaintDetails = (props) => {
           return { ...abc, oowResponses: oowResponsesArray.shift() };
         case "MARK_OUT_OF_SCOPE":
           return { ...abc, outOfScopeReason: outOfScopeReasons.shift() };
+        case "SPARE_PART_NEEDED":
+          return { ...abc, spcResponses: spcResponsesArray.shift() };
         default:
           return abc;
       }
@@ -812,6 +875,14 @@ export const ComplaintDetails = (props) => {
             OOW_ACTION_ISSUE_SOLUTION: arrNew[index]?.oowResponses?.oowRecommendedSolution,
             OOW_ACTION_ISSUE_RESOLUTION_TIME: arrNew[index]?.oowResponses?.oowTimeToResolve,
             OOW_ACTION_ISSUE_SOLUTION_COST: arrNew[index]?.oowResponses?.oowTotalCostOfSolution,
+          }
+        : null;
+
+    const currentSpcResponses =
+      checkpoint.performedAction === "SPARE_PART_NEEDED" && arrNew[index]?.spcResponses
+        ? {
+            SPC_ACTION_ROOT_CAUSE_ANALYSIS: arrNew[index]?.spcResponses?.spcRootAnalysis,
+            SPC_ACTION_SPARE_PART_TO_BE_REPLACED: arrNew[index]?.spcResponses?.spcSparePartToBeReplaced,
           }
         : null;
 
@@ -924,6 +995,16 @@ export const ComplaintDetails = (props) => {
               <div key={`comment-${index}`} className="TLComments">
                 <h3>{t(field)}</h3>
                 <p style={{ overflowX: "scroll" }}>{currentOowResponses[field]}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {currentSpcResponses && (
+          <div>
+            {Object.keys(currentSpcResponses).map((field, index) => (
+              <div key={`comment-${index}`} className="TLComments">
+                <h3>{t(field)}</h3>
+                <p style={{ overflowX: "scroll" }}>{currentSpcResponses[field]}</p>
               </div>
             ))}
           </div>
