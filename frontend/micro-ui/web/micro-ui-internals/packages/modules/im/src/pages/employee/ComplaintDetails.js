@@ -318,7 +318,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         const isTextareaAction =
           ["SENDBACK", "REJECT", "MARK_OUT_OF_SCOPE"].includes(selectedAction) &&
           (selectedAction === "MARK_OUT_OF_SCOPE"
-            ? selectedOutOfScopeReason.additionalInputs?.[0].type === "textarea"
+            ? selectedOutOfScopeReason?.additionalInputs?.[0].type === "textarea"
             : selectedAction === "SENDBACK"
             ? selectedSendBackReason?.additionalInputs?.[0].type === "textarea"
             : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
@@ -415,7 +415,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           <React.Fragment>
             <CardLabel>{t("CS_MARK_OUT_OF_SCOPE_COMPLAINT")}*</CardLabel>
             <Dropdown
-              selected={selectedSendBackReason}
+              selected={selectedOutOfScopeReason}
               option={rejectSendBackOutOfScopeReasons?.Incident?.OutOfScopeReasons?.map((reason) => ({
                 ...reason,
                 localizedCode: t(reason.code), // Use localized text if available, otherwise fallback to default name
