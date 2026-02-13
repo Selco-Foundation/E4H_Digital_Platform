@@ -349,7 +349,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
     if (isTheftIssue && !uploadedFile?.some((doc) => doc?.additionalDetails?.category === "FIR_DOCUMENT")) {
-      setShowToast(t("Please Upload the copy of an FIR or Police Acknowledgement Letter"));
+      setShowToast(t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER"));
       return;
     }
     if (!canSubmit) return;
