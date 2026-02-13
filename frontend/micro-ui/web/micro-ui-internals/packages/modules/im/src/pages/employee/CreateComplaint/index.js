@@ -58,7 +58,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
-  const isTheftIssue = complaintType?.key === "Theft" || complaintType?.name?.toLowerCase?.() === "theft";
+  const isTheftIssue = complaintType?.key === t("SERVICEDEFS.THEFT") || complaintType?.name?.toLowerCase?.() === t("SERVICEDEFS.THEFT").toLowerCase();
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
   const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
@@ -120,6 +120,12 @@ export const CreateComplaint = ({ parentUrl }) => {
         .sort((a, b) => a.name.localeCompare(b.name)),
     )
   }, [t, facilityMenu]);
+
+  useEffect(() => {
+    if (!isTheftIssue) {
+      setFirState({ newArr: [], mappedArray: [] });
+    }
+  }, [isTheftIssue]);
 
   let sortedSubMenu = [];
   if (subTypeMenu !== null) {
