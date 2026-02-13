@@ -58,7 +58,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
-  const isTheftIssue = complaintType?.key === t("SERVICEDEFS.THEFT") || complaintType?.name?.toLowerCase?.() === t("SERVICEDEFS.THEFT").toLowerCase();
+  const isTheftIssue = complaintType?.key === "Theft";
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
   const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
@@ -354,10 +354,6 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
-    if (isTheftIssue && !uploadedFile?.some((doc) => doc?.additionalDetails?.category === "FIR_DOCUMENT")) {
-      setShowToast(t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER"));
-      return;
-    }
     if (!canSubmit) return;
     setSubmitted(true);
     !submitted && !abc && onSubmit(data);
@@ -514,7 +510,6 @@ export const CreateComplaint = ({ parentUrl }) => {
         return [{ fileStoreId: fileStoreId.fileStoreId, documentUid: "", documentType, additionalDetails: { category: "FIR_DOCUMENT" } }];
       });
       file = [...file, ...firFiles];
-      console.log("Added", firFiles.length, "FIR file entries to payload");
     }
 
     // Remove Duplicates Efficiently Using Set()
@@ -738,6 +733,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                       multiple={false}
                       specificFileConstraint={specificFileConstraint[2]}
                       analyticsPage="new_ticket_page"
+                      mediaIntent="fir"
                     />
                     <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>
                       {t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER")}
