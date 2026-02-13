@@ -298,13 +298,13 @@ public class AlertRepository {
     private String mapAlertSubTypeToIncidentSubType(Alert.AlertSubType alertSubType, Alert.AlertType alertType) {
         switch (alertSubType) {
             case LOW_GENERATION:
-                return "LowGeneration";
+                return "RunningOnGrid";
             case SHUTDOWN:
                 return "ShutdownInverter";
             case HIGH_VOLTAGE:
                 return "VoltageInverter";
             case BURNT_DISCONNECTED:
-                return "BurnedBattery";
+                return "BatteryDisconnected";
             case DEEP_DISCHARGING:
                 return "DeepDischarge";
             case OVERCHARGING:
