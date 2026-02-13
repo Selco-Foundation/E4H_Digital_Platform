@@ -26,11 +26,14 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
+  const [isFirUploading, setIsFirUploading] = useState(false);
   const [imageState, setImageState] = useState({ newArr: [], mappedArray: [] });
   const [videoState, setVideoState] = useState({ newArr: [], mappedArray: [] });
+  const [firState, setFirState] = useState({ newArr: [], mappedArray: [] });
   const specificFileConstraint = [
     { type: "video", maxSize: 50, maxFiles: 2 },
     { type: "image", maxSize: 10, maxFiles: 5 },
+    { type: "fir", maxSize: 10, maxFiles: 1 },
   ];
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
@@ -55,6 +58,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
+  const isTheftIssue = complaintType?.key === "Theft" || complaintType?.name?.toLowerCase?.() === "theft";
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
   const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
@@ -238,13 +242,14 @@ export const CreateComplaint = ({ parentUrl }) => {
   const client = useQueryClient();
 
   useEffect(() => {
-    const isAnyUploading = isImageUploading || isVideoUploading;
-    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthcentre?.code && district?.code && block?.code && !isAnyUploading) {
+    const isAnyUploading = isImageUploading || isVideoUploading || isFirUploading;
+    const hasMandatoryTheftUpload = !isTheftIssue || uploadedFile?.some((doc) => doc?.additionalDetails?.category === "FIR_DOCUMENT");
+    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthcentre?.code && district?.code && block?.code && !isAnyUploading && hasMandatoryTheftUpload) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [complaintType, subType, systemFunctionality, healthcentre, district, block, isImageUploading, isVideoUploading]);
+  }, [complaintType, subType, systemFunctionality, healthcentre, district, block, isImageUploading, isVideoUploading, isFirUploading, isTheftIssue, uploadedFile]);
 
   useEffect(() => {
     const handleDuplicateCheck = async () => {
@@ -343,6 +348,10 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
+    if (isTheftIssue && !uploadedFile?.some((doc) => doc?.additionalDetails?.category === "FIR_DOCUMENT")) {
+      setShowToast(t("Please Upload the copy of an FIR or Police Acknowledgement Letter"));
+      return;
+    }
     if (!canSubmit) return;
     setSubmitted(true);
     !submitted && !abc && onSubmit(data);
@@ -414,6 +423,15 @@ export const CreateComplaint = ({ parentUrl }) => {
 
     setVideoState({ newArr, mappedArray });
   };
+  const getFirData = (state) => {
+    let data = Object.fromEntries(state);
+    const mappedArray = state.map((item) => {
+      return item[1];
+    });
+    let newArr = Object.values(data);
+
+    setFirState({ newArr, mappedArray });
+  };
   const handleButtonClick = () => {
     const hasEmptyFields = fieldsToValidate.some(({ field }) => field === null || Object.keys(field).length === 0);
 
@@ -429,11 +447,11 @@ export const CreateComplaint = ({ parentUrl }) => {
       return false; // None of the fields are empty
     }
   };
-  function selectfile(imageArr, imageMappedArr, videoArr, videoMappedArr) {
+  function selectfile(imageArr, imageMappedArr, videoArr, videoMappedArr, firArr, firMappedArr) {
     let file = [];
     let videoCount = 0;
 
-    console.log("Processing files - Images:", imageMappedArr.length, "Videos:", videoMappedArr.length);
+    console.log("Processing files - Images:", imageMappedArr.length, "Videos:", videoMappedArr.length, "FIR:", firMappedArr.length);
 
     // Process image files
     if (imageArr && imageMappedArr.length > 0) {
@@ -478,6 +496,21 @@ export const CreateComplaint = ({ parentUrl }) => {
       console.log("Added", videoFiles.length, "video file entries to payload");
     }
 
+    // Process FIR file
+    if (firArr && firMappedArr.length > 0) {
+      const firFiles = firMappedArr.flatMap((e) => {
+        if (!e?.file || !e?.fileStoreId) return [];
+
+        const { file, fileStoreId } = e;
+        const { type } = file;
+        const documentType = type.includes(".sheet") ? ".xlsx" : type.includes(".document") ? ".docs" : type;
+
+        return [{ fileStoreId: fileStoreId.fileStoreId, documentUid: "", documentType, additionalDetails: { category: "FIR_DOCUMENT" } }];
+      });
+      file = [...file, ...firFiles];
+      console.log("Added", firFiles.length, "FIR file entries to payload");
+    }
+
     // Remove Duplicates Efficiently Using Set()
     const seen = new Set();
     file = file.filter((doc) => {
@@ -491,8 +524,8 @@ export const CreateComplaint = ({ parentUrl }) => {
   }
 
   useEffect(() => {
-    selectfile(imageState.newArr, imageState.mappedArray, videoState.newArr, videoState.mappedArray);
-  }, [imageState, videoState]);
+    selectfile(imageState.newArr, imageState.mappedArray, videoState.newArr, videoState.mappedArray, firState.newArr, firState.mappedArray);
+  }, [imageState, videoState, firState]);
   const config = [
     {
       head: t("TICKET_LOCATION"),
@@ -677,6 +710,37 @@ export const CreateComplaint = ({ parentUrl }) => {
             </div>
           ),
         },
+        ...(isTheftIssue
+          ? [
+              {
+                label: t("INCIDENT_UPLOAD_FIR_POLICE_LETTER"),
+                isMandatory: true,
+                populators: (
+                  <div>
+                    <MultiUploadWrapper
+                      t={t}
+                      module="Incident"
+                      tenantId={tenantId}
+                      getFormState={(state) => getFirData(state)}
+                      onUploadStatusChange={setIsFirUploading}
+                      allowedFileTypesRegex={/(pdf|jpg|jpeg|png|image)$/i}
+                      allowedMaxSizeInMB={10}
+                      maxFilesAllowed={1}
+                      disabled={disbaledUpload}
+                      ulb={Digit.SessionStorage.get("Employee.tenantId")}
+                      acceptFiles={".pdf, .jpg, .jpeg, .png, image/*"}
+                      multiple={false}
+                      specificFileConstraint={specificFileConstraint[2]}
+                      analyticsPage="new_ticket_page"
+                    />
+                    <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>
+                      {t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER")}
+                    </div>
+                  </div>
+                ),
+              },
+            ]
+          : []),
       ],
     },
   ];
@@ -715,6 +779,11 @@ export const CreateComplaint = ({ parentUrl }) => {
         </div>
       </div>
       <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit && !submitted} label={t("FILE_INCIDENT")} />
+      {showToast && (
+        <div style={{ color: "#9e1b32", marginTop: "8px", fontSize: "14px" }}>
+          {showToast}
+        </div>
+      )}
 
       {/* <button onClick={(!selectedOption || Object.keys(selectedOption).length == 0)}>Check Errors</button>  
       {errors.map((error, index) => (
