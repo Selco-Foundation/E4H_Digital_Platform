@@ -249,7 +249,7 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   useEffect(() => {
     const isAnyUploading = isImageUploading || isVideoUploading || isFirUploading;
-    const hasMandatoryTheftUpload = !isTheftIssue || uploadedFile?.some((doc) => doc?.additionalDetails?.category === "FIR_DOCUMENT");
+    const hasMandatoryTheftUpload = !isTheftIssue || uploadedFile?.some((doc) => doc?.documentType === "FIR_DOCUMENT");
     if (complaintType?.key && subType?.key && systemFunctionality?.key && healthcentre?.code && district?.code && block?.code && !isAnyUploading && hasMandatoryTheftUpload) {
       setSubmitValve(true);
     } else {
@@ -501,13 +501,9 @@ export const CreateComplaint = ({ parentUrl }) => {
     // Process FIR file
     if (firArr && firMappedArr.length > 0) {
       const firFiles = firMappedArr.flatMap((e) => {
-        if (!e?.file || !e?.fileStoreId) return [];
-
-        const { file, fileStoreId } = e;
-        const { type } = file;
-        const documentType = type.includes(".sheet") ? ".xlsx" : type.includes(".document") ? ".docs" : type;
-
-        return [{ fileStoreId: fileStoreId.fileStoreId, documentUid: "", documentType, additionalDetails: { category: "FIR_DOCUMENT" } }];
+        if (!e?.fileStoreId) return [];
+        const { fileStoreId } = e;
+        return [{ fileStoreId: fileStoreId.fileStoreId, documentUid: "", documentType: "FIR_DOCUMENT", additionalDetails: {} }];
       });
       file = [...file, ...firFiles];
     }
