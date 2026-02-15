@@ -249,9 +249,11 @@ public class WorkflowService {
             reassignWorkflow(workflow, request, "COMPLAINANT");
         } else if (action.equalsIgnoreCase("OUT_OF_WARRANTY")) {
             reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
-        } else if (request.getIncident().getApplicationStatus().trim().equals("PENDING_REVISION") && action.equalsIgnoreCase("SUBMIT")) {
+        } else if (request.getIncident()!=null && request.getIncident().getApplicationStatus()!= null &&
+                request.getIncident().getApplicationStatus().trim().equals("PENDING_REVISION") && action.equalsIgnoreCase("SUBMIT")) {
             reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
-        } else if (request.getIncident().getApplicationStatus().trim().equals("PENDINGRESOLUTION") && action.equalsIgnoreCase("MARK_OUT_OF_SCOPE")) {
+        } else if (request.getIncident()!=null && request.getIncident().getApplicationStatus()!= null &&
+                request.getIncident().getApplicationStatus().trim().equals("PENDINGRESOLUTION") && action.equalsIgnoreCase("MARK_OUT_OF_SCOPE")) {
             reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_1");
         }
         ProcessInstance processInstance = new ProcessInstance();
