@@ -670,7 +670,7 @@ export const ComplaintDetails = (props) => {
     if (workflowDetails) {
       const { data: { timeline: complaintTimelineData } = {} } = workflowDetails;
       if (complaintTimelineData) {
-        const applyAction = complaintTimelineData.find((action) => action.performedAction === "APPLY");
+        const applyAction = complaintTimelineData.find((action) => ["APPLY", "APPLY_THEFT", "APPLY_RMS_DEVICE"].includes(action.performedAction));
         const initiate = complaintTimelineData.find((action) => action.performedAction === "INITIATE");
         if (!initiate) {
           const complaintTimelineDataNew = {
@@ -683,7 +683,7 @@ export const ComplaintDetails = (props) => {
 
           complaintTimelineData.push(complaintTimelineDataNew);
         }
-        const actionByCitizenOnComplaintCreation = complaintTimelineData?.find((e) => e?.performedAction === "APPLY");
+        const actionByCitizenOnComplaintCreation = complaintTimelineData?.find((e) => ["APPLY", "APPLY_THEFT", "APPLY_RMS_DEVICE"].includes(e?.performedAction));
         const { thumbnailsToShow } = actionByCitizenOnComplaintCreation;
 
         thumbnailsToShow ? setImagesToShowBelowComplaintDetails(thumbnailsToShow) : null;
