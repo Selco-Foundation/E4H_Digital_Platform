@@ -425,7 +425,7 @@ class AMCInstallationReportCard extends StatelessWidget {
                 scheduledVisitId: scheduledVisitId ?? '',
               ),
               builder: (context, snapshot) {
-                final isFailed = snapshot.data == true;
+                final existsInFailedCache = snapshot.data == true;
                 final canResume = effectiveLabel.contains("Resume");
 
                 return DigitButton(
@@ -434,7 +434,7 @@ class AMCInstallationReportCard extends StatelessWidget {
                   onPressed: () {
                     context.router.push(const AmcOtpRoute());
                   },
-                  isDisabled: !canResume && !isFailed,
+                  isDisabled: existsInFailedCache || !canResume,
                   type: DigitButtonType.secondary,
                   size: DigitButtonSize.large,
                 );
