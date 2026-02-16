@@ -128,6 +128,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const processInstances = workflowDetails?.data?.processInstances || [];
   const oowActedVendor = processInstances.find((processInstance) => processInstance.action === "OUT_OF_WARRANTY")?.assigner;
   const currentOwner = processInstances[0]?.assignes?.[0];
+  const isRmsAssignmentToTechPoc = selectedAction === "ASSIGN" && processInstances[0]?.state?.state === "PENDINGFORASSIGNMENT_RMS_DEVICE";
+  const isTechPocRmsResolution = selectedAction === "RESOLVE" && processInstances[0]?.state?.state === "RMS_DEVICE_PENDING_TECH_POC";
 
   useEffect(() => {
     if (selectedAction === "REJECT") {
@@ -344,11 +346,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
 
         const isCommentsMandatory =
-          (isTextareaAction ||
-            selectedAction === "RESOLVE" ||
-            selectedAction === "REVISE" ||
-            selectedAction === "STATUS_UPDATE") &&
-          !comments.trim();
+          (isTextareaAction || selectedAction === "RESOLVE" || selectedAction === "REVISE" || selectedAction === "STATUS_UPDATE") && !comments.trim();
 
         const oowMandateCondition =
           ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !(oowIssue && oowRootCause && oowRecommendedSolution && oowTimeToResolve);
@@ -361,12 +359,12 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: selectedAction === "MARK_OUT_OF_SCOPE" && !selectedOutOfScopeReason, message: "CS_MANDATORY_OUT_OF_SCOPE_REASON" },
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
           { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
-          { condition: selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
+          { condition: !isRmsAssignmentToTechPoc && selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
           { condition: oowMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
           { condition: spcMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
           { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTotalCostOfSolution, message: "CS_SOLUTION_COST_MANDATORY" },
           {
-            condition: ["RESOLVE", "OUT_OF_WARRANTY", "STATUS_UPDATE", "SUBMIT"].includes(selectedAction) && uploadedFile.length === 0,
+            condition: ["RESOLVE", "OUT_OF_WARRANTY", "STATUS_UPDATE", "SUBMIT"].includes(selectedAction) && !isTechPocRmsResolution && uploadedFile.length === 0,
             message: "CS_MANDATORY_FILE_UPLOAD",
           },
           {
@@ -465,7 +463,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           </React.Fragment>
         ) : null}
 
-        {selectedAction === "ASSIGN" || selectedAction === "REASSIGN" ? (
+        {!isRmsAssignmentToTechPoc && (selectedAction === "ASSIGN" || selectedAction === "REASSIGN") ? (
           <React.Fragment>
             <CardLabel>{t("CS_COMMON_EMPLOYEE_NAME")}*</CardLabel>
 
@@ -534,7 +532,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         )}
         {["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) ? (
           <CardLabel>{t("CS_ACTION_QUOTATION_DOCUMENT")}*</CardLabel>
-        ) : ["RESOLVE", "STATUS_UPDATE", "SPARE_PART_NEEDED"].includes(selectedAction) ? (
+        ) : (["RESOLVE", "STATUS_UPDATE", "SPARE_PART_NEEDED"].includes(selectedAction) && !isTechPocRmsResolution) ? (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}*</CardLabel>
         ) : (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}</CardLabel>
