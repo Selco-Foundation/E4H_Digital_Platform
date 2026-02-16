@@ -15,6 +15,7 @@ part 'activity_facility.freezed.dart';
 
 class ActivityFacilityBloc
     extends Bloc<ActivityFacilityEvent, ActivityFacilityState> {
+  static const _pageSize = ActivityFacilityRepository.defaultPageSize;
   final Isar isar;
 
   ActivityFacilityBloc(this.isar)
@@ -30,6 +31,7 @@ class ActivityFacilityBloc
     on<FetchActivityFacilitySortedEvent>(_handleFetchActivityFacilitySorted);
     on<FetchActivityFacilityBySearchEvent>(
         _handleFetchActivityFacilityBySearch);
+    on<LoadMoreActivityFacilityEvent>(_onLoadMoreActivityFacility);
     on<ActivityFacilityCheckIfInCache>(_checkIfInCache);
   }
 
@@ -41,23 +43,10 @@ class ActivityFacilityBloc
   FutureOr<void> _handleFetchActivityFacilityByWorkflow(
       FetchActivityFacilityByWorkflowEvent event,
       Emitter<ActivityFacilityState> emit) async {
-    emit(const ActivityFacilityState.loading());
-
-    final activityFacilityRepository = ActivityFacilityRepository(isar);
-    final searchBody = ActivityFacilitySearchModel(
-      tenantId: envConfig.variables.tenantId,
+    await _fetchPaginatedInitial(
+      emit,
+      workflowStatuses: event.workflowStatuses,
     );
-
-    try {
-      final activityFacilityList =
-          await activityFacilityRepository.fetchByWorkflow(
-        workflowStatuses: event.workflowStatuses,
-        body: searchBody,
-      );
-      emit(ActivityFacilityState.fetched(activityFacilityList));
-    } catch (_) {
-      emit(const ActivityFacilityState.fetched([]));
-    }
   }
 
   Future<void> _onAddUnSubmitted(
@@ -144,7 +133,7 @@ class ActivityFacilityBloc
             WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name,
           ];
 
-    Future<int> _fetchCount(List<String> statuses) async {
+    Future<int> fetchCount(List<String> statuses) async {
       try {
         return await remote.searchByWorkflowCount(
           body: body,
@@ -157,9 +146,9 @@ class ActivityFacilityBloc
     }
 
     final results = await Future.wait([
-      _fetchCount(newStatuses),
-      _fetchCount(inboxStatuses),
-      _fetchCount(submittedStatuses),
+      fetchCount(newStatuses),
+      fetchCount(inboxStatuses),
+      fetchCount(submittedStatuses),
     ]);
 
     emit(ActivityFacilityState.reportCountsLoaded(
@@ -211,23 +200,11 @@ class ActivityFacilityBloc
     FetchActivityFacilitySortedEvent event,
     Emitter<ActivityFacilityState> emit,
   ) async {
-    emit(const ActivityFacilityState.loading());
-
-    final repo = ActivityFacilityRepository(isar);
-    final body = ActivityFacilitySearchModel(
-      tenantId: envConfig.variables.tenantId,
+    await _fetchPaginatedInitial(
+      emit,
+      workflowStatuses: event.workflowStatuses,
+      sortDirection: event.sortDirection,
     );
-
-    try {
-      final remoteList = await repo.fetchByWorkflow(
-        body: body,
-        workflowStatuses: event.workflowStatuses,
-        sortDirection: event.sortDirection,
-      );
-      emit(ActivityFacilityState.fetched(remoteList));
-    } catch (_) {
-      emit(const ActivityFacilityState.fetched([]));
-    }
   }
 
   Future<void> _handleFetchActivityFacilityBySearch(
@@ -236,23 +213,61 @@ class ActivityFacilityBloc
   ) async {
     if (event.query.length < 3) {
       emit(const ActivityFacilityState.initial());
+      return;
     }
+    await _fetchPaginatedInitial(
+      emit,
+      workflowStatuses: event.workflowStatuses,
+      query: event.query,
+    );
+  }
 
-    emit(const ActivityFacilityState.searchLoading());
-    final remote = ActivityFacilityRemoteRepository();
+  Future<void> _onLoadMoreActivityFacility(
+    LoadMoreActivityFacilityEvent event,
+    Emitter<ActivityFacilityState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is! ActivityFacilityPaginatedLoaded) return;
+    if (!currentState.hasMore || currentState.isLoadingMore) return;
+
+    emit(currentState.copyWith(isLoadingMore: true));
+
+    final repo = ActivityFacilityRepository(isar);
     final body = ActivityFacilitySearchModel(
       tenantId: envConfig.variables.tenantId,
       name: event.query,
     );
 
     try {
-      final results = await remote.searchByWorkflow(
+      final result = await repo.fetchByWorkflowPaginated(
         body: body,
         workflowStatuses: event.workflowStatuses,
+        limit: _pageSize,
+        offset: currentState.items.length,
+        sortDirection: event.sortDirection ?? 'ASC',
       );
-      emit(ActivityFacilityState.searchResults(results));
+
+      final ids = currentState.items
+          .map((e) => e.activityFacility.id)
+          .where((e) => e.isNotEmpty)
+          .toSet();
+      final merged = <ActivityFacilityWorkflow>[...currentState.items];
+      for (final item in result.items) {
+        final id = item.activityFacility.id;
+        if (id.isEmpty || ids.contains(id)) continue;
+        ids.add(id);
+        merged.add(item);
+      }
+
+      emit(currentState.copyWith(
+        items: merged,
+        hasMore: result.items.isNotEmpty && merged.length < result.totalCount,
+        totalCount: result.totalCount,
+        fromCache: result.fromCache,
+        isLoadingMore: false,
+      ));
     } catch (_) {
-      emit(const ActivityFacilityState.searchResults([]));
+      emit(currentState.copyWith(isLoadingMore: false));
     }
   }
 
@@ -273,6 +288,43 @@ class ActivityFacilityBloc
     final isInCache = cached.isNotEmpty;
 
     emit(ActivityFacilityState.inCache(isInCache));
+  }
+
+  Future<void> _fetchPaginatedInitial(
+    Emitter<ActivityFacilityState> emit, {
+    required List<String> workflowStatuses,
+    String? query,
+    String? sortDirection,
+  }) async {
+    emit(const ActivityFacilityState.loading());
+
+    final repo = ActivityFacilityRepository(isar);
+    final body = ActivityFacilitySearchModel(
+      tenantId: envConfig.variables.tenantId,
+      name: query,
+    );
+
+    try {
+      final result = await repo.fetchByWorkflowPaginated(
+        body: body,
+        workflowStatuses: workflowStatuses,
+        limit: _pageSize,
+        offset: 0,
+        sortDirection: sortDirection ?? 'ASC',
+      );
+      emit(ActivityFacilityState.paginatedLoaded(
+        items: result.items,
+        hasMore: result.items.length < result.totalCount,
+        totalCount: result.totalCount,
+        fromCache: result.fromCache,
+      ));
+    } catch (_) {
+      emit(const ActivityFacilityState.paginatedLoaded(
+        items: [],
+        hasMore: false,
+        totalCount: 0,
+      ));
+    }
   }
 }
 
@@ -311,6 +363,12 @@ class ActivityFacilityEvent with _$ActivityFacilityEvent {
     required String query,
     required List<String> workflowStatuses,
   }) = FetchActivityFacilityBySearchEvent;
+
+  const factory ActivityFacilityEvent.loadMoreActivityFacility({
+    required List<String> workflowStatuses,
+    String? query,
+    String? sortDirection,
+  }) = LoadMoreActivityFacilityEvent;
 
   const factory ActivityFacilityEvent.checkIfInCache({
     required String activityFacilityId,
@@ -361,4 +419,12 @@ class ActivityFacilityState with _$ActivityFacilityState {
       ActivityFacilitySearchLoading;
   const factory ActivityFacilityState.searchResults(
       List<ActivityFacilityWorkflow> results) = ProjectSearchResults;
+
+  const factory ActivityFacilityState.paginatedLoaded({
+    required List<ActivityFacilityWorkflow> items,
+    required bool hasMore,
+    required int totalCount,
+    @Default(false) bool fromCache,
+    @Default(false) bool isLoadingMore,
+  }) = ActivityFacilityPaginatedLoaded;
 }

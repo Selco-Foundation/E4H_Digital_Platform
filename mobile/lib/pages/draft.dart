@@ -25,8 +25,13 @@ class DraftPage extends StatefulWidget {
 }
 
 class _DraftPageState extends State<DraftPage> {
+  static const _pageSize = 10;
+  static const _scrollThreshold = 200.0;
+
   late String userType = "";
   Route? _syncRoute;
+  int _visibleCount = _pageSize;
+  bool _isLoadingMore = false;
 
   @override
   void initState() {
@@ -64,7 +69,7 @@ class _DraftPageState extends State<DraftPage> {
         onOutsideTap: () => Navigator.of(ctx).pop(),
         title: "Sync Failed",
         actionAlignment: MainAxisAlignment.center,
-        actions: [],
+        actions: const [],
         additionalWidgets: [
           Text(
             error ?? "Something went wrong.",
@@ -126,108 +131,172 @@ class _DraftPageState extends State<DraftPage> {
     );
   }
 
+  void _handleDraftState(ActivityFacilityState state) {
+    state.maybeWhen(
+      unSubmittedLoaded: (drafts) {
+        setState(() {
+          _visibleCount = drafts.length < _pageSize ? drafts.length : _pageSize;
+          _isLoadingMore = false;
+        });
+      },
+      orElse: () {},
+    );
+  }
+
+  void _loadMoreDrafts() {
+    if (_isLoadingMore) return;
+
+    final state = context.read<ActivityFacilityBloc>().state;
+    state.maybeWhen(
+      unSubmittedLoaded: (drafts) {
+        if (_visibleCount >= drafts.length) return;
+        setState(() => _isLoadingMore = true);
+        Future<void>.delayed(const Duration(milliseconds: 300), () {
+          if (!mounted) return;
+          setState(() {
+            _visibleCount =
+                (_visibleCount + _pageSize).clamp(0, drafts.length).toInt();
+            _isLoadingMore = false;
+          });
+        });
+      },
+      orElse: () {},
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
-    return BlocListener<AssetSubmissionBloc, AssetSubmissionState>(
-      listener: _handleAssetSubmissionState,
-      child: Scaffold(
-        body: ScrollableContent(
-          enableFixedDigitButton: true,
-          backgroundColor: theme.colorTheme.generic.background,
-          header: const BackNavigationHelpHeaderWidget(
-            showBackNavigation: true,
-            showHelp: false,
-          ),
-          footer: FooterButton(
-            showSuffixIcon: false,
-            text: 'Sync',
-            onPress: () {
-              context.read<AssetSubmissionBloc>().add(
-                    AssetSubmissionEvent.submitAllDrafts(userType: userType),
-                  );
-            },
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: spacer4,
-                horizontal: spacer4,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Submitted Reports',
-                    style: textTheme.headingXl.copyWith(
-                      color: theme.colorTheme.primary.primary2,
-                    ),
-                  ),
-                  const SizedBox(height: spacer4),
-                  BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
-                    builder: (context, state) {
-                      return state.maybeWhen(
-                        unSubmittedLoaded: (drafts) {
-                          if (drafts.isEmpty) {
-                            return Center(
-                              child: Text(
-                                'No unsynced reports found.',
-                                style: textTheme.bodyL.copyWith(
-                                  color: theme.colorTheme.text.primary,
-                                ),
-                              ),
-                            );
-                          }
-                          return Column(
-                            children: drafts.map((project) {
-                              return Column(
-                                children: [
-                                  InboxReportCard(
-                                    onPress: () {
-                                      context
-                                          .read<SelectedActivityFacilityBloc>()
-                                          .add(SelectedActivityFacilityEvent
-                                              .select(project));
-                                      context.router.push(
-                                          OverallAssetSummaryRoute(
-                                              refresh: DateTime.now()
-                                                  .millisecondsSinceEpoch));
-                                    },
-                                    title: project.activityFacility.facility
-                                            ?.facilityName ??
-                                        "",
-                                    dateAssigned: project.workflow?.auditDetails
-                                            ?.lastModifiedTime ??
-                                        DateTime.now(),
-                                    status: project.status ?? '---',
-                                  ),
-                                  const SizedBox(height: spacer6),
-                                ],
-                              );
-                            }).toList(),
-                          );
-                        },
-                        initial: () => const Center(
-                          child: Padding(
-                            padding: EdgeInsets.only(top: spacer4),
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                        orElse: () => const Center(
-                          child: Padding(
-                            padding: EdgeInsets.only(top: spacer4),
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AssetSubmissionBloc, AssetSubmissionState>(
+          listener: _handleAssetSubmissionState,
+        ),
+        BlocListener<ActivityFacilityBloc, ActivityFacilityState>(
+          listener: (context, state) => _handleDraftState(state),
+        ),
+      ],
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          if (notification is ScrollUpdateNotification) {
+            final max = notification.metrics.maxScrollExtent;
+            final current = notification.metrics.pixels;
+            if (current > max - _scrollThreshold) {
+              _loadMoreDrafts();
+            }
+          }
+          return false;
+        },
+        child: Scaffold(
+          body: ScrollableContent(
+            enableFixedDigitButton: true,
+            backgroundColor: theme.colorTheme.generic.background,
+            header: const BackNavigationHelpHeaderWidget(
+              showBackNavigation: true,
+              showHelp: false,
             ),
-          ],
+            footer: FooterButton(
+              showSuffixIcon: false,
+              text: 'Sync',
+              onPress: () {
+                context.read<AssetSubmissionBloc>().add(
+                      AssetSubmissionEvent.submitAllDrafts(userType: userType),
+                    );
+              },
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: spacer4,
+                  horizontal: spacer4,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Submitted Reports',
+                      style: textTheme.headingXl.copyWith(
+                        color: theme.colorTheme.primary.primary2,
+                      ),
+                    ),
+                    const SizedBox(height: spacer4),
+                    BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
+                      builder: (context, state) {
+                        return state.maybeWhen(
+                          unSubmittedLoaded: (drafts) {
+                            if (drafts.isEmpty) {
+                              return Center(
+                                child: Text(
+                                  'No unsynced reports found.',
+                                  style: textTheme.bodyL.copyWith(
+                                    color: theme.colorTheme.text.primary,
+                                  ),
+                                ),
+                              );
+                            }
+
+                            final visibleDrafts = drafts.take(_visibleCount);
+                            return Column(
+                              children: [
+                                ...visibleDrafts.map((project) {
+                                  return Column(
+                                    children: [
+                                      InboxReportCard(
+                                        onPress: () {
+                                          context
+                                              .read<
+                                                  SelectedActivityFacilityBloc>()
+                                              .add(SelectedActivityFacilityEvent
+                                                  .select(project));
+                                          context.router.push(
+                                              OverallAssetSummaryRoute(
+                                                  refresh: DateTime.now()
+                                                      .millisecondsSinceEpoch));
+                                        },
+                                        title: project.activityFacility.facility
+                                                ?.facilityName ??
+                                            "",
+                                        dateAssigned: project
+                                                .workflow
+                                                ?.auditDetails
+                                                ?.lastModifiedTime ??
+                                            DateTime.now(),
+                                        status: project.status ?? '---',
+                                      ),
+                                      const SizedBox(height: spacer6),
+                                    ],
+                                  );
+                                }),
+                                if (_isLoadingMore)
+                                  const Padding(
+                                    padding: EdgeInsets.only(bottom: spacer4),
+                                    child: CircularProgressIndicator(),
+                                  ),
+                              ],
+                            );
+                          },
+                          initial: () => const Center(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: spacer4),
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          orElse: () => const Center(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: spacer4),
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

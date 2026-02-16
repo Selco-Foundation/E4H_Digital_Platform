@@ -226,7 +226,10 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                             ),
                             loaded: (items, hasMore, totalCount, fromCache,
                                 isLoadingMore) {
-                              return _buildVisitList(items);
+                              return _buildVisitList(
+                                items,
+                                isLoadingMore: isLoadingMore,
+                              );
                             },
                             orElse: () => const SizedBox.shrink(),
                           );
@@ -244,7 +247,10 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
     );
   }
 
-  Widget _buildVisitList(List<ScheduledVisit> items) {
+  Widget _buildVisitList(
+    List<ScheduledVisit> items, {
+    bool isLoadingMore = false,
+  }) {
     if (items.isEmpty) {
       return const Center(
         child: Text('No AMC visits to display'),
@@ -295,6 +301,13 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                 ),
               const SizedBox(height: spacer5),
             ],
+          ),
+        if (isLoadingMore)
+          const Padding(
+            padding: EdgeInsets.only(bottom: spacer4),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
           ),
       ],
     );
