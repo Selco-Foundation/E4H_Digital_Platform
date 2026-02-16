@@ -1,5 +1,5 @@
 import 'package:collection/collection.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
+import 'package:selco/utils/app_logger.dart';
 import 'package:isar/isar.dart';
 import 'package:selco/data/nosql/cache_activity_facility_workflow.dart';
 

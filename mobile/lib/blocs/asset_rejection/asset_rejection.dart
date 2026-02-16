@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
+import 'package:selco/utils/app_logger.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';

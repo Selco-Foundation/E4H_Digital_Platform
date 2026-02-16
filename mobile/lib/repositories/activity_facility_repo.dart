@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:digit_ui_components/utils/app_logger.dart';
+import 'package:selco/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 

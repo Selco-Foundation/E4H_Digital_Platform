@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
+import 'package:selco/utils/app_logger.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 EnvironmentConfiguration envConfig = EnvironmentConfiguration.instance;

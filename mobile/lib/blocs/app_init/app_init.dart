@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:digit_ui_components/utils/app_logger.dart';
+import 'package:selco/utils/app_logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
