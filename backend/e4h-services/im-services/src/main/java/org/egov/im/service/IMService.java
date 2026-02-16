@@ -13,6 +13,7 @@ import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
@@ -45,6 +46,9 @@ public class IMService {
     private LocalizationService localizationService;
 
     private BoundaryService boundaryService;
+
+    @Value("#{'${workflow.ticket.open.statuses}'.split(',')}")
+    private Set<String> openTicketStatuses;
 
     @Autowired
     public IMService(
@@ -82,9 +86,7 @@ public class IMService {
         log.trace("Validating create request");
         validator.validateCreate(request, mdmsData);
         log.trace("Fetching boundary from boundaryCode");
-        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
-                request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
-        );
+        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId());
         if (boundary == null) {
             log.error("Boundary data not found for code: {}", request.getIncident().getBoundaryCode());
             throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + request.getIncident().getBoundaryCode());
@@ -95,14 +97,7 @@ public class IMService {
         RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
                 .tenantId(request.getIncident().getTenantId())
                 .boundaryCode(request.getIncident().getBoundaryCode())
-                .applicationStatus(Set.of(
-                        "PENDINGFORASSIGNMENT",
-                        "PENDINGRESOLUTION",
-                        "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
-                        "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
-                        "PENDING_RESOLUTION_SPARE_PART_NEEDED",
-                        "PENDING_RESOLUTION_OUT_OF_WARRANTY"
-                ))
+                .applicationStatus(openTicketStatuses)
                 .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
                 .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
                 .build();
@@ -110,6 +105,11 @@ public class IMService {
         boolean isDuplicate = incidentWrappers != null && !incidentWrappers.isEmpty();
         request.getIncident().setPotentialDuplicate(isDuplicate);
         log.debug("Potential duplicate check completed, isDuplicate={}", isDuplicate);
+
+        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equals("Uninstall")
+                && incidentWrappers != null && !incidentWrappers.isEmpty()){
+            throw new CustomException("INVALID_CREATION","Uninstall request cannot be raised while other tickets are open for this facility");
+        }
 
         String startingStatus = request.getIncident().getApplicationStatus();
         log.info("Updating workflow status for incident creation");
