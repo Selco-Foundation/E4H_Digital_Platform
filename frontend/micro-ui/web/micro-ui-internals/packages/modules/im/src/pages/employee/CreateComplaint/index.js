@@ -58,7 +58,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
-  const isTheftIssue = complaintType?.key === "Theft";
+  const isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT";
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
   const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
@@ -777,11 +777,6 @@ export const CreateComplaint = ({ parentUrl }) => {
         </div>
       </div>
       <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit && !submitted} label={t("FILE_INCIDENT")} />
-      {showToast && (
-        <div style={{ color: "#9e1b32", marginTop: "8px", fontSize: "14px" }}>
-          {showToast}
-        </div>
-      )}
 
       {/* <button onClick={(!selectedOption || Object.keys(selectedOption).length == 0)}>Check Errors</button>  
       {errors.map((error, index) => (
