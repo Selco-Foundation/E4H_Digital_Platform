@@ -19,6 +19,7 @@ import '../blocs/scheduled_visit/scheduled_visit.dart';
 import '../blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../repositories/dynamic_form_repo.dart';
+import '../repositories/scheduled_visit_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
@@ -150,6 +151,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                     builder: (context, snapshot) {
                                       final label = snapshot.data ?? 'Start';
                                       return AMCInstallationReportCard(
+                                          scheduledVisitId: items[index].id,
                                           label: label,
                                           title: items[index]
                                                   .facility
@@ -342,6 +344,7 @@ class AMCInstallationReportCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
+    final effectiveLabel = label ?? '';
     String formattedDate = DateFormat('dd/MM/yy').format(dateAssigned);
 
     return DigitCard(
@@ -409,21 +412,33 @@ class AMCInstallationReportCard extends StatelessWidget {
             const SizedBox(height: spacer4),
             DigitButton(
               mainAxisSize: MainAxisSize.max,
-              label: "$label Report",
+              label: "$effectiveLabel Report",
               onPressed: onPress,
               type: DigitButtonType.primary,
               size: DigitButtonSize.large,
             ),
             const SizedBox(height: spacer4),
-            DigitButton(
-              mainAxisSize: MainAxisSize.max,
-              label: 'Submit For Approval',
-              onPressed: () {
-                context.router.push(const AmcOtpRoute());
+            FutureBuilder<bool>(
+              future: ScheduledVisitRepository(
+                context.read<ScheduledVisitBloc>().isar,
+              ).isFailedScheduledVisitInCache(
+                scheduledVisitId: scheduledVisitId ?? '',
+              ),
+              builder: (context, snapshot) {
+                final isFailed = snapshot.data == true;
+                final canResume = effectiveLabel.contains("Resume");
+
+                return DigitButton(
+                  mainAxisSize: MainAxisSize.max,
+                  label: 'Submit For Approval',
+                  onPressed: () {
+                    context.router.push(const AmcOtpRoute());
+                  },
+                  isDisabled: !canResume && !isFailed,
+                  type: DigitButtonType.secondary,
+                  size: DigitButtonSize.large,
+                );
               },
-              isDisabled: label!.contains("Resume") ? false : true,
-              type: DigitButtonType.secondary,
-              size: DigitButtonSize.large,
             ),
           ],
         )

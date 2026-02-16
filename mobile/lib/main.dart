@@ -127,7 +127,8 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(create: (context) => RejectionBloc(widget.isar)),
             BlocProvider(create: (context) => ScheduledVisitBloc(widget.isar)),
             BlocProvider(
-                lazy: true, create: (context) => ScheduleVisitSubmitBloc()),
+                lazy: true,
+                create: (context) => ScheduleVisitSubmitBloc(widget.isar)),
             BlocProvider(
                 create: (context) => CacheAmcMediaUploadBloc(widget.isar)),
             BlocProvider(create: (context) => AmcOtpBloc(widget.isar)),
