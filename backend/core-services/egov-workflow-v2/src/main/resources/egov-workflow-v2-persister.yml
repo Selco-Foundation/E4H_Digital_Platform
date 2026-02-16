@@ -274,3 +274,21 @@ serviceMaps:
       - jsonPath: $.BusinessServices.*.states.*.actions.*.auditDetails.lastModifiedBy
 
       - jsonPath: $.BusinessServices.*.states.*.actions.*.auditDetails.lastModifiedTime
+
+
+  - version: 1.0
+    description: Update ProcessInstance table
+    fromTopic: update-wf-processinstance
+    isTransaction: true
+    queryMaps:
+
+      - query: UPDATE eg_wf_processinstance_v2 SET businessservice=?, status=?, statesla=? WHERE id=?;
+        basePath: ProcessInstances.*
+        jsonMaps:
+          - jsonPath: $.ProcessInstances.*.businessService
+
+          - jsonPath: $.ProcessInstances.*.state.uuid
+
+          - jsonPath: $.ProcessInstances.*.stateSla
+
+          - jsonPath: $.ProcessInstances.*.id
