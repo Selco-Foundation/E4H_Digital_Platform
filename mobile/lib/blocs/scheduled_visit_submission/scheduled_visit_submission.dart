@@ -4,7 +4,9 @@ import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:isar/isar.dart';
 
+import '../../repositories/scheduled_visit_repo.dart';
 import '../../utils/background_service.dart'
     show
         BackgroundServiceController,
@@ -17,8 +19,11 @@ class ScheduleVisitSubmitBloc
     extends Bloc<ScheduleVisitSubmitEvent, ScheduleVisitSubmitState> {
   StreamSubscription? _doneSub;
   StreamSubscription? _errSub;
+  final ScheduledVisitRepository _scheduledVisitRepository;
 
-  ScheduleVisitSubmitBloc() : super(const ScheduleVisitSubmitState.initial()) {
+  ScheduleVisitSubmitBloc(Isar isar)
+      : _scheduledVisitRepository = ScheduledVisitRepository(isar),
+        super(const ScheduleVisitSubmitState.initial()) {
     on<_Submit>(_onSubmit);
     on<_BgDone>(_onBgDone);
     on<_BgError>(_onBgError);
@@ -89,6 +94,9 @@ class ScheduleVisitSubmitBloc
               '[ScheduleVisitSubmitBloc] enqueueScheduleVisitSubmission failed',
           message: e.toString(),
           stackTrace: st);
+      await _scheduledVisitRepository.addFailedScheduledVisitToCache(
+        scheduledVisitId: event.scheduledVisitId,
+      );
       await BackgroundServiceController.I.stopNow();
       emit(
         const ScheduleVisitSubmitState.failure(
@@ -102,6 +110,9 @@ class ScheduleVisitSubmitBloc
     _BgDone event,
     Emitter<ScheduleVisitSubmitState> emit,
   ) async {
+    await _scheduledVisitRepository.removeFailedScheduledVisitFromCache(
+      scheduledVisitId: event.scheduledVisitId,
+    );
     await BackgroundServiceController.I.stopNow();
     emit(const ScheduleVisitSubmitState.success());
   }
@@ -110,6 +121,9 @@ class ScheduleVisitSubmitBloc
     _BgError event,
     Emitter<ScheduleVisitSubmitState> emit,
   ) async {
+    await _scheduledVisitRepository.addFailedScheduledVisitToCache(
+      scheduledVisitId: event.scheduledVisitId,
+    );
     await BackgroundServiceController.I.stopNow();
     emit(
       ScheduleVisitSubmitState.failure(

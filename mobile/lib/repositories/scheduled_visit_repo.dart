@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 
 import '../data/nosql/cache_amc_installation_form.dart';
+import '../data/nosql/cache_amc_failed_scheduled_visit.dart';
 import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_prefilled_scheduled_visit.dart';
 import '../data/nosql/cache_scheduled_visit.dart';
@@ -338,6 +339,54 @@ class ScheduledVisitRepository {
           await col.where().scheduledVisitIdEqualTo(scheduledVisitId).findAll();
       for (final r in rec) {
         await col.delete(r.id);
+      }
+    });
+  }
+
+  Future<void> addFailedScheduledVisitToCache({
+    required String scheduledVisitId,
+  }) async {
+    if (scheduledVisitId.trim().isEmpty) return;
+
+    final col = _isar.cacheAmcFailedScheduledVisits;
+    await _isar.writeTxn(() async {
+      final existing = await col
+          .where()
+          .scheduledVisitIdEqualTo(scheduledVisitId)
+          .findFirst();
+
+      if (existing != null) return;
+      await col.put(
+        CacheAmcFailedScheduledVisit(scheduledVisitId: scheduledVisitId),
+      );
+    });
+  }
+
+  Future<bool> isFailedScheduledVisitInCache({
+    required String scheduledVisitId,
+  }) async {
+    if (scheduledVisitId.trim().isEmpty) return false;
+
+    final row = await _isar.cacheAmcFailedScheduledVisits
+        .where()
+        .scheduledVisitIdEqualTo(scheduledVisitId)
+        .findFirst();
+    return row != null;
+  }
+
+  Future<void> removeFailedScheduledVisitFromCache({
+    required String scheduledVisitId,
+  }) async {
+    if (scheduledVisitId.trim().isEmpty) return;
+
+    final col = _isar.cacheAmcFailedScheduledVisits;
+    await _isar.writeTxn(() async {
+      final row = await col
+          .where()
+          .scheduledVisitIdEqualTo(scheduledVisitId)
+          .findFirst();
+      if (row != null) {
+        await col.delete(row.id);
       }
     });
   }
