@@ -226,7 +226,7 @@ public class FieldPlannerService {
         stateCode = boundaryCodeToCode(stateBoundary);
 //        String state = fieldPlanServiceUtil.extractStateName(stateBoundary);
         List<Map<String, Object>> activities = fieldPlan.getActivities();
-        log.debug("Extracted state: {}, activities count: {}", state, activities.size());
+        log.debug("Extracted state: {}, activities count: {}", stateCode, activities.size());
 
         try {
             activitiesRes = JsonPath.read(mdmsData, jsonPathForActivities);
