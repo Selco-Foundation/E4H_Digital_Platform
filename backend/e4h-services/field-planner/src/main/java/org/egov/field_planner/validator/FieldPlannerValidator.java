@@ -189,7 +189,7 @@ public class FieldPlannerValidator {
                 String stateExtracted = fieldPlanServiceUtil.extractStateName(state);
                 if (!stateInfoRes.contains(stateExtracted)){
                     log.error("The state code: " + state + mdmsNotPresent);
-                    errorMap.put("INVALID_STATE_CODE", "The state code: " + state + mdmsNotPresent);
+//                    errorMap.put("INVALID_STATE_CODE", "The state code: " + state + mdmsNotPresent);
                 }
             }
         }
