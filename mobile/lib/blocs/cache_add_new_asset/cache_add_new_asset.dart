@@ -17,6 +17,7 @@ class CacheAddNewAssetBloc
     on<CacheAddNewAssetEventUpdate>(_updateCacheAssetDetail);
     on<CacheAddNewAssetEventDelete>(_deleteCacheAssetDetail);
     on<CacheAddNewAssetEventDeleteAll>(_deleteAllCacheAssetDetail);
+    on<CacheAddNewAssetEventReplaceAll>(_replaceAllCacheAssetDetail);
   }
 
   Future<void> _getCacheAssetDetail(
@@ -141,17 +142,37 @@ class CacheAddNewAssetBloc
     emit(const CacheAddNewAssetState.loading());
     try {
       await isar.writeTxn(() async {
-        final q = isar.cacheAddNewAssets
+        await isar.cacheAddNewAssets
             .where()
             .activityFacilityIdEqualTo(event.activityFacilityId)
             .filter()
-            .assetTypeEqualTo(event.assetType);
-        final all = await q.findAll();
-        for (final e in all) {
-          await isar.cacheAddNewAssets.delete(e.id);
-        }
+            .assetTypeEqualTo(event.assetType)
+            .deleteAll();
       });
       emit(const CacheAddNewAssetState.deleted());
+    } catch (e) {
+      emit(CacheAddNewAssetState.error(e.toString()));
+    }
+  }
+
+  Future<void> _replaceAllCacheAssetDetail(
+    CacheAddNewAssetEventReplaceAll event,
+    Emitter<CacheAddNewAssetState> emit,
+  ) async {
+    emit(const CacheAddNewAssetState.loading());
+    try {
+      await isar.writeTxn(() async {
+        await isar.cacheAddNewAssets
+            .where()
+            .activityFacilityIdEqualTo(event.activityFacilityId)
+            .filter()
+            .assetTypeEqualTo(event.assetType)
+            .deleteAll();
+
+        await isar.cacheAddNewAssets.putAll(event.entries);
+      });
+
+      emit(CacheAddNewAssetState.loaded(event.entries));
     } catch (e) {
       emit(CacheAddNewAssetState.error(e.toString()));
     }
@@ -175,6 +196,11 @@ class CacheAddNewAssetEvent with _$CacheAddNewAssetEvent {
     String activityFacilityId,
     String assetType,
   ) = CacheAddNewAssetEventDeleteAll;
+  const factory CacheAddNewAssetEvent.replaceAll(
+    String activityFacilityId,
+    String assetType,
+    List<CacheAddNewAsset> entries,
+  ) = CacheAddNewAssetEventReplaceAll;
 }
 
 @freezed

@@ -5269,13 +5269,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "led_bulb_1_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -5423,13 +5417,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "led_bulb_2_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -5577,13 +5565,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "led_tube_light_1_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -5731,13 +5713,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "led_tube_light_2_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -5885,13 +5861,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "ceiling_fan_regulators_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               }
             ]
           },
@@ -6047,13 +6017,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "wall_mounted_fan_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -6201,13 +6165,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "outdoor_light_auto_control_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -6355,13 +6313,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "outdoor_light_arm_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               }
             ]
           }
@@ -6406,7 +6358,7 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true,
+                "required": false,
                 "fieldName": "rms_product_model_number"
               },
               {
@@ -6466,15 +6418,8 @@
                 "systemDate": false,
                 "errorMessage": "",
                 "includeInForm": true,
-                "required": true,
-                "fieldName": "rms_type_description",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Description is required"
-                  }
-                ]
+                "required": false,
+                "fieldName": "rms_type_description"
               },
               {
                 "section": "RMS IP Number/MAC ID",
@@ -16882,13 +16827,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_operational_instructions_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -16945,13 +16884,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_routine_maintenance_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -17008,13 +16941,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "stickers_pasted_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -17071,13 +16998,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "posters_pasted_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -17096,13 +17017,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_additional_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Additional remarks is required"
-                  }
-                ]
+                "validations": []
               }
             ]
           }
@@ -19680,13 +19595,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_operational_instructions_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -19743,13 +19652,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_routine_maintenance_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -19806,13 +19709,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "stickers_pasted_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -19869,13 +19766,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "posters_pasted_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -19894,13 +19785,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_additional_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Additional remarks is required"
-                  }
-                ]
+                "validations": []
               }
             ]
           }
@@ -27980,13 +27865,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_operational_instructions_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -28043,13 +27922,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_routine_maintenance_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -28106,13 +27979,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "stickers_pasted_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -28399,13 +28266,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_additional_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Additional remarks is required"
-                  }
-                ]
+                "validations": []
               }
             ]
           }
@@ -31924,13 +31785,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_operational_instructions_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -31987,13 +31842,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_routine_maintenance_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -32050,13 +31899,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "stickers_pasted_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -32343,13 +32186,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_additional_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Additional remarks is required"
-                  }
-                ]
+                "validations": []
               }
             ]
           }
@@ -35066,13 +34903,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "led_bulb_1_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -35220,13 +35051,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "led_bulb_2_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -35374,13 +35199,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "led_tube_light_1_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -35528,13 +35347,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "led_tube_light_2_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -35682,13 +35495,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "wall_mounted_fan_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -35836,13 +35643,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "mobile_charging_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks are required"
-                  }
-                ]
+                "validations": []
               }
             ]
           }
@@ -41124,13 +40925,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_operational_instructions_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -41187,13 +40982,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_routine_maintenance_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -41250,13 +41039,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "stickers_pasted_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -41313,13 +41096,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "posters_pasted_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Remarks is required"
-                  }
-                ]
+                "validations": []
               },
               {
                 "type": "string",
@@ -41338,13 +41115,7 @@
                 "errorMessage": "",
                 "includeInForm": true,
                 "fieldName": "orientation_additional_remarks",
-                "validations": [
-                  {
-                    "type": "required",
-                    "value": true,
-                    "message": "Additional remarks is required"
-                  }
-                ]
+                "validations": []
               }
             ]
           }

@@ -1,16 +1,13 @@
 export const Complaint = {
-  create: async ({
-    cityCode,
-    comments,
-    district,
-    block,
-    uploadedFile,
-    complaintType,
-    subType,
-    systemFunctionality,
-    healthcentre,
-    tenantId,
-  }) => {
+  create: async ({ cityCode, comments, district, block, uploadedFile, complaintType, subType, systemFunctionality, healthcentre, tenantId }) => {
+    const normalizedType = (complaintType?.key || "").trim().toUpperCase();
+    const workflowAction =
+      normalizedType === "THEFT"
+        ? "APPLY_THEFT"
+        : normalizedType === "RMS DEVICE"
+          ? "APPLY_RMS_DEVICE"
+          : "APPLY";
+
     const defaultData = {
       incident: {
         tenantId: tenantId,
@@ -25,12 +22,12 @@ export const Complaint = {
           fileStoreId: uploadedFile,
           reopenreason: [],
           rejectReason: [],
-          sendBackReason: []
+          sendBackReason: [],
         },
         source: Digit.Utils.browser.isWebview() ? "mobile" : "web",
       },
       workflow: {
-        action: "APPLY",
+        action: workflowAction,
         //: uploadedImages
       },
     };
@@ -79,7 +76,9 @@ export const Complaint = {
     tenantId,
     selectedReopenReason,
     selectedRejectReason,
-    selectedSendBackReason
+    selectedSendBackReason,
+    oowResponses,
+    selectedOutOfScopeReason
   ) => {
     complaintDetails.workflow.action = action;
     complaintDetails.workflow.assignes = employeeData ? [employeeData.uuid] : null;
@@ -89,9 +88,11 @@ export const Complaint = {
       rejectReason: selectedRejectReason && { value: selectedRejectReason?.localizedCode },
       sendBackReason: selectedSendBackReason && {
         value: {
-          reason: selectedSendBackReason?.localizedCode
+          reason: selectedSendBackReason?.localizedCode,
         },
       },
+      oowResponses: oowResponses && { value: oowResponses },
+      outOfScopeReason: selectedOutOfScopeReason && { value: selectedOutOfScopeReason?.localizedCode },
     };
 
     Object.entries(reasonMap).forEach(([key, data]) => {

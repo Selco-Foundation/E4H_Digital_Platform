@@ -46,6 +46,7 @@ public class TransitionService {
      * the Action object for the given action
      */
     public List<ProcessStateAndAction> getProcessStateAndActions(List<ProcessInstance> processInstances,Boolean isTransitionCall){
+        List<ProcessStateAndAction> processStateAndActions = new LinkedList<>();
         log.trace("Entering getProcessStateAndActions method");
         int processInstanceCount = processInstances != null ? processInstances.size() : 0;
         log.info("Creating process state and actions for {} process instance(s), isTransitionCall: {}", 
