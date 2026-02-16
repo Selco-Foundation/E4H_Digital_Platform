@@ -98,6 +98,9 @@ public class WorkflowConfig {
     @Value("${egov.wf.escalation.batch.size}")
     private Integer escalationBatchSize;
 
+    @Value("${egov.wf.processinstance.update.batch.size:100}")
+    private Integer processInstanceUpdateBatchSize;
+
     // IM (Incident Management) service for request search
     @Value("${egov.im.host:http://localhost:8082}")
     private String imHost;
