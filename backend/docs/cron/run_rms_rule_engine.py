@@ -12,7 +12,7 @@ data = {}
 
 try:
     print(f"Calling RMS rule engine trigger endpoint: {url}")
-    response = requests.post(url, headers=headers, json=data, timeout=300)
+    response = requests.post(url, headers=headers, json=data)
     print(f"Status: {response.status_code}")
     print(f"Response: {response.text}")
 
