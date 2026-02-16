@@ -1,12 +1,15 @@
+import 'dart:io';
+
 import 'package:digit_forms_engine/blocs/app_localization.dart'
     as forms_localization;
 import 'package:digit_scanner/blocs/app_localization.dart'
     as scanner_localization;
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
 import 'package:dio/dio.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:isar/isar.dart';
@@ -46,6 +49,7 @@ import 'repositories/app_init_repo.dart';
 import 'router/app_router.dart';
 import 'utils/background_service.dart';
 import 'utils/constants.dart';
+import 'utils/app_logger.dart';
 
 late Isar _isar;
 late Dio _dio;
@@ -62,6 +66,11 @@ void main() async {
   await ensureAndroidNotificationPermission();
 
   await AppSharedPreferences().init();
+
+  if (!kIsWeb && Platform.isAndroid) {
+    await Firebase.initializeApp();
+    await AppLogger.initAnalytics();
+  }
 
   if (AppSharedPreferences().isFirstLaunch) {
     AppLogger.instance.info('App Launched First Time', title: 'main');

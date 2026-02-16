@@ -6,7 +6,7 @@ import 'package:digit_forms_engine/blocs/forms/forms.dart';
 import 'package:digit_forms_engine/models/property_schema/property_schema.dart'
     as DigitPropertySchema;
 import 'package:digit_forms_engine/models/schema_object/schema_object.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
+import 'package:selco/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';

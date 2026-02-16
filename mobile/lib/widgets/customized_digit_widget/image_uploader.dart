@@ -4,7 +4,7 @@ import 'dart:ui';
 
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/ComponentTheme/pop_up_card_theme.dart';
-import 'package:digit_ui_components/utils/app_logger.dart';
+import 'package:selco/utils/app_logger.dart';
 import 'package:digit_ui_components/utils/utils.dart';
 import 'package:digit_ui_components/utils/validators/file_validator.dart';
 import 'package:digit_ui_components/utils/validators/image_validator.dart';
