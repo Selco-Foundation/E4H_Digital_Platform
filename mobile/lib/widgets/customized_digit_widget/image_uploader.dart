@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
@@ -11,6 +12,7 @@ import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
 import 'package:digit_ui_components/widgets/helper_widget/camera_handler.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ImageUploader extends StatefulWidget {
@@ -26,25 +28,39 @@ class ImageUploader extends StatefulWidget {
   final String? chooseOptionLabel;
   final List<FileValidator>? validators;
 
-  const ImageUploader(
-      {super.key,
-      required this.onImagesSelected,
-      this.allowMultiples = false,
-      this.initialImages,
-      this.errorMessage,
-      this.label,
-      this.cameraTitle,
-      this.galleryTitle,
-      this.captureText,
-      this.cancelText,
-      this.chooseOptionLabel,
-      this.validators});
+  final int imageQuality;
+  final double? maxWidth;
+  final double? maxHeight;
+
+  final bool recoverLostDataOnResume;
+  final bool requestFullMetadata;
+
+  const ImageUploader({
+    super.key,
+    required this.onImagesSelected,
+    this.allowMultiples = false,
+    this.initialImages,
+    this.errorMessage,
+    this.label,
+    this.cameraTitle,
+    this.galleryTitle,
+    this.captureText,
+    this.cancelText,
+    this.chooseOptionLabel,
+    this.validators,
+    this.imageQuality = 75,
+    this.maxWidth,
+    this.maxHeight,
+    this.recoverLostDataOnResume = true,
+    this.requestFullMetadata = false,
+  });
 
   @override
   _ImageUploaderState createState() => _ImageUploaderState();
 }
 
-class _ImageUploaderState extends State<ImageUploader> {
+class _ImageUploaderState extends State<ImageUploader>
+    with WidgetsBindingObserver {
   late final List<File> _imageFiles;
   late DigitTypography currentTypography;
   late bool isMobile;
@@ -52,120 +68,15 @@ class _ImageUploaderState extends State<ImageUploader> {
   String? capitalizedErrorMessage;
   String fileError = '';
 
-  void _getImage(ImageSource source) {
-    if (kIsWeb && source == ImageSource.camera) {
-      showDialog(
-        context: context,
-        barrierColor: const DigitColors().overLayColor.withOpacity(.70),
-        useSafeArea: false,
-        builder: (BuildContext context) {
-          CameraHandlerState? cameraHandlerState;
-          return BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 2.0, sigmaY: 2.0),
-            child: Popup(
-              popupTheme: const DigitPopupTheme().copyWith(
-                context: context,
-                width: isMobile
-                    ? 360
-                    : isTab
-                        ? 440
-                        : 720,
-              ),
-              onCrossTap: () {
-                Navigator.of(context).pop();
-              },
-              title: widget.cameraTitle ?? 'Camera',
-              type: PopUpType.simple,
-              actions: [
-                DigitButton(
-                  mainAxisSize: MainAxisSize.max,
-                  prefixIcon: Icons.camera_enhance,
-                  label: widget.captureText ?? 'Capture',
-                  size: DigitButtonSize.large,
-                  type: DigitButtonType.primary,
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    cameraHandlerState?.captureImage();
-
-                    /// Trigger the capture
-                  },
-                ),
-                DigitButton(
-                  mainAxisSize: MainAxisSize.max,
-                  label: widget.cancelText ?? 'Cancel',
-                  size: DigitButtonSize.large,
-                  type: DigitButtonType.secondary,
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-              additionalWidgets: [
-                CameraHandler(
-                  source: source,
-                  onImageCaptured: (image) {
-                    _handleImageCapture(image);
-                  },
-                  onCameraHandlerCreated: (CameraHandlerState state) {
-                    cameraHandlerState = state; // Capture the state instance
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    } else {
-      ImagePicker().pickImage(source: source).then((pickedFile) {
-        if (pickedFile != null) {
-          if (widget.validators != null) {
-            String? validationError =
-                validateImage(pickedFile, widget.validators!, pickedFile.name);
-            if (validationError != null) {
-              setState(() {
-                fileError = validationError;
-              });
-              return;
-            }
-          }
-          setState(() {
-            fileError = ''; // Clear the error message
-            if (widget.allowMultiples) {
-              _imageFiles.add(File(pickedFile.path));
-            } else {
-              _imageFiles
-                ..clear()
-                ..add(File(pickedFile.path));
-            }
-          });
-          widget.onImagesSelected(List<File>.from(_imageFiles));
-        } else {
-          if (kDebugMode) {
-            AppLogger.instance.info('No image selected.');
-          }
-        }
-      });
-    }
-  }
-
-  Future<void> _handleImageCapture(File image) async {
-    setState(() {
-      if (widget.allowMultiples) {
-        _imageFiles.add(image);
-      } else {
-        _imageFiles
-          ..clear()
-          ..add(image);
-      }
-    });
-    widget.onImagesSelected(List<File>.from(_imageFiles));
-  }
+  final ImagePicker _picker = ImagePicker();
+  bool _picking = false;
 
   @override
   void initState() {
     super.initState();
-    // Initialize _imageFiles with initialImages if provided
+    WidgetsBinding.instance.addObserver(this);
     _imageFiles = List<File>.from(widget.initialImages ?? const []);
+    _recoverLostData(); // important for Android camera/gallery flows
   }
 
   @override
@@ -186,12 +97,212 @@ class _ImageUploaderState extends State<ImageUploader> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // If Android kills our activity while the camera app is open, we can recover on resume.
+    if (!widget.recoverLostDataOnResume) return;
+    if (state == AppLifecycleState.resumed) {
+      _recoverLostData();
+    }
+  }
+
+  Future<void> _getImage(ImageSource source) async {
+    // Guard against rapid multiple taps (can crash some OEM camera flows).
+    if (_picking) return;
+    _picking = true;
+
+    try {
+      if (kIsWeb && source == ImageSource.camera) {
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierColor: const DigitColors().overLayColor.withOpacity(.70),
+          useSafeArea: false,
+          builder: (BuildContext context) {
+            CameraHandlerState? cameraHandlerState;
+            return BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 2.0, sigmaY: 2.0),
+              child: Popup(
+                popupTheme: const DigitPopupTheme().copyWith(
+                  context: context,
+                  width: isMobile
+                      ? 360
+                      : isTab
+                          ? 440
+                          : 720,
+                ),
+                onCrossTap: () {
+                  Navigator.of(context).pop();
+                },
+                title: widget.cameraTitle ?? 'Camera',
+                type: PopUpType.simple,
+                actions: [
+                  DigitButton(
+                    mainAxisSize: MainAxisSize.max,
+                    prefixIcon: Icons.camera_enhance,
+                    label: widget.captureText ?? 'Capture',
+                    size: DigitButtonSize.large,
+                    type: DigitButtonType.primary,
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      cameraHandlerState?.captureImage();
+                    },
+                  ),
+                  DigitButton(
+                    mainAxisSize: MainAxisSize.max,
+                    label: widget.cancelText ?? 'Cancel',
+                    size: DigitButtonSize.large,
+                    type: DigitButtonType.secondary,
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                ],
+                additionalWidgets: [
+                  CameraHandler(
+                    source: source,
+                    onImageCaptured: (image) {
+                      _handleImageCapture(image);
+                    },
+                    onCameraHandlerCreated: (CameraHandlerState state) {
+                      cameraHandlerState = state;
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+        return;
+      }
+
+      // Mobile: give camera stack a brief moment to settle (helps on some Samsung devices).
+      await Future.delayed(const Duration(milliseconds: 180));
+
+      final pickedFile = await _picker.pickImage(
+        source: source,
+        imageQuality: widget.imageQuality,
+        maxWidth: widget.maxWidth,
+        maxHeight: widget.maxHeight,
+        requestFullMetadata: widget.requestFullMetadata,
+      );
+
+      if (!mounted) return;
+
+      if (pickedFile != null) {
+        if (widget.validators != null) {
+          String? validationError =
+              validateImage(pickedFile, widget.validators!, pickedFile.name);
+          if (validationError != null) {
+            setState(() {
+              fileError = validationError;
+            });
+            return;
+          }
+        }
+
+        setState(() {
+          fileError = '';
+          if (widget.allowMultiples) {
+            _imageFiles.add(File(pickedFile.path));
+          } else {
+            _imageFiles
+              ..clear()
+              ..add(File(pickedFile.path));
+          }
+        });
+        widget.onImagesSelected(List<File>.from(_imageFiles));
+      } else {
+        if (kDebugMode) {
+          AppLogger.instance.info('No image selected.');
+        }
+      }
+    } on PlatformException catch (e) {
+      AppLogger.instance
+          .info('ImagePicker PlatformException: ${e.code} ${e.message}');
+      if (mounted) {
+        setState(() {
+          fileError = e.message ?? 'Failed to open camera/gallery';
+        });
+      }
+    } catch (e) {
+      AppLogger.instance.info('Error picking image: $e');
+      if (mounted) {
+        setState(() {
+          fileError = 'Failed to pick image';
+        });
+      }
+    } finally {
+      _picking = false;
+    }
+  }
+
+  Future<void> _handleImageCapture(File image) async {
+    if (!mounted) return;
+    setState(() {
+      fileError = '';
+      if (widget.allowMultiples) {
+        _imageFiles.add(image);
+      } else {
+        _imageFiles
+          ..clear()
+          ..add(image);
+      }
+    });
+    widget.onImagesSelected(List<File>.from(_imageFiles));
+  }
+
+  Future<void> _recoverLostData() async {
+    if (kIsWeb) return;
+
+    try {
+      final response = await _picker.retrieveLostData();
+      if (response.isEmpty) return;
+
+      final x = response.file;
+      if (x == null) {
+        if (response.exception != null) {
+          AppLogger.instance
+              .info('retrieveLostData exception: ${response.exception}');
+        }
+        return;
+      }
+
+      if (!mounted) return;
+
+      if (widget.validators != null) {
+        final String? validationError =
+            validateImage(x, widget.validators!, x.name);
+        if (validationError != null) {
+          setState(() {
+            fileError = validationError;
+          });
+          return;
+        }
+      }
+
+      setState(() {
+        fileError = '';
+        if (widget.allowMultiples) {
+          _imageFiles.add(File(x.path));
+        } else {
+          _imageFiles
+            ..clear()
+            ..add(File(x.path));
+        }
+      });
+      widget.onImagesSelected(List<File>.from(_imageFiles));
+    } catch (e) {
+      AppLogger.instance.info('Error recovering lost picker data: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    /// typography based on screen
     currentTypography = getTypography(context, false);
     isMobile = AppView.isMobileView(MediaQuery.of(context).size);
     isTab = AppView.isTabletView(MediaQuery.of(context).size);
@@ -290,8 +401,12 @@ class _ImageUploaderState extends State<ImageUploader> {
     );
   }
 
-  Widget _buildInkWell(IconData icon, String label, VoidCallback onTap,
-      DigitTypography typography) {
+  Widget _buildInkWell(
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+    DigitTypography typography,
+  ) {
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.only(top: spacer8),
@@ -305,9 +420,11 @@ class _ImageUploaderState extends State<ImageUploader> {
               Icon(icon,
                   size: spacer10, color: const DigitColors().light.primary1),
               const SizedBox(height: spacer2),
-              Text(label,
-                  style: typography.bodyL
-                      .copyWith(color: const DigitColors().light.primary1)),
+              Text(
+                label,
+                style: typography.bodyL
+                    .copyWith(color: const DigitColors().light.primary1),
+              ),
             ],
           ),
         ),
@@ -320,93 +437,89 @@ class _ImageUploaderState extends State<ImageUploader> {
       //_closeCamera();
     }
     return Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
-            Container(
-              width: MediaQuery.of(context).size.width,
-              height: 120,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: widget.errorMessage != null || fileError != ''
-                      ? const DigitColors().light.alertError
-                      : const DigitColors().light.genericInputBorder,
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.camera_enhance,
-                        size: spacer10,
-                        color: const DigitColors().light.primary1),
-                    Text(widget.label ?? 'Click to add photo',
-                        style: TextStyle(
-                            color: const DigitColors().light.primary1)),
-                  ],
-                ),
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
+          Container(
+            width: MediaQuery.of(context).size.width,
+            height: 120,
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: widget.errorMessage != null || fileError != ''
+                    ? const DigitColors().light.alertError
+                    : const DigitColors().light.genericInputBorder,
+                width: 1,
               ),
             ),
-          if (widget.errorMessage != null || fileError != '')
-            const SizedBox(
-              height: spacer1,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.camera_enhance,
+                      size: spacer10,
+                      color: const DigitColors().light.primary1),
+                  Text(
+                    widget.label ?? 'Click to add photo',
+                    style: TextStyle(color: const DigitColors().light.primary1),
+                  ),
+                ],
+              ),
             ),
-          if (widget.errorMessage != null || fileError != '')
-            Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Column(
-                  children: [
-                    const SizedBox(
-                      height: spacer1 / 2,
-                    ),
-                    Icon(
-                      Icons.info,
-                      color: const DigitColors().light.alertError,
-                      size: BaseConstants.errorIconSize,
-                    ),
-                  ],
-                ),
-                const SizedBox(width: spacer1),
-                Flexible(
-                  fit: FlexFit.tight,
-                  child: fileError != ''
-                      ? Text(
-                          fileError.length > 256
-                              ? '${fileError.substring(0, 256)}...'
-                              : fileError,
-                          style: currentTypography.bodyS.copyWith(
-                            color: const DigitColors().light.alertError,
-                          ),
-                        )
-                      : Text(
-                          capitalizedErrorMessage!.length > 256
-                              ? '${capitalizedErrorMessage?.substring(0, 256)}...'
-                              : capitalizedErrorMessage!,
-                          style: currentTypography.bodyS.copyWith(
-                            color: const DigitColors().light.alertError,
-                          ),
-                        ),
-                ),
-              ],
-            ),
-          if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
-            const SizedBox(
-              height: spacer2,
-            ),
-          Wrap(
-            spacing: spacer2,
-            runSpacing: spacer2,
-            children: List.generate(_imageFiles.length, (index) {
-              return _buildImageItem(index);
-            }),
           ),
-        ]);
+        if (widget.errorMessage != null || fileError != '')
+          const SizedBox(height: spacer1),
+        if (widget.errorMessage != null || fileError != '')
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Column(
+                children: [
+                  const SizedBox(height: spacer1 / 2),
+                  Icon(
+                    Icons.info,
+                    color: const DigitColors().light.alertError,
+                    size: BaseConstants.errorIconSize,
+                  ),
+                ],
+              ),
+              const SizedBox(width: spacer1),
+              Flexible(
+                fit: FlexFit.tight,
+                child: fileError != ''
+                    ? Text(
+                        fileError.length > 256
+                            ? '${fileError.substring(0, 256)}...'
+                            : fileError,
+                        style: currentTypography.bodyS.copyWith(
+                          color: const DigitColors().light.alertError,
+                        ),
+                      )
+                    : Text(
+                        capitalizedErrorMessage!.length > 256
+                            ? '${capitalizedErrorMessage?.substring(0, 256)}...'
+                            : capitalizedErrorMessage!,
+                        style: currentTypography.bodyS.copyWith(
+                          color: const DigitColors().light.alertError,
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
+          const SizedBox(height: spacer2),
+        Wrap(
+          spacing: spacer2,
+          runSpacing: spacer2,
+          children: List.generate(_imageFiles.length, (index) {
+            return _buildImageItem(index);
+          }),
+        ),
+      ],
+    );
   }
 
   Widget _buildImageItem(int index) {
@@ -414,6 +527,8 @@ class _ImageUploaderState extends State<ImageUploader> {
         fileError != '') {
       // _closeCamera();
     }
+
+    final int thumb = Base.imageSize.toInt(); // decode smaller to reduce memory
     return _imageFiles.isNotEmpty
         ? Stack(
             children: [
@@ -422,9 +537,8 @@ class _ImageUploaderState extends State<ImageUploader> {
                       color: const DigitColors().light.genericDivider,
                       width: Base.imageSize,
                       height: Base.imageSize,
-                      constraints: const BoxConstraints(
-                        minWidth: Base.imageSize,
-                      ),
+                      constraints:
+                          const BoxConstraints(minWidth: Base.imageSize),
                       child: ClipRRect(
                         borderRadius: Base.radius,
                         child: Stack(
@@ -442,6 +556,8 @@ class _ImageUploaderState extends State<ImageUploader> {
                                     width: Base.imageSize,
                                     height: Base.imageSize,
                                     fit: BoxFit.cover,
+                                    cacheWidth: thumb,
+                                    cacheHeight: thumb,
                                   ),
                             Positioned(
                               top: 0,
@@ -487,6 +603,8 @@ class _ImageUploaderState extends State<ImageUploader> {
                                 : Image.file(
                                     _imageFiles[index],
                                     fit: BoxFit.cover,
+                                    cacheWidth: (thumb *
+                                        2), // slightly larger for wide preview
                                   ),
                             Positioned(
                               top: 0,

@@ -176,7 +176,7 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
                 DynamicFormsRoute(
                   pageName: m.pageName,
                   schemaName: m.schemaName,
-                  projectId: widget.projectId,
+                  activityFacilityId: widget.projectId,
                   origin: widget.origin,
                   userType: userType,
                 ),

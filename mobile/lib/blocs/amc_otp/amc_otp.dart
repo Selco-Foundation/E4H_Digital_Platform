@@ -35,6 +35,7 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       await scheduledVisitRepo.resendVisitOtp();
       emit(const AmcOtpState.resendSuccess());
     } catch (e) {
+      AppLogger.instance.error(title: "Resend OTP", message: e.toString());
       emit(
         const AmcOtpState.failure('Failed to resend OTP. Please try again.'),
       );
@@ -127,7 +128,7 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       }
       try {
         await ScheduledVisitRepository(isar)
-            .deleteAmcMediaUploads(isar: isar, scheduledVisitId: event.visitId);
+            .deleteAmcMediaUploads(scheduledVisitId: event.visitId);
       } catch (e) {
         AppLogger.instance.error(
             title: CLEANUP_ERROR,
@@ -135,6 +136,7 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       }
       emit(const AmcOtpState.submitSuccess());
     } catch (e) {
+      AppLogger.instance.error(title: "AMC OTP Submit", message: e.toString());
       emit(const AmcOtpState.failure(
           'Invalid OTP or request failed. Please try again.'));
     }

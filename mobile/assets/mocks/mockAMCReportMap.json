@@ -11,7 +11,7 @@
     {
       "id": "d52a792e-b002-41a3-8db7-1dae1ef9ef62",
       "tenantId": "in",
-      "schemaCode": "common-masters.SolutionDesignTypeAMCReport",
+      "schemaCode": "common-masters.SolutionDesignTypeBOMForms",
       "uniqueIdentifier": "",
       "data": {
         "systemCode": "AC_OFF_GRID",
