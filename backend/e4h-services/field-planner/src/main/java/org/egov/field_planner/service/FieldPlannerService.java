@@ -72,13 +72,13 @@ public class FieldPlannerService {
     public FieldPlanRequest createFieldPlan(FieldPlanRequest fieldPlanRequest) {
         log.trace("Entering createFieldPlan method");
         log.info("Starting field plan creation request");
-        
+
         fieldPlannerValidator.validateCreateFieldPlanRequest(fieldPlanRequest);
         log.debug("Field plan creation request validated successfully");
-        
+
         for (FieldPlan fieldPlan : fieldPlanRequest.getFieldPlans()) {
             log.trace("Processing field plan for tenant: {}", fieldPlan.getTenantId());
-            
+
             String baseName = getStateActivitiesYearFormat(fieldPlanRequest, fieldPlan.getTenantId(), fieldPlan);
 //            String baseName = "KA-MT_HO-2024";
             if(baseName == null){
@@ -86,7 +86,7 @@ public class FieldPlannerService {
                 throw new CustomException("FORMAT ERROR", "Cannot generate the fieldplan name");
             }
             log.debug("Generated base name for field plan: {}", baseName);
-            
+
             fieldPlan.setName(baseName);
             NameResult result = CheckDuplicateAndGenerateName(fieldPlan);
             if (result.isDuplicate()) {
@@ -96,14 +96,14 @@ public class FieldPlannerService {
             } else {
                 log.debug("No duplicate found, using base name: {}", result.getGeneratedName());
             }
-            
+
             fieldPlannerEnrichment.enrichFieldPlanOnCreate(fieldPlan, fieldPlanRequest.getRequestInfo());
             log.info("Field plan enriched with ID: {} and audit details", fieldPlan.getId());
-            
+
             producer.push(fieldPlannerConfiguration.getSaveFieldPlanTopic(), fieldPlanRequest);
             log.info("Field plan creation request pushed to Kafka topic: {}", fieldPlannerConfiguration.getSaveFieldPlanTopic());
         }
-        
+
         log.info("Field plan creation request processed successfully");
         log.trace("Exiting createFieldPlan method");
         return fieldPlanRequest;
@@ -112,7 +112,7 @@ public class FieldPlannerService {
     public FieldPlanRequest updateFieldPlan(FieldPlanRequest request) {
         log.trace("Entering updateFieldPlan method");
         log.info("Starting field plan update request");
-        
+
         /*
          * Validate the update fieldPlan request
          */
@@ -162,7 +162,7 @@ public class FieldPlannerService {
         String baseName = fieldPlan.getName();
         String generatedName = baseName;
         log.debug("Checking for duplicate name with base name: {}", baseName);
-        
+
         List<FieldPlan> fieldPlans = fieldPlannerRepository.getHighestFielPlanName(fieldPlan);
         if (fieldPlans!=null && !fieldPlans.isEmpty()){
             FieldPlan fieldPlanDB = fieldPlans.get(0);
@@ -186,12 +186,15 @@ public class FieldPlannerService {
         }
 
         try {
+            // Extract the part after base name
             String suffixPart = existingName.substring(baseName.length());
 
+            // Remove leading dash if present
             if (suffixPart.startsWith("-")) {
                 suffixPart = suffixPart.substring(1);
             }
 
+            // Parse the suffix number
             int currentSuffix = Integer.parseInt(suffixPart);
             int nextSuffix = currentSuffix + 1;
             log.debug("Extracted suffix: {}, next suffix: {}", currentSuffix, nextSuffix);
@@ -207,7 +210,7 @@ public class FieldPlannerService {
     private String getStateActivitiesYearFormat(FieldPlanRequest request, String tenantId, FieldPlan fieldPlan) {
         log.trace("Entering getStateActivitiesYearFormat method");
         log.debug("Generating field plan name format for tenant: {}", tenantId);
-        
+
         Object mdmsData = mdmsUtils.mDMSCall(request, tenantId);
         String mdmsRes = "$.MdmsRes.";
         final String jsonPathForActivities = mdmsRes + MDMS_COMMON_MASTERS_MODULE_NAME + "." + MASTER_ACTIVITIES;
@@ -220,26 +223,22 @@ public class FieldPlannerService {
         String concatenatedActivityCode = null;
         Map<String, Object> geographyDetails = fieldPlan.getGeographyDetails();
         String stateBoundary = (String)geographyDetails.get("state");
-        String state = fieldPlanServiceUtil.extractStateName(stateBoundary);
+        stateCode = boundaryCodeToCode(stateBoundary);
+//        String state = fieldPlanServiceUtil.extractStateName(stateBoundary);
         List<Map<String, Object>> activities = fieldPlan.getActivities();
         log.debug("Extracted state: {}, activities count: {}", state, activities.size());
-        
+
         try {
             activitiesRes = JsonPath.read(mdmsData, jsonPathForActivities);
             stateInfoRes = JsonPath.read(mdmsData, jsonPathForStateInfo);
-            log.debug("Retrieved {} activities and {} state info records from MDMS", 
-                    activitiesRes.size(), 
-                    stateInfoRes.size());
-            
-            for (Object map : stateInfoRes) {
-                LinkedHashMap<String, Object> stateInfo = (LinkedHashMap<String, Object>) map;
-                String name = (String) stateInfo.get("name");
-                if (state.equalsIgnoreCase(name)) {
-                    stateCode = (String) stateInfo.get("code");
-                    log.debug("Found state code: {} for state: {}", stateCode, state);
-                    break;
-                }
-            }
+//            for (Object map : stateInfoRes) {
+//                LinkedHashMap<String, Object> stateInfo = (LinkedHashMap<String, Object>) map;
+//                String name = (String) stateInfo.get("name");
+//                if (state.equalsIgnoreCase(name)) {
+//                    stateCode = (String) stateInfo.get("code");
+//                    break;
+//                }
+//            }
 
             concatenatedActivityCode = activities.stream()
                     .map(activity -> (String) activity.get("code"))
@@ -383,10 +382,10 @@ public class FieldPlannerService {
     public List<FieldPlan> searchFieldPlan(FieldPlanSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince, Long createdFrom, Long createdTo) {
         log.trace("Entering searchFieldPlan method");
         log.info("Starting field plan search for tenant: {}", tenantId);
-        
+
         fieldPlannerValidator.validateSearchFieldPlanRequest(request, limit, offset, tenantId, createdFrom, createdTo);
         log.debug("Field plan search request validated, limit: {}, offset: {}", limit, offset);
-        
+
         List<FieldPlan> fieldPlanList = fieldPlannerRepository.getFieldPlans(request, limit, offset, tenantId, includeDeleted, lastChangedSince, createdFrom, createdTo);
         log.info("Field plan search completed, found {} results", fieldPlanList.size());
         log.trace("Exiting searchFieldPlan method");
@@ -675,11 +674,11 @@ public class FieldPlannerService {
     public void createFacilityActivity(RequestInfo requestInfo, List<ActivityFacility> activityFacilities) {
         log.trace("Entering createFacilityActivity method");
         log.info("Creating facility activities, count: {}", activityFacilities.size());
-        
+
         ActivityFacilityBulkRequest request = ActivityFacilityBulkRequest.builder().activityFacilities(activityFacilities).requestInfo(requestInfo).build();
         String url = fieldPlannerConfiguration.getFieldPlanActivityServiceHost() + fieldPlannerConfiguration.getFacilityActivityCreateUrl();
         log.debug("Calling facility activity service at URL: {}", url);
-        
+
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
         ActivityFacilityResponse activityFacilityResponse = mapper.convertValue(response, ActivityFacilityResponse.class);
         log.info("Successfully created {} facility activities", activityFacilities.size());
@@ -960,7 +959,7 @@ public class FieldPlannerService {
     private void sendActivityAssignmentEmail(FieldPlanRequest request, List<ActivityAssignment> activityAssignmentList){
         log.trace("Entering sendActivityAssignmentEmail method");
         log.info("Sending activity assignment emails, count: {}", activityAssignmentList.size());
-        
+
         for (ActivityAssignment activityAssignment : activityAssignmentList) {
             log.trace("Processing activity assignment for user: {}", activityAssignment.getAssignedTo());
             if(activityAssignment.getAssignedTo() !=null && !activityAssignment.getAssignedTo().isEmpty() && !activityAssignment.getIsEmailSent()){
@@ -990,7 +989,7 @@ public class FieldPlannerService {
     public Employee getUserById(Object request, String userId) {
         log.trace("Entering getUserById method for user ID: {}", userId);
         log.debug("Fetching employee details from HRMS service");
-        
+
         String url = fieldPlannerConfiguration.getHrmsHost() + fieldPlannerConfiguration.getHrmsSearchUrl()+ "?tenantId=in&uuids="+userId;
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
 
@@ -1002,6 +1001,48 @@ public class FieldPlannerService {
         log.debug("Successfully retrieved employee details for user ID: {}", userId);
         log.trace("Exiting getUserById method");
         return employeeResponse.getEmployees().get(0);
+    }
+
+    // Output India_AndamanandNicobarIslands: → AN, India_Telangana → TE, India_Assam_Biswanath → AB
+    public static String boundaryCodeToCode(String input) {
+        if (input == null || input.isBlank()) {
+            return "";
+        }
+
+        // Nettoyage
+        String cleaned = input.trim();
+
+        // Supprimer "India_" si présent
+        if (cleaned.startsWith("India_")) {
+            cleaned = cleaned.substring("India_".length());
+        }
+
+        // Supprimer ":" et tout ce qui suit
+        int colonIndex = cleaned.indexOf(":");
+        if (colonIndex >= 0) {
+            cleaned = cleaned.substring(0, colonIndex);
+        }
+
+        // Enlever underscores
+        cleaned = cleaned.replace("_", "");
+
+        // Split CamelCase
+        String[] words = cleaned.split("(?=[A-Z])");
+
+        // Construire le code
+        StringBuilder code = new StringBuilder();
+
+        if (words.length >= 2) {
+            code.append(Character.toUpperCase(words[0].charAt(0)));
+            code.append(Character.toUpperCase(words[1].charAt(0)));
+        } else if (words.length == 1 && words[0].length() >= 2) {
+            code.append(Character.toUpperCase(words[0].charAt(0)));
+            code.append(Character.toUpperCase(words[0].charAt(1)));
+        } else if (words.length == 1) {
+            code.append(Character.toUpperCase(words[0].charAt(0)));
+        }
+
+        return code.toString();
     }
 
 }
