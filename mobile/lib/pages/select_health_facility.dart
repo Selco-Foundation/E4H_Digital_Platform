@@ -36,6 +36,8 @@ class SelectHealthFacilityPage extends StatefulWidget {
 }
 
 class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
+  static const _scrollThreshold = 200.0;
+
   String? _sortDirection;
   String _searchQuery = '';
 
@@ -50,14 +52,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
   }
 
   void _fetchProject() {
-    final userType = context.read<UserTypeBloc>().state;
-    final statuses = [
-      userType.maybeWhen(
-        supervisor: () =>
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.ASSIGNED_TO_FIELD_SUPERVISOR.name,
-        orElse: () => WORKFLOW_STATUS_FIELD_STAFF.ASSIGNED_TO_FIELD_STAFF.name,
-      ),
-    ];
+    final statuses = _workflowStatuses();
 
     if (_searchQuery.isNotEmpty) {
       context.read<ActivityFacilityBloc>().add(
@@ -79,6 +74,27 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                 workflowStatuses: statuses),
           );
     }
+  }
+
+  List<String> _workflowStatuses() {
+    final userType = context.read<UserTypeBloc>().state;
+    return [
+      userType.maybeWhen(
+        supervisor: () =>
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.ASSIGNED_TO_FIELD_SUPERVISOR.name,
+        orElse: () => WORKFLOW_STATUS_FIELD_STAFF.ASSIGNED_TO_FIELD_STAFF.name,
+      ),
+    ];
+  }
+
+  void _tryLoadMore() {
+    context.read<ActivityFacilityBloc>().add(
+          ActivityFacilityEvent.loadMoreActivityFacility(
+            workflowStatuses: _workflowStatuses(),
+            query: _searchQuery.isNotEmpty ? _searchQuery : null,
+            sortDirection: _sortDirection,
+          ),
+        );
   }
 
   void _handleProjectTap(ActivityFacilityWorkflow project) {
@@ -123,7 +139,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
               bool changed = false;
               for (final e in list) {
                 final pid = e.activityFacilityId;
-                final type = (e.assetType ?? '').toLowerCase().trim();
+                final type = e.assetType.toLowerCase().trim();
                 final p = (e.progress ?? 0);
                 if (pid.isEmpty || type.isEmpty) continue;
 
@@ -139,67 +155,73 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
             orElse: () {},
           );
         },
-        child: ScrollableContent(
-          backgroundColor: theme.colorTheme.generic.background,
-          children: [
-            const BackNavigationHelpHeaderWidget(
-              showBackNavigation: true,
-              showHelp: false,
-            ),
-            Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: spacer4, vertical: spacer2),
-                  child: _buildSearchAndSortControls(textTheme, theme),
-                ),
-                const SizedBox(height: spacer2),
-                BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
-                  builder: (context, state) {
-                    return state.maybeWhen(
-                      initial: () => _loadingIndicator(),
-                      loading: () => _loadingIndicator(),
-                      fetched: (projectList) {
-                        for (final p in projectList) {
-                          for (final t in const [
-                            'inverter',
-                            'battery',
-                            'panel'
-                          ]) {
-                            context.read<CacheAssetCountBloc>().add(
-                                CacheAssetCountEvent.get(
-                                    p.activityFacility.id, t));
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification) {
+              final max = notification.metrics.maxScrollExtent;
+              final current = notification.metrics.pixels;
+              if (current > max - _scrollThreshold) {
+                _tryLoadMore();
+              }
+            }
+            return false;
+          },
+          child: ScrollableContent(
+            backgroundColor: theme.colorTheme.generic.background,
+            children: [
+              const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: spacer4, vertical: spacer2),
+                    child: _buildSearchAndSortControls(textTheme, theme),
+                  ),
+                  const SizedBox(height: spacer2),
+                  BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
+                    builder: (context, state) {
+                      return state.maybeWhen(
+                        initial: () => _loadingIndicator(),
+                        loading: () => _loadingIndicator(),
+                        paginatedLoaded: (items, hasMore, totalCount, fromCache,
+                            isLoadingMore) {
+                          for (final p in items) {
+                            for (final t in const [
+                              'inverter',
+                              'battery',
+                              'panel'
+                            ]) {
+                              context.read<CacheAssetCountBloc>().add(
+                                  CacheAssetCountEvent.get(
+                                      p.activityFacility.id, t));
+                            }
                           }
-                        }
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildProjectList(projectList),
-                          ],
-                        );
-                      },
-                      searchLoading: () => _loadingIndicator(),
-                      searchResults: (searchList) {
-                        for (final p in searchList) {
-                          for (final t in const [
-                            'inverter',
-                            'battery',
-                            'panel'
-                          ]) {
-                            context.read<CacheAssetCountBloc>().add(
-                                CacheAssetCountEvent.get(
-                                    p.activityFacility.id, t));
-                          }
-                        }
-                        return _buildProjectList(searchList);
-                      },
-                      orElse: () => const SizedBox.shrink(),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ],
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildProjectList(items),
+                              if (isLoadingMore)
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: spacer4),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                        searchLoading: () => _loadingIndicator(),
+                        orElse: () => const SizedBox.shrink(),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -333,18 +355,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                     label: 'Sort',
                     isDisabled: _sortDirection == null,
                     onPressed: () {
-                      final userType = context.read<UserTypeBloc>().state;
-                      final statuses = [
-                        userType.maybeWhen(
-                          supervisor: () => WORKFLOW_STATUS_FIELD_SUPERVISOR
-                              .ASSIGNED_TO_FIELD_SUPERVISOR.name,
-                          orElse: () => WORKFLOW_STATUS_FIELD_STAFF
-                              .ASSIGNED_TO_FIELD_STAFF.name,
-                        ),
-                      ];
                       context.read<ActivityFacilityBloc>().add(
                             ActivityFacilityEvent.fetchActivityFacilitySorted(
-                              workflowStatuses: statuses,
+                              workflowStatuses: _workflowStatuses(),
                               sortDirection: _sortDirection!,
                             ),
                           );

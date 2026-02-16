@@ -31,6 +31,8 @@ class InboxPage extends StatefulWidget {
 }
 
 class _InboxPageState extends State<InboxPage> {
+  static const _scrollThreshold = 200.0;
+
   int _selectedTabIndex = 0;
   String _searchQuery = '';
   String? _sortDirection;
@@ -53,42 +55,14 @@ class _InboxPageState extends State<InboxPage> {
     context
         .read<ReportTypeBloc>()
         .add(const ReportTypeEvent.typeSelected("inbox"));
-    List<String> workflowStatuses = [];
-    userState.maybeWhen(
-      supervisor: () {
-        if (tabIndex == 0) {
-          workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_FIELD_STAFF.name,
-          ];
-          context
-              .read<ReportTypeBloc>()
-              .add(const ReportTypeEvent.typeSelected("send-back"));
-        } else if (tabIndex == 1) {
-          workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.REJECTED_BY_QC_SPOC.name
-          ];
-        } else if (tabIndex == 2) {
-          workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.APPROVED_BY_QC_SPOC.name
-          ];
-        }
-      },
-      orElse: () {
-        if (tabIndex == 0) {
-          workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_FIELD_SUPERVISOR.name,
-            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name
-          ];
-        } else if (tabIndex == 1) {
-          workflowStatuses = [
-            WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_SUPERVISOR.name,
-            WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_QC_SPOC.name,
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_SUPERVISOR.name,
-            WORKFLOW_STATUS_FIELD_STAFF.PENDING_APPROVAL_FLAGGED_FOR_QC.name,
-          ];
-        }
-      },
-    );
+    final workflowStatuses = _workflowStatusesForTab(userState, tabIndex);
+    final isSupervisor =
+        userState.maybeWhen(supervisor: () => true, orElse: () => false);
+    if (isSupervisor && tabIndex == 0) {
+      context
+          .read<ReportTypeBloc>()
+          .add(const ReportTypeEvent.typeSelected("send-back"));
+    }
 
     if (_searchQuery.isNotEmpty) {
       context.read<ActivityFacilityBloc>().add(
@@ -110,6 +84,46 @@ class _InboxPageState extends State<InboxPage> {
                 workflowStatuses: workflowStatuses),
           );
     }
+  }
+
+  List<String> _workflowStatusesForTab(UserTypeState userState, int tabIndex) {
+    return userState.maybeWhen(
+      supervisor: () {
+        if (tabIndex == 0) {
+          return [
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_FIELD_STAFF.name,
+          ];
+        } else if (tabIndex == 1) {
+          return [WORKFLOW_STATUS_FIELD_SUPERVISOR.REJECTED_BY_QC_SPOC.name];
+        }
+        return [WORKFLOW_STATUS_FIELD_SUPERVISOR.APPROVED_BY_QC_SPOC.name];
+      },
+      orElse: () {
+        if (tabIndex == 0) {
+          return [
+            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_FIELD_SUPERVISOR.name,
+            WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name,
+          ];
+        }
+        return [
+          WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_SUPERVISOR.name,
+          WORKFLOW_STATUS_FIELD_STAFF.APPROVED_BY_QC_SPOC.name,
+          WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_SUPERVISOR.name,
+          WORKFLOW_STATUS_FIELD_STAFF.PENDING_APPROVAL_FLAGGED_FOR_QC.name,
+        ];
+      },
+    );
+  }
+
+  void _tryLoadMore(UserTypeState userState) {
+    context.read<ActivityFacilityBloc>().add(
+          ActivityFacilityEvent.loadMoreActivityFacility(
+            workflowStatuses:
+                _workflowStatusesForTab(userState, _selectedTabIndex),
+            query: _searchQuery.isNotEmpty ? _searchQuery : null,
+            sortDirection: _sortDirection,
+          ),
+        );
   }
 
   void _onTabChanged(int index, UserTypeState userState) {
@@ -141,117 +155,137 @@ class _InboxPageState extends State<InboxPage> {
           orElse: () => ['Rejected', 'Approved'],
         );
 
-        return Scaffold(
-          body: ScrollableContent(
-            backgroundColor: theme.colorTheme.generic.background,
-            header: const BackNavigationHelpHeaderWidget(
-              showBackNavigation: true,
-              showHelp: false,
-            ),
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: spacer2, horizontal: spacer4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Inbox',
-                          style: textTheme.headingXl.copyWith(
-                              color: theme.colorTheme.primary.primary2),
+        return NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification) {
+              final max = notification.metrics.maxScrollExtent;
+              final current = notification.metrics.pixels;
+              if (current > max - _scrollThreshold) {
+                _tryLoadMore(userState);
+              }
+            }
+            return false;
+          },
+          child: Scaffold(
+            body: ScrollableContent(
+              backgroundColor: theme.colorTheme.generic.background,
+              header: const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: spacer2, horizontal: spacer4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Inbox',
+                            style: textTheme.headingXl.copyWith(
+                                color: theme.colorTheme.primary.primary2),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: spacer4),
+                      SizedBox(
+                        height: spacer12 + spacer1,
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            return DigitTabBar(
+                              tabs: tabs,
+                              initialIndex: _selectedTabIndex,
+                              onTabSelected: (index) =>
+                                  _onTabChanged(index, userState),
+                              tabBarThemeData:
+                                  DigitTabBarThemeData.defaultTheme(context)
+                                      .copyWith(
+                                          tabWidth: constraints.maxWidth /
+                                              tabs.length,
+                                          padding: EdgeInsets.zero),
+                            );
+                          },
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: spacer4),
-                    SizedBox(
-                      height: spacer12 + spacer1,
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return DigitTabBar(
-                            tabs: tabs,
-                            initialIndex: _selectedTabIndex,
-                            onTabSelected: (index) =>
-                                _onTabChanged(index, userState),
-                            tabBarThemeData:
-                                DigitTabBarThemeData.defaultTheme(context)
-                                    .copyWith(
-                                        tabWidth:
-                                            constraints.maxWidth / tabs.length,
-                                        padding: EdgeInsets.zero),
+                      ),
+                      const SizedBox(height: spacer4),
+                      DigitCard(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DigitSearchFormInput(
+                                  innerLabel: "Search Health Facility",
+                                  suffixIcon: Icons.search,
+                                  onChange: (text) {
+                                    setState(() {
+                                      _searchQuery = text;
+                                      _sortDirection = null;
+                                    });
+                                    _fetchProjects(
+                                        userState, _selectedTabIndex);
+                                  },
+                                  iconColor: const Light().primary2,
+                                  enableBorder: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(spacer1),
+                                    borderSide: BorderSide(
+                                        color: theme.colorTheme.text.secondary),
+                                  ),
+                                  focusBorder: OutlineInputBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(spacer1),
+                                    borderSide: BorderSide(
+                                        color: theme.colorTheme.text.secondary),
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () =>
+                                    _showSortPopup(textTheme, theme, userState),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.import_export,
+                                      color: theme.colorTheme.primary.primary1,
+                                      size: spacer8,
+                                    ),
+                                    Text("Sort",
+                                        style: textTheme.headingS.copyWith(
+                                            color: theme
+                                                .colorTheme.primary.primary1))
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        ],
+                      ),
+                      const SizedBox(height: spacer4),
+                      BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
+                        builder: (context, projectState) {
+                          return projectState.maybeWhen(
+                            initial: () => _loadingIndicator(),
+                            loading: () => _loadingIndicator(),
+                            paginatedLoaded: (items, hasMore, totalCount,
+                                    fromCache, isLoadingMore) =>
+                                _buildList(
+                              items,
+                              userState,
+                              isLoadingMore: isLoadingMore,
+                            ),
+                            searchLoading: () => _loadingIndicator(),
+                            orElse: () => const SizedBox.shrink(),
                           );
                         },
                       ),
-                    ),
-                    const SizedBox(height: spacer4),
-                    DigitCard(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DigitSearchFormInput(
-                                innerLabel: "Search Health Facility",
-                                suffixIcon: Icons.search,
-                                onChange: (text) {
-                                  setState(() {
-                                    _searchQuery = text;
-                                    _sortDirection = null;
-                                  });
-                                  _fetchProjects(userState, _selectedTabIndex);
-                                },
-                                iconColor: const Light().primary2,
-                                enableBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(spacer1),
-                                  borderSide: BorderSide(
-                                      color: theme.colorTheme.text.secondary),
-                                ),
-                                focusBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(spacer1),
-                                  borderSide: BorderSide(
-                                      color: theme.colorTheme.text.secondary),
-                                ),
-                              ),
-                            ),
-                            GestureDetector(
-                              onTap: () =>
-                                  _showSortPopup(textTheme, theme, userState),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.import_export,
-                                    color: theme.colorTheme.primary.primary1,
-                                    size: spacer8,
-                                  ),
-                                  Text("Sort",
-                                      style: textTheme.headingS.copyWith(
-                                          color: theme
-                                              .colorTheme.primary.primary1))
-                                ],
-                              ),
-                            ),
-                          ],
-                        )
-                      ],
-                    ),
-                    const SizedBox(height: spacer4),
-                    BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
-                      builder: (context, projectState) {
-                        return projectState.maybeWhen(
-                          initial: () => _loadingIndicator(),
-                          loading: () => _loadingIndicator(),
-                          fetched: (projectsList) =>
-                              _buildList(projectsList, userState),
-                          searchResults: (list) => _buildList(list, userState),
-                          orElse: () => const SizedBox.shrink(),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: spacer5),
-                  ],
+                      const SizedBox(height: spacer5),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -268,7 +302,10 @@ class _InboxPageState extends State<InboxPage> {
       );
 
   Widget _buildList(
-      List<ActivityFacilityWorkflow> projectsList, UserTypeState userState) {
+    List<ActivityFacilityWorkflow> projectsList,
+    UserTypeState userState, {
+    bool isLoadingMore = false,
+  }) {
     if (projectsList.isEmpty) {
       return const Center(
         child: Text('No Projects to display'),
@@ -332,6 +369,13 @@ class _InboxPageState extends State<InboxPage> {
               ),
               const SizedBox(height: spacer5),
             ],
+          ),
+        if (isLoadingMore)
+          const Padding(
+            padding: EdgeInsets.only(bottom: spacer4),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
           ),
       ],
     );

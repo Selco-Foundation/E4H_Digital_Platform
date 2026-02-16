@@ -141,7 +141,10 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                         ),
                         loaded: (items, hasMore, totalCount, fromCache,
                             isLoadingMore) {
-                          return _buildVisitList(items);
+                          return _buildVisitList(
+                            items,
+                            isLoadingMore: isLoadingMore,
+                          );
                         },
                         orElse: () => const SizedBox.shrink(),
                       );
@@ -156,7 +159,10 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
     );
   }
 
-  Widget _buildVisitList(List<ScheduledVisit> items) {
+  Widget _buildVisitList(
+    List<ScheduledVisit> items, {
+    bool isLoadingMore = false,
+  }) {
     if (items.isEmpty) {
       return const Center(
         child: Text('No AMC drafts to display'),
@@ -216,6 +222,13 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                 ),
               const SizedBox(height: spacer4),
             ],
+          ),
+        if (isLoadingMore)
+          const Padding(
+            padding: EdgeInsets.only(bottom: spacer4),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
           ),
       ],
     );

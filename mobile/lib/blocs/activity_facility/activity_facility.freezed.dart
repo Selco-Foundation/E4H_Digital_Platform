@@ -35,6 +35,9 @@ mixin _$ActivityFacilityEvent {
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) =>
@@ -55,6 +58,9 @@ mixin _$ActivityFacilityEvent {
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) =>
@@ -75,6 +81,9 @@ mixin _$ActivityFacilityEvent {
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -96,6 +105,8 @@ mixin _$ActivityFacilityEvent {
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) =>
@@ -115,6 +126,8 @@ mixin _$ActivityFacilityEvent {
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) =>
       throw _privateConstructorUsedError;
@@ -132,6 +145,8 @@ mixin _$ActivityFacilityEvent {
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) =>
@@ -243,6 +258,9 @@ class _$ActivityFacilitySelectEventImpl implements ActivityFacilitySelectEvent {
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
@@ -266,6 +284,9 @@ class _$ActivityFacilitySelectEventImpl implements ActivityFacilitySelectEvent {
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
@@ -289,6 +310,9 @@ class _$ActivityFacilitySelectEventImpl implements ActivityFacilitySelectEvent {
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -316,6 +340,8 @@ class _$ActivityFacilitySelectEventImpl implements ActivityFacilitySelectEvent {
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) {
@@ -338,6 +364,8 @@ class _$ActivityFacilitySelectEventImpl implements ActivityFacilitySelectEvent {
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) {
     return selectActivityFacility?.call(this);
@@ -358,6 +386,8 @@ class _$ActivityFacilitySelectEventImpl implements ActivityFacilitySelectEvent {
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
@@ -475,6 +505,9 @@ class _$FetchActivityFacilityByWorkflowEventImpl
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
@@ -498,6 +531,9 @@ class _$FetchActivityFacilityByWorkflowEventImpl
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
@@ -521,6 +557,9 @@ class _$FetchActivityFacilityByWorkflowEventImpl
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -548,6 +587,8 @@ class _$FetchActivityFacilityByWorkflowEventImpl
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) {
@@ -570,6 +611,8 @@ class _$FetchActivityFacilityByWorkflowEventImpl
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) {
     return fetchActivityFacilityByWorkflow?.call(this);
@@ -590,6 +633,8 @@ class _$FetchActivityFacilityByWorkflowEventImpl
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
@@ -715,6 +760,9 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
@@ -738,6 +786,9 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
@@ -761,6 +812,9 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -788,6 +842,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) {
@@ -810,6 +866,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) {
     return addUnSubmitted?.call(this);
@@ -830,6 +888,8 @@ class _$AddUnSubmittedEventImpl implements AddUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
@@ -953,6 +1013,9 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
@@ -976,6 +1039,9 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
@@ -999,6 +1065,9 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -1026,6 +1095,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) {
@@ -1048,6 +1119,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) {
     return loadUnSubmitted?.call(this);
@@ -1068,6 +1141,8 @@ class _$LoadUnSubmittedEventImpl implements LoadUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
@@ -1185,6 +1260,9 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
@@ -1208,6 +1286,9 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
@@ -1231,6 +1312,9 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -1258,6 +1342,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) {
@@ -1280,6 +1366,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) {
     return deleteUnSubmitted?.call(this);
@@ -1300,6 +1388,8 @@ class _$DeleteUnSubmittedEventImpl implements DeleteUnSubmittedEvent {
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
@@ -1408,6 +1498,9 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
@@ -1431,6 +1524,9 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
@@ -1454,6 +1550,9 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -1481,6 +1580,8 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) {
@@ -1503,6 +1604,8 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) {
     return fetchAllReportCounts?.call(this);
@@ -1523,6 +1626,8 @@ class _$FetchAllReportCountsEventImpl implements FetchAllReportCountsEvent {
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
@@ -1628,6 +1733,9 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
@@ -1651,6 +1759,9 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
@@ -1674,6 +1785,9 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -1701,6 +1815,8 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) {
@@ -1723,6 +1839,8 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) {
     return getNewlyAssigned?.call(this);
@@ -1743,6 +1861,8 @@ class _$GetNewlyAssignedEventImpl implements GetNewlyAssignedEvent {
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
@@ -1871,6 +1991,9 @@ class _$FetchActivityFacilitySortedEventImpl
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
@@ -1894,6 +2017,9 @@ class _$FetchActivityFacilitySortedEventImpl
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
@@ -1917,6 +2043,9 @@ class _$FetchActivityFacilitySortedEventImpl
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -1944,6 +2073,8 @@ class _$FetchActivityFacilitySortedEventImpl
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) {
@@ -1966,6 +2097,8 @@ class _$FetchActivityFacilitySortedEventImpl
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) {
     return fetchActivityFacilitySorted?.call(this);
@@ -1986,6 +2119,8 @@ class _$FetchActivityFacilitySortedEventImpl
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
@@ -2116,6 +2251,9 @@ class _$FetchActivityFacilityBySearchEventImpl
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
@@ -2139,6 +2277,9 @@ class _$FetchActivityFacilityBySearchEventImpl
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
@@ -2162,6 +2303,9 @@ class _$FetchActivityFacilityBySearchEventImpl
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -2189,6 +2333,8 @@ class _$FetchActivityFacilityBySearchEventImpl
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) {
@@ -2211,6 +2357,8 @@ class _$FetchActivityFacilityBySearchEventImpl
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) {
     return fetchActivityFacilityBySearch?.call(this);
@@ -2231,6 +2379,8 @@ class _$FetchActivityFacilityBySearchEventImpl
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
@@ -2253,6 +2403,283 @@ abstract class FetchActivityFacilityBySearchEvent
   @JsonKey(ignore: true)
   _$$FetchActivityFacilityBySearchEventImplCopyWith<
           _$FetchActivityFacilityBySearchEventImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$LoadMoreActivityFacilityEventImplCopyWith<$Res> {
+  factory _$$LoadMoreActivityFacilityEventImplCopyWith(
+          _$LoadMoreActivityFacilityEventImpl value,
+          $Res Function(_$LoadMoreActivityFacilityEventImpl) then) =
+      __$$LoadMoreActivityFacilityEventImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call(
+      {List<String> workflowStatuses, String? query, String? sortDirection});
+}
+
+/// @nodoc
+class __$$LoadMoreActivityFacilityEventImplCopyWithImpl<$Res>
+    extends _$ActivityFacilityEventCopyWithImpl<$Res,
+        _$LoadMoreActivityFacilityEventImpl>
+    implements _$$LoadMoreActivityFacilityEventImplCopyWith<$Res> {
+  __$$LoadMoreActivityFacilityEventImplCopyWithImpl(
+      _$LoadMoreActivityFacilityEventImpl _value,
+      $Res Function(_$LoadMoreActivityFacilityEventImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? workflowStatuses = null,
+    Object? query = freezed,
+    Object? sortDirection = freezed,
+  }) {
+    return _then(_$LoadMoreActivityFacilityEventImpl(
+      workflowStatuses: null == workflowStatuses
+          ? _value._workflowStatuses
+          : workflowStatuses // ignore: cast_nullable_to_non_nullable
+              as List<String>,
+      query: freezed == query
+          ? _value.query
+          : query // ignore: cast_nullable_to_non_nullable
+              as String?,
+      sortDirection: freezed == sortDirection
+          ? _value.sortDirection
+          : sortDirection // ignore: cast_nullable_to_non_nullable
+              as String?,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$LoadMoreActivityFacilityEventImpl
+    implements LoadMoreActivityFacilityEvent {
+  const _$LoadMoreActivityFacilityEventImpl(
+      {required final List<String> workflowStatuses,
+      this.query,
+      this.sortDirection})
+      : _workflowStatuses = workflowStatuses;
+
+  final List<String> _workflowStatuses;
+  @override
+  List<String> get workflowStatuses {
+    if (_workflowStatuses is EqualUnmodifiableListView)
+      return _workflowStatuses;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_workflowStatuses);
+  }
+
+  @override
+  final String? query;
+  @override
+  final String? sortDirection;
+
+  @override
+  String toString() {
+    return 'ActivityFacilityEvent.loadMoreActivityFacility(workflowStatuses: $workflowStatuses, query: $query, sortDirection: $sortDirection)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$LoadMoreActivityFacilityEventImpl &&
+            const DeepCollectionEquality()
+                .equals(other._workflowStatuses, _workflowStatuses) &&
+            (identical(other.query, query) || other.query == query) &&
+            (identical(other.sortDirection, sortDirection) ||
+                other.sortDirection == sortDirection));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      runtimeType,
+      const DeepCollectionEquality().hash(_workflowStatuses),
+      query,
+      sortDirection);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$LoadMoreActivityFacilityEventImplCopyWith<
+          _$LoadMoreActivityFacilityEventImpl>
+      get copyWith => __$$LoadMoreActivityFacilityEventImplCopyWithImpl<
+          _$LoadMoreActivityFacilityEventImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(String activityFacilityId) selectActivityFacility,
+    required TResult Function(List<String> workflowStatuses)
+        fetchActivityFacilityByWorkflow,
+    required TResult Function(
+            ActivityFacilityWorkflow workflow, String userType)
+        addUnSubmitted,
+    required TResult Function(List<String> statuses, String userType)
+        loadUnSubmitted,
+    required TResult Function(String activityFacilityId, String userType)
+        deleteUnSubmitted,
+    required TResult Function(String userType) fetchAllReportCounts,
+    required TResult Function(String userType) getNewlyAssigned,
+    required TResult Function(
+            List<String> workflowStatuses, String sortDirection)
+        fetchActivityFacilitySorted,
+    required TResult Function(String query, List<String> workflowStatuses)
+        fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
+    required TResult Function(String activityFacilityId, String userType)
+        checkIfInCache,
+  }) {
+    return loadMoreActivityFacility(workflowStatuses, query, sortDirection);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(String activityFacilityId)? selectActivityFacility,
+    TResult? Function(List<String> workflowStatuses)?
+        fetchActivityFacilityByWorkflow,
+    TResult? Function(ActivityFacilityWorkflow workflow, String userType)?
+        addUnSubmitted,
+    TResult? Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult? Function(String activityFacilityId, String userType)?
+        deleteUnSubmitted,
+    TResult? Function(String userType)? fetchAllReportCounts,
+    TResult? Function(String userType)? getNewlyAssigned,
+    TResult? Function(List<String> workflowStatuses, String sortDirection)?
+        fetchActivityFacilitySorted,
+    TResult? Function(String query, List<String> workflowStatuses)?
+        fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
+    TResult? Function(String activityFacilityId, String userType)?
+        checkIfInCache,
+  }) {
+    return loadMoreActivityFacility?.call(
+        workflowStatuses, query, sortDirection);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(String activityFacilityId)? selectActivityFacility,
+    TResult Function(List<String> workflowStatuses)?
+        fetchActivityFacilityByWorkflow,
+    TResult Function(ActivityFacilityWorkflow workflow, String userType)?
+        addUnSubmitted,
+    TResult Function(List<String> statuses, String userType)? loadUnSubmitted,
+    TResult Function(String activityFacilityId, String userType)?
+        deleteUnSubmitted,
+    TResult Function(String userType)? fetchAllReportCounts,
+    TResult Function(String userType)? getNewlyAssigned,
+    TResult Function(List<String> workflowStatuses, String sortDirection)?
+        fetchActivityFacilitySorted,
+    TResult Function(String query, List<String> workflowStatuses)?
+        fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
+    TResult Function(String activityFacilityId, String userType)?
+        checkIfInCache,
+    required TResult orElse(),
+  }) {
+    if (loadMoreActivityFacility != null) {
+      return loadMoreActivityFacility(workflowStatuses, query, sortDirection);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(ActivityFacilitySelectEvent value)
+        selectActivityFacility,
+    required TResult Function(FetchActivityFacilityByWorkflowEvent value)
+        fetchActivityFacilityByWorkflow,
+    required TResult Function(AddUnSubmittedEvent value) addUnSubmitted,
+    required TResult Function(LoadUnSubmittedEvent value) loadUnSubmitted,
+    required TResult Function(DeleteUnSubmittedEvent value) deleteUnSubmitted,
+    required TResult Function(FetchAllReportCountsEvent value)
+        fetchAllReportCounts,
+    required TResult Function(GetNewlyAssignedEvent value) getNewlyAssigned,
+    required TResult Function(FetchActivityFacilitySortedEvent value)
+        fetchActivityFacilitySorted,
+    required TResult Function(FetchActivityFacilityBySearchEvent value)
+        fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
+    required TResult Function(ActivityFacilityCheckIfInCache value)
+        checkIfInCache,
+  }) {
+    return loadMoreActivityFacility(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(ActivityFacilitySelectEvent value)?
+        selectActivityFacility,
+    TResult? Function(FetchActivityFacilityByWorkflowEvent value)?
+        fetchActivityFacilityByWorkflow,
+    TResult? Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult? Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult? Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult? Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult? Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult? Function(FetchActivityFacilitySortedEvent value)?
+        fetchActivityFacilitySorted,
+    TResult? Function(FetchActivityFacilityBySearchEvent value)?
+        fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
+    TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
+  }) {
+    return loadMoreActivityFacility?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(ActivityFacilitySelectEvent value)? selectActivityFacility,
+    TResult Function(FetchActivityFacilityByWorkflowEvent value)?
+        fetchActivityFacilityByWorkflow,
+    TResult Function(AddUnSubmittedEvent value)? addUnSubmitted,
+    TResult Function(LoadUnSubmittedEvent value)? loadUnSubmitted,
+    TResult Function(DeleteUnSubmittedEvent value)? deleteUnSubmitted,
+    TResult Function(FetchAllReportCountsEvent value)? fetchAllReportCounts,
+    TResult Function(GetNewlyAssignedEvent value)? getNewlyAssigned,
+    TResult Function(FetchActivityFacilitySortedEvent value)?
+        fetchActivityFacilitySorted,
+    TResult Function(FetchActivityFacilityBySearchEvent value)?
+        fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
+    TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
+    required TResult orElse(),
+  }) {
+    if (loadMoreActivityFacility != null) {
+      return loadMoreActivityFacility(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class LoadMoreActivityFacilityEvent implements ActivityFacilityEvent {
+  const factory LoadMoreActivityFacilityEvent(
+      {required final List<String> workflowStatuses,
+      final String? query,
+      final String? sortDirection}) = _$LoadMoreActivityFacilityEventImpl;
+
+  List<String> get workflowStatuses;
+  String? get query;
+  String? get sortDirection;
+  @JsonKey(ignore: true)
+  _$$LoadMoreActivityFacilityEventImplCopyWith<
+          _$LoadMoreActivityFacilityEventImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
 
@@ -2354,6 +2781,9 @@ class _$ActivityFacilityCheckIfInCacheImpl
         fetchActivityFacilitySorted,
     required TResult Function(String query, List<String> workflowStatuses)
         fetchActivityFacilityBySearch,
+    required TResult Function(
+            List<String> workflowStatuses, String? query, String? sortDirection)
+        loadMoreActivityFacility,
     required TResult Function(String activityFacilityId, String userType)
         checkIfInCache,
   }) {
@@ -2377,6 +2807,9 @@ class _$ActivityFacilityCheckIfInCacheImpl
         fetchActivityFacilitySorted,
     TResult? Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult? Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult? Function(String activityFacilityId, String userType)?
         checkIfInCache,
   }) {
@@ -2400,6 +2833,9 @@ class _$ActivityFacilityCheckIfInCacheImpl
         fetchActivityFacilitySorted,
     TResult Function(String query, List<String> workflowStatuses)?
         fetchActivityFacilityBySearch,
+    TResult Function(List<String> workflowStatuses, String? query,
+            String? sortDirection)?
+        loadMoreActivityFacility,
     TResult Function(String activityFacilityId, String userType)?
         checkIfInCache,
     required TResult orElse(),
@@ -2427,6 +2863,8 @@ class _$ActivityFacilityCheckIfInCacheImpl
         fetchActivityFacilitySorted,
     required TResult Function(FetchActivityFacilityBySearchEvent value)
         fetchActivityFacilityBySearch,
+    required TResult Function(LoadMoreActivityFacilityEvent value)
+        loadMoreActivityFacility,
     required TResult Function(ActivityFacilityCheckIfInCache value)
         checkIfInCache,
   }) {
@@ -2449,6 +2887,8 @@ class _$ActivityFacilityCheckIfInCacheImpl
         fetchActivityFacilitySorted,
     TResult? Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult? Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult? Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
   }) {
     return checkIfInCache?.call(this);
@@ -2469,6 +2909,8 @@ class _$ActivityFacilityCheckIfInCacheImpl
         fetchActivityFacilitySorted,
     TResult Function(FetchActivityFacilityBySearchEvent value)?
         fetchActivityFacilityBySearch,
+    TResult Function(LoadMoreActivityFacilityEvent value)?
+        loadMoreActivityFacility,
     TResult Function(ActivityFacilityCheckIfInCache value)? checkIfInCache,
     required TResult orElse(),
   }) {
@@ -2519,6 +2961,9 @@ mixin _$ActivityFacilityState {
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -2541,6 +2986,9 @@ mixin _$ActivityFacilityState {
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -2563,6 +3011,9 @@ mixin _$ActivityFacilityState {
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -2582,6 +3033,8 @@ mixin _$ActivityFacilityState {
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -2599,6 +3052,7 @@ mixin _$ActivityFacilityState {
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) =>
       throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -2616,6 +3070,7 @@ mixin _$ActivityFacilityState {
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
@@ -2706,6 +3161,9 @@ class _$ActivityFacilityInitialStateImpl
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return initial();
   }
@@ -2731,6 +3189,9 @@ class _$ActivityFacilityInitialStateImpl
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return initial?.call();
   }
@@ -2756,6 +3217,9 @@ class _$ActivityFacilityInitialStateImpl
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -2781,6 +3245,8 @@ class _$ActivityFacilityInitialStateImpl
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return initial(this);
   }
@@ -2801,6 +3267,7 @@ class _$ActivityFacilityInitialStateImpl
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return initial?.call(this);
   }
@@ -2821,6 +3288,7 @@ class _$ActivityFacilityInitialStateImpl
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (initial != null) {
@@ -2901,6 +3369,9 @@ class _$ActivityFacilityLoadingStateImpl
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return loading();
   }
@@ -2926,6 +3397,9 @@ class _$ActivityFacilityLoadingStateImpl
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return loading?.call();
   }
@@ -2951,6 +3425,9 @@ class _$ActivityFacilityLoadingStateImpl
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -2976,6 +3453,8 @@ class _$ActivityFacilityLoadingStateImpl
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return loading(this);
   }
@@ -2996,6 +3475,7 @@ class _$ActivityFacilityLoadingStateImpl
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return loading?.call(this);
   }
@@ -3016,6 +3496,7 @@ class _$ActivityFacilityLoadingStateImpl
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (loading != null) {
@@ -3122,6 +3603,9 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return inCache(isInCache);
   }
@@ -3147,6 +3631,9 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return inCache?.call(isInCache);
   }
@@ -3172,6 +3659,9 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (inCache != null) {
@@ -3197,6 +3687,8 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return inCache(this);
   }
@@ -3217,6 +3709,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return inCache?.call(this);
   }
@@ -3237,6 +3730,7 @@ class _$ActivityFacilityInCacheImpl implements ActivityFacilityInCache {
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (inCache != null) {
@@ -3359,6 +3853,9 @@ class _$ActivityFacilityFetchedStateImpl
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return fetched(activityFacilityList);
   }
@@ -3384,6 +3881,9 @@ class _$ActivityFacilityFetchedStateImpl
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return fetched?.call(activityFacilityList);
   }
@@ -3409,6 +3909,9 @@ class _$ActivityFacilityFetchedStateImpl
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (fetched != null) {
@@ -3434,6 +3937,8 @@ class _$ActivityFacilityFetchedStateImpl
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return fetched(this);
   }
@@ -3454,6 +3959,7 @@ class _$ActivityFacilityFetchedStateImpl
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return fetched?.call(this);
   }
@@ -3474,6 +3980,7 @@ class _$ActivityFacilityFetchedStateImpl
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (fetched != null) {
@@ -3589,6 +4096,9 @@ class _$ActivityFacilitySelectedStateImpl
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return selected(activityFacilityId);
   }
@@ -3614,6 +4124,9 @@ class _$ActivityFacilitySelectedStateImpl
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return selected?.call(activityFacilityId);
   }
@@ -3639,6 +4152,9 @@ class _$ActivityFacilitySelectedStateImpl
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (selected != null) {
@@ -3664,6 +4180,8 @@ class _$ActivityFacilitySelectedStateImpl
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return selected(this);
   }
@@ -3684,6 +4202,7 @@ class _$ActivityFacilitySelectedStateImpl
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return selected?.call(this);
   }
@@ -3704,6 +4223,7 @@ class _$ActivityFacilitySelectedStateImpl
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (selected != null) {
@@ -3821,6 +4341,9 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return unSubmittedLoaded(unSubmitted);
   }
@@ -3846,6 +4369,9 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return unSubmittedLoaded?.call(unSubmitted);
   }
@@ -3871,6 +4397,9 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedLoaded != null) {
@@ -3896,6 +4425,8 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return unSubmittedLoaded(this);
   }
@@ -3916,6 +4447,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return unSubmittedLoaded?.call(this);
   }
@@ -3936,6 +4468,7 @@ class _$UnSubmittedLoadedImpl implements _UnSubmittedLoaded {
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedLoaded != null) {
@@ -4044,6 +4577,9 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return unSubmittedAdded(entry);
   }
@@ -4069,6 +4605,9 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return unSubmittedAdded?.call(entry);
   }
@@ -4094,6 +4633,9 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedAdded != null) {
@@ -4119,6 +4661,8 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return unSubmittedAdded(this);
   }
@@ -4139,6 +4683,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return unSubmittedAdded?.call(this);
   }
@@ -4159,6 +4704,7 @@ class _$UnSubmittedAddedImpl implements _UnSubmittedAdded {
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedAdded != null) {
@@ -4239,6 +4785,9 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return unSubmittedDeleted();
   }
@@ -4264,6 +4813,9 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return unSubmittedDeleted?.call();
   }
@@ -4289,6 +4841,9 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedDeleted != null) {
@@ -4314,6 +4869,8 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return unSubmittedDeleted(this);
   }
@@ -4334,6 +4891,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return unSubmittedDeleted?.call(this);
   }
@@ -4354,6 +4912,7 @@ class _$UnSubmittedDeletedImpl implements _UnSubmittedDeleted {
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (unSubmittedDeleted != null) {
@@ -4478,6 +5037,9 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return reportCountsLoaded(newReportCount, inboxCount, submittedCount);
   }
@@ -4503,6 +5065,9 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return reportCountsLoaded?.call(newReportCount, inboxCount, submittedCount);
   }
@@ -4528,6 +5093,9 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (reportCountsLoaded != null) {
@@ -4553,6 +5121,8 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return reportCountsLoaded(this);
   }
@@ -4573,6 +5143,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return reportCountsLoaded?.call(this);
   }
@@ -4593,6 +5164,7 @@ class _$ReportCountsLoadedImpl implements ReportCountsLoaded {
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (reportCountsLoaded != null) {
@@ -4704,6 +5276,9 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return newlyAssignedLoaded(count);
   }
@@ -4729,6 +5304,9 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return newlyAssignedLoaded?.call(count);
   }
@@ -4754,6 +5332,9 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (newlyAssignedLoaded != null) {
@@ -4779,6 +5360,8 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return newlyAssignedLoaded(this);
   }
@@ -4799,6 +5382,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return newlyAssignedLoaded?.call(this);
   }
@@ -4819,6 +5403,7 @@ class _$NewlyAssignedLoadedImpl implements NewlyAssignedLoaded {
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (newlyAssignedLoaded != null) {
@@ -4954,6 +5539,9 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return sorted(activityFacilityList, sortDirection);
   }
@@ -4979,6 +5567,9 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return sorted?.call(activityFacilityList, sortDirection);
   }
@@ -5004,6 +5595,9 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (sorted != null) {
@@ -5029,6 +5623,8 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return sorted(this);
   }
@@ -5049,6 +5645,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return sorted?.call(this);
   }
@@ -5069,6 +5666,7 @@ class _$ActivityFacilitySortedStateImpl implements ActivityFacilitySortedState {
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (sorted != null) {
@@ -5156,6 +5754,9 @@ class _$ActivityFacilitySearchLoadingImpl
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return searchLoading();
   }
@@ -5181,6 +5782,9 @@ class _$ActivityFacilitySearchLoadingImpl
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return searchLoading?.call();
   }
@@ -5206,6 +5810,9 @@ class _$ActivityFacilitySearchLoadingImpl
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (searchLoading != null) {
@@ -5231,6 +5838,8 @@ class _$ActivityFacilitySearchLoadingImpl
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return searchLoading(this);
   }
@@ -5251,6 +5860,7 @@ class _$ActivityFacilitySearchLoadingImpl
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return searchLoading?.call(this);
   }
@@ -5271,6 +5881,7 @@ class _$ActivityFacilitySearchLoadingImpl
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (searchLoading != null) {
@@ -5382,6 +5993,9 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
     required TResult Function() searchLoading,
     required TResult Function(List<ActivityFacilityWorkflow> results)
         searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
   }) {
     return searchResults(results);
   }
@@ -5407,6 +6021,9 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
         sorted,
     TResult? Function()? searchLoading,
     TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
   }) {
     return searchResults?.call(results);
   }
@@ -5432,6 +6049,9 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
         sorted,
     TResult Function()? searchLoading,
     TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
     required TResult orElse(),
   }) {
     if (searchResults != null) {
@@ -5457,6 +6077,8 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
     required TResult Function(ActivityFacilitySearchLoading value)
         searchLoading,
     required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
   }) {
     return searchResults(this);
   }
@@ -5477,6 +6099,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
     TResult? Function(ActivityFacilitySortedState value)? sorted,
     TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
   }) {
     return searchResults?.call(this);
   }
@@ -5497,6 +6120,7 @@ class _$ProjectSearchResultsImpl implements ProjectSearchResults {
     TResult Function(ActivityFacilitySortedState value)? sorted,
     TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
     TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
     required TResult orElse(),
   }) {
     if (searchResults != null) {
@@ -5514,5 +6138,318 @@ abstract class ProjectSearchResults implements ActivityFacilityState {
   List<ActivityFacilityWorkflow> get results;
   @JsonKey(ignore: true)
   _$$ProjectSearchResultsImplCopyWith<_$ProjectSearchResultsImpl>
+      get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$ActivityFacilityPaginatedLoadedImplCopyWith<$Res> {
+  factory _$$ActivityFacilityPaginatedLoadedImplCopyWith(
+          _$ActivityFacilityPaginatedLoadedImpl value,
+          $Res Function(_$ActivityFacilityPaginatedLoadedImpl) then) =
+      __$$ActivityFacilityPaginatedLoadedImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call(
+      {List<ActivityFacilityWorkflow> items,
+      bool hasMore,
+      int totalCount,
+      bool fromCache,
+      bool isLoadingMore});
+}
+
+/// @nodoc
+class __$$ActivityFacilityPaginatedLoadedImplCopyWithImpl<$Res>
+    extends _$ActivityFacilityStateCopyWithImpl<$Res,
+        _$ActivityFacilityPaginatedLoadedImpl>
+    implements _$$ActivityFacilityPaginatedLoadedImplCopyWith<$Res> {
+  __$$ActivityFacilityPaginatedLoadedImplCopyWithImpl(
+      _$ActivityFacilityPaginatedLoadedImpl _value,
+      $Res Function(_$ActivityFacilityPaginatedLoadedImpl) _then)
+      : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? items = null,
+    Object? hasMore = null,
+    Object? totalCount = null,
+    Object? fromCache = null,
+    Object? isLoadingMore = null,
+  }) {
+    return _then(_$ActivityFacilityPaginatedLoadedImpl(
+      items: null == items
+          ? _value._items
+          : items // ignore: cast_nullable_to_non_nullable
+              as List<ActivityFacilityWorkflow>,
+      hasMore: null == hasMore
+          ? _value.hasMore
+          : hasMore // ignore: cast_nullable_to_non_nullable
+              as bool,
+      totalCount: null == totalCount
+          ? _value.totalCount
+          : totalCount // ignore: cast_nullable_to_non_nullable
+              as int,
+      fromCache: null == fromCache
+          ? _value.fromCache
+          : fromCache // ignore: cast_nullable_to_non_nullable
+              as bool,
+      isLoadingMore: null == isLoadingMore
+          ? _value.isLoadingMore
+          : isLoadingMore // ignore: cast_nullable_to_non_nullable
+              as bool,
+    ));
+  }
+}
+
+/// @nodoc
+
+class _$ActivityFacilityPaginatedLoadedImpl
+    implements ActivityFacilityPaginatedLoaded {
+  const _$ActivityFacilityPaginatedLoadedImpl(
+      {required final List<ActivityFacilityWorkflow> items,
+      required this.hasMore,
+      required this.totalCount,
+      this.fromCache = false,
+      this.isLoadingMore = false})
+      : _items = items;
+
+  final List<ActivityFacilityWorkflow> _items;
+  @override
+  List<ActivityFacilityWorkflow> get items {
+    if (_items is EqualUnmodifiableListView) return _items;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_items);
+  }
+
+  @override
+  final bool hasMore;
+  @override
+  final int totalCount;
+  @override
+  @JsonKey()
+  final bool fromCache;
+  @override
+  @JsonKey()
+  final bool isLoadingMore;
+
+  @override
+  String toString() {
+    return 'ActivityFacilityState.paginatedLoaded(items: $items, hasMore: $hasMore, totalCount: $totalCount, fromCache: $fromCache, isLoadingMore: $isLoadingMore)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$ActivityFacilityPaginatedLoadedImpl &&
+            const DeepCollectionEquality().equals(other._items, _items) &&
+            (identical(other.hasMore, hasMore) || other.hasMore == hasMore) &&
+            (identical(other.totalCount, totalCount) ||
+                other.totalCount == totalCount) &&
+            (identical(other.fromCache, fromCache) ||
+                other.fromCache == fromCache) &&
+            (identical(other.isLoadingMore, isLoadingMore) ||
+                other.isLoadingMore == isLoadingMore));
+  }
+
+  @override
+  int get hashCode => Object.hash(
+      runtimeType,
+      const DeepCollectionEquality().hash(_items),
+      hasMore,
+      totalCount,
+      fromCache,
+      isLoadingMore);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$ActivityFacilityPaginatedLoadedImplCopyWith<
+          _$ActivityFacilityPaginatedLoadedImpl>
+      get copyWith => __$$ActivityFacilityPaginatedLoadedImplCopyWithImpl<
+          _$ActivityFacilityPaginatedLoadedImpl>(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function() initial,
+    required TResult Function() loading,
+    required TResult Function(bool isInCache) inCache,
+    required TResult Function(
+            List<ActivityFacilityWorkflow> activityFacilityList)
+        fetched,
+    required TResult Function(String activityFacilityId) selected,
+    required TResult Function(List<ActivityFacilityWorkflow> unSubmitted)
+        unSubmittedLoaded,
+    required TResult Function(CacheUnsubmittedActivityFacility entry)
+        unSubmittedAdded,
+    required TResult Function() unSubmittedDeleted,
+    required TResult Function(
+            int newReportCount, int inboxCount, int submittedCount)
+        reportCountsLoaded,
+    required TResult Function(int count) newlyAssignedLoaded,
+    required TResult Function(
+            List<ActivityFacilityWorkflow> activityFacilityList,
+            String sortDirection)
+        sorted,
+    required TResult Function() searchLoading,
+    required TResult Function(List<ActivityFacilityWorkflow> results)
+        searchResults,
+    required TResult Function(List<ActivityFacilityWorkflow> items,
+            bool hasMore, int totalCount, bool fromCache, bool isLoadingMore)
+        paginatedLoaded,
+  }) {
+    return paginatedLoaded(
+        items, hasMore, totalCount, fromCache, isLoadingMore);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function()? initial,
+    TResult? Function()? loading,
+    TResult? Function(bool isInCache)? inCache,
+    TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList)?
+        fetched,
+    TResult? Function(String activityFacilityId)? selected,
+    TResult? Function(List<ActivityFacilityWorkflow> unSubmitted)?
+        unSubmittedLoaded,
+    TResult? Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
+    TResult? Function()? unSubmittedDeleted,
+    TResult? Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult? Function(int count)? newlyAssignedLoaded,
+    TResult? Function(List<ActivityFacilityWorkflow> activityFacilityList,
+            String sortDirection)?
+        sorted,
+    TResult? Function()? searchLoading,
+    TResult? Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult? Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
+  }) {
+    return paginatedLoaded?.call(
+        items, hasMore, totalCount, fromCache, isLoadingMore);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function()? initial,
+    TResult Function()? loading,
+    TResult Function(bool isInCache)? inCache,
+    TResult Function(List<ActivityFacilityWorkflow> activityFacilityList)?
+        fetched,
+    TResult Function(String activityFacilityId)? selected,
+    TResult Function(List<ActivityFacilityWorkflow> unSubmitted)?
+        unSubmittedLoaded,
+    TResult Function(CacheUnsubmittedActivityFacility entry)? unSubmittedAdded,
+    TResult Function()? unSubmittedDeleted,
+    TResult Function(int newReportCount, int inboxCount, int submittedCount)?
+        reportCountsLoaded,
+    TResult Function(int count)? newlyAssignedLoaded,
+    TResult Function(List<ActivityFacilityWorkflow> activityFacilityList,
+            String sortDirection)?
+        sorted,
+    TResult Function()? searchLoading,
+    TResult Function(List<ActivityFacilityWorkflow> results)? searchResults,
+    TResult Function(List<ActivityFacilityWorkflow> items, bool hasMore,
+            int totalCount, bool fromCache, bool isLoadingMore)?
+        paginatedLoaded,
+    required TResult orElse(),
+  }) {
+    if (paginatedLoaded != null) {
+      return paginatedLoaded(
+          items, hasMore, totalCount, fromCache, isLoadingMore);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(_ActivityFacilityInitialState value) initial,
+    required TResult Function(_ActivityFacilityLoadingState value) loading,
+    required TResult Function(ActivityFacilityInCache value) inCache,
+    required TResult Function(ActivityFacilityFetchedState value) fetched,
+    required TResult Function(ActivityFacilitySelectedState value) selected,
+    required TResult Function(_UnSubmittedLoaded value) unSubmittedLoaded,
+    required TResult Function(_UnSubmittedAdded value) unSubmittedAdded,
+    required TResult Function(_UnSubmittedDeleted value) unSubmittedDeleted,
+    required TResult Function(ReportCountsLoaded value) reportCountsLoaded,
+    required TResult Function(NewlyAssignedLoaded value) newlyAssignedLoaded,
+    required TResult Function(ActivityFacilitySortedState value) sorted,
+    required TResult Function(ActivityFacilitySearchLoading value)
+        searchLoading,
+    required TResult Function(ProjectSearchResults value) searchResults,
+    required TResult Function(ActivityFacilityPaginatedLoaded value)
+        paginatedLoaded,
+  }) {
+    return paginatedLoaded(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(_ActivityFacilityInitialState value)? initial,
+    TResult? Function(_ActivityFacilityLoadingState value)? loading,
+    TResult? Function(ActivityFacilityInCache value)? inCache,
+    TResult? Function(ActivityFacilityFetchedState value)? fetched,
+    TResult? Function(ActivityFacilitySelectedState value)? selected,
+    TResult? Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult? Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult? Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult? Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult? Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult? Function(ActivityFacilitySortedState value)? sorted,
+    TResult? Function(ActivityFacilitySearchLoading value)? searchLoading,
+    TResult? Function(ProjectSearchResults value)? searchResults,
+    TResult? Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
+  }) {
+    return paginatedLoaded?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(_ActivityFacilityInitialState value)? initial,
+    TResult Function(_ActivityFacilityLoadingState value)? loading,
+    TResult Function(ActivityFacilityInCache value)? inCache,
+    TResult Function(ActivityFacilityFetchedState value)? fetched,
+    TResult Function(ActivityFacilitySelectedState value)? selected,
+    TResult Function(_UnSubmittedLoaded value)? unSubmittedLoaded,
+    TResult Function(_UnSubmittedAdded value)? unSubmittedAdded,
+    TResult Function(_UnSubmittedDeleted value)? unSubmittedDeleted,
+    TResult Function(ReportCountsLoaded value)? reportCountsLoaded,
+    TResult Function(NewlyAssignedLoaded value)? newlyAssignedLoaded,
+    TResult Function(ActivityFacilitySortedState value)? sorted,
+    TResult Function(ActivityFacilitySearchLoading value)? searchLoading,
+    TResult Function(ProjectSearchResults value)? searchResults,
+    TResult Function(ActivityFacilityPaginatedLoaded value)? paginatedLoaded,
+    required TResult orElse(),
+  }) {
+    if (paginatedLoaded != null) {
+      return paginatedLoaded(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class ActivityFacilityPaginatedLoaded
+    implements ActivityFacilityState {
+  const factory ActivityFacilityPaginatedLoaded(
+      {required final List<ActivityFacilityWorkflow> items,
+      required final bool hasMore,
+      required final int totalCount,
+      final bool fromCache,
+      final bool isLoadingMore}) = _$ActivityFacilityPaginatedLoadedImpl;
+
+  List<ActivityFacilityWorkflow> get items;
+  bool get hasMore;
+  int get totalCount;
+  bool get fromCache;
+  bool get isLoadingMore;
+  @JsonKey(ignore: true)
+  _$$ActivityFacilityPaginatedLoadedImplCopyWith<
+          _$ActivityFacilityPaginatedLoadedImpl>
       get copyWith => throw _privateConstructorUsedError;
 }
