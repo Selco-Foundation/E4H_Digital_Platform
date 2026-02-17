@@ -121,7 +121,7 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
     try {
       final results = <_BtnModel>[];
       for (final entry in _entries) {
-        final r = await bomRouteAndLabel(entry.name);
+        final r = await bomRouteAndLabel(entry.facilityName);
         final action = await BomRepository().resolveBomActionLabel(
           isar: isar,
           projectId: widget.projectId,

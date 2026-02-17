@@ -32,7 +32,8 @@ class AssetCountPage extends StatefulWidget {
   State<AssetCountPage> createState() => _AssetCountPageState();
 }
 
-class _AssetCountPageState extends State<AssetCountPage> {
+class _AssetCountPageState extends State<AssetCountPage>
+    with AutoRouteAwareStateMixin<AssetCountPage> {
   String? _currentActivityFacilityId;
   AssetCount? inverterData, batteryData, panelData;
 
@@ -86,6 +87,12 @@ class _AssetCountPageState extends State<AssetCountPage> {
   void dispose() {
     _countSub.cancel();
     super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    if (_currentActivityFacilityId == null) return;
+    _dispatchInitialLoad(_currentActivityFacilityId!);
   }
 
   void _dispatchInitialLoad(String projectId) {
@@ -143,12 +150,9 @@ class _AssetCountPageState extends State<AssetCountPage> {
                   context
                       .read<AssetTypeBloc>()
                       .add(const AssetTypeEvent.typeSelected(""));
-                  await context.router
-                      .push(const SelectAssetTypeRoute())
-                      .then((_) {
-                    if (!mounted) return;
-                    _dispatchInitialLoad(_currentActivityFacilityId!);
-                  });
+                  await context.router.push(const SelectAssetTypeRoute());
+                  if (!mounted || _currentActivityFacilityId == null) return;
+                  _dispatchInitialLoad(_currentActivityFacilityId!);
                 }
               },
             ),

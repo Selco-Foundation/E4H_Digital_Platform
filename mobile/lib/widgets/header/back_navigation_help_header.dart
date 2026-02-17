@@ -38,10 +38,13 @@ class BackNavigationHelpHeaderWidget extends StatelessWidget {
                     type: DigitButtonType.tertiary,
                     size: DigitButtonSize.medium,
                     onPressed: () {
-                      if (defaultPopRoute) {
-                        context.router.maybePop();
+                      if (handleback != null) {
+                        handleback!();
+                        return;
                       }
-                      handleback != null ? handleback!() : null;
+                      if (defaultPopRoute) {
+                        Navigator.of(context).maybePop();
+                      }
                     },
                     digitButtonThemeData: const DigitButtonThemeData().copyWith(
                       smallIconSize: spacer6,
@@ -60,7 +63,7 @@ class BackNavigationHelpHeaderWidget extends StatelessWidget {
               type: DigitButtonType.tertiary,
               size: DigitButtonSize.medium,
               suffixIcon: Icons.help_outline_outlined,
-              onPressed: () => helpClicked,
+              onPressed: () => helpClicked?.call(),
             ),
         ],
       ),
