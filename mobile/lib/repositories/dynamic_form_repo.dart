@@ -626,6 +626,69 @@ class BomRepository {
     }
   }
 
+  Future<Map<String, dynamic>> getInitialFormValues({
+    required Isar isar,
+    required String activityFacilityId,
+    required String userType,
+  }) async {
+    Map<String, dynamic> modelBom = <String, dynamic>{};
+    try {
+      final row = await isar.cacheActivityFacilityWorkflows
+          .where()
+          .activityFacilityIdEqualTo(activityFacilityId)
+          .findFirst();
+      final fromModel = row?.activityFacility.additionalDetails?.bom;
+      if (fromModel != null) {
+        modelBom = Map<String, dynamic>.from(fromModel);
+      }
+    } catch (_) {}
+
+    final backendOrLocal = await getProjectBomKV(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          userType: userType,
+        ) ??
+        <String, dynamic>{};
+
+    final filteredOverride = _sanitizeOverrideMap(backendOrLocal);
+    return deepMerge(modelBom, filteredOverride);
+  }
+
+  Map<String, dynamic> _sanitizeOverrideMap(Map<String, dynamic> input) {
+    final out = <String, dynamic>{};
+
+    input.forEach((k, v) {
+      final sanitized = _sanitizeOverrideValue(v);
+      if (sanitized != null) out[k] = sanitized;
+    });
+
+    return out;
+  }
+
+  dynamic _sanitizeOverrideValue(dynamic value) {
+    if (value == null) return null;
+    if (value is String && value.trim().isEmpty) return null;
+
+    if (value is Map) {
+      final map = <String, dynamic>{};
+      value.forEach((k, v) {
+        final sanitized = _sanitizeOverrideValue(v);
+        if (sanitized != null) {
+          map[k.toString()] = sanitized;
+        }
+      });
+      return map.isEmpty ? null : map;
+    }
+
+    if (value is List) {
+      final list =
+          value.map(_sanitizeOverrideValue).where((e) => e != null).toList();
+      return list;
+    }
+
+    return value;
+  }
+
   Stream<void> watchBomForSchema({
     required Isar isar,
     required String projectId,

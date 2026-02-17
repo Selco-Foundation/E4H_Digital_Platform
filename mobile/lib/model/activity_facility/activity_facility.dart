@@ -1,4 +1,6 @@
 // Generated using mason. Do not modify by hand
+import 'dart:convert';
+
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:isar/isar.dart';
 
@@ -575,6 +577,15 @@ class AdditionalDetails with AdditionalDetailsMappable {
   AssetTypeAdditionalDetails? battery;
   AssetTypeAdditionalDetails? inverter;
   AssetTypeAdditionalDetails? panel;
+  String? bomJson;
+
+  @ignore
+  Map<String, dynamic>? get bom => bomJson == null
+      ? null
+      : (jsonDecode(bomJson!) as Map).cast<String, dynamic>();
+  @ignore
+  set bom(Map<String, dynamic>? value) =>
+      bomJson = value == null ? null : jsonEncode(value);
 
   AdditionalDetails();
 
@@ -603,6 +614,11 @@ class AdditionalDetails with AdditionalDetailsMappable {
           AssetTypeAdditionalDetails.fromMap(Map<String, dynamic>.from(p));
     }
 
+    final bomData = m['bom'];
+    if (bomData is Map) {
+      a.bom = Map<String, dynamic>.from(bomData);
+    }
+
     return a;
   }
 
@@ -613,5 +629,6 @@ class AdditionalDetails with AdditionalDetailsMappable {
         'battery': battery?.toMap(),
         'inverter': inverter?.toMap(),
         'panel': panel?.toMap(),
+        'bom': bom,
       };
 }

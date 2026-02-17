@@ -970,6 +970,9 @@ class AdditionalDetailsMapper extends ClassMapperBase<AdditionalDetails> {
   static AssetTypeAdditionalDetails? _$panel(AdditionalDetails v) => v.panel;
   static const Field<AdditionalDetails, AssetTypeAdditionalDetails> _f$panel =
       Field('panel', _$panel, mode: FieldMode.member);
+  static String? _$bomJson(AdditionalDetails v) => v.bomJson;
+  static const Field<AdditionalDetails, String> _f$bomJson =
+      Field('bomJson', _$bomJson, mode: FieldMode.member);
 
   @override
   final MappableFields<AdditionalDetails> fields = const {
@@ -979,6 +982,7 @@ class AdditionalDetailsMapper extends ClassMapperBase<AdditionalDetails> {
     #battery: _f$battery,
     #inverter: _f$inverter,
     #panel: _f$panel,
+    #bomJson: _f$bomJson,
   };
   @override
   final bool ignoreNull = true;
