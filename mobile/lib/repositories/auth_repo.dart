@@ -1,8 +1,10 @@
 import 'dart:convert';
 
-import 'package:selco/utils/app_logger.dart';
 import 'package:dio/dio.dart';
+import 'package:selco/utils/app_logger.dart';
 
+import '../data/api_interceptors.dart';
+import '../data/network_manager.dart';
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
 import '../model/login/loginModel.dart';
@@ -19,6 +21,10 @@ class AuthRepository {
 
     final authClient = Dio();
     authClient.options.baseUrl = envConfig.variables.baseUrl;
+    authClient.interceptors.addAll([
+      NetworkPrecheckInterceptor(),
+      NetworkErrorNormalizerInterceptor(),
+    ]);
 
     final headers = <String, String>{
       "content-type": 'application/x-www-form-urlencoded',
@@ -33,9 +39,30 @@ class AuthRepository {
       authClient.close();
 
       return responseBody;
-    } catch (err) {
-      rethrow;
+    } on DioException catch (err) {
+      throw _normalizedLoginException(err);
     }
+  }
+
+  AppNetworkException _normalizedLoginException(DioException err) {
+    final wrapped = err.error;
+    if (wrapped is AppNetworkException) {
+      return wrapped;
+    }
+
+    final status = err.response?.statusCode ?? 0;
+    if (status == 401) {
+      return const AppNetworkException(LoginErrorCode.invalidCredentials);
+    }
+
+    if (status >= 500) {
+      return const AppNetworkException(LoginErrorCode.serverError);
+    }
+
+    return AppNetworkException(
+      LoginErrorCode.unknown,
+      rawMessage: err.message,
+    );
   }
 
   Future<void> logout() async {
