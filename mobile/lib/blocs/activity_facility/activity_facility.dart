@@ -235,7 +235,7 @@ class ActivityFacilityBloc
     final repo = ActivityFacilityRepository(isar);
     final body = ActivityFacilitySearchModel(
       tenantId: envConfig.variables.tenantId,
-      name: event.query,
+      facilityName: event.query,
     );
 
     try {
@@ -301,7 +301,7 @@ class ActivityFacilityBloc
     final repo = ActivityFacilityRepository(isar);
     final body = ActivityFacilitySearchModel(
       tenantId: envConfig.variables.tenantId,
-      name: query,
+      facilityName: query,
     );
 
     try {
