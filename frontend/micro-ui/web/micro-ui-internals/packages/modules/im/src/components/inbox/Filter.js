@@ -8,7 +8,7 @@ let pgrQuery = {};
 let wfQuery = {};
 
 const Filter = (props) => {
-  const { userName } = Digit.UserService.getUser().info;
+  const { userName, roles } = Digit.UserService.getUser().info;
   const { searchParams } = props;
   const { t } = useTranslation();
   const [stateMenu, setStateMenu] = useState([]);
@@ -19,6 +19,7 @@ const Filter = (props) => {
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
+  const isTechPocUser = (roles || []).some((role) => role.code === "COMPLAINT_FACILITATOR_2");
 
   const assignedToOptions = useMemo(
     () => [
@@ -205,7 +206,20 @@ const isCodePresent = (array, codeToCheck) =>{
 
   useEffect(() => {
     const code = selectAssigned.code === "ASSIGNED_TO_ME" ? userName : "";
-    setWfFilters(prevFilters => ({ ...prevFilters, assignee: [{ code: code }] }));
+    setWfFilters((prevFilters) => ({
+      ...prevFilters,
+      assignee: [{ code: code }],
+      ...(isTechPocUser &&
+        (code
+          ? {
+              wfStatus: [
+                { code: "RMS_DEVICE_PENDING_TECH_POC" },
+                { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
+                { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
+              ],
+            }
+          : { wfStatus: [] })),
+    }));
   }, [selectAssigned]);
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
@@ -245,11 +259,11 @@ const isCodePresent = (array, codeToCheck) =>{
     }
     for (const property in wfFilters) {
       if (Array.isArray(wfFilters[property])) {
-        let params = wfFilters[property].map((prop) => prop.name).join();
+        let params = wfFilters[property].map((prop) => prop.code).join();
         if (params) {
           wfQuery[property] = params;
         } else {
-          wfQuery = {};
+          delete wfQuery?.[property];
         }
       }
     }
@@ -366,7 +380,7 @@ const isCodePresent = (array, codeToCheck) =>{
     pgrQuery = {};
     wfQuery = {};
     setSelectedAssigned(
-      (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
+      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
     );
   }
 
