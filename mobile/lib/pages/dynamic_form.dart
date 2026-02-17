@@ -60,14 +60,14 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
   Future<void> _loadInitialKVForActivityFacility() async {
     final isar = context.read<ActivityFacilityBloc>().isar;
-    final kv = await BomRepository().getProjectBomKV(
+    final kv = await BomRepository().getInitialFormValues(
       isar: isar,
       activityFacilityId: widget.activityFacilityId,
       userType: widget.userType,
     );
     if (!mounted) return;
     setState(() {
-      _activityFacilityInitialKV = kv ?? const {};
+      _activityFacilityInitialKV = kv;
       _formSeed++;
     });
   }
