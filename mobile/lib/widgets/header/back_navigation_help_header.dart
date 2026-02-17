@@ -43,7 +43,7 @@ class BackNavigationHelpHeaderWidget extends StatelessWidget {
                         return;
                       }
                       if (defaultPopRoute) {
-                        Navigator.of(context).maybePop();
+                        context.router.maybePop();
                       }
                     },
                     digitButtonThemeData: const DigitButtonThemeData().copyWith(

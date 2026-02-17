@@ -34,12 +34,17 @@ class AssetCountPage extends StatefulWidget {
 
 class _AssetCountPageState extends State<AssetCountPage>
     with AutoRouteAwareStateMixin<AssetCountPage> {
+  static const String _inverterType = 'inverter';
+  static const String _batteryType = 'battery';
+  static const String _panelType = 'panel';
+
   String? _currentActivityFacilityId;
   AssetCount? inverterData, batteryData, panelData;
 
   int _inverterCount = 0;
   int _batteryCount = 0;
   int _panelCount = 0;
+  bool _awaitingFullRefresh = false;
 
   late final StreamSubscription<CacheAssetCountState> _countSub;
 
@@ -60,23 +65,7 @@ class _AssetCountPageState extends State<AssetCountPage>
       state.maybeWhen(
         loaded: (entries) {
           if (!mounted) return;
-          setState(() {
-            _inverterCount = entries
-                    .firstWhereOrNull((e) =>
-                        e.assetType == ASSET_TYPES.INVERTER.name.toLowerCase())
-                    ?.count ??
-                0;
-            _batteryCount = entries
-                    .firstWhereOrNull((e) =>
-                        e.assetType == ASSET_TYPES.BATTERY.name.toLowerCase())
-                    ?.count ??
-                0;
-            _panelCount = entries
-                    .firstWhereOrNull((e) =>
-                        e.assetType == ASSET_TYPES.PANEL.name.toLowerCase())
-                    ?.count ??
-                0;
-          });
+          _handleLoadedEntries(entries);
         },
         orElse: () {},
       );
@@ -96,6 +85,7 @@ class _AssetCountPageState extends State<AssetCountPage>
   }
 
   void _dispatchInitialLoad(String projectId) {
+    _awaitingFullRefresh = true;
     context.read<CacheActivityFacilityAssetBloc>().add(
           CacheActivityFacilityAssetEvent.update(
             CacheActivityFacilityAsset(
@@ -105,6 +95,55 @@ class _AssetCountPageState extends State<AssetCountPage>
     context.read<CacheAssetCountBloc>().add(
           CacheAssetCountEvent.getAll(projectId),
         );
+  }
+
+  void _handleLoadedEntries(List<CacheAssetCount> entries) {
+    final projectId = _currentActivityFacilityId;
+    if (projectId == null) return;
+
+    final filtered = entries
+        .where((e) =>
+            e.activityFacilityId == projectId &&
+            _normalizeAssetType(e.assetType).isNotEmpty)
+        .toList();
+
+    if (filtered.isEmpty) return;
+
+    final isFullRefresh = _awaitingFullRefresh;
+    _applyEntries(filtered, isFullRefresh: isFullRefresh);
+    if (isFullRefresh) {
+      _awaitingFullRefresh = false;
+    }
+  }
+
+  CacheAssetCount? _entryForType(List<CacheAssetCount> entries, String type) {
+    return entries.firstWhereOrNull(
+      (e) => _normalizeAssetType(e.assetType) == type,
+    );
+  }
+
+  String _normalizeAssetType(String value) => value.trim().toLowerCase();
+
+  void _applyEntries(
+    List<CacheAssetCount> entries, {
+    required bool isFullRefresh,
+  }) {
+    final inverter = _entryForType(entries, _inverterType);
+    final battery = _entryForType(entries, _batteryType);
+    final panel = _entryForType(entries, _panelType);
+
+    setState(() {
+      if (inverter != null) _inverterCount = inverter.count;
+      if (battery != null) _batteryCount = battery.count;
+      if (panel != null) _panelCount = panel.count;
+
+      // During explicit full refresh only, missing types are considered absent in cache.
+      if (isFullRefresh) {
+        if (inverter == null) _inverterCount = 0;
+        if (battery == null) _batteryCount = 0;
+        if (panel == null) _panelCount = 0;
+      }
+    });
   }
 
   bool get _disableFooter =>

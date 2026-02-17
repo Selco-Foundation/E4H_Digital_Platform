@@ -8,8 +8,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../blocs/activity_facility/activity_facility.dart';
 import '../../blocs/user_type/user_type.dart';
+import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../../repositories/dynamic_form_repo.dart';
 import '../../router/app_router.dart';
+import '../../utils/app_logger.dart';
 import '../../utils/utils.dart';
 import '../summary/summary.dart';
 
@@ -100,10 +102,15 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
     _lastSig = '${widget.projectId}|${widget.origin}|${widget.systemCode}';
 
     final matches = widget.solutionDesignBom.where(
-      (e) => e.data.systemCode == widget.systemCode,
+      (e) => _norm(e.data.systemCode) == _norm(widget.systemCode),
     );
     final matching = matches.isNotEmpty ? matches.first : null;
     final newEntries = matching?.data.bomForms ?? const [];
+
+    AppLogger.instance.info(
+      'project=${widget.projectId} system=${widget.systemCode} matchedEntries=${newEntries.length}',
+      title: 'BomButtonsSection',
+    );
 
     if (!mounted) return;
     setState(() {
@@ -112,7 +119,9 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
 
     if (_entries.isEmpty) {
       _loading = false;
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() => _models = const []);
+      }
       _restartBomWatcherForSchemas(const []);
       return;
     }
@@ -121,27 +130,70 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
     try {
       final results = <_BtnModel>[];
       for (final entry in _entries) {
-        final r = await bomRouteAndLabel(entry.facilityName);
-        final action = await BomRepository().resolveBomActionLabel(
-          isar: isar,
-          projectId: widget.projectId,
-          schemaKey: r.schemaName,
-          origin: widget.origin,
-        );
-        results.add(_BtnModel(
-          actionWord: action,
-          label: r.label,
-          schemaName: r.schemaName,
-          pageName: r.pageName,
-        ));
+        try {
+          final formName = _resolveBomEntryName(entry);
+          if (formName.isEmpty) {
+            AppLogger.instance.info(
+              'skipping entry with empty name',
+              title: 'BomButtonsSection',
+            );
+            continue;
+          }
+
+          final r = await bomRouteAndLabel(formName);
+          final action = await BomRepository().resolveBomActionLabel(
+            isar: isar,
+            projectId: widget.projectId,
+            schemaKey: r.schemaName,
+            origin: widget.origin,
+          );
+          results.add(_BtnModel(
+            actionWord: action,
+            label: r.label,
+            schemaName: r.schemaName,
+            pageName: r.pageName,
+          ));
+        } catch (e) {
+          AppLogger.instance.info(
+            'skipping malformed entry: $e',
+            title: 'BomButtonsSection',
+          );
+          continue;
+        }
       }
       if (!mounted) return;
       final schemaKeys = results.map((e) => e.schemaName).toList();
       _restartBomWatcherForSchemas(schemaKeys);
-      setState(() => _models = results);
+      setState(() {
+        _models = results;
+      });
+      AppLogger.instance.info(
+        'project=${widget.projectId} builtButtons=${results.length}',
+        title: 'BomButtonsSection',
+      );
     } finally {
       _loading = false;
       if (mounted) setState(() {});
+    }
+  }
+
+  String _norm(String s) => s.trim().toUpperCase();
+
+  String _resolveBomEntryName(dynamic entry) {
+    if (entry is BomEntry) {
+      return entry.name.trim();
+    }
+    if (entry is Map) {
+      final mapped = entry.cast<dynamic, dynamic>();
+      final name = (mapped['name'] ?? mapped['facilityName'] ?? '').toString();
+      return name.trim();
+    }
+    try {
+      final dynamic e = entry;
+      final name = (e.name ?? e.facilityName ?? '').toString();
+      return name.trim();
+    } catch (_) {
+      return '';
     }
   }
 
@@ -172,7 +224,7 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
             label: '${m.actionWord} ${m.label}',
             onPressed: () async {
               final userType = _resolveUserType();
-              final result = await context.router.push(
+              await context.router.push(
                 DynamicFormsRoute(
                   pageName: m.pageName,
                   schemaName: m.schemaName,
