@@ -108,8 +108,9 @@ class _LoginPageState extends State<LoginPage> {
                       listener: (context, state) {
                         state.whenOrNull(
                           error: (message) {
+                            print("message ${message}");
                             context.showSnackBar(SnackBar(
-                              content: Text(message),
+                              content: Text(context.translate(message)),
                               backgroundColor: const Light().alertError,
                             ));
                           },

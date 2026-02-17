@@ -91,6 +91,13 @@ class Login {
   String get actionLabel => 'LOGIN_ACTION_LABEL';
   String get mobileNumberPlaceholder => 'MOBILE_NUMBER_PLACEHOLDER';
   String get otpPlaceholder => 'OTP_PLACEHOLDER';
+  String get errorNoNetwork => 'LOGIN_ERROR_NO_NETWORK';
+  String get errorNoInternet => 'LOGIN_ERROR_NO_INTERNET';
+  String get errorConnectionFailed => 'LOGIN_ERROR_CONNECTION_FAILED';
+  String get errorRequestTimeout => 'LOGIN_ERROR_REQUEST_TIMEOUT';
+  String get errorInvalidCredentials => 'LOGIN_ERROR_INVALID_CREDENTIALS';
+  String get errorServer => 'LOGIN_ERROR_SERVER';
+  String get errorUnknown => 'LOGIN_ERROR_UNKNOWN';
 }
 
 class Scanner {

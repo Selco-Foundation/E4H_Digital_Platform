@@ -1,16 +1,18 @@
 import 'dart:async';
 
-import 'package:selco/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+import 'package:selco/utils/app_logger.dart';
 
+import '../../data/network_manager.dart';
 import '../../data/secure_storage/secureStore.dart';
 import '../../model/dataModel.dart';
 import '../../model/login/loginModel.dart';
 import '../../model/response/responsemodel.dart';
 import '../../repositories/app_init_repo.dart';
 import '../../repositories/auth_repo.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 
 part 'authbloc.freezed.dart';
 
@@ -78,16 +80,46 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         AppLogger.instance.info(e, title: 'Action Wrapper error');
       }
     } catch (err) {
-      String errorMessage = 'Unknown error occurred';
-      if (err is DioException) {
-        errorMessage = err.response?.data?['error_description'] ??
-            err.response?.data?['error'] ??
-            err.message ??
-            'Network error occurred';
-      } else if (err is Exception) {
-        errorMessage = err.toString();
+      emit(AuthState.error(_messageKeyFromError(err)));
+    }
+  }
+
+  String _messageKeyFromError(Object err) {
+    if (err is AppNetworkException) {
+      return _keyFromCode(err.code);
+    }
+
+    if (err is DioException) {
+      final data = err.response?.data;
+      if (data is Map<String, dynamic>) {
+        final apiErr = (data['error'] ?? '').toString().toLowerCase();
+        final desc = (data['error_description'] ?? '').toString().toLowerCase();
+        if (apiErr.contains('invalid_grant') ||
+            desc.contains('bad credentials')) {
+          return i18.login.errorInvalidCredentials;
+        }
       }
-      emit(AuthState.error(errorMessage));
+    }
+
+    return i18.login.errorUnknown;
+  }
+
+  String _keyFromCode(LoginErrorCode code) {
+    switch (code) {
+      case LoginErrorCode.noNetwork:
+        return i18.login.errorNoNetwork;
+      case LoginErrorCode.noInternet:
+        return i18.login.errorNoInternet;
+      case LoginErrorCode.connectionFailed:
+        return i18.login.errorConnectionFailed;
+      case LoginErrorCode.requestTimeout:
+        return i18.login.errorRequestTimeout;
+      case LoginErrorCode.serverError:
+        return i18.login.errorServer;
+      case LoginErrorCode.invalidCredentials:
+        return i18.login.errorInvalidCredentials;
+      case LoginErrorCode.unknown:
+        return i18.login.errorUnknown;
     }
   }
 
