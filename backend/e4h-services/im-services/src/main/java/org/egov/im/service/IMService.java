@@ -97,37 +97,29 @@ public class IMService {
         Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(request);
         if(facilityDetails !=null && !facilityDetails.isEmpty()){
             String facilityStatus = (String) facilityDetails.get("facility_status");
-            if (facilityStatus !=null && facilityStatus.trim().equalsIgnoreCase(UNINSTALLED)){
-                if (!request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
+            if (facilityStatus !=null){
+                if (facilityStatus.trim().equalsIgnoreCase(UNINSTALLED) && !request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
                     throw new CustomException("CREATION_ERROR", "The facility status is UNINSTALLED, then the only available issue type should be Reinstall");
                 }
 
-                request.getIncident().setSystemFunctional("FUNCTIONAL");
-                String boundaryCode = request.getIncident().getBoundaryCode();
-                String facilityId = imUtils.extractFacilityCode(boundaryCode);
-                request.getIncident().setSystemFunctional("NON_FUNCTIONAL");
-                Map<String, Object> facility = new HashMap<>();
-                Map<String, Object> facilityUpdate = new HashMap<>();
-                facilityUpdate.put("tenant_id", tenantId);
-                facilityUpdate.put("facility_status", ACTIVE);
-                facilityUpdate.put("facility_id", facilityId);
-                facility.put("FacilityUpdate", facilityUpdate);
-                producer.push(tenantId,config.getUpdateFacilityTopic(), facility);
+                if (facilityStatus.trim().equalsIgnoreCase(ACTIVE) && request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
+                    throw new CustomException("CREATION_ERROR", "Reinstall can be raised only for facilities with an uninstalled solar system.");
+                }
             }
-        }
 
-        RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
-                .tenantId(request.getIncident().getTenantId())
-                .boundaryCode(request.getIncident().getBoundaryCode())
-                .applicationStatus(openTicketStatuses)
-                .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
-                .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
-                .build();
-        List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
+        }
 
         // System uninstallation process
         if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase("Uninstall")
                 && request.getIncident().getSystemFunctional()!=null && request.getIncident().getSystemFunctional().equalsIgnoreCase("FUNCTIONAL")){
+            // Search if that facility with boundary code has open tickets or not
+            RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
+                    .tenantId(request.getIncident().getTenantId())
+                    .boundaryCode(request.getIncident().getBoundaryCode())
+                    .applicationStatus(openTicketStatuses)
+                    .build();
+            List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
+
             // Check if Given the health facility has any open ticket in a non-closed state
             if (incidentWrappers != null && !incidentWrappers.isEmpty()){
                 throw new CustomException("INVALID_CREATION","Uninstall request cannot be raised while other tickets are open for this facility");
@@ -145,6 +137,14 @@ public class IMService {
 
         }
 
+        RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
+                .tenantId(request.getIncident().getTenantId())
+                .boundaryCode(request.getIncident().getBoundaryCode())
+                .applicationStatus(openTicketStatuses)
+                .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
+                .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
+                .build();
+        List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
         Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId());
         if (boundary == null) {
             log.error("Boundary data not found for code: {}", request.getIncident().getBoundaryCode());
@@ -266,6 +266,21 @@ public class IMService {
                 .build();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
+
+        // System reinstallation process
+        if (request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL) && updatedProcessInstance !=null && updatedProcessInstance.getState().getApplicationStatus().equals("RESOLVED") ){
+            request.getIncident().setSystemFunctional("FUNCTIONAL");
+            String boundaryCode = request.getIncident().getBoundaryCode();
+            String facilityId = imUtils.extractFacilityCode(boundaryCode);
+            Map<String, Object> facility = new HashMap<>();
+            Map<String, Object> facilityUpdate = new HashMap<>();
+            facilityUpdate.put("tenant_id", tenantId);
+            facilityUpdate.put("facility_status", ACTIVE);
+            facilityUpdate.put("facility_id", facilityId);
+            facility.put("FacilityUpdate", facilityUpdate);
+            producer.push(tenantId,config.getUpdateFacilityTopic(), facility);
+        }
+
         log.trace("Publishing incident to update topic");
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
