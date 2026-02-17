@@ -1,10 +1,10 @@
-import 'package:selco/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:synchronized/synchronized.dart';
 
 import '../model/request/requestInfo.dart';
 import '../model/response/responsemodel.dart';
 import '../repositories/auth_repo.dart';
+import '../utils/app_logger.dart';
 import '../utils/constants.dart';
 import 'network_manager.dart';
 import 'remote_client.dart';
@@ -143,5 +143,104 @@ class AuthTokenInterceptor extends Interceptor {
     } on DioError catch (e) {
       return handler.next(e);
     }
+  }
+}
+
+class NetworkPrecheckInterceptor extends Interceptor {
+  @override
+  Future<void> onRequest(
+    RequestOptions options,
+    RequestInterceptorHandler handler,
+  ) async {
+    try {
+      await NetworkService().ensureOnlineOrThrow();
+      handler.next(options);
+    } on NetworkException catch (e) {
+      final lower = e.message.toLowerCase();
+      final code = lower.contains('internet')
+          ? LoginErrorCode.noInternet
+          : LoginErrorCode.noNetwork;
+      handler.reject(
+        DioException(
+          requestOptions: options,
+          type: DioExceptionType.unknown,
+          error: AppNetworkException(code, rawMessage: e.message),
+          message: code.name,
+        ),
+      );
+    }
+  }
+}
+
+class NetworkErrorNormalizerInterceptor extends Interceptor {
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.error is AppNetworkException) {
+      handler.next(err);
+      return;
+    }
+
+    final code = _resolve(err);
+    final mapped = DioException(
+      requestOptions: err.requestOptions,
+      response: err.response,
+      type: err.type,
+      error: AppNetworkException(code, rawMessage: err.message),
+      message: code.name,
+    );
+
+    handler.next(mapped);
+  }
+
+  LoginErrorCode _resolve(DioException e) {
+    if (_isInvalidCredentialError(e)) {
+      return LoginErrorCode.invalidCredentials;
+    }
+
+    if (e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.receiveTimeout) {
+      return LoginErrorCode.requestTimeout;
+    }
+
+    if (e.type == DioExceptionType.connectionError ||
+        _looksLikeTransportFailure(e.message)) {
+      return LoginErrorCode.connectionFailed;
+    }
+
+    final status = e.response?.statusCode ?? 0;
+    if (status >= 500) return LoginErrorCode.serverError;
+
+    return LoginErrorCode.unknown;
+  }
+
+  bool _isInvalidCredentialError(DioException e) {
+    final data = e.response?.data;
+    final status = e.response?.statusCode ?? 0;
+
+    if (status == 401) return true;
+
+    if (data is Map<String, dynamic>) {
+      final err = (data['error'] ?? '').toString().toLowerCase();
+      final desc = (data['error_description'] ?? '').toString().toLowerCase();
+      if (err.contains('invalid_grant') || desc.contains('bad credentials')) {
+        return true;
+      }
+      if (err.contains('invalid') && desc.contains('credential')) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  bool _looksLikeTransportFailure(String? message) {
+    final msg = (message ?? '').toLowerCase();
+    if (msg.isEmpty) return false;
+    return msg.contains('failed host lookup') ||
+        msg.contains('socketexception') ||
+        msg.contains('connection error') ||
+        msg.contains('network is unreachable') ||
+        msg.contains('connection reset');
   }
 }
