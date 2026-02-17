@@ -20,7 +20,7 @@ class ActivityFacilitySearchModelWrapper
 @MappableClass(ignoreNull: true, discriminatorValue: MappableClass.useAsDefault)
 class ActivityFacilitySearchModel with ActivityFacilitySearchModelMappable {
   final String? id;
-  final String? name;
+  final String? facilityName;
   final String? activityId;
   final String? facilityId;
   final bool? isTaskEnabled;
@@ -33,7 +33,7 @@ class ActivityFacilitySearchModel with ActivityFacilitySearchModelMappable {
 
   ActivityFacilitySearchModel({
     this.id,
-    this.name,
+    this.facilityName,
     this.activityId,
     this.facilityId,
     this.isTaskEnabled,

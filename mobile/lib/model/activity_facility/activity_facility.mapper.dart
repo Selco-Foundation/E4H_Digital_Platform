@@ -168,9 +168,10 @@ class ActivityFacilitySearchModelMapper
   static String? _$id(ActivityFacilitySearchModel v) => v.id;
   static const Field<ActivityFacilitySearchModel, String> _f$id =
       Field('id', _$id, opt: true);
-  static String? _$name(ActivityFacilitySearchModel v) => v.name;
-  static const Field<ActivityFacilitySearchModel, String> _f$name =
-      Field('name', _$name, opt: true);
+  static String? _$facilityName(ActivityFacilitySearchModel v) =>
+      v.facilityName;
+  static const Field<ActivityFacilitySearchModel, String> _f$facilityName =
+      Field('facilityName', _$facilityName, opt: true);
   static String? _$activityId(ActivityFacilitySearchModel v) => v.activityId;
   static const Field<ActivityFacilitySearchModel, String> _f$activityId =
       Field('activityId', _$activityId, opt: true);
@@ -211,7 +212,7 @@ class ActivityFacilitySearchModelMapper
   @override
   final MappableFields<ActivityFacilitySearchModel> fields = const {
     #id: _f$id,
-    #name: _f$name,
+    #facilityName: _f$facilityName,
     #activityId: _f$activityId,
     #facilityId: _f$facilityId,
     #isTaskEnabled: _f$isTaskEnabled,
@@ -230,7 +231,7 @@ class ActivityFacilitySearchModelMapper
   static ActivityFacilitySearchModel _instantiate(DecodingData data) {
     return ActivityFacilitySearchModel(
         id: data.dec(_f$id),
-        name: data.dec(_f$name),
+        facilityName: data.dec(_f$facilityName),
         activityId: data.dec(_f$activityId),
         facilityId: data.dec(_f$facilityId),
         isTaskEnabled: data.dec(_f$isTaskEnabled),
@@ -303,7 +304,7 @@ abstract class ActivityFacilitySearchModelCopyWith<
     $Out> implements ClassCopyWith<$R, $In, $Out> {
   $R call(
       {String? id,
-      String? name,
+      String? facilityName,
       String? activityId,
       String? facilityId,
       bool? isTaskEnabled,
@@ -331,7 +332,7 @@ class _ActivityFacilitySearchModelCopyWithImpl<$R, $Out>
   @override
   $R call(
           {Object? id = $none,
-          Object? name = $none,
+          Object? facilityName = $none,
           Object? activityId = $none,
           Object? facilityId = $none,
           Object? isTaskEnabled = $none,
@@ -343,7 +344,7 @@ class _ActivityFacilitySearchModelCopyWithImpl<$R, $Out>
           Object? endDate = $none}) =>
       $apply(FieldCopyWithData({
         if (id != $none) #id: id,
-        if (name != $none) #name: name,
+        if (facilityName != $none) #facilityName: facilityName,
         if (activityId != $none) #activityId: activityId,
         if (facilityId != $none) #facilityId: facilityId,
         if (isTaskEnabled != $none) #isTaskEnabled: isTaskEnabled,
@@ -358,7 +359,8 @@ class _ActivityFacilitySearchModelCopyWithImpl<$R, $Out>
   ActivityFacilitySearchModel $make(CopyWithData data) =>
       ActivityFacilitySearchModel(
           id: data.get(#id, or: $value.id),
-          name: data.get(#name, or: $value.name),
+          facilityName:
+              data.get(#facilityName, or: $value.facilityName),
           activityId: data.get(#activityId, or: $value.activityId),
           facilityId: data.get(#facilityId, or: $value.facilityId),
           isTaskEnabled: data.get(#isTaskEnabled, or: $value.isTaskEnabled),
