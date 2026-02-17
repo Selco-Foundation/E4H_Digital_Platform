@@ -364,7 +364,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: spcMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
           { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTotalCostOfSolution, message: "CS_SOLUTION_COST_MANDATORY" },
           {
-            condition: ["RESOLVE", "OUT_OF_WARRANTY", "STATUS_UPDATE", "SUBMIT"].includes(selectedAction) && !isTechPocRmsResolution && uploadedFile.length === 0,
+            condition:
+              ["RESOLVE", "OUT_OF_WARRANTY", "STATUS_UPDATE", "SUBMIT"].includes(selectedAction) &&
+              !isTechPocRmsResolution &&
+              uploadedFile.length === 0,
             message: "CS_MANDATORY_FILE_UPLOAD",
           },
           {
@@ -521,18 +524,18 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         {selectedAction === "SPARE_PART_NEEDED" && (
           <React.Fragment>
             <CardLabel>{t("SPC_ACTION_ROOT_CAUSE_ANALYSIS")}*</CardLabel>
-            <TextArea name="spcRootAnalysis" onChange={(e) => addSPCRootAnalysis(e, setSpcRootAnalysis)} value={oowIssue} />
+            <TextArea name="spcRootAnalysis" onChange={(e) => addSPCRootAnalysis(e, setSpcRootAnalysis)} value={spcRootAnalysis} />
             <CardLabel>{t("SPC_ACTION_SPARE_PART_TO_BE_REPLACED")}*</CardLabel>
             <TextArea
-              name="spcSpartPartToBeReplaced"
+              name="spcSparePartToBeReplaced"
               onChange={(e) => addSPCSparePartToBeReplaced(e, setSpcSparePartToBeReplaced)}
-              value={oowRootCause}
+              value={spcSparePartToBeReplaced}
             />
           </React.Fragment>
         )}
         {["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) ? (
           <CardLabel>{t("CS_ACTION_QUOTATION_DOCUMENT")}*</CardLabel>
-        ) : (["RESOLVE", "STATUS_UPDATE", "SPARE_PART_NEEDED"].includes(selectedAction) && !isTechPocRmsResolution) ? (
+        ) : ["RESOLVE", "STATUS_UPDATE", "SPARE_PART_NEEDED"].includes(selectedAction) && !isTechPocRmsResolution ? (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}*</CardLabel>
         ) : (
           <CardLabel>{t("CS_ACTION_SUPPORTING_DOCUMENTS")}</CardLabel>
