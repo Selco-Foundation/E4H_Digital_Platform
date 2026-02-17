@@ -50,6 +50,11 @@ public class IMService {
     @Value("#{'${workflow.ticket.open.statuses}'.split(',')}")
     private Set<String> openTicketStatuses;
 
+    private final String UNINSTALLED = "UNINSTALLED";
+
+    private final String ACTIVE = "ACTIVE";
+    private final String REINSTALL = "Reinstall";
+
     @Autowired
     public IMService(
             EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
@@ -86,14 +91,31 @@ public class IMService {
         log.trace("Validating create request");
         validator.validateCreate(request, mdmsData);
         log.trace("Fetching boundary from boundaryCode");
-        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId());
-        if (boundary == null) {
-            log.error("Boundary data not found for code: {}", request.getIncident().getBoundaryCode());
-            throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + request.getIncident().getBoundaryCode());
+
+        // Get facility details in order to get facility status before ticket creation
+        // System reinstallation process
+        Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(request);
+        if(facilityDetails !=null && !facilityDetails.isEmpty()){
+            String facilityStatus = (String) facilityDetails.get("facility_status");
+            if (facilityStatus !=null && facilityStatus.trim().equalsIgnoreCase(UNINSTALLED)){
+                if (!request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
+                    throw new CustomException("CREATION_ERROR", "The facility status is UNINSTALLED, then the only available issue type should be Reinstall");
+                }
+
+                request.getIncident().setSystemFunctional("FUNCTIONAL");
+                String boundaryCode = request.getIncident().getBoundaryCode();
+                String facilityId = imUtils.extractFacilityCode(boundaryCode);
+                request.getIncident().setSystemFunctional("NON_FUNCTIONAL");
+                Map<String, Object> facility = new HashMap<>();
+                Map<String, Object> facilityUpdate = new HashMap<>();
+                facilityUpdate.put("tenant_id", tenantId);
+                facilityUpdate.put("facility_status", ACTIVE);
+                facilityUpdate.put("facility_id", facilityId);
+                facility.put("FacilityUpdate", facilityUpdate);
+                producer.push(tenantId,config.getUpdateFacilityTopic(), facility);
+            }
         }
-        log.trace("Enriching create request");
-        enrichmentService.enrichCreateRequest(request, boundary);
-        log.trace("Checking for potential duplicates");
+
         RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
                 .tenantId(request.getIncident().getTenantId())
                 .boundaryCode(request.getIncident().getBoundaryCode())
@@ -102,14 +124,39 @@ public class IMService {
                 .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
                 .build();
         List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
+
+        // System uninstallation process
+        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase("Uninstall")
+                && request.getIncident().getSystemFunctional()!=null && request.getIncident().getSystemFunctional().equalsIgnoreCase("FUNCTIONAL")){
+            // Check if Given the health facility has any open ticket in a non-closed state
+            if (incidentWrappers != null && !incidentWrappers.isEmpty()){
+                throw new CustomException("INVALID_CREATION","Uninstall request cannot be raised while other tickets are open for this facility");
+            }
+            String boundaryCode = request.getIncident().getBoundaryCode();
+            String facilityId = imUtils.extractFacilityCode(boundaryCode);
+            request.getIncident().setSystemFunctional("NON_FUNCTIONAL");
+            Map<String, Object> facility = new HashMap<>();
+            Map<String, Object> facilityUpdate = new HashMap<>();
+            facilityUpdate.put("tenant_id", tenantId);
+            facilityUpdate.put("facility_status", UNINSTALLED);
+            facilityUpdate.put("facility_id", facilityId);
+            facility.put("FacilityUpdate", facilityUpdate);
+            producer.push(tenantId,config.getUpdateFacilityTopic(), facility);
+
+        }
+
+        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId());
+        if (boundary == null) {
+            log.error("Boundary data not found for code: {}", request.getIncident().getBoundaryCode());
+            throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + request.getIncident().getBoundaryCode());
+        }
+        log.trace("Enriching create request");
+        enrichmentService.enrichCreateRequest(request, boundary);
+        log.trace("Checking for potential duplicates");
+
         boolean isDuplicate = incidentWrappers != null && !incidentWrappers.isEmpty();
         request.getIncident().setPotentialDuplicate(isDuplicate);
         log.debug("Potential duplicate check completed, isDuplicate={}", isDuplicate);
-
-        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equals("Uninstall")
-                && incidentWrappers != null && !incidentWrappers.isEmpty()){
-            throw new CustomException("INVALID_CREATION","Uninstall request cannot be raised while other tickets are open for this facility");
-        }
 
         String startingStatus = request.getIncident().getApplicationStatus();
         log.info("Updating workflow status for incident creation");
