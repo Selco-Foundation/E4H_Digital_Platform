@@ -920,6 +920,9 @@ input[type="number"] {
     margin-bottom: 0 !important;
     padding: 0 !important;
   }
+  .employee-select-wrap .select input[type="text"] {
+    z-index: 0 !important;
+  }
 }
 
 .toggle-option-container {
