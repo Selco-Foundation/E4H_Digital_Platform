@@ -102,6 +102,11 @@ public class IMService {
                     throw new CustomException("CREATION_ERROR", "The facility status is UNINSTALLED, then the only available issue type should be Reinstall");
                 }
 
+                if (facilityStatus.trim().equalsIgnoreCase(UNINSTALLED) && request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)
+                        && !request.getIncident().getSystemFunctional().equalsIgnoreCase("NON_FUNCTIONAL")){
+                    throw new CustomException("CREATION_ERROR", "Reinstall request cannot be raised while System Functional is Functional");
+                }
+
                 if (facilityStatus.trim().equalsIgnoreCase(ACTIVE) && request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
                     throw new CustomException("CREATION_ERROR", "Reinstall can be raised only for facilities with an uninstalled solar system.");
                 }
@@ -110,8 +115,11 @@ public class IMService {
         }
 
         // System uninstallation process
-        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase("Uninstall")
-                && request.getIncident().getSystemFunctional()!=null && request.getIncident().getSystemFunctional().equalsIgnoreCase("FUNCTIONAL")){
+        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase("Uninstall")){
+            if (request.getIncident().getSystemFunctional()!=null && !request.getIncident().getSystemFunctional().equalsIgnoreCase("FUNCTIONAL")){
+                throw new CustomException("CREATION_ERROR", "Uninstall request cannot be raised while System Functional is No Functional");
+            }
+
             // Search if that facility with boundary code has open tickets or not
             RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
                     .tenantId(request.getIncident().getTenantId())
