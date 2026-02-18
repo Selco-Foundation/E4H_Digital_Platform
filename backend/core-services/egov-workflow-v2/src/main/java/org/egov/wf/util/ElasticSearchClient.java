@@ -114,6 +114,17 @@ public class ElasticSearchClient {
 
         if (updatedProcessInstance != null) {
             dataMap.put("currentProcessInstance", updatedProcessInstance);
+//            String localizedApplicationStatus =  updatedProcessInstance.getState().getApplicationStatus().equalsIgnoreCase("PENDINGFORASSIGNMENT_THEFT") ?
+//                    "Pending For Assignment" : "Pending Resolution Spare Part Needed" ;
+
+            // Update incident.applicationStatus if state and applicationStatus are available
+            if (updatedProcessInstance.getState() != null && updatedProcessInstance.getState().getApplicationStatus() != null) {
+//                Map<String, Object> incidentMap = new HashMap<>();
+//                incidentMap.put("applicationStatus", updatedProcessInstance.getState().getApplicationStatus());
+//                incidentMap.put("applicationStatus_localized", localizedApplicationStatus);
+//                dataMap.put("incident", incidentMap);
+                log.debug("Updating incident.applicationStatus to: {}", updatedProcessInstance.getState().getApplicationStatus());
+            }
         }
         log.debug("Current Process Instance data prepared:");
 

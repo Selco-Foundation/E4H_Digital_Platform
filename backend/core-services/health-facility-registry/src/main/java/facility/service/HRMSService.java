@@ -76,6 +76,53 @@ public class HRMSService {
         }
     }
 
+    public boolean employeeExistsByUsername(String username, String tenantId, RequestInfo requestInfo) {
+        log.trace("Entering employeeExistsByMobileNumber method");
+        if (username == null || username.isBlank()) {
+            log.debug("Mobile number is null or blank, returning false");
+            return false;
+        }
+
+        log.info("Checking if employee exists by mobile number for tenant {}", tenantId);
+        log.debug("Searching for employee with mobile number (last 4 digits only for privacy)");
+        try {
+            // Build HRMS search request
+            String uri = UriComponentsBuilder
+                    .fromUriString(configs.getHrmsHost())
+                    .path(configs.getHrmsSearchEndPoint())
+                    .queryParam("codes", username)
+                    .queryParam("tenantId", tenantId)
+                    .queryParam("isActive", true)
+                    .toUriString();
+            log.debug("HRMS search URI constructed");
+
+            // Request body should only contain RequestInfo (Criteria goes in query params)
+            Map<String, Object> searchRequest = new HashMap<>();
+            searchRequest.put("RequestInfo", requestInfo);
+
+            // Call HRMS search API
+            Map<String, Object> response = (Map<String, Object>) serviceRequestRepository.fetchResult(
+                    new StringBuilder(uri), searchRequest
+            );
+
+            // Parse response to check if employee exists
+            if (response != null && response.containsKey("Employees")) {
+                List<Map<String, Object>> employees = (List<Map<String, Object>>) response.get("Employees");
+                boolean exists = employees != null && !employees.isEmpty();
+                log.info("Employee {} by mobile number for tenant {}", exists ? "exists" : "does not exist", tenantId);
+                log.trace("Exiting employeeExistsByMobileNumber method");
+                return exists;
+            }
+
+            log.debug("No employees found in HRMS response");
+            return false;
+        } catch (Exception e) {
+            log.warn("Error checking if employee exists by mobile number for tenant {}: {}", tenantId, e.getMessage(), e);
+            // If check fails, return false to allow creation (fail open approach)
+            return false;
+        }
+    }
+
     /**
      * Creates an HRMS employee for the facility POC user with HCR role.
      * 
