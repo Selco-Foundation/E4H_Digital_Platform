@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:collection/collection.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/widgets/atoms/input_wrapper.dart';
@@ -33,6 +32,10 @@ class AssetCountPage extends StatefulWidget {
 }
 
 class _AssetCountPageState extends State<AssetCountPage> {
+  static const String _inverterType = 'inverter';
+  static const String _batteryType = 'battery';
+  static const String _panelType = 'panel';
+
   String? _currentActivityFacilityId;
   AssetCount? inverterData, batteryData, panelData;
 
@@ -52,34 +55,26 @@ class _AssetCountPageState extends State<AssetCountPage> {
     final sel = context.read<SelectedActivityFacilityBloc>().state;
     sel.whenOrNull(selected: (proj) {
       _currentActivityFacilityId = proj.activityFacility.id;
-      _dispatchInitialLoad(proj.activityFacility.id);
     });
 
     _countSub = context.read<CacheAssetCountBloc>().stream.listen((state) {
       state.maybeWhen(
         loaded: (entries) {
           if (!mounted) return;
-          setState(() {
-            _inverterCount = entries
-                    .firstWhereOrNull((e) =>
-                        e.assetType == ASSET_TYPES.INVERTER.name.toLowerCase())
-                    ?.count ??
-                0;
-            _batteryCount = entries
-                    .firstWhereOrNull((e) =>
-                        e.assetType == ASSET_TYPES.BATTERY.name.toLowerCase())
-                    ?.count ??
-                0;
-            _panelCount = entries
-                    .firstWhereOrNull((e) =>
-                        e.assetType == ASSET_TYPES.PANEL.name.toLowerCase())
-                    ?.count ??
-                0;
-          });
+          _applyEntries(entries);
         },
         orElse: () {},
       );
     });
+
+    context.read<CacheAssetCountBloc>().state.maybeWhen(
+          loaded: (entries) => _applyEntries(entries),
+          orElse: () {},
+        );
+
+    if (_currentActivityFacilityId != null) {
+      _dispatchInitialLoad(_currentActivityFacilityId!);
+    }
   }
 
   @override
@@ -98,6 +93,51 @@ class _AssetCountPageState extends State<AssetCountPage> {
     context.read<CacheAssetCountBloc>().add(
           CacheAssetCountEvent.getAll(projectId),
         );
+  }
+
+  String _normalizeAssetType(String value) => value.trim().toLowerCase();
+
+  int _compareEntries(CacheAssetCount a, CacheAssetCount b) {
+    final aTime = a.updatedAt ?? a.createdAt;
+    final bTime = b.updatedAt ?? b.createdAt;
+    final byTime = aTime.compareTo(bTime);
+    if (byTime != 0) return byTime;
+    return a.id.compareTo(b.id);
+  }
+
+  void _applyEntries(List<CacheAssetCount> entries) {
+    final projectId = _currentActivityFacilityId;
+    final scopedEntries = projectId == null
+        ? entries
+        : entries.where((e) => e.activityFacilityId == projectId);
+
+    final latestByType = <String, CacheAssetCount>{};
+    for (final entry in scopedEntries) {
+      final type = _normalizeAssetType(entry.assetType);
+      if (type != _inverterType && type != _batteryType && type != _panelType) {
+        continue;
+      }
+      final existing = latestByType[type];
+      if (existing == null || _compareEntries(existing, entry) < 0) {
+        latestByType[type] = entry;
+      }
+    }
+
+    final nextInverter = latestByType[_inverterType]?.count ?? 0;
+    final nextBattery = latestByType[_batteryType]?.count ?? 0;
+    final nextPanel = latestByType[_panelType]?.count ?? 0;
+
+    if (_inverterCount == nextInverter &&
+        _batteryCount == nextBattery &&
+        _panelCount == nextPanel) {
+      return;
+    }
+
+    setState(() {
+      _inverterCount = nextInverter;
+      _batteryCount = nextBattery;
+      _panelCount = nextPanel;
+    });
   }
 
   bool get _disableFooter =>
@@ -191,7 +231,8 @@ class _AssetCountPageState extends State<AssetCountPage> {
                                   .add(CacheAssetCountEventAdd(CacheAssetCount(
                                     activityFacilityId:
                                         _currentActivityFacilityId!,
-                                    assetType: 'inverter',
+                                    assetType: _normalizeAssetType(
+                                        ASSET_TYPES.INVERTER.name),
                                     count: c,
                                   )));
                             }
@@ -220,7 +261,8 @@ class _AssetCountPageState extends State<AssetCountPage> {
                                   .add(CacheAssetCountEventAdd(CacheAssetCount(
                                     activityFacilityId:
                                         _currentActivityFacilityId!,
-                                    assetType: 'battery',
+                                    assetType: _normalizeAssetType(
+                                        ASSET_TYPES.BATTERY.name),
                                     count: c,
                                   )));
                             }
@@ -249,7 +291,8 @@ class _AssetCountPageState extends State<AssetCountPage> {
                                   .add(CacheAssetCountEventAdd(CacheAssetCount(
                                     activityFacilityId:
                                         _currentActivityFacilityId!,
-                                    assetType: 'panel',
+                                    assetType: _normalizeAssetType(
+                                        ASSET_TYPES.PANEL.name),
                                     count: c,
                                   )));
                             }
