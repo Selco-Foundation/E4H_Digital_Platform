@@ -359,8 +359,7 @@ class _ActivityFacilitySearchModelCopyWithImpl<$R, $Out>
   ActivityFacilitySearchModel $make(CopyWithData data) =>
       ActivityFacilitySearchModel(
           id: data.get(#id, or: $value.id),
-          facilityName:
-              data.get(#facilityName, or: $value.facilityName),
+          facilityName: data.get(#facilityName, or: $value.facilityName),
           activityId: data.get(#activityId, or: $value.activityId),
           facilityId: data.get(#facilityId, or: $value.facilityId),
           isTaskEnabled: data.get(#isTaskEnabled, or: $value.isTaskEnabled),
