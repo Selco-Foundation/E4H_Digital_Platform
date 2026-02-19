@@ -271,58 +271,31 @@ async def get_facility_ingestion_template_with_data(
         all_facilities = []
         valid_boundary_codes = {boundary.code for boundary in boundary_list}
         facility_client = None
-        
-        # OPTIMIZATION: Fetch all project facilities once, then filter by boundary in memory
-        # This eliminates the N*M nested loop that was causing thousands of API calls
-        if facility_service_url and project_linked_facility_ids:
+
+        # OPTIMIZATION: Reduce calls while keeping original logic
+        # Original code did: for each boundary, for each facilityId -> search(facilityId, boundaryCode)
+        # New approach: for each boundary, fetch all facilities by boundaryCode once,
+        # then intersect in memory with project_linked_facility_ids.
+        if facility_service_url and boundary_list:
             facility_client = FacilityServiceClient(facility_service_url)
-            
-            # Fetch facilities in batches to avoid overwhelming the API
-            # Process facilities in chunks for better performance
-            batch_size = 50
-            facility_id_list = list(project_linked_facility_ids)
-            
-            def fetch_facility_batch(facility_ids_batch):
-                """Fetch a batch of facilities concurrently"""
-                batch_results = []
-                with ThreadPoolExecutor(max_workers=10) as executor:
-                    future_to_facility_id = {
-                        executor.submit(facility_client.search_facility, tenant_id='in', facility_id=facility_id): facility_id
-                        for facility_id in facility_ids_batch
-                    }
-                    for future in as_completed(future_to_facility_id):
-                        facility_id = future_to_facility_id[future]
-                        try:
-                            results = future.result(timeout=30)
-                            facilities = results.get('facilities', [])
-                            batch_results.extend(facilities)
-                        except Exception as e:
-                            logger.error(f"Error fetching facility {facility_id}: {e}", exc_info=True)
-                return batch_results
-            
-            # Process facilities in batches
-            logger.info(f"Fetching {len(facility_id_list)} facilities in batches of {batch_size}")
-            for i in range(0, len(facility_id_list), batch_size):
-                batch = facility_id_list[i:i + batch_size]
-                batch_facilities = fetch_facility_batch(batch)
-                all_facilities.extend(batch_facilities)
-                logger.debug(f"Fetched batch {i//batch_size + 1}/{(len(facility_id_list) + batch_size - 1)//batch_size}: {len(batch_facilities)} facilities")
-            
-            # Filter facilities by boundary codes in memory (much faster than API calls)
-            # This is equivalent to the original nested loop logic, but more efficient
-            logger.info(f"Filtering {len(all_facilities)} facilities by {len(valid_boundary_codes)} boundary codes")
-            filtered_facilities = []
-            seen_facility_ids = set()  # Prevent duplicates (original code could add same facility multiple times)
-            for facility in all_facilities:
-                facility_id = facility.get('facility_id')
-                facility_boundary_code = facility.get('boundary_code') or facility.get('boundaryCode')
-                # Only add if boundary matches AND we haven't seen this facility_id yet
-                if facility_id and facility_id not in seen_facility_ids and facility_boundary_code in valid_boundary_codes:
-                    filtered_facilities.append(facility)
-                    seen_facility_ids.add(facility_id)
-            
-            all_facilities = filtered_facilities
-            logger.info(f"After boundary filtering: {len(all_facilities)} unique facilities match the boundary criteria")
+            seen_facility_ids = set()
+
+            logger.info(f"Fetching facilities by boundary and intersecting with {len(project_linked_facility_ids)} project-linked facilities")
+            for boundary in boundary_list:
+                try:
+                    results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
+                    facilities = results.get('facilities', []) or []
+                    logger.debug(f"Found {len(facilities)} facilities for boundary {boundary.code}")
+
+                    for facility in facilities:
+                        facility_id = facility.get('facility_id')
+                        if facility_id and facility_id in project_linked_facility_ids and facility_id not in seen_facility_ids:
+                            all_facilities.append(facility)
+                            seen_facility_ids.add(facility_id)
+                except Exception as e:
+                    logger.error(f"Error fetching facilities for boundary {boundary.code}: {e}", exc_info=True)
+
+            logger.info(f"Total facilities after boundary + project intersection: {len(all_facilities)}")
 
         # Fetch fieldplan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
