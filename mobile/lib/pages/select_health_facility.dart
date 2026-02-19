@@ -181,13 +181,12 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                     child: _buildSearchAndSortControls(textTheme, theme),
                   ),
                   const SizedBox(height: spacer2),
-                  BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
-                    builder: (context, state) {
-                      return state.maybeWhen(
-                        initial: () => _loadingIndicator(),
-                        loading: () => _loadingIndicator(),
+                  BlocListener<ActivityFacilityBloc, ActivityFacilityState>(
+                    listenWhen: (prev, curr) => prev != curr,
+                    listener: (context, state) {
+                      state.maybeWhen(
                         paginatedLoaded: (items, hasMore, totalCount, fromCache,
-                            isLoadingMore) {
+                            isLoadingMore, rawFetchedCount) {
                           for (final p in items) {
                             for (final t in const [
                               'inverter',
@@ -199,24 +198,36 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                                       p.activityFacility.id, t));
                             }
                           }
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildProjectList(items),
-                              if (isLoadingMore)
-                                const Padding(
-                                  padding: EdgeInsets.only(bottom: spacer4),
-                                  child: Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                ),
-                            ],
-                          );
                         },
-                        searchLoading: () => _loadingIndicator(),
-                        orElse: () => const SizedBox.shrink(),
+                        orElse: () {},
                       );
                     },
+                    child: BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
+                      builder: (context, state) {
+                        return state.maybeWhen(
+                          initial: () => _loadingIndicator(),
+                          loading: () => _loadingIndicator(),
+                          paginatedLoaded: (items, hasMore, totalCount,
+                              fromCache, isLoadingMore, rawFetchedCount) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildProjectList(items),
+                                if (isLoadingMore)
+                                  const Padding(
+                                    padding: EdgeInsets.only(bottom: spacer4),
+                                    child: Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                          searchLoading: () => _loadingIndicator(),
+                          orElse: () => const SizedBox.shrink(),
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),

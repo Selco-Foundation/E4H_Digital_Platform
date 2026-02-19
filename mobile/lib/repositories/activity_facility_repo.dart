@@ -264,16 +264,25 @@ class ActivityFacilityRepository {
 
       final excludedIds = await _excludedIdsFor(userTypes);
       final filteredRemoteList = _applyExclusion(remoteList, excludedIds);
+      final pageSize = limit;
 
       int totalCount;
-      try {
-        final remoteCount = await _remote.searchByWorkflowCount(
-          body: body,
-          workflowStatuses: workflowStatuses,
-        );
-        totalCount = (remoteCount - excludedIds.length).clamp(0, remoteCount);
-      } catch (_) {
-        totalCount = offset + filteredRemoteList.length;
+      if (offset == 0) {
+        try {
+          final remoteCount = await _remote.searchByWorkflowCount(
+            body: body,
+            workflowStatuses: workflowStatuses,
+          );
+          totalCount = (remoteCount - excludedIds.length).clamp(0, remoteCount);
+        } catch (_) {
+          totalCount = offset +
+              filteredRemoteList.length +
+              (filteredRemoteList.length == pageSize ? 1 : 0);
+        }
+      } else {
+        totalCount = offset +
+            filteredRemoteList.length +
+            (filteredRemoteList.length == pageSize ? 1 : 0);
       }
 
       return PaginatedActivityFacilities(

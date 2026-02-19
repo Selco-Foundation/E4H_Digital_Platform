@@ -269,7 +269,8 @@ class _InboxPageState extends State<InboxPage> {
                             initial: () => _loadingIndicator(),
                             loading: () => _loadingIndicator(),
                             paginatedLoaded: (items, hasMore, totalCount,
-                                    fromCache, isLoadingMore) =>
+                                    fromCache, isLoadingMore,
+                                    rawFetchedCount) =>
                                 _buildList(
                               items,
                               userState,

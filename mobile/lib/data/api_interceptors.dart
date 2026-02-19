@@ -107,6 +107,8 @@ class AuthTokenInterceptor extends Interceptor {
 
   @override
   void onError(DioError err, ErrorInterceptorHandler handler) async {
+    AppLogger.instance.error(
+        title: "statusCode", message: err.response?.statusCode?.toString());
     if (err.response?.statusCode != 401) {
       return handler.next(err);
     }

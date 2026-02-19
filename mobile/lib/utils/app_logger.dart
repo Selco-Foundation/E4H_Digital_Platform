@@ -64,6 +64,9 @@ class AppLogger {
         label: title,
         stackTrace: stackTrace,
       );
+      if (message != null) {
+        _printMessage(message, title: title, level: Level.SEVERE);
+      }
       return;
     }
 

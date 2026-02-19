@@ -243,7 +243,7 @@ class ActivityFacilityBloc
         body: body,
         workflowStatuses: event.workflowStatuses,
         limit: _pageSize,
-        offset: currentState.items.length,
+        offset: currentState.rawFetchedCount,
         sortDirection: event.sortDirection ?? 'ASC',
       );
 
@@ -264,6 +264,7 @@ class ActivityFacilityBloc
         hasMore: result.items.isNotEmpty && merged.length < result.totalCount,
         totalCount: result.totalCount,
         fromCache: result.fromCache,
+        rawFetchedCount: currentState.rawFetchedCount + _pageSize,
         isLoadingMore: false,
       ));
     } catch (_) {
@@ -317,6 +318,7 @@ class ActivityFacilityBloc
         hasMore: result.items.length < result.totalCount,
         totalCount: result.totalCount,
         fromCache: result.fromCache,
+        rawFetchedCount: _pageSize,
       ));
     } catch (_) {
       emit(const ActivityFacilityState.paginatedLoaded(
@@ -426,5 +428,6 @@ class ActivityFacilityState with _$ActivityFacilityState {
     required int totalCount,
     @Default(false) bool fromCache,
     @Default(false) bool isLoadingMore,
+    @Default(0) int rawFetchedCount,
   }) = ActivityFacilityPaginatedLoaded;
 }
