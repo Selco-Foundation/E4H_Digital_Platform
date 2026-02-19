@@ -55,7 +55,7 @@ public class ActivityFacilitySearchCriteria {
      * Sort direction for created_time: ASC (oldest first) or DESC (newest first).
      * Defaults to DESC when not specified.
      */
-    @JsonProperty("sortDirection")
+    @JsonProperty("sort_direction")
     private String sortDirection = null;
 
     private String tenantId;
