@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:selco/utils/app_logger.dart';
 
 import '../data/api_interceptors.dart';
 import '../data/network_manager.dart';
@@ -12,6 +11,7 @@ import '../model/request/requestInfo.dart';
 import '../model/response/otp_response.dart';
 import '../model/response/responsemodel.dart';
 import '../model/role_actions/role_actions_model.dart';
+import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 
 class AuthRepository {

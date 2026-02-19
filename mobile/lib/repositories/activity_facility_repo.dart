@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:selco/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 
@@ -13,6 +12,7 @@ import '../data/remote_client.dart';
 import '../model/activity_facility/activity_facility.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/document/document.dart';
+import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'dynamic_form_repo.dart';
@@ -72,7 +72,10 @@ class ActivityFacilityRemoteRepository {
       }
       return activityFacilityList;
     } catch (err) {
-      AppLogger.instance.info(err);
+      AppLogger.instance.error(
+        title: "Activity Search",
+        message: err.toString(),
+      );
       rethrow;
     }
   }

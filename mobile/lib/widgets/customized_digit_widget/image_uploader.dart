@@ -4,7 +4,6 @@ import 'dart:ui';
 
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/ComponentTheme/pop_up_card_theme.dart';
-import 'package:selco/utils/app_logger.dart';
 import 'package:digit_ui_components/utils/utils.dart';
 import 'package:digit_ui_components/utils/validators/file_validator.dart';
 import 'package:digit_ui_components/utils/validators/image_validator.dart';
@@ -14,6 +13,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+
+import '../../utils/app_logger.dart';
 
 class ImageUploader extends StatefulWidget {
   final Function(List<File>) onImagesSelected;

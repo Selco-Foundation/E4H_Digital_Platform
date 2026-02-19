@@ -1,9 +1,7 @@
 import 'dart:async';
 
-import 'package:selco/utils/app_logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 
 import '../../model/appconfig/mdmsRequest.dart';
 import '../../model/appconfig/mdmsResponse.dart';
@@ -12,9 +10,11 @@ import '../../model/asset_type/asset_type.dart';
 import '../../model/brand/brand.dart';
 import '../../model/mdms/mdms.dart';
 import '../../model/solution_design_type/solution_design_type.dart';
+import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
 import '../../repositories/app_init_repo.dart';
+import '../../utils/app_logger.dart';
 import '../../utils/envConfig.dart' as env;
 import '../../utils/utils.dart';
 
