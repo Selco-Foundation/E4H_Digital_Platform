@@ -30,12 +30,12 @@ const useInboxData = (searchParams) => {
       : {}),
   };
 
-  const { assignee } = wfFilters;
+  const { assignee, wfStatus } = wfFilters;
 
   const { data, isSuccess, refetch } = Digit.Hooks.useNewInboxGeneral({
     tenantId: Digit.ULBService.getCurrentTenantId(),
     ModuleCode: "Incident",
-    filters: { ...appFilters, assignee, sortOrder: "DESC", services: ["Incident"] },
+    filters: { ...appFilters, assignee, wfStatus, sortOrder: "DESC", services: ["Incident"] },
     config: {
       select: (data) => ({ data } || "-"),
       enabled: Digit.Utils.pgrAccess(),

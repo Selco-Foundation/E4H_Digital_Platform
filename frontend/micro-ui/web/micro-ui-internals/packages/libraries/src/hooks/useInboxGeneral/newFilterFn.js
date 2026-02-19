@@ -14,22 +14,31 @@ export const filterFunctions = {
       applicationNumber, mobileNumber, limit,
       offset, sortBy, sortOrder, total,
       applicationStatus, services, incidentType,
-      facility, assignee, nearingSLA, state, district, block, isSystemFunctional
+      facility, assignee, nearingSLA, state, district, block, isSystemFunctional, wfStatus
     } = filtersArg || {};
 
     if (filtersArg?.IncidentWrappers) {
       searchFilters.applicationNumber = filtersArg?.incidentId;
     }
-    
-    if (applicationStatus) {
+
+    if (wfStatus) {
+      let convertStatus = [wfStatus];
+      if (wfStatus.includes(",")) {
+        convertStatus = wfStatus.split(",");
+      }
+      if (applicationStatus) {
+        const applicationStatuses = applicationStatus.split(",");
+        const intersectionStatuses = convertStatus.filter((status) => applicationStatuses.includes(status));
+        convertStatus = intersectionStatuses.length ? intersectionStatuses : [""];
+      }
+      workflowFilters.status = convertStatus;
+
+    } else if (applicationStatus) {
       let convertStatus=[applicationStatus];
       if(applicationStatus.includes(",")){
         convertStatus=applicationStatus.split(',')
       }
       workflowFilters.status = convertStatus;
-      // if (applicationStatus?.some((e) => e.nonActionableRole)) {
-      //   searchFilters.fetchNonActionableRecords = true;
-      // }
     }
 
     if(incidentType){
@@ -77,7 +86,11 @@ export const filterFunctions = {
       }
       searchFilters.systemFunctional = convertIsSystemFunctional;
     }
-    
+
+    if (assignee && !wfStatus) {
+      searchFilters.assignee = assignee;
+    }
+
     if (filtersArg?.uuid && filtersArg?.uuid.code === "ASSIGNED_TO_ME") {
       workflowFilters.assignee = uuid;
     }
@@ -105,6 +118,6 @@ export const filterFunctions = {
 
     // workflowFilters.businessService = "PT.CREATE";
     // searchFilters.mobileNumber = "9898568989";
-    return { searchFilters, workflowFilters, limit, offset, sortBy, sortOrder, applicationNumber, assignee};
+    return { searchFilters, workflowFilters, limit, offset, sortBy, sortOrder, applicationNumber };
   },
 };
