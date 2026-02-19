@@ -1,10 +1,10 @@
-import 'package:selco/utils/app_logger.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
 import '../../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../../repositories/asset_repo.dart';
+import '../../utils/app_logger.dart';
 
 part 'cache_asset.freezed.dart';
 

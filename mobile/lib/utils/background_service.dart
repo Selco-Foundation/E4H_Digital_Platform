@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show DartPluginRegistrant;
 
-import 'package:selco/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -29,6 +28,7 @@ import '../repositories/asset_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
 import '../repositories/scheduled_visit_repo.dart';
 import '../utils/utils.dart';
+import 'app_logger.dart';
 import 'constants.dart';
 
 const String kMethodSubmit = 'submit_project';
@@ -120,7 +120,6 @@ Future<void> setupBackgroundService() async {
   _uiErrSub = uiService.on(kEvtError).listen((data) async {
     final pid = data?['activityFacilityId'] as String?;
     final msg = data?['message']?.toString();
-    AppLogger.instance.info('[UI] kEvtError received: pid=$pid msg=$msg');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
@@ -134,7 +133,6 @@ Future<void> setupBackgroundService() async {
   _uiDoneSub?.cancel();
   _uiDoneSub = uiService.on(kEvtDone).listen((data) async {
     final pid = data?['activityFacilityId'] as String?;
-    AppLogger.instance.info('[UI] kEvtDone received: pid=$pid');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
@@ -145,7 +143,6 @@ Future<void> setupBackgroundService() async {
   _uiRejErrSub = uiService.on(kEvtRejectError).listen((data) async {
     final pid = data?['activityFacilityId'] as String?;
     final msg = data?['message']?.toString();
-    AppLogger.instance.info('[UI] kEvtRejectError received: pid=$pid msg=$msg');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
@@ -155,15 +152,11 @@ Future<void> setupBackgroundService() async {
   _uiRejDoneSub?.cancel();
   _uiRejDoneSub = uiService.on(kEvtRejectDone).listen((data) async {
     final pid = data?['activityFacilityId'] as String?;
-    AppLogger.instance.info('[UI] kEvtRejectDone received: pid=$pid');
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
         isar: uiIsar, activityFacilityId: pid, status: 'success');
   });
-
-  AppLogger.instance
-      .info('[UI] setupBackgroundService complete: BG listeners bound');
 }
 
 class BackgroundServiceController {
@@ -207,8 +200,7 @@ class BackgroundServiceController {
 
     final readyStream = service.on(kEvtReady);
     await service.startService();
-    final running = await service.isRunning();
-    AppLogger.instance.info('[UI] service.startService() -> running=$running');
+    await service.isRunning();
 
     await _forceStartJobImmediately(
       service: service,
@@ -254,8 +246,7 @@ class BackgroundServiceController {
 
     final readyStream = service.on(kEvtReady);
     await service.startService();
-    final running = await service.isRunning();
-    AppLogger.instance.info('[UI] service.startService() -> running=$running');
+    await service.isRunning();
 
     await _forceStartJobImmediately(
       service: service,
@@ -303,10 +294,7 @@ class BackgroundServiceController {
     final readyStream = svc.on(kEvtReady);
 
     await svc.startService();
-    final running = await svc.isRunning();
-    AppLogger.instance.info(
-      '[BG-CTL] service.startService() -> running=$running (visit submit)',
-    );
+    await svc.isRunning();
 
     svc.invoke(kCmdForeground, {
       'title': 'Submitting visit report',
@@ -328,7 +316,6 @@ class BackgroundServiceController {
   Future<void> stopNow() async {
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
-      AppLogger.instance.info('[UI] stopNow() -> kCmdStop');
       service.invoke(kCmdStop);
     }
   }
@@ -340,12 +327,6 @@ class BackgroundServiceController {
     required String logTag,
     Stream<dynamic>? readyStream,
   }) async {
-    // IMPORTANT:
-    // `service.invoke(...)` can be dropped if the BG isolate listeners aren't attached yet
-    // (even if `isRunning == true`). So we:
-    //  1) Invoke immediately (no await / no delays)
-    //  2) Re-invoke once BG signals `kEvtReady` (non-blocking)
-    //  3) Add a per-request id `_reqId` so BG can de-dupe.
     final reqId = DateTime.now().microsecondsSinceEpoch.toString();
     final nextPayload = <String, dynamic>{...payload, '_reqId': reqId};
 
@@ -359,8 +340,6 @@ class BackgroundServiceController {
     if (readyStream != null) {
       unawaited(
         readyStream.first.then((_) {
-          AppLogger.instance.info(
-              '$logTag kEvtReady received -> re-invoke $method reqId=$reqId');
           service.invoke(method, nextPayload);
         }).catchError((_) {}),
       );
@@ -437,11 +416,8 @@ void onStart(ServiceInstance service) async {
 
   service.on(kMethodSubmit).listen((payload) async {
     if (_shouldDropDuplicate(payload)) return;
-    AppLogger.instance.info('[BG] submit received: $payload');
     final isar = await isarFuture;
     await envFuture;
-    AppLogger.instance
-        .info('[BG] onStart ready. isar#${identityHashCode(isar)}');
 
     final activityFacilityId = payload?['activityFacilityId'] as String?;
     final facilityId = payload?['facilityId'] as String?;
@@ -456,14 +432,12 @@ void onStart(ServiceInstance service) async {
           activityFacilityId: activityFacilityId,
           status: 'running');
 
-      AppLogger.instance.info('[BG] entering _performSubmissionForProject');
       await _performSubmissionForActivityFacility(
         isar: isar,
         activityFacilityId: activityFacilityId,
         facilityId: facilityId!,
         userType: userType,
       );
-      AppLogger.instance.info('[BG] _performSubmissionForProject done');
 
       await writeJobStatus(
           isar: isar,
@@ -471,7 +445,6 @@ void onStart(ServiceInstance service) async {
           status: 'success');
       service.invoke(kEvtProgress, {'completed': 1, 'total': 1});
 
-      AppLogger.instance.info('[BG] invoke kEvtDone pid=$activityFacilityId');
       service.invoke(kEvtDone, {'activityFacilityId': activityFacilityId});
     } catch (e, st) {
       AppLogger.instance.info('$e\n$st', title: "[BG] ERROR:");
@@ -484,7 +457,6 @@ void onStart(ServiceInstance service) async {
         error: msg,
       );
 
-      AppLogger.instance.info('[BG] invoke kEvtError pid=$activityFacilityId');
       service.invoke(kEvtError,
           {'activityFacilityId': activityFacilityId, 'message': msg});
     }
@@ -494,8 +466,6 @@ void onStart(ServiceInstance service) async {
     if (_shouldDropDuplicate(payload)) return;
     final isar = await isarFuture;
     await envFuture;
-    AppLogger.instance
-        .info('[BG] onStart ready. isar#${identityHashCode(isar)}');
     final activityFacilityId = payload?['activityFacilityId'] as String?;
     final userType = payload?['userType'] as String?;
     final txList = (payload?['transactions'] as List?)?.cast<Map>() ?? const [];
@@ -541,14 +511,7 @@ void onStart(ServiceInstance service) async {
     final visitId = payload?['scheduledVisitId'] as String?;
     final userType = payload?['userType'] as String?;
 
-    AppLogger.instance.info(
-      '[BG] submit_schedule_visit received payload=$payload',
-    );
-
     if (visitId == null || userType == null) {
-      AppLogger.instance.info(
-        '[BG] submit_schedule_visit missing visitId or userType',
-      );
       return;
     }
 
@@ -611,7 +574,6 @@ void onStart(ServiceInstance service) async {
   });
 
   service.on(kCmdStop).listen((_) async {
-    AppLogger.instance.info('[BG] stop requested');
     if (service is AndroidServiceInstance) {
       service.setAsBackgroundService();
     }
@@ -985,10 +947,6 @@ Future<void> _performScheduleVisitSubmission({
   required String scheduledVisitId,
   required String userType,
 }) async {
-  AppLogger.instance.info(
-    '[BG] _performScheduleVisitSubmission started for visit=$scheduledVisitId userType=$userType',
-  );
-
   final form = await isar.cacheScheduleVisitFormValues
       .where()
       .scheduledVisitIdEqualTo(scheduledVisitId)
@@ -1080,10 +1038,6 @@ Future<void> _performScheduleVisitSubmission({
         longitude: installationForm.geoLocation?.longitude ?? '',
         userType: userType,
       ));
-
-  AppLogger.instance.info(
-    '[BG] _performScheduleVisitSubmission completed for visit=$scheduledVisitId',
-  );
 }
 
 class PlainError implements Exception {

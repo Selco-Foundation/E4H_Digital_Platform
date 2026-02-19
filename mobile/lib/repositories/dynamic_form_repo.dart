@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:selco/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 
@@ -12,6 +11,7 @@ import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
+import '../utils/app_logger.dart';
 import '../utils/envConfig.dart' as env;
 import '../utils/utils.dart';
 import 'activity_facility_repo.dart';
@@ -339,7 +339,6 @@ class BomRepository {
     final path =
         isUpdate ? 'activity/v1/bom/_update' : 'activity/v1/bom/_create';
     final response = await _dio.post(path, data: payload);
-    AppLogger.instance.info("bom create/update ${response.data}");
     final returnedId = _extractBomId(response.data);
     final finalId = isUpdate ? (existingId ?? '') : ((returnedId ?? '').trim());
 
@@ -451,8 +450,10 @@ class BomRepository {
       }
       return (savedBomValues: savedValues);
     } catch (e, stack) {
-      AppLogger.instance.info("syncBomForProject ERROR: $e");
-      AppLogger.instance.info(stack);
+      AppLogger.instance.error(
+          title: "syncBomForProject ERROR:",
+          message: e.toString(),
+          stackTrace: stack);
       throw Exception("Error syncing bom");
     }
   }
@@ -904,7 +905,8 @@ class AmcDynamicFormRepository {
 
       return filestoreId;
     } catch (e) {
-      AppLogger.instance.info("error $e");
+      AppLogger.instance
+          .error(title: "Failed to generate BOM PDF", message: "error $e");
       throw Exception("Failed to generate BOM PDF filestoreId");
     }
   }

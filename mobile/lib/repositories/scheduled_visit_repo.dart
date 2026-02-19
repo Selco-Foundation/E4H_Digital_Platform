@@ -1,15 +1,15 @@
-import 'package:selco/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
 
-import '../data/nosql/cache_amc_installation_form.dart';
 import '../data/nosql/cache_amc_failed_scheduled_visit.dart';
+import '../data/nosql/cache_amc_installation_form.dart';
 import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_prefilled_scheduled_visit.dart';
 import '../data/nosql/cache_scheduled_visit.dart';
 import '../data/remote_client.dart';
 import '../model/document/document.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
+import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 
@@ -56,8 +56,6 @@ class ScheduledVisitRemoteRepository {
         Map<String, dynamic>.from(response.data as Map),
       );
     } on DioError catch (err) {
-      AppLogger.instance
-          .info('ScheduledVisitRemoteRepository.search error: $err');
       rethrow;
     }
   }
@@ -101,11 +99,7 @@ class ScheduledVisitRemoteRepository {
         },
       };
 
-      final resp = await dio.post(path, data: body);
-
-      AppLogger.instance.info(
-        'ScheduledVisitRemoteRepository.updateVisitWorkflow status=${resp.statusCode}',
-      );
+      await dio.post(path, data: body);
     } on DioError catch (e) {
       AppLogger.instance.info(
         'ScheduledVisitRemoteRepository.updateVisitWorkflow DioError=$e',
@@ -123,11 +117,7 @@ class ScheduledVisitRemoteRepository {
     const path = 'asset-amc/v1/visit/_resend_otp';
 
     try {
-      final resp = await dio.post(path, data: <String, dynamic>{});
-
-      AppLogger.instance.info(
-        'ScheduledVisitRemoteRepository.resendVisitOtp status=${resp.statusCode} ${resp.data}',
-      );
+      await dio.post(path, data: <String, dynamic>{});
     } on DioError catch (e) {
       AppLogger.instance.info(
         'ScheduledVisitRemoteRepository.resendVisitOtp DioError=$e',
@@ -203,7 +193,6 @@ class ScheduledVisitRepository {
       AppLogger.instance.info(
         'Failed to fetch scheduled visits remotely, falling back to cache: $e',
       );
-      AppLogger.instance.debug(st.toString());
 
       final cachedItems = await _readCache(
         statuses: statuses,

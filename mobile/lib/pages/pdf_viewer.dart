@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:auto_route/auto_route.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:selco/utils/app_logger.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../utils/app_logger.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -95,10 +95,13 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
                   setState(() => _currentPage = page ?? 0);
                 },
                 onError: (err) {
-                  AppLogger.instance.info(err, title: "PDF error: ");
+                  AppLogger.instance
+                      .error(title: "PDF error: ", message: err.toString());
                 },
                 onPageError: (page, err) {
-                  AppLogger.instance.info('PDF page $page error: $err');
+                  AppLogger.instance.error(
+                      title: "PDF Page error: ",
+                      message: 'PDF page $page error: $err');
                 },
               ),
             ),

@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:selco/utils/app_logger.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 
@@ -16,6 +15,7 @@ import '../model/solution_design_type/solution_design_type.dart';
 import '../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../model/system/system.dart';
 import '../model/warranty/warranty.dart';
+import '../utils/app_logger.dart';
 import '../utils/envConfig.dart';
 
 EnvironmentConfiguration envConfig = EnvironmentConfiguration.instance;

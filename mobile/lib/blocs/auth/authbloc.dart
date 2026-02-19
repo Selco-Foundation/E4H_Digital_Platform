@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:selco/utils/app_logger.dart';
 
 import '../../data/network_manager.dart';
 import '../../data/secure_storage/secureStore.dart';
@@ -12,6 +11,7 @@ import '../../model/login/loginModel.dart';
 import '../../model/response/responsemodel.dart';
 import '../../repositories/app_init_repo.dart';
 import '../../repositories/auth_repo.dart';
+import '../../utils/app_logger.dart';
 import '../../utils/i18_key_constants.dart' as i18;
 
 part 'authbloc.freezed.dart';
