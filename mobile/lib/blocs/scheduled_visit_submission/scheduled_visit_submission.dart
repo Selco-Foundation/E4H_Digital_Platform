@@ -96,8 +96,7 @@ class ScheduleVisitSubmitBloc
           stackTrace: st);
       try {
         await _scheduledVisitRepository.addFailedScheduledVisitToCache(
-          scheduledVisitId: event.scheduledVisitId,
-        );
+            scheduledVisitId: event.scheduledVisitId);
       } catch (_) {}
       await BackgroundServiceController.I.stopNow();
       emit(
@@ -112,9 +111,10 @@ class ScheduleVisitSubmitBloc
     _BgDone event,
     Emitter<ScheduleVisitSubmitState> emit,
   ) async {
-    await _scheduledVisitRepository.removeFailedScheduledVisitFromCache(
-      scheduledVisitId: event.scheduledVisitId,
-    );
+    try {
+      await _scheduledVisitRepository.removeFailedScheduledVisitFromCache(
+          scheduledVisitId: event.scheduledVisitId);
+    } catch (_) {}
     await BackgroundServiceController.I.stopNow();
     emit(const ScheduleVisitSubmitState.success());
   }
@@ -123,9 +123,10 @@ class ScheduleVisitSubmitBloc
     _BgError event,
     Emitter<ScheduleVisitSubmitState> emit,
   ) async {
-    await _scheduledVisitRepository.addFailedScheduledVisitToCache(
-      scheduledVisitId: event.scheduledVisitId,
-    );
+    try {
+      await _scheduledVisitRepository.addFailedScheduledVisitToCache(
+          scheduledVisitId: event.scheduledVisitId);
+    } catch (_) {}
     await BackgroundServiceController.I.stopNow();
     emit(
       ScheduleVisitSubmitState.failure(

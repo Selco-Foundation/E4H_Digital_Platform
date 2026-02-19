@@ -340,6 +340,13 @@ class ActivityFacilityRepository {
     final col = _isar.cacheActivityFacilityWorkflows;
     await _isar.writeTxn(() async {
       for (final wf in items) {
+        final existing = await col
+            .where()
+            .activityFacilityIdEqualTo(wf.activityFacility.id)
+            .findAll();
+        for (final entry in existing) {
+          await col.delete(entry.id);
+        }
         await col.put(CacheActivityFacilityWorkflow(
           activityFacilityId: wf.activityFacility.id,
           status: wf.status ?? '',
