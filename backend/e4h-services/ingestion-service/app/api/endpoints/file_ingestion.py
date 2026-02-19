@@ -98,7 +98,7 @@ async def upload_vendors_excel_sheet(
     input_temp_file = None
     output_temp_file = None
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
+    #get_authorized_request_info(request_info)
     logger.info(f"Processing vendor file: vendor_sheet={vendor_sheet_name}, boundary_sheet={boundary_sheet_name}")
 
     try:
@@ -460,7 +460,7 @@ async def upload_facilities_with_workstream(
         installation_spoc_user_email:str = Form(default="")
 )->JSONResponse:
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
+    #get_authorized_request_info(request_info)
 
     try:
         # Fetch project of type Field Plan using project_id
@@ -531,7 +531,7 @@ async def upload_facility_with_staff_excel_sheet(
     input_temp_file = None
     output_temp_file = None
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
+    #get_authorized_request_info(request_info)
 
     try:
         # Create input temporary file
@@ -673,7 +673,7 @@ async def upload_facility_with_supervisors_excel_sheet(
     input_temp_file = None
     output_temp_file = None
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
+    #get_authorized_request_info(request_info)
 
     try:
         # Create input temporary file
@@ -824,7 +824,7 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
     input_temp_file = None
     output_temp_file = None
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
+    #get_authorized_request_info(request_info)
 
     try:
         # Create input temporary file
@@ -1012,7 +1012,7 @@ async def upload_projects_excel_sheet(
     input_temp_file = None
     output_temp_file = None
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
+    #get_authorized_request_info(request_info)
 
     try:
         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -1177,7 +1177,7 @@ async def upload_facility_selection_excel_sheet(
     input_temp_file = None
     output_temp_file = None
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
+    #get_authorized_request_info(request_info)
 
     try:
         input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
@@ -1734,7 +1734,7 @@ async def update_incidents_data_from_excel(
 ):
     temp_file = None
     request_info = request_info_from_json(request_info)
-    get_authorized_request_info(request_info)
+    #get_authorized_request_info(request_info)
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:

@@ -170,15 +170,15 @@ const OrganizationDetails = () => {
         />
       </div>
       <div style={{padding: "20px"}}>
-        <InfoItem title={t("ORGANIZATION_NAME")} value={organizationData?.name} />
-        <InfoItem title={t("ORGANIZATION_TYPE")} value={t(`ORGANIZATION_TYPE_${organizationData?.orgType}`)} />
-        <InfoItem title={t("ORGANIZATION_SUB_TYPE")} value={t(`ORGANIZATION_SUB_TYPE_${organizationData?.orgSubType}`)} />
-        <InfoItem title={t("ORGANIZATION_CODE")} value={organizationData?.code} />
-        <InfoItem title={t("ORGANIZATION_STATUS")} value={t(`ORGANIZATION_STATUS_${organizationData?.orgStatus}`)} />
-        <InfoItem title={t("ORGANIZATION_POC_NAME")} value={organizationData?.orgPocName} />
-        <InfoItem title={t("ORGANIZATION_POC_PHONE")} value={organizationData?.orgPocPhone} />
-        <InfoItem title={t("ORGANIZATION_POC_EMAIL")} value={organizationData?.orgPocEmail} />
-        <InfoItem title={t("ORGANIZATION_POC_USERNAME")} value={organizationData?.orgPocUsername} />
+        <InfoItem title={t("ORGANIZATION_NAME")} value={organizationData?.name ? organizationData.name : "-"} />
+        <InfoItem title={t("ORGANIZATION_TYPE")} value={organizationData?.orgType ? t(`ORGANIZATION_TYPE_${organizationData.orgType}`) : "-"} />
+        <InfoItem title={t("ORGANIZATION_SUB_TYPE")} value={organizationData?.orgSubType ? t(`ORGANIZATION_SUB_TYPE_${organizationData.orgSubType}`) : "-"} />
+        <InfoItem title={t("ORGANIZATION_CODE")} value={organizationData?.code ? organizationData.code : "-"} />
+        <InfoItem title={t("ORGANIZATION_STATUS")} value={organizationData?.orgStatus ? t(`ORGANIZATION_STATUS_${organizationData.orgStatus}`) : "-"} />
+        <InfoItem title={t("ORGANIZATION_POC_NAME")} value={organizationData?.orgPocName ? organizationData?.orgPocName : "-"} />
+        <InfoItem title={t("ORGANIZATION_POC_PHONE")} value={organizationData?.orgPocPhone ? organizationData.orgPocPhone : "-"} />
+        <InfoItem title={t("ORGANIZATION_POC_EMAIL")} value={organizationData?.orgPocEmail ? organizationData.orgPocEmail : "-"} />
+        <InfoItem title={t("ORGANIZATION_POC_USERNAME")} value={organizationData?.orgPocUsername ? organizationData.orgPocUsername : "-"} />
       </div>
       <OrganizationUserTable t={t} organizationId={organizationId} organizationType={organizationData?.orgType} organizationSubType={organizationData?.orgSubType} />
       {showEditModal && (
