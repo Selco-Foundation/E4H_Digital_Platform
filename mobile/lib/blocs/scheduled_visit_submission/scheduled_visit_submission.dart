@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:selco/utils/app_logger.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/utils/app_logger.dart';
 
 import '../../repositories/scheduled_visit_repo.dart';
 import '../../utils/background_service.dart'
@@ -94,9 +94,11 @@ class ScheduleVisitSubmitBloc
               '[ScheduleVisitSubmitBloc] enqueueScheduleVisitSubmission failed',
           message: e.toString(),
           stackTrace: st);
-      await _scheduledVisitRepository.addFailedScheduledVisitToCache(
-        scheduledVisitId: event.scheduledVisitId,
-      );
+      try {
+        await _scheduledVisitRepository.addFailedScheduledVisitToCache(
+          scheduledVisitId: event.scheduledVisitId,
+        );
+      } catch (_) {}
       await BackgroundServiceController.I.stopNow();
       emit(
         const ScheduleVisitSubmitState.failure(

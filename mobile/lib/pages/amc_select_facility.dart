@@ -320,7 +320,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
   }
 }
 
-class AMCInstallationReportCard extends StatelessWidget {
+class AMCInstallationReportCard extends StatefulWidget {
   final String? scheduledVisitId;
   final String? title;
   final String? status;
@@ -341,11 +341,41 @@ class AMCInstallationReportCard extends StatelessWidget {
   });
 
   @override
+  State<AMCInstallationReportCard> createState() =>
+      _AMCInstallationReportCardState();
+}
+
+class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
+  late Future<bool> _isFailedFuture;
+
+  void _loadIsFailedFuture() {
+    _isFailedFuture = ScheduledVisitRepository(
+      context.read<ScheduledVisitBloc>().isar,
+    ).isFailedScheduledVisitInCache(
+      scheduledVisitId: widget.scheduledVisitId ?? '',
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadIsFailedFuture();
+  }
+
+  @override
+  void didUpdateWidget(covariant AMCInstallationReportCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.scheduledVisitId != widget.scheduledVisitId) {
+      _loadIsFailedFuture();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
-    final effectiveLabel = label ?? '';
-    String formattedDate = DateFormat('dd/MM/yy').format(dateAssigned);
+    final effectiveLabel = widget.label ?? '';
+    String formattedDate = DateFormat('dd/MM/yy').format(widget.dateAssigned);
 
     return DigitCard(
       children: [
@@ -353,7 +383,7 @@ class AMCInstallationReportCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "$title",
+              "${widget.title}",
               style: textTheme.headingL.copyWith(
                 color: theme.colorTheme.text.primary,
               ),
@@ -390,7 +420,7 @@ class AMCInstallationReportCard extends StatelessWidget {
                     children: [
                       const SizedBox(height: spacer4),
                       Text(
-                        context.translate('$status'),
+                        context.translate('${widget.status}'),
                         style: textTheme.bodyL.copyWith(
                           color: theme.colorTheme.text.primary,
                         ),
@@ -413,17 +443,13 @@ class AMCInstallationReportCard extends StatelessWidget {
             DigitButton(
               mainAxisSize: MainAxisSize.max,
               label: "$effectiveLabel Report",
-              onPressed: onPress,
+              onPressed: widget.onPress,
               type: DigitButtonType.primary,
               size: DigitButtonSize.large,
             ),
             const SizedBox(height: spacer4),
             FutureBuilder<bool>(
-              future: ScheduledVisitRepository(
-                context.read<ScheduledVisitBloc>().isar,
-              ).isFailedScheduledVisitInCache(
-                scheduledVisitId: scheduledVisitId ?? '',
-              ),
+              future: _isFailedFuture,
               builder: (context, snapshot) {
                 final existsInFailedCache = snapshot.data == true;
                 final canResume = effectiveLabel.contains("Resume");
