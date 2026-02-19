@@ -9,6 +9,7 @@ import org.egov.im.util.IMConstants;
 import org.egov.im.util.ResponseInfoFactory;
 import org.egov.im.web.models.CountResponse;
 import org.egov.im.web.models.IncidentRequest;
+import org.egov.im.web.models.MigrationV2Request;
 import org.egov.im.web.models.IncidentResponse;
 import org.egov.im.web.models.IncidentWrapper;
 import org.egov.im.web.models.RequestInfoWrapper;
@@ -98,6 +99,16 @@ public class RequestsApiController{
         IncidentWrapper incidentWrapper = IncidentWrapper.builder().incident(enrichedReq.getIncident()).workflow(enrichedReq.getWorkflow()).build();
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
         IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.singletonList(incidentWrapper)).build();
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @RequestMapping(value="/request/migration/v2/_update", method = RequestMethod.POST)
+    public ResponseEntity<IncidentResponse> migrationV2UpdateTheftStatus(@Valid @RequestBody MigrationV2Request request) {
+        log.trace("RequestsApiController::migrationV2UpdateTheftStatus method invoked");
+        log.info("Received migration v2 update request for tenantId={}", request.getTenantId());
+        MigrationV2Request enrichedReq = imService.migrationV2Update(request);
+        ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
+        IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.emptyList()).build();
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
