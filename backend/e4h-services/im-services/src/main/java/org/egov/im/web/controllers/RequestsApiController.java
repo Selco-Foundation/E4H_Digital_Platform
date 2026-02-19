@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.im.service.IMService;
+import org.egov.im.service.TheftNotificationService;
 import org.egov.im.util.IMConstants;
 import org.egov.im.util.ResponseInfoFactory;
 import org.egov.im.web.models.CountResponse;
@@ -37,12 +38,15 @@ public class RequestsApiController{
 
     private ResponseInfoFactory responseInfoFactory;
 
+    private TheftNotificationService theftNotificationService;
 
     @Autowired
-    public RequestsApiController(ObjectMapper objectMapper, IMService imService, ResponseInfoFactory responseInfoFactory) {
+    public RequestsApiController(ObjectMapper objectMapper, IMService imService, ResponseInfoFactory responseInfoFactory,
+                                 TheftNotificationService theftNotificationService) {
         this.objectMapper = objectMapper;
         this.imService = imService;
         this.responseInfoFactory = responseInfoFactory;
+        this.theftNotificationService = theftNotificationService;
     }
 
 
@@ -122,6 +126,28 @@ public class RequestsApiController{
         log.info("Count request completed successfully, count={}", count);
         return new ResponseEntity<>(response, HttpStatus.OK);
 
+    }
+
+    /**
+     * Triggers theft notification: scans for tickets in state PENDINGFORASSIGNMENT_THEFT
+     * that have exceeded the threshold (from MDMS common-masters TheftNotificationThreshold)
+     * since filed date, and sends SMS to CRM: "Theft ticket [Ticket No.] requires action".
+     * Can be called by cron or manually. Optional: tenantId in query (GET) or body (POST).
+     */
+    @RequestMapping(value = "/theft-notification", method = { RequestMethod.POST, RequestMethod.GET })
+    public ResponseEntity<Map<String, Object>> theftNotification(
+            @RequestParam(required = false) String tenantId,
+            @RequestBody(required = false) Map<String, String> body) {
+        log.trace("RequestsApiController::theftNotification method invoked");
+        String effectiveTenantId = tenantId;
+        if (effectiveTenantId == null && body != null) {
+            effectiveTenantId = body.get("tenantId");
+        }
+        int sent = theftNotificationService.runTheftNotification(effectiveTenantId);
+        Map<String, Object> response = new HashMap<>();
+        response.put("notificationsSent", sent);
+        log.info("Theft notification completed, notificationsSent={}", sent);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
 }

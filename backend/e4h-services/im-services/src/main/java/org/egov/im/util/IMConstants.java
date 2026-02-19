@@ -74,6 +74,8 @@ public class IMConstants {
 
     public static final String PENDINGFORASSIGNMENT = "PENDINGFORASSIGNMENT";
 
+    public static final String PENDINGFORASSIGNMENT_THEFT = "PENDINGFORASSIGNMENT_THEFT";
+
     public static final String RESOLVED = "RESOLVED";
 
     public static final String CLOSED_AFTER_RESOLUTION = "CLOSEDAFTERRESOLUTION";
