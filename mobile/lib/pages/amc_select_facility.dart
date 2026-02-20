@@ -52,7 +52,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
     final textTheme = theme.digitTextTheme(context);
 
     final isar = context.read<ScheduledVisitBloc>().isar;
-    const schemaKey = 'SELCO.AMC_SCHEDULED_MAINTENANCE';
+    const schemaKey = 'AssetForm.AMC_SCHEDULED_MAINTENANCE';
 
     return BlocBuilder<ScheduledVisitBloc, ScheduledVisitState>(
       builder: (context, state) {
@@ -181,7 +181,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                               AmcDynamicFormRoute(
                                                 pageName: 'AMC_Report',
                                                 uniqueIdentifier:
-                                                    'AMC.SCHEDULED_MAINTENANCE',
+                                                    'AssetForm.AMC_SCHEDULED_MAINTENANCE',
                                                 schemaName: schemaKey,
                                                 scheduledVisit: items[index],
                                                 origin:

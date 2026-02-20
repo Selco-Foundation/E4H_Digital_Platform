@@ -134,12 +134,8 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
             tenantId: env.envConfig.variables.tenantId,
-            moduleDetails: [
-              const MdmsModuleDetailsModel(
-                moduleName: 'SELCO',
-                masterDetails: [MdmsMasterDetailsModel('FormConfig')],
-              ),
-            ],
+            schemaCode: "common-masters.BOMFormSchema",
+            moduleDetails: [],
           ),
         ),
       );

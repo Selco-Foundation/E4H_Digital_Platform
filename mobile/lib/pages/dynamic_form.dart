@@ -107,12 +107,8 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
           const MdmsRequestModel(
             mdmsCriteria: MdmsCriteriaModel(
               tenantId: 'in',
-              moduleDetails: [
-                MdmsModuleDetailsModel(
-                  moduleName: 'SELCO',
-                  masterDetails: [MdmsMasterDetailsModel('FormConfig')],
-                ),
-              ],
+              schemaCode: "common-masters.BOMFormSchema",
+              moduleDetails: [],
             ),
           ),
         );

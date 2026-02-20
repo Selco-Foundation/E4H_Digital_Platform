@@ -287,8 +287,8 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                     context.router.push(
                       AmcDynamicFormRoute(
                         pageName: "AMC_Report",
-                        uniqueIdentifier: "AMC.SCHEDULED_MAINTENANCE",
-                        schemaName: "SELCO.AMC_SCHEDULED_MAINTENANCE",
+                        uniqueIdentifier: "AssetForm.AMC_SCHEDULED_MAINTENANCE",
+                        schemaName: "AssetForm.AMC_SCHEDULED_MAINTENANCE",
                         scheduledVisit: visit,
                         origin: FormOrigin.submitted,
                       ),
