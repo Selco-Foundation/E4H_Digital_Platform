@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
+import 'package:selco/utils/app_logger.dart';
 
 import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
@@ -52,10 +53,10 @@ class ActivityFacilityRemoteRepository {
           'offset': offset,
           'includeDescendants': false,
           'includeAncestors': false,
-          'sort_direction': sortDirection
         },
         data: {
           'ActivityFacility': {
+            'sort_direction': sortDirection,
             'statuses': workflowStatuses,
             'tenantId': envConfig.variables.tenantId,
             ...body.toMap(),
