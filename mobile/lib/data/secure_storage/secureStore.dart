@@ -120,6 +120,22 @@ class SecureStore {
     return await storage.read(key: 'solutionDesignBom');
   }
 
+  Future<void> setFormConfigsRaw(List<Map<String, dynamic>> list) async {
+    await storage.write(key: 'formConfigsRaw', value: json.encode(list));
+  }
+
+  Future<String?> getFormConfigsRaw() async {
+    return await storage.read(key: 'formConfigsRaw');
+  }
+
+  Future<void> setAMCFormConfigsRaw(List<Map<String, dynamic>> list) async {
+    await storage.write(key: 'amcFormConfigsRaw', value: json.encode(list));
+  }
+
+  Future<String?> getAMCFormConfigsRaw() async {
+    return await storage.read(key: 'amcFormConfigsRaw');
+  }
+
   Future<void> setFormSchemas(Map<String, dynamic> schemas) async {
     await storage.write(
       key: 'forms_schemas',
