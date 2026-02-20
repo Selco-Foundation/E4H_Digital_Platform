@@ -103,12 +103,8 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
           const MdmsRequestModel(
             mdmsCriteria: MdmsCriteriaModel(
               tenantId: 'in',
-              moduleDetails: [
-                MdmsModuleDetailsModel(
-                  moduleName: 'SELCO',
-                  masterDetails: [MdmsMasterDetailsModel('FormConfig')],
-                ),
-              ],
+              schemaCode: "common-masters.AMCFormSchema",
+              moduleDetails: [],
             ),
           ),
         );
@@ -137,8 +133,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
           _repo.upsertTransformedSchema(transformed);
           schemaJson = transformed;
         }
-      } catch (_) {
-      }
+      } catch (_) {}
     }
 
     if (!mounted) return;
