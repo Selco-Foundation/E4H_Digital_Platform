@@ -17,6 +17,7 @@ import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import 'package:selco/utils/app_logger.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
@@ -603,48 +604,62 @@ Future<List<PlatformFile>> loadInitialCompletion({
   required Isar isar,
   required String projectId,
   required ActivityFacilityWorkflow activityFacilityWorkflow,
+  int maxConcurrent = 5,
 }) async {
   final cachedList = await isar.cacheCompletionReports
       .where()
       .activityFacilityIdEqualTo(projectId)
       .findAll();
 
-  final localFiles = <PlatformFile>[];
-  for (final cached in cachedList) {
-    if (cached.filePath.isNotEmpty) {
-      final f = await getCachedFile(cached.filePath);
-      if (f != null) {
-        final pth = await copyFileToLocalDir(f);
-        localFiles.add(PlatformFile(
-          name: p.basename(pth),
-          path: pth,
-          size: File(pth).lengthSync(),
-        ));
-      }
-    }
-  }
-
   final docs = activityFacilityWorkflow.workflow?.documents ?? [];
+  final rawSources = <String>[
+    ...cachedList.map((cached) => cached.filePath).where((p) => p.isNotEmpty),
+    ...docs
+        .where((doc) =>
+            (doc.documentType ?? '').contains('INSTALLATION_REPORT') &&
+            (doc.fileStore?.isNotEmpty ?? false))
+        .map((doc) => doc.fileStore!)
+        .where((s) => s.isNotEmpty),
+  ];
 
-  final serverFiles = <PlatformFile>[];
-  for (final doc in docs) {
-    if (doc.documentType!.contains('INSTALLATION_REPORT') &&
-        (doc.fileStore != null && doc.fileStore!.isNotEmpty)) {
-      final idOrUrl = doc.fileStore ?? '';
-      if (idOrUrl.isEmpty) continue;
-      final f = await getCachedFile(idOrUrl);
-      if (f != null) {
-        final pth = await copyFileToLocalDir(f);
-        serverFiles.add(PlatformFile(
-          name: p.basename(pth),
-          path: pth,
-          size: File(pth).lengthSync(),
-        ));
-      }
-    }
+  final sourceSeen = <String>{};
+  final sources = rawSources.where((s) => sourceSeen.add(s)).toList();
+
+  if (sources.isEmpty) return <PlatformFile>[];
+
+  final concurrency = maxConcurrent < 1 ? 1 : maxConcurrent;
+  final out = <PlatformFile>[];
+  final seen = <String>{};
+
+  for (var i = 0; i < sources.length; i += concurrency) {
+    final batch = sources.skip(i).take(concurrency).toList();
+
+    final batchResult = await Future.wait(
+      batch.map((idOrUrl) async {
+        if (idOrUrl.isEmpty) return null;
+        try {
+          final f = await getCachedFile(idOrUrl);
+          if (f == null) return null;
+
+          final pth = await copyFileToLocalDir(f);
+          if (pth.isEmpty || !seen.add(pth)) return null;
+
+          return PlatformFile(
+            name: p.basename(pth),
+            path: pth,
+            size: File(pth).lengthSync(),
+          );
+        } catch (_) {
+          // Keep partial success behavior: one failed file should not abort all.
+          return null;
+        }
+      }),
+    );
+
+    out.addAll(batchResult.whereType<PlatformFile>());
   }
 
-  return [...localFiles, ...serverFiles];
+  return out;
 }
 
 Future<List<PlatformFile>> copyPickedFilesLocally(

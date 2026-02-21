@@ -48,6 +48,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
   ActivityFacilityWorkflow? workflow;
   String? _system;
   List<ExistingReport> _existingReports = [];
+  bool _isInitialCompletionLoading = false;
 
   @override
   void initState() {
@@ -136,26 +137,35 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
   }
 
   Future<void> _loadInitialCompletion() async {
+    if (mounted) {
+      setState(() => _isInitialCompletionLoading = true);
+    }
+
     final isar = context.read<CacheAssetBloc>().isar;
+    try {
+      final combined = await loadInitialCompletion(
+        isar: isar,
+        projectId: _currentProjectId!,
+        activityFacilityWorkflow: workflow!,
+      );
 
-    final combined = await loadInitialCompletion(
-      isar: isar,
-      projectId: _currentProjectId!,
-      activityFacilityWorkflow: workflow!,
-    );
-
-    if (!mounted) return;
-    setState(() {
-      _existingReports = combined.map((pf) {
-        final path = pf.path!;
-        return ExistingReport(
-          isarId: null,
-          filePath: path,
-          fileName: p.basename(path),
-          fileType: inferFileType(path),
-        );
-      }).toList();
-    });
+      if (!mounted) return;
+      setState(() {
+        _existingReports = combined.map((pf) {
+          final path = pf.path!;
+          return ExistingReport(
+            isarId: null,
+            filePath: path,
+            fileName: p.basename(path),
+            fileType: inferFileType(path),
+          );
+        }).toList();
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isInitialCompletionLoading = false);
+      }
+    }
   }
 
   Future<void> _loadProjectSystem() async {
@@ -471,6 +481,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                           workflowDocuments:
                                               workflow?.workflow?.documents ??
                                                   [],
+                                          isLoading:
+                                              _isInitialCompletionLoading,
                                           readOnly: true,
                                         ),
                                       ],

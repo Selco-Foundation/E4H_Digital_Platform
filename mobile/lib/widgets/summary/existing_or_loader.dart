@@ -10,6 +10,32 @@ import '../../router/app_router.dart';
 import '../../widgets/summary/summary.dart';
 import '../files/pdf_card.dart';
 
+Widget _imagePlaceholder(BuildContext context) {
+  final theme = Theme.of(context);
+  return Container(
+    color: theme.colorTheme.generic.background,
+    child: const Center(
+      child: SizedBox(
+        width: spacer5,
+        height: spacer5,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+    ),
+  );
+}
+
+Widget _imageErrorFallback(BuildContext context) {
+  final theme = Theme.of(context);
+  return Container(
+    color: theme.colorTheme.generic.background,
+    child: Icon(
+      Icons.broken_image_outlined,
+      color: theme.colorTheme.text.secondary,
+      size: spacer6,
+    ),
+  );
+}
+
 List<ExistingReport> _applyPdfNamesByFileStoreId(
   List<ExistingReport> existing,
   List<Document> docs,
@@ -76,6 +102,10 @@ Widget existingFilesSection({
           child: Row(
             children: images.asMap().entries.map((entry) {
               final img = entry.value;
+              final previewSize = spacer12 * 2;
+              final decodeSize =
+                  (previewSize * MediaQuery.of(context).devicePixelRatio)
+                      .round();
 
               return Padding(
                 padding: const EdgeInsets.only(right: spacer2),
@@ -84,11 +114,25 @@ Widget existingFilesSection({
                   children: [
                     GestureDetector(
                       onTap: () => onTapImage(img.filePath),
-                      child: Image.file(
-                        File(img.filePath),
-                        width: spacer12 * 2,
-                        height: spacer12 * 2,
-                        fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: previewSize,
+                        height: previewSize,
+                        child: Image.file(
+                          File(img.filePath),
+                          width: previewSize,
+                          height: previewSize,
+                          fit: BoxFit.cover,
+                          cacheWidth: decodeSize,
+                          cacheHeight: decodeSize,
+                          frameBuilder: (context, child, frame, _) {
+                            if (frame == null) {
+                              return _imagePlaceholder(context);
+                            }
+                            return child;
+                          },
+                          errorBuilder: (_, __, ___) =>
+                              _imageErrorFallback(context),
+                        ),
                       ),
                     ),
                     if (showEditButton == true)
@@ -160,6 +204,7 @@ class ExistingFilesOrLoader extends StatelessWidget {
   final List<ExistingReport>? existingReports;
   final List<Document>? workflowDocuments;
   final bool readOnly;
+  final bool isLoading;
   final void Function(ExistingReport)? onRemove;
 
   const ExistingFilesOrLoader({
@@ -167,26 +212,21 @@ class ExistingFilesOrLoader extends StatelessWidget {
     required this.existingReports,
     required this.workflowDocuments,
     this.readOnly = false,
+    this.isLoading = false,
     this.onRemove,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final docs = workflowDocuments ?? [];
-    final hasInstallReportDoc = docs.any((d) {
-      final t = (d.documentType ?? "");
-      return t.toUpperCase().contains("INSTALLATION_REPORT");
-    });
-
-    if (existingReports!.isEmpty && hasInstallReportDoc) {
+    if (isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24.0),
         child: Center(child: CircularProgressIndicator()),
       );
     }
 
-    final displayable = _applyPdfNamesByFileStoreId(
-        existingReports ?? [], workflowDocuments ?? []);
+    final displayable =
+        _applyPdfNamesByFileStoreId(existingReports ?? [], workflowDocuments ?? []);
     return existingFilesSection(
       context: context,
       existing: displayable,
