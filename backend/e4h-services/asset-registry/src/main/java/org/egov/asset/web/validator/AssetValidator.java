@@ -54,7 +54,7 @@ public class AssetValidator {
             validateMdmsData(request, errorMap, mdmsData);
         }
         if (!CollectionUtils.isEmpty(errorMap.keySet())) {
-            log.warn("Validation failed: MDMS validation errors | tenantId={} assetId={} errorCount={}", 
+            log.warn("Validation failed: MDMS validation errors | tenantId={} assetId={} errorCount={}",
                     tenantId, assetId, errorMap.size());
             throw new CustomException(errorMap);
         }
@@ -323,7 +323,7 @@ public class AssetValidator {
 
     private void validateWarranty(Asset asset, Map<String, String> errorMap, Object mdmsWarrantyDurationData) {
         log.trace("AssetValidator::validateWarranty called");
-        log.debug("Validating warranty | assetId={} warrantyDuration={}", 
+        log.debug("Validating warranty | assetId={} warrantyDuration={}",
                 asset.getAssetId(), asset.getWarrantyDuration());
 
         if (asset.getWarrantyDuration() == null || asset.getWarrantyDuration() == 0) {
@@ -420,11 +420,18 @@ public class AssetValidator {
     private void validateExistingDuplicates(Asset asset, Map<String, String> errorMap) {
         log.trace("AssetValidator::validateExistingDuplicates called");
         log.debug("Checking for duplicate asset | assetId={} tenantId={}", asset.getAssetId(), asset.getTenantId());
-        List<Asset> assets = assetService.searchAssets(asset, 1, 0);
-        if(!assets.isEmpty()) {
-            log.warn("Duplicate asset found | assetId={} tenantId={}", asset.getAssetId(), asset.getTenantId());
+        Asset assetSearch = Asset.builder()
+                .tenantId(asset.getTenantId())
+                .wfStatus(asset.getWfStatus())
+                .facilityID(asset.getFacilityID())
+                .activityFacilityID(asset.getActivityFacilityID())
+                .serialNumberSearch(List.of(asset.getSerialNumber()))
+                .modelNumber(null)
+                .brandID(asset.getBrandID())
+                .build();
+        List<Asset> assets = assetService.searchAssets(assetSearch,1,0);
+        if(!assets.isEmpty())
             errorMap.put(ErrorConstants.ASSET_DUPLICATE_VALIDATION_CODE, ErrorConstants.ASSET_DUPLICATE_VALIDATION_MSG);
-        }
     }
 
     private void validateFacilityId(Asset asset, Map<String,String> errorMap){
@@ -432,7 +439,7 @@ public class AssetValidator {
         log.debug("Validating facility | assetId={} facilityId={}", asset.getAssetId(), asset.getFacilityID());
         List<Object> facilities = facilityUtil.searchFacility(asset.getTenantId(), asset.getFacilityID());
         if(facilities.isEmpty()) {
-            log.warn("Facility not found | assetId={} facilityId={} tenantId={}", 
+            log.warn("Facility not found | assetId={} facilityId={} tenantId={}",
                     asset.getAssetId(), asset.getFacilityID(), asset.getTenantId());
             errorMap.put(ErrorConstants.ASSET_FACILITY_ID_VALIDATION_CODE, ErrorConstants.ASSET_FACILITY_ID_VALIDATION_MSG);
         }
@@ -441,11 +448,11 @@ public class AssetValidator {
     private void validateActivityFacilityId(AssetCreateRequest request, Map<String,String> errorMap){
         log.trace("AssetValidator::validateActivityFacilityId called");
         Asset asset = request.getAssetDetail().getAsset();
-        log.debug("Validating activity facility | assetId={} activityFacilityID={}", 
+        log.debug("Validating activity facility | assetId={} activityFacilityID={}",
                 asset.getAssetId(), asset.getActivityFacilityID());
         List<Object> activityList = facilityUtil.getActivityFacilityById(request.getRequestInfo(), asset.getFacilityID(), asset.getTenantId());
         if(activityList.isEmpty()) {
-            log.warn("Activity facility not found | assetId={} activityFacilityID={} tenantId={}", 
+            log.warn("Activity facility not found | assetId={} activityFacilityID={} tenantId={}",
                     asset.getAssetId(), asset.getActivityFacilityID(), asset.getTenantId());
             errorMap.put(ErrorConstants.ASSET_ACTIVITY_FACILITY_ID_VALIDATION_CODE, ErrorConstants.ASSET_ACTIVITY_FACILITY_ID_VALIDATION_MSG);
         }
@@ -457,12 +464,12 @@ public class AssetValidator {
         log.info("Validating asset | pathAssetId={} requestAssetId={}", assetID, requestAssetId);
         Map<String, String> errorMap = new HashMap<>();
         Asset asset = body.getAssetDetail().getAsset();
-        
+        // Check if assetID matches the asset in the request
         if (!assetID.equals(asset.getAssetId())) {
             log.warn("Asset ID mismatch | pathAssetId={} requestAssetId={}", assetID, requestAssetId);
             errorMap.put(ErrorConstants.ASSET_ID_MISMATCH_CODE, ErrorConstants.ASSET_ID_MISMATCH_MSG);
         }
-        
+
         log.debug("Checking if asset exists | assetID={} tenantId={}", assetID, asset.getTenantId());
         List<Asset> existingAssets = assetService.searchAssets(
             Asset.builder().assetId(assetID).tenantId(asset.getTenantId()).build(), 1, 0);

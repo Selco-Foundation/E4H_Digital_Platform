@@ -49,6 +49,8 @@ public class BoundaryEntityRowMapper implements ResultSetExtractor<List<Boundary
 
             Boundary boundary;
             try {
+                String geometryStr = resultSet.getString("geometry");
+                String additionalDetailsStr = resultSet.getString("additionaldetails");
                 boundary = Boundary.builder()
                         .id(resultSet.getString("id"))
                         .code(resultSet.getString("code"))
