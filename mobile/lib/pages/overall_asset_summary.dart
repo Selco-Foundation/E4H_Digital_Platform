@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
-import 'package:selco/utils/app_logger.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
+import 'package:selco/utils/app_logger.dart';
 
 import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/activity_facility_bom/activity_facility_bom.dart';
@@ -57,6 +57,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
   List<ExistingReport> _existingReports = [];
   List<PlatformFile> _pickedFiles = [];
+  bool _isInitialCompletionLoading = false;
 
   StreamSubscription<LocationState>? _locSub;
 
@@ -143,37 +144,46 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
   }
 
   Future<void> _loadInitialCompletion() async {
+    if (mounted) {
+      setState(() => _isInitialCompletionLoading = true);
+    }
+
     final isar = context.read<CacheAssetBloc>().isar;
+    try {
+      final combined = await loadInitialCompletion(
+        isar: isar,
+        projectId: _currentProjectId!,
+        activityFacilityWorkflow: projectWorkflow!,
+      );
 
-    final combined = await loadInitialCompletion(
-      isar: isar,
-      projectId: _currentProjectId!,
-      activityFacilityWorkflow: projectWorkflow!,
-    );
+      if (!mounted) return;
+      setState(() {
+        _existingReports = combined.map((pf) {
+          final path = pf.path!;
+          final type = inferFileType(path);
+          String name = p.basename(path);
 
-    if (!mounted) return;
-    setState(() {
-      _existingReports = combined.map((pf) {
-        final path = pf.path!;
-        final type = inferFileType(path);
-        String name = p.basename(path);
-
-        final docs = projectWorkflow?.workflow?.documents ?? [];
-        if (type == 'pdf') {
-          final normalized = normalizedInstallPdfNameFromPath(path, docs);
-          if (normalized != null && normalized.isNotEmpty) {
-            name = normalized;
+          final docs = projectWorkflow?.workflow?.documents ?? [];
+          if (type == 'pdf') {
+            final normalized = normalizedInstallPdfNameFromPath(path, docs);
+            if (normalized != null && normalized.isNotEmpty) {
+              name = normalized;
+            }
           }
-        }
-        return ExistingReport(
-          isarId: null,
-          filePath: path,
-          fileName: name,
-          fileType: type,
-        );
-      }).toList();
-      _pickedFiles = [];
-    });
+          return ExistingReport(
+            isarId: null,
+            filePath: path,
+            fileName: name,
+            fileType: type,
+          );
+        }).toList();
+        _pickedFiles = [];
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isInitialCompletionLoading = false);
+      }
+    }
   }
 
   Future<void> _handleUploads(List<PlatformFile> picked) async {
@@ -751,6 +761,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               workflowDocuments: projectWorkflow
                                                       ?.workflow?.documents ??
                                                   [],
+                                              isLoading:
+                                                  _isInitialCompletionLoading,
                                               readOnly: false,
                                               onRemove: (r) {
                                                 setState(() {
@@ -765,6 +777,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               workflowDocuments: projectWorkflow
                                                       ?.workflow?.documents ??
                                                   [],
+                                              isLoading:
+                                                  _isInitialCompletionLoading,
                                               readOnly: true,
                                             ),
                                           ]),
