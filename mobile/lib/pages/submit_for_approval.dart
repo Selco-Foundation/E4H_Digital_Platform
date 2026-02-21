@@ -57,6 +57,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   late List<dynamic> _entries;
   List<PlatformFile> _pickedFiles = [];
   List<ExistingReport> _existingReports = [];
+  bool _isInitialCompletionLoading = false;
 
   List<String> _rejectionReasons = const <String>[];
   final Set<String> _selectedRejectionReasons = <String>{};
@@ -127,38 +128,47 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
   }
 
   Future<void> _loadInitialCompletion() async {
+    if (mounted) {
+      setState(() => _isInitialCompletionLoading = true);
+    }
+
     final isar = context.read<CacheAssetBloc>().isar;
+    try {
+      final combined = await loadInitialCompletion(
+        isar: isar,
+        projectId: activityFacilityId,
+        activityFacilityWorkflow: project!,
+      );
 
-    final combined = await loadInitialCompletion(
-      isar: isar,
-      projectId: activityFacilityId,
-      activityFacilityWorkflow: project!,
-    );
+      if (!mounted) return;
+      setState(() {
+        final docs = project?.workflow?.documents ?? [];
+        _existingReports = combined.map((pf) {
+          final path = pf.path!;
+          final type = inferFileType(path);
+          String name = p.basename(path);
 
-    if (!mounted) return;
-    setState(() {
-      final docs = project?.workflow?.documents ?? [];
-      _existingReports = combined.map((pf) {
-        final path = pf.path!;
-        final type = inferFileType(path);
-        String name = p.basename(path);
-
-        if (type == 'pdf') {
-          final normalized = normalizedInstallPdfNameFromPath(path, docs);
-          if (normalized != null && normalized.isNotEmpty) {
-            name = normalized;
+          if (type == 'pdf') {
+            final normalized = normalizedInstallPdfNameFromPath(path, docs);
+            if (normalized != null && normalized.isNotEmpty) {
+              name = normalized;
+            }
           }
-        }
 
-        return ExistingReport(
-          isarId: null,
-          filePath: path,
-          fileName: name,
-          fileType: type,
-        );
-      }).toList();
-      _pickedFiles = [];
-    });
+          return ExistingReport(
+            isarId: null,
+            filePath: path,
+            fileName: name,
+            fileType: type,
+          );
+        }).toList();
+        _pickedFiles = [];
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isInitialCompletionLoading = false);
+      }
+    }
   }
 
   Future<void> _handleUploads(List<PlatformFile> picked) async {
@@ -516,6 +526,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                       ExistingFilesOrLoader(
                         existingReports: _existingReports,
                         workflowDocuments: project?.workflow?.documents ?? [],
+                        isLoading: _isInitialCompletionLoading,
                         readOnly: false,
                         onRemove: (r) {
                           setState(() {
