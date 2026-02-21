@@ -8,12 +8,7 @@ import org.egov.im.service.IMService;
 import org.egov.im.service.TheftNotificationService;
 import org.egov.im.util.IMConstants;
 import org.egov.im.util.ResponseInfoFactory;
-import org.egov.im.web.models.CountResponse;
-import org.egov.im.web.models.IncidentRequest;
-import org.egov.im.web.models.IncidentResponse;
-import org.egov.im.web.models.IncidentWrapper;
-import org.egov.im.web.models.RequestInfoWrapper;
-import org.egov.im.web.models.RequestSearchCriteria;
+import org.egov.im.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -132,18 +127,12 @@ public class RequestsApiController{
      * Triggers theft notification: scans for tickets in state PENDINGFORASSIGNMENT_THEFT
      * that have exceeded the threshold (from MDMS common-masters TheftNotificationThreshold)
      * since filed date, and sends SMS to CRM: "Theft ticket [Ticket No.] requires action".
-     * Can be called by cron or manually. Optional: tenantId in query (GET) or body (POST).
+     * Can be called by cron or manually.
      */
-    @RequestMapping(value = "/theft-notification", method = { RequestMethod.POST, RequestMethod.GET })
-    public ResponseEntity<Map<String, Object>> theftNotification(
-            @RequestParam(required = false) String tenantId,
-            @RequestBody(required = false) Map<String, String> body) {
+    @RequestMapping(value = "/theft-notification", method = { RequestMethod.POST })
+    public ResponseEntity<Map<String, Object>> theftNotification(@RequestBody(required = false) TheftNotificationRequest request) {
         log.trace("RequestsApiController::theftNotification method invoked");
-        String effectiveTenantId = tenantId;
-        if (effectiveTenantId == null && body != null) {
-            effectiveTenantId = body.get("tenantId");
-        }
-        int sent = theftNotificationService.runTheftNotification(effectiveTenantId);
+        int sent = theftNotificationService.runTheftNotification(request);
         Map<String, Object> response = new HashMap<>();
         response.put("notificationsSent", sent);
         log.info("Theft notification completed, notificationsSent={}", sent);

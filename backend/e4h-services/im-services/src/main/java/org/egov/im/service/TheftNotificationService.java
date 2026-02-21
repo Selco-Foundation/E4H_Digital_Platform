@@ -3,7 +3,6 @@ package org.egov.im.service;
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
-import org.egov.common.contract.request.User;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.repository.IMRepository;
 import org.egov.im.util.MDMSUtils;
@@ -11,13 +10,14 @@ import org.egov.im.util.NotificationUtil;
 import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.Notification.SMSRequest;
 import org.egov.im.web.models.RequestSearchCriteria;
+import org.egov.im.web.models.TheftNotificationRequest;
+import org.egov.im.web.models.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.egov.im.util.IMConstants.PENDINGFORASSIGNMENT_THEFT;
 
@@ -38,33 +38,37 @@ public class TheftNotificationService {
     private final MDMSUtils mdmsUtils;
     private final NotificationUtil notificationUtil;
 
+    private final UserService userService;
+
     @Autowired
     public TheftNotificationService(IMConfiguration config, IMRepository repository,
-                                    MDMSUtils mdmsUtils, NotificationUtil notificationUtil) {
+                                    MDMSUtils mdmsUtils, NotificationUtil notificationUtil, UserService userService) {
         this.config = config;
         this.repository = repository;
         this.mdmsUtils = mdmsUtils;
         this.notificationUtil = notificationUtil;
+        this.userService = userService;
     }
 
     /**
      * Entry point for cron or REST: scan theft tickets past threshold and send SMS to CRM.
      *
-     * @param tenantId optional; if null uses config im.theft.notification.tenantid
+     * @param request ; if tenant id null uses config im.theft.notification.tenantid
      * @return number of SMS notifications sent
      */
-    public int runTheftNotification(String tenantId) {
-        String effectiveTenantId = StringUtils.hasText(tenantId) ? tenantId : config.getTheftNotificationTenantId();
+    public int runTheftNotification(TheftNotificationRequest request) {
+        String effectiveTenantId = StringUtils.hasText(request.getRequestInfo().getUserInfo().getTenantId()) ? request.getRequestInfo().getUserInfo().getTenantId()
+                : config.getTheftNotificationTenantId();
         log.info("Running theft notification for tenantId={}", effectiveTenantId);
 
-        String crmMobile = config.getTheftNotificationCrmMobile();
-        if (!StringUtils.hasText(crmMobile)) {
-            log.warn("Theft notification skipped: im.theft.notification.crm.mobile is not set");
-            return 0;
-        }
+//        String crmMobile = config.getTheftNotificationCrmMobile();
+//        if (!StringUtils.hasText(crmMobile)) {
+//            log.warn("Theft notification skipped: im.theft.notification.crm.mobile is not set");
+//            return 0;
+//        }
 
-        RequestInfo requestInfo = getSystemRequestInfo(effectiveTenantId);
-        long thresholdMs = fetchThresholdFromMdms(requestInfo, effectiveTenantId);
+        // 29L * 24 * 60 * 60 * 1000; // 29 days en milliseconds
+        long thresholdMs = fetchThresholdFromMdms(request.getRequestInfo(), effectiveTenantId);
 
         RequestSearchCriteria criteria = RequestSearchCriteria.builder()
                 .tenantId(effectiveTenantId)
@@ -81,23 +85,35 @@ public class TheftNotificationService {
         }
 
         log.info("Found {} theft ticket(s) past threshold, sending SMS to CRM", incidents.size());
-        for (Incident incident : incidents) {
+        Set<String> uuids = new HashSet<>();
+
+        incidents.forEach(incident -> {
+            uuids.add(incident.getAccountId());
+        });
+
+        log.trace("Searching bulk users for {} UUIDs", uuids.size());
+        Map<String, User> idToUserMap = userService.searchBulkUser(new LinkedList<>(uuids));
+        incidents.forEach(incident -> {
             String ticketNo = incident.getIncidentId() != null ? incident.getIncidentId() : incident.getId();
             String message = String.format(THEFT_NOTIFICATION_MESSAGE, ticketNo);
-            List<SMSRequest> smsRequests = Collections.singletonList(
-                    SMSRequest.builder().mobileNumber(crmMobile).message(message).build()
-            );
-            notificationUtil.sendSMS(incident.getTenantId(), smsRequests);
-        }
-        return incidents.size();
-    }
+            User user = idToUserMap.get(incident.getAccountId());
+            if (user!=null && user.getMobileNumber() !=null && !user.getMobileNumber().isEmpty()){
+                String crmMobileNumber = user.getMobileNumber();
+                List<SMSRequest> smsRequests = Collections.singletonList(SMSRequest.builder().mobileNumber(crmMobileNumber).message(message).build());
+                notificationUtil.sendSMS(incident.getTenantId(), smsRequests);
+            }
+        });
+//        for (Incident incident : incidents) {
+//            String ticketNo = incident.getIncidentId() != null ? incident.getIncidentId() : incident.getId();
+//            String message = String.format(THEFT_NOTIFICATION_MESSAGE, ticketNo);
+//            List<SMSRequest> smsRequests = Collections.singletonList(
+//                    SMSRequest.builder().mobileNumber(crmMobile).message(message).build()
+//            );
+//            notificationUtil.sendSMS(incident.getTenantId(), smsRequests);
+//        }
 
-    private RequestInfo getSystemRequestInfo(String tenantId) {
-        User user = User.builder()
-                .uuid(config.getEgovInternalMicroserviceUserUuid())
-                .tenantId(tenantId.split("\\.")[0])
-                .build();
-        return RequestInfo.builder().userInfo(user).build();
+
+        return incidents.size();
     }
 
     private long fetchThresholdFromMdms(RequestInfo requestInfo, String tenantId) {
@@ -106,10 +122,10 @@ public class TheftNotificationService {
                     requestInfo,
                     tenantId,
                     "common-masters",
-                    Collections.singletonList("TheftNotificationThreshold"),
+                    Collections.singletonList("incidentSubTypeThreshold"),
                     null
             );
-            Number threshold = JsonPath.read(mdmsData, "$.MdmsRes['common-masters'].TheftNotificationThreshold[0].thresholdMs");
+            Number threshold = JsonPath.read(mdmsData, "$.MdmsRes['common-masters'].incidentSubTypeThreshold[0].thresholdMs");
             if (threshold != null) {
                 return threshold.longValue();
             }
@@ -117,5 +133,9 @@ public class TheftNotificationService {
             log.warn("Could not read TheftNotificationThreshold from MDMS, using default {} ms: {}", DEFAULT_THRESHOLD_MS, e.getMessage());
         }
         return DEFAULT_THRESHOLD_MS;
+    }
+
+    private void sendSms(){
+
     }
 }
