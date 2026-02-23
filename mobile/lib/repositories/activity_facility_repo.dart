@@ -17,6 +17,8 @@ import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'dynamic_form_repo.dart';
 
+const String DEFAULT_SORT_DIRECTION = "ASC";
+
 class PaginatedActivityFacilities {
   final List<ActivityFacilityWorkflow> items;
   final int totalCount;
@@ -39,7 +41,7 @@ class ActivityFacilityRemoteRepository {
       required List<String> workflowStatuses,
       int limit = 100,
       offset = 0,
-      sortDirection = 'ASC'}) async {
+      sortDirection = DEFAULT_SORT_DIRECTION}) async {
     try {
       Response response;
       String searchPath = "activity/v1/activities/_search";
@@ -221,7 +223,7 @@ class ActivityFacilityRepository {
   Future<List<ActivityFacilityWorkflow>> fetchByWorkflow(
       {required ActivityFacilitySearchModel body,
       required List<String> workflowStatuses,
-      sortDirection = 'ASC'}) async {
+      sortDirection = DEFAULT_SORT_DIRECTION}) async {
     final userTypes = _resolveUserTypes(workflowStatuses);
     try {
       final remoteList = await _remote.searchByWorkflow(
@@ -247,7 +249,7 @@ class ActivityFacilityRepository {
     required List<String> workflowStatuses,
     int limit = defaultPageSize,
     int offset = 0,
-    String sortDirection = 'ASC',
+    String sortDirection = DEFAULT_SORT_DIRECTION,
   }) async {
     final userTypes = _resolveUserTypes(workflowStatuses);
     try {
