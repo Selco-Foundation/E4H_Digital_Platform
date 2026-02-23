@@ -108,6 +108,7 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
               moduleDetails: [],
             ),
           ),
+          useCacheRead: true,
         );
 
         Map<String, dynamic>? chosen;

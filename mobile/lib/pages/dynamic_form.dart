@@ -111,6 +111,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
               moduleDetails: [],
             ),
           ),
+          useCacheRead: true,
         );
 
         Map<String, dynamic>? chosen;

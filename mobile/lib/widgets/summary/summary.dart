@@ -117,17 +117,16 @@ Future<
   final nameLower = name.toLowerCase();
 
   // 1) Load SELCO.FormConfig docs (raw)
-  final rawDocs = await r.searchFormConfigsRaw(const MdmsRequestModel(
-    mdmsCriteria: MdmsCriteriaModel(
-      tenantId: 'in',
-      moduleDetails: [
-        MdmsModuleDetailsModel(
-          moduleName: 'SELCO',
-          masterDetails: [MdmsMasterDetailsModel('FormConfig')],
-        ),
-      ],
+  final rawDocs = await r.searchFormConfigsRaw(
+    const MdmsRequestModel(
+      mdmsCriteria: MdmsCriteriaModel(
+        tenantId: 'in',
+        schemaCode: "common-masters.BOMFormSchema",
+        moduleDetails: [],
+      ),
     ),
-  ));
+    useCacheRead: true,
+  );
   if (rawDocs == null || rawDocs.isEmpty) {
     throw StateError('No SELCO.FormConfig documents available.');
   }
