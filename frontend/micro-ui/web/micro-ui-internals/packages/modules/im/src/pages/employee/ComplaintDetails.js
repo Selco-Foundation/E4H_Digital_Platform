@@ -116,6 +116,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     "RejectReasons",
     "SendBackReasons",
     "OutOfScopeReasons",
+    "RejectOutOfScopeReasons",
   ]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   const [oowIssue, setOowIssue] = useState(null);
@@ -130,6 +131,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const currentOwner = processInstances[0]?.assignes?.[0];
   const isRmsAssignmentToTechPoc = selectedAction === "ASSIGN" && processInstances[0]?.state?.state === "PENDINGFORASSIGNMENT_RMS_DEVICE";
   const isTechPocRmsResolution = selectedAction === "RESOLVE" && processInstances[0]?.state?.state === "RMS_DEVICE_PENDING_TECH_POC";
+  const isRejectOutOfScope = selectedAction === "REJECT" && processInstances[0]?.state?.state === "OUT_OF_SCOPE";
 
   useEffect(() => {
     if (selectedAction === "REJECT") {
@@ -426,7 +428,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <CardLabel>{t("CS_DECLINE_COMPLAINT")}*</CardLabel>
             <Dropdown
               selected={selectedRejectReason}
-              option={rejectSendBackOutOfScopeReasons?.Incident?.RejectReasons?.map((reason) => ({
+              option={(isRejectOutOfScope
+                ? rejectSendBackOutOfScopeReasons?.Incident?.RejectOutOfScopeReasons
+                : rejectSendBackOutOfScopeReasons?.Incident?.RejectReasons
+              )?.map((reason) => ({
                 ...reason,
                 localizedCode: t(reason.code), // Use localized text if available, otherwise fallback to default name
               }))}
