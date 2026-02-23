@@ -59,99 +59,117 @@ class AppInitRepo {
   }
 
   Future<List<Mdms<AssetCountData>>> searchAssetCount(
-      MdmsRequestModel mdmsRequestBody) async {
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<AssetCountData>(
       request: mdmsRequestBody,
       readCache: storage.getAssetCount,
       writeCache: (list) => storage.setAssetCount(list),
       dataFromJson: AssetCountData.fromJson,
+      useCacheRead: useCacheRead,
     );
   }
 
   Future<List<Mdms<AssetTypeData>>> searchAssetType(
-      MdmsRequestModel mdmsRequestBody) async {
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<AssetTypeData>(
       request: mdmsRequestBody,
       readCache: storage.getAssetType,
       writeCache: (list) => storage.setAssetType(list),
       dataFromJson: AssetTypeData.fromJson,
+      useCacheRead: useCacheRead,
     );
   }
 
   Future<List<Mdms<SystemData>>> searchSystem(
-      MdmsRequestModel mdmsRequestBody) async {
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<SystemData>(
       request: mdmsRequestBody,
       readCache: storage.getSystem,
       writeCache: (list) => storage.setSystem(list),
       dataFromJson: SystemData.fromJson,
+      useCacheRead: useCacheRead,
     );
   }
 
   Future<List<Mdms<WarrantyData>>> searchWarranty(
-      MdmsRequestModel mdmsRequestBody) async {
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<WarrantyData>(
       request: mdmsRequestBody,
       readCache: storage.getWarranty,
       writeCache: (list) => storage.setWarranty(list),
       dataFromJson: WarrantyData.fromJson,
+      useCacheRead: useCacheRead,
     );
   }
 
   Future<List<Mdms<BrandData>>> searchBrand(
-      MdmsRequestModel mdmsRequestBody) async {
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<BrandData>(
       request: mdmsRequestBody,
       readCache: storage.getBrand,
       writeCache: (list) => storage.setBrand(list),
       dataFromJson: BrandData.fromJson,
+      useCacheRead: useCacheRead,
     );
   }
 
   Future<List<Mdms<SolutionDesignType>>> searchSolutionDesign(
-      MdmsRequestModel mdmsRequestBody) async {
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<SolutionDesignType>(
       request: mdmsRequestBody,
       readCache: storage.getSolutionDesignType,
       writeCache: (list) => storage.setSolutionDesignType(list),
       dataFromJson: SolutionDesignType.fromJson,
+      useCacheRead: useCacheRead,
     );
   }
 
   Future<List<Mdms<SolutionDesignTypeBom>>> searchSolutionDesignTypeBom(
-      MdmsRequestModel mdmsRequestBody) async {
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<SolutionDesignTypeBom>(
       request: mdmsRequestBody,
       readCache: storage.getSolutionDesignTypeBom,
       writeCache: (list) => storage.setSolutionDesignTypeBom(list),
       dataFromJson: SolutionDesignTypeBom.fromJson,
+      useCacheRead: useCacheRead,
     );
   }
 
   Future<List<Map<String, dynamic>>> searchFormConfigsRaw(
-      MdmsRequestModel mdmsRequestBody) async {
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedRawDocs(
       request: mdmsRequestBody,
       readCache: storage.getFormConfigsRaw,
       writeCache: (list) => storage.setFormConfigsRaw(list),
+      useCacheRead: useCacheRead,
     );
   }
 
   Future<List<Map<String, dynamic>>> searchAMCFormConfigsRaw(
-      MdmsRequestModel mdmsRequestBody) async {
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedRawDocs(
       request: mdmsRequestBody,
       readCache: storage.getAMCFormConfigsRaw,
       writeCache: (list) => storage.setAMCFormConfigsRaw(list),
+      useCacheRead: useCacheRead,
     );
   }
 
@@ -192,21 +210,24 @@ class AppInitRepo {
     required Future<String?> Function() readCache,
     required Future<void> Function(List<Mdms<T>>) writeCache,
     required T Function(Map<String, dynamic>) dataFromJson,
+    required bool useCacheRead,
   }) async {
-    final cachedRaw = await readCache();
-    if (cachedRaw != null) {
-      try {
-        final cachedList = _readCachedMdmsList(cachedRaw);
-        if (cachedList != null) {
-          return cachedList
-              .map((item) => Mdms<T>.fromJson(
-                    item as Map<String, dynamic>,
-                    (json) => dataFromJson(json as Map<String, dynamic>),
-                  ))
-              .toList();
+    if (useCacheRead) {
+      final cachedRaw = await readCache();
+      if (cachedRaw != null) {
+        try {
+          final cachedList = _readCachedMdmsList(cachedRaw);
+          if (cachedList != null) {
+            return cachedList
+                .map((item) => Mdms<T>.fromJson(
+                      item as Map<String, dynamic>,
+                      (json) => dataFromJson(json as Map<String, dynamic>),
+                    ))
+                .toList();
+          }
+        } catch (_) {
+          // Ignore malformed cache and continue with network fetch.
         }
-      } catch (_) {
-        // Ignore malformed cache and continue with network fetch.
       }
     }
 
@@ -226,19 +247,22 @@ class AppInitRepo {
     required MdmsRequestModel request,
     required Future<String?> Function() readCache,
     required Future<void> Function(List<Map<String, dynamic>>) writeCache,
+    required bool useCacheRead,
   }) async {
-    final cachedRaw = await readCache();
-    if (cachedRaw != null) {
-      try {
-        final cachedList = _readCachedMdmsList(cachedRaw);
-        if (cachedList != null) {
-          return cachedList
-              .whereType<Map>()
-              .map((e) => Map<String, dynamic>.from(e))
-              .toList();
+    if (useCacheRead) {
+      final cachedRaw = await readCache();
+      if (cachedRaw != null) {
+        try {
+          final cachedList = _readCachedMdmsList(cachedRaw);
+          if (cachedList != null) {
+            return cachedList
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList();
+          }
+        } catch (_) {
+          // Ignore malformed cache and continue with network fetch.
         }
-      } catch (_) {
-        // Ignore malformed cache and continue with network fetch.
       }
     }
 
