@@ -763,7 +763,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               readOnly: false,
                                               onRemove: (r) {
                                                 setState(() {
-                                                  _existingReports?.remove(r);
+                                                  _existingReports.remove(r);
                                                 });
                                               },
                                             ),

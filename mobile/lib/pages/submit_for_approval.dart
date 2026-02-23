@@ -530,7 +530,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                         readOnly: false,
                         onRemove: (r) {
                           setState(() {
-                            _existingReports?.remove(r);
+                            _existingReports.remove(r);
                           });
                         },
                       ),
