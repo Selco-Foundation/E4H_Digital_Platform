@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
-import 'package:selco/utils/app_logger.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
@@ -170,6 +169,10 @@ class AppInitRepo {
       data: request.toJson(),
       options: Options(headers: _defaultMdmsHeaders()),
     );
+    final data = response.data;
+    if (data is! Map) {
+      throw Exception('MDMS v2 response is not a JSON object');
+    }
     final raw = response.data['mdms'];
     if (raw is! List) {
       throw Exception('MDMS v2 response missing "mdms" array');
