@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart';
-import 'package:selco/utils/app_logger.dart';
 
 import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_add_new_asset.dart';
@@ -344,13 +343,6 @@ class ActivityFacilityRepository {
     final col = _isar.cacheActivityFacilityWorkflows;
     await _isar.writeTxn(() async {
       for (final wf in items) {
-        final existing = await col
-            .where()
-            .activityFacilityIdEqualTo(wf.activityFacility.id)
-            .findAll();
-        for (final entry in existing) {
-          await col.delete(entry.id);
-        }
         await col.put(CacheActivityFacilityWorkflow(
           activityFacilityId: wf.activityFacility.id,
           status: wf.status ?? '',
