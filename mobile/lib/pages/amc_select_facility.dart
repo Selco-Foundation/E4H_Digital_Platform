@@ -383,7 +383,7 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "${widget.title}",
+              widget.title ?? '',
               style: textTheme.headingL.copyWith(
                 color: theme.colorTheme.text.primary,
               ),
@@ -420,7 +420,7 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
                     children: [
                       const SizedBox(height: spacer4),
                       Text(
-                        context.translate('${widget.status}'),
+                        context.translate(widget.status ?? ''),
                         style: textTheme.bodyL.copyWith(
                           color: theme.colorTheme.text.primary,
                         ),
@@ -442,7 +442,8 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
             const SizedBox(height: spacer4),
             DigitButton(
               mainAxisSize: MainAxisSize.max,
-              label: "$effectiveLabel Report",
+              label:
+                  effectiveLabel.isEmpty ? 'Report' : '$effectiveLabel Report',
               onPressed: widget.onPress,
               type: DigitButtonType.primary,
               size: DigitButtonSize.large,

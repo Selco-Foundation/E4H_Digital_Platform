@@ -21,6 +21,7 @@ import '../model/scheduled_visit/scheduled_visit.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
+import '../utils/app_logger.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
@@ -133,7 +134,13 @@ class _AmcDynamicFormPageState extends State<AmcDynamicFormPage> {
           _repo.upsertTransformedSchema(transformed);
           schemaJson = transformed;
         }
-      } catch (_) {}
+      } catch (e, st) {
+        AppLogger.instance.error(
+          title: "Failed to load AMC form schema",
+          message: e.toString(),
+          stackTrace: st,
+        );
+      }
     }
 
     if (!mounted) return;
