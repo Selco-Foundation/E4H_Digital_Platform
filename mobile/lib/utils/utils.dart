@@ -17,7 +17,6 @@ import 'package:isar/isar.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:reactive_forms/reactive_forms.dart';
-import 'package:selco/utils/app_logger.dart';
 import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';

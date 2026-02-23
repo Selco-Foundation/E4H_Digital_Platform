@@ -282,12 +282,12 @@ class ActivityFacilityRepository {
         } catch (_) {
           totalCount = offset +
               filteredRemoteList.length +
-              (filteredRemoteList.length == pageSize ? 1 : 0);
+              (remoteList.length == pageSize ? 1 : 0);
         }
       } else {
         totalCount = offset +
             filteredRemoteList.length +
-            (filteredRemoteList.length == pageSize ? 1 : 0);
+            (remoteList.length == pageSize ? 1 : 0);
       }
 
       return PaginatedActivityFacilities(
