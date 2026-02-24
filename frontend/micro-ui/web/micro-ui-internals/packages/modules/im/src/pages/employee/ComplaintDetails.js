@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Fragment } from "react";
+import React, { useState, useEffect, useCallback, Fragment, useMemo } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import {
   BreakLine,
@@ -645,7 +645,7 @@ export const ComplaintDetails = (props) => {
   const [imagesToShowBelowComplaintDetails, setImagesToShowBelowComplaintDetails] = useState([]);
   const [timelineState, setTimelineState] = useState([]);
 
-  const displayedComplaintDetails = React.useMemo(() => {
+  const displayedComplaintDetails = useMemo(() => {
     if (!complaintDetails?.details?.CS_COMPLAINT_DETAILS_TICKET_NO) {
       return complaintDetails;
     }
@@ -724,7 +724,7 @@ export const ComplaintDetails = (props) => {
     }
 
     setTimelineState(clonedTimeline);
-  }, [workflowDetails]);
+  }, [workflowDetails?.data]);
 
   useEffect(() => {
     Digit?.Utils?.analytics?.trackPageView("ticket_details_page", {
