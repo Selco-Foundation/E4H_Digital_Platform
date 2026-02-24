@@ -17,8 +17,6 @@ import '../utils/envConfig.dart';
 import '../utils/utils.dart';
 import 'dynamic_form_repo.dart';
 
-const String DEFAULT_SORT_DIRECTION = "DESC";
-
 class PaginatedActivityFacilities {
   final List<ActivityFacilityWorkflow> items;
   final int totalCount;

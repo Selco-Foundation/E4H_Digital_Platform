@@ -204,6 +204,8 @@ enum FormOrigin { overallSummary, inboxSummary, submitForApproval, submitted }
 
 enum SYSTEM_TYPE { DC }
 
+const String DEFAULT_SORT_DIRECTION = "DESC";
+
 bool isValidUuid(String value) {
   try {
     return Uuid.parse(value).isNotEmpty;
