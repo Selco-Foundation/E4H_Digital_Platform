@@ -272,11 +272,19 @@ export const CreateComplaint = ({ parentUrl }) => {
                 moduleName: "Incident",
                 status: [
                   "PENDINGFORASSIGNMENT",
+                  "PENDINGFORASSIGNMENT_RMS_DEVICE",
+                  "PENDINGFORASSIGNMENT_THEFT",
+                  "RMS_DEVICE_PENDING_TECH_POC",
                   "PENDINGRESOLUTION",
+                  "OUT_OF_SCOPE",
+                  "OUT_OF_WARRANTY_PENDING_TECH_POC",
+                  "PENDING_REVISION",
+                  "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2",
                   "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
                   "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
+                  "PENDING_RESOLUTION_OUT_OF_SCOPE",
                   "PENDING_RESOLUTION_SPARE_PART_NEEDED",
-                  "PENDING_RESOLUTION_OUT_OF_WARRANTY"
+                  "PENDING_RESOLUTION_OUT_OF_WARRANTY",
                 ],
                 tenantId,
               },
@@ -286,11 +294,11 @@ export const CreateComplaint = ({ parentUrl }) => {
                 incidentType: [complaintType.key],
                 incidentSubType: [subType?.key],
                 tenantId,
-                sortOrder: "DESC"
+                sortOrder: "DESC",
               },
               limit: 100,
-              offset: 0
-            }
+              offset: 0,
+            },
           });
 
           if (data?.items?.length) {
