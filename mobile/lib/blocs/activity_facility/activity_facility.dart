@@ -244,7 +244,7 @@ class ActivityFacilityBloc
         workflowStatuses: event.workflowStatuses,
         limit: _pageSize,
         offset: currentState.rawFetchedCount,
-        sortDirection: event.sortDirection ?? 'ASC',
+        sortDirection: event.sortDirection ?? DEFAULT_SORT_DIRECTION,
       );
 
       final ids = currentState.items
@@ -311,7 +311,7 @@ class ActivityFacilityBloc
         workflowStatuses: workflowStatuses,
         limit: _pageSize,
         offset: 0,
-        sortDirection: sortDirection ?? 'ASC',
+        sortDirection: sortDirection ?? DEFAULT_SORT_DIRECTION,
       );
       emit(ActivityFacilityState.paginatedLoaded(
         items: result.items,
