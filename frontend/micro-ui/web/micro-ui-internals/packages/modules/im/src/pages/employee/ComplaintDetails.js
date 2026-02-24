@@ -171,7 +171,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   }
 
   function addOOWResponses(e, setField) {
-    if (e.target.value.length > 256) {
+    if (e.target.value.length > 1000) {
       setError(t("CS_TEXT_LENGTH_LIMIT_EXCEED"));
     } else {
       setError(null);
