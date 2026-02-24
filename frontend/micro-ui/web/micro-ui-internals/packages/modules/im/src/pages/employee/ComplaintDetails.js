@@ -130,9 +130,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const processInstances = workflowDetails?.data?.processInstances || [];
   const oowActedVendor = processInstances.find((processInstance) => processInstance.action === "OUT_OF_WARRANTY")?.assigner;
   const currentOwner = processInstances[0]?.assignes?.[0];
-  const isRmsAssignmentToTechPoc = selectedAction === "ASSIGN" && processInstances[0]?.state?.state === "PENDINGFORASSIGNMENT_RMS_DEVICE";
-  const isTechPocRmsResolution = selectedAction === "RESOLVE" && processInstances[0]?.state?.state === "RMS_DEVICE_PENDING_TECH_POC";
-  const isRejectOutOfScope = selectedAction === "REJECT" && processInstances[0]?.state?.state === "OUT_OF_SCOPE";
+  const currentState = processInstances[0]?.state?.state;
+  const isRmsAssignmentToTechPoc = selectedAction === "ASSIGN" && currentState === "PENDINGFORASSIGNMENT_RMS_DEVICE";
+  const isTechPocRmsResolution = selectedAction === "RESOLVE" && currentState === "RMS_DEVICE_PENDING_TECH_POC";
+  const isRejectOutOfScope = selectedAction === "REJECT" && currentState === "OUT_OF_SCOPE";
 
   useEffect(() => {
     if (selectedAction === "REJECT") {
@@ -372,6 +373,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               !isTechPocRmsResolution &&
               uploadedFile.length === 0,
             message: "CS_MANDATORY_FILE_UPLOAD",
+          },
+          {
+            condition: selectedAction === "STATUS_UPDATE" && uploadedFile.length > 5,
+            message: "OOW_STATUS_UPDATE_MAX_FILE_ERROR",
           },
           {
             condition: selectedAction === "SPARE_PART_NEEDED" && uploadedFile.length < 2,
