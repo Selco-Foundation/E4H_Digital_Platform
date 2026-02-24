@@ -82,7 +82,8 @@ const TLCaption = ({ data, comments }) => {
 const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup, selectedAction, onAssign, tenant, t }) => {
   // RAIN-5692 PGR : GRO is assigning complaint, Selecting employee and assign. Its not getting assigned.
   // Fix for next action  assignee dropdown issue
-  const stateArray = workflowDetails?.data?.initialActionState?.nextActions?.filter((ele) => ele?.action == selectedAction);
+  const initialActionState = workflowDetails?.data?.initialActionState || workflowDetails?.data?.actionState || {};
+  const stateArray = initialActionState?.nextActions?.filter((ele) => ele?.action == selectedAction);
   const useEmployeeData = Digit.Hooks.pgr.useEmployeeFilter(
     tenant,
     stateArray?.[0]?.assigneeRoles?.length > 0 ? stateArray?.[0]?.assigneeRoles?.join(",") : "",
@@ -642,18 +643,23 @@ export const ComplaintDetails = (props) => {
   let currentLoginUser = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.userName;
 
   const [imagesToShowBelowComplaintDetails, setImagesToShowBelowComplaintDetails] = useState([]);
+  const [timelineState, setTimelineState] = useState([]);
 
-  // RAIN-5692 PGR : GRO is assigning complaint, Selecting employee and assign. Its not getting assigned.
-  // Fix for next action  assignee dropdown issue
-  if (workflowDetails && workflowDetails?.data) {
-    workflowDetails.data.initialActionState = workflowDetails?.data?.initialActionState || { ...workflowDetails?.data?.actionState } || {};
-    workflowDetails.data.actionState = { ...workflowDetails.data };
-  }
-  if (complaintDetails) {
-    complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO = complaintDetails?.details?.CS_COMPLAINT_DETAILS_TICKET_NO.split("/")[0];
-  }
+  const displayedComplaintDetails = React.useMemo(() => {
+    if (!complaintDetails?.details?.CS_COMPLAINT_DETAILS_TICKET_NO) {
+      return complaintDetails;
+    }
 
-  const timeline = workflowDetails?.data?.timeline || [];
+    return {
+      ...complaintDetails,
+      details: {
+        ...complaintDetails.details,
+        CS_COMPLAINT_DETAILS_TICKET_NO: complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO.split("/")[0],
+      },
+    };
+  }, [complaintDetails]);
+
+  const timeline = timelineState;
 
   let filteredTimeline = timeline;
 
@@ -675,28 +681,49 @@ export const ComplaintDetails = (props) => {
   }
 
   useEffect(() => {
-    if (workflowDetails) {
-      const { data: { timeline: complaintTimelineData } = {} } = workflowDetails;
-      if (complaintTimelineData) {
-        const applyAction = complaintTimelineData.find((action) => ["APPLY", "APPLY_THEFT", "APPLY_RMS_DEVICE"].includes(action.performedAction));
-        const initiate = complaintTimelineData.find((action) => action.performedAction === "INITIATE");
-        if (!initiate) {
-          const complaintTimelineDataNew = {
-            ...applyAction,
-            performedAction: "INITIATE",
-            state: "PENDINGRESOLUTIONNEW",
-            status: "PENDINGRESOLUTIONNEW",
-          };
-          applyAction["wfComment"] = [];
+    const complaintTimelineData = workflowDetails?.data?.timeline;
 
-          complaintTimelineData.push(complaintTimelineDataNew);
-        }
-        const actionByCitizenOnComplaintCreation = complaintTimelineData?.find((e) => ["APPLY", "APPLY_THEFT", "APPLY_RMS_DEVICE"].includes(e?.performedAction));
-        const { thumbnailsToShow } = actionByCitizenOnComplaintCreation;
-
-        thumbnailsToShow ? setImagesToShowBelowComplaintDetails(thumbnailsToShow) : null;
-      }
+    if (!complaintTimelineData) {
+      setTimelineState([]);
+      setImagesToShowBelowComplaintDetails([]);
+      return;
     }
+
+    const clonedTimeline = complaintTimelineData.map((action) => ({ ...action }));
+    const applyActionIndex = clonedTimeline.findIndex((action) =>
+      ["APPLY", "APPLY_THEFT", "APPLY_RMS_DEVICE"].includes(action.performedAction)
+    );
+
+    if (applyActionIndex === -1) {
+      setTimelineState([]);
+      setImagesToShowBelowComplaintDetails([]);
+      return;
+    }
+
+    const applyAction = clonedTimeline[applyActionIndex];
+    const thumbnailsToShow = applyAction?.thumbnailsToShow;
+    setImagesToShowBelowComplaintDetails(thumbnailsToShow || []);
+
+    const hasInitiate = clonedTimeline.some((action) => action.performedAction === "INITIATE");
+
+    if (!hasInitiate) {
+      const complaintTimelineDataNew = {
+        ...applyAction,
+        performedAction: "INITIATE",
+        state: "PENDINGRESOLUTIONNEW",
+        status: "PENDINGRESOLUTIONNEW",
+      };
+
+      clonedTimeline[applyActionIndex] = {
+        ...applyAction,
+        wfComment: [],
+        thumbnailsToShow: {},
+      };
+
+      clonedTimeline.push(complaintTimelineDataNew);
+    }
+
+    setTimelineState(clonedTimeline);
   }, [workflowDetails]);
 
   useEffect(() => {
@@ -1096,15 +1123,15 @@ export const ComplaintDetails = (props) => {
           <Loader />
         ) : (
           <StatusTable>
-            {complaintDetails &&
-              Object.keys(complaintDetails?.details).map((k, i, arr) => (
+            {displayedComplaintDetails &&
+              Object.keys(displayedComplaintDetails?.details).map((k, i, arr) => (
                 <Row
                   key={k}
                   label={t(k)}
                   text={
-                    Array.isArray(complaintDetails?.details[k])
-                      ? complaintDetails?.details[k].map((val) => (typeof val === "object" ? t(val?.code) : t(val)))
-                      : t(complaintDetails?.details[k], { defaultValue: complaintDetails?.details[k] }) || "N/A"
+                    Array.isArray(displayedComplaintDetails?.details[k])
+                      ? displayedComplaintDetails?.details[k].map((val) => (typeof val === "object" ? t(val?.code) : t(val)))
+                      : t(displayedComplaintDetails?.details[k], { defaultValue: displayedComplaintDetails?.details[k] }) || "N/A"
                   }
                   last={arr.length - 1 === i}
                 />
@@ -1130,11 +1157,11 @@ export const ComplaintDetails = (props) => {
           <React.Fragment>
             <CardSubHeader>{t(`CS_COMPLAINT_DETAILS_COMPLAINT_TIMELINE`)}</CardSubHeader>
 
-            {workflowDetails?.data?.timeline && workflowDetails?.data?.timeline?.length === 1 ? (
-              <CheckPoint isCompleted={true} label={t("CS_COMMON_" + workflowDetails?.data?.timeline[0]?.status)} />
+            {timeline && timeline.length === 1 ? (
+              <CheckPoint isCompleted={true} label={t("CS_COMMON_" + timeline[0]?.status)} />
             ) : (
               <ConnectingCheckPoints>
-                {workflowDetails?.data?.timeline &&
+                {timeline &&
                   filteredTimeline.map((checkpoint, index, arr) => {
                     return (
                       <React.Fragment key={index}>
