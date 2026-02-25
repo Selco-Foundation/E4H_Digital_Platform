@@ -518,7 +518,7 @@ public class ActivityService {
 
             Map<String, Object> updateRequest = new HashMap<>();
             updateRequest.put("RequestInfo", requestInfo);
-            updateRequest.put("Facility", facility);
+            updateRequest.put("FacilityUpdate", facility);
 
             String url = activityConfiguration.getFacilityServiceHost()
                     + activityConfiguration.getFacilityServiceUpdateUrl();

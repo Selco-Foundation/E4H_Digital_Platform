@@ -460,15 +460,30 @@ public class WorkflowService {
         log.info("Merged process instances count (after deduplication): {}", mergedList.size());
 
         /* 4) Push vers le workflow pour mise à jour des process instances */
-        log.info("Pushing {} process instances to workflow update topic",
-                mergedList.size());
+        for (int i = 0; i < mergedList.size(); i++) {
+            ProcessInstanceRequest processInstanceRequest = new ProcessInstanceRequest(requestInfo, Collections.singletonList(mergedList.get(i)));
+            producer.push(config.getUpdateProcessInstanceTopic(), processInstanceRequest);
+        }
+        /* Split into batches to avoid Kafka message size limits */
+//        int batchSize = config.getProcessInstanceUpdateBatchSize();
+//        int totalBatches = (mergedList.size() + batchSize - 1) / batchSize;
+//        log.info("Pushing {} process instances to workflow update topic in {} batch(es) of size {}",
+//                mergedList.size(), totalBatches, batchSize);
+//
+//        for (int i = 0; i < mergedList.size(); i += batchSize) {
+//            int end = Math.min(i + batchSize, mergedList.size());
+//            List<ProcessInstance> batch = mergedList.subList(i, end);
+//
+//            ProcessInstanceRequest processInstanceRequest =
+//                    new ProcessInstanceRequest(requestInfo, batch);
+//            producer.push(config.getUpdateProcessInstanceTopic(), processInstanceRequest);
+//
+//            log.debug("Pushed batch {}/{} containing {} process instance(s)",
+//                    (i / batchSize) + 1, totalBatches, batch.size());
+//        }
 
-        ProcessInstanceRequest processInstanceRequest =
-                new ProcessInstanceRequest(requestInfo, mergedList);
-        producer.push(config.getUpdateProcessInstanceTopic(), processInstanceRequest);
-
-        log.info("Successfully pushed process instances to topic: {}",
-                config.getUpdateProcessInstanceTopic());
+        log.info("Successfully pushed all {} process instances to topic: {}",
+                mergedList.size(), config.getUpdateProcessInstanceTopic());
 
         // Update Kibana index (im-services) with only Data.currentProcessInstance for each migrated process instance
         log.info("Starting Kibana index update for migrated process instances");

@@ -177,9 +177,8 @@ public class BoundaryController {
         }
 
         // Paginate
-        int start = offset * limit;
-        int end = Math.min(start + limit, flatList.size());
-        List<FlatBoundaryResponse> paginated = (start < flatList.size()) ? flatList.subList(start, end) : Collections.emptyList();
+        int end = Math.min(offset + limit, flatList.size());
+        List<FlatBoundaryResponse> paginated = (offset < flatList.size()) ? flatList.subList(offset, end) : Collections.emptyList();
 
         BoundaryRelationshipV2Response response1 = BoundaryRelationshipV2Response.builder()
                 .responseInfo(null)

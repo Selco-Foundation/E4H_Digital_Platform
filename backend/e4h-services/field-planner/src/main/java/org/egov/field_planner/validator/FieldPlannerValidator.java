@@ -62,13 +62,13 @@ public class FieldPlannerValidator {
     public void validateCreateFieldPlanRequest(FieldPlanRequest request) {
         log.trace("Entering validateCreateFieldPlanRequest method");
         log.info("Validating field plan creation request");
-        
+
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
+        //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
-        log.debug("Request info validation completed");
-        
+        //Verify if FieldPlan request and mandatory fields are present
         validateFieldPlanRequest(request);
         log.debug("Field plan request validation completed");
 
@@ -195,19 +195,19 @@ public class FieldPlannerValidator {
             List<Map<String, Object>> activities = fieldPlan.getActivities();
             String state = (String)geographyDetails.get("state");
             String mdmsNotPresent = IS_NOT_PRESENT_IN_MDMS;
-            
+
             log.debug("Validating tenant ID: {} against MDMS", fieldPlan.getTenantId());
             if (!StringUtils.isBlank(fieldPlan.getTenantId()) && !tenantRes.contains(fieldPlan.getTenantId())) {
                 log.error("Tenant ID: {} not found in MDMS", fieldPlan.getTenantId());
                 errorMap.put("INVALID_TENANT", "The tenant: " + fieldPlan.getTenantId() + mdmsNotPresent);
             }
-            
+
             log.debug("Validating state: {} against MDMS", state);
             if (!StringUtils.isBlank(state)) {
                 String stateExtracted = fieldPlanServiceUtil.extractStateName(state);
                 if (!stateInfoRes.contains(stateExtracted)){
-                    log.error("State code: {} not found in MDMS", state);
-                    errorMap.put("INVALID_STATE_CODE", "The state code: " + state + mdmsNotPresent);
+                    log.error("The state code: " + state + mdmsNotPresent);
+//                    errorMap.put("INVALID_STATE_CODE", "The state code: " + state + mdmsNotPresent);
                 }
             }
         }
@@ -247,7 +247,7 @@ public class FieldPlannerValidator {
         Long projectEnd   = project.getEndDate();
         Long fieldStart   = fieldPlan.getStartDate();
         Long fieldEnd     = fieldPlan.getEndDate();
-        log.debug("Validating field plan dates within project dates, project: {}-{}, field plan: {}-{}", 
+        log.debug("Validating field plan dates within project dates, project: {}-{}, field plan: {}-{}",
                 projectStart, projectEnd, fieldStart, fieldEnd);
 
         if (projectStart == null || projectEnd == null) {
@@ -274,19 +274,19 @@ public class FieldPlannerValidator {
     public void validateUpdateFieldPlanRequest(FieldPlanRequest request) {
         log.trace("Entering validateUpdateFieldPlanRequest method");
         log.info("Validating field plan update request");
-        
+
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
+        //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
-        log.debug("Request info validation completed");
-        
+        //Verify Project request and if mandatory fields are present
         validateFieldPlanRequest(request);
-        log.debug("Field plan request validation completed");
-        
+        //Verify if project request have multiple tenant Ids
         validateMultipleTenantIds(request);
         log.debug("Multiple tenant IDs validation completed");
 
+        //Verify if FieldPlan id is present
         for (FieldPlan fieldPlan : request.getFieldPlans()) {
             if (StringUtils.isBlank(fieldPlan.getId())) {
                 log.error("Field plan ID is mandatory for update request");
@@ -308,16 +308,17 @@ public class FieldPlannerValidator {
     public void validateSearchFieldPlanRequest(FieldPlanSearchRequest request, Integer limit, Integer offset, String tenantId, Long createdFrom, Long createdTo) {
         log.trace("Entering validateSearchFieldPlanRequest method");
         log.info("Validating field plan search request for tenant: {}", tenantId);
-        
+
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = request.getRequestInfo();
 
+        //Verify if RequestInfo and UserInfo is present
         validateRequestInfo(requestInfo);
         log.debug("Request info validation completed");
-        
+
         validateSearchFieldPlanRequestParams(limit, offset, tenantId, createdFrom, createdTo);
         log.debug("Search request parameters validation completed");
-        
+
         validateSearchProjectRequest(request.getFieldPlan(), tenantId, createdFrom);
         log.debug("Search request body validation completed");
 
@@ -424,7 +425,7 @@ public class FieldPlannerValidator {
     /* Validates projects data in update request against projects data fetched from database */
     public void validateUpdateAgainstDB(List<FieldPlan> fieldPlansFromRequest, List<FieldPlan> fieldPlansFromDB) {
         log.trace("Entering validateUpdateAgainstDB method");
-        log.info("Validating {} field plans from request against {} field plans from database", 
+        log.info("Validating {} field plans from request against {} field plans from database",
                 fieldPlansFromRequest.size(), fieldPlansFromDB.size());
         if (CollectionUtils.isEmpty(fieldPlansFromDB)) {
             log.error("The fieldplan records that you are trying to update does not exists in the system");
@@ -460,8 +461,8 @@ public class FieldPlannerValidator {
 
     private void validateStartDateAndEndDateAgainstDB(FieldPlan fieldPlan, FieldPlan fieldPlanFromDB, Long currentTimestamp, Long nextDateTimestampUTC) {
         log.trace("Entering validateStartDateAndEndDateAgainstDB method for field plan ID: {}", fieldPlan.getId());
-        log.debug("Validating field plan dates against database, current: start={}, end={}, DB: start={}, end={}", 
-                fieldPlan.getStartDate(), fieldPlan.getEndDate(), 
+        log.debug("Validating field plan dates against database, current: start={}, end={}, DB: start={}, end={}",
+                fieldPlan.getStartDate(), fieldPlan.getEndDate(),
                 fieldPlanFromDB.getStartDate(), fieldPlanFromDB.getEndDate());
         String errorMessage = "";
         // Check if the fieldplan start date is not null and whether it's different from the one in the database
