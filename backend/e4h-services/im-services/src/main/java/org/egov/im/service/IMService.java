@@ -275,18 +275,26 @@ public class IMService {
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
 
-        // System reinstallation process
-        if (request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL) && updatedProcessInstance !=null && updatedProcessInstance.getState().getApplicationStatus().equals("RESOLVED") ){
-            request.getIncident().setSystemFunctional("FUNCTIONAL");
-            String boundaryCode = request.getIncident().getBoundaryCode();
-            String facilityId = imUtils.extractFacilityCode(boundaryCode);
-            Map<String, Object> facility = new HashMap<>();
-            Map<String, Object> facilityUpdate = new HashMap<>();
-            facilityUpdate.put("tenant_id", tenantId);
-            facilityUpdate.put("facility_status", ACTIVE);
-            facilityUpdate.put("facility_id", facilityId);
-            facility.put("FacilityUpdate", facilityUpdate);
-            producer.push(tenantId,config.getUpdateFacilityTopic(), facility);
+        // Handle the case where, when the ticket is of type UNINSTALL and the status is REJECTED(After user decline ticket) and
+        // when the ticket is of type REINSTALL and the status is RESOLVED, then set HF status to ACTIVE and System functional to FUNCTIONAL
+        if (updatedProcessInstance != null) {
+            String incidentType = request.getIncident().getIncidentType();
+            String status = updatedProcessInstance.getState().getApplicationStatus();
+            boolean shouldUpdate = (UNINSTALLED.equalsIgnoreCase(incidentType) && "REJECTED".equals(status)) || (REINSTALL.equalsIgnoreCase(incidentType) && "RESOLVED".equals(status));
+            if (shouldUpdate) {
+                request.getIncident().setSystemFunctional("FUNCTIONAL");
+                String facilityId = imUtils.extractFacilityCode(request.getIncident().getBoundaryCode());
+                Map<String, Object> facilityUpdate = Map.of(
+                        "tenant_id", tenantId,
+                        "facility_status", ACTIVE,
+                        "facility_id", facilityId
+                );
+
+                Map<String, Object> facility = Map.of(
+                        "FacilityUpdate", facilityUpdate
+                );
+                producer.push(tenantId, config.getUpdateFacilityTopic(), facility);
+            }
         }
 
         log.trace("Publishing incident to update topic");
