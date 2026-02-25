@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
-import { Button, Dropdown, Loader, MultiUploadWrapper, PopUp } from "@selco/digit-ui-react-components";
+import { Button, Dropdown, Loader, MultiUploadWrapper, PopUp, Toast } from "@selco/digit-ui-react-components";
 import { useRouteMatch, useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
 import { FormComposer } from "../../../components/FormComposer";
-import { createComplaint } from "../../../redux/actions/index";
+import { populateCreateResponse } from "../../../redux/actions/index";
 import { Link } from "react-router-dom";
 
 export const CreateComplaint = ({ parentUrl }) => {
@@ -38,8 +38,8 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
   const [error, setError] = useState(null);
+  const [creationError, setCreationError] = useState(null);
   const [canSubmit, setSubmitValve] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const tenantId = window.Digit.SessionStorage.get("Employee.tenantId");
   const [complaintType, setComplaintType] = useState({});
   const [subTypeMenu, setSubTypeMenu] = useState([]);
@@ -366,8 +366,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
     if (!canSubmit) return;
-    setSubmitted(true);
-    !submitted && !abc && onSubmit(data);
+    !abc && onSubmit(data);
   };
   const onSubmit = async (data) => {
     Digit.Utils.analytics.trackSubmitTicket({ page_name: "new_ticket_page" });
@@ -389,7 +388,18 @@ export const CreateComplaint = ({ parentUrl }) => {
       uploadedFile,
       tenantId,
     };
-    await dispatch(createComplaint(formData));
+
+    setBlockUI(true);
+    const response = await Digit.Complaint.create(formData);
+
+    if (!response?.IncidentWrappers) {
+      setBlockUI(false);
+      setCreationError(response);
+      return;
+    }
+
+    setBlockUI(false);
+    dispatch(populateCreateResponse(response));
     await client.refetchQueries(["fetchInboxData"]);
     history.push(parentUrl + "/incident/response");
   };
@@ -787,7 +797,8 @@ export const CreateComplaint = ({ parentUrl }) => {
           <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
         </div>
       </div>
-      <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit && !submitted} label={t("FILE_INCIDENT")} />
+      <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit} label={t("FILE_INCIDENT")} />
+      {creationError && creationError[0].message && <Toast error={creationError[0].message} isDleteBtn={true} label={creationError[0].message} onClose={() => setCreationError(null)} />}
 
       {/* <button onClick={(!selectedOption || Object.keys(selectedOption).length == 0)}>Check Errors</button>  
       {errors.map((error, index) => (

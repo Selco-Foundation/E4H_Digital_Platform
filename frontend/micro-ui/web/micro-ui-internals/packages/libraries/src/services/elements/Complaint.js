@@ -63,7 +63,12 @@ export const Complaint = {
         // ],
       };
     }
-    const response = await Digit.PGRService.create(defaultData, cityCode);
+    let response;
+    try {
+      response = await Digit.PGRService.create(defaultData, cityCode);
+    } catch (error) {
+      response = error?.response?.data?.Errors;
+    }
     return response;
   },
 

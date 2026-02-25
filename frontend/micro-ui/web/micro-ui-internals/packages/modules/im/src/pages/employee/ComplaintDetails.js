@@ -852,8 +852,8 @@ export const ComplaintDetails = (props) => {
       spcResponses
     );
     if (!response?.IncidentWrappers) {
-      setError(response);
       setBlockUI(false);
+      setError(response);
       return;
     }
 
@@ -1216,7 +1216,7 @@ export const ComplaintDetails = (props) => {
           <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
         </ActionBar>
       )}
-      {error && error[0].message && <Toast error={error[0].message} label={error[0].message} onClose={closeToast} />}
+      {error && error[0].message && <Toast error={error[0].message} isDleteBtn={true} label={error[0].message} onClose={closeToast} />}
     </React.Fragment>
   );
 };
