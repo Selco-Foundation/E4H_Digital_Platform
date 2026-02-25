@@ -220,7 +220,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     if (error) {
       const timeOut = setTimeout(() => {
         clearError();
-      }, 1000);
+      }, 2500);
       return () => clearTimeout(timeOut);
     }
   }, [error, clearError]);
@@ -352,8 +352,6 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         const isCommentsMandatory =
           (isTextareaAction || selectedAction === "RESOLVE" || selectedAction === "REVISE" || selectedAction === "STATUS_UPDATE") && !comments.trim();
 
-        const spcMandateCondition = selectedAction === "SPARE_PART_NEEDED" && !(spcRootAnalysis && spcSparePartToBeReplaced);
-
         const validations = [
           { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_DECLINE_REASON" },
           { condition: selectedAction === "SENDBACK" && !selectedSendBackReason, message: "CS_MANDATORY_SENDBACK_REASON" },
@@ -361,12 +359,28 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
           { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: !isRmsAssignmentToTechPoc && selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
-          { condition: spcMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
-          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowIssue, message: "CS_OOW_ISSUE_MANDATORY" },
-          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowRootCause, message: "CS_OOW_ROOT_CAUSE_MANDATORY" },
-          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowRecommendedSolution, message: "CS_OOW_RECOMMENDED_SOLUTION_MANDATORY" },
-          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTimeToResolve, message: "CS_OOW_RESOLUTION_TIME_MANDATORY" },
-          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTotalCostOfSolution, message: "CS_SOLUTION_COST_MANDATORY" },
+          {
+            condition: selectedAction === "SPARE_PART_NEEDED" && !spcRootAnalysis?.trim(),
+            message: "CS_SPC_ROOT_ANALYSIS_MANDATORY",
+          },
+          {
+            condition: selectedAction === "SPARE_PART_NEEDED" && !spcSparePartToBeReplaced?.trim(),
+            message: "CS_SPC_SPARE_PART_TO_BE_REPLACED_MANDATORY",
+          },
+          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowIssue?.trim(), message: "CS_OOW_ISSUE_MANDATORY" },
+          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowRootCause?.trim(), message: "CS_OOW_ROOT_CAUSE_MANDATORY" },
+          {
+            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowRecommendedSolution?.trim(),
+            message: "CS_OOW_RECOMMENDED_SOLUTION_MANDATORY",
+          },
+          {
+            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTimeToResolve?.trim(),
+            message: "CS_OOW_RESOLUTION_TIME_MANDATORY",
+          },
+          {
+            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTotalCostOfSolution?.trim(),
+            message: "CS_SOLUTION_COST_MANDATORY",
+          },
           {
             condition:
               ["RESOLVE", "OUT_OF_WARRANTY", "STATUS_UPDATE", "SUBMIT"].includes(selectedAction) &&
