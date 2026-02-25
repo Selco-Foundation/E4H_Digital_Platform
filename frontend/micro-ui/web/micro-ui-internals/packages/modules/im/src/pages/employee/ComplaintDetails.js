@@ -352,9 +352,6 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         const isCommentsMandatory =
           (isTextareaAction || selectedAction === "RESOLVE" || selectedAction === "REVISE" || selectedAction === "STATUS_UPDATE") && !comments.trim();
 
-        const oowMandateCondition =
-          ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !(oowIssue && oowRootCause && oowRecommendedSolution && oowTimeToResolve);
-
         const spcMandateCondition = selectedAction === "SPARE_PART_NEEDED" && !(spcRootAnalysis && spcSparePartToBeReplaced);
 
         const validations = [
@@ -364,8 +361,11 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
           { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: !isRmsAssignmentToTechPoc && selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
-          { condition: oowMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
           { condition: spcMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
+          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowIssue, message: "CS_OOW_ISSUE_MANDATORY" },
+          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowRootCause, message: "CS_OOW_ROOT_CAUSE_MANDATORY" },
+          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowRecommendedSolution, message: "CS_OOW_RECOMMENDED_SOLUTION_MANDATORY" },
+          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTimeToResolve, message: "CS_OOW_RESOLUTION_TIME_MANDATORY" },
           { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTotalCostOfSolution, message: "CS_SOLUTION_COST_MANDATORY" },
           {
             condition:
