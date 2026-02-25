@@ -92,6 +92,24 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, [facilityBoundaries, facilityData]);
 
   useEffect(() => {
+    if (district?.code && blockOptions?.length) {
+      const newBlocksMenu = blockOptions?.filter((blockOption) => blockOption?.parentCode === district.code);
+      setBlockMenu(newBlocksMenu);
+    } else {
+      setBlockMenu([]);
+    }
+  }, [district, blockOptions]);
+
+  useEffect(() => {
+    if (block?.code && facilityOptions?.length) {
+      const newFacilityMenu = facilityOptions.filter((facility) => facility?.parentCode === block.code);
+      setFacilityMenu(newFacilityMenu);
+    } else {
+      setFacilityMenu([]);
+    }
+  }, [block, facilityOptions]);
+
+  useEffect(() => {
     setSortedDistrictMenu(
       districtMenu
         .map((district) => ({
@@ -357,9 +375,6 @@ export const CreateComplaint = ({ parentUrl }) => {
     setDistrict(selectedDistrict);
     setBlock({});
     setHealthCentre({});
-
-    const newBlocksMenu = blockOptions?.filter((blockOption) => blockOption?.parentCode === selectedDistrict?.code);
-    setBlockMenu(newBlocksMenu);
   };
 
   function selectedSubType(value) {
@@ -378,8 +393,6 @@ export const CreateComplaint = ({ parentUrl }) => {
   const handleBlockChange = (selectedBlock) => {
     setHealthCentre({});
     setBlock(selectedBlock);
-    const newFacilityMenu = facilityOptions.filter((facility) => facility?.parentCode === selectedBlock?.code);
-    setFacilityMenu(newFacilityMenu);
   };
 
   const wrapperSubmit = (data) => {
