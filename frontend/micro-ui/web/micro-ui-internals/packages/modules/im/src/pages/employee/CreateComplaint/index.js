@@ -33,7 +33,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const specificFileConstraint = [
     { type: "video", maxSize: 50, maxFiles: 2 },
     { type: "image", maxSize: 10, maxFiles: 5 },
-    { type: "fir", maxSize: 10, maxFiles: 1 },
+    { type: "fir", maxSize: 5, maxFiles: 5 },
   ];
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
@@ -742,8 +742,8 @@ export const CreateComplaint = ({ parentUrl }) => {
                       getFormState={(state) => getFirData(state)}
                       onUploadStatusChange={setIsFirUploading}
                       allowedFileTypesRegex={/(pdf|jpg|jpeg|png|image)$/i}
-                      allowedMaxSizeInMB={10}
-                      maxFilesAllowed={1}
+                      allowedMaxSizeInMB={5}
+                      maxFilesAllowed={5}
                       disabled={disbaledUpload}
                       ulb={Digit.SessionStorage.get("Employee.tenantId")}
                       acceptFiles={".pdf, .jpg, .jpeg, .png, image/*"}
