@@ -380,14 +380,15 @@ public class FacilityService {
 
         log.info("Updating facility {} for tenant {}", update.getFacilityId(), update.getTenantId());
         var userInfo = request.getRequestInfo().getUserInfo();
-        if (userInfo.getRoles() != null) {
-            boolean isFacilityAdmin = userInfo.getRoles().stream()
-                    .anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
-            boolean isSystemUser = userInfo.getRoles().stream()
-                    .anyMatch(role -> SYSTEM_USER.equalsIgnoreCase(role.getCode()));
-            if (!isFacilityAdmin && !isSystemUser) {
-                throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
-            }
+        if (userInfo.getRoles() == null)
+            throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
+
+        boolean isFacilityAdmin = userInfo.getRoles().stream()
+                .anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
+        boolean isSystemUser = userInfo.getRoles().stream()
+                .anyMatch(role -> SYSTEM_USER.equalsIgnoreCase(role.getCode()));
+        if (!isFacilityAdmin && !isSystemUser) {
+            throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
         }
 
         // Check if the facility exists in DB before attempting an update
