@@ -60,6 +60,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
+  const [isUninstallTicket, setIsUninstallTicket] = useState(false);
   const isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT";
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
@@ -219,6 +220,24 @@ export const CreateComplaint = ({ parentUrl }) => {
       }
     }
   }, [t, districtMenu, blockOptions, facilityOptions, selectBoundaryCode, stateBoundaryCode]);
+
+  useEffect(() => {
+    if (complaintType?.key?.toUpperCase() === "UNINSTALL") {
+      setIsUninstallTicket(true);
+      setSystemFunctionality({
+        key: "FUNCTIONAL",
+        name: t("Yes"),
+      });
+      setSubType({
+        key: "UninstallSolarSystem",
+        name: t("SERVICEDEFS.UNINSTALLSOLARSYSTEM"),
+      });
+    } else {
+      setIsUninstallTicket(false);
+      setSystemFunctionality(null);
+      setSubType({});
+    }
+  }, [complaintType, t]);
 
   useEffect(() => {
     (async () => {
@@ -636,6 +655,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               selected={subType}
               select={selectedSubType}
               required={true}
+              disable={isUninstallTicket}
             />
           ),
         },
@@ -653,6 +673,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 selected={systemFunctionality}
                 select={selectedSystemFunctionality}
                 required={true}
+                disable={isUninstallTicket}
               />
             </div>
           ),
