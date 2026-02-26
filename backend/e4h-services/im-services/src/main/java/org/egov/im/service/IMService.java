@@ -132,16 +132,6 @@ public class IMService {
             if (incidentWrappers != null && !incidentWrappers.isEmpty()){
                 throw new CustomException("INVALID_CREATION","Uninstall request cannot be raised while other tickets are open for this facility");
             }
-            String boundaryCode = request.getIncident().getBoundaryCode();
-            String facilityId = imUtils.extractFacilityCode(boundaryCode);
-            request.getIncident().setSystemFunctional("NON_FUNCTIONAL");
-            Map<String, Object> facility = new HashMap<>();
-            Map<String, Object> facilityUpdate = new HashMap<>();
-            facilityUpdate.put("tenant_id", tenantId);
-            facilityUpdate.put("facility_status", UNINSTALLED);
-            facilityUpdate.put("facility_id", facilityId);
-            facility.put("FacilityUpdate", facilityUpdate);
-            producer.push(tenantId,config.getUpdateFacilityTopic(), facility);
 
         }
 
@@ -274,6 +264,24 @@ public class IMService {
                 .build();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
+
+        // System uninstallation process
+        // HCR cannot only create ticket for other issue type if uninstall ticket status is PENDINGRESOLUTION
+        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase("Uninstall")
+                && updatedProcessInstance.getState().getApplicationStatus().equals("PENDINGRESOLUTION")){
+
+            String boundaryCode = request.getIncident().getBoundaryCode();
+            String facilityId = imUtils.extractFacilityCode(boundaryCode);
+            request.getIncident().setSystemFunctional("NON_FUNCTIONAL");
+            Map<String, Object> facility = new HashMap<>();
+            Map<String, Object> facilityUpdate = new HashMap<>();
+            facilityUpdate.put("tenant_id", tenantId);
+            facilityUpdate.put("facility_status", UNINSTALLED);
+            facilityUpdate.put("facility_id", facilityId);
+            facility.put("FacilityUpdate", facilityUpdate);
+            producer.push(tenantId,config.getUpdateFacilityTopic(), facility);
+
+        }
 
         // Handle the case where, when the ticket is of type UNINSTALL and the status is REJECTED(After user decline ticket) and
         // when the ticket is of type REINSTALL and the status is RESOLVED, then set HF status to ACTIVE and System functional to FUNCTIONAL
