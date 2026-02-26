@@ -150,6 +150,15 @@ export const CreateComplaint = ({ parentUrl }) => {
     }
   }, [isTheftIssue]);
 
+  useEffect(() => {
+    if (creationError) {
+      const timeOut = setTimeout(() => {
+        setCreationError("");
+      }, 2500);
+      return () => clearTimeout(timeOut);
+    }
+  }, [creationError]);
+
   let sortedSubMenu = [];
   if (subTypeMenu !== null) {
     sortedSubMenu = subTypeMenu.sort((a, b) => a.name.localeCompare(b.name));
@@ -452,7 +461,8 @@ export const CreateComplaint = ({ parentUrl }) => {
 
     if (!response?.IncidentWrappers) {
       setBlockUI(false);
-      setCreationError(response);
+      const assignErrorMessage = Array.isArray(response) ? response?.[0]?.message : response?.message || response;
+      setCreationError(assignErrorMessage || t("CS_COMMON_SOMETHING_WENT_WRONG"));
       return;
     }
 
@@ -859,7 +869,7 @@ export const CreateComplaint = ({ parentUrl }) => {
         </div>
       </div>
       <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit} label={t("FILE_INCIDENT")} />
-      {creationError && creationError[0].message && <Toast error={creationError[0].message} isDleteBtn={true} label={creationError[0].message} onClose={() => setCreationError(null)} />}
+      {creationError && <Toast error={creationError} isDleteBtn={true} label={creationError} onClose={() => setCreationError(null)} />}
 
       {/* <button onClick={(!selectedOption || Object.keys(selectedOption).length == 0)}>Check Errors</button>  
       {errors.map((error, index) => (

@@ -764,8 +764,13 @@ export const ComplaintDetails = (props) => {
     setPopup(true);
   }
   useEffect(() => {
-    setTimeout(() => setError(""), 10000);
-  });
+    if (error) {
+      const timeOut = setTimeout(() => {
+        setError("");
+      }, 2500);
+      return () => clearTimeout(timeOut);
+    }
+  }, [error]);
 
   useEffect(() => {
     (async () => {
@@ -867,7 +872,8 @@ export const ComplaintDetails = (props) => {
     );
     if (!response?.IncidentWrappers) {
       setBlockUI(false);
-      setError(response);
+      const assignErrorMessage = Array.isArray(response) ? response?.[0]?.message : response?.message || response;
+      setError(assignErrorMessage || t("CS_COMMON_SOMETHING_WENT_WRONG"));
       return;
     }
 
@@ -1230,7 +1236,7 @@ export const ComplaintDetails = (props) => {
           <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
         </ActionBar>
       )}
-      {error && error[0].message && <Toast error={error[0].message} isDleteBtn={true} label={error[0].message} onClose={closeToast} />}
+      {error && <Toast error={error} isDleteBtn={true} label={error} onClose={() => setError("")} />}
     </React.Fragment>
   );
 };
