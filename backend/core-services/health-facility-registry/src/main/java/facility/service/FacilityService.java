@@ -12,10 +12,12 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import static facility.config.ServiceConstants.FACILITY_ADMIN;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static facility.config.ServiceConstants.FACILITY_ADMIN;
+import static facility.config.ServiceConstants.SYSTEM_USER;
 
 @Service
 @Slf4j
@@ -378,10 +380,15 @@ public class FacilityService {
 
         log.info("Updating facility {} for tenant {}", update.getFacilityId(), update.getTenantId());
         var userInfo = request.getRequestInfo().getUserInfo();
-        if (userInfo.getRoles() != null) {
-            boolean isFacilityAdmin = userInfo.getRoles().stream().anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
-            if(!isFacilityAdmin)
-                throw new IllegalArgumentException("Only FACILITY_ADMIN role can edit facilities");
+        if (userInfo.getRoles() == null)
+            throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
+
+        boolean isFacilityAdmin = userInfo.getRoles().stream()
+                .anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
+        boolean isSystemUser = userInfo.getRoles().stream()
+                .anyMatch(role -> SYSTEM_USER.equalsIgnoreCase(role.getCode()));
+        if (!isFacilityAdmin && !isSystemUser) {
+            throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
         }
 
         // Check if the facility exists in DB before attempting an update
