@@ -60,7 +60,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
-  const [isUninstallTicket, setIsUninstallTicket] = useState(false);
+  const [isInstallationTicket, setIsInstallationTicket] = useState(false);
   const [isUninstalledFacility, setIsUninstalledFacility] = useState(false);
   const isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT";
 
@@ -252,7 +252,7 @@ export const CreateComplaint = ({ parentUrl }) => {
 
   useEffect(() => {
     if (complaintType?.key?.toUpperCase() === "UNINSTALL") {
-      setIsUninstallTicket(true);
+      setIsInstallationTicket(true);
       setSystemFunctionality({
         key: "FUNCTIONAL",
         name: t("Yes"),
@@ -263,6 +263,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       });
 
     } else if (complaintType?.key?.toUpperCase() === "REINSTALL") {
+      setIsInstallationTicket(true);
       setSystemFunctionality({
         key: "NON_FUNCTIONAL",
         name: t("No"),
@@ -273,7 +274,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       });
 
     } else {
-      setIsUninstallTicket(false);
+      setIsInstallationTicket(false);
       setSystemFunctionality({});
       setSubType({});
     }
@@ -705,7 +706,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               selected={subType}
               select={selectedSubType}
               required={true}
-              disable={isUninstalledFacility || isUninstallTicket}
+              disable={isUninstalledFacility || isInstallationTicket}
             />
           ),
         },
@@ -723,7 +724,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 selected={systemFunctionality}
                 select={selectedSystemFunctionality}
                 required={true}
-                disable={isUninstalledFacility || isUninstallTicket}
+                disable={isUninstalledFacility || isInstallationTicket}
               />
             </div>
           ),
