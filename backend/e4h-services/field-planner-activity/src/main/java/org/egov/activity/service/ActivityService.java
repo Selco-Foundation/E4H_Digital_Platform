@@ -9,6 +9,7 @@ import org.egov.activity.util.ActivityServiceUtil;
 import org.egov.activity.util.BoundaryUtil;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.request.Role;
 import org.egov.common.producer.Producer;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.repository.ActivityFacilityRepository;
@@ -516,9 +517,27 @@ public class ActivityService {
 
             facility.setIsOnmReady(Boolean.TRUE);
 
+            // Ensure roles list exists
+            if (requestInfo.getUserInfo().getRoles() == null) {
+                requestInfo.getUserInfo().setRoles(new ArrayList<>());
+            }
+
+            // Optionally guard against duplicates if needed
+            boolean hasSystemUser = requestInfo.getUserInfo().getRoles().stream()
+                    .anyMatch(r -> "SYSTEM_USER".equals(r.getCode()));
+            if (!hasSystemUser) {
+                requestInfo.getUserInfo().getRoles().add(
+                        Role.builder()
+                                .name("System User")
+                                .code("SYSTEM_USER")
+                                .tenantId("in")
+                                .build()
+                );
+            }
+
             Map<String, Object> updateRequest = new HashMap<>();
             updateRequest.put("RequestInfo", requestInfo);
-            updateRequest.put("Facility", facility);
+            updateRequest.put("FacilityUpdate", facility);
 
             String url = activityConfiguration.getFacilityServiceHost()
                     + activityConfiguration.getFacilityServiceUpdateUrl();
