@@ -159,44 +159,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     setSelectedEmployee(employee);
   }
 
-  function addComment(e) {
-    if (e.target.value.length > 256) {
-      setError(t("CS_COMMENT_LENGTH_LIMIT_EXCEED"));
-    }
-    // else if(!/^[a-zA-Z0-9\s./,]*$/.test(e.target.value)){
-    //   setError(t("CS_COMMENT_INVALID_CHARACTERS"))
-    // }
-    else {
-      setError(null);
-      setComments(e.target.value);
-    }
-  }
-
-  function addOOWResponses(e, setField) {
-    if (e.target.value.length > 1000) {
-      setError(t("CS_TEXT_LENGTH_LIMIT_EXCEED"));
-    } else {
-      setError(null);
-      setField(e.target.value);
-    }
-  }
-
-  function addSPCRootAnalysis(e, setField) {
-    if (e.target.value.length > 1000) {
-      setError(t("SPC_ROOT_ANALYSIS_LENGTH_LIMIT_EXCEED"));
-    } else {
-      setError(null);
-      setField(e.target.value);
-    }
-  }
-
-  function addSPCSparePartToBeReplaced(e, setField) {
-    if (e.target.value.length > 200) {
-      setError(t("SPC_PART_TO_BE_REPLACED_LENGTH_LIMIT_EXCEED"));
-    } else {
-      setError(null);
-      setField(e.target.value);
-    }
+  function addUserResponses(e, setField) {
+    setError(null);
+    setField(e.target.value);
   }
 
   function onSelectReopenReason(reason) {
@@ -344,10 +309,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         const isTextareaAction =
           ["SENDBACK", "REJECT", "MARK_OUT_OF_SCOPE"].includes(selectedAction) &&
           (selectedAction === "MARK_OUT_OF_SCOPE"
-            ? selectedOutOfScopeReason?.additionalInputs?.[0].type === "textarea"
+            ? selectedOutOfScopeReason?.additionalInputs?.[0]?.type === "textarea"
             : selectedAction === "SENDBACK"
-            ? selectedSendBackReason?.additionalInputs?.[0].type === "textarea"
-            : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
+            ? selectedSendBackReason?.additionalInputs?.[0]?.type === "textarea"
+            : selectedRejectReason?.additionalInputs?.[0]?.type === "textarea");
 
         const isCommentsMandatory =
           (isTextareaAction || selectedAction === "RESOLVE" || selectedAction === "REVISE" || selectedAction === "STATUS_UPDATE") && !comments.trim();
@@ -357,29 +322,43 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: selectedAction === "SENDBACK" && !selectedSendBackReason, message: "CS_MANDATORY_SENDBACK_REASON" },
           { condition: selectedAction === "MARK_OUT_OF_SCOPE" && !selectedOutOfScopeReason, message: "CS_MANDATORY_OUT_OF_SCOPE_REASON" },
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
+          { condition: comments?.length > 1000, message: "CS_COMMENT_LENGTH_LIMIT_EXCEED" },
           { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: !isRmsAssignmentToTechPoc && selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
           {
-            condition: selectedAction === "SPARE_PART_NEEDED" && !spcRootAnalysis?.trim(),
+            condition: selectedAction === "SPARE_PART_NEEDED" && (!spcRootAnalysis?.trim() || spcRootAnalysis?.length > 1000),
             message: "CS_SPC_ROOT_ANALYSIS_MANDATORY",
           },
           {
-            condition: selectedAction === "SPARE_PART_NEEDED" && !spcSparePartToBeReplaced?.trim(),
+            condition: selectedAction === "SPARE_PART_NEEDED" && (!spcSparePartToBeReplaced?.trim() || spcSparePartToBeReplaced?.length > 200),
             message: "CS_SPC_SPARE_PART_TO_BE_REPLACED_MANDATORY",
           },
-          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowIssue?.trim(), message: "CS_OOW_ISSUE_MANDATORY" },
-          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowRootCause?.trim(), message: "CS_OOW_ROOT_CAUSE_MANDATORY" },
           {
-            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowRecommendedSolution?.trim(),
+            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (!oowIssue?.trim() || oowIssue?.length > 1000),
+            message: "CS_OOW_ISSUE_MANDATORY",
+          },
+          {
+            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (!oowRootCause?.trim() || oowRootCause?.length > 1000),
+            message: "CS_OOW_ROOT_CAUSE_MANDATORY",
+          },
+          {
+            condition:
+              ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (!oowRecommendedSolution?.trim() || oowRecommendedSolution?.length > 1000),
             message: "CS_OOW_RECOMMENDED_SOLUTION_MANDATORY",
           },
           {
-            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTimeToResolve?.trim(),
+            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (!oowTimeToResolve?.trim() || oowTimeToResolve?.length > 200),
             message: "CS_OOW_RESOLUTION_TIME_MANDATORY",
           },
           {
-            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTotalCostOfSolution?.trim(),
+            condition:
+              ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) &&
+              (!oowTotalCostOfSolution?.trim() || isNaN(parseFloat(oowTotalCostOfSolution)) || parseFloat(oowTotalCostOfSolution) > 10000000),
             message: "CS_SOLUTION_COST_MANDATORY",
+          },
+          {
+            condition: currentState === "RMS_DEVICE_PENDING_TECH_POC" && selectedAction === "RESOLVE" && comments?.trim()?.length < 100,
+            message: "RMS_TECH_POC_RESOLUTION_COMMENT_MANDATORY"
           },
           {
             condition:
@@ -514,46 +493,46 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           </React.Fragment>
         ) : null}
         {(selectedAction !== "SENDBACK" &&
-          selectedAction !== "MARK_OUT_OF_SCOPE" &&
           selectedAction !== "OUT_OF_WARRANTY" &&
           selectedAction !== "SPARE_PART_NEEDED" &&
           selectedAction !== "SUBMIT") ||
-        selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ||
-        selectedOutOfScopeReason?.additionalInputs?.[0].type === "textarea" ? (
+        selectedSendBackReason?.additionalInputs?.[0]?.type === "textarea" ||
+        selectedOutOfScopeReason?.additionalInputs?.[0]?.type === "textarea" ? (
           <>
             {selectedAction !== "ASSIGN" &&
             selectedAction !== "REOPEN" &&
             selectedAction !== "APPROVE" &&
-            !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
+            !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0]?.type !== "textarea") &&
+            !(selectedAction === "MARK_OUT_OF_SCOPE" && selectedOutOfScopeReason?.additionalInputs?.[0]?.type !== "textarea") ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
             )}
-            <TextArea name="comment" onChange={addComment} value={comments} />
+            <TextArea name="comment" onChange={(e) => addUserResponses(e, setComments)} value={comments} />
           </>
         ) : null}
         {["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (
           <React.Fragment>
             <CardLabel>{t("OOW_ACTION_ISSUE_OBSERVATION")}*</CardLabel>
-            <TextArea name="oowIssue" onChange={(e) => addOOWResponses(e, setOowIssue)} value={oowIssue} />
+            <TextArea name="oowIssue" onChange={(e) => addUserResponses(e, setOowIssue)} value={oowIssue} />
             <CardLabel>{t("OOW_ACTION_ISSUE_ROOT_CAUSE")}*</CardLabel>
-            <TextArea name="oowRootCause" onChange={(e) => addOOWResponses(e, setOowRootCause)} value={oowRootCause} />
+            <TextArea name="oowRootCause" onChange={(e) => addUserResponses(e, setOowRootCause)} value={oowRootCause} />
             <CardLabel>{t("OOW_ACTION_ISSUE_SOLUTION")}*</CardLabel>
-            <TextArea name="oowRecommendedSolution" onChange={(e) => addOOWResponses(e, setOowRecommendedSolution)} value={oowRecommendedSolution} />
+            <TextArea name="oowRecommendedSolution" onChange={(e) => addUserResponses(e, setOowRecommendedSolution)} value={oowRecommendedSolution} />
             <CardLabel>{t("OOW_ACTION_ISSUE_RESOLUTION_TIME")}*</CardLabel>
-            <TextInput t={t} type={"text"} onChange={(e) => addOOWResponses(e, setOowTimeToResolve)} value={oowTimeToResolve} />
+            <TextInput t={t} type={"text"} onChange={(e) => addUserResponses(e, setOowTimeToResolve)} value={oowTimeToResolve} />
             <CardLabel>{t("OOW_ACTION_ISSUE_SOLUTION_COST")}*</CardLabel>
-            <TextInput t={t} type={"number"} onChange={(e) => addOOWResponses(e, setOowTotalCostOfSolution)} value={oowTotalCostOfSolution} />
+            <TextInput t={t} type={"number"} onChange={(e) => addUserResponses(e, setOowTotalCostOfSolution)} value={oowTotalCostOfSolution} />
           </React.Fragment>
         )}
         {selectedAction === "SPARE_PART_NEEDED" && (
           <React.Fragment>
             <CardLabel>{t("SPC_ACTION_ROOT_CAUSE_ANALYSIS")}*</CardLabel>
-            <TextArea name="spcRootAnalysis" onChange={(e) => addSPCRootAnalysis(e, setSpcRootAnalysis)} value={spcRootAnalysis} />
+            <TextArea name="spcRootAnalysis" onChange={(e) => addUserResponses(e, setSpcRootAnalysis)} value={spcRootAnalysis} />
             <CardLabel>{t("SPC_ACTION_SPARE_PART_TO_BE_REPLACED")}*</CardLabel>
             <TextArea
               name="spcSparePartToBeReplaced"
-              onChange={(e) => addSPCSparePartToBeReplaced(e, setSpcSparePartToBeReplaced)}
+              onChange={(e) => addUserResponses(e, setSpcSparePartToBeReplaced)}
               value={spcSparePartToBeReplaced}
             />
           </React.Fragment>
