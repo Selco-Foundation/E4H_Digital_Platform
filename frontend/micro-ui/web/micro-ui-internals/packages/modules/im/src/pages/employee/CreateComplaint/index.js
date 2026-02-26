@@ -47,7 +47,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [disbaledUpload, setDisableUpload] = useState(true);
   const [phcMenuNew, setPhcMenu] = useState([]);
   const [subType, setSubType] = useState({});
-  const [systemFunctionality, setSystemFunctionality] = useState();
+  const [systemFunctionality, setSystemFunctionality] = useState({});
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
@@ -61,6 +61,7 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [isUninstallTicket, setIsUninstallTicket] = useState(false);
+  const [isUninstalledFacility, setIsUninstalledFacility] = useState(false);
   const isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT";
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
@@ -86,6 +87,7 @@ export const CreateComplaint = ({ parentUrl }) => {
       setFacilityOptions(facilityData?.facilities?.map((facility) => ({
         code: facility.boundaryCode,
         id: facility.facilityId,
+        status: facility.facilityStatus,
         parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
       })));
     }
@@ -250,12 +252,36 @@ export const CreateComplaint = ({ parentUrl }) => {
         key: "UninstallSolarSystem",
         name: t("SERVICEDEFS.UNINSTALLSOLARSYSTEM"),
       });
+
+    } else if (complaintType?.key?.toUpperCase() === "REINSTALL") {
+      setSystemFunctionality({
+        key: "NON_FUNCTIONAL",
+        name: t("No"),
+      });
+      setSubType({
+        key: "ReinstallSolarSystem",
+        name: t("SERVICEDEFS.REINSTALLSOLARSYSTEM"),
+      });
+
     } else {
       setIsUninstallTicket(false);
-      setSystemFunctionality(null);
+      setSystemFunctionality({});
       setSubType({});
     }
   }, [complaintType, t]);
+
+  useEffect(() => {
+    if (healthcentre?.status === "UNINSTALLED") {
+      setIsUninstalledFacility(true);
+      setComplaintType({
+        key: "Reinstall",
+        name: t("SERVICEDEFS.REINSTALL"),
+      });
+    } else {
+      setIsUninstalledFacility(false);
+      setComplaintType({});
+    }
+  }, [healthcentre, t]);
 
   useEffect(() => {
     (async () => {
@@ -651,6 +677,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               selected={complaintType}
               select={selectedType}
               required={true}
+              disable={isUninstalledFacility}
             />
           ),
         },
@@ -668,7 +695,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               selected={subType}
               select={selectedSubType}
               required={true}
-              disable={isUninstallTicket}
+              disable={isUninstalledFacility || isUninstallTicket}
             />
           ),
         },
@@ -686,7 +713,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 selected={systemFunctionality}
                 select={selectedSystemFunctionality}
                 required={true}
-                disable={isUninstallTicket}
+                disable={isUninstalledFacility || isUninstallTicket}
               />
             </div>
           ),
