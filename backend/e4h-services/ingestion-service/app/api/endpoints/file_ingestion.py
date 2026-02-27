@@ -2626,7 +2626,7 @@ async def bulk_ingest_amc_configurations(
         # Create vendor to users mapping (supports multiple users per vendor)
         vendor_to_users = {}  # Key: vendor name (from Excel), Value: {vendorId, users}
         vendor_id_to_name = {}  # Reverse mapping: vendorId -> vendor name (if available)
-
+        assignment_users = []
         for vendor_mapping in user_info_data:
             # Primary key: vendorId (UUID)
             vendor_id = vendor_mapping.get("vendorId", "").strip()
@@ -2672,6 +2672,15 @@ async def bulk_ingest_amc_configurations(
 
                 # Store full user object for reference, with extracted fields
                 processed_users.append({
+                    "id": str(user_id),  # Convert to string for consistency
+                    "userId": str(user_id),  # Keep for backward compatibility
+                    "userName": user_name,
+                    "name": user_name,
+                    "tenantId": user_tenant_id,
+                    "fullUser": user  # Store full user object for reference
+                })
+
+                assignment_users.append({
                     "id": str(user_id),  # Convert to string for consistency
                     "userId": str(user_id),  # Keep for backward compatibility
                     "userName": user_name,
@@ -2840,7 +2849,8 @@ async def bulk_ingest_amc_configurations(
 
                 # Create assignments array from vendor users
                 assignments = []
-                for user in vendor_users:
+                # for user in vendor_users:
+                for user in assignment_users:
                     # Use user's id (from full user object) or userId (backward compatibility)
                     assigned_user_id = user.get("id") or user.get("userId")
                     # Prefer user's tenantId if available, otherwise use default tenant_id
