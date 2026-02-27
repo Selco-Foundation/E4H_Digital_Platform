@@ -33,4 +33,14 @@ const createComplaint = ({
   });
 };
 
-export default createComplaint;
+const populateCreateResponse = (response) => (dispatch) => {
+  dispatch({
+    type: CREATE_COMPLAINT,
+    payload: response,
+  });
+}
+
+export {
+  createComplaint,
+  populateCreateResponse,
+};
