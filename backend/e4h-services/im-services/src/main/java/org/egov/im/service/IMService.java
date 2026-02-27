@@ -13,10 +13,13 @@ import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 
+import lombok.extern.slf4j.Slf4j;
+@Slf4j
 @org.springframework.stereotype.Service
 public class IMService {
 
@@ -45,6 +48,15 @@ public class IMService {
     private BoundaryService boundaryService;
 
     private RmsStatusUpdateService rmsStatusUpdateService;
+
+    @Value("#{'${workflow.ticket.open.statuses}'.split(',')}")
+    private Set<String> openTicketStatuses;
+
+    private final String UNINSTALLED = "UNINSTALLED";
+
+    private final String ACTIVE = "ACTIVE";
+    private final String REINSTALL = "Reinstall";
+    private final String UNINSTALL = "Uninstall";
 
     @Autowired
     public IMService(
@@ -76,49 +88,99 @@ public class IMService {
      * @return
      */
     public IncidentRequest create(IncidentRequest request){
+        log.trace("IMService::create method invoked");
+        log.info("Creating incident for tenantId={}", request.getIncident().getTenantId());
         String tenantId = request.getIncident().getTenantId();
+        log.trace("Fetching MDMS data for create request");
         Object mdmsData = mdmsUtils.mDMSCall(request);
+        log.trace("Validating create request");
         validator.validateCreate(request, mdmsData);
-        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
-                request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
-        );
-        if (boundary == null) {
-            throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + request.getIncident().getBoundaryCode());
+        log.trace("Fetching boundary from boundaryCode");
+
+        // Get facility details in order to get facility status before ticket creation
+        // System reinstallation process
+        Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(request);
+        if(facilityDetails !=null && !facilityDetails.isEmpty()){
+            String facilityStatus = (String) facilityDetails.get("facility_status");
+            if (facilityStatus !=null){
+                if (facilityStatus.trim().equalsIgnoreCase(UNINSTALLED) && !request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
+                    throw new CustomException("CREATION_ERROR", "The facility status is UNINSTALLED, then the only available issue type should be Reinstall");
+                }
+
+                if (facilityStatus.trim().equalsIgnoreCase(UNINSTALLED) && request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)
+                        && !request.getIncident().getSystemFunctional().equalsIgnoreCase("NON_FUNCTIONAL")){
+                    throw new CustomException("CREATION_ERROR", "Reinstall request cannot be raised while System Functional is Functional");
+                }
+
+                if (facilityStatus.trim().equalsIgnoreCase(ACTIVE) && request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
+                    throw new CustomException("CREATION_ERROR", "Reinstall can be raised only for facilities with an uninstalled solar system.");
+                }
+            }
+
         }
-        enrichmentService.enrichCreateRequest(request, boundary);
+
+        // System uninstallation process
+        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase(UNINSTALL)){
+            if (!"FUNCTIONAL".equalsIgnoreCase(request.getIncident().getSystemFunctional())){
+                throw new CustomException("CREATION_ERROR", "Uninstall request cannot be raised while System Functional is Non Functional");
+            }
+
+            // Search if that facility with boundary code has open tickets or not
+            RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
+                    .tenantId(request.getIncident().getTenantId())
+                    .boundaryCode(request.getIncident().getBoundaryCode())
+                    .applicationStatus(openTicketStatuses)
+                    .build();
+            List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
+
+            // Check if Given the health facility has any open ticket in a non-closed state
+            if (incidentWrappers != null && !incidentWrappers.isEmpty()){
+                throw new CustomException("INVALID_CREATION","Uninstall request cannot be raised while other tickets are open for this facility");
+            }
+
+        }
+
         RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
                 .tenantId(request.getIncident().getTenantId())
                 .boundaryCode(request.getIncident().getBoundaryCode())
-                .applicationStatus(Set.of(
-                        "PENDINGFORASSIGNMENT",
-                        "PENDINGRESOLUTION",
-                        "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
-                        "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
-                        "PENDING_RESOLUTION_SPARE_PART_NEEDED",
-                        "PENDING_RESOLUTION_OUT_OF_WARRANTY"
-                ))
+                .applicationStatus(openTicketStatuses)
                 .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
                 .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
                 .build();
         List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
-        if (incidentWrappers!=null && !incidentWrappers.isEmpty())
-            request.getIncident().setPotentialDuplicate(true);
-        else
-            request.getIncident().setPotentialDuplicate(false);
+        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId());
+        if (boundary == null) {
+            log.error("Boundary data not found for code: {}", request.getIncident().getBoundaryCode());
+            throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + request.getIncident().getBoundaryCode());
+        }
+        log.trace("Enriching create request");
+        enrichmentService.enrichCreateRequest(request, boundary);
+        log.trace("Checking for potential duplicates");
+
+        boolean isDuplicate = incidentWrappers != null && !incidentWrappers.isEmpty();
+        request.getIncident().setPotentialDuplicate(isDuplicate);
+        log.debug("Potential duplicate check completed, isDuplicate={}", isDuplicate);
 
         String startingStatus = request.getIncident().getApplicationStatus();
+        log.info("Updating workflow status for incident creation");
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
                 .indexView(new IndexView())
                 .build();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
+        log.trace("Publishing incident to create topic");
         producer.push(tenantId,config.getCreateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
+        log.trace("Enriching fields for indexing");
         enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+        log.trace("Publishing incident to indexer topic");
         producer.push(tenantId,config.getCreateTopicIndexer(),wrapper);
+        log.trace("Enriching fields for audit indexing");
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
+        log.trace("Publishing incident to audit indexer topic");
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
+        log.info("Incident created successfully with incidentId={}", request.getIncident().getIncidentId());
         return request;
     }
 
@@ -130,26 +192,39 @@ public class IMService {
      * @return
      */
     public List<IncidentWrapper> search(RequestInfo requestInfo, RequestSearchCriteria criteria){
+        log.trace("IMService::search method invoked");
+        log.info("Searching incidents with criteria tenantId={}", criteria.getTenantId());
+        log.trace("Validating search criteria");
         validator.validateSearch(requestInfo, criteria);
 
+        log.trace("Enriching search request");
         enrichmentService.enrichSearchRequest(requestInfo, criteria);
 
-        if(criteria.isEmpty())
+        if(criteria.isEmpty()) {
+            log.debug("Search criteria is empty, returning empty list");
             return new ArrayList<>();
+        }
 
-        if(criteria.getMobileNumber()!=null && CollectionUtils.isEmpty(criteria.getUserIds()))
+        if(criteria.getMobileNumber()!=null && CollectionUtils.isEmpty(criteria.getUserIds())) {
+            log.debug("Mobile number provided but no userIds found, returning empty list");
             return new ArrayList<>();
+        }
 
         criteria.setIsPlainSearch(false);
-
+        log.trace("Fetching incidents from repository");
         List<IncidentWrapper> incidentWrappers = repository.getIncidentWrappers(criteria);
+        log.debug("Found {} incidents from repository", incidentWrappers != null ? incidentWrappers.size() : 0);
 
-        if(CollectionUtils.isEmpty(incidentWrappers))
-            return new ArrayList<>();;
+        if(CollectionUtils.isEmpty(incidentWrappers)) {
+            log.debug("No incidents found, returning empty list");
+            return new ArrayList<>();
+        }
 
          //to add later
         //userService.enrichUsers(serviceWrappers);
+        log.trace("Enriching workflow for incidents");
         List<IncidentWrapper> enrichedServiceWrappers = workflowService.enrichWorkflow(requestInfo,incidentWrappers);
+        log.debug("Sorting {} incidents by createdTime desc", enrichedServiceWrappers.size());
         Map<Long, List<IncidentWrapper>> sortedWrappers = new TreeMap<>(Collections.reverseOrder());
         for(IncidentWrapper svc : enrichedServiceWrappers){
             if(sortedWrappers.containsKey(svc.getIncident().getAuditDetails().getCreatedTime())){
@@ -164,6 +239,7 @@ public class IMService {
         for(Long createdTimeDesc : sortedWrappers.keySet()){
             sortedServiceWrappers.addAll(sortedWrappers.get(createdTimeDesc));
         }
+        log.info("Search completed, returning {} incidents", sortedServiceWrappers.size());
         return sortedServiceWrappers;
     }
 
@@ -174,26 +250,83 @@ public class IMService {
      * @return
      */
     public IncidentRequest update(IncidentRequest request){
+        log.trace("IMService::update method invoked");
+        log.info("Updating incident tenantId={} incidentId={} currentStatus={}",
+                request.getIncident().getTenantId(), request.getIncident().getIncidentId(),
+                request.getIncident().getApplicationStatus());
         String tenantId = request.getIncident().getTenantId();
+        log.trace("Fetching MDMS data for update request");
         Object mdmsData = mdmsUtils.mDMSCall(request);
+        log.trace("Validating update request");
         validator.validateUpdate(request, mdmsData);
+        log.trace("Enriching update request");
         enrichmentService.enrichUpdateRequest(request);
         String startingStatus = request.getIncident().getApplicationStatus();
+        log.info("Updating workflow status for incident update");
         IncidentRequestWrapper wrapper = IncidentRequestWrapper.builder()
                 .incidentRequest(request)
                 .indexView(new IndexView())
                 .build();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
+
+        // System uninstallation process
+        // HCR cannot only create ticket for other issue type if uninstall ticket status is PENDINGRESOLUTION
+        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase(UNINSTALL)
+                && updatedProcessInstance.getState() != null && updatedProcessInstance.getState().getApplicationStatus()!=null
+                && updatedProcessInstance.getState().getApplicationStatus().equals("PENDINGRESOLUTION")){
+
+            String boundaryCode = request.getIncident().getBoundaryCode();
+            String facilityId = imUtils.extractFacilityCode(boundaryCode);
+            request.getIncident().setSystemFunctional("NON_FUNCTIONAL");
+            Map<String, Object> facility = new HashMap<>();
+            Map<String, Object> facilityUpdate = new HashMap<>();
+            facilityUpdate.put("tenant_id", tenantId);
+            facilityUpdate.put("facility_status", UNINSTALLED);
+            facilityUpdate.put("facility_id", facilityId);
+            facility.put("FacilityUpdate", facilityUpdate);
+            producer.push(tenantId,config.getUpdateFacilityTopic(), facility);
+
+        }
+
+        // Handle the case where, when the ticket is of type UNINSTALL and the status is REJECTED(After user decline ticket) and
+        // when the ticket is of type REINSTALL and the status is RESOLVED, then set HF status to ACTIVE and System functional to FUNCTIONAL
+        if (updatedProcessInstance != null) {
+            String incidentType = request.getIncident().getIncidentType();
+            String status = updatedProcessInstance.getState().getApplicationStatus();
+            boolean shouldUpdate = (UNINSTALL.equalsIgnoreCase(incidentType) && "REJECTED".equals(status)) || (REINSTALL.equalsIgnoreCase(incidentType) && "RESOLVED".equals(status));
+            if (shouldUpdate) {
+                request.getIncident().setSystemFunctional("FUNCTIONAL");
+                String facilityId = imUtils.extractFacilityCode(request.getIncident().getBoundaryCode());
+                Map<String, Object> facilityUpdate = Map.of(
+                        "tenant_id", tenantId,
+                        "facility_status", ACTIVE,
+                        "facility_id", facilityId
+                );
+
+                Map<String, Object> facility = Map.of(
+                        "FacilityUpdate", facilityUpdate
+                );
+                producer.push(tenantId, config.getUpdateFacilityTopic(), facility);
+            }
+        }
+
+        log.trace("Publishing incident to update topic");
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);
+        log.trace("Fetching boundary for indexing");
         Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
                 request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
         );
+        log.trace("Enriching fields for indexing");
         enrichmentService.enrichFieldsForIndexing(wrapper, boundary);
+        log.trace("Updating business service");
         imUtils.updateBusinessService(wrapper,mdmsData);
+        log.trace("Publishing incident to indexer topic");
         producer.push(tenantId,config.getUpdateTopicIndexer(),wrapper);
+        log.trace("Enriching fields for audit indexing");
         enrichmentService.enrichFieldsForAuditIndexing(wrapper,startingStatus);
+        log.trace("Publishing incident to audit indexer topic");
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
 
         // Notify RMS when ticket status is moved to a closed state.
@@ -219,17 +352,24 @@ public class IMService {
      * @return
      */
     public Integer count(RequestInfo requestInfo, RequestSearchCriteria criteria){
+        log.trace("IMService::count method invoked");
+        log.info("Counting incidents with criteria tenantId={}", criteria.getTenantId());
         criteria.setIsPlainSearch(false);
+        log.trace("Fetching count from repository");
         Integer count = repository.getCount(criteria);
+        log.info("Count query completed, result={}", count);
         return count;
     }
 
 
     public List<IncidentWrapper> plainSearch(RequestInfo requestInfo, RequestSearchCriteria criteria) {
+        log.trace("IMService::plainSearch method invoked");
+        log.info("Plain searching incidents with criteria tenantId={}", criteria.getTenantId());
+        log.trace("Validating plain search criteria");
         validator.validatePlainSearch(criteria);
 
         criteria.setIsPlainSearch(true);
-
+        log.debug("Setting default limit and offset if not provided");
         if(criteria.getLimit()==null)
             criteria.setLimit(config.getDefaultLimit());
 
@@ -239,15 +379,21 @@ public class IMService {
         if(criteria.getLimit()!=null && criteria.getLimit() > config.getMaxLimit())
             criteria.setLimit(config.getMaxLimit());
 
+        log.trace("Fetching incidents from repository");
         List<IncidentWrapper> incidentWrappers = repository.getIncidentWrappers(criteria);
+        log.debug("Found {} incidents from repository", incidentWrappers != null ? incidentWrappers.size() : 0);
 
         if(CollectionUtils.isEmpty(incidentWrappers)){
+            log.debug("No incidents found, returning empty list");
             return new ArrayList<>();
         }
 
+        log.trace("Enriching users for incidents");
         userService.enrichUsers(incidentWrappers);
+        log.trace("Enriching workflow for incidents");
         List<IncidentWrapper> enrichedServiceWrappers = workflowService.enrichWorkflow(requestInfo, incidentWrappers);
 
+        log.debug("Sorting {} incidents by createdTime desc", enrichedServiceWrappers.size());
         Map<Long, List<IncidentWrapper>> sortedWrappers = new TreeMap<>(Collections.reverseOrder());
         for(IncidentWrapper svc : enrichedServiceWrappers){
             if(sortedWrappers.containsKey(svc.getIncident().getAuditDetails().getCreatedTime())){
@@ -262,6 +408,7 @@ public class IMService {
         for(Long createdTimeDesc : sortedWrappers.keySet()){
         	sortedIncidentWrappers.addAll(sortedWrappers.get(createdTimeDesc));
         }
+        log.info("Plain search completed, returning {} incidents", sortedIncidentWrappers.size());
         return sortedIncidentWrappers;
     }
 

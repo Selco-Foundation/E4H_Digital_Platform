@@ -112,17 +112,37 @@ public class SLAService {
         if(previousStates.isEmpty() || !previousStates.get(previousStates.size() - 1).equals(currentState)){
             previousStates.add(currentState);
         }
-        for(String state : previousStates){
-            if(PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
-                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || (state.startsWith(PENDING_RESOLUTION_PREFIX))){
+        for (String state : previousStates) {
+            if (PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
+                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDINGFORASSIGNMENT_PREFIX)
+                    || state.startsWith(PENDING_RESOLUTION_PREFIX)
+                    || RMS_DEVICE_PENDING_TECH_POC.equals(state) || RMS_DEVICE_PENDINGRESOLUTION.equals(state)
+                    || OUT_OF_SCOPE.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC.equals(state)
+                    || PENDING_REVISION.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(state)) {
                 totalSla += stateToSlaMap.getOrDefault(state, 0L);
             }
         }
 
         //add positive follow-up state
-        if (PENDINGFORASSIGNMENT.equals(currentState)) {
+        if (PENDINGFORASSIGNMENT.equals(currentState) || PENDINGFORASSIGNMENT_THEFT.equals(currentState)) {
             totalSla += stateToSlaMap.getOrDefault(PENDINGATVENDOR, 0L);
             log.debug("Computed SLA for combined state={} totalSla={}", currentState, totalSla);
+        } else if (PENDINGFORASSIGNMENT_RMS_DEVICE.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(RMS_DEVICE_PENDING_TECH_POC, 0L);
+            log.debug("Computed SLA for RMS device assignment | currentState={} totalSla={}", currentState, totalSla);
+        } else if (RMS_DEVICE_PENDING_TECH_POC.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(RMS_DEVICE_PENDINGRESOLUTION, 0L);
+            log.debug("Computed SLA for RMS device tech POC | currentState={} totalSla={}", currentState, totalSla);
+        } else if (OUT_OF_WARRANTY_PENDING_TECH_POC.equals(currentState)
+                || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(PENDING_ASSIGNMENT_OUT_OF_WARRANTY, 0L);
+            log.debug("Computed SLA for out-of-warranty tech POC | currentState={} totalSla={}", currentState, totalSla);
+        } else if (OUT_OF_SCOPE.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(PENDING_RESOLUTION_OUT_OF_SCOPE, 0L);
+            log.debug("Computed SLA for out-of-scope | currentState={} totalSla={}", currentState, totalSla);
+        } else if (PENDING_REVISION.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2, 0L);
+            log.debug("Computed SLA for pending revision | currentState={} totalSla={}", currentState, totalSla);
         } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
             String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
             String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;

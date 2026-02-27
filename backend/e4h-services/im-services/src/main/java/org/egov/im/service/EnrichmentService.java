@@ -465,4 +465,54 @@ public class EnrichmentService {
 
         indexView.setDocumentUrls(fileStoreUrls);
     }
+
+    public Map<String, Object> getFacilityDetailsFromBoundaryCode(IncidentRequest incidentRequest) {
+        Incident incident = incidentRequest.getIncident();
+        String boundaryCode = incident.getBoundaryCode();
+        String tenantId = incident.getTenantId();
+
+        if (boundaryCode == null || boundaryCode.isEmpty()) {
+            log.error("No boundaryCode provided in incident request, cannot enrich facility details");
+            throw new CustomException("BOUNDARY_CODE_MISSING", "Boundary code not provided to enrich facility details");
+        }
+
+        log.trace("Fetching facility details from facility registry for boundaryCode={}", boundaryCode);
+        try {
+            String url = UriComponentsBuilder.fromHttpUrl(config.getFacilityHost() + config.getFacilitySearchPath())
+                    .queryParam("tenantId", tenantId != null ? tenantId : "")
+                    .queryParam("boundaryCode", boundaryCode)
+                    .toUriString();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+            HttpEntity<Object> requestEntity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    requestEntity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> responseMap = responseEntity.getBody();
+
+            if (responseMap != null) {
+                List<Map<String, Object>> facilities = (List<Map<String, Object>>) responseMap.get("facilities");
+
+                if (facilities != null && !facilities.isEmpty()) {
+                    Map<String, Object> facility = facilities.get(0);
+                    return facility;
+                } else {
+                    log.warn("No facility found in facility registry for boundaryCode: {}", boundaryCode);
+                    throw new CustomException("FACILITY_NOT_FOUND", "Cannot find facility");
+                }
+            }
+        } catch (CustomException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Exception while enriching facility details for boundaryCode: {}", boundaryCode, e);
+            throw new CustomException("FACILITY_NOT_FOUND", "Cannot find facility");
+        }
+        return Collections.emptyMap();
+    }
 }
