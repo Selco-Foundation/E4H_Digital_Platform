@@ -5,15 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.im.service.IMService;
+import org.egov.im.service.TheftNotificationService;
 import org.egov.im.util.IMConstants;
 import org.egov.im.util.ResponseInfoFactory;
-import org.egov.im.web.models.CountResponse;
-import org.egov.im.web.models.IncidentRequest;
-import org.egov.im.web.models.MigrationV2Request;
-import org.egov.im.web.models.IncidentResponse;
-import org.egov.im.web.models.IncidentWrapper;
-import org.egov.im.web.models.RequestInfoWrapper;
-import org.egov.im.web.models.RequestSearchCriteria;
+import org.egov.im.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,12 +33,15 @@ public class RequestsApiController{
 
     private ResponseInfoFactory responseInfoFactory;
 
+    private TheftNotificationService theftNotificationService;
 
     @Autowired
-    public RequestsApiController(ObjectMapper objectMapper, IMService imService, ResponseInfoFactory responseInfoFactory) {
+    public RequestsApiController(ObjectMapper objectMapper, IMService imService, ResponseInfoFactory responseInfoFactory,
+                                 TheftNotificationService theftNotificationService) {
         this.objectMapper = objectMapper;
         this.imService = imService;
         this.responseInfoFactory = responseInfoFactory;
+        this.theftNotificationService = theftNotificationService;
     }
 
 
@@ -133,6 +131,22 @@ public class RequestsApiController{
         log.info("Count request completed successfully, count={}", count);
         return new ResponseEntity<>(response, HttpStatus.OK);
 
+    }
+
+    /**
+     * Triggers theft notification: scans for tickets in state PENDINGFORASSIGNMENT_THEFT
+     * that have exceeded the threshold (from MDMS common-masters TheftNotificationThreshold)
+     * since filed date, and sends SMS to CRM: "Theft ticket [Ticket No.] requires action".
+     * Can be called by cron or manually.
+     */
+    @RequestMapping(value = "/theft-notification", method = { RequestMethod.POST })
+    public ResponseEntity<Map<String, Object>> theftNotification(@Valid @RequestBody TheftNotificationRequest request) {
+        log.trace("RequestsApiController::theftNotification method invoked");
+        int sent = theftNotificationService.runTheftNotification(request);
+        Map<String, Object> response = new HashMap<>();
+        response.put("notificationsSent", sent);
+        log.info("Theft notification completed, notificationsSent={}", sent);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
 }
