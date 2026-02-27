@@ -13,6 +13,7 @@ import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
@@ -45,6 +46,15 @@ public class IMService {
     private LocalizationService localizationService;
 
     private BoundaryService boundaryService;
+
+    @Value("#{'${workflow.ticket.open.statuses}'.split(',')}")
+    private Set<String> openTicketStatuses;
+
+    private final String UNINSTALLED = "UNINSTALLED";
+
+    private final String ACTIVE = "ACTIVE";
+    private final String REINSTALL = "Reinstall";
+    private final String UNINSTALL = "Uninstall";
 
     @Autowired
     public IMService(
@@ -82,9 +92,59 @@ public class IMService {
         log.trace("Validating create request");
         validator.validateCreate(request, mdmsData);
         log.trace("Fetching boundary from boundaryCode");
-        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(
-                request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId()
-        );
+
+        // Get facility details in order to get facility status before ticket creation
+        // System reinstallation process
+        Map<String, Object> facilityDetails = enrichmentService.getFacilityDetailsFromBoundaryCode(request);
+        if(facilityDetails !=null && !facilityDetails.isEmpty()){
+            String facilityStatus = (String) facilityDetails.get("facility_status");
+            if (facilityStatus !=null){
+                if (facilityStatus.trim().equalsIgnoreCase(UNINSTALLED) && !request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
+                    throw new CustomException("CREATION_ERROR", "The facility status is UNINSTALLED, then the only available issue type should be Reinstall");
+                }
+
+                if (facilityStatus.trim().equalsIgnoreCase(UNINSTALLED) && request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)
+                        && !request.getIncident().getSystemFunctional().equalsIgnoreCase("NON_FUNCTIONAL")){
+                    throw new CustomException("CREATION_ERROR", "Reinstall request cannot be raised while System Functional is Functional");
+                }
+
+                if (facilityStatus.trim().equalsIgnoreCase(ACTIVE) && request.getIncident().getIncidentType().equalsIgnoreCase(REINSTALL)){
+                    throw new CustomException("CREATION_ERROR", "Reinstall can be raised only for facilities with an uninstalled solar system.");
+                }
+            }
+
+        }
+
+        // System uninstallation process
+        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase(UNINSTALL)){
+            if (!"FUNCTIONAL".equalsIgnoreCase(request.getIncident().getSystemFunctional())){
+                throw new CustomException("CREATION_ERROR", "Uninstall request cannot be raised while System Functional is Non Functional");
+            }
+
+            // Search if that facility with boundary code has open tickets or not
+            RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
+                    .tenantId(request.getIncident().getTenantId())
+                    .boundaryCode(request.getIncident().getBoundaryCode())
+                    .applicationStatus(openTicketStatuses)
+                    .build();
+            List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
+
+            // Check if Given the health facility has any open ticket in a non-closed state
+            if (incidentWrappers != null && !incidentWrappers.isEmpty()){
+                throw new CustomException("INVALID_CREATION","Uninstall request cannot be raised while other tickets are open for this facility");
+            }
+
+        }
+
+        RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
+                .tenantId(request.getIncident().getTenantId())
+                .boundaryCode(request.getIncident().getBoundaryCode())
+                .applicationStatus(openTicketStatuses)
+                .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
+                .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
+                .build();
+        List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
+        Boundary boundary = boundaryService.fetchBoundaryFromBoundaryCode(request.getRequestInfo(), request.getIncident().getBoundaryCode(), request.getIncident().getTenantId());
         if (boundary == null) {
             log.error("Boundary data not found for code: {}", request.getIncident().getBoundaryCode());
             throw new CustomException("BOUNDARY_DATA_NOT_FOUND", "Boundary data not found for code " + request.getIncident().getBoundaryCode());
@@ -92,21 +152,7 @@ public class IMService {
         log.trace("Enriching create request");
         enrichmentService.enrichCreateRequest(request, boundary);
         log.trace("Checking for potential duplicates");
-        RequestSearchCriteria searchCriteria = RequestSearchCriteria.builder()
-                .tenantId(request.getIncident().getTenantId())
-                .boundaryCode(request.getIncident().getBoundaryCode())
-                .applicationStatus(Set.of(
-                        "PENDINGFORASSIGNMENT",
-                        "PENDINGRESOLUTION",
-                        "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
-                        "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
-                        "PENDING_RESOLUTION_SPARE_PART_NEEDED",
-                        "PENDING_RESOLUTION_OUT_OF_WARRANTY"
-                ))
-                .incidentType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentType())))
-                .incidentSubType(new HashSet<>(Collections.singletonList(request.getIncident().getIncidentSubType())))
-                .build();
-        List<IncidentWrapper> incidentWrappers = search(request.getRequestInfo(), searchCriteria);
+
         boolean isDuplicate = incidentWrappers != null && !incidentWrappers.isEmpty();
         request.getIncident().setPotentialDuplicate(isDuplicate);
         log.debug("Potential duplicate check completed, isDuplicate={}", isDuplicate);
@@ -219,6 +265,48 @@ public class IMService {
                 .build();
         ProcessInstance updatedProcessInstance = workflowService.updateWorkflowStatus(wrapper, mdmsData);
         ProcessInstance trimmedUpdatedProcessInstance = imUtils.trimRolesFromProcessInstance(updatedProcessInstance);
+
+        // System uninstallation process
+        // HCR cannot only create ticket for other issue type if uninstall ticket status is PENDINGRESOLUTION
+        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase(UNINSTALL)
+                && updatedProcessInstance.getState() != null && updatedProcessInstance.getState().getApplicationStatus()!=null
+                && updatedProcessInstance.getState().getApplicationStatus().equals("PENDINGRESOLUTION")){
+
+            String boundaryCode = request.getIncident().getBoundaryCode();
+            String facilityId = imUtils.extractFacilityCode(boundaryCode);
+            request.getIncident().setSystemFunctional("NON_FUNCTIONAL");
+            Map<String, Object> facility = new HashMap<>();
+            Map<String, Object> facilityUpdate = new HashMap<>();
+            facilityUpdate.put("tenant_id", tenantId);
+            facilityUpdate.put("facility_status", UNINSTALLED);
+            facilityUpdate.put("facility_id", facilityId);
+            facility.put("FacilityUpdate", facilityUpdate);
+            producer.push(tenantId,config.getUpdateFacilityTopic(), facility);
+
+        }
+
+        // Handle the case where, when the ticket is of type UNINSTALL and the status is REJECTED(After user decline ticket) and
+        // when the ticket is of type REINSTALL and the status is RESOLVED, then set HF status to ACTIVE and System functional to FUNCTIONAL
+        if (updatedProcessInstance != null) {
+            String incidentType = request.getIncident().getIncidentType();
+            String status = updatedProcessInstance.getState().getApplicationStatus();
+            boolean shouldUpdate = (UNINSTALL.equalsIgnoreCase(incidentType) && "REJECTED".equals(status)) || (REINSTALL.equalsIgnoreCase(incidentType) && "RESOLVED".equals(status));
+            if (shouldUpdate) {
+                request.getIncident().setSystemFunctional("FUNCTIONAL");
+                String facilityId = imUtils.extractFacilityCode(request.getIncident().getBoundaryCode());
+                Map<String, Object> facilityUpdate = Map.of(
+                        "tenant_id", tenantId,
+                        "facility_status", ACTIVE,
+                        "facility_id", facilityId
+                );
+
+                Map<String, Object> facility = Map.of(
+                        "FacilityUpdate", facilityUpdate
+                );
+                producer.push(tenantId, config.getUpdateFacilityTopic(), facility);
+            }
+        }
+
         log.trace("Publishing incident to update topic");
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
         wrapper.setProcessInstance(trimmedUpdatedProcessInstance);

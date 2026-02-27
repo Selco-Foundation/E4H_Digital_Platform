@@ -307,8 +307,7 @@ public class PrioritySLAService {
             ProcessInstance current = processInstances.get(i);
             String state = current.getState().getApplicationStatus();
 
-            if (PENDING_RESOLUTION.equals(state) || PENDING_FOR_ASSIGNMENT.equals(state)
-                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDING_RESOLUTION_PREFIX)) {
+            if (isSlaBearingState(state)) {
 
                 long prevStateTime = current.getAuditDetails().getCreatedTime();
                 long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
@@ -372,14 +371,13 @@ public class PrioritySLAService {
         log.debug("Previous states count: {}", previousStates.size());
 
         for(String state : previousStates){
-            if(PENDING_FOR_ASSIGNMENT.equals(state) || PENDING_RESOLUTION.equals(state)
-                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || (state.startsWith(PENDING_RESOLUTION_PREFIX))){
+            if (isSlaBearingState(state)) {
                 Duration stateDuration = getDurationFromMap(slaMap, tenantId, businessService, state);
                 total = total.plus(stateDuration);
                 log.debug("Added SLA duration for state {}: {}ms", state, stateDuration.toMillis());
             }
         }
-        if (currentState.equals(PENDING_FOR_ASSIGNMENT)) {
+        if (PENDING_FOR_ASSIGNMENT.equals(currentState) || PENDINGFORASSIGNMENT_THEFT.equals(currentState)) {
             Duration resolutionDuration = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION);
             total = total.plus(resolutionDuration);
             log.debug("Added resolution SLA duration: {}ms", resolutionDuration.toMillis());
@@ -389,6 +387,39 @@ public class PrioritySLAService {
             Duration resolutionDuration = getDurationFromMap(slaMap, tenantId, businessService, resolutionState);
             total = total.plus(resolutionDuration);
             log.debug("Added resolution SLA duration for state {}: {}ms", resolutionState, resolutionDuration.toMillis());
+        } else if (PENDINGFORASSIGNMENT_RMS_DEVICE.equals(currentState)) {
+            Duration techPocDuration = getDurationFromMap(slaMap, tenantId, businessService, RMS_DEVICE_PENDING_TECH_POC);
+            Duration rmsResolutionDuration = getDurationFromMap(slaMap, tenantId, businessService, RMS_DEVICE_PENDINGRESOLUTION);
+            total = total.plus(techPocDuration).plus(rmsResolutionDuration);
+            log.debug("Added RMS device SLA durations (tech POC + resolution): {}ms, {}ms",
+                    techPocDuration.toMillis(), rmsResolutionDuration.toMillis());
+        } else if (RMS_DEVICE_PENDING_TECH_POC.equals(currentState)) {
+            Duration rmsResolutionDuration = getDurationFromMap(slaMap, tenantId, businessService, RMS_DEVICE_PENDINGRESOLUTION);
+            total = total.plus(rmsResolutionDuration);
+            log.debug("Added RMS device resolution SLA duration: {}ms", rmsResolutionDuration.toMillis());
+        } else if (OUT_OF_SCOPE.equals(currentState)) {
+            Duration outOfScopeResolution = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_SCOPE);
+            total = total.plus(outOfScopeResolution);
+            log.debug("Added out-of-scope resolution SLA duration: {}ms", outOfScopeResolution.toMillis());
+        } else if (OUT_OF_WARRANTY_PENDING_TECH_POC.equals(currentState)) {
+            Duration pendingAssignmentOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_ASSIGNMENT_OUT_OF_WARRANTY);
+            Duration pendingResolutionOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_WARRANTY);
+            total = total.plus(pendingAssignmentOow).plus(pendingResolutionOow);
+            log.debug("Added out-of-warranty SLA durations (assignment + resolution): {}ms, {}ms",
+                    pendingAssignmentOow.toMillis(), pendingResolutionOow.toMillis());
+        } else if (PENDING_REVISION.equals(currentState)) {
+            Duration roundTwoTechPoc = getDurationFromMap(slaMap, tenantId, businessService, OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2);
+            Duration pendingAssignmentOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_ASSIGNMENT_OUT_OF_WARRANTY);
+            Duration pendingResolutionOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_WARRANTY);
+            total = total.plus(roundTwoTechPoc).plus(pendingAssignmentOow).plus(pendingResolutionOow);
+            log.debug("Added out-of-warranty round-2 SLA durations (tech POC + assignment + resolution): {}ms, {}ms, {}ms",
+                    roundTwoTechPoc.toMillis(), pendingAssignmentOow.toMillis(), pendingResolutionOow.toMillis());
+        } else if (OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(currentState)) {
+            Duration pendingAssignmentOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_ASSIGNMENT_OUT_OF_WARRANTY);
+            Duration pendingResolutionOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_WARRANTY);
+            total = total.plus(pendingAssignmentOow).plus(pendingResolutionOow);
+            log.debug("Added out-of-warranty round-2 SLA durations (assignment + resolution): {}ms, {}ms",
+                    pendingAssignmentOow.toMillis(), pendingResolutionOow.toMillis());
         }
         log.debug("Total SLA computed: {}ms", total.toMillis());
         return total;
@@ -399,6 +430,28 @@ public class PrioritySLAService {
         Duration duration = map.getOrDefault(new TenantServiceStateKey(tenantId, service, state), Duration.ZERO);
         log.debug("Retrieved duration: {}ms", duration.toMillis());
         return duration;
+    }
+
+    private boolean isSlaBearingState(String state) {
+        log.trace("Checking if state is SLA-bearing: {}", state);
+        if (state == null) {
+            return false;
+        }
+        boolean result =
+                PENDING_FOR_ASSIGNMENT.equals(state)
+                        || PENDING_RESOLUTION.equals(state)
+                        || PENDINGFORASSIGNMENT_THEFT.equals(state)
+                        || PENDINGFORASSIGNMENT_RMS_DEVICE.equals(state)
+                        || RMS_DEVICE_PENDING_TECH_POC.equals(state)
+                        || RMS_DEVICE_PENDINGRESOLUTION.equals(state)
+                        || OUT_OF_SCOPE.equals(state)
+                        || OUT_OF_WARRANTY_PENDING_TECH_POC.equals(state)
+                        || PENDING_REVISION.equals(state)
+                        || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(state)
+                        || state.startsWith(PENDING_ASSIGNMENT_PREFIX)
+                        || state.startsWith(PENDING_RESOLUTION_PREFIX);
+        log.debug("State {} SLA-bearing: {}", state, result);
+        return result;
     }
 
     private String capitalize(String value) {

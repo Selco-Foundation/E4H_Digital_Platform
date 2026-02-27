@@ -232,7 +232,7 @@ public class UserService {
      * @param uuids
      * @return
      */
-    private Map<String,User> searchBulkUser(List<String> uuids){
+    public Map<String,User> searchBulkUser(List<String> uuids){
         log.debug("Searching bulk users for uuids: {}", uuids);
         UserSearchRequest userSearchRequest =new UserSearchRequest();
         userSearchRequest.setActive(true);
