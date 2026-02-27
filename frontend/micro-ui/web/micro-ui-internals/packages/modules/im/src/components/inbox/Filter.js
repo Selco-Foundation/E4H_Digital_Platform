@@ -320,10 +320,10 @@ const isCodePresent = (array, codeToCheck) =>{
   };
   const handleAssignmentChange = (e, type) => {
     if (e.target.checked) {
-      setPgrFilters({ ...pgrfilters, applicationStatus: [...pgrfilters.applicationStatus, { code: type.code }] });
+      setPgrFilters({ ...pgrfilters, applicationStatus: [...pgrfilters.applicationStatus, ...type.statuses.map((status) => ({ code: status }))] });
     } else {
       const filteredStatus = pgrfilters.applicationStatus.filter((value) => {
-        return value.code !== type.code;
+        return !type.statuses.includes(value.code);
       });
       setPgrFilters({ ...pgrfilters, applicationStatus: filteredStatus });
     }
@@ -411,6 +411,53 @@ const isCodePresent = (array, codeToCheck) =>{
     );
   };
 
+  const orderedStatuses = [
+    {
+      code: "PENDINGFORASSIGNMENT",
+      statuses: ["PENDINGFORASSIGNMENT", "PENDINGFORASSIGNMENT_THEFT", "PENDINGFORASSIGNMENT_RMS_DEVICE"],
+    },
+    {
+      code: "PENDINGRESOLUTION",
+      statuses: ["PENDINGRESOLUTION", "PENDING_REVISION", "RMS_DEVICE_PENDINGRESOLUTION"],
+    },
+    {
+      code: "RESOLVED",
+      statuses: ["RESOLVED"],
+    },
+    {
+      code: "CLOSEDAFTERRESOLUTION",
+      statuses: ["CLOSEDAFTERRESOLUTION"],
+    },
+    {
+      code: "REJECTED",
+      statuses: ["REJECTED"],
+    },
+    {
+      code: "CLOSEDAFTERREJECTION",
+      statuses: ["CLOSEDAFTERREJECTION"],
+    },
+    {
+      code: "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
+      statuses: ["PENDING_ASSIGNMENT_SPARE_PART_NEEDED"],
+    },
+    {
+      code: "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
+      statuses: ["PENDING_ASSIGNMENT_OUT_OF_WARRANTY"],
+    },
+    {
+      code: "PENDING_RESOLUTION_SPARE_PART_NEEDED",
+      statuses: ["PENDING_RESOLUTION_SPARE_PART_NEEDED"],
+    },
+    {
+      code: "PENDING_RESOLUTION_OUT_OF_WARRANTY",
+      statuses: ["PENDING_RESOLUTION_OUT_OF_WARRANTY"],
+    },
+    {
+      code: "OUT_OF_WARRANTY_PENDING_TECH_POC",
+      statuses: ["OUT_OF_WARRANTY_PENDING_TECH_POC", "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2"],
+    },
+  ];
+
   return (
     <React.Fragment>
       <div className="filter">
@@ -421,7 +468,7 @@ const isCodePresent = (array, codeToCheck) =>{
               {t("ES_COMMON_CLEAR_ALL")}
             </div>
             {props.type === "desktop" && (
-              <span className="clear-search" style={{color:"#7a2829"}} onClick={clearAll}>
+              <span className="clear-search" style={{ color: "#7a2829" }} onClick={clearAll}>
                 {t("ES_COMMON_CLEAR_ALL")}
               </span>
             )}
@@ -513,7 +560,14 @@ const isCodePresent = (array, codeToCheck) =>{
                 )
               }
             </div>
-            {<Status complaints={props.complaints} onAssignmentChange={handleAssignmentChange} pgrfilters={pgrfilters} />}
+            {
+              <Status
+                complaints={props.complaints}
+                onAssignmentChange={handleAssignmentChange}
+                pgrfilters={pgrfilters}
+                orderedStatuses={orderedStatuses}
+              />
+            }
           </div>
         </div>
       </div>
