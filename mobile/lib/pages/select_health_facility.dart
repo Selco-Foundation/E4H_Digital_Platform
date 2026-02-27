@@ -77,13 +77,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
   }
 
   List<String> _workflowStatuses() {
-    final userType = context.read<UserTypeBloc>().state;
     return [
-      userType.maybeWhen(
-        supervisor: () =>
-            WORKFLOW_STATUS_FIELD_SUPERVISOR.ASSIGNED_TO_FIELD_SUPERVISOR.name,
-        orElse: () => WORKFLOW_STATUS_FIELD_STAFF.ASSIGNED_TO_FIELD_STAFF.name,
-      ),
+      WORKFLOW_STATUS_FIELD_SUPERVISOR.ASSIGNED_TO_FIELD_SUPERVISOR.name,
+      WORKFLOW_STATUS_FIELD_STAFF.ASSIGNED_TO_FIELD_STAFF.name,
     ];
   }
 
@@ -202,7 +198,8 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                         orElse: () {},
                       );
                     },
-                    child: BlocBuilder<ActivityFacilityBloc, ActivityFacilityState>(
+                    child: BlocBuilder<ActivityFacilityBloc,
+                        ActivityFacilityState>(
                       builder: (context, state) {
                         return state.maybeWhen(
                           initial: () => _loadingIndicator(),

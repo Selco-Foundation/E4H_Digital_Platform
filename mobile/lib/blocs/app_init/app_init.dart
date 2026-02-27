@@ -41,15 +41,9 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
             tenantId: env.envConfig.variables.tenantId,
             moduleDetails: [
               const MdmsModuleDetailsModel(
-                moduleName: 'HCM-FIELD-APP-CONFIG',
+                moduleName: 'E4H-FIELD-APP-CONFIG',
                 masterDetails: [
                   MdmsMasterDetailsModel('appConfig'),
-                ],
-              ),
-              const MdmsModuleDetailsModel(
-                moduleName: 'module-version',
-                masterDetails: [
-                  MdmsMasterDetailsModel('ROW_VERSIONS'),
                 ],
               ),
             ],
