@@ -54,6 +54,7 @@ public class IMService {
 
     private final String ACTIVE = "ACTIVE";
     private final String REINSTALL = "Reinstall";
+    private final String UNINSTALL = "Uninstall";
 
     @Autowired
     public IMService(
@@ -115,7 +116,7 @@ public class IMService {
         }
 
         // System uninstallation process
-        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase("Uninstall")){
+        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase(UNINSTALL)){
             if (request.getIncident().getSystemFunctional()!=null && !request.getIncident().getSystemFunctional().equalsIgnoreCase("FUNCTIONAL")){
                 throw new CustomException("CREATION_ERROR", "Uninstall request cannot be raised while System Functional is Non Functional");
             }
@@ -267,7 +268,8 @@ public class IMService {
 
         // System uninstallation process
         // HCR cannot only create ticket for other issue type if uninstall ticket status is PENDINGRESOLUTION
-        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase("Uninstall")
+        if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase(UNINSTALL)
+                && updatedProcessInstance.getState() != null && updatedProcessInstance.getState().getApplicationStatus()!=null
                 && updatedProcessInstance.getState().getApplicationStatus().equals("PENDINGRESOLUTION")){
 
             String boundaryCode = request.getIncident().getBoundaryCode();
@@ -288,7 +290,7 @@ public class IMService {
         if (updatedProcessInstance != null) {
             String incidentType = request.getIncident().getIncidentType();
             String status = updatedProcessInstance.getState().getApplicationStatus();
-            boolean shouldUpdate = (UNINSTALLED.equalsIgnoreCase(incidentType) && "REJECTED".equals(status)) || (REINSTALL.equalsIgnoreCase(incidentType) && "RESOLVED".equals(status));
+            boolean shouldUpdate = (UNINSTALL.equalsIgnoreCase(incidentType) && "REJECTED".equals(status)) || (REINSTALL.equalsIgnoreCase(incidentType) && "RESOLVED".equals(status));
             if (shouldUpdate) {
                 request.getIncident().setSystemFunctional("FUNCTIONAL");
                 String facilityId = imUtils.extractFacilityCode(request.getIncident().getBoundaryCode());
