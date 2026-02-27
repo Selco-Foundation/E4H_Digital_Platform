@@ -11,10 +11,12 @@ const fetchFacilities = async (boundaryCodes) => {
   const facilityResponse = await Digit.FacilityService.fetchFacilities(queryFilter);
 
   return {
-    facilities: facilityResponse?.facilities?.map(facility => ({
-      boundaryCode: facility.boundaryCode,
-      facilityId: facility.facility_id,
-    })) || [],
+    facilities:
+      facilityResponse?.facilities?.map((facility) => ({
+        boundaryCode: facility.boundaryCode,
+        facilityId: facility.facility_id,
+        facilityStatus: facility.facility_status,
+      })) || [],
     total: facilityResponse?.totalCount,
   };
 }
