@@ -49,11 +49,22 @@ public class PayloadGenerator {
             String incidentType = mapAlertTypeToIncidentType(alert.getAlertType());
             String incidentSubType = mapAlertSubTypeToIncidentSubType(alert.getAlertSubType(), alert.getAlertType());
 
-            // Extract boundaryCode from facility details, fallback to hardcoded value if not available
+            // Extract boundaryCode from facility details
             String boundaryCode = facilityDetails.getBoundaryCode();
             if (boundaryCode == null || boundaryCode.trim().isEmpty()) {
-                log.warn("BoundaryCode not found for facility hfrId: {}, using fallback", alert.getHfrId());
-                boundaryCode = "India_Karnataka_Bagalkote_Bagalkot_FAC/2025/5329";
+                log.warn("SKIPPING TICKET CREATION: Alert {} has null/empty boundaryCode (facility: {}, hfrId: {}). " +
+                        "Only Karnataka boundary tickets are allowed for production release.",
+                        alert.getId(), alert.getFacilityId(), alert.getHfrId());
+                return null;
+            }
+            
+            // PROD RELEASE: Validate that boundaryCode is for Karnataka
+            // Format: India_Karnataka_...
+            if (!boundaryCode.startsWith("India_Karnataka")) {
+                log.warn("SKIPPING TICKET CREATION: Alert {} has non-Karnataka boundary code: {} (facility: {}, hfrId: {}). " +
+                        "Only Karnataka boundary tickets are allowed for production release.",
+                        alert.getId(), boundaryCode, alert.getFacilityId(), alert.getHfrId());
+                return null;
             }
 
             // Build incident payload
@@ -113,13 +124,13 @@ public class PayloadGenerator {
     private String mapAlertSubTypeToIncidentSubType(Alert.AlertSubType alertSubType, Alert.AlertType alertType) {
         switch (alertSubType) {
             case LOW_GENERATION:
-                return "LowGeneration";
+                return "RunningOnGrid";
             case SHUTDOWN:
                 return "ShutdownInverter";
             case HIGH_VOLTAGE:
                 return "VoltageInverter";
             case BURNT_DISCONNECTED:
-                return "BurnedBattery";
+                return "BatteryDisconnected";
             case DEEP_DISCHARGING:
                 return "DeepDischarge";
             case OVERCHARGING:

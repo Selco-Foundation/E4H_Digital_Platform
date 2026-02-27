@@ -12,10 +12,12 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import static facility.config.ServiceConstants.FACILITY_ADMIN;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static facility.config.ServiceConstants.FACILITY_ADMIN;
+import static facility.config.ServiceConstants.SYSTEM_USER;
 
 @Service
 @Slf4j
@@ -336,9 +338,11 @@ public class FacilityService {
             return;
         }
 
+
+        String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId(): facility.getNinId();
         // Check if employee already exists by mobile number
-        boolean employeeExists = hrmsService.employeeExistsByMobileNumber(
-                facilityDetails.getPocContact(),
+        boolean employeeExists = hrmsService.employeeExistsByUsername(
+                username,
                 tenantId,
                 requestInfo
         );
@@ -376,18 +380,16 @@ public class FacilityService {
 
         log.info("Updating facility {} for tenant {}", update.getFacilityId(), update.getTenantId());
         var userInfo = request.getRequestInfo().getUserInfo();
-        if (userInfo.getRoles() != null) {
-            boolean isFacilityAdmin = userInfo.getRoles().stream().anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
-            if(!isFacilityAdmin)
-                throw new IllegalArgumentException("Only FACILITY_ADMIN role can edit facilities");
-        }
+        if (userInfo.getRoles() == null)
+            throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
 
-        // Check if the facility exists in DB before attempting an update
-//        String checkSql = "SELECT COUNT(*) FROM facility WHERE id = ? AND tenant_id = ?";
-//        Integer count = jdbcTemplate.queryForObject(checkSql, Integer.class, update.getFacilityId(), update.getTenantId());
-//        if (count == null || count == 0) {
-//            return null; // facility not found
-//        }
+        boolean isFacilityAdmin = userInfo.getRoles().stream()
+                .anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
+        boolean isSystemUser = userInfo.getRoles().stream()
+                .anyMatch(role -> SYSTEM_USER.equalsIgnoreCase(role.getCode()));
+        if (!isFacilityAdmin && !isSystemUser) {
+            throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
+        }
 
         // Check if the facility exists in DB before attempting an update
         String fetchFullFacilitySql = "SELECT * FROM facility WHERE id = ? AND tenant_id = ?";
@@ -441,6 +443,14 @@ public class FacilityService {
             updatedHRMSUser(request, existingFacility, facility);
         }
 
+        try {
+            String encryptedPocMobileNumber = encryptMobileNumber(request.getFacilityUpdate().getPocContact());
+            if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
+                request.getFacilityUpdate().setPocContact(encryptedPocMobileNumber);
+            }
+        }
+        catch (Exception e){}
+
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
         
@@ -457,12 +467,26 @@ public class FacilityService {
                     .facilityCategory(existingFacility.getFacilityCategory())
                     .facilityOwnership(existingFacility.getFacilityOwnership())
                     .facilityRegion(existingFacility.getFacilityRegion())
+                    .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
+                    .facilityPocPhone(facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank() ? facility.getFacilityPocPhone(): existingFacility.getFacilityPocPhone())
+                    .facilityPocEmail(facility.getFacilityPocEmail()!=null && !facility.getFacilityPocEmail().isBlank() ? facility.getFacilityPocEmail(): existingFacility.getFacilityPocEmail())
+                    .hfrId(facility.getHfrId()!=null && !facility.getHfrId().isBlank() ? facility.getHfrId(): existingFacility.getHfrId())
+                    .ninId(facility.getNinId()!=null && !facility.getNinId().isBlank() ? facility.getNinId(): existingFacility.getNinId())
+                    .userId(facility.getUserId()!=null && !facility.getUserId().isBlank() ? facility.getUserId(): existingFacility.getUserId())
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
                     .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
                     .isOnmReady(true)
                     .build();
+
+            try{
+                String decryptedMobileNumber = decryptMobileNumber(facilityForProcessing.getFacilityPocPhone());
+                if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                    facilityForProcessing.setFacilityPocPhone(decryptedMobileNumber);
+                }
+            }
+            catch(Exception e){}
 
             // Always check/create POC user when isOnmReady is true (whether transitioning or already true)
             // This ensures POC user is created if missing, even if facility was already ONM ready

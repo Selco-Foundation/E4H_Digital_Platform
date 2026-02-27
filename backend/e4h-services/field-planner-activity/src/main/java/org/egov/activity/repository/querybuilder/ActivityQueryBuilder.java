@@ -37,8 +37,8 @@ public class ActivityQueryBuilder {
             "FROM facility_activities fa where fa.status is not null AND fa.isdeleted = false ";
     private static final String ACTIVITY_COUNT_QUERY = "SELECT COUNT(*) FROM facility_activities fa LEFT JOIN public.facility AS fac ON fa.facility_id = fac.id LEFT JOIN public.activities AS ac ON fa.activity_id = ac.id";
 
-    private final String paginationWrapper = "SELECT * FROM " +
-            "(SELECT *, DENSE_RANK() OVER (ORDER BY fa_lastModifiedTime DESC , fa_facilityactivityid) offset_ FROM " +
+    private static final String PAGINATION_WRAPPER_TEMPLATE = "SELECT * FROM " +
+            "(SELECT *, DENSE_RANK() OVER (ORDER BY fa_lastModifiedTime %s , fa_facilityactivityid) offset_ FROM " +
             "({})" +
             " result) result_offset " +
             "WHERE offset_ > ? AND offset_ <= ?";
@@ -101,7 +101,7 @@ public class ActivityQueryBuilder {
         }
 
         //Wrap constructed SQL query with where criteria in pagination query
-        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
+        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset(), criteria.getSortDirection());
     }
 
     private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ActivityFacilitySearchCriteria activityFacility, StringBuilder queryBuilder, String userUuid, boolean isProjectManager, boolean isFacilityAdmin) {
@@ -199,10 +199,11 @@ public class ActivityQueryBuilder {
         }
     }
 
-    private String addPaginationWrapper(String query, List<Object> preparedStmtList, Integer limitParam, Integer offsetParam) {
+    private String addPaginationWrapper(String query, List<Object> preparedStmtList, Integer limitParam, Integer offsetParam, String sortDirection) {
         int limit = config.getDefaultLimit();
         int offset = config.getDefaultOffset();
-        String finalQuery = paginationWrapper.replace("{}", query);
+        String direction = "ASC".equalsIgnoreCase(sortDirection) ? "ASC" : "DESC";
+        String finalQuery = String.format(PAGINATION_WRAPPER_TEMPLATE, direction).replace("{}", query);
 
         if (limitParam != null) {
             if (limitParam <= config.getMaxLimit())

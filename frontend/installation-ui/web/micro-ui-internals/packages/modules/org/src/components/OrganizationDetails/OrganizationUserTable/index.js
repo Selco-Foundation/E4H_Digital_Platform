@@ -113,6 +113,12 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
       },
     },
     {
+      Header: t("ORG_USER_USERNAME"),
+      Cell: ({ row }) => {
+        return GetCell(row.original["userName"] ? row.original["userName"] : "-");
+      },
+    },
+    {
       Header: t("ORG_USER_CONTACT"),
       Cell: ({ row }) => {
         return GetCell(row.original["mobileNumber"] ? row.original["mobileNumber"] : "-");
