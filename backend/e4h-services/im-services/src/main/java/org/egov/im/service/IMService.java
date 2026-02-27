@@ -117,7 +117,7 @@ public class IMService {
         // System uninstallation process
         if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase("Uninstall")){
             if (request.getIncident().getSystemFunctional()!=null && !request.getIncident().getSystemFunctional().equalsIgnoreCase("FUNCTIONAL")){
-                throw new CustomException("CREATION_ERROR", "Uninstall request cannot be raised while System Functional is No Functional");
+                throw new CustomException("CREATION_ERROR", "Uninstall request cannot be raised while System Functional is Non Functional");
             }
 
             // Search if that facility with boundary code has open tickets or not

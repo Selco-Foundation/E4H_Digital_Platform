@@ -130,7 +130,7 @@ public class RequestsApiController{
      * Can be called by cron or manually.
      */
     @RequestMapping(value = "/theft-notification", method = { RequestMethod.POST })
-    public ResponseEntity<Map<String, Object>> theftNotification(@RequestBody(required = false) TheftNotificationRequest request) {
+    public ResponseEntity<Map<String, Object>> theftNotification(@Valid @RequestBody TheftNotificationRequest request) {
         log.trace("RequestsApiController::theftNotification method invoked");
         int sent = theftNotificationService.runTheftNotification(request);
         Map<String, Object> response = new HashMap<>();
