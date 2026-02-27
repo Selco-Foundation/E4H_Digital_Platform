@@ -117,7 +117,7 @@ public class IMService {
 
         // System uninstallation process
         if(request.getIncident().getIncidentType() !=null && request.getIncident().getIncidentType().trim().equalsIgnoreCase(UNINSTALL)){
-            if (request.getIncident().getSystemFunctional()!=null && !request.getIncident().getSystemFunctional().equalsIgnoreCase("FUNCTIONAL")){
+            if (!"FUNCTIONAL".equalsIgnoreCase(request.getIncident().getSystemFunctional())){
                 throw new CustomException("CREATION_ERROR", "Uninstall request cannot be raised while System Functional is Non Functional");
             }
 
