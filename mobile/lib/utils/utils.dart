@@ -31,6 +31,7 @@ import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
+import '../widgets/summary/summary.dart';
 import 'app_logger.dart';
 
 getSelectedLanguage(Initialized state, int index) {
@@ -601,7 +602,17 @@ String getExtensionFromMime(String mimeType) {
   return map[mimeType] ?? 'dat';
 }
 
-Future<List<PlatformFile>> loadInitialCompletion({
+String initialCompletionDocumentName(Document doc) {
+  final uid = (doc.documentUid ?? '').trim();
+  if (uid.isNotEmpty) return uid;
+
+  final store = (doc.fileStore ?? '').trim();
+  if (store.isNotEmpty) return store;
+
+  return 'installation_report';
+}
+
+Future<List<ExistingReport>> loadInitialCompletion({
   required Isar isar,
   required String projectId,
   required ActivityFacilityWorkflow activityFacilityWorkflow,
@@ -612,43 +623,91 @@ Future<List<PlatformFile>> loadInitialCompletion({
       .activityFacilityIdEqualTo(projectId)
       .findAll();
 
+  final localReports = <ExistingReport>[];
+  final localSourceSeen = <String>{};
+  for (final cached in cachedList) {
+    if (cached.filePath.isEmpty || !localSourceSeen.add(cached.filePath)) {
+      continue;
+    }
+    try {
+      final f = await getCachedFile(cached.filePath);
+      if (f == null) continue;
+
+      final path = await copyFileToLocalDir(f);
+      if (path.isEmpty) continue;
+
+      final type = inferFileType(path);
+      localReports.add(
+        ExistingReport(
+          isarId: cached.id,
+          source: path,
+          fileName: cached.fileName?.trim().isNotEmpty == true
+              ? cached.fileName!.trim()
+              : p.basename(path),
+          fileType: type,
+          isRemote: false,
+        ),
+      );
+    } catch (_) {
+      // Ignore individual failures and keep remaining media loadable.
+    }
+  }
+
   final docs = activityFacilityWorkflow.workflow?.documents ?? [];
-  final rawSources = <String>[
-    ...cachedList.map((cached) => cached.filePath).where((p) => p.isNotEmpty),
-    ...docs
-        .where((doc) =>
-            (doc.documentType ?? '').contains('INSTALLATION_REPORT') &&
-            (doc.fileStore?.isNotEmpty ?? false))
-        .map((doc) => doc.fileStore!)
-        .where((s) => s.isNotEmpty),
-  ];
+  final installDocs = docs.where((doc) {
+    return (doc.documentType ?? '').contains('INSTALLATION_REPORT') &&
+        (doc.fileStore?.isNotEmpty ?? false);
+  }).toList();
 
-  final sourceSeen = <String>{};
-  final sources = rawSources.where((s) => sourceSeen.add(s)).toList();
+  final remoteImageReports = <ExistingReport>[];
+  final remoteImageSeen = <String>{};
+  final downloadDocs = <Document>[];
+  final downloadDocSeen = <String>{};
 
-  if (sources.isEmpty) return <PlatformFile>[];
+  for (final doc in installDocs) {
+    final source = doc.fileStore!;
+    if (isRemoteImageDocument(doc)) {
+      if (!remoteImageSeen.add(source)) continue;
+      remoteImageReports.add(
+        ExistingReport(
+          source: source,
+          fileName: initialCompletionDocumentName(doc),
+          fileType: 'image',
+          isRemote: true,
+        ),
+      );
+      continue;
+    }
+
+    if (downloadDocSeen.add(source)) {
+      downloadDocs.add(doc);
+    }
+  }
 
   final concurrency = maxConcurrent < 1 ? 1 : maxConcurrent;
-  final out = <PlatformFile>[];
-  final seen = <String>{};
+  final downloadedReports = <ExistingReport>[];
+  final downloadedSourceSeen = <String>{};
 
-  for (var i = 0; i < sources.length; i += concurrency) {
-    final batch = sources.skip(i).take(concurrency).toList();
+  for (var i = 0; i < downloadDocs.length; i += concurrency) {
+    final batch = downloadDocs.skip(i).take(concurrency).toList();
 
     final batchResult = await Future.wait(
-      batch.map((idOrUrl) async {
-        if (idOrUrl.isEmpty) return null;
+      batch.map((doc) async {
+        final source = doc.fileStore ?? '';
+        if (source.isEmpty) return null;
         try {
-          final f = await getCachedFile(idOrUrl);
+          final f = await getCachedFile(source);
           if (f == null) return null;
 
-          final pth = await copyFileToLocalDir(f);
-          if (pth.isEmpty || !seen.add(pth)) return null;
+          final path = await copyFileToLocalDir(f);
+          if (path.isEmpty || !downloadedSourceSeen.add(path)) return null;
 
-          return PlatformFile(
-            name: p.basename(pth),
-            path: pth,
-            size: File(pth).lengthSync(),
+          final type = inferFileType(path);
+          return ExistingReport(
+            source: path,
+            fileName: p.basename(path),
+            fileType: type,
+            isRemote: false,
           );
         } catch (_) {
           // Keep partial success behavior: one failed file should not abort all.
@@ -657,10 +716,10 @@ Future<List<PlatformFile>> loadInitialCompletion({
       }),
     );
 
-    out.addAll(batchResult.whereType<PlatformFile>());
+    downloadedReports.addAll(batchResult.whereType<ExistingReport>());
   }
 
-  return out;
+  return [...localReports, ...remoteImageReports, ...downloadedReports];
 }
 
 Future<List<PlatformFile>> copyPickedFilesLocally(

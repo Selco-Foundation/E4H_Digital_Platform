@@ -170,7 +170,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
         final path = f.path!;
         return ExistingReport(
           isarId: null,
-          filePath: path,
+          source: path,
           fileName: basename(path),
           fileType: inferFileType(path),
         );

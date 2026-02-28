@@ -143,23 +143,27 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
       if (!mounted) return;
       setState(() {
         final docs = project?.workflow?.documents ?? [];
-        _existingReports = combined.map((pf) {
-          final path = pf.path!;
-          final type = inferFileType(path);
-          String name = p.basename(path);
+        _existingReports = combined.map((report) {
+          if (report.fileType != 'pdf' || report.isRemote) {
+            return report;
+          }
 
-          if (type == 'pdf') {
-            final normalized = normalizedInstallPdfNameFromPath(path, docs);
-            if (normalized != null && normalized.isNotEmpty) {
-              name = normalized;
-            }
+          var name = report.fileName.trim().isNotEmpty
+              ? report.fileName.trim()
+              : p.basename(report.source);
+
+          final normalized =
+              normalizedInstallPdfNameFromPath(report.source, docs);
+          if (normalized != null && normalized.isNotEmpty) {
+            name = normalized;
           }
 
           return ExistingReport(
-            isarId: null,
-            filePath: path,
+            isarId: report.isarId,
+            source: report.source,
             fileName: name,
-            fileType: type,
+            fileType: report.fileType,
+            isRemote: report.isRemote,
           );
         }).toList();
         _pickedFiles = [];

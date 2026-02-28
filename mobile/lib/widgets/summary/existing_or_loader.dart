@@ -7,7 +7,9 @@ import 'package:path/path.dart' as p;
 
 import '../../model/document/document.dart';
 import '../../router/app_router.dart';
+import '../../utils/utils.dart';
 import '../../widgets/summary/summary.dart';
+import '../images/cached_image.dart';
 import '../files/pdf_card.dart';
 
 Widget _imagePlaceholder(BuildContext context) {
@@ -69,9 +71,10 @@ List<ExistingReport> _applyPdfNamesByFileStoreId(
       final clean = '${matchedDocType.replaceAll('_', ' ')}.pdf';
       return ExistingReport(
         isarId: e.isarId,
-        filePath: e.filePath,
+        source: e.source,
         fileName: clean,
         fileType: e.fileType,
+        isRemote: e.isRemote,
       );
     }
 
@@ -113,27 +116,33 @@ Widget existingFilesSection({
                   clipBehavior: Clip.none,
                   children: [
                     GestureDetector(
-                      onTap: () => onTapImage(img.filePath),
-                      child: SizedBox(
-                        width: previewSize,
-                        height: previewSize,
-                        child: Image.file(
-                          File(img.filePath),
-                          width: previewSize,
-                          height: previewSize,
-                          fit: BoxFit.cover,
-                          cacheWidth: decodeSize,
-                          cacheHeight: decodeSize,
-                          frameBuilder: (context, child, frame, _) {
-                            if (frame == null) {
-                              return _imagePlaceholder(context);
-                            }
-                            return child;
-                          },
-                          errorBuilder: (_, __, ___) =>
-                              _imageErrorFallback(context),
-                        ),
-                      ),
+                      onTap: () => onTapImage(img.source),
+                      child: img.isRemote
+                          ? CachedImage(
+                              '$fileStoreFileUrl${img.source}',
+                              width: previewSize,
+                              height: previewSize,
+                            )
+                          : SizedBox(
+                              width: previewSize,
+                              height: previewSize,
+                              child: Image.file(
+                                File(img.source),
+                                width: previewSize,
+                                height: previewSize,
+                                fit: BoxFit.cover,
+                                cacheWidth: decodeSize,
+                                cacheHeight: decodeSize,
+                                frameBuilder: (context, child, frame, _) {
+                                  if (frame == null) {
+                                    return _imagePlaceholder(context);
+                                  }
+                                  return child;
+                                },
+                                errorBuilder: (_, __, ___) =>
+                                    _imageErrorFallback(context),
+                              ),
+                            ),
                     ),
                     if (showEditButton == true)
                       cancelIcon(
@@ -154,9 +163,9 @@ Widget existingFilesSection({
           children: pdfs.asMap().entries.map((entry) {
             final pdf = entry.value;
 
-            final _display = (pdf.fileName.trim().isNotEmpty
+            final display = (pdf.fileName.trim().isNotEmpty
                 ? pdf.fileName.trim()
-                : p.basename(pdf.filePath));
+                : p.basename(pdf.source));
 
             return Padding(
               padding: const EdgeInsets.only(bottom: spacer2),
@@ -164,11 +173,11 @@ Widget existingFilesSection({
                 clipBehavior: Clip.none,
                 children: [
                   GestureDetector(
-                    onTap: () => onTapPdf(pdf.filePath),
+                    onTap: pdf.isRemote ? null : () => onTapPdf(pdf.source),
                     child: pdfCard(
                         context: context,
-                        fileSize: fileSizeFor(pdf.filePath),
-                        filePath: _display.replaceAll('_', ' ')),
+                        fileSize: pdf.isRemote ? '' : fileSizeFor(pdf.source),
+                        filePath: display.replaceAll('_', ' ')),
                   ),
                   if (showEditButton == true)
                     cancelIcon(context: context, onPress: () => onRemove(pdf))

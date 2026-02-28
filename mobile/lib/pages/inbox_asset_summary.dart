@@ -7,7 +7,6 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:path/path.dart' as p;
 
 import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/activity_facility_bom/activity_facility_bom.dart';
@@ -151,15 +150,7 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
 
       if (!mounted) return;
       setState(() {
-        _existingReports = combined.map((pf) {
-          final path = pf.path!;
-          return ExistingReport(
-            isarId: null,
-            filePath: path,
-            fileName: p.basename(path),
-            fileType: inferFileType(path),
-          );
-        }).toList();
+        _existingReports = combined;
       });
     } finally {
       if (mounted) {
