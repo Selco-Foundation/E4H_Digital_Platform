@@ -1,5 +1,13 @@
 export const Complaint = {
   create: async ({ cityCode, comments, district, block, uploadedFile, complaintType, subType, systemFunctionality, healthcentre, tenantId }) => {
+    const normalizedType = (complaintType?.key || "").trim().toUpperCase();
+    const workflowAction =
+      normalizedType === "THEFT"
+        ? "APPLY_THEFT"
+        : normalizedType === "RMS DEVICE"
+          ? "APPLY_RMS_DEVICE"
+          : "APPLY";
+
     const defaultData = {
       incident: {
         tenantId: tenantId,
@@ -19,7 +27,7 @@ export const Complaint = {
         source: Digit.Utils.browser.isWebview() ? "mobile" : "web",
       },
       workflow: {
-        action: "APPLY",
+        action: workflowAction,
         //: uploadedImages
       },
     };
