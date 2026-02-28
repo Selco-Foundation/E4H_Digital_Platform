@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../../model/appconfig/mdmsRequest.dart';
+import '../../model/document/document.dart';
 import '../../repositories/app_init_repo.dart';
 
 typedef FileTapCallback = void Function(String path);
@@ -10,16 +11,30 @@ typedef RemoveReportCallback = void Function(ExistingReport report);
 
 class ExistingReport {
   final int? isarId;
-  final String filePath;
+  final String source;
   final String fileName;
   final String fileType; // 'pdf' | 'image' | 'unknown'
+  final bool isRemote;
 
   ExistingReport({
     this.isarId,
-    required this.filePath,
+    required this.source,
     required this.fileName,
     required this.fileType,
+    this.isRemote = false,
   });
+
+  String get filePath => source;
+}
+
+bool isRemoteImageDocument(Document doc) {
+  final uid = (doc.documentUid ?? '').toLowerCase();
+  return uid.contains('-image-');
+}
+
+bool isRemotePdfDocument(Document doc) {
+  final uid = (doc.documentUid ?? '').toLowerCase();
+  return uid.contains('-pdf-');
 }
 
 String inferFileType(String path) {
