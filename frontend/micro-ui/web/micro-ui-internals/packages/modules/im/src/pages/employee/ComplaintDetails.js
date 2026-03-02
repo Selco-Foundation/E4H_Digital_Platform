@@ -964,7 +964,10 @@ export const ComplaintDetails = (props) => {
         : {}),
     };
     const isFirstPendingForAssignment = arr.length - (index + 1) === 1 ? true : false;
-    if (checkpoint.status === "PENDINGFORASSIGNMENT" && complaintDetails?.audit) {
+    if (
+      ["PENDINGFORASSIGNMENT", "PENDINGFORASSIGNMENT_THEFT", "PENDINGFORASSIGNMENT_RMS_DEVICE"].includes(checkpoint.status) &&
+      complaintDetails?.audit
+    ) {
       if (isFirstPendingForAssignment) {
         const caption = {
           date: Digit.DateUtils.ConvertEpochToDate(complaintDetails.audit.details.createdTime),
