@@ -1,6 +1,5 @@
 package org.egov.im.service;
 
-import org.apache.kafka.common.protocol.types.Field;
 import org.egov.im.repository.IMPriorityRepository;
 import org.egov.im.web.models.IMPrioritySearchCriteria;
 import org.egov.im.web.models.Incident;
@@ -21,7 +20,6 @@ import org.springframework.util.CollectionUtils;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,8 +59,11 @@ public class SLAService {
             String state = current.getState().getApplicationStatus();
 
             if (PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
-                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDING_RESOLUTION_PREFIX)) {
-
+                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDINGFORASSIGNMENT_PREFIX)
+                    || state.startsWith(PENDING_RESOLUTION_PREFIX)
+                    || RMS_DEVICE_PENDING_TECH_POC.equals(state) || RMS_DEVICE_PENDINGRESOLUTION.equals(state)
+                    || OUT_OF_SCOPE.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC.equals(state)
+                    || PENDING_REVISION.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(state)) {
                 long prevStateTime = current.getAuditDetails().getCreatedTime();
                 ZonedDateTime zonedPrevStateTime = ZonedDateTime.ofInstant(Instant.ofEpochMilli(prevStateTime), ZoneId.of(ASIA_KOLKATA));
                 ZonedDateTime zonedNextStateTime;
@@ -79,15 +80,31 @@ public class SLAService {
                 }
             }
         }
-        String currentState = currentProcessInstance.getState().getState();
-        if (PENDINGFORASSIGNMENT.equals(currentState)) {
+        String currentState = currentProcessInstance.getState().getApplicationStatus();
+        if (PENDINGFORASSIGNMENT.equals(currentState) || PENDINGFORASSIGNMENT_THEFT.equals(currentState)) {
             remainingTotalSla += stateToSlaMap.getOrDefault(PENDINGATVENDOR, 0L);
-            log.debug("Computed SLA for combined state={} totalSla={}", currentState, remainingTotalSla);
+            log.debug("Computed remaining SLA for combined state={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (PENDINGFORASSIGNMENT_RMS_DEVICE.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(RMS_DEVICE_PENDING_TECH_POC, 0L);
+            log.debug("Computed remaining SLA for RMS device assignment | currentState={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (RMS_DEVICE_PENDING_TECH_POC.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(RMS_DEVICE_PENDINGRESOLUTION, 0L);
+            log.debug("Computed remaining SLA for RMS device tech POC | currentState={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (OUT_OF_WARRANTY_PENDING_TECH_POC.equals(currentState)
+                || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(PENDING_ASSIGNMENT_OUT_OF_WARRANTY, 0L);
+            log.debug("Computed remaining SLA for out-of-warranty tech POC | currentState={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (OUT_OF_SCOPE.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(PENDING_RESOLUTION_OUT_OF_SCOPE, 0L);
+            log.debug("Computed remaining SLA for out-of-scope | currentState={} totalSlaRemaining={}", currentState, remainingTotalSla);
+        } else if (PENDING_REVISION.equals(currentState)) {
+            remainingTotalSla += stateToSlaMap.getOrDefault(OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2, 0L);
+            log.debug("Computed remaining SLA for pending revision | currentState={} totalSlaRemaining={}", currentState, remainingTotalSla);
         } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
             String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
             String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
             remainingTotalSla += stateToSlaMap.getOrDefault(resolutionState, 0L);
-            log.debug("Computed SLA for assignment workflow | currentState={} resolutionState={} totalSla={}",
+            log.debug("Computed remaining SLA for assignment workflow | currentState={} resolutionState={} totalSlaRemaining={}",
                     currentState, resolutionState, remainingTotalSla);
         }
 

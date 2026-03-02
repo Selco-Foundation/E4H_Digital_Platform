@@ -3,7 +3,6 @@ package org.selco.e4h.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
-import org.apache.kafka.common.protocol.types.Field;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.util.ElasticSearchClient;
 import org.selco.e4h.util.IMConstants;
@@ -329,17 +328,13 @@ public class PrioritySLAService {
             return 0;
         }
         String businessService = INCIDENT_UNDERSCORE + capitalize(priority);
-        Duration total = Duration.ZERO;
-
-
         long remainingTotalSla = 0;
 
         for (int i = 0; i < processInstances.size(); i++) {
             ProcessInstance current = processInstances.get(i);
             String status = current.getState().getApplicationStatus();
 
-            if (PENDING_RESOLUTION.equals(status) || PENDING_FOR_ASSIGNMENT.equals(status)
-                    || status.startsWith(PENDING_ASSIGNMENT_PREFIX) || status.startsWith(PENDING_RESOLUTION_PREFIX)) {
+            if (isSlaBearingState(status)) {
 
                 long prevStateTime = current.getAuditDetails().getCreatedTime();
                 long nextStateTime = (i + 1) < processInstances.size() ? processInstances.get(i + 1).getAuditDetails().getCreatedTime()
@@ -347,18 +342,39 @@ public class PrioritySLAService {
 
                 long currentStateTimeSpent = calculateBusinessMillis(prevStateTime, nextStateTime, businessHours);
                 long currentStateDefinedSla = getDurationFromMap(slaMap, tenantId, businessService, status).toMillis();
-                if((i+1) >= processInstances.size() || currentStateDefinedSla-currentStateTimeSpent<0){
-                    remainingTotalSla += currentStateDefinedSla-currentStateTimeSpent;
+                if ((i + 1) >= processInstances.size() || currentStateDefinedSla - currentStateTimeSpent < 0) {
+                    remainingTotalSla += currentStateDefinedSla - currentStateTimeSpent;
                 }
             }
         }
-        String currentState = processInstances.get(processInstances.size() - 1).getState().getState();
-        if (currentState.equals(PENDING_FOR_ASSIGNMENT)) {
+        String currentState = processInstances.get(processInstances.size() - 1).getState().getApplicationStatus();
+        if (PENDING_FOR_ASSIGNMENT.equals(currentState) || PENDINGFORASSIGNMENT_THEFT.equals(currentState)) {
             remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION).toMillis();
         } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
             String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
             String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
             remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, resolutionState).toMillis();
+        } else if (PENDINGFORASSIGNMENT_RMS_DEVICE.equals(currentState)) {
+            long techPoc = getDurationFromMap(slaMap, tenantId, businessService, RMS_DEVICE_PENDING_TECH_POC).toMillis();
+            long rmsResolution = getDurationFromMap(slaMap, tenantId, businessService, RMS_DEVICE_PENDINGRESOLUTION).toMillis();
+            remainingTotalSla += techPoc + rmsResolution;
+        } else if (RMS_DEVICE_PENDING_TECH_POC.equals(currentState)) {
+            remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, RMS_DEVICE_PENDINGRESOLUTION).toMillis();
+        } else if (OUT_OF_SCOPE.equals(currentState)) {
+            remainingTotalSla += getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_SCOPE).toMillis();
+        } else if (OUT_OF_WARRANTY_PENDING_TECH_POC.equals(currentState)) {
+            long pendingAssignmentOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_ASSIGNMENT_OUT_OF_WARRANTY).toMillis();
+            long pendingResolutionOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_WARRANTY).toMillis();
+            remainingTotalSla += pendingAssignmentOow + pendingResolutionOow;
+        } else if (PENDING_REVISION.equals(currentState)) {
+            long roundTwoTechPoc = getDurationFromMap(slaMap, tenantId, businessService, OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2).toMillis();
+            long pendingAssignmentOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_ASSIGNMENT_OUT_OF_WARRANTY).toMillis();
+            long pendingResolutionOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_WARRANTY).toMillis();
+            remainingTotalSla += roundTwoTechPoc + pendingAssignmentOow + pendingResolutionOow;
+        } else if (OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(currentState)) {
+            long pendingAssignmentOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_ASSIGNMENT_OUT_OF_WARRANTY).toMillis();
+            long pendingResolutionOow = getDurationFromMap(slaMap, tenantId, businessService, PENDING_RESOLUTION_OUT_OF_WARRANTY).toMillis();
+            remainingTotalSla += pendingAssignmentOow + pendingResolutionOow;
         }
 
         return remainingTotalSla;
