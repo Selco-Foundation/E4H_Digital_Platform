@@ -253,6 +253,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               ? t("CS_ACTION_DECLINE_TICKET")
               : selectedAction === "REOPEN"
               ? t("CS_COMMON_REOPEN")
+              : selectedAction === "REOPEN_RMS"
+              ? t("CS_COMMON_REOPEN_RMS")
               : selectedAction === "RESOLVE"
               ? t("CS_COMMON_RESOLVE")
               : selectedAction === "CLOSE"
@@ -285,6 +287,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           ? t("CS_COMMON_DECLINE")
           : selectedAction === "REOPEN"
           ? t("CS_ACTION_REOPEN")
+          : selectedAction === "REOPEN_RMS"
+          ? t("CS_ACTION_REOPEN_RMS")
           : selectedAction === "RESOLVE"
           ? t("CS_COMMON_RESOLVE_BUTTON")
           : selectedAction === "CLOSE"
@@ -323,7 +327,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           { condition: selectedAction === "MARK_OUT_OF_SCOPE" && !selectedOutOfScopeReason, message: "CS_MANDATORY_OUT_OF_SCOPE_REASON" },
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
           { condition: comments?.length > 1000, message: "CS_COMMENT_LENGTH_LIMIT_EXCEED" },
-          { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
+          { condition: ["REOPEN", "REOPEN_RMS"].includes(selectedAction) && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: !isRmsAssignmentToTechPoc && selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
           {
             condition: selectedAction === "SPARE_PART_NEEDED" && (!spcRootAnalysis?.trim() || spcRootAnalysis?.length > 1000),
@@ -486,7 +490,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             )}
           </React.Fragment>
         ) : null}
-        {selectedAction === "REOPEN" ? (
+        {["REOPEN", "REOPEN_RMS"].includes(selectedAction) ? (
           <React.Fragment>
             <CardLabel>{t("CS_REOPEN_COMPLAINT")}*</CardLabel>
             <Dropdown selected={selectedReopenReason} option={reopenReasonMenu} select={onSelectReopenReason} />
@@ -501,6 +505,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           <>
             {selectedAction !== "ASSIGN" &&
             selectedAction !== "REOPEN" &&
+            selectedAction !== "REOPEN_RMS" &&
             selectedAction !== "APPROVE" &&
             !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0]?.type !== "textarea") &&
             !(selectedAction === "MARK_OUT_OF_SCOPE" && selectedOutOfScopeReason?.additionalInputs?.[0]?.type !== "textarea") ? (
@@ -600,6 +605,8 @@ export const ComplaintDetails = (props) => {
   const history = useHistory();
   const [isIpadView, setIsIpadView] = React.useState(window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth);
   const [blockUI, setBlockUI] = useState(null);
+  const [isRmsTicketToReopen, setIsRmsTicketToReopen] = useState(false);
+
   const onResize = () => {
     if (window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth) {
       setIsIpadView(true);
@@ -655,6 +662,17 @@ export const ComplaintDetails = (props) => {
         CS_COMPLAINT_DETAILS_TICKET_NO: complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO.split("/")[0],
       },
     };
+  }, [complaintDetails]);
+
+  useEffect(() => {
+    if (
+      ["REJECTED", "RESOLVED"].includes(complaintDetails?.incident?.applicationStatus) &&
+      complaintDetails.incident.incidentType.toUpperCase() === "RMS DEVICE"
+    ) {
+      setIsRmsTicketToReopen(true);
+    } else {
+      setIsRmsTicketToReopen(false);
+    }
   }, [complaintDetails]);
 
   const timeline = timelineState;
@@ -806,6 +824,7 @@ export const ComplaintDetails = (props) => {
       case "RESOLVE":
       case "REJECT":
       case "REOPEN":
+      case "REOPEN_RMS":
       case "CLOSE":
       case "SENDBACK":
       case "OUT_OF_WARRANTY":
@@ -887,6 +906,7 @@ export const ComplaintDetails = (props) => {
     let arrNew = arr.map((abc) => {
       switch (abc.performedAction) {
         case "REOPEN":
+        case "REOPEN_RMS":
           return { ...abc, reopenreason: reopenReasons.shift() };
         case "REJECT":
           return { ...abc, rejectReason: rejectReasons.shift() };
@@ -1210,7 +1230,13 @@ export const ComplaintDetails = (props) => {
       {!isLoading && complaintDetails?.incident?.applicationStatus !== "CLOSEDAFTERRESOLUTION" && workflowDetails?.data?.nextActions?.length > 0 && (
         <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
           {displayMenu && workflowDetails?.data?.nextActions ? (
-            <Menu options={workflowDetails?.data?.nextActions.map((action) => action.action)} t={t} onSelect={onActionSelect} />
+            <Menu
+              options={(workflowDetails?.data?.nextActions || [])
+                .filter((action) => (!isRmsTicketToReopen || action.action === "REOPEN_RMS"))
+                .map((action) => action.action)}
+              t={t}
+              onSelect={onActionSelect}
+            />
           ) : null}
           <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
         </ActionBar>
