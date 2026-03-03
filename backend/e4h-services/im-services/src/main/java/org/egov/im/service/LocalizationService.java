@@ -85,9 +85,13 @@ public class LocalizationService {
                 .map(String::toUpperCase)
                 .map(status -> "CS_COMMON_" + status)
                 .orElse("");
+        String warrantyStatusCode = Optional.ofNullable(incident.getWarrantyStatus())
+                .map(Enum::name)
+                .map(status -> "CS_COMMON_" + status)
+                .orElse("");
 
         String tenantCode = "TENANT_TENANTS_" + tenantId.replace(".", "_").toUpperCase();
-        String imCodes = String.join(",", incidentTypeCode, incidentSubTypeCode, appStatusCode);
+        String imCodes = String.join(",", incidentTypeCode, incidentSubTypeCode, appStatusCode, warrantyStatusCode);
         String commonCodes = tenantCode;
 
         log.debug("Localization codes prepared | stateCode={} incidentTypeCode={} incidentSubTypeCode={} appStatusCode={} tenantCode={}",
@@ -107,6 +111,7 @@ public class LocalizationService {
         indexView.setIncidentTypeLocalized(imResponse.getMessageByCode(incidentTypeCode));
         indexView.setIncidentSubTypeLocalized(imResponse.getMessageByCode(incidentSubTypeCode));
         indexView.setApplicationStatusLocalized(imResponse.getMessageByCode(appStatusCode));
+        indexView.setWarrantyStatusLocalized(imResponse.getMessageByCode(warrantyStatusCode));
         indexView.setTenantIdLocalized(commonResponse.getMessageByCode(tenantCode));
     }
 

@@ -21,6 +21,12 @@ public class IndexView {
     @JsonProperty("applicationStatus_localized")
     private String applicationStatusLocalized;
 
+    @JsonProperty("warrantyStatus")
+    private String warrantyStatus;
+
+    @JsonProperty("warrantyStatus_localized")
+    private String warrantyStatusLocalized;
+
     @JsonProperty("phcSubType_localized")
     private String phcSubTypeLocalized;
 
