@@ -117,12 +117,12 @@ public class V20260226130000__update_es_warranty_status extends BaseJavaMigratio
      * Main index: single document per incident. Set warrantyStatus from Data.incident.applicationStatus.
      */
     private boolean updateMainIndex(RestTemplate restTemplate,
-                                   ObjectMapper objectMapper,
-                                   String esHost,
-                                   String indexName,
-                                   String esUsername,
-                                   String esPassword,
-                                   PrintWriter migrationLogger) throws Exception {
+                                    ObjectMapper objectMapper,
+                                    String esHost,
+                                    String indexName,
+                                    String esUsername,
+                                    String esPassword,
+                                    PrintWriter migrationLogger) throws Exception {
 
         String updateByQueryUrl = esHost + "/" + indexName + "/_update_by_query?conflicts=proceed";
 
@@ -137,11 +137,14 @@ public class V20260226130000__update_es_warranty_status extends BaseJavaMigratio
                         "def appStatus = ctx._source.Data.incident.applicationStatus; " +
                         "if (appStatus != null && appStatus.contains('OUT_OF_WARRANTY')) { value = out; } " +
                         "ctx._source.Data.incident.warrantyStatus = value; " +
-                        "ctx._source.Data.warrantyStatus = value;");
+                        "ctx._source.Data.warrantyStatus = value; " +
+                        "ctx._source.Data.incident.warrantyStatus_localized = (value == 'OUT_OF_WARRANTY' ? params.outLabel : params.withinLabel);");
 
         ObjectNode params = objectMapper.createObjectNode();
         params.put("withinWarranty", "WITHIN_WARRANTY");
         params.put("outOfWarranty", "OUT_OF_WARRANTY");
+        params.put("withinLabel", "Within warranty");
+        params.put("outLabel", "Out of warranty");
         script.set("params", params);
         updateRequest.set("script", script);
 
@@ -256,10 +259,13 @@ public class V20260226130000__update_es_warranty_status extends BaseJavaMigratio
                             "  ? ctx._source.Data.auditDetails.lastModifiedTime : 0L; " +
                             "String value = (ts >= cutoff) ? out : within; " +
                             "ctx._source.Data.incident.warrantyStatus = value; " +
-                            "ctx._source.Data.warrantyStatus = value;");
+                            "ctx._source.Data.warrantyStatus = value; " +
+                            "ctx._source.Data.incident.warrantyStatus_localized = (value == 'OUT_OF_WARRANTY' ? params.outLabel : params.withinLabel);");
             ObjectNode params = objectMapper.createObjectNode();
             params.put("withinWarranty", "WITHIN_WARRANTY");
             params.put("outOfWarranty", "OUT_OF_WARRANTY");
+            params.put("withinLabel", "Within warranty");
+            params.put("outLabel", "Out of warranty");
             params.put("cutoff", cutoff);
             script.set("params", params);
             updateRequest.set("script", script);
@@ -287,9 +293,11 @@ public class V20260226130000__update_es_warranty_status extends BaseJavaMigratio
                     "if (ctx._source.Data == null) { ctx._source.Data = [:]; } " +
                             "if (ctx._source.Data.incident == null) { ctx._source.Data.incident = [:]; } " +
                             "ctx._source.Data.incident.warrantyStatus = params.withinWarranty; " +
-                            "ctx._source.Data.warrantyStatus = params.withinWarranty;");
+                            "ctx._source.Data.warrantyStatus = params.withinWarranty; " +
+                            "ctx._source.Data.incident.warrantyStatus_localized = params.withinLabel;");
             ObjectNode params = objectMapper.createObjectNode();
             params.put("withinWarranty", "WITHIN_WARRANTY");
+            params.put("withinLabel", "Within warranty");
             script.set("params", params);
             updateRequest.set("script", script);
 
@@ -328,10 +336,13 @@ public class V20260226130000__update_es_warranty_status extends BaseJavaMigratio
                         "def endStatus = ctx._source.Data.endingStatus; " +
                         "String value = (endStatus != null && endStatus.contains('OUT_OF_WARRANTY')) ? out : within; " +
                         "ctx._source.Data.incident.warrantyStatus = value; " +
-                        "ctx._source.Data.warrantyStatus = value;");
+                        "ctx._source.Data.warrantyStatus = value; " +
+                        "ctx._source.Data.incident.warrantyStatus_localized = (value == 'OUT_OF_WARRANTY' ? params.outLabel : params.withinLabel);");
         ObjectNode params = objectMapper.createObjectNode();
         params.put("withinWarranty", "WITHIN_WARRANTY");
         params.put("outOfWarranty", "OUT_OF_WARRANTY");
+        params.put("withinLabel", "Within warranty");
+        params.put("outLabel", "Out of warranty");
         script.set("params", params);
         updateRequest.set("script", script);
         updateRequest.set("query", objectMapper.createObjectNode().set("match_all", objectMapper.createObjectNode()));
@@ -359,9 +370,11 @@ public class V20260226130000__update_es_warranty_status extends BaseJavaMigratio
                 "if (ctx._source.Data == null) { ctx._source.Data = [:]; } " +
                         "if (ctx._source.Data.incident == null) { ctx._source.Data.incident = [:]; } " +
                         "ctx._source.Data.incident.warrantyStatus = params.withinWarranty; " +
-                        "ctx._source.Data.warrantyStatus = params.withinWarranty;");
+                        "ctx._source.Data.warrantyStatus = params.withinWarranty; " +
+                        "ctx._source.Data.incident.warrantyStatus_localized = params.withinLabel;");
         ObjectNode params = objectMapper.createObjectNode();
         params.put("withinWarranty", "WITHIN_WARRANTY");
+        params.put("withinLabel", "Within warranty");
         script.set("params", params);
         updateRequest.set("script", script);
         updateRequest.set("query", objectMapper.createObjectNode().set("match_all", objectMapper.createObjectNode()));
@@ -422,4 +435,3 @@ public class V20260226130000__update_es_warranty_status extends BaseJavaMigratio
         return new RestTemplate(requestFactory);
     }
 }
-
