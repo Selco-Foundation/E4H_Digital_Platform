@@ -667,7 +667,7 @@ export const ComplaintDetails = (props) => {
   useEffect(() => {
     if (
       ["REJECTED", "RESOLVED"].includes(complaintDetails?.incident?.applicationStatus) &&
-      complaintDetails.incident.incidentType.toUpperCase() === "RMS DEVICE"
+      complaintDetails?.incident?.incidentType?.toUpperCase() === "RMS DEVICE"
     ) {
       setIsRmsTicketToReopen(true);
     } else {
