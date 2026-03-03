@@ -9,7 +9,15 @@ import org.egov.im.repository.IMRepository;
 import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
-import org.egov.im.web.models.*;
+import org.egov.im.web.models.Boundary;
+import org.egov.im.web.models.Incident;
+import org.egov.im.web.models.IncidentRequest;
+import org.egov.im.web.models.IncidentRequestWrapper;
+import org.egov.im.web.models.IncidentWrapper;
+import org.egov.im.web.models.IndexView;
+import org.egov.im.web.models.RequestSearchCriteria;
+import org.egov.im.web.models.Workflow;
+import org.egov.im.web.models.WarrantyStatus;
 import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -255,6 +263,17 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         log.trace("Validating update request");
         validator.validateUpdate(request, mdmsData);
+
+        // Warranty status handling: default to WITHIN_WARRANTY, flip permanently on OUT_OF_WARRANTY action
+        if (request.getIncident().getWarrantyStatus() == null) {
+            request.getIncident().setWarrantyStatus(WarrantyStatus.WITHIN_WARRANTY);
+        }
+        if (request.getWorkflow() != null
+                && request.getWorkflow().getAction() != null
+                && request.getWorkflow().getAction().equalsIgnoreCase("OUT_OF_WARRANTY")) {
+            request.getIncident().setWarrantyStatus(WarrantyStatus.OUT_OF_WARRANTY);
+        }
+
         log.trace("Enriching update request");
         enrichmentService.enrichUpdateRequest(request);
         String startingStatus = request.getIncident().getApplicationStatus();
