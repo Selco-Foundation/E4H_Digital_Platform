@@ -127,4 +127,7 @@ public class Incident   {
         @SafeHtml
         @JsonProperty("boundaryCode")
         private String boundaryCode = null;
+
+        @JsonProperty("warrantyStatus")
+        private WarrantyStatus warrantyStatus;
 }

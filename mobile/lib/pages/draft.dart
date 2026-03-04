@@ -96,6 +96,10 @@ class _DraftPageState extends State<DraftPage> {
           Navigator.of(context).pop();
           _syncRoute = null;
         }
+        if (isSessionExpiredMessage(errorMessage)) {
+          handleSessionExpired(context);
+          return;
+        }
         _showSyncDialog(context, error: errorMessage);
       },
       success: () {

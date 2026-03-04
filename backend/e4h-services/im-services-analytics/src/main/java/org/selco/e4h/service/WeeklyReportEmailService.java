@@ -36,18 +36,22 @@ public class WeeklyReportEmailService {
      */
     public String generateWeeklyReportEmailHTML(WeeklyReportData reportData, String recipientName, 
                                               String tenantId, RequestInfo requestInfo, String downloadUrl) {
+        log.trace("Generating weekly report email HTML, tenantId: {}, recipientName: {}", tenantId, recipientName);
         try {
             log.info("Generating weekly report email for tenant: {}, recipient: {}", tenantId, recipientName);
             
             // Load base template
             String template = loadTemplate();
+            log.debug("Loaded email template, length: {} characters", template.length());
             
             // Prepare template variables
             Map<String, String> templateVariables = prepareTemplateVariables(
                 reportData, recipientName, tenantId, requestInfo, downloadUrl);
+            log.debug("Prepared {} template variables", templateVariables.size());
             
             // Replace template variables
             String html = replaceTemplateVariables(template, templateVariables);
+            log.debug("Generated email HTML, length: {} characters", html.length());
             
             log.info("Successfully generated weekly report email HTML for tenant: {}", tenantId);
             return html;
@@ -69,6 +73,7 @@ public class WeeklyReportEmailService {
      * Load HTML template from classpath
      */
     private String loadTemplate() throws IOException {
+        log.trace("Loading weekly report template from classpath: {}", WEEKLY_TEMPLATE_PATH);
         try {
             ClassPathResource resource = new ClassPathResource(WEEKLY_TEMPLATE_PATH);
             return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -84,6 +89,7 @@ public class WeeklyReportEmailService {
      */
     private Map<String, String> prepareTemplateVariables(WeeklyReportData reportData, String recipientName,
                                                         String tenantId, RequestInfo requestInfo, String downloadUrl) {
+        log.trace("Preparing template variables for weekly report, tenantId: {}, recipientName: {}", tenantId, recipientName);
         Map<String, String> variables = new HashMap<>();
         
         // Basic variables
@@ -92,6 +98,7 @@ public class WeeklyReportEmailService {
         variables.put("WEEK_START_DATE", reportData.getWeekStartDate());
         variables.put("WEEK_END_DATE", reportData.getWeekEndDate());
         variables.put("TODAY_DDMMMYYYY", reportData.getTodayFormatted());
+        log.debug("Set basic template variables: name, date range, dates");
         
         // Functional metrics - using new model structure
         if (reportData.getWeekStartMetrics() != null) {
@@ -209,14 +216,18 @@ public class WeeklyReportEmailService {
      * Generate state rows HTML dynamically - show all states including those with zeros
      */
     private String generateStateRows(Map<String, WeeklyReportData.StateAgeBucketData> stateData) {
+        log.trace("Generating state rows HTML, state count: {}", stateData != null ? stateData.size() : 0);
         if (stateData == null || stateData.isEmpty()) {
+            log.debug("State data is null or empty, returning empty string");
             return "";
         }
         
         StringBuilder stateRows = new StringBuilder();
+        int rowCount = 0;
         
         for (Map.Entry<String, WeeklyReportData.StateAgeBucketData> entry : stateData.entrySet()) {
             WeeklyReportData.StateAgeBucketData state = entry.getValue();
+            rowCount++;
             
             // Show all states, even with zeros - provides complete visibility
             stateRows.append("<tr>\n");
@@ -227,6 +238,7 @@ public class WeeklyReportEmailService {
             stateRows.append("</tr>\n");
         }
         
+        log.debug("Generated {} state rows", rowCount);
         return stateRows.toString();
     }
     
@@ -276,7 +288,9 @@ public class WeeklyReportEmailService {
      * Replace template variables with actual values
      */
     private String replaceTemplateVariables(String template, Map<String, String> variables) {
+        log.trace("Replacing template variables, variable count: {}", variables != null ? variables.size() : 0);
         String result = template;
+        int replacementCount = 0;
         
         for (Map.Entry<String, String> entry : variables.entrySet()) {
             String placeholder = "${" + entry.getKey() + "}";
@@ -284,9 +298,13 @@ public class WeeklyReportEmailService {
             if ("STATE_LIST".equals(entry.getKey())) {
                 log.info("Replacing STATE_LIST placeholder with value: '{}'", value);
             }
-            result = result.replace(placeholder, value);
+            if (result.contains(placeholder)) {
+                result = result.replace(placeholder, value);
+                replacementCount++;
+            }
         }
         
+        log.debug("Replaced {} template variables", replacementCount);
         return result;
     }
     
@@ -295,6 +313,8 @@ public class WeeklyReportEmailService {
      * Generate fallback email if template loading fails
      */
     private String generateFallbackEmail(WeeklyReportData reportData, String recipientName) {
+        log.trace("Generating fallback email for recipient: {}", recipientName);
+        log.warn("Using fallback email template due to template loading failure");
         StringBuilder html = new StringBuilder();
         
         html.append("<!DOCTYPE html><html><head><title>Weekly Report</title></head><body>");

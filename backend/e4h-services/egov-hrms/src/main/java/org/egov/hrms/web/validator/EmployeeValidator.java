@@ -56,17 +56,26 @@ public class EmployeeValidator {
 	 * @param request
 	 */
 	public void validateCreateEmployee(EmployeeRequest request) {
+		log.trace("EmployeeValidator.validateCreateEmployee invoked");
+		String tenantId = request.getEmployees().get(0).getTenantId();
+		log.info("Validating employee create request for tenant: {}", tenantId);
 		Map<String, String> errorMap = new HashMap<>();
 		validateExistingDuplicates(request ,errorMap);
-		if(!CollectionUtils.isEmpty(errorMap.keySet()))
+		if(!CollectionUtils.isEmpty(errorMap.keySet())) {
+			log.warn("Validation failed: duplicate data found for tenant: {}", tenantId);
 			throw new CustomException(errorMap);
+		}
 		// Map<String, List<String>> boundaryMap = getBoundaryList(request.getRequestInfo(),request.getEmployees().get(0));
-		Map<String, List<String>> mdmsData = mdmsService.getMDMSData(request.getRequestInfo(), request.getEmployees().get(0).getTenantId());
+		log.debug("Fetching MDMS data for validation");
+		Map<String, List<String>> mdmsData = mdmsService.getMDMSData(request.getRequestInfo(), tenantId);
 		if(!CollectionUtils.isEmpty(mdmsData.keySet())){
 			request.getEmployees().stream().forEach(employee -> validateMdmsData(employee, errorMap, mdmsData,null));
 		}
-		if(!CollectionUtils.isEmpty(errorMap.keySet()))
+		if(!CollectionUtils.isEmpty(errorMap.keySet())) {
+			log.warn("Validation failed: MDMS validation errors found for tenant: {}", tenantId);
 			throw new CustomException(errorMap);
+		}
+		log.info("Employee create request validation completed successfully for tenant: {}", tenantId);
 	}
 
 	public Map<String, List<String>> getBoundaryList(RequestInfo requestInfo,Employee employee){
@@ -113,6 +122,9 @@ public class EmployeeValidator {
 	 * @param criteria
 	 */
 	public void validateSearchRequest(RequestInfo requestInfo, EmployeeSearchCriteria criteria) {
+		log.trace("EmployeeValidator.validateSearchRequest invoked");
+		String tenantId = criteria.getTenantId();
+		log.info("Validating employee search request for tenant: {}", tenantId);
 		Map<String, String> errorMap = new HashMap<>();
 
 		if(requestInfo.getUserInfo() != null && requestInfo.getUserInfo().getType().equalsIgnoreCase(CITIZEN_TYPE_CODE) && !CollectionUtils.isEmpty(criteria.getIds()))
@@ -145,8 +157,11 @@ public class EmployeeValidator {
 				StringUtils.isEmpty(criteria.getTenantId())) {
 			errorMap.put(ErrorConstants.HRMS_INVALID_SEARCH_USER_CODE, ErrorConstants.HRMS_INVALID_SEARCH_USER_MSG);
 		}
-		if(!CollectionUtils.isEmpty(errorMap.keySet()))
+		if(!CollectionUtils.isEmpty(errorMap.keySet())) {
+			log.warn("Search request validation failed for tenant: {}", tenantId);
 			throw new CustomException(errorMap);
+		}
+		log.info("Employee search request validation completed successfully for tenant: {}", tenantId);
 	}
 
 	/**
@@ -556,11 +571,16 @@ public class EmployeeValidator {
 	 * @param request
 	 */
 	public void validateUpdateEmployee(EmployeeRequest request) {
+		log.trace("EmployeeValidator.validateUpdateEmployee invoked");
+		String tenantId = request.getEmployees().get(0).getTenantId();
+		log.info("Validating employee update request for tenant: {}", tenantId);
 		Map<String, String> errorMap = new HashMap<>();
 		// Map<String, List<String>> boundaryMap = getBoundaryList(request.getRequestInfo(),request.getEmployees().get(0));
-		Map<String, List<String>> mdmsData = mdmsService.getMDMSData(request.getRequestInfo(), request.getEmployees().get(0).getTenantId());
+		log.debug("Fetching MDMS data for validation");
+		Map<String, List<String>> mdmsData = mdmsService.getMDMSData(request.getRequestInfo(), tenantId);
 		List <String> uuidList = request.getEmployees().stream().map(Employee :: getUuid).collect(Collectors.toList()); 
-		EmployeeResponse existingEmployeeResponse = employeeService.search(EmployeeSearchCriteria.builder().uuids(uuidList).tenantId(request.getEmployees().get(0).getTenantId()).build(),request.getRequestInfo());
+		log.debug("Fetching existing employee data for validation");
+		EmployeeResponse existingEmployeeResponse = employeeService.search(EmployeeSearchCriteria.builder().uuids(uuidList).tenantId(tenantId).build(),request.getRequestInfo());
 		List <Employee> existingEmployees = existingEmployeeResponse.getEmployees();
 		for(Employee employee: request.getEmployees()){
 			if(validateEmployeeForUpdate(employee, errorMap)){
@@ -573,11 +593,11 @@ public class EmployeeValidator {
 			}
 			validateMdmsData(employee, errorMap, mdmsData,null);
 		}
-		if(!CollectionUtils.isEmpty(errorMap.keySet())) {	
+		if(!CollectionUtils.isEmpty(errorMap.keySet())) {
+			log.warn("Validation failed: update validation errors found for tenant: {}", tenantId);
 			throw new CustomException(errorMap);
 		}
-
-
+		log.info("Employee update request validation completed successfully for tenant: {}", tenantId);
 	}
 
 	/**
@@ -762,9 +782,12 @@ public class EmployeeValidator {
 	}
 
 	public void validateEmployeeCountRequest(String tenantId){
+		log.trace("EmployeeValidator.validateEmployeeCountRequest invoked for tenant: {}", tenantId);
 		Map<String, String> errorMap = new HashMap<>();
-		if(StringUtils.isEmpty(tenantId))
+		if(StringUtils.isEmpty(tenantId)) {
+			log.warn("Validation failed: tenant ID is empty");
 			errorMap.put(ErrorConstants.HRMS_EMPLOYEE_COUNT_ERROR_CODE, ErrorConstants.HRMS_EMPLOYEE_COUNT_ERROR_MSG);
+		}
 
 		if(!CollectionUtils.isEmpty(errorMap.keySet())) {
 			throw new CustomException(errorMap);

@@ -1,6 +1,9 @@
 import pandas as pd
 
+from app.core.logging import AppLogger
 from app.ingest.service.data_writer import DataWriter
+
+logger = AppLogger().get_logger()
 
 
 class ExcelDataWriter(DataWriter):
@@ -34,8 +37,9 @@ class ExcelDataWriter(DataWriter):
                 book.remove(book["TempSheet"])
                 book.save(self.file_path)
 
-            print(f"Updated '{self.output_sheet}' sheet in {self.file_path}")
+            logger.info(f"Updated '{self.output_sheet}' sheet in {self.file_path}")
+            logger.debug(f"Wrote {len(data)} rows to sheet '{self.output_sheet}'")
             return True
         except Exception as e:
-            print(f"Error writing data: {str(e)}")
+            logger.error(f"Error writing data to Excel: {str(e)}", exc_info=True)
             return False

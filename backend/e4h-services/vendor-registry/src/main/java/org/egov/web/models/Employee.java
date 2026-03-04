@@ -41,7 +41,6 @@
 package org.egov.web.models;
 
 import lombok.*;
-import org.egov.common.contract.models.AuditDetails;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.springframework.validation.annotation.Validated;
 

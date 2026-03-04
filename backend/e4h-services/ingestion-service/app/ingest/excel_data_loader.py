@@ -2,7 +2,10 @@ from typing import Set
 
 import pandas as pd
 
+from app.core.logging import AppLogger
 from app.ingest.service.data_loader import DataLoader
+
+logger = AppLogger().get_logger()
 
 
 class ExcelDataLoader(DataLoader):
@@ -24,17 +27,18 @@ class ExcelDataLoader(DataLoader):
             if "error" not in self.vendor_df.columns:
                 self.vendor_df["error"] = ""
 
-            print(f"Loaded {len(self.vendor_df)} vendor records from sheet '{self.vendor_sheet}'")
-            print(f"Loaded {len(self.boundary_df)} boundary codes from sheet '{self.boundary_sheet}'")
+            logger.info(f"Loaded {len(self.vendor_df)} vendor records from sheet '{self.vendor_sheet}'")
+            logger.info(f"Loaded {len(self.boundary_df)} boundary codes from sheet '{self.boundary_sheet}'")
+            logger.debug(f"Boundary codes loaded: {len(self.valid_boundary_codes)} unique codes")
             return True
         except FileNotFoundError as e:
-            print(f"Error loading data: File not found - {str(e)}")
+            logger.error(f"Error loading data: File not found - {str(e)}", exc_info=True)
             return False
         except ValueError as e:
-            print(f"Error loading data: Sheet not found - {str(e)}")
+            logger.error(f"Error loading data: Sheet not found - {str(e)}", exc_info=True)
             return False
         except Exception as e:
-            print(f"Error loading data: {str(e)}")
+            logger.error(f"Error loading data: {str(e)}", exc_info=True)
             return False
 
     def get_vendor_data(self) -> pd.DataFrame:

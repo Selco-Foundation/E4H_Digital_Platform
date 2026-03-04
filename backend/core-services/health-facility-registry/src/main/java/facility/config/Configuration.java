@@ -33,6 +33,9 @@ public class Configuration {
     @Value("${egov.user.update.path}")
     private String userUpdateEndpoint;
 
+    @Value("${user.default.password}")
+    private String defaultUserPassword;
+
 
     //Idgen Config
     @Value("${egov.idgen.host}")
@@ -77,11 +80,14 @@ public class Configuration {
     @Value("${egov.hrms.create.endpoint}")
     private String hrmsCreateEndPoint;
 
-    @Value("${egov.hrms.create.endpoint}")
-    private String hrmsCreateEndpoint;
+//    @Value("${egov.hrms.create.endpoint}")
+//    private String hrmsCreateEndpoint;
 
     @Value("${egov.hrms.default.department.code}")
     private String hrmsDefaultDepartmentCode;
+
+    @Value("${egov.hrms.default.designation.code}")
+    private String hrmsDefaultDesignationCode;
 
 
     //URLShortening

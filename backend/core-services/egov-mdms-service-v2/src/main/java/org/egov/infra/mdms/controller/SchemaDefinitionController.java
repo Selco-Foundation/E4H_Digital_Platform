@@ -35,8 +35,20 @@ public class SchemaDefinitionController {
      */
     @RequestMapping(value = "_create", method = RequestMethod.POST)
     public ResponseEntity<SchemaDefinitionResponse> create(@Valid @RequestBody SchemaDefinitionRequest schemaDefinitionRequest) {
-        List<SchemaDefinition> schemaDefinitions =  schemaDefinitionService.create(schemaDefinitionRequest);
-        return new ResponseEntity<>(ResponseUtil.getSchemaDefinitionResponse(schemaDefinitionRequest.getRequestInfo(), schemaDefinitions), HttpStatus.ACCEPTED);
+        log.trace("SchemaDefinitionController.create: method invoked");
+        String tenantId = schemaDefinitionRequest.getSchemaDefinition() != null ? schemaDefinitionRequest.getSchemaDefinition().getTenantId() : "null";
+        String code = schemaDefinitionRequest.getSchemaDefinition() != null ? schemaDefinitionRequest.getSchemaDefinition().getCode() : "null";
+        log.info("Processing schema definition create request for tenant: {}, code: {}", tenantId, code);
+        
+        try {
+            List<SchemaDefinition> schemaDefinitions =  schemaDefinitionService.create(schemaDefinitionRequest);
+            log.debug("Schema definition create request processed, records created: {}", schemaDefinitions != null ? schemaDefinitions.size() : 0);
+            log.info("Schema definition create request processed successfully");
+            return new ResponseEntity<>(ResponseUtil.getSchemaDefinitionResponse(schemaDefinitionRequest.getRequestInfo(), schemaDefinitions), HttpStatus.ACCEPTED);
+        } catch (Exception e) {
+            log.error("Error processing schema definition create request for tenant: {}, code: {}", tenantId, code, e);
+            throw e;
+        }
     }
 
     /**
@@ -46,8 +58,19 @@ public class SchemaDefinitionController {
      */
     @RequestMapping(value = "_search", method = RequestMethod.POST)
     public ResponseEntity<SchemaDefinitionResponse> search(@Valid @RequestBody SchemaDefSearchRequest schemaDefinitionSearchRequest) {
-        List<SchemaDefinition> schemaDefinitions = schemaDefinitionService.search(schemaDefinitionSearchRequest);
-        return new ResponseEntity<>(ResponseUtil.getSchemaDefinitionResponse(schemaDefinitionSearchRequest.getRequestInfo(), schemaDefinitions), HttpStatus.ACCEPTED);
+        log.trace("SchemaDefinitionController.search: method invoked");
+        String tenantId = schemaDefinitionSearchRequest.getSchemaDefCriteria() != null ? schemaDefinitionSearchRequest.getSchemaDefCriteria().getTenantId() : "null";
+        log.info("Processing schema definition search request for tenant: {}", tenantId);
+        
+        try {
+            List<SchemaDefinition> schemaDefinitions = schemaDefinitionService.search(schemaDefinitionSearchRequest);
+            log.debug("Schema definition search completed, records found: {}", schemaDefinitions != null ? schemaDefinitions.size() : 0);
+            log.info("Schema definition search request processed successfully");
+            return new ResponseEntity<>(ResponseUtil.getSchemaDefinitionResponse(schemaDefinitionSearchRequest.getRequestInfo(), schemaDefinitions), HttpStatus.ACCEPTED);
+        } catch (Exception e) {
+            log.error("Error processing schema definition search request for tenant: {}", tenantId, e);
+            throw e;
+        }
     }
 
     /**
@@ -57,6 +80,8 @@ public class SchemaDefinitionController {
      */
     @RequestMapping(value = "_update", method = RequestMethod.POST)
     public ResponseEntity<SchemaDefinitionResponse> update(@Valid @RequestBody SchemaDefinitionRequest schemaDefinitionUpdateRequest) {
+        log.trace("SchemaDefinitionController.update: method invoked");
+        log.warn("Schema definition update request received but not implemented");
         return new ResponseEntity<>(HttpStatus.NOT_IMPLEMENTED);
     }
 

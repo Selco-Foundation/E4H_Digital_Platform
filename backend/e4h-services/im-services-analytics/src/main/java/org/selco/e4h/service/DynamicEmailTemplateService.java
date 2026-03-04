@@ -51,19 +51,24 @@ public class DynamicEmailTemplateService {
                                                       String boundaryLevel, String tenantId, 
                                                       RequestInfo requestInfo, Map<String, String> fileStoreIdsByLevel,
                                                       Map<String, List<String>> workflowStatesByLevel) {
+        log.trace("Generating role-based escalation email HTML, role: {}, boundaryLevel: {}, tenantId: {}", 
+            recipientRole, boundaryLevel, tenantId);
         try {
             log.info("Generating role-based escalation email for role: {}, levels: {}, recipient: {} with file store IDs", 
                 recipientRole, ticketsByLevel.keySet(), recipientName);
             
             // Load base template
             String template = loadTemplate();
+            log.debug("Loaded email template, length: {} characters", template.length());
             
             // Prepare template variables with file store IDs and MDMS workflow states
             Map<String, String> templateVariables = prepareRoleBasedTemplateVariables(
                 ticketsByLevel, recipientName, recipientRole, boundaryLevel, tenantId, requestInfo, fileStoreIdsByLevel, workflowStatesByLevel);
+            log.debug("Prepared {} template variables", templateVariables.size());
             
             // Replace template variables
             String html = replaceTemplateVariables(template, templateVariables);
+            log.debug("Generated email HTML, length: {} characters", html.length());
             
             log.info("Successfully generated role-based escalation email HTML for role: {} with download functionality", recipientRole);
             return html;
@@ -79,6 +84,7 @@ public class DynamicEmailTemplateService {
      * Load HTML template from classpath
      */
     private String loadTemplate() throws IOException {
+        log.trace("Loading HTML template from classpath: {}", TEMPLATE_PATH);
         try {
             ClassPathResource resource = new ClassPathResource(TEMPLATE_PATH);
             return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -96,6 +102,7 @@ public class DynamicEmailTemplateService {
                                                                  String boundaryLevel, String tenantId,
                                                                  RequestInfo requestInfo, Map<String, String> fileStoreIdsByLevel,
                                                                  Map<String, List<String>> workflowStatesByLevel) {
+        log.trace("Preparing role-based template variables for role: {}, tenantId: {}", recipientRole, tenantId);
         Map<String, String> variables = new HashMap<>();
         
         // Basic variables
@@ -103,10 +110,12 @@ public class DynamicEmailTemplateService {
         variables.put("STATE_NAME", commonUtility.escapeHtml(commonUtility.getStateDisplayName(tenantId)));
         variables.put("AS_OF_DATE", DATE_FORMAT.format(new Date()));
         variables.put("BOUNDARY_LEVEL", boundaryLevel);
+        log.debug("Set basic template variables: name, state, date, boundary level");
         
         // Calculate total tickets
         int totalTickets = ticketsByLevel.values().stream().mapToInt(List::size).sum();
         variables.put("TOTAL_TICKETS", String.valueOf(totalTickets));
+        log.debug("Calculated total tickets: {}", totalTickets);
         
         // Load and embed logos as base64 data URIs
         variables.put("SELCO_LOGO", commonUtility.loadLogoAsBase64("selcofoundation.png"));
@@ -137,10 +146,12 @@ public class DynamicEmailTemplateService {
                                                       String recipientRole, String tenantId,
                                                       RequestInfo requestInfo, Map<String, String> fileStoreIdsByLevel,
                                                       Map<String, List<String>> workflowStatesByLevel) {
+        log.trace("Generating role-based escalation sections for role: {}", recipientRole);
         StringBuilder sections = new StringBuilder();
         
         // Generate sections for all escalation levels
         List<String> expectedLevels = getExpectedLevelsForRole(recipientRole);
+        log.debug("Expected escalation levels for role {}: {}", recipientRole, expectedLevels);
         
         for (String level : expectedLevels) {
             List<EscalationTicket> tickets = ticketsByLevel.get(level);
@@ -166,10 +177,12 @@ public class DynamicEmailTemplateService {
     private String generateEscalationSection(String level, List<EscalationTicket> tickets,
                                            String recipientRole, String tenantId,
                                            RequestInfo requestInfo, String fileStoreId, List<String> mdmsWorkflowStates) {
+        log.trace("Generating escalation section for level: {}, role: {}, ticket count: {}", level, recipientRole, tickets != null ? tickets.size() : 0);
         StringBuilder section = new StringBuilder();
         
         // Determine section title and subtext based on level and role
         String sectionTitle = getSectionTitle(level, recipientRole);
+        log.debug("Section title: {}", sectionTitle);
         
         // Handle empty tickets by showing sections with count 0
         if (tickets == null) {
@@ -178,6 +191,7 @@ public class DynamicEmailTemplateService {
         
         String sectionSubtext = getSectionSubtext(level, recipientRole);
         String callToAction = getCallToAction(level, recipientRole, tenantId);
+        log.debug("Section subtext and call to action prepared");
         
         section.append("<table role=\"presentation\" width=\"100%\" class=\"bubble p-20\">\n");
         section.append("  <tr><td align=\"center\"><p class=\"h2\">").append(sectionTitle).append("</p></td></tr>\n");
@@ -214,6 +228,7 @@ public class DynamicEmailTemplateService {
     }
 
     private String generateIntroLine(String recipientRole, String stateName, String asOfDate) {
+        log.trace("Generating intro line for role: {}, state: {}", recipientRole, stateName);
         if (ROLE_STATE_POC.equals(recipientRole)) {
             return "Please find below the daily summary of the issues reported in <strong>" + stateName + "</strong> on Saura-eMitra as of <strong>" + asOfDate + "</strong>.";
         }
@@ -226,6 +241,7 @@ public class DynamicEmailTemplateService {
      */
     private String generateTicketRows(String level, List<EscalationTicket> tickets,
                                      String recipientRole, RequestInfo requestInfo, List<String> mdmsWorkflowStates) {
+        log.trace("Generating ticket rows for level: {}, ticket count: {}", level, tickets != null ? tickets.size() : 0);
         StringBuilder rows = new StringBuilder();
         
         // Group tickets by workflow state
@@ -234,6 +250,7 @@ public class DynamicEmailTemplateService {
                 ticket -> ticket.getApplicationStatus() != null ? ticket.getApplicationStatus() : "Unknown",
                 Collectors.counting()
             ));
+        log.debug("Grouped tickets into {} workflow states", stateCounts.size());
         
         // Use MDMS workflow states if provided, otherwise fall back to hardcoded values
         List<String> workflowStatesToShow = mdmsWorkflowStates != null ? mdmsWorkflowStates : getCommonWorkflowStates(level, recipientRole);
@@ -331,6 +348,7 @@ public class DynamicEmailTemplateService {
      * Get section title based on escalation level and role
      */
     private String getSectionTitle(String level, String recipientRole) {
+        log.trace("Getting section title for level: {}, role: {}", level, recipientRole);
         if ("LEVEL_ZERO".equals(level)) {
             return "Your Tickets";
         } else if ("LEVEL_ONE".equals(level)) {
@@ -345,6 +363,7 @@ public class DynamicEmailTemplateService {
      * Get expected escalation levels for each role
      */
     private List<String> getExpectedLevelsForRole(String recipientRole) {
+        log.trace("Getting expected escalation levels for role: {}", recipientRole);
         List<String> expectedLevels = new ArrayList<>();
         
         switch (recipientRole) {
@@ -369,6 +388,7 @@ public class DynamicEmailTemplateService {
      * Get section subtext based on escalation level and role
      */
     private String getSectionSubtext(String level, String recipientRole) {
+        log.trace("Getting section subtext for level: {}, role: {}", level, recipientRole);
         if ("LEVEL_ZERO".equals(level)) {
             return "Please find the tickets assigned to you that are nearing their SLA and awaiting your action.";
         } else if ("LEVEL_ONE".equals(level)) {
@@ -383,6 +403,7 @@ public class DynamicEmailTemplateService {
      * Get call to action text based on escalation level and role
      */
     private String getCallToAction(String level, String recipientRole, String tenantId) {
+        log.trace("Getting call to action for level: {}, role: {}, tenantId: {}", level, recipientRole, tenantId);
         String sauraEmitraUrl = commonUtility.generateSauraEmitraUrl();
 
         // Senior Program Manager (SPM)
@@ -431,13 +452,19 @@ public class DynamicEmailTemplateService {
      * Replace template variables with actual values
      */
     private String replaceTemplateVariables(String template, Map<String, String> variables) {
+        log.trace("Replacing template variables, variable count: {}", variables != null ? variables.size() : 0);
         String result = template;
+        int replacementCount = 0;
         
         for (Map.Entry<String, String> entry : variables.entrySet()) {
             String placeholder = "${" + entry.getKey() + "}";
-            result = result.replace(placeholder, entry.getValue());
+            if (result.contains(placeholder)) {
+                result = result.replace(placeholder, entry.getValue());
+                replacementCount++;
+            }
         }
         
+        log.debug("Replaced {} template variables", replacementCount);
         return result;
     }
     
@@ -447,6 +474,8 @@ public class DynamicEmailTemplateService {
      */
     private String generateFallbackEmail(Map<String, List<EscalationTicket>> ticketsByLevel, 
                                        String recipientName, String boundaryLevel) {
+        log.trace("Generating fallback email for recipient: {}, boundaryLevel: {}", recipientName, boundaryLevel);
+        log.warn("Using fallback email template due to template loading failure");
         StringBuilder html = new StringBuilder();
         
         html.append("<!DOCTYPE html><html><head><title>Escalation Alert</title></head><body>");
@@ -478,7 +507,9 @@ public class DynamicEmailTemplateService {
      * Generate role-based email subject
      */
     public String generateRoleBasedEmailSubject(String recipientRole, String tenantId, String asOfDate) {
+        log.trace("Generating role-based email subject, role: {}, tenantId: {}, asOfDate: {}", recipientRole, tenantId, asOfDate);
         String stateName = commonUtility.getStateDisplayName(tenantId);
+        log.debug("State display name: {}", stateName);
         
         switch (recipientRole) {
             case ROLE_STATE_POC:

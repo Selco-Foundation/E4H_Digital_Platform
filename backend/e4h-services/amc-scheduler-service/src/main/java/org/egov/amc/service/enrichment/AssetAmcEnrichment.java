@@ -38,17 +38,19 @@ public class AssetAmcEnrichment {
 
     /* Enrich Project on Create Request */
     public void enrichAssetAmcOnCreate(AssetAmc assetAmc, RequestInfo requestInfo) {
+        log.trace("Entering enrichAssetAmcOnCreate method");
         //Enrich Project id and audit details
         enrichAssetAmcRequestOnCreate(assetAmc, requestInfo);
-        log.info("Enriched AMC request with id and Audit details");
-
+        log.info("Asset AMC enriched with ID and audit details, assetAmcId: {}", assetAmc.getId());
     }
 
     /* Enrich FieldPlan with id and audit details */
     private void enrichAssetAmcRequestOnCreate(AssetAmc assetAmc, RequestInfo requestInfo) {
+        log.trace("Entering enrichAssetAmcRequestOnCreate method");
         assetAmc.setId(UUID.randomUUID().toString());
-        log.info("AMC configs id set to " + assetAmc.getId());
+        log.debug("Generated asset AMC ID: {}", assetAmc.getId());
         String amcConfigurationIds = assetAmc.getAmcConfigurationId();
+        log.debug("Fetching AMC configuration for ID: {} to calculate end date", amcConfigurationIds);
         AmcConfigurationSearchCriteria criteria = AmcConfigurationSearchCriteria.builder().ids(new ArrayList<>(List.of(amcConfigurationIds))).tenantId(assetAmc.getTenantId()).build();
         AmcConfigurationSearchRequest request = AmcConfigurationSearchRequest.builder().RequestInfo(requestInfo).searchCriteria(criteria).build();
         List<AmcConfiguration> amcConfigurationList = amcConfigurationService.searchAmcConfiguration(request, 10, 0, assetAmc.getTenantId(), false, null );
@@ -67,6 +69,7 @@ public class AssetAmcEnrichment {
             // Reconvertir LocalDateTime → milliseconds
             long endDateMillis = end.toInstant(ZoneOffset.UTC).toEpochMilli();
             assetAmc.setAmcEndDate(endDateMillis);
+            log.debug("Calculated asset AMC end date: {} based on configuration duration", endDateMillis);
         }
 
         AuditDetails auditDetails = amcConfigurationServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
@@ -75,10 +78,11 @@ public class AssetAmcEnrichment {
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichAssetAmcRequestOnUpdate(AssetAmc assetAmc, AssetAmc assetAmcFromDB, RequestInfo requestInfo) {
+        log.trace("Entering enrichAssetAmcRequestOnUpdate method for assetAmcId: {}", assetAmc.getId());
         assetAmc.setAuditDetails(assetAmcFromDB.getAuditDetails());
         AuditDetails auditDetails = amcConfigurationServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), assetAmcFromDB.getAuditDetails(), false);
         assetAmc.setAuditDetails(auditDetails);
-        log.info("Enriched AMC configs audit details for amc " + assetAmc.getId());
+        log.info("Asset AMC audit details enriched for assetAmcId: {}", assetAmc.getId());
     }
 
 

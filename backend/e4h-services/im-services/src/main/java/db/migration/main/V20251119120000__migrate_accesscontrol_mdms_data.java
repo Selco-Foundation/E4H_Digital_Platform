@@ -49,7 +49,7 @@ public class V20251119120000__migrate_accesscontrol_mdms_data extends BaseJavaMi
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("🚀 Starting Access Control MDMS migration from {} to {}", SOURCE_TENANT_ID, TARGET_TENANT_ID);
+        log.info("Starting Access Control MDMS migration from {} to {}", SOURCE_TENANT_ID, TARGET_TENANT_ID);
 
         RestTemplate restTemplate = createRestTemplateWithTimeouts();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -112,7 +112,7 @@ public class V20251119120000__migrate_accesscontrol_mdms_data extends BaseJavaMi
             migrationLogger.println("========================================\n");
             migrationLogger.flush();
 
-            log.info("✅ Access control MDMS migration completed. Log: {}", absoluteLogPath);
+            log.info("Access control MDMS migration completed. Log: {}", absoluteLogPath);
         }
     }
 
@@ -589,7 +589,7 @@ public class V20251119120000__migrate_accesscontrol_mdms_data extends BaseJavaMi
     private PrintWriter initializeMigrationLogger(String logFilePath, String absolutePath) throws Exception {
         Files.createDirectories(Paths.get("./logs"));
         FileWriter fileWriter = new FileWriter(logFilePath, true);
-        log.info("📝 Migration log file created: {}", absolutePath);
+        log.info("Migration log file created: {}", absolutePath);
         return new PrintWriter(fileWriter, true);
     }
 

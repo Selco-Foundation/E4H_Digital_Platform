@@ -36,7 +36,7 @@ public class V20251213141300__correct_facility_poc_contact extends BaseJavaMigra
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("🚀 Starting migration: correcting facility POC contact information");
+        log.info("Starting migration: correcting facility POC contact information");
 
         RestTemplate restTemplate = createRestTemplateWithTimeouts();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -147,10 +147,10 @@ public class V20251213141300__correct_facility_poc_contact extends BaseJavaMigra
             migrationLogger.println("========================================\n");
             migrationLogger.flush();
 
-            log.info("✅ Migration completed: Facility POC contact correction");
+            log.info("Migration completed: Facility POC contact correction");
             log.info("Total facilities updated: {}", updatedCount);
             log.info("Total facilities skipped: {}", skippedCount);
-            log.info("📝 Migration log file: {}", absoluteLogPath);
+            log.info("Migration log file: {}", absoluteLogPath);
 
             migrationLogger.flush();
         }
@@ -464,7 +464,7 @@ public class V20251213141300__correct_facility_poc_contact extends BaseJavaMigra
     private PrintWriter initializeMigrationLogger(String logFilePath, String absolutePath) throws Exception {
         Files.createDirectories(Paths.get("./logs"));
         FileWriter fileWriter = new FileWriter(logFilePath, true);
-        log.info("📝 Migration log file created: {}", absolutePath);
+        log.info("Migration log file created: {}", absolutePath);
         return new PrintWriter(fileWriter, true);
     }
 

@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -29,11 +28,12 @@ public class CSVGenerationService {
      * LLD Compliant: CSV format as specified in LLD
      */
     public String generateEscalationCsv(List<EscalationTicket> tickets) {
+        log.trace("Generating escalation CSV for {} tickets", tickets != null ? tickets.size() : 0);
+        log.info("Generating CSV for {} escalation tickets", tickets != null ? tickets.size() : 0);
         try {
-            log.info("Generating CSV for {} escalation tickets", tickets.size());
-            
             StringBuilder csvContent = new StringBuilder();
             csvContent.append(CSV_HEADER);
+            log.debug("CSV header appended, starting ticket processing");
             
             for (EscalationTicket ticket : tickets) {
                 csvContent.append(escapeCsvValue(ticket.getTicketNumber())).append(",");
@@ -68,29 +68,37 @@ public class CSVGenerationService {
      * Generate CSV filename with timestamp
      */
     public String generateCsvFileName(String escalationType, String escalationLevel, String stateName) {
+        log.trace("Generating CSV filename for escalationType: {}, level: {}, state: {}", escalationType, escalationLevel, stateName);
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
         // Sanitize state name for filename (replace spaces and special characters)
         String sanitizedStateName = sanitizeForFileName(stateName);
-        return String.format("escalation_%s_%s_%s_%s.csv", 
+        String fileName = String.format("escalation_%s_%s_%s_%s.csv", 
                 escalationType, escalationLevel, sanitizedStateName, timestamp);
+        log.debug("Generated CSV filename: {}", fileName);
+        return fileName;
     }
-    
+
     /**
      * Sanitize string for use in filename (replace spaces and special characters with underscores)
      */
     private String sanitizeForFileName(String name) {
+        log.trace("Sanitizing filename: {}", name);
         if (name == null || name.isEmpty()) {
             return "Unknown";
         }
         // Replace spaces and special characters with underscores, convert to lowercase
-        return name.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
+        String sanitized = name.replaceAll("[^a-zA-Z0-9]", "_").toLowerCase();
+        log.debug("Sanitized filename: {} -> {}", name, sanitized);
+        return sanitized;
     }
-    
+
     /**
      * Escape CSV values to handle commas, quotes, and newlines
      */
     private String escapeCsvValue(String value) {
+        log.trace("Escaping CSV value, length: {}", value != null ? value.length() : 0);
         if (value == null) {
+            log.debug("Value is null, returning empty string");
             return "";
         }
         
@@ -99,21 +107,25 @@ public class CSVGenerationService {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         
+        log.debug("Value does not require escaping");
         return value;
     }
-    
+
     /**
      * Format date for CSV display
      */
     private String formatDate(Long timestamp) {
+        log.trace("Formatting date timestamp: {}", timestamp);
         if (timestamp == null) {
             return "";
         }
         
         try {
-            return LocalDateTime.ofEpochSecond(timestamp / 1000, 0, 
+            String formatted = LocalDateTime.ofEpochSecond(timestamp / 1000, 0, 
                     java.time.ZoneOffset.UTC)
                     .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            log.debug("Formatted date: {} -> {}", timestamp, formatted);
+            return formatted;
         } catch (Exception e) {
             log.warn("Error formatting date: {}", timestamp, e);
             return String.valueOf(timestamp);

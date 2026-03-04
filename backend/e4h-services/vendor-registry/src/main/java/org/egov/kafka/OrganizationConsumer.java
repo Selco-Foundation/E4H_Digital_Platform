@@ -1,8 +1,10 @@
 package org.egov.kafka;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 public class OrganizationConsumer {
 
 	/*
@@ -12,6 +14,8 @@ public class OrganizationConsumer {
 	 */
 	// @KafkaListener(topics = {"kafka.topics.consumer"})
 	public void listen() {
+		log.trace("OrganizationConsumer::listen entry");
+		log.debug("Kafka consumer listen method called (currently not implemented)");
 		// document why this method is empty
 	}
 }

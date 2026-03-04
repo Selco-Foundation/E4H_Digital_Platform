@@ -33,9 +33,12 @@ public class SMSRequest {
     private String[] users;
 
     public Sms toDomain() {
+        log.trace("toDomain method invoked - converting SMSRequest to domain model");
         if (category == null) {
+            log.debug("Category is null, using default category: OTHERS");
             return new Sms(mobileNumber, message, Category.OTHERS, expiryTime);
         } else {
+            log.debug("Converting SMSRequest with category: {}", category);
             return new Sms(mobileNumber, message, category, expiryTime);
         }
     }

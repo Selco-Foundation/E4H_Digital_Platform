@@ -1,6 +1,7 @@
 package org.egov.amc.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.amc.config.AMCServiceConfiguration;
 import org.egov.amc.web.models.*;
 import org.egov.common.contract.models.RequestInfoWrapper;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
+@Slf4j
 public class VisitWorkflowService {
 
     @Qualifier("objectMapper")
@@ -31,6 +33,8 @@ public class VisitWorkflowService {
     }
 
     public ProcessInstance transitionWorkflow(ScheduledVisit activityFacility, String action, List<Document> documents, RequestInfo requestInfo, String workflowComment) {
+        log.trace("Entering transitionWorkflow method for visitId: {}, action: {}", activityFacility.getId(), action);
+        log.info("Transitioning workflow for visitId: {}, action: {}", activityFacility.getId(), action);
         ProcessInstance instance = ProcessInstance.builder()
                 .businessId(activityFacility.getId())
                 .tenantId(activityFacility.getTenantId())
@@ -47,17 +51,23 @@ public class VisitWorkflowService {
                 .build();
 
         String url = configuration.getWfHost() + configuration.getWfTransitionPath();
+        log.debug("Calling workflow service at URL: {} for visitId: {}", url, activityFacility.getId());
         Object response = repository.fetchResult(new StringBuilder(url), wfRequest);
 
         ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
         if (wfResponse == null || wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty()) {
+            log.error("Empty response from workflow transition for visitId: {}, action: {}", activityFacility.getId(), action);
             throw new CustomException("WORKFLOW_ERROR", "Empty response from workflow transition");
         }
-        return wfResponse.getProcessInstances().get(0);
+        ProcessInstance result = wfResponse.getProcessInstances().get(0);
+        log.info("Workflow transition successful for visitId: {}, new state: {}", activityFacility.getId(), 
+                result.getState() != null ? result.getState().getState() : "N/A");
+        return result;
     }
 
 
      public List<ProcessInstance> getProcessInstanceById( String businessId, String tenantId, RequestInfo requestInfo) {
+        log.trace("Entering getProcessInstanceById method for businessId: {}, tenantId: {}", businessId, tenantId);
         String url = configuration.getWfHost() + configuration.getWfSearchPath()
             + "?tenantId=" + tenantId
             + "&businessIds=" + businessId
@@ -68,11 +78,15 @@ public class VisitWorkflowService {
         requestInfoWrapper.setRequestInfo(requestInfo);
 
         // POST with requestInfoWrapper as body, query params in URL
+        log.debug("Calling workflow search service at URL: {} for businessId: {}", url, businessId);
         Object response = repository.fetchResult(new StringBuilder(url), requestInfoWrapper);
 
         ProcessInstanceResponse wfResponse = mapper.convertValue(response, ProcessInstanceResponse.class);
-        return (wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty())
+        List<ProcessInstance> result = (wfResponse.getProcessInstances() == null || wfResponse.getProcessInstances().isEmpty())
             ? null
             : wfResponse.getProcessInstances();
+        log.debug("Retrieved {} process instance(s) for businessId: {}", 
+                result != null ? result.size() : 0, businessId);
+        return result;
     }
 }

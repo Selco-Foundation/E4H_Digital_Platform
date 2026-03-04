@@ -21,7 +21,12 @@ public class PbNullIdValidator implements Validator<BeneficiaryBulkRequest, Proj
 
     @Override
     public Map<ProjectBeneficiary, List<Error>> validate(BeneficiaryBulkRequest request) {
-        log.info("validating for null id");
-        return validateForNullId(request, GET_PROJECT_BENEFICIARIES);
+        log.trace("Entering validate (PbNullIdValidator)");
+        log.info("Validating for null ID");
+        log.debug("Validating {} beneficiaries for null ID", request.getProjectBeneficiaries() != null ? request.getProjectBeneficiaries().size() : 0);
+        Map<ProjectBeneficiary, List<Error>> result = validateForNullId(request, GET_PROJECT_BENEFICIARIES);
+        log.debug("Null ID validation completed - found {} errors", result != null ? result.size() : 0);
+        log.trace("Exiting validate (PbNullIdValidator)");
+        return result;
     }
 }

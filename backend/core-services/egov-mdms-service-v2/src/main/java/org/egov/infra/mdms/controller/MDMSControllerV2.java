@@ -31,8 +31,20 @@ public class MDMSControllerV2 {
      */
     @PostMapping(value="/_create")
     public ResponseEntity<MdmsResponseV2> create(@Valid @RequestBody MdmsRequest mdmsRequest) {
-        List<Mdms> masterDataList = mdmsServiceV2.create(mdmsRequest);
-        return new ResponseEntity<>(ResponseUtil.getMasterDataV2Response(mdmsRequest.getRequestInfo(), masterDataList), HttpStatus.ACCEPTED);
+        log.trace("MDMSControllerV2.create: method invoked");
+        String tenantId = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getTenantId() : "null";
+        String schemaCode = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getSchemaCode() : "null";
+        log.info("Processing MDMS v2 create request for tenant: {}, schemaCode: {}", tenantId, schemaCode);
+        
+        try {
+            List<Mdms> masterDataList = mdmsServiceV2.create(mdmsRequest);
+            log.debug("MDMS create request processed, records created: {}", masterDataList != null ? masterDataList.size() : 0);
+            log.info("MDMS v2 create request processed successfully");
+            return new ResponseEntity<>(ResponseUtil.getMasterDataV2Response(mdmsRequest.getRequestInfo(), masterDataList), HttpStatus.ACCEPTED);
+        } catch (Exception e) {
+            log.error("Error processing MDMS v2 create request for tenant: {}, schemaCode: {}", tenantId, schemaCode, e);
+            throw e;
+        }
     }
 
     /**
@@ -42,8 +54,19 @@ public class MDMSControllerV2 {
      */
     @PostMapping(value="_search", produces = { "application/json; charset=utf-8" })
     public ResponseEntity<MdmsResponseV2> search(@Valid @RequestBody MdmsCriteriaReqV2 masterDataSearchCriteria) {
-        List<Mdms> masterDataList = mdmsServiceV2.search(masterDataSearchCriteria);
-        return new ResponseEntity<>(ResponseUtil.getMasterDataV2Response(RequestInfo.builder().build(), masterDataList), HttpStatus.OK);
+        log.trace("MDMSControllerV2.search: method invoked");
+        String tenantId = masterDataSearchCriteria.getMdmsCriteria() != null ? masterDataSearchCriteria.getMdmsCriteria().getTenantId() : "null";
+        log.info("Processing MDMS v2 search request for tenant: {}", tenantId);
+        
+        try {
+            List<Mdms> masterDataList = mdmsServiceV2.search(masterDataSearchCriteria);
+            log.debug("MDMS search completed, records found: {}", masterDataList != null ? masterDataList.size() : 0);
+            log.info("MDMS v2 search request processed successfully");
+            return new ResponseEntity<>(ResponseUtil.getMasterDataV2Response(RequestInfo.builder().build(), masterDataList), HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error processing MDMS v2 search request for tenant: {}", tenantId, e);
+            throw e;
+        }
     }
 
     /**
@@ -54,7 +77,19 @@ public class MDMSControllerV2 {
      */
     @PostMapping(value="_update/{schemaCode}")
     public ResponseEntity<MdmsResponseV2> update(@Valid @RequestBody MdmsRequest mdmsRequest, @PathVariable("schemaCode") String schemaCode) {
-        List<Mdms> masterDataList = mdmsServiceV2.update(mdmsRequest);
-        return new ResponseEntity<>(ResponseUtil.getMasterDataV2Response(mdmsRequest.getRequestInfo(), masterDataList), HttpStatus.ACCEPTED);
+        log.trace("MDMSControllerV2.update: method invoked");
+        String tenantId = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getTenantId() : "null";
+        String id = mdmsRequest.getMdms() != null ? mdmsRequest.getMdms().getId() : "null";
+        log.info("Processing MDMS v2 update request for tenant: {}, schemaCode: {}, id: {}", tenantId, schemaCode, id);
+        
+        try {
+            List<Mdms> masterDataList = mdmsServiceV2.update(mdmsRequest);
+            log.debug("MDMS update request processed, records updated: {}", masterDataList != null ? masterDataList.size() : 0);
+            log.info("MDMS v2 update request processed successfully");
+            return new ResponseEntity<>(ResponseUtil.getMasterDataV2Response(mdmsRequest.getRequestInfo(), masterDataList), HttpStatus.ACCEPTED);
+        } catch (Exception e) {
+            log.error("Error processing MDMS v2 update request for tenant: {}, schemaCode: {}, id: {}", tenantId, schemaCode, id, e);
+            throw e;
+        }
     }
 }

@@ -30,27 +30,34 @@ public class GenericSMSServiceImpl extends BaseSMSService {
 
 
     protected void submitToExternalSmsService(Sms sms) {
+        log.trace("submitToExternalSmsService method invoked for Generic SMS provider");
         try {
-
             String url = smsProperties.getUrl();
+            log.debug("SMS provider URL: {}", url);
+            log.debug("Request type: {}", smsProperties.requestType);
 
             if (smsProperties.requestType.equals("POST")) {
+                log.info("Preparing POST request to SMS provider");
                 HttpEntity<MultiValueMap<String, String>> request = getRequest(sms);
-                
-                log.info("request is"+request.toString());
+                log.debug("POST request entity created with {} body entries", request.getBody() != null ? request.getBody().size() : 0);
 
                 executeAPI(URI.create(url), HttpMethod.POST, request, String.class);
+                log.info("POST request to SMS provider completed");
 
             } else {
+                log.info("Preparing GET request to SMS provider");
                 final MultiValueMap<String, String> requestBody = getSmsRequestBody(sms);
+                log.debug("GET request body contains {} query parameters", requestBody.size());
 
                 URI final_url = UriComponentsBuilder.fromHttpUrl(url).queryParams(requestBody).build().encode().toUri();
+                log.debug("Final GET URL constructed");
 
                 executeAPI(final_url, HttpMethod.GET, null, String.class);
+                log.info("GET request to SMS provider completed");
             }
 
         } catch (RestClientException e) {
-            log.error("Error occurred while sending SMS to " + sms.getMobileNumber(), e);
+            log.error("RestClientException occurred while sending SMS via Generic provider", e);
             throw e;
         }
     }

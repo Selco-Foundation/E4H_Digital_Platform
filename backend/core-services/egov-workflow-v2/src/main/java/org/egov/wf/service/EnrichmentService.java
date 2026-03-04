@@ -63,6 +63,10 @@ public class EnrichmentService {
      * @param processStateAndActions List of ProcessStateAndAction containing ProcessInstance to be created
      */
     public void enrichProcessRequest(RequestInfo requestInfo,List<ProcessStateAndAction> processStateAndActions){
+        log.trace("Entering enrichProcessRequest method");
+        int processStateAndActionsCount = processStateAndActions != null ? processStateAndActions.size() : 0;
+        log.info("Enriching process request for {} process state and action(s)", processStateAndActionsCount);
+        
         AuditDetails auditDetails = util.getAuditDetails(requestInfo.getUserInfo().getUuid(),true);
         processStateAndActions.forEach(processStateAndAction -> {
             String tenantId = processStateAndAction.getProcessInstanceFromRequest().getTenantId();
@@ -87,7 +91,11 @@ public class EnrichmentService {
             enrichAndUpdateSlaForTransition(processStateAndAction,isStateChanging);
             setNextActions(requestInfo,processStateAndActions,true);
         });
+        
+        log.debug("Enriched process instances with audit details, SLA, and next actions");
         enrichUsers(requestInfo,processStateAndActions);
+        log.info("Successfully enriched process request");
+        log.trace("Exiting enrichProcessRequest method");
     }
 
 
@@ -100,7 +108,10 @@ public class EnrichmentService {
      * @param processStateAndActions
      */
     private void setNextActions(RequestInfo requestInfo,List<ProcessStateAndAction> processStateAndActions,Boolean isTransition){
+        log.trace("Entering setNextActions method");
         List<Role> roles = requestInfo.getUserInfo().getRoles();
+        log.debug("Setting next actions for {} process state and action(s), user roles count: {}", 
+                processStateAndActions.size(), roles != null ? roles.size() : 0);
 
         processStateAndActions.forEach(processStateAndAction -> {
             State state;
@@ -118,7 +129,10 @@ public class EnrichmentService {
             if(!CollectionUtils.isEmpty(nextAction))
                 nextAction.sort(Comparator.comparing(Action::getAction));
             processStateAndAction.getProcessInstanceFromRequest().setNextActions(nextAction);
+            log.debug("Set {} next action(s) for businessId: {}", nextAction.size(), 
+                    processStateAndAction.getProcessInstanceFromRequest().getBusinessId());
         });
+        log.trace("Exiting setNextActions method");
     }
 
     /**
@@ -127,6 +141,7 @@ public class EnrichmentService {
      * @param processStateAndActions The List of ProcessStateAndAction containing processInstanceFromRequest to be enriched
      */
     public void enrichUsers(RequestInfo requestInfo,List<ProcessStateAndAction> processStateAndActions){
+        log.trace("Entering enrichUsers method");
         List<String> uuids = new LinkedList<>();
 
         processStateAndActions.forEach(processStateAndAction -> {
@@ -143,7 +158,8 @@ public class EnrichmentService {
 
         });
 
-
+        int uuidCount = uuids.size();
+        log.debug("Collecting user information for {} UUID(s)", uuidCount);
         Map<String,User> idToUserMap = userService.searchUser(requestInfo,uuids);
         Map<String,String> errorMap = new HashMap<>();
         processStateAndActions.forEach(processStateAndAction -> {
@@ -173,6 +189,9 @@ public class EnrichmentService {
      * @param processInstances The list of processInstances from search
      */
     public void enrichUsersFromSearch(RequestInfo requestInfo,List<ProcessInstance> processInstances){
+        log.trace("Entering enrichUsersFromSearch method");
+        log.debug("Enriching users for {} process instance(s) from search", 
+                processInstances != null ? processInstances.size() : 0);
         List<String> uuids = new LinkedList<>();
         processInstances.forEach(processInstance -> {
 
@@ -181,6 +200,8 @@ public class EnrichmentService {
 
             uuids.add(processInstance.getAssigner().getUuid());
         });
+        int uuidCount = uuids.size();
+        log.debug("Searching for {} user UUID(s)", uuidCount);
         Map<String,User> idToUserMap = userService.searchUser(requestInfo,uuids);
         Map<String,String> errorMap = new HashMap<>();
         processInstances.forEach(processInstance -> {
@@ -200,18 +221,28 @@ public class EnrichmentService {
 
 
     public List<ProcessStateAndAction> enrichNextActionForSearch(RequestInfo requestInfo,List<ProcessInstance> processInstances){
+        log.trace("Entering enrichNextActionForSearch method");
+        log.debug("Enriching next actions for {} process instance(s)", 
+                processInstances != null ? processInstances.size() : 0);
+        
         List<ProcessStateAndAction> processStateAndActions = new LinkedList<>();
         Map<String, List<ProcessInstance>> businessServiceToProcessInstance = getRequestByBusinessService(new ProcessInstanceRequest(requestInfo,processInstances));
 
         for(Map.Entry<String, List<ProcessInstance>> entry : businessServiceToProcessInstance.entrySet()){
             try{
-             processStateAndActions.addAll(transitionService.getProcessStateAndActions(entry.getValue(),false));}
+                log.debug("Processing businessService: {} with {} process instance(s)", 
+                        entry.getKey(), entry.getValue().size());
+             processStateAndActions.addAll(transitionService.getProcessStateAndActions(entry.getValue(),false));
+            }
             catch (Exception e){
-                log.error("Error while creating processStateAndActions",e);
+                log.error("Error while creating processStateAndActions for businessService: {}", entry.getKey(), e);
             }
         }
 
         setNextActions(requestInfo,processStateAndActions,false);
+        log.debug("Successfully enriched next actions, returning {} process state and action(s)", 
+                processStateAndActions.size());
+        log.trace("Exiting enrichNextActionForSearch method");
         return processStateAndActions;
     }
 
@@ -221,8 +252,11 @@ public class EnrichmentService {
      * @param request The BusinessService request to be enriched
      */
     public void enrichCreateBusinessService(BusinessServiceRequest request){
+        log.trace("Entering enrichCreateBusinessService method");
         RequestInfo requestInfo = request.getRequestInfo();
         List<BusinessService> businessServices = request.getBusinessServices();
+        log.info("Enriching create business service request for {} business service(s)", 
+                businessServices != null ? businessServices.size() : 0);
         AuditDetails auditDetails = util.getAuditDetails(requestInfo.getUserInfo().getUuid(),true);
         businessServices.forEach(businessService -> {
         	
@@ -251,8 +285,11 @@ public class EnrichmentService {
      * @param request The update request
      */
     public void enrichUpdateBusinessService(BusinessServiceRequest request){
+        log.trace("Entering enrichUpdateBusinessService method");
         RequestInfo requestInfo = request.getRequestInfo();
         List<BusinessService> businessServices = request.getBusinessServices();
+        log.info("Enriching update business service request for {} business service(s)", 
+                businessServices != null ? businessServices.size() : 0);
         AuditDetails audit = util.getAuditDetails(requestInfo.getUserInfo().getUuid(),true);
         /*
         * Loop over all states and if any new state is encountered enrich it
@@ -322,15 +359,25 @@ public class EnrichmentService {
      * @param processStateAndAction The processStateAndAction object of the transition request
      */
     private void enrichAndUpdateSlaForTransition(ProcessStateAndAction processStateAndAction,Boolean isStateChanging){
+        log.trace("Entering enrichAndUpdateSlaForTransition method");
         if(processStateAndAction.getProcessInstanceFromDb()!=null){
             Long businesssServiceSlaRemaining = processStateAndAction.getProcessInstanceFromDb().getBusinesssServiceSla();
             Long stateSlaRemaining = processStateAndAction.getProcessInstanceFromDb().getStateSla();
             Long timeSpent = processStateAndAction.getProcessInstanceFromRequest().getAuditDetails().getLastModifiedTime()
                            - processStateAndAction.getProcessInstanceFromDb().getAuditDetails().getLastModifiedTime();
-            processStateAndAction.getProcessInstanceFromRequest().setBusinesssServiceSla(businesssServiceSlaRemaining-timeSpent);
-            if(!isStateChanging && stateSlaRemaining!=null)
-                processStateAndAction.getProcessInstanceFromRequest().setStateSla(stateSlaRemaining-timeSpent);
+            Long updatedBusinessServiceSla = businesssServiceSlaRemaining-timeSpent;
+            processStateAndAction.getProcessInstanceFromRequest().setBusinesssServiceSla(updatedBusinessServiceSla);
+            log.debug("Updated business service SLA: {} for businessId: {}", updatedBusinessServiceSla, 
+                    processStateAndAction.getProcessInstanceFromRequest().getBusinessId());
+            
+            if(!isStateChanging && stateSlaRemaining!=null) {
+                Long updatedStateSla = stateSlaRemaining-timeSpent;
+                processStateAndAction.getProcessInstanceFromRequest().setStateSla(updatedStateSla);
+                log.debug("Updated state SLA: {} for businessId: {}", updatedStateSla, 
+                        processStateAndAction.getProcessInstanceFromRequest().getBusinessId());
+            }
         }
+        log.trace("Exiting enrichAndUpdateSlaForTransition method");
     }
 
 
@@ -339,14 +386,20 @@ public class EnrichmentService {
      * @param processInstances The list of processInstance
      */
     public void enrichAndUpdateSlaForSearch(List<ProcessInstance> processInstances){
+        log.trace("Entering enrichAndUpdateSlaForSearch method");
+        log.debug("Enriching and updating SLA for {} process instance(s)", 
+                processInstances != null ? processInstances.size() : 0);
         processInstances.forEach(processInstance -> {
             Long businessServiceSlaInDb = processInstance.getBusinesssServiceSla();
             Long stateSlaInDB = processInstance.getStateSla();
             Long timeSinceLastAction = System.currentTimeMillis() - processInstance.getAuditDetails().getLastModifiedTime();
             processInstance.setBusinesssServiceSla(businessServiceSlaInDb-timeSinceLastAction);
-            if(stateSlaInDB!=null)
-                processInstance.setStateSla(stateSlaInDB-timeSinceLastAction);
+            if(stateSlaInDB!=null) {
+                Long updatedStateSla = stateSlaInDB-timeSinceLastAction;
+                processInstance.setStateSla(updatedStateSla);
+            }
         });
+        log.trace("Exiting enrichAndUpdateSlaForSearch method");
     }
 
 
@@ -455,9 +508,10 @@ public class EnrichmentService {
             //Object response = restTemplate.postForObject(uri.toString(), mdmsCriteriaReq, Map.class);
             //masterData = JsonPath.read(response, "$.MdmsRes.Workflow.AutoEscalationStatesToIgnore.*.state");
         }catch(Exception e) {
-            log.error("Exception while fetching workflow states to ignore: ",e);
+            log.error("Exception while fetching workflow states to ignore from MDMS for tenantId: {}", tenantId, e);
         }
 
+        log.trace("Exiting fetchStatesToIgnoreFromMdms method");
         return masterData;
     }
 

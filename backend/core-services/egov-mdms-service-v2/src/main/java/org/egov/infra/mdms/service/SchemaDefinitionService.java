@@ -41,19 +41,28 @@ public class SchemaDefinitionService {
      * @return
      */
     public List<SchemaDefinition> create(SchemaDefinitionRequest schemaDefinitionRequest) {
-
+        log.trace("SchemaDefinitionService.create: method invoked");
         // Set incoming tenantId as state level tenantId as schema is always created at state level
         String tenantId = schemaDefinitionRequest.getSchemaDefinition().getTenantId();
-        schemaDefinitionRequest.getSchemaDefinition().setTenantId(multiStateInstanceUtil.getStateLevelTenant(tenantId));
+        String code = schemaDefinitionRequest.getSchemaDefinition().getCode();
+        log.info("Processing schema definition create request for tenant: {}, code: {}", tenantId, code);
+        
+        String stateLevelTenantId = multiStateInstanceUtil.getStateLevelTenant(tenantId);
+        log.debug("Converting tenantId: {} to state level tenantId: {}", tenantId, stateLevelTenantId);
+        schemaDefinitionRequest.getSchemaDefinition().setTenantId(stateLevelTenantId);
 
         // Validate schema create request
+        log.debug("Validating schema definition create request");
         schemaDefinitionValidator.validateCreateRequest(schemaDefinitionRequest);
 
         // Enrich schema create request
+        log.debug("Enriching schema definition create request");
         schemaDefinitionEnricher.enrichCreateRequest(schemaDefinitionRequest);
 
         // Invoke repository method to emit schema creation event
+        log.debug("Publishing schema definition create request to Kafka");
         schemaDefinitionRepository.create(schemaDefinitionRequest);
+        log.info("Schema definition create request processed successfully for tenant: {}, code: {}", tenantId, code);
 
         return Arrays.asList(schemaDefinitionRequest.getSchemaDefinition());
     }
@@ -64,13 +73,20 @@ public class SchemaDefinitionService {
      * @return
      */
     public List<SchemaDefinition> search(SchemaDefSearchRequest schemaDefSearchRequest) {
-
+        log.trace("SchemaDefinitionService.search: method invoked");
         // Set incoming tenantId as state level tenantId as schema is created at state level
         String tenantId = schemaDefSearchRequest.getSchemaDefCriteria().getTenantId();
-        schemaDefSearchRequest.getSchemaDefCriteria().setTenantId(multiStateInstanceUtil.getStateLevelTenant(tenantId));
+        log.info("Processing schema definition search request for tenant: {}", tenantId);
+        
+        String stateLevelTenantId = multiStateInstanceUtil.getStateLevelTenant(tenantId);
+        log.debug("Converting tenantId: {} to state level tenantId: {}", tenantId, stateLevelTenantId);
+        schemaDefSearchRequest.getSchemaDefCriteria().setTenantId(stateLevelTenantId);
 
         // Fetch schema definitions based on the given criteria
+        log.debug("Fetching schema definitions from repository");
         List<SchemaDefinition> schemaDefinitions = schemaDefinitionRepository.search(schemaDefSearchRequest.getSchemaDefCriteria());
+        log.debug("Repository returned schema definitions count: {}", schemaDefinitions != null ? schemaDefinitions.size() : 0);
+        log.info("Schema definition search request processed successfully");
 
         return schemaDefinitions;
     }

@@ -106,36 +106,50 @@ public class ProjectTaskEnrichmentService {
     }
 
     public void create(List<Task> validTasks, TaskBulkRequest request) throws Exception {
-        log.info("starting the enrichment for tasks");
+        log.trace("Entering create (ProjectTaskEnrichmentService)");
+        log.info("Starting enrichment for create tasks");
+        log.debug("Enriching {} tasks", validTasks != null ? validTasks.size() : 0);
 
-        log.info("generating id for tasks");
+        log.debug("Generating IDs for tasks");
         List<String> taskIdList = idGenService.getIdList(request.getRequestInfo(),
                 getTenantId(request.getTasks()),
                 projectConfiguration.getProjectTaskIdFormat(),
                 "", request.getTasks().size());
-        log.info("enriching tasks");
+        log.debug("Generated {} task IDs", taskIdList != null ? taskIdList.size() : 0);
+        log.debug("Enriching tasks with IDs and audit details");
         enrichForCreate(validTasks, taskIdList, request.getRequestInfo());
+        log.debug("Enriching task addresses");
         enrichAddressesForCreate(validTasks);
+        log.debug("Enriching task resources");
         enrichResourcesForCreate(request, validTasks);
-        log.info(ENRICHMENT_DONE);
+        log.info("Successfully completed enrichment for create tasks");
+        log.trace("Exiting create (ProjectTaskEnrichmentService)");
     }
 
     public void update(List<Task> validTasks, TaskBulkRequest request) throws Exception {
-        log.info("generating id for tasks");
-        log.info("enriching tasks for update");
+        log.trace("Entering update (ProjectTaskEnrichmentService)");
+        log.info("Starting enrichment for update tasks");
+        log.debug("Enriching {} tasks", validTasks != null ? validTasks.size() : 0);
+        log.debug("Enriching task addresses for update");
         enrichAddressesForUpdate(validTasks);
+        log.debug("Enriching task resources for update");
         enrichResourcesForUpdate(request, validTasks);
         Map<String, Task> iMap = getIdToObjMap(validTasks);
+        log.debug("Created task map with {} entries", iMap.size());
         enrichForUpdate(iMap, request);
-        log.info(ENRICHMENT_DONE);
+        log.info("Successfully completed enrichment for update tasks");
+        log.trace("Exiting update (ProjectTaskEnrichmentService)");
     }
 
     public void delete(List<Task> validTasks, TaskBulkRequest request) throws Exception {
-        log.info("enriching tasks for delete");
+        log.trace("Entering delete (ProjectTaskEnrichmentService)");
+        log.info("Starting enrichment for delete tasks");
+        log.debug("Enriching {} tasks for delete", validTasks != null ? validTasks.size() : 0);
         for (Task task : validTasks) {
             if (task.getIsDeleted()) {
-                log.info("enriching all task resources for delete");
+                log.debug("Task is marked as deleted, enriching all resources");
                 if (!CollectionUtils.isEmpty(task.getResources())) {
+                    log.debug("Enriching {} resources for delete", task.getResources().size());
                     for (TaskResource resource : task.getResources()) {
                         resource.setIsDeleted(true);
                         updateAuditDetailsForResource(request, resource);
@@ -145,8 +159,10 @@ public class ProjectTaskEnrichmentService {
                 task.setRowVersion(task.getRowVersion() + 1);
             } else {
                 int previousRowVersion = task.getRowVersion();
-                log.info("enriching task resources for delete");
+                log.debug("Task not deleted, enriching only deleted resources");
                 if (!CollectionUtils.isEmpty(task.getResources())) {
+                    long deletedResourceCount = task.getResources().stream().filter(TaskResource::getIsDeleted).count();
+                    log.debug("Found {} deleted resources to enrich", deletedResourceCount);
                     task.getResources().stream().filter(TaskResource::getIsDeleted).forEach(resource -> {
                         updateAuditDetailsForResource(request, resource);
                         updateAuditDetailsForTask(request, task);
@@ -155,6 +171,7 @@ public class ProjectTaskEnrichmentService {
                 }
             }
         }
-        log.info(ENRICHMENT_DONE);
+        log.info("Successfully completed enrichment for delete tasks");
+        log.trace("Exiting delete (ProjectTaskEnrichmentService)");
     }
 }

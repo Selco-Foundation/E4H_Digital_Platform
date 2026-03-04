@@ -58,15 +58,19 @@ public class EscalationController {
      */
     @PostMapping("/daily")
     public ResponseEntity<String> sendDailyEscalationEmail(@RequestBody EscalationEmailRequest request) {
+        log.trace("Received request to send daily escalation email");
         try {
             log.info("Starting daily SLA escalation processing");
             
             // Use RequestInfo directly
             RequestInfo requestInfo = request.getRequestInfo();
+            log.debug("RequestInfo extracted from request");
             
             // Fetch master data
             List<EscalationRecipient> escalationRecipients = masterDataService.fetchEscalationRecipients(requestInfo);
             List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
+            log.debug("Fetched {} escalation recipients and {} active tenants", escalationRecipients.size(), activeTenantIds.size());
+            
             if (escalationRecipients.isEmpty()) {
                 log.warn("No escalation recipients found in MDMS");
                 escalationStatusService.publishGeneralFailureStatus("daily", "No escalation recipients found in MDMS");
@@ -82,6 +86,7 @@ public class EscalationController {
                     continue;
                 }
                 
+                log.debug("Processing escalation recipient: {}", escalationRecipient.getId());
                 processEscalationRecipient(requestInfo, escalationRecipient, activeTenantIds, "daily");
             }
             
@@ -104,16 +109,21 @@ public class EscalationController {
      */
     @PostMapping("/weekly")
     public ResponseEntity<String> sendWeeklyEscalationEmail(@RequestBody EscalationEmailRequest request) {
+        log.trace("Received request to send weekly escalation email");
         try {
             log.info("Starting weekly SLA escalation processing");
             
             // Use RequestInfo directly
             RequestInfo requestInfo = request.getRequestInfo();
+            log.debug("RequestInfo extracted from request");
             
             // Fetch master data
             List<EscalationRecipient> escalationRecipients = masterDataService.fetchEscalationRecipients(requestInfo);
             List<String> activeTenantIds = masterDataService.fetchActiveTenantIds(requestInfo);
             Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
+            log.debug("Fetched {} escalation recipients, {} active tenants, {} tenant names", 
+                escalationRecipients.size(), activeTenantIds.size(), activeTenantIdsName.size());
+            
             if (escalationRecipients.isEmpty()) {
                 log.warn("No escalation recipients found in MDMS");
                 escalationStatusService.publishGeneralFailureStatus("weekly", "No escalation recipients found in MDMS");
@@ -143,6 +153,8 @@ public class EscalationController {
     private void processWeeklyReportsWithEscalationRecipients(RequestInfo requestInfo, 
                                                            List<EscalationRecipient> escalationRecipients, 
                                                            List<String> activeTenantIds, Map<String, String> activeTenantIdsName) {
+        log.trace("Processing weekly reports with escalation recipients, recipient count: {}, tenant count: {}", 
+            escalationRecipients != null ? escalationRecipients.size() : 0, activeTenantIds != null ? activeTenantIds.size() : 0);
         try {
             log.info("Processing weekly reports with {} escalation recipients for {} active tenants", 
                 escalationRecipients.size(), activeTenantIds.size());
@@ -203,6 +215,7 @@ public class EscalationController {
     private Set<String> getRelevantTenantIdsForEmail(RequestInfo requestInfo, String emailId, 
                                                     List<EscalationRecipient> recipients, 
                                                     List<String> activeTenantIds) {
+        log.trace("Getting relevant tenant IDs for email: {}, recipient count: {}", emailId, recipients != null ? recipients.size() : 0);
         Set<String> relevantTenantIds = new HashSet<>();
         Map<String, String> activeTenantIdsName = masterDataService.getActiveTenantIdsName(requestInfo);
         for (EscalationRecipient recipient : recipients) {
@@ -247,6 +260,7 @@ public class EscalationController {
     private void processWeeklyReportForEmail(RequestInfo requestInfo, String emailId, 
                                           List<EscalationRecipient> recipients, 
                                           List<String> activeTenantIds, Map<String, String> activeTenantIdsName) {
+        log.trace("Processing weekly report for email: {}, recipient count: {}", emailId, recipients != null ? recipients.size() : 0);
         try {
             log.info("Processing weekly report for email: {} with {} recipients", emailId, recipients.size());
             
@@ -307,6 +321,7 @@ public class EscalationController {
     private void sendConsolidatedWeeklyReportEmail(RequestInfo requestInfo, String emailId, 
                                                  Map<String, WeeklyReportData> reportDataByTenant,
                                                  Map<String, String> csvFileStoreIds) {
+        log.trace("Sending consolidated weekly report email to: {}, tenant count: {}", emailId, reportDataByTenant != null ? reportDataByTenant.size() : 0);
         try {
             log.info("Sending consolidated weekly report email to: {} for {} tenants", emailId, reportDataByTenant.size());
             
@@ -1265,6 +1280,8 @@ public class EscalationController {
      */
     @GetMapping("/health")
     public ResponseEntity<String> healthCheck() {
+        log.trace("Health check endpoint called");
+        log.debug("Escalation service health check successful");
         return ResponseEntity.ok("Escalation service is running");
     }
     

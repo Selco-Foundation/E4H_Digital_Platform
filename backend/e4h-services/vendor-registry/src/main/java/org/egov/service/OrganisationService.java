@@ -37,12 +37,10 @@ public class OrganisationService {
 
     private final NotificationService notificationService;
 
-    private final EncryptionService encryptionService;
-
     private final ObjectMapper mapper;
 
     @Autowired
-    public OrganisationService(OrganisationServiceValidator organisationServiceValidator, OrganisationRepository organisationRepository, OrganisationEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, IndividualService individualService, NotificationService notificationService, EncryptionService encryptionService, ObjectMapper mapper) {
+    public OrganisationService(OrganisationServiceValidator organisationServiceValidator, OrganisationRepository organisationRepository, OrganisationEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, IndividualService individualService, NotificationService notificationService, ObjectMapper mapper) {
         this.organisationServiceValidator = organisationServiceValidator;
         this.organisationRepository = organisationRepository;
         this.organisationEnrichmentService = organisationEnrichmentService;
@@ -50,7 +48,6 @@ public class OrganisationService {
         this.configuration = configuration;
         this.individualService = individualService;
         this.notificationService = notificationService;
-        this.encryptionService = encryptionService;
         this.mapper = mapper;
     }
 
@@ -61,18 +58,29 @@ public class OrganisationService {
      * @return
      */
     public OrgRequest createOrganisationWithoutWorkFlow(OrgRequest orgRequest) {
-        log.info("OrganisationService::createOrganisationWithoutWorkFlow");
+        log.trace("OrganisationService::createOrganisationWithoutWorkFlow entry");
+        String tenantId = orgRequest.getOrganisations() != null && !orgRequest.getOrganisations().isEmpty()
+                ? orgRequest.getOrganisations().get(0).getTenantId() : "unknown";
+        log.info("Starting organisation creation process for tenant: {}", tenantId);
+
         organisationServiceValidator.validateCreateOrgRegistryWithoutWorkFlow(orgRequest);
+        log.debug("Organisation validation completed");
+
         organisationEnrichmentService.enrichCreateOrgRegistryWithoutWorkFlow(orgRequest);
+        log.debug("Organisation enrichment completed");
+
         OrgRequest clone;
         try {
             clone = mapper.readValue(mapper.writeValueAsString(orgRequest), OrgRequest.class);
         }catch (Exception e) {
+            log.error("Error while cloning organisation request", e);
             throw new CustomException("CLONING_ERROR", "Error while cloning");
         }
 //        encryptionService.encryptDetails(clone,ORGANISATION_ENCRYPT_KEY);
 
         organizationProducer.push(configuration.getOrgKafkaCreateTopic(), clone);
+        log.info("Organisation creation message pushed to Kafka topic: {}", configuration.getOrgKafkaCreateTopic());
+
         try {
             notificationService.sendNotification(orgRequest, true);
         } catch (RuntimeException e) {
@@ -80,6 +88,8 @@ public class OrganisationService {
         } catch (Exception e) {
             log.error("Unexpected exception while sending notification: {}", e.getMessage(), e);
         }
+
+        log.info("Organisation creation process completed successfully for tenant: {}", tenantId);
         return orgRequest;
     }
 
@@ -89,9 +99,19 @@ public class OrganisationService {
      * @return
      */
     public OrgRequest updateOrganisationWithoutWorkFlow(OrgRequest orgRequest) {
-        log.info("OrganisationService::updateOrganisationWithoutWorkFlow");
+        log.trace("OrganisationService::updateOrganisationWithoutWorkFlow entry");
+        String tenantId = orgRequest.getOrganisations() != null && !orgRequest.getOrganisations().isEmpty()
+                ? orgRequest.getOrganisations().get(0).getTenantId() : "unknown";
+        String orgId = orgRequest.getOrganisations() != null && !orgRequest.getOrganisations().isEmpty()
+                ? orgRequest.getOrganisations().get(0).getId() : "unknown";
+        log.info("Starting organisation update process for organisation ID: {}, tenant: {}", orgId, tenantId);
+
         organisationServiceValidator.validateUpdateOrgRegistryWithoutWorkFlow(orgRequest);
+        log.debug("Organisation validation completed");
+
         organisationEnrichmentService.enrichUpdateOrgRegistryWithoutWorkFlow(orgRequest);
+        log.debug("Organisation enrichment completed");
+
         OrgRequest clone;
         try {
             clone = mapper.readValue(mapper.writeValueAsString(orgRequest), OrgRequest.class);
@@ -102,6 +122,7 @@ public class OrganisationService {
             log.error("Unexpected error while cloning organisation request: {}", e.getMessage(), e);
             throw new CustomException("CLONING_ERROR", "Unexpected error while cloning organisation request: " + e.getMessage());
         }
+
         try {
             notificationService.sendNotification(orgRequest,false);
         } catch (RuntimeException e) {
@@ -111,6 +132,9 @@ public class OrganisationService {
         }
 //        encryptionService.encryptDetails(clone,ORGANISATION_ENCRYPT_KEY);
         organizationProducer.push(configuration.getOrgKafkaUpdateTopic(), clone);
+        log.info("Organisation update message pushed to Kafka topic: {}", configuration.getOrgKafkaUpdateTopic());
+
+        log.info("Organisation update process completed successfully for organisation ID: {}", orgId);
         return orgRequest;
     }
 
@@ -120,9 +144,17 @@ public class OrganisationService {
      * @return
      */
     public List<Organisation> searchOrganisation(OrgSearchRequest orgSearchRequest) {
-        log.info("OrganisationService::searchOrganisationWithoutWorkFlow");
+        log.trace("OrganisationService::searchOrganisation entry");
+        String tenantId = orgSearchRequest.getSearchCriteria() != null
+                ? orgSearchRequest.getSearchCriteria().getTenantId() : "unknown";
+        log.info("Starting organisation search for tenant: {}", tenantId);
+
         organisationServiceValidator.validateSearchOrganisationRequest(orgSearchRequest);
-        return organisationRepository.getOrganisations(orgSearchRequest);
+        log.debug("Search criteria validation completed");
+
+        List<Organisation> organisations = organisationRepository.getOrganisations(orgSearchRequest);
+        log.info("Organisation search completed, found {} organisations", organisations != null ? organisations.size() : 0);
+        return organisations;
     }
 
     /**
@@ -131,6 +163,13 @@ public class OrganisationService {
      * @return
      */
     public Integer countAllOrganisations(OrgSearchRequest orgSearchRequest) {
-        return organisationRepository.getOrganisationsCount(orgSearchRequest);
+        log.trace("OrganisationService::countAllOrganisations entry");
+        String tenantId = orgSearchRequest.getSearchCriteria() != null
+                ? orgSearchRequest.getSearchCriteria().getTenantId() : "unknown";
+        log.debug("Counting organisations for tenant: {}", tenantId);
+
+        Integer count = organisationRepository.getOrganisationsCount(orgSearchRequest);
+        log.debug("Organisation count: {}", count);
+        return count;
     }
 }

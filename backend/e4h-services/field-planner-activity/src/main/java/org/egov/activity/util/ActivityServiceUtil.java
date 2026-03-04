@@ -39,12 +39,16 @@ public class ActivityServiceUtil {
     }
 
     public AuditDetails getAuditDetails(String by, AuditDetails auditDetails, Boolean isCreate) {
+        log.trace("getAuditDetails method invoked, isCreate: {}", isCreate);
         Long time = System.currentTimeMillis();
-        if (isCreate)
+        if (isCreate) {
+            log.debug("Creating new audit details for user: {}", by);
             return AuditDetails.builder().createdBy(by).lastModifiedBy(by).createdTime(time).lastModifiedTime(time).build();
-        else
+        } else {
+            log.debug("Updating audit details for user: {}", by);
             return AuditDetails.builder().createdBy(auditDetails.getCreatedBy()).lastModifiedBy(by)
                     .createdTime(auditDetails.getCreatedTime()).lastModifiedTime(time).build();
+        }
     }
 
 

@@ -44,6 +44,7 @@ public class AssetAmcRepository extends GenericRepository<AssetAmc> {
     }
 
     public List<AssetAmc> getAssetAmc(AssetAmcSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        log.trace("Entering getAssetAmc method, tenantId: {}, limit: {}, offset: {}", tenantId, limit, offset);
         //Fetch assetAmc based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         AssetAmcSearchCriteria criteria = request.getSearchCriteria();
@@ -51,21 +52,26 @@ public class AssetAmcRepository extends GenericRepository<AssetAmc> {
         URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
 
         String query = queryBuilder.getAssetAmcSearchQuery(criteria, urlParams, preparedStmtList);
+        log.debug("Executing asset AMC search query for tenantId: {}", tenantId);
         List<AssetAmc> assetAmcList = jdbcTemplate.query(query, assetAmcRowMapper, preparedStmtList.toArray());
 
-        log.info("Fetched project list based on given search criteria");
+        log.info("Fetched {} asset AMC record(s) based on search criteria", assetAmcList.size());
         return assetAmcList;
     }
 
     public Integer getAssetAmcCount(AssetAmcSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+        log.trace("Entering getAssetAmcCount method, tenantId: {}", tenantId);
         List<Object> preparedStatement = new ArrayList<>();
         String query = queryBuilder.getSearchCountQueryString(request, tenantId, lastChangedSince, includeDeleted, preparedStatement);
 
-        if (query == null)
+        if (query == null) {
+            log.debug("Count query is null, returning 0");
             return 0;
+        }
 
+        log.debug("Executing asset AMC count query for tenantId: {}", tenantId);
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
-        log.info("Total assetAMC count is : " + count);
+        log.info("Total asset AMC count: {}", count);
         return count;
     }
     

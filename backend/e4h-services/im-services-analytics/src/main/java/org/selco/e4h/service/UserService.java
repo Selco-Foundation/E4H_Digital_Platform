@@ -28,11 +28,14 @@ public class UserService {
     private final ConsumerConfiguration consumerConfiguration;
 
     public List<User> searchUsersByRoleAndBoundaryCode(RequestInfo requestInfo, String boundaryCode, List<String> roleCodes) {
+        log.trace("Searching users by role and boundary code: boundaryCode={}, roleCodes={}", boundaryCode, roleCodes);
+        log.info("Searching users for boundary code: {} with roles: {}", boundaryCode, roleCodes);
         try {
             SLARequest request = SLARequest.builder()
                     .requestInfo(requestInfo)
                     .build();
             String roles = String.join(",", roleCodes);
+            log.debug("Joined role codes: {}", roles);
             
             // For country-level searches (boundary "India"), add searchOnlyInBoundary=true for exact boundary matching
             StringBuilder urlBuilder = new StringBuilder(consumerConfiguration.getHrmsHost() + consumerConfiguration.getHrmsSearchUrl());
@@ -42,15 +45,16 @@ public class UserService {
             // Add searchOnlyInBoundary=true for country-level boundary to ensure exact match
             if ("India".equals(boundaryCode)) {
                 urlBuilder.append("&searchOnlyInBoundary=true");
+                log.debug("Added searchOnlyInBoundary parameter for country-level search");
             }
             
             String url = urlBuilder.toString();
-            log.info("Request URL for user search {}", url);
+            log.debug("User search URL: {}", url);
             Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
-            log.info("Response received from user search {}", response);
+            log.debug("Received response from user search service");
             EmployeeResponse employeeResponse = objectMapper.convertValue(response, EmployeeResponse.class);
-            log.info("Response after mapping user search {}", employeeResponse);
-            log.info("Response after mapping user search Details {}", employeeResponse.getEmployees());
+            log.debug("Mapped response to EmployeeResponse, employee count: {}", 
+                employeeResponse != null && employeeResponse.getEmployees() != null ? employeeResponse.getEmployees().size() : 0);
             
             if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
                 log.warn("No employees found for boundary code: {} with roles: {}", boundaryCode, roleCodes);
@@ -62,10 +66,10 @@ public class UserService {
                     .map(Employee::getUser)
                     .toList();
             
-            log.info("Found {} employees for boundary code: {} with roles: {}", users.size(), boundaryCode, roleCodes);
+            log.info("Found {} users for boundary code: {} with roles: {}", users.size(), boundaryCode, roleCodes);
             return users;
         } catch (Exception e) {
-            log.error("Error searching employees for boundary code: {} with roles: {}", boundaryCode, roleCodes, e);
+            log.error("Error searching users for boundary code: {} with roles: {}", boundaryCode, roleCodes, e);
             return new ArrayList<>();
         }
     }

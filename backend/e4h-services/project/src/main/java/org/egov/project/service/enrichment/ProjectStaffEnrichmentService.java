@@ -27,27 +27,38 @@ public class ProjectStaffEnrichmentService {
     }
 
     public void create(List<ProjectStaff> entities, ProjectStaffBulkRequest request) throws Exception {
-        log.info("starting the enrichment for create project staff");
+        log.trace("Entering create (ProjectStaffEnrichmentService)");
+        log.info("Starting enrichment for create project staff");
+        log.debug("Enriching {} staff", entities != null ? entities.size() : 0);
 
-        log.info("generating IDs using IdGenService");
+        log.debug("Generating IDs using IdGenService");
         List<String> idList = idGenService.getIdList(request.getRequestInfo(),
                 getTenantId(entities),
                 projectConfiguration.getProjectStaffIdFormat(), "", entities.size());
+        log.debug("Generated {} IDs", idList != null ? idList.size() : 0);
 
         enrichForCreate(entities, idList, request.getRequestInfo());
-        log.info(ENRICHMENT_DONE);
+        log.info("Successfully completed enrichment for create project staff");
+        log.trace("Exiting create (ProjectStaffEnrichmentService)");
     }
 
     public void update(List<ProjectStaff> entities, ProjectStaffBulkRequest request) {
-        log.info("starting the enrichment for update project staff");
+        log.trace("Entering update (ProjectStaffEnrichmentService)");
+        log.info("Starting enrichment for update project staff");
+        log.debug("Enriching {} staff", entities != null ? entities.size() : 0);
         Map<String, ProjectStaff> projectStaffMap = getIdToObjMap(entities);
+        log.debug("Created staff map with {} entries", projectStaffMap.size());
         enrichForUpdate(projectStaffMap, entities, request);
-        log.info(ENRICHMENT_DONE);
+        log.info("Successfully completed enrichment for update project staff");
+        log.trace("Exiting update (ProjectStaffEnrichmentService)");
     }
 
     public void delete(List<ProjectStaff> entities, ProjectStaffBulkRequest request) {
-        log.info("starting the enrichment for delete project staff");
+        log.trace("Entering delete (ProjectStaffEnrichmentService)");
+        log.info("Starting enrichment for delete project staff");
+        log.debug("Enriching {} staff for delete", entities != null ? entities.size() : 0);
         enrichForDelete(entities, request.getRequestInfo(), true);
-        log.info(ENRICHMENT_DONE);
+        log.info("Successfully completed enrichment for delete project staff");
+        log.trace("Exiting delete (ProjectStaffEnrichmentService)");
     }
 }

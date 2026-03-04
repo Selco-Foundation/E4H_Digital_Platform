@@ -44,6 +44,9 @@ public class ProjectBeneficiaryRepository extends GenericRepository<ProjectBenef
                                                    String tenantId,
                                                    Long lastChangedSince,
                                                    Boolean includeDeleted) {
+        log.trace("Entering find");
+        log.info("Searching project beneficiaries with criteria");
+        log.debug("Search parameters - limit: {}, offset: {}, tenantId: {}, includeDeleted: {}", limit, offset, tenantId, includeDeleted);
 
         Map<String, Object> paramsMap = new HashMap<>();
         StringBuilder queryBuilder = new StringBuilder();
@@ -75,20 +78,30 @@ public class ProjectBeneficiaryRepository extends GenericRepository<ProjectBenef
 
         queryBuilder.append(" ORDER BY id ASC ");
 
+        log.debug("Executing count query");
         Long totalCount = constructTotalCountCTEAndReturnResult(queryBuilder.toString(), paramsMap, this.namedParameterJdbcTemplate);
+        log.debug("Total count: {}", totalCount);
 
         queryBuilder.append(" LIMIT :limit OFFSET :offset");
         paramsMap.put("limit", limit);
         paramsMap.put("offset", offset);
 
+        log.debug("Executing search query with limit and offset");
         List<ProjectBeneficiary> projectBeneficiaries = this.namedParameterJdbcTemplate.query(queryBuilder.toString(), paramsMap, this.rowMapper);
-
+        log.info("Found {} project beneficiaries", projectBeneficiaries != null ? projectBeneficiaries.size() : 0);
+        log.trace("Exiting find");
         return SearchResponse.<ProjectBeneficiary>builder().totalCount(totalCount).response(projectBeneficiaries).build();
     }
 
     public SearchResponse<ProjectBeneficiary> findById(List<String> ids, String columnName, Boolean includeDeleted) {
+        log.trace("Entering findById for {} IDs, columnName: {}", ids != null ? ids.size() : 0, columnName);
+        log.info("Finding project beneficiaries by ID");
+        log.debug("Searching cache for {} IDs", ids != null ? ids.size() : 0);
         List<ProjectBeneficiary> objFound = findInCache(ids);
+        log.debug("Found {} beneficiaries in cache", objFound != null ? objFound.size() : 0);
+        
         if (!includeDeleted) {
+            log.debug("Filtering out deleted beneficiaries");
             objFound = objFound.stream()
                     .filter(entity -> entity.getIsDeleted().equals(false))
                     .toList();
@@ -99,9 +112,11 @@ public class ProjectBeneficiaryRepository extends GenericRepository<ProjectBenef
                     .map(obj -> (String) ReflectionUtils.invokeMethod(idMethod, obj))
                     .toList());
             if (ids.isEmpty()) {
-                log.info("all objects were found in the cache, returning objects");
+                log.info("All objects were found in the cache, returning objects");
+                log.trace("Exiting findById");
                 return SearchResponse.<ProjectBeneficiary>builder().response(objFound).build();
             }
+            log.debug("{} IDs not found in cache, querying database", ids.size());
         }
 
         String query = String.format("SELECT * FROM project_beneficiary where %s IN (:ids) AND isDeleted = false", columnName);
@@ -111,9 +126,12 @@ public class ProjectBeneficiaryRepository extends GenericRepository<ProjectBenef
         Map<String, Object> paramMap = new HashMap();
         paramMap.put("ids", ids);
 
+        log.debug("Querying database for remaining {} IDs", ids.size());
         objFound.addAll(this.namedParameterJdbcTemplate.query(query, paramMap, this.rowMapper));
+        log.debug("Found {} additional beneficiaries from database", objFound.size() - (objFound.size() - ids.size()));
         putInCache(objFound);
-        log.info("returning objects from the database");
+        log.info("Returning {} objects from the database", objFound.size());
+        log.trace("Exiting findById");
         return SearchResponse.<ProjectBeneficiary>builder().response(objFound).build();
     }
 }

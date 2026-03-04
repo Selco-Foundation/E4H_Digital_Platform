@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.web.models.Boundary;
+import facility.web.models.BoundaryRelationshipSearchCriteria;
+import facility.web.models.FacilityBulkSearchCriteria;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,10 +15,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static facility.config.ServiceConstants.*;
 
 @Component
 public class BoundaryUtil {
@@ -28,6 +30,9 @@ public class BoundaryUtil {
 
     @Value("${egov.boundary.relationship.search.path}")
     private String boundaryUrl;
+
+    @Value("${egov.boundary.relationship.search.v2.path}")
+    private String boundaryV2Url;
 
     @Value("${egov.boundary.type}")
     private String boundaryType;
@@ -53,8 +58,38 @@ public class BoundaryUtil {
             }
             jsonString = objectMapper.writeValueAsString(response);
         }catch(Exception e) {
-            e.printStackTrace();
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+//            e.printStackTrace();
+            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary "+ e.getMessage());
+        }
+
+        return jsonString;
+    }
+
+    public String getBoundaryData(List<String> codes) {
+        String jsonString = null;
+//        String params = "?codes="+codes+"&includeChildren=true&tenantId=in&hierarchyType="+boundaryHierarchyType;
+        StringBuilder uri = new StringBuilder();
+        uri.append(boundaryHost).append(boundaryV2Url);
+        RequestInfo requestInfo = new RequestInfo();
+        BoundaryRelationshipSearchCriteria searchCriteria = BoundaryRelationshipSearchCriteria.builder()
+                .tenantId("in")
+                .includeChildren(true)
+                .hierarchyType(boundaryHierarchyType)
+                .codes(codes)
+                .build();
+        Map<String, Object> searchCriteriaRequest = new HashMap<>();
+        searchCriteriaRequest.put("RequestInfo", requestInfo);
+        searchCriteriaRequest.put("BoundaryRelationship", searchCriteria);
+        Object response = null;
+        try {
+            response = restTemplate.postForObject(uri.toString(), searchCriteriaRequest, Map.class);
+            if (response == null) {
+                throw new CustomException("CONFIG_ERROR", "Boundary service returned null response");
+            }
+            jsonString = objectMapper.writeValueAsString(response);
+        }catch(Exception e) {
+//            e.printStackTrace();
+            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary "+e.getMessage());
         }
 
         return jsonString;
@@ -66,8 +101,8 @@ public class BoundaryUtil {
             String jsonString = getBoundaryData();
             listBlock = extractBlockToDistrictMapping(jsonString);
         }catch(Exception e) {
-            e.printStackTrace();
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+//            e.printStackTrace();
+            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary "+ e.getMessage());
         }
 
         return listBlock;
@@ -126,92 +161,223 @@ public class BoundaryUtil {
         return blockToDistrictMap;
     }
 
-    public List<String> getFacilityCodesFromBoundary(List<String> state, List<String> district, List<String> block) {
+//    private List<String> getFacilityCodesByStateDistrictBlock(
+//            String json,
+//            List<String> stateNames,
+//            List<String> districtNames,
+//            List<String> blockNames
+//    ) throws JsonProcessingException {
+//        if (json == null || json.trim().isEmpty()) {
+//            throw new IllegalArgumentException("JSON input cannot be null or empty");
+//        }
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        JsonNode rootNode = objectMapper.readTree(json);
+//        List<String> facilityCodes = new ArrayList<>();
+//
+//        JsonNode states = rootNode
+//                .path("TenantBoundary")
+//                .get(0)
+//                .path("boundary");
+//
+//        for (JsonNode state : states) {
+//
+//            if (!"State".equalsIgnoreCase(state.path("boundaryType").asText())) {
+//                continue;
+//            }
+//
+//            if (!matches(state, "code", stateNames)) {
+//                continue;
+//            }
+//
+//            // District
+//            for (JsonNode district : state.path("children")) {
+//
+//                if (!"District".equalsIgnoreCase(district.path("boundaryType").asText())) {
+//                    continue;
+//                }
+//
+//                if (!matches(district, "code", districtNames)) {
+//                    continue;
+//                }
+//
+//                // Block
+//                for (JsonNode block : district.path("children")) {
+//
+//                    if (!"Block".equalsIgnoreCase(block.path("boundaryType").asText())) {
+//                        continue;
+//                    }
+//
+//                    if (!matches(block, "code", blockNames)) {
+//                        continue;
+//                    }
+//
+//                    // 🎯 Facilities sous ce block
+//                    collectFacilities(block, facilityCodes);
+//                }
+//            }
+//        }
+//
+//        return facilityCodes;
+//    }
+//
+//    private static boolean matches(JsonNode node, String field, List<String> values) {
+//        return values == null
+//                || values.isEmpty()
+//                || values.stream()
+//                .anyMatch(v -> v.equalsIgnoreCase(node.path(field).asText()));
+//    }
+//
+//    private static void collectFacilities(JsonNode block, List<String> result) {
+//
+//        for (JsonNode child : block.path("children")) {
+//            if ("Facility".equalsIgnoreCase(child.path("boundaryType").asText())) {
+//                result.add(child.path("code").asText());
+//            }
+//        }
+//    }
+
+    public List<String> getFacilityCodesFromBoundary(FacilityBulkSearchCriteria criteria) {
         List<String> listBlock = null;
-        try {
-            String jsonString = getBoundaryData();
-            listBlock = getFacilityCodesByStateDistrictBlock(jsonString, state, district, block);
-        }catch(Exception e) {
-            e.printStackTrace();
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+        if(isNotNullOrEmpty(criteria.getBoundaryCodes()) || isNotNullOrEmpty(criteria.getBlock()) || isNotNullOrEmpty(criteria.getDistrict()) ||
+                isNotNullOrEmpty(criteria.getState())
+        ){
+            try {
+                listBlock = resolveFacilityCodes(criteria);
+            }catch(Exception e) {
+                e.printStackTrace();
+                throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary "+ e.getMessage());
+            }
         }
 
         return listBlock;
     }
 
-    private List<String> getFacilityCodesByStateDistrictBlock(
-            String json,
-            List<String> stateNames,
-            List<String> districtNames,
-            List<String> blockNames
-    ) throws JsonProcessingException {
-        if (json == null || json.trim().isEmpty()) {
-            throw new IllegalArgumentException("JSON input cannot be null or empty");
-        }
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode rootNode = objectMapper.readTree(json);
-        List<String> facilityCodes = new ArrayList<>();
+    public String detectLowestLevel(FacilityBulkSearchCriteria criteria) {
 
-        JsonNode states = rootNode
+        if (criteria.getBoundaryCodes() != null && !criteria.getBoundaryCodes().isEmpty()) {
+            return BOUNDARY_CODE;
+        }
+        if (criteria.getBlock() != null && !criteria.getBlock().isEmpty()) {
+            return BLOCK_CODE;
+        }
+        if (criteria.getDistrict() != null && !criteria.getDistrict().isEmpty()) {
+            return DISTRICT_CODE;
+        }
+        if (criteria.getState() != null && !criteria.getState().isEmpty()) {
+            return STATE_CODE;
+        }
+        return null;
+    }
+
+    public List<String> resolveFacilityCodes(FacilityBulkSearchCriteria criteria) throws JsonProcessingException {
+        String level = detectLowestLevel(criteria);
+        ObjectMapper objectMapper = new ObjectMapper();
+        switch (level) {
+
+            case BOUNDARY_CODE:
+                List<String> boundaryCodes = criteria.getBoundaryCodes().stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .collect(Collectors.toList());
+                String jsonString = getBoundaryData(boundaryCodes);
+                JsonNode rootNode = objectMapper.readTree(jsonString);
+                return extractFacilityCodesByLevel(rootNode, criteria.getBoundaryCodes());
+
+            case BLOCK_CODE:
+                List<String> blockBoundaryCodes = criteria.getBlock().stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .collect(Collectors.toList());
+                String blockJsonString = getBoundaryData(blockBoundaryCodes);
+                JsonNode blockRootNode = objectMapper.readTree(blockJsonString);
+                return extractFacilityCodesByLevel(blockRootNode, criteria.getBlock());
+
+            case DISTRICT_CODE:
+                List<String> districtBoundaryCodes = criteria.getDistrict().stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .collect(Collectors.toList());
+                String districtJsonString = getBoundaryData(districtBoundaryCodes);
+                JsonNode districtRootNode = objectMapper.readTree(districtJsonString);
+                return extractFacilityCodesByLevel(districtRootNode, criteria.getDistrict());
+
+            case STATE_CODE:
+                List<String> stateBoundaryCodes = criteria.getState().stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .collect(Collectors.toList());
+                String stateJsonString = getBoundaryData(stateBoundaryCodes);
+                JsonNode stateRootNode = objectMapper.readTree(stateJsonString);
+                return extractFacilityCodesByLevel(stateRootNode, criteria.getState());
+
+            default:
+                return Collections.emptyList();
+        }
+    }
+
+    public List<String> extractFacilityCodesByLevel(JsonNode rootNode, List<String> boundaryCodes) {
+        List<String> result = new ArrayList<>();
+
+        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
+            return result;
+        }
+
+        Set<String> targetCodes = new HashSet<>(boundaryCodes);
+
+        JsonNode boundaries = rootNode
                 .path("TenantBoundary")
                 .get(0)
                 .path("boundary");
 
-        for (JsonNode state : states) {
+        for (JsonNode node : boundaries) {
+            findAndCollect(node, targetCodes, result);
+        }
+        return result;
+    }
 
-            if (!"State".equalsIgnoreCase(state.path("boundaryType").asText())) {
-                continue;
-            }
+    private boolean findAndCollect(
+            JsonNode node,
+            Set<String> boundaryCodes,
+            List<String> result
+    ) {
+        String code = node.path("code").asText();
 
-            if (!matches(state, "code", stateNames)) {
-                continue;
-            }
+        // Si on a trouvé le bon niveau et le bon code
+        if (boundaryCodes.contains(code)) {
+            collectFacilitiesRecursive(node, result);
+            return true; // Stop la recherche
+        }
 
-            // District
-            for (JsonNode district : state.path("children")) {
-
-                if (!"District".equalsIgnoreCase(district.path("boundaryType").asText())) {
-                    continue;
-                }
-
-                if (!matches(district, "code", districtNames)) {
-                    continue;
-                }
-
-                // Block
-                for (JsonNode block : district.path("children")) {
-
-                    if (!"Block".equalsIgnoreCase(block.path("boundaryType").asText())) {
-                        continue;
-                    }
-
-                    if (!matches(block, "code", blockNames)) {
-                        continue;
-                    }
-
-                    // 🎯 Facilities sous ce block
-                    collectFacilities(block, facilityCodes);
+        // Continue à chercher dans les enfants
+        JsonNode children = node.path("children");
+        if (children.isArray()) {
+            for (JsonNode child : children) {
+                if (findAndCollect(child, boundaryCodes, result)) {
+                    return true;
                 }
             }
         }
-
-        return facilityCodes;
+        return false;
     }
 
-    private static boolean matches(JsonNode node, String field, List<String> values) {
-        return values == null
-                || values.isEmpty()
-                || values.stream()
-                .anyMatch(v -> v.equalsIgnoreCase(node.path(field).asText()));
-    }
+    private void collectFacilitiesRecursive(JsonNode node, List<String> result) {
 
-    private static void collectFacilities(JsonNode block, List<String> result) {
+        if ("Facility".equalsIgnoreCase(node.path("boundaryType").asText())) {
+            String fullCode = node.path("code").asText();
+            result.add(fullCode);
+            return;
+        }
 
-        for (JsonNode child : block.path("children")) {
-            if ("Facility".equalsIgnoreCase(child.path("boundaryType").asText())) {
-                result.add(child.path("code").asText());
+        JsonNode children = node.path("children");
+        if (children.isArray()) {
+            for (JsonNode child : children) {
+                collectFacilitiesRecursive(child, result);
             }
         }
+    }
+
+    private boolean isNotNullOrEmpty(Collection<?> c) {
+        return c != null && !c.isEmpty();
     }
 
 }

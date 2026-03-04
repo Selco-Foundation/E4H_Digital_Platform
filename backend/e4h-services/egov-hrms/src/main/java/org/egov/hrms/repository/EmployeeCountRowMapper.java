@@ -33,11 +33,14 @@ public class EmployeeCountRowMapper implements ResultSetExtractor<Map<String,Str
 	 * Maps ResultSet to Employee POJO.
 	 */
 	public Map<String,String> extractData(ResultSet rs) throws SQLException, DataAccessException {
+		log.trace("EmployeeCountRowMapper.extractData invoked");
 		Map<String,String> response = new HashMap<>();
 		int totalEmployee = 0;
 		int activeEmployee = 0;
 		int inactiveEmployee = 0;
+		int rowCount = 0;
 		while(rs.next()) {
+			rowCount++;
 			if(rs.getBoolean("active"))
 				activeEmployee = activeEmployee + rs.getInt("count");
 			else
@@ -51,6 +54,7 @@ public class EmployeeCountRowMapper implements ResultSetExtractor<Map<String,Str
 		response.put("activeEmployee", String.valueOf(activeEmployee));
 		response.put("inactiveEmployee", String.valueOf(inactiveEmployee));
 		response.put("totalEmployee", String.valueOf(totalEmployee));
+		log.debug("Employee count row mapper processed {} rows", rowCount);
 		return response;
 	}
 

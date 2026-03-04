@@ -19,6 +19,14 @@ public class Producer {
     }
 
     public void push(String topic, Object value) {
-        kafkaTemplate.send(topic, value);
+        log.trace("Producer::push called");
+        log.debug("Pushing message to Kafka topic | topic={}", topic);
+        try {
+            kafkaTemplate.send(topic, value);
+            log.debug("Successfully pushed message to Kafka topic | topic={}", topic);
+        } catch (Exception e) {
+            log.error("Failed to push message to Kafka | topic={} error={}", topic, e.getMessage(), e);
+            throw e;
+        }
     }
 }

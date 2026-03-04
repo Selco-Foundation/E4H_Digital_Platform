@@ -49,23 +49,35 @@ public class OrganisationServiceValidator {
      * @param orgRequest
      */
     public void validateCreateOrgRegistryWithoutWorkFlow(OrgRequest orgRequest) {
-        log.info("OrganisationServiceValidator::validateCreateOrgRegistryWithoutWorkFlow");
+        log.trace("OrganisationServiceValidator::validateCreateOrgRegistryWithoutWorkFlow entry");
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = orgRequest.getRequestInfo();
         List<Organisation> organisationList = orgRequest.getOrganisations();
+        String tenantId = organisationList != null && !organisationList.isEmpty()
+                ? organisationList.get(0).getTenantId() : "unknown";
+        log.info("Starting validation for organisation creation, tenant: {}, organisation count: {}",
+                tenantId, organisationList != null ? organisationList.size() : 0);
 
         validateRequestInfo(requestInfo);
+        log.debug("Request info validation completed");
+
         validateOrganisationDetails(organisationList);
+        log.debug("Organisation details validation completed");
 
         //validate organisation details against MDMS
         validateMDMSData(organisationList, requestInfo, organisationList.get(0).getTenantId(), errorMap);
+        log.debug("MDMS data validation completed");
 
         //validate location - boundary code(s)
         Map<String, List<String>> boundariesForValidation = getBoundaryForValidation(organisationList);
         validateBoundary(boundariesForValidation, organisationList.get(0).getTenantId(), requestInfo);
+        log.debug("Boundary validation completed");
 
-        if (!errorMap.isEmpty())
+        if (!errorMap.isEmpty()) {
+            log.error("Validation failed with {} errors", errorMap.size());
             throw new CustomException(errorMap);
+        }
+        log.info("Organisation creation validation completed successfully");
     }
 
     private void validateBoundary(Map<String, List<String>> boundaries, String tenantId, RequestInfo requestInfo) {
@@ -106,19 +118,19 @@ public class OrganisationServiceValidator {
     }
 
     private void validateMDMSData(List<Organisation> organisationList, RequestInfo requestInfo, String tenantId, Map<String, String> errorMap) {
-        log.info("OrganisationServiceValidator::validateMDMSData");
+        log.trace("OrganisationServiceValidator::validateMDMSData entry");
         //Mdms Data
         Object mdmsData = mdmsUtil.mDMSCall(requestInfo, tenantId);
 
         Set<String> orgTypeReqSet = new HashSet<>();
-        Set<String> orgSubTypeReqSet = new HashSet<>();
+        Map<String, Set<String>> orgSubTypeReqMap = new HashMap<>();
         Set<String> orgStatusReqSet = new HashSet<>();
 //        Set<String> orgFuncCategoryReqSet = new HashSet<>();
 //        Set<String> orgFuncClassReqSet = new HashSet<>();
         Set<String> orgIdentifierReqSet = new HashSet<>();
 
         for (Organisation organisation : organisationList) {
-            enrichOrgTypeAndOrgSubTypeAndOrgStatus(organisation, orgTypeReqSet, orgSubTypeReqSet, orgStatusReqSet);
+            enrichOrgTypeAndOrgSubTypeAndOrgStatus(organisation, orgTypeReqSet, orgSubTypeReqMap, orgStatusReqSet);
 
 //            if (!CollectionUtils.isEmpty(organisation.getFunctions())) {
 //                enrichOrgTypeAndFuncCategory(organisation, orgTypeReqSet, orgFuncCategoryReqSet, orgFuncClassReqSet);
@@ -131,6 +143,8 @@ public class OrganisationServiceValidator {
                 }
             }
         }
+        log.debug("MDMS validation - org types: {}, identifiers: {}", orgTypeReqSet.size(), orgIdentifierReqSet.size());
+
         final String jsonPathForOrgType = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_TYPE + ".*";
         final String jsonPathForOrgSubType = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_SUB_TYPE + ".*";
         final String jsonPathForOrgStatus = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_STATUS + ".*";
@@ -159,7 +173,7 @@ public class OrganisationServiceValidator {
         //org type
         validateOrgType(orgTypeReqSet, orgTypeRes, errorMap);
         //org sub type
-        validateOrgSubType(orgSubTypeReqSet, orgSubTypeRes, errorMap);
+        validateOrgSubType(orgSubTypeReqMap, orgSubTypeRes, errorMap);
         //org status
         validateOrgStatus(orgStatusReqSet, orgStatusRes, errorMap);
 
@@ -169,12 +183,21 @@ public class OrganisationServiceValidator {
 
     }
 
-    private void enrichOrgTypeAndOrgSubTypeAndOrgStatus(Organisation organisation, Set<String> orgTypeReqSet, Set<String> orgSubTypeReqSet, Set<String> orgStatusReqSet) {
+    private void enrichOrgTypeAndOrgSubTypeAndOrgStatus(Organisation organisation, Set<String> orgTypeReqSet, Map<String, Set<String>> orgSubTypeReqMap, Set<String> orgStatusReqSet) {
         if (organisation.getOrgType()!=null && StringUtils.isNotBlank(organisation.getOrgType())) {
             orgTypeReqSet.add(organisation.getOrgType());
+            Set<String> orgSubTypeReqSet = orgSubTypeReqMap.get(organisation.getOrgType());
+            if(orgSubTypeReqSet==null){
+                orgSubTypeReqMap.put(organisation.getOrgType(), new HashSet<>());
+            }
+            else{
+                orgSubTypeReqMap.put(organisation.getOrgType(), orgSubTypeReqSet);
+            }
         }
         if (organisation.getOrgSubType()!=null && StringUtils.isNotBlank(organisation.getOrgSubType())) {
+            Set<String> orgSubTypeReqSet = orgSubTypeReqMap.get(organisation.getOrgType());
             orgSubTypeReqSet.add(organisation.getOrgSubType());
+            orgSubTypeReqMap.put(organisation.getOrgType(), orgSubTypeReqSet);
         }
         if (organisation.getOrgStatus()!=null && StringUtils.isNotBlank(organisation.getOrgStatus().name())) {
             orgStatusReqSet.add(organisation.getOrgStatus().name());
@@ -247,14 +270,19 @@ public class OrganisationServiceValidator {
         }
     }
 
-    private void validateOrgSubType(Set<String> orgSubTypeReqSet, List<Object> orgSubTypeRes, Map<String, String> errorMap) {
-        if (CollectionUtils.isEmpty(orgSubTypeReqSet)) {
-            errorMap.put("INVALID_ORG_TYPE", "The org sub type is not configured in MDMS");
-        } else {
-            if (!CollectionUtils.isEmpty(orgSubTypeReqSet)) {
-                orgSubTypeReqSet.removeAll(orgSubTypeRes);
+    private void validateOrgSubType(Map<String, Set<String>> orgSubTypeReqMap, List<Object> orgSubTypeRes, Map<String, String> errorMap) {
+        for (Map.Entry<String, Set<String>> entry : orgSubTypeReqMap.entrySet()) {
+            String key = entry.getKey();
+            Set<String> orgSubTypeReqSet = entry.getValue();
+
+            if (key.equals("VENDOR") && CollectionUtils.isEmpty(orgSubTypeReqSet)) {
+                errorMap.put("INVALID_ORG_TYPE", "The org sub type is not configured in MDMS");
+            } else {
                 if (!CollectionUtils.isEmpty(orgSubTypeReqSet)) {
-                    errorMap.put("INVALID_ORG_TYPE", "The org sub types: " + orgSubTypeReqSet + NOT_PRESENT_IN_MDMS);
+                    orgSubTypeReqSet.removeAll(orgSubTypeRes);
+                    if (!CollectionUtils.isEmpty(orgSubTypeReqSet)) {
+                        errorMap.put("INVALID_ORG_TYPE", "The org sub types: " + orgSubTypeReqSet + NOT_PRESENT_IN_MDMS);
+                    }
                 }
             }
         }
@@ -274,15 +302,18 @@ public class OrganisationServiceValidator {
     }
 
     private void validateOrganisationDetails(List<Organisation> organisationList) {
-        log.info("OrganisationServiceValidator::validateOrganisationDetails");
+        log.trace("OrganisationServiceValidator::validateOrganisationDetails entry");
         if (organisationList == null || organisationList.isEmpty()) {
+            log.error("Organisation list is null or empty");
             throw new CustomException("ORGANISATION_DETAILS", "At least one organisation detail is required");
         }
         for (Organisation organisation : organisationList) {
             if (StringUtils.isBlank(organisation.getTenantId())) {
+                log.error("Tenant ID is missing for organisation");
                 throw new CustomException("TENANT_ID", "Tenant id is mandatory");
             }
             if (StringUtils.isBlank(organisation.getName())) {
+                log.error("Organisation name is missing for tenant: {}", organisation.getTenantId());
                 throw new CustomException("ORG_NAME", "Organisation name is mandatory");
             }
             if (StringUtils.isBlank(organisation.getOrgType())) {
@@ -290,6 +321,7 @@ public class OrganisationServiceValidator {
             }
             validateAddress(organisation);
         }
+        log.debug("Organisation details validation completed for {} organisations", organisationList.size());
     }
 
     private void validateAddress(Organisation organisation){
@@ -311,7 +343,7 @@ public class OrganisationServiceValidator {
     }
     /* Validates Request Info and User Info */
     private void validateRequestInfo(RequestInfo requestInfo) {
-        log.info("OrganisationServiceValidator::validateRequestInfo");
+        log.trace("OrganisationServiceValidator::validateRequestInfo entry");
         if (requestInfo == null) {
             log.error("Request info is mandatory");
             throw new CustomException("REQUEST_INFO", "Request info is mandatory");
@@ -324,28 +356,42 @@ public class OrganisationServiceValidator {
             log.error("UUID is mandatory in UserInfo");
             throw new CustomException("USERINFO_UUID", "UUID is mandatory");
         }
+        log.debug("Request info validation completed");
     }
 
     public void validateUpdateOrgRegistryWithoutWorkFlow(OrgRequest orgRequest) {
-        log.info("OrganisationServiceValidator::validateUpdateOrgRegistryWithoutWorkFlow");
+        log.trace("OrganisationServiceValidator::validateUpdateOrgRegistryWithoutWorkFlow entry");
         Map<String, String> errorMap = new HashMap<>();
         RequestInfo requestInfo = orgRequest.getRequestInfo();
         List<Organisation> organisationList = orgRequest.getOrganisations();
+        String tenantId = organisationList != null && !organisationList.isEmpty()
+                ? organisationList.get(0).getTenantId() : "unknown";
+        log.info("Starting validation for organisation update, tenant: {}, organisation count: {}",
+                tenantId, organisationList != null ? organisationList.size() : 0);
 
         validateRequestInfo(requestInfo);
+        log.debug("Request info validation completed");
+
         validateOrganisationDetails(organisationList);
+        log.debug("Organisation details validation completed");
 
         validateOrgIdsExistInSystem(requestInfo, organisationList);
+        log.debug("Organisation ID existence validation completed");
 
         //validate organisation details against MDMS
         validateMDMSData(organisationList, requestInfo, organisationList.get(0).getTenantId(), errorMap);
+        log.debug("MDMS data validation completed");
 
         //validate location - boundary code(s)
         Map<String, List<String>> boundariesForValidation = getBoundaryForValidation(organisationList);
         validateBoundary(boundariesForValidation, organisationList.get(0).getTenantId(), requestInfo);
+        log.debug("Boundary validation completed");
 
-        if (!errorMap.isEmpty())
+        if (!errorMap.isEmpty()) {
+            log.error("Validation failed with {} errors", errorMap.size());
             throw new CustomException(errorMap);
+        }
+        log.info("Organisation update validation completed successfully");
     }
 
     private void validateOrgIdsExistInSystem(RequestInfo requestInfo, List<Organisation> organisationList) {
@@ -384,16 +430,20 @@ public class OrganisationServiceValidator {
     }
 
     public void validateSearchOrganisationRequest(OrgSearchRequest orgSearchRequest) {
+        log.trace("OrganisationServiceValidator::validateSearchOrganisationRequest entry");
         Map<String, String> errorMap = new HashMap<>();
         //Verify if RequestInfo and UserInfo is present
-        log.info("Organisation search request Info data validation");
+        log.debug("Validating organisation search request info");
         validateRequestInfo(orgSearchRequest.getRequestInfo());
         //Verify the search criteria
-        log.info("Organisation search criteria validation");
+        log.debug("Validating organisation search criteria");
         validateSearchCriteria(orgSearchRequest.getSearchCriteria(), errorMap);
 
-        if (!errorMap.isEmpty())
+        if (!errorMap.isEmpty()) {
+            log.error("Search validation failed with {} errors", errorMap.size());
             throw new CustomException(errorMap);
+        }
+        log.debug("Organisation search request validation completed successfully");
     }
 
     private void validateSearchCriteria(OrgSearchCriteria searchCriteria, Map<String, String> errorMap) {
@@ -422,16 +472,17 @@ public class OrganisationServiceValidator {
         if (searchCriteria.getCreatedFrom() != null && searchCriteria.getCreatedTo() == null) {
             long currentDate = System.currentTimeMillis();
             if (searchCriteria.getCreatedFrom() > currentDate) {
-                log.error("Invalid created from date");
+                log.warn("Invalid created from date: date is in the future");
                 throw new CustomException(INVALID_ORG_SEARCH_DATE, "invalid created from date");
             } else {
                 searchCriteria.setCreatedTo(currentDate);
+                log.debug("Set created to date to current date: {}", currentDate);
             }
         }
 
         if (searchCriteria.getCreatedFrom() != null && searchCriteria.getCreatedTo() != null
                 && Long.compare(searchCriteria.getCreatedFrom(), searchCriteria.getCreatedTo()) > 0) {
-            log.error("Created from date is greater than created to date");
+            log.warn("Created from date is greater than created to date");
             throw new CustomException(INVALID_ORG_SEARCH_DATE, "Created from date is greater than created to date");
 
         }

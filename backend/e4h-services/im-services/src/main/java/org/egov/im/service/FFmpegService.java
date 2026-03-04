@@ -28,11 +28,12 @@ public class FFmpegService {
     public MultipartFile createMasterPlaylist(List<VideoQualitySettings> qualities,
                                               ProcessingContext context,
                                               Path outputPath) {
-
+        log.trace("FFmpegService::createMasterPlaylist method invoked");
+        log.trace("Creating HLS directory structure");
         directoryUtil.createDirectory(String.format("%s/%s/hls",
                 outputPath.toString(), context.getVideoId()));
 
-        log.info("Creating master playlist for videoId: {}", context.getVideoId());
+        log.info("Creating master playlist for videoId: {} with {} quality levels", context.getVideoId(), qualities.size());
 
         StringBuilder masterPlaylist = new StringBuilder("#EXTM3U\n");
 
@@ -48,15 +49,19 @@ public class FFmpegService {
         Path masterPath = directoryUtil.createFile(masterPlaylistPath);
 
         try {
+            log.trace("Writing master playlist to file");
             Files.writeString(masterPath, masterPlaylist.toString());
             File masterPlaylistFile = masterPath.toFile();
 
-            log.info("master path: {}", masterPath);
+            log.debug("Master playlist written to path: {}", masterPath);
 
+            log.trace("Extracting base path and converting to multipart file");
             String resolveBasePath = videoUtil.pathExtractor(masterPlaylistPath.toString(), "output");
 
             //convert to multiPathFile
-            return videoUtil.convertFileToMultipartFile(masterPlaylistFile, resolveBasePath);
+            MultipartFile result = videoUtil.convertFileToMultipartFile(masterPlaylistFile, resolveBasePath);
+            log.debug("Master playlist created successfully for videoId: {}", context.getVideoId());
+            return result;
 
         } catch (IOException e) {
             log.error("Error creating master playlist for videoId: {}", context.getVideoId(), e);

@@ -1,5 +1,6 @@
 package org.egov.id.api;
 
+import lombok.extern.slf4j.Slf4j;
 import org.egov.id.model.IdGenerationRequest;
 import org.egov.id.model.IdGenerationResponse;
 import org.egov.id.service.IdGenerationService;
@@ -18,6 +19,7 @@ import javax.validation.Valid;
  */
 @RestController
 @RequestMapping(path = "/id/")
+@Slf4j
 public class IdGenerationController {
 
 	@Autowired
@@ -34,11 +36,25 @@ public class IdGenerationController {
 	public IdGenerationResponse generateIdResponse(
 			@RequestBody @Valid IdGenerationRequest idGenerationRequest)
 			throws Exception {
+		log.trace("generateIdResponse method invoked");
+		
+		try {
+			log.info("Received ID generation request with {} id requests", 
+					idGenerationRequest != null && idGenerationRequest.getIdRequests() != null 
+						? idGenerationRequest.getIdRequests().size() : 0);
+			
+			IdGenerationResponse idGenerationResponse = idGenerationService
+					.generateIdResponse(idGenerationRequest);
 
-		IdGenerationResponse idGenerationResponse = idGenerationService
-				.generateIdResponse(idGenerationRequest);
-
-		return idGenerationResponse;
+			log.info("Successfully generated {} IDs", 
+					idGenerationResponse != null && idGenerationResponse.getIdResponses() != null 
+						? idGenerationResponse.getIdResponses().size() : 0);
+			
+			return idGenerationResponse;
+		} catch (Exception e) {
+			log.error("Error occurred while generating ID response", e);
+			throw e;
+		}
 	}
 
 }

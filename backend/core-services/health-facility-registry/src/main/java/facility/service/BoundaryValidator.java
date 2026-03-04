@@ -40,13 +40,20 @@ public class BoundaryValidator {
      * @param requestInfo Metadata about the user and request context
      */
     public void validateBoundaries(Set<String> boundaryCodes, String tenantId, RequestInfo requestInfo) {
+        log.trace("Entering validateBoundaries method");
         Objects.requireNonNull(boundaryCodes, "boundaryCodes cannot be null");
         boundaryCodes.forEach(boundaryCode -> Objects.requireNonNull(boundaryCode, "boundary codes cannot be null"));
         Objects.requireNonNull(tenantId, "tenantId cannot be null");
         Objects.requireNonNull(requestInfo, "RequestInfo cannot be null");
 
         // If no boundary codes are provided, nothing to validate
-        if (boundaryCodes.isEmpty()) return;
+        if (boundaryCodes.isEmpty()) {
+            log.debug("No boundary codes provided for validation, skipping");
+            return;
+        }
+
+        log.info("Validating {} boundary codes for tenant {}", boundaryCodes.size(), tenantId);
+        log.debug("Boundary codes to validate: {}", boundaryCodes);
 
         // Join boundary codes into comma-separated string for the query parameter
         String codes = String.join(",", boundaryCodes);
@@ -59,6 +66,7 @@ public class BoundaryValidator {
                 .queryParam("offset", 0)
                 .queryParam("limit", boundaryCodes.size())
                 .toUriString();
+        log.debug("Boundary validation URI: {}", uri);
 
         Map<String, Object> requestBody = Map.of("RequestInfo", requestInfo);
 
@@ -66,15 +74,21 @@ public class BoundaryValidator {
             // Call boundary service and parse the response
             Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
             Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
+            log.debug("Received boundary validation response from service");
 
             // Validate each boundary code individually against the response
+            int validatedCount = 0;
             for (String code : boundaryCodes) {
                 validateResponse(code, response);
+                validatedCount++;
             }
+            log.info("Successfully validated {} boundary codes for tenant {}", validatedCount, tenantId);
         } catch (Exception e) {
+            log.error("Error validating boundary codes {} for tenant {}: {}", boundaryCodes, tenantId, e.getMessage(), e);
             // Wrap and rethrow exceptions with contextual information
             throw new IllegalArgumentException("Error validating boundary codes: " + boundaryCodes, e);
         }
+        log.trace("Exiting validateBoundaries method");
     }
 
     /**
@@ -85,14 +99,19 @@ public class BoundaryValidator {
      */
     @SuppressWarnings("unchecked")
     private void validateResponse(String code, Map<String, Object> response) {
+        log.trace("Entering validateResponse method for boundary code: {}", code);
         if (response == null || !response.containsKey("Boundary")) {
+            log.error("Boundary validation failed: Response is missing 'Boundary' field for code: {}", code);
             throw new IllegalArgumentException("Boundary response is missing 'Boundary' field");
         }
 
         Object boundariesObj = response.get("Boundary");
         if (!(boundariesObj instanceof List<?> boundaries) || boundaries.isEmpty()) {
+            log.error("Boundary validation failed: Response is empty for code: {}", code);
             throw new IllegalArgumentException("Boundary response is empty");
         }
+
+        log.debug("Validating boundary code {} against {} boundaries in response", code, boundaries.size());
 
         // Check if any returned boundary matches the requested code
         boolean found = boundaries.stream()
@@ -102,7 +121,10 @@ public class BoundaryValidator {
                 .anyMatch(boundary -> code.equals(boundary.get("code")));
 
         if (!found) {
+            log.error("Boundary validation failed: Code {} not found in response", code);
             throw new IllegalArgumentException("Boundary code not found in response: " + code);
         }
+        log.debug("Boundary code {} validated successfully", code);
+        log.trace("Exiting validateResponse method");
     }
 }

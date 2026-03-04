@@ -29,6 +29,7 @@ public class User {
     @JsonProperty("uuid")
     private String uuid;
 
+    @NotNull
     @Size(max=180)
     @JsonProperty("userName")
     private String userName;
@@ -165,6 +166,6 @@ public class User {
     private String tenantId;
 
     @JsonProperty("jurisdiction")
-    private List<String> jurisdiction = new ArrayList<>();
+    private List<Jurisdiction> jurisdictions = new ArrayList<>();
 
 }

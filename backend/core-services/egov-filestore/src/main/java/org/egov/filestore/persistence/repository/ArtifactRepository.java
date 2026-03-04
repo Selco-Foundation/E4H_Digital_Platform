@@ -43,19 +43,32 @@ public class ArtifactRepository {
     private String azureBlobSource;
 
     public List<String> save(List<org.egov.filestore.domain.model.Artifact> artifacts, RequestInfo requestInfo) {
+        log.trace("Entering save method with artifactCount: {}", artifacts.size());
+        log.info("Saving {} artifacts to cloud storage and database", artifacts.size());
         cloudFilesManager.saveFiles(artifacts);
+        log.debug("Files saved to cloud storage successfully");
         List<Artifact> artifactEntities = new ArrayList<>();
         artifacts.forEach(artifact -> artifactEntities.add(mapToEntity(artifact, requestInfo)));
-        if (artifactEntities.isEmpty())
+        log.debug("Mapped {} artifacts to entities", artifactEntities.size());
+        if (artifactEntities.isEmpty()) {
+            log.warn("No artifact entities to save after mapping");
             return List.of();
-        return fileStoreJpaRepository.saveAll(artifactEntities).stream()
+        }
+        List<Artifact> savedArtifacts = fileStoreJpaRepository.saveAll(artifactEntities);
+        log.debug("Saved {} artifacts to database", savedArtifacts.size());
+        List<String> fileStoreIds = savedArtifacts.stream()
                 .map(Artifact::getFileStoreId)
                 .toList();
+        log.info("Successfully saved {} artifacts, generated {} fileStoreIds", artifacts.size(), fileStoreIds.size());
+        return fileStoreIds;
     }
 
     public List<String> saveHLS(
             List<org.egov.filestore.domain.model.Artifact> artifacts, RequestInfo requestInfo) {
+        log.trace("Entering saveHLS method with artifactCount: {}", artifacts.size());
+        log.info("Saving {} HLS artifacts to cloud storage and database", artifacts.size());
         cloudFileManagerV2.saveFiles(artifacts);
+        log.debug("HLS files saved to cloud storage successfully");
         List<Artifact> artifactEntities = new ArrayList<>();
         artifacts.forEach(artifact -> {
             if (artifact.isInsertable() && artifact.getFileLocation().getFileStoreId() != null) {
@@ -65,13 +78,21 @@ public class ArtifactRepository {
                 artifactEntities.add(mapToEntity(artifact, requestInfo));
             }
         });
+        log.debug("Mapped {} insertable HLS artifacts to entities", artifactEntities.size());
 
-        if (artifactEntities.isEmpty())
+        if (artifactEntities.isEmpty()) {
+            log.warn("No insertable HLS artifact entities to save after mapping");
             return List.of();
+        }
 
-        return fileStoreJpaRepository.saveAll(artifactEntities).stream()
+        List<Artifact> savedArtifacts = fileStoreJpaRepository.saveAll(artifactEntities);
+        log.debug("Saved {} HLS artifacts to database", savedArtifacts.size());
+        List<String> fileStoreIds = savedArtifacts.stream()
                 .map(Artifact::getFileStoreId)
                 .toList();
+        log.info("Successfully saved {} HLS artifacts, generated {} fileStoreIds", 
+                artifacts.size(), fileStoreIds.size());
+        return fileStoreIds;
     }
 
     /**
@@ -126,31 +147,52 @@ public class ArtifactRepository {
      *                     simple get api too
      */
     public Resource find(String fileStoreId, String tenantId) throws IOException {
+        log.trace("Entering find method with fileStoreId: {}, tenantId: {}", fileStoreId, tenantId);
+        log.info("Finding artifact for fileStoreId: {}, tenantId: {}", fileStoreId, tenantId);
         Artifact artifact = fileStoreJpaRepository.findByFileStoreIdAndTenantId(fileStoreId, tenantId);
-        if (artifact == null)
+        if (artifact == null) {
+            log.error("Artifact not found for fileStoreId: {}, tenantId: {}", fileStoreId, tenantId);
             throw new CustomException("NOT_FOUND", "Invalid filestoreid or tenantid");
+        }
+        log.debug("Artifact found, fileSource: {}, fileName: {}", 
+                artifact.getFileLocation().getFileSource(), artifact.getFileName());
 
         org.springframework.core.io.Resource resource = null;
 
         if (artifact.getFileLocation().getFileSource().equals("minio")) {
+            log.debug("Reading file from MinIO repository");
             // if only DiskFileStoreRepository use read else ignore
             MinioRepository repo = (MinioRepository) cloudFilesManager;
             resource = repo.read(artifact.getFileLocation());
         } else if (artifact.getFileLocation().getFileSource().equals("AzureBlobStorage")) {
+            log.debug("Reading file from Azure Blob Storage repository");
             AzureBlobStorageImpl repo = (AzureBlobStorageImpl) cloudFilesManager;
             resource = repo.read(artifact.getFileLocation());
+        } else {
+            log.warn("Unknown fileSource: {} for fileStoreId: {}", 
+                    artifact.getFileLocation().getFileSource(), fileStoreId);
         }
 
-        if (null != resource)
+        if (null != resource) {
+            long fileSize = resource.getFile().length();
+            log.debug("File resource retrieved successfully, size: {} bytes", fileSize);
             return new Resource(artifact.getContentType(), artifact.getFileName(), resource, artifact.getTenantId(),
-                    "" + resource.getFile().length() + " bytes");
-        else
+                    "" + fileSize + " bytes");
+        } else {
+            log.warn("Resource is null for fileStoreId: {}, tenantId: {}", fileStoreId, tenantId);
             return null;
+        }
     }
 
     public List<FileInfo> findByTag(String tag, String tenantId) {
-        return fileStoreJpaRepository.findByTagAndTenantId(tag, tenantId).stream().map(this::mapArtifactToFileInfo)
+        log.trace("Entering findByTag method with tag: {}, tenantId: {}", tag, tenantId);
+        log.info("Finding files by tag: {}, tenantId: {}", tag, tenantId);
+        List<Artifact> artifacts = fileStoreJpaRepository.findByTagAndTenantId(tag, tenantId);
+        log.debug("Found {} artifacts for tag: {}, tenantId: {}", artifacts.size(), tag, tenantId);
+        List<FileInfo> fileInfoList = artifacts.stream().map(this::mapArtifactToFileInfo)
                 .collect(Collectors.toList());
+        log.info("Mapped {} artifacts to FileInfo objects for tag: {}", fileInfoList.size(), tag);
+        return fileInfoList;
     }
 
     private FileInfo mapArtifactToFileInfo(Artifact artifact) {
@@ -161,10 +203,18 @@ public class ArtifactRepository {
     }
 
     public List<Artifact> getByTenantIdAndFileStoreIdList(String tenantId, List<String> fileStoreIds) {
-        return fileStoreJpaRepository.findByTenantIdAndFileStoreIdList(tenantId, fileStoreIds);
+        log.trace("Entering getByTenantIdAndFileStoreIdList method with tenantId: {}, fileStoreIds count: {}", 
+                tenantId, fileStoreIds.size());
+        log.info("Retrieving artifacts for tenantId: {}, fileStoreIds count: {}", tenantId, fileStoreIds.size());
+        List<Artifact> artifacts = fileStoreJpaRepository.findByTenantIdAndFileStoreIdList(tenantId, fileStoreIds);
+        log.debug("Retrieved {} artifacts from database", artifacts.size());
+        return artifacts;
     }
 
     public Resource findByPath(FileLocation fileLocation) {
+        log.trace("Entering findByPath method with fileName: {}, tenantId: {}", 
+                fileLocation.getFileName(), fileLocation.getTenantId());
+        log.info("Finding file by path: {}, tenantId: {}", fileLocation.getFileName(), fileLocation.getTenantId());
         MinioRepository repo = (MinioRepository) cloudFilesManager;
         org.springframework.core.io.Resource resource = repo.read(fileLocation);
 
@@ -174,6 +224,7 @@ public class ArtifactRepository {
                         Path filePath = res.getFile().toPath();
                         String contentType = Files.probeContentType(filePath);
                         long fileSize = res.getFile().length();
+                        log.debug("File found by path, contentType: {}, fileSize: {} bytes", contentType, fileSize);
 
                         return new Resource(
                                 contentType,
@@ -182,6 +233,8 @@ public class ArtifactRepository {
                                 fileLocation.getTenantId(),
                                 String.format("%d bytes", fileSize));
                     } catch (IOException e) {
+                        log.error("Error fetching file from bucket for path: {}, tenantId: {}", 
+                                fileLocation.getFileName(), fileLocation.getTenantId(), e);
                         throw new CustomException("Error fetching file from bucket", e.getMessage());
                     }
                 })
@@ -189,14 +242,21 @@ public class ArtifactRepository {
     }
 
     public String findS3SignedUrl(String fileStoreId, String tenantId) throws IOException {
+        log.trace("Entering findS3SignedUrl method with fileStoreId: {}, tenantId: {}", fileStoreId, tenantId);
+        log.info("Finding S3 signed URL for fileStoreId: {}, tenantId: {}", fileStoreId, tenantId);
         Artifact artifact = fileStoreJpaRepository.findByFileStoreIdAndTenantId(fileStoreId, tenantId);
-        if (artifact == null)
+        if (artifact == null) {
+            log.error("Artifact not found for fileStoreId: {}, tenantId: {}", fileStoreId, tenantId);
             throw new CustomException("NOT_FOUND", "Invalid filestoreid or tenantid");
+        }
+        log.debug("Artifact found for fileStoreId: {}, fileName: {}", fileStoreId, artifact.getFileName());
 
         MinioRepository repo = (MinioRepository) cloudFilesManager;
         String fileLocation = artifact.getFileLocation().getFileName();
         String fileName = fileLocation.substring(fileLocation.indexOf('/') + 1, fileLocation.length());
+        log.debug("Extracted fileName: {} from fileLocation: {}", fileName, fileLocation);
         String signedUrl = repo.getSignedUrl(fileName);
+        log.debug("Generated signed URL successfully for fileStoreId: {}", fileStoreId);
         return signedUrl;
     }
 }

@@ -42,9 +42,6 @@ public class Configuration {
     @Value("${egov.user.host}")
     private String userHost;
 
-    @Value("${egov.user.context.path}")
-    private String userContextPath;
-
     @Value("${egov.user.create.path}")
     private String userCreateEndpoint;
 
@@ -94,6 +91,9 @@ public class Configuration {
 
     @Value("${egov.fieldplan.activity.host}")
     private String fieldPlanActivityServiceHost;
+
+    @Value("${user.default.password}")
+    private String defaultUserPassword;
 
     @Value("${egov.fieldplan.activity.assignment.search.url}")
     private String fieldPlanActivitySearchUrl;

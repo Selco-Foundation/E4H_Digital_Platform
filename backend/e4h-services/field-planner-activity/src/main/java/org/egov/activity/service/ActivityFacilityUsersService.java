@@ -62,12 +62,14 @@ public class ActivityFacilityUsersService {
     }
 
     public List<ActivityFacilityUser> createActivityFacilityUsers(ActivityFacilityUserBulkRequest request) throws Exception {
-        log.info("received request to create bulk activity facility users");
-
+        log.trace("createActivityFacilityUsers method invoked");
+        log.info("Received request to create bulk activity facility users");
         facilityUserValidator.validateCreateActivityFacilityUsersRequest(request);
         List<ActivityFacilityUser> activityFacilityUsers = request.getActivityFacilityUsers();
-        log.info("received activityFacilityUsers to create bulk activity facility users size {}", activityFacilityUsers);
+        int userCount = activityFacilityUsers != null ? activityFacilityUsers.size() : 0;
+        log.debug("Processing {} activity facility users for creation", userCount);
         for (ActivityFacilityUser facilityUser : activityFacilityUsers) {
+            log.trace("Checking if user is already assigned, userId: {}, activityFacilityId: {}", facilityUser.getUserId(), facilityUser.getActivityFacilityId());
             ActivityFacilityUserSearchCriteria searchCriteria = ActivityFacilityUserSearchCriteria.builder()
                     .activityFacilityId(new ArrayList<>(List.of(facilityUser.getActivityFacilityId())))
                     .userId(new ArrayList<>(List.of(facilityUser.getUserId())))
@@ -79,15 +81,16 @@ public class ActivityFacilityUsersService {
 
             SearchResponse<ActivityFacilityUser> response = search(searchRequest, 10,0, "in", null, false);
             if (response!=null && response.getResponse() != null && !response.getResponse().isEmpty()){
-                log.error("User already assigned to this activity facility");
+                log.error("User already assigned to activity facility, userId: {}, activityFacilityId: {}", facilityUser.getUserId(), facilityUser.getActivityFacilityId());
                 throw new CustomException("FACILITY_ASSIGN_USER", "User "+facilityUser.getUserId() +" already assigned to this activity facility "+facilityUser.getActivityFacilityId());
             }
-            log.info("processing {} valid entities", facilityUser);
+            log.trace("Enriching activity facility user, userId: {}, activityFacilityId: {}", facilityUser.getUserId(), facilityUser.getActivityFacilityId());
             facilityUserEnrichment.enrichActivityFacilityUserOnCreate(facilityUser, request.getRequestInfo());
         }
 
+        log.debug("Pushing activity facility users to topic: {}", activityConfiguration.getCreateFacilityUserTopic());
         producer.push(activityConfiguration.getCreateFacilityUserTopic(), request);
-        log.info("successfully created activity facility");
+        log.info("Successfully created {} activity facility users", userCount);
 
         return activityFacilityUsers;
     }
@@ -98,58 +101,72 @@ public class ActivityFacilityUsersService {
                                                String tenantId,
                                                Long lastChangedSince,
                                                Boolean includeDeleted) throws Exception {
-        log.info("received request to search project staff");
-
+        log.trace("search method invoked with limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
+        log.info("Received request to search activity facility users");
         if (isSearchByIdOnly(searchRequest.getCriteria())) {
-            log.info("searching activity facility staff by id");
             List<String> ids = searchRequest.getCriteria().getId();
-            log.info("fetching activity facility staff with ids: {}", ids);
+            int idCount = ids != null ? ids.size() : 0;
+            log.debug("Searching activity facility users by ID, count: {}", idCount);
             List<ActivityFacilityUser> activityFacilityUsers = activityFacilityUserRepository.findById(ids, includeDeleted).stream()
                     .filter(lastChangedSince(lastChangedSince))
                     .filter(havingTenantId(tenantId))
                     .filter(includeDeleted(includeDeleted))
                     .toList();
+            log.debug("Retrieved {} activity facility users by ID", activityFacilityUsers.size());
             return SearchResponse.<ActivityFacilityUser>builder().response(activityFacilityUsers).build();
         }
-        log.info("searching project staff using criteria");
-        return activityFacilityUserRepository.findWithCount(searchRequest.getCriteria(),
+        log.debug("Searching activity facility users using criteria");
+        SearchResponse<ActivityFacilityUser> result = activityFacilityUserRepository.findWithCount(searchRequest.getCriteria(),
                 limit, offset, tenantId, lastChangedSince, includeDeleted);
+        int resultCount = result.getResponse() != null ? result.getResponse().size() : 0;
+        log.debug("Retrieved {} activity facility users using criteria", resultCount);
+        return result;
     }
 
     public List<ActivityFacilityUser> update(ActivityFacilityUserBulkRequest request) {
-        log.info("received request to update bulk activity facility staff");
+        log.trace("update method invoked");
+        log.info("Received request to update bulk activity facility users");
         facilityUserValidator.validateCreateActivityFacilityUsersRequest(request);
         List<ActivityFacilityUser> validEntities = request.getActivityFacilityUsers();
+        int updateCount = validEntities != null ? validEntities.size() : 0;
+        log.debug("Processing {} activity facility users for update", updateCount);
         try {
             if (!validEntities.isEmpty()) {
                 for (ActivityFacilityUser facilityUser : validEntities) {
+                    log.trace("Updating activity facility user, userId: {}, activityFacilityId: {}", facilityUser.getUserId(), facilityUser.getActivityFacilityId());
                     facilityUserEnrichment.enrichActivityFacilityUserRequestOnUpdate(facilityUser, request.getRequestInfo());
+                    log.debug("Pushing update to topic: {}", activityConfiguration.getUpdateFacilityUserTopic());
                     producer.push(activityConfiguration.getUpdateFacilityUserTopic(), request);
-                    log.info("successfully updated bulk project staff");
                 }
+                log.info("Successfully updated {} activity facility users", updateCount);
             }
         } catch (Exception exception) {
-            log.error("error occurred while updating project staff", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while updating activity facility users, count: {}", updateCount, exception);
         }
 
         return validEntities;
     }
 
     public List<ActivityFacilityUser> delete(ActivityFacilityUserBulkRequest request) {
-        log.info("received request to delete bulk activity facility staff");
+        log.trace("delete method invoked");
+        log.info("Received request to delete bulk activity facility users");
         facilityUserValidator.validateCreateActivityFacilityUsersRequest(request);
         List<ActivityFacilityUser> validEntities = request.getActivityFacilityUsers();
+        int deleteCount = validEntities != null ? validEntities.size() : 0;
+        log.debug("Processing {} activity facility users for deletion", deleteCount);
         try {
             if (!validEntities.isEmpty()) {
                 for (ActivityFacilityUser facilityUser : validEntities) {
+                    log.trace("Deleting activity facility user, userId: {}, activityFacilityId: {}", facilityUser.getUserId(), facilityUser.getActivityFacilityId());
                     facilityUser.setIsDeleted(true);
                     facilityUserEnrichment.enrichActivityFacilityUserRequestOnUpdate(facilityUser, request.getRequestInfo());
+                    log.debug("Pushing delete update to topic: {}", activityConfiguration.getUpdateFacilityUserTopic());
                     producer.push(activityConfiguration.getUpdateFacilityUserTopic(), request);
-                    log.info("successfully updated bulk project staff");
                 }
+                log.info("Successfully marked {} activity facility users as deleted", deleteCount);
             }
         } catch (Exception exception) {
-            log.error("error occurred while updating project staff", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while deleting activity facility users, count: {}", deleteCount, exception);
         }
 
         return validEntities;

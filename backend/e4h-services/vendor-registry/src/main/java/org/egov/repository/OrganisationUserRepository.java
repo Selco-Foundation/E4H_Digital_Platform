@@ -1,6 +1,7 @@
 package org.egov.repository;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.egov.common.models.core.URLParams;
 import org.egov.repository.querybuilder.*;
 import org.egov.repository.rowmapper.*;
@@ -33,20 +34,17 @@ public class OrganisationUserRepository {
     }
 
     public List<OrgUser> getOrgUsers(OrgUserSearchRequest orgSearchRequest, URLParams urlParams) {
+        log.trace("OrganisationUserRepository::getOrgUsers entry");
+        String tenantId = urlParams != null ? urlParams.getTenantId() : "unknown";
+        log.info("Starting organisation user search query for tenant: {}", tenantId);
+
         List<Object> preparedStmtListTarget = new ArrayList<>();
         String queryDocument = queryBuilder.getOrganisationUserSearchQuery(orgSearchRequest, urlParams, preparedStmtListTarget, false);
         List<OrgUser> orgUserList = jdbcTemplate.query(queryDocument, orgUserRowMapper, preparedStmtListTarget.toArray());
         log.info("Fetched documents based on organisation Ids");
         List<OrgUser> orgUserEnricheds = new ArrayList<>();
         for (OrgUser orgUser: orgUserList){
-            Employee employee = hrmsUtils.getUserById(orgSearchRequest, orgUser.getUserId());
-            if(employee == null)
-                continue;
-            List<String> jurisdiction = employee.getJurisdictions().stream().map(Jurisdiction::getBoundary).collect(Collectors.toList());
-            User user = employee.getUser();
-            user.setJurisdiction(jurisdiction);
             OrgUser enriched = OrgUser.builder()
-                    .user(employee.getUser())
                     .userId(orgUser.getUserId())
                     .tenantId(orgUser.getTenantId())
                     .organizationId(orgUser.getOrganizationId())
@@ -55,9 +53,26 @@ public class OrganisationUserRepository {
                     .additionalDetails(orgUser.getAdditionalDetails())
                     .isDeleted(orgUser.getIsDeleted())
                     .build();
+            Employee employee = hrmsUtils.getUserById(orgSearchRequest, orgUser.getUserId());
+            if(employee != null){
+                enriched.setUser(employee.getUser());
+                enriched.getUser().setJurisdictions(employee.getJurisdictions());
+            }
             orgUserEnricheds.add(enriched);
         }
         return orgUserEnricheds;
+    }
+
+    public Integer getOrganisationsCount(OrgUserSearchRequest orgSearchRequest) {
+        List<Object> preparedStatement = new ArrayList<>();
+        URLParams urlParams = URLParams.builder().build();
+        String queryDocument = queryBuilder.getOrganisationUserSearchQuery(orgSearchRequest, urlParams, preparedStatement, true);
+        if (queryDocument == null)
+            return 0;
+
+        Integer count = jdbcTemplate.queryForObject(queryDocument, preparedStatement.toArray(), Integer.class);
+        log.info("Total organisation user count is : " + count);
+        return count;
     }
 
 

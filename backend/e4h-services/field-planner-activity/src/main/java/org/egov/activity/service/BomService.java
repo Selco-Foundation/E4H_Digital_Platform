@@ -62,27 +62,35 @@ public class BomService {
     }
 
     public List<BillOfMaterial> createBillOfMaterial(BomBulkRequest request) {
-        log.info("received request to create bulk fieldplan facility");
-
+        log.trace("createBillOfMaterial method invoked");
+        log.info("Received request to create bulk bill of materials");
         bomValidator.validateCreateBomRequest(request);
         List<BillOfMaterial> billOfMaterials = request.getBillOfMaterials();
+        int bomCount = billOfMaterials != null ? billOfMaterials.size() : 0;
+        log.debug("Processing {} bill of materials for creation", bomCount);
         try {
             for (BillOfMaterial billOfMaterial : billOfMaterials) {
-                log.info("processing {} valid entities", billOfMaterial);
+                log.trace("Enriching bill of material with id: {}", billOfMaterial.getId());
                 bomEnrichment.enrichBomOnCreate(billOfMaterial, request.getRequestInfo());
             }
+            log.debug("Pushing bill of materials to topic: {}", activityConfiguration.getCreateBOMTopic());
             producer.push(activityConfiguration.getCreateBOMTopic(), request);
-            log.info("successfully created activity facility");
+            log.info("Successfully created {} bill of materials", bomCount);
         } catch (Exception exception) {
-            log.error("error occurred while creating project facility: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating bill of materials, count: {}", bomCount, exception);
         }
 
         return billOfMaterials;
     }
 
     public List<BillOfMaterial> searchBillOfMaterials(BomSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        log.trace("searchBillOfMaterials method invoked with limit: {}, offset: {}, tenantId: {}", limit, offset, tenantId);
+        log.info("Received request to search bill of materials");
         bomValidator.validateSearchBOMRequest(request, limit, offset, tenantId);
+        log.debug("Fetching bill of materials from repository");
         List<BillOfMaterial> activityFacilities = bomRepository.getBillOfMaterials(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
+        int resultCount = activityFacilities != null ? activityFacilities.size() : 0;
+        log.debug("Retrieved {} bill of materials from repository", resultCount);
         return activityFacilities;
     }
 
@@ -91,20 +99,24 @@ public class BomService {
     }
 
     public BomBulkRequest updateBillOfMaterials(BomBulkRequest request) {
+        log.trace("updateBillOfMaterials method invoked");
+        int bomCount = request.getBillOfMaterials() != null ? request.getBillOfMaterials().size() : 0;
+        log.info("Received request to update {} bill of materials", bomCount);
         /*
          * Validate the update activity request
          */
         bomValidator.validateCreateBomRequest(request);
-        log.info("Update activity facility request validated");
+        log.debug("Bill of materials update request validated");
 
         /*
          * Search for fieldplan based on fieldplan IDs provided in the request
          */
+        log.debug("Fetching existing bill of materials from database");
         List<BillOfMaterial> bomListFromDB = searchBillOfMaterials(
                 getSearchBOMRequest(request.getBillOfMaterials(), request.getRequestInfo()),
                 activityConfiguration.getMaxLimit(), activityConfiguration.getDefaultOffset(),
                 request.getBillOfMaterials().get(0).getTenantId(), false, null);
-        log.info("Fetched activities for update request");
+        log.debug("Retrieved {} bill of materials from database for update", bomListFromDB != null ? bomListFromDB.size() : 0);
 
         /*
          * Validate the update fieldplan request against the fieldplans fetched from the database

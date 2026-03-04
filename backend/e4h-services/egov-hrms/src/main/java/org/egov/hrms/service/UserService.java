@@ -112,37 +112,49 @@ public class UserService {
 
 	@PostConstruct
 	void initalizeSystemuser(){
+		log.trace("UserService.initalizeSystemuser invoked");
+		String tenantId = propertiesManager.getStateLevelTenantId();
+		log.info("Initializing system user for tenant: {}", tenantId);
 		RequestInfo requestInfo = new RequestInfo();
 		StringBuilder uri = new StringBuilder();
 		uri.append(propertiesManager.getUserHost()).append(propertiesManager.getUserSearchEndpoint()); // URL for user search call
 		Map<String, Object> userSearchRequest = new HashMap<>();
 		userSearchRequest.put("RequestInfo", requestInfo);
-		userSearchRequest.put("tenantId", propertiesManager.getStateLevelTenantId());
+		userSearchRequest.put("tenantId", tenantId);
 		userSearchRequest.put("roleCodes", Collections.singletonList(INTERNALMICROSERVICEROLE_CODE));
 		if(multiStateInstanceUtil.getIsEnvironmentCentralInstance()){
-			MDC.put(TENANTID_MDC_STRING, propertiesManager.getStateLevelTenantId());
+			MDC.put(TENANTID_MDC_STRING, tenantId);
 		}
 		try {
+			log.debug("Searching for internal microservice user for tenant: {}", tenantId);
 			LinkedHashMap<String, Object> responseMap = (LinkedHashMap<String, Object>) restCallRepository.fetchResult(uri, userSearchRequest);
 			List<LinkedHashMap<String, Object>> users = (List<LinkedHashMap<String, Object>>) responseMap.get("user");
-			if(users.size()==0)
+			if(users.size()==0) {
+				log.info("Internal microservice user not found, creating new user for tenant: {}", tenantId);
 				createInternalMicroserviceUser(requestInfo);
-			internalMicroserviceRoleUuid = (String) users.get(0).get("uuid");
+			} else {
+				internalMicroserviceRoleUuid = (String) users.get(0).get("uuid");
+				log.info("Internal microservice user initialized successfully for tenant: {}", tenantId);
+			}
 		}catch (Exception e) {
+			log.error("Exception while initializing system user for tenant: {}", tenantId, e);
 			throw new CustomException("EG_USER_SEARCH_ERROR", "Service returned null while fetching user");
 		}
 
 	}
 
 	private void createInternalMicroserviceUser(RequestInfo requestInfo){
+		log.trace("UserService.createInternalMicroserviceUser invoked");
+		String tenantId = propertiesManager.getStateLevelTenantId();
+		log.debug("Creating internal microservice user for tenant: {}", tenantId);
 		Map<String, Object> userCreateRequest = new HashMap<>();
 		//Creating role with INTERNAL_MICROSERVICE_ROLE
 		Role role = Role.builder()
 				.name(INTERNALMICROSERVICEROLE_NAME).code(INTERNALMICROSERVICEROLE_CODE)
-				.tenantId(propertiesManager.getStateLevelTenantId()).build();
+				.tenantId(tenantId).build();
 		User user = User.builder().userName(INTERNALMICROSERVICEUSER_USERNAME)
 				.name(INTERNALMICROSERVICEUSER_NAME).mobileNumber(INTERNALMICROSERVICEUSER_MOBILENO)
-				.type(INTERNALMICROSERVICEUSER_TYPE).tenantId(propertiesManager.getStateLevelTenantId())
+				.type(INTERNALMICROSERVICEUSER_TYPE).tenantId(tenantId)
 				.roles(Collections.singletonList(role)).id(0L).build();
 
 		userCreateRequest.put("RequestInfo", requestInfo);
@@ -155,44 +167,55 @@ public class UserService {
 			LinkedHashMap<String, Object> responseMap = (LinkedHashMap<String, Object>) restCallRepository.fetchResult(uri, userCreateRequest);
 			List<LinkedHashMap<String, Object>> users = (List<LinkedHashMap<String, Object>>) responseMap.get("user");
 			internalMicroserviceRoleUuid = (String) users.get(0).get("uuid");
+			log.info("Internal microservice user created successfully for tenant: {}, uuid: {}", tenantId, internalMicroserviceRoleUuid);
 		}catch (Exception e) {
+			log.error("Exception while creating internal microservice user for tenant: {}", tenantId, e);
 			throw new CustomException("EG_USER_CRETE_ERROR", "Service returned throws error while creating user");
 		}
 	}
 	
 	public UserResponse createUser(UserRequest userRequest) {
+		log.trace("UserService.createUser invoked");
 		StringBuilder uri = new StringBuilder();
 		uri.append(propertiesManager.getUserHost()).append(propertiesManager.getUserCreateEndpoint());
 		UserResponse userResponse = null;
 		try {
+			log.debug("Creating user via user service, endpoint: {}", uri.toString());
 			userResponse = userCall(userRequest,uri);
+			log.debug("User created successfully");
 		}catch(Exception e) {
-			log.error("User created failed: ",e);
+			log.error("User creation failed", e);
 		}
 
 		return userResponse;
 	}
 	
 	public UserResponse updateUser(UserRequest userRequest) {
+		log.trace("UserService.updateUser invoked");
 		StringBuilder uri = new StringBuilder();
 		uri.append(propertiesManager.getUserHost()).append(propertiesManager.getUserUpdateEndpoint());
 		UserResponse userResponse = null;
 		try {
+			log.debug("Updating user via user service, endpoint: {}", uri.toString());
 			userResponse = userCall(userRequest,uri);
+			log.debug("User updated successfully");
 		}catch(Exception e) {
-			log.error("User created failed: ",e);
+			log.error("User update failed", e);
 		}
 
 		return userResponse;
 	}
 	
 	public UserResponse getUser(RequestInfo requestInfo, Map<String, Object> userSearchCriteria ) {
+		log.trace("UserService.getUser invoked");
 		StringBuilder uri = new StringBuilder();
 		Map<String, Object> userSearchReq = new HashMap<>();
 		User userInfoCopy = requestInfo.getUserInfo();
+		String tenantId = String.valueOf(userSearchCriteria.get("tenantId"));
 
 		if(propertiesManager.getIsDecryptionEnable()){
-			User enrichedUserInfo = getEncrichedandCopiedUserInfo(String.valueOf(userSearchCriteria.get("tenantId")));
+			log.debug("Decryption enabled, enriching user info for tenant: {}", tenantId);
+			User enrichedUserInfo = getEncrichedandCopiedUserInfo(tenantId);
 			requestInfo.setUserInfo(enrichedUserInfo);
 		}
 
@@ -201,11 +224,13 @@ public class UserService {
 		for( String key: userSearchCriteria.keySet())
 			userSearchReq.put(key, userSearchCriteria.get(key));
 		uri.append(propertiesManager.getUserHost()).append(propertiesManager.getUserSearchEndpoint());
+		log.debug("Searching users via user service, endpoint: {}, tenant: {}", uri.toString(), tenantId);
 		UserResponse userResponse = new UserResponse();
 		try {
 			userResponse = userCall(userSearchReq,uri);
+			log.debug("User search completed successfully");
 		}catch(Exception e) {
-			log.error("User search failed: ",e);
+			log.error("User search failed for tenant: {}", tenantId, e);
 		}
 		if(propertiesManager.getIsDecryptionEnable())
 			requestInfo.setUserInfo(userInfoCopy);
@@ -214,6 +239,7 @@ public class UserService {
 	}
 
 	private User getEncrichedandCopiedUserInfo(String tenantId){
+		log.trace("UserService.getEncrichedandCopiedUserInfo invoked for tenant: {}", tenantId);
 		//Creating role with INTERNAL_MICROSERVICE_ROLE
 		Role role = Role.builder()
 				.name(INTERNALMICROSERVICEROLE_NAME).code(INTERNALMICROSERVICEROLE_CODE)
@@ -237,18 +263,22 @@ public class UserService {
 	 */
 	@SuppressWarnings("all")
 	private UserResponse userCall(Object userRequest, StringBuilder uri) {
+		log.trace("UserService.userCall invoked for endpoint: {}", uri.toString());
 		String dobFormat = null;
 		if(uri.toString().contains(userSearchEndpoint) || uri.toString().contains(userUpdateEndpoint))
 			dobFormat="yyyy-MM-dd";
 		else if(uri.toString().contains(userCreateEndpoint))
 			dobFormat = "dd/MM/yyyy";
 		try{
+			log.debug("Calling user service endpoint: {}", uri.toString());
 			LinkedHashMap responseMap = (LinkedHashMap) restCallRepository.fetchResult(uri, userRequest);
 			parseResponse(responseMap,dobFormat);
 			UserResponse userDetailResponse = objectMapper.convertValue(responseMap,UserResponse.class);
+			log.debug("User service call completed successfully");
 			return userDetailResponse;
 		}
 		catch(IllegalArgumentException  e) {
+			log.error("IllegalArgumentException while calling user service endpoint: {}", uri.toString(), e);
 			throw new CustomException("IllegalArgumentException","ObjectMapper not able to convertValue in userCall");
 		}
 	}
@@ -261,6 +291,7 @@ public class UserService {
 	 */
 	@SuppressWarnings("all")
 	private void parseResponse(LinkedHashMap responeMap,String dobFormat){
+		log.trace("UserService.parseResponse invoked");
 		List<LinkedHashMap> users = (List<LinkedHashMap>)responeMap.get("user");
 		String format1 = "dd-MM-yyyy HH:mm:ss";
 		if(users!=null){
@@ -284,12 +315,13 @@ public class UserService {
 	 * @return Long value of date
 	 */
 	private Long dateTolong(String date,String format){
+		log.trace("UserService.dateTolong invoked");
 		SimpleDateFormat f = new SimpleDateFormat(format);
 		Date d = null;
 		try {
 			d = f.parse(date);
 		} catch (ParseException e) {
-			e.printStackTrace();
+			log.error("Exception while parsing date: {}, format: {}", date, format, e);
 		}
 		return  d.getTime();
 	}

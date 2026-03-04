@@ -33,8 +33,13 @@ public class AzureClientFacade implements ApplicationRunner{
 	
 	@Override
 	public void run(ApplicationArguments arg0) throws Exception {
-		if(isAzureEnabled)
-			initializeAzureClient();		
+		log.trace("Entering run method for AzureClientFacade");
+		if(isAzureEnabled) {
+			log.info("Azure storage is enabled, initializing Azure client");
+			initializeAzureClient();
+		} else {
+			log.info("Azure storage is disabled, skipping Azure client initialization");
+		}
 	}
 	
 	/**
@@ -42,23 +47,35 @@ public class AzureClientFacade implements ApplicationRunner{
 	 * 
 	 */
 	public void initializeAzureClient() {
+		log.trace("Entering initializeAzureClient method");
+		log.info("Initializing Azure Blob Storage client");
 		StringBuilder storageConnectionString = new StringBuilder();
 		storageConnectionString.append("DefaultEndpointsProtocol=").append(defaultEndpointsProtocol).append(";")
-		.append("AccountName=").append(accountName).append(";").append("AccountKey=").append(accountKey);
+				.append("AccountName=").append(accountName).append(";").append("AccountKey=").append(accountKey);
 		CloudStorageAccount storageAccount = null;
 		CloudBlobClient blobClient = null;
 		try {
+			log.debug("Parsing Azure storage connection string");
 			storageAccount = CloudStorageAccount.parse(storageConnectionString.toString());
 			if(null != storageAccount) {
+				log.debug("Creating Azure Blob client");
 				blobClient = storageAccount.createCloudBlobClient();
+				log.info("Azure Blob Storage client initialized successfully");
+			} else {
+				log.error("Failed to parse Azure storage account");
 			}
 		}catch(Exception e) {
+			log.error("Error initializing Azure client", e);
 			throw new CustomException("WG_WF_CLIENT_INITIALIZE_ERROR",e.getMessage());
 		}	
 		cloudBlobClient = blobClient;
 	}
 	
 	public CloudBlobClient getAzureClient() {
+		log.trace("Entering getAzureClient method");
+		if (cloudBlobClient == null) {
+			log.warn("Azure client is null, may need initialization");
+		}
 		return cloudBlobClient;
 	}
 	

@@ -17,6 +17,7 @@ import java.util.Map;
 
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.wf.repository.querybuilder.WorkflowQueryBuilder;
+import org.egov.wf.repository.rowmapper.BusinessServiceStateRowMapper;
 import org.egov.wf.repository.rowmapper.WorkflowRowMapper;
 import org.egov.wf.web.models.ProcessInstance;
 import org.egov.wf.web.models.ProcessInstanceSearchCriteria;
@@ -43,6 +44,9 @@ class WorKflowRepositoryTest {
 
     @MockBean
     private WorkflowRowMapper workflowRowMapper;
+
+    @MockBean
+    private BusinessServiceStateRowMapper businessServiceStateRowMapper;
 
     @Test
     void testGetProcessInstances() throws DataAccessException {

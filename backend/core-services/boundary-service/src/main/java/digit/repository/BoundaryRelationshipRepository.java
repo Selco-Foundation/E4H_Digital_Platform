@@ -13,5 +13,6 @@ public interface BoundaryRelationshipRepository {
     public void update(BoundaryRelationshipRequestDTO boundaryRelationshipRequest);
 
     public List<BoundaryRelationshipDTO> search(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria);
+    public Integer getBoundaryCount(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria);
 
 }

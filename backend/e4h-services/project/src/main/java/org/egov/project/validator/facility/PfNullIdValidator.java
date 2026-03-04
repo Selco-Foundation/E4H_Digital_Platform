@@ -22,7 +22,12 @@ public class PfNullIdValidator implements Validator<ProjectFacilityBulkRequest, 
 
     @Override
     public Map<ProjectFacility, List<Error>> validate(ProjectFacilityBulkRequest request) {
-        log.info("validating for null id");
-        return validateForNullId(request, GET_PROJECT_FACILITIES);
+        log.trace("Entering validate (PfNullIdValidator)");
+        log.info("Validating for null ID");
+        log.debug("Validating {} facilities for null ID", request.getProjectFacilities() != null ? request.getProjectFacilities().size() : 0);
+        Map<ProjectFacility, List<Error>> result = validateForNullId(request, GET_PROJECT_FACILITIES);
+        log.debug("Null ID validation completed - found {} errors", result != null ? result.size() : 0);
+        log.trace("Exiting validate (PfNullIdValidator)");
+        return result;
     }
 }

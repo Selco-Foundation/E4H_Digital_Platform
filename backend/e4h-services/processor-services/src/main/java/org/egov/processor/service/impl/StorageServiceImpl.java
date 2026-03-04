@@ -38,6 +38,7 @@ public class StorageServiceImpl implements StorageService {
 
     @PostConstruct
     private void initTempFile() {
+        log.trace("Method invoked: initTempFile");
         Path customTempDir = Paths.get(System.getProperty("user.dir"), INPUT_DIR);
         tempDir = new File(customTempDir.toAbsolutePath().toString());
         if (!tempDir.exists()) {
@@ -49,9 +50,11 @@ public class StorageServiceImpl implements StorageService {
     }
 
     public List<File> createTempFiles(List<MultipartFile> files) {
+        log.trace("Method invoked: createTempFiles, file count: {}", files != null ? files.size() : 0);
         List<File> tempFiles = new ArrayList<>();
         files.forEach(file -> {
             try {
+                log.debug("Creating temp file for: {}", file.getOriginalFilename());
                 Resource resource = file.getResource();
                 File tempFile = storageUtil.createTempFile(tempDir, resource);
                 storageUtil.writeFileToTempFile(resource, tempFile.toPath());
@@ -61,41 +64,46 @@ public class StorageServiceImpl implements StorageService {
                 throw new CustomException("ERROR_CREATING_TEMP_FILES", e.getMessage());
             }
         });
+        log.debug("Created {} temporary files", tempFiles.size());
         return tempFiles;
     }
 
     public void createAndSaveChunks(String fileStoreId, File resource, ProcessingContext context) {
+        log.trace("Method invoked: createAndSaveChunks, fileStoreId: {}, filename: {}", fileStoreId, resource != null ? resource.getName() : "null");
         try {
-            log.info("File received: {}, Filename: {}", resource, resource.getName());
+            log.info("Processing file: {} for fileStoreId: {}", resource.getName(), fileStoreId);
             
             // Only process videos, skip images
             if (isVideoFile(resource)) {
-                // Process the video asynchronously
+                log.debug("File is a video, proceeding with async processing");
                 videoService.processVideoAsync(resource, context.withVideoId(fileStoreId));
             } else {
-                log.info("Skipping video processing for image file: {}", resource.getName());
+                log.info("Skipping video processing for non-video file: {}", resource.getName());
             }
 
         } catch (CustomException ex) {
-            log.error("Custom Exception for fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
+            log.error("Custom exception while processing fileStoreId: {}", fileStoreId, ex);
             throw ex;
         } catch (Exception ex) {
-            log.error("Unexpected error while processing fileStoreId {}: {}", fileStoreId, ex.getMessage(), ex);
+            log.error("Unexpected error while processing fileStoreId: {}", fileStoreId, ex);
             throw new CustomException("Unexpected error processing file", ex.getMessage());
         }
     }
 
     public void processAndStoreFiles(StorageProcessingContext storageProcessingContext){
-        log.info("Start processing master files");
+        log.trace("Method invoked: processAndStoreFiles");
+        log.info("Starting processing of storage files");
         List<File> tempFiles = null;
         try {
+            log.debug("Retrieving files from storage response");
             List<MultipartFile> files = storageProcessingContext.getStorageResponse().getFiles()
                     .stream()
                     .map(file -> storageUtil.getMultipartFileFromS3(file.getTenantId(), file.getFileStoreId()))
                     .collect(Collectors.toList());
 
+            log.info("Creating temporary files, count: {}", files.size());
             tempFiles = createTempFiles(files);
-            log.info("Start processing chunks asynchronously");
+            log.info("Starting asynchronous chunk processing for {} files", storageProcessingContext.getStorageResponse().getFiles().size());
 
             // Process chunks asynchronously without waiting for completion
             for (int index = 0; index < storageProcessingContext.getStorageResponse().getFiles().size(); index++) {
@@ -105,16 +113,18 @@ public class StorageServiceImpl implements StorageService {
 
                 createAndSaveChunks(fileStoreId, file, storageProcessingContext.getContext());
             }
+            log.info("Completed processing all files");
         }catch (Exception e){
-            log.error("ERROR_UPLOADING_TO_FILESTORE: {}", e.getMessage());
+            log.error("Error uploading to filestore", e);
             throw new CustomException("ERROR_UPLOADING_TO_FILESTORE", e.getMessage());
         }finally {
-            log.info("deleting all temporary files ");
+            log.info("Deleting temporary files");
             storageUtil.deleteFiles(tempFiles);
         }
     }
 
     private boolean isVideoFile(File file) {
+        log.trace("Method invoked: isVideoFile, filename: {}", file.getName());
         String fileName = file.getName().toLowerCase();
         return fileName.endsWith(".mp4") || fileName.endsWith(".avi") || 
                fileName.endsWith(".mov") || fileName.endsWith(".wmv");

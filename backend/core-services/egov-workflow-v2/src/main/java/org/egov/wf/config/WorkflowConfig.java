@@ -61,6 +61,15 @@ public class WorkflowConfig {
     @Value("${persister.update.businessservice.wf.topic}")
     private String updateBusinessServiceTopic;
 
+    @Value("${persister.update.processinstance.wf.topic}")
+    private String updateProcessInstanceTopic;
+
+    @Value("${persister.add.assignee.wf.topic}")
+    private String addWfAssigneeTopic;
+
+    /** Topic for updating Kibana index (im-services) with only currentProcessInstance after migration. */
+    @Value("${egov.im.indexer.update.processinstance.topic:update-im-request-processinstance-indexer}")
+    private String updateImProcessInstanceIndexerTopic;
 
 
     //MDMS
@@ -89,8 +98,14 @@ public class WorkflowConfig {
     @Value("${egov.wf.escalation.batch.size}")
     private Integer escalationBatchSize;
 
+    @Value("${egov.wf.processinstance.update.batch.size:1}")
+    private Integer processInstanceUpdateBatchSize;
 
+    // IM (Incident Management) service for request search
+    @Value("${egov.im.host:http://localhost:8082}")
+    private String imHost;
 
-
+    @Value("${egov.im.request.search.endpoint:/im-services/v2/request/_search}")
+    private String imRequestSearchEndpoint;
 
 }

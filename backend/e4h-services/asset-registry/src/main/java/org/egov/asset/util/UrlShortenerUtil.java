@@ -27,18 +27,22 @@ public class UrlShortenerUtil {
 
 
     public String getShortenedUrl(String url) {
+        log.trace("UrlShortenerUtil::getShortenedUrl called");
+        log.debug("Shortening URL | url={}", url);
         if (StringUtils.isBlank(url)) {
-            log.error("Empty URL provided for shortening");
+            log.warn("Empty URL provided for shortening");
             return url;
         }
 
         HashMap<String, String> body = new HashMap<>();
         body.put(URL, url);
         try {
-            String res = restTemplate.postForObject(configs.getUrlShortnerHost() + configs.getUrlShortnerEndpoint(), body, String.class);
+            String endpoint = configs.getUrlShortnerHost() + configs.getUrlShortnerEndpoint();
+            log.debug("Calling URL shortener service | endpoint={}", endpoint);
+            String res = restTemplate.postForObject(endpoint, body, String.class);
 
             if (StringUtils.isEmpty(res)) {
-                log.error("{}: {}", URL_SHORTENING_ERROR_CODE, URL_SHORTENING_ERROR_MESSAGE + url);
+                log.warn("Empty response from URL shortener service | url={}", url);
                 return url;
             } else return res;
         } catch (HttpClientErrorException | HttpServerErrorException e) {

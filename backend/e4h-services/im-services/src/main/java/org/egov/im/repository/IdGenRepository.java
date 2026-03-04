@@ -1,6 +1,7 @@
 package org.egov.im.repository;
 
 
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.web.models.Idgen.IdGenerationRequest;
@@ -22,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Repository
 @Slf4j
 public class IdGenRepository {
@@ -49,7 +51,8 @@ public class IdGenRepository {
      * @return
      */
     public IdGenerationResponse getId(RequestInfo requestInfo, String tenantId, String name, String format, int count) {
-
+        log.trace("IdGenRepository::getId method invoked");
+        log.debug("Generating {} IDs for tenantId: {}, name: {}, format: {}", count, tenantId, name, format);
         List<IdRequest> reqList = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             reqList.add(IdRequest.builder().idName(name).format(format).tenantId(tenantId).build());
@@ -57,7 +60,10 @@ public class IdGenRepository {
         IdGenerationRequest req = IdGenerationRequest.builder().idRequests(reqList).requestInfo(requestInfo).build();
         IdGenerationResponse response = null;
         try {
-            response = restTemplate.postForObject( config.getIdGenHost()+ config.getIdGenPath(), req, IdGenerationResponse.class);
+            String url = config.getIdGenHost() + config.getIdGenPath();
+            log.trace("Calling idgen service at URL: {}", url);
+            response = restTemplate.postForObject(url, req, IdGenerationResponse.class);
+            log.debug("Successfully generated {} IDs from idgen service", count);
         } catch (HttpClientErrorException e) {
             log.error("HTTP client error while generating ID: ", e);
             throw new ServiceCallException(e.getResponseBodyAsString());

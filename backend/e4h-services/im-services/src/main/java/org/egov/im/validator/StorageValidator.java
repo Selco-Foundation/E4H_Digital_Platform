@@ -23,7 +23,8 @@ public class StorageValidator {
 	private final IMConfiguration fileStoreConfig;
 
 	public void validate(List<MultipartFile> files) {
-		log.info("validating {} files", files.size());
+		log.trace("StorageValidator::validate method invoked");
+		log.info("Validating {} files", files.size());
 		// Use configuration for maximum file count
 		int maxFiles = fileStoreConfig.getMaxFileListSize() != null ? 
 						fileStoreConfig.getMaxFileListSize() : 7;
@@ -52,7 +53,8 @@ public class StorageValidator {
 	}
 	
 	private void validateFileExtension(String extension) {
-        log.info("validating file extension {}", extension);
+        log.trace("StorageValidator::validateFileExtension method invoked");
+        log.debug("Validating file extension: {}", extension);
 		Map<String, List<String>> fileExtension = fileStoreConfig.getAllowedFormatsMap();
 		if(!fileExtension.containsKey(extension)) {
 			throw new CustomException("EG_FILESTORE_INVALID_INPUT",
@@ -62,7 +64,8 @@ public class StorageValidator {
 	}
 
 	private void validateVideoContentType(InputStream inputStream, String extension) {
-        log.info("validating video content type, extension {}", extension);
+        log.trace("StorageValidator::validateVideoContentType method invoked");
+        log.debug("Validating video content type for extension: {}", extension);
 		String detectedFormat;
 		Tika tika = new Tika();
 		try {
@@ -88,7 +91,8 @@ public class StorageValidator {
 	}
 	
 	private boolean isVideoFile(String extension) {
-        log.info("validating video file extension {}", extension);
+        log.trace("StorageValidator::isVideoFile method invoked");
+        log.debug("Checking if extension is video file: {}", extension);
 		return extension.equals("mp4") || extension.equals("avi") || 
 			   extension.equals("mov") || extension.equals("wmv");
 	}

@@ -88,7 +88,7 @@ public class V20251118181600__migrate_localization_data_to_in extends BaseJavaMi
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("🚀 Starting migration: Migrating localization data to tenant {}", TARGET_TENANT_ID);
+        log.info("Starting migration: Migrating localization data to tenant {}", TARGET_TENANT_ID);
 
         RestTemplate restTemplate = createRestTemplateWithTimeouts();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -149,9 +149,9 @@ public class V20251118181600__migrate_localization_data_to_in extends BaseJavaMi
             migrationLogger.println("========================================\n");
             migrationLogger.flush();
 
-            log.info("✅ Migration completed");
+            log.info("Migration completed");
             log.info("Total messages migrated: {}", totalMessagesMigrated);
-            log.info("📝 Migration log file: {}", absoluteLogPath);
+            log.info("Migration log file: {}", absoluteLogPath);
         }
     }
 
@@ -482,7 +482,7 @@ public class V20251118181600__migrate_localization_data_to_in extends BaseJavaMi
     private PrintWriter initializeMigrationLogger(String logFilePath, String absolutePath) throws Exception {
         Files.createDirectories(Paths.get("./logs"));
         FileWriter fileWriter = new FileWriter(logFilePath, true);
-        log.info("📝 Migration log file created: {}", absolutePath);
+        log.info("Migration log file created: {}", absolutePath);
         return new PrintWriter(fileWriter, true);
     }
 

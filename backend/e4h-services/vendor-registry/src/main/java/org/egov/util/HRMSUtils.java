@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static org.egov.util.OrganisationConstant.HRMS_USER_MOBILE_NO;
 import static org.egov.util.OrganisationConstant.HRMS_USER_USERNAME_CODE;
@@ -38,6 +37,9 @@ public class HRMSUtils {
 
 
     public Map<String, String> getEmployeeDetailsByUuid(RequestInfo requestInfo, String tenantId, String uuid) {
+        log.trace("HRMSUtils::getEmployeeDetailsByUuid entry");
+        log.info("Fetching employee details from HRMS for UUID: {}, tenant: {}", uuid, tenantId);
+
         StringBuilder url = getHRMSURIWithUUid(tenantId, uuid);
 
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
@@ -87,13 +89,25 @@ public class HRMSUtils {
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
-            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
+            log.info("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
+            return null;
         }
         return employeeResponse.getEmployees().get(0);
     }
 
     public List<Employee> getUserByPhoneNumber(Object request, String phoneNumber) {
         String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()+ "?tenantId=in&phone="+phoneNumber;
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            return null;
+        }
+        return employeeResponse.getEmployees();
+    }
+
+    public List<Employee> getUserByUsername(Object request, String username) {
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()+ "?tenantId=in&codes="+username;
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
         mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
@@ -137,38 +151,54 @@ public class HRMSUtils {
                 .IsActive(true)
                 .reActivateEmployee(false)
                 .assignments(buildAssignments())
+                .jurisdictions(buildJurisdictions(user.getJurisdictions()))
                 .user(user)
 //                .auditDetails(source.getAuditDetails())
                 .build();
         if (orgType != null && !orgType.isEmpty() && orgType.trim().equals("PLATFORM")){
-            employee.setJurisdictions(buildJurisdictions(user.getJurisdiction()));
+            employee.setJurisdictions(buildJurisdictions(user.getJurisdictions()));
         }
         return employee;
     }
 
-    public List<Jurisdiction> buildJurisdictions(List<String> boundaryCodes) {
-        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
-            Jurisdiction jurisdiction = Jurisdiction.builder()
+//    public List<Jurisdiction> buildJurisdictions(List<String> boundaryCodes) {
+//        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
+//            Jurisdiction jurisdiction = Jurisdiction.builder()
+//                    .hierarchy("ADMIN")
+//                    .boundary("in")
+//                    .boundaryType("Country")
+//                    .tenantId("in")
+//                    .isActive(true)
+//                    .build();
+//            return Collections.singletonList(jurisdiction);
+//        }
+//
+//        return boundaryCodes.stream()
+//                .map(boundaryCode ->
+//                        Jurisdiction.builder()
+//                                .hierarchy("ADMIN")
+//                                .boundary(boundaryCode)
+//                                .boundaryType("Block")
+//                                .tenantId("in")
+//                                .isActive(true)
+//                                .build()
+//                )
+//                .collect(Collectors.toList());
+//    }
+
+    public List<Jurisdiction> buildJurisdictions(List<Jurisdiction> jurisdiction) {
+        if (jurisdiction == null || jurisdiction.isEmpty()) {
+            Jurisdiction jurisdiction1 = Jurisdiction.builder()
                     .hierarchy("ADMIN")
-                    .boundary("in")
-                    .boundaryType("City")
+                    .boundary("India")
+                    .boundaryType("Country")
                     .tenantId("in")
                     .isActive(true)
                     .build();
-            return Collections.singletonList(jurisdiction);
+            return Collections.singletonList(jurisdiction1);
         }
 
-        return boundaryCodes.stream()
-                .map(boundaryCode ->
-                        Jurisdiction.builder()
-                                .hierarchy("ADMIN")
-                                .boundary(boundaryCode)
-                                .boundaryType("Block")
-                                .tenantId("in")
-                                .isActive(true)
-                                .build()
-                )
-                .collect(Collectors.toList());
+        return jurisdiction;
     }
 
     public List<Assignment> buildAssignments() {

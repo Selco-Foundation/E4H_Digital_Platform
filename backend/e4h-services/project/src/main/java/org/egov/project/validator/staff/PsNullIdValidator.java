@@ -21,7 +21,12 @@ public class PsNullIdValidator implements Validator<ProjectStaffBulkRequest, Pro
 
     @Override
     public Map<ProjectStaff, List<Error>> validate(ProjectStaffBulkRequest request) {
-        log.info("validating for null id");
-        return validateForNullId(request, GET_STAFF);
+        log.trace("Entering validate (PsNullIdValidator)");
+        log.info("Validating for null ID");
+        log.debug("Validating {} staff for null ID", request.getProjectStaff() != null ? request.getProjectStaff().size() : 0);
+        Map<ProjectStaff, List<Error>> result = validateForNullId(request, GET_STAFF);
+        log.debug("Null ID validation completed - found {} errors", result != null ? result.size() : 0);
+        log.trace("Exiting validate (PsNullIdValidator)");
+        return result;
     }
 }

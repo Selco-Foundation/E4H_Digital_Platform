@@ -16,6 +16,16 @@ public class Producer {
     private final CustomKafkaTemplate<String, Object> kafkaTemplate;
 
     public void push(String topic, Object value) {
-        kafkaTemplate.send(topic, value);
+        log.trace("Entering push method");
+        log.info("Pushing message to Kafka topic: {}", topic);
+        log.debug("Message type: {}", value != null ? value.getClass().getSimpleName() : "null");
+        try {
+            kafkaTemplate.send(topic, value);
+            log.debug("Successfully sent message to topic: {}", topic);
+        } catch (Exception e) {
+            log.error("Error pushing message to Kafka topic {}: {}", topic, e.getMessage(), e);
+            throw e;
+        }
+        log.trace("Exiting push method");
     }
 }

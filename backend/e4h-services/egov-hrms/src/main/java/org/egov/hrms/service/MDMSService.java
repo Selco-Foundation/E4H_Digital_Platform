@@ -43,6 +43,7 @@ public class MDMSService {
 	 * @return
 	 */
 	public Map<String, List<String>> getMDMSData(RequestInfo requestInfo, String tenantId){
+		log.trace("MDMSService.getMDMSData invoked for tenant: {}", tenantId);
 		MdmsResponse response = fetchMDMSData(requestInfo, tenantId);
 		Map<String, List<String>> masterData = new HashMap<>();
 		Map<String, List<String>> eachMasterMap = new HashMap<>();
@@ -83,14 +84,16 @@ public class MDMSService {
 	 * @return
 	 */
 	public MdmsResponse fetchMDMSData(RequestInfo requestInfo, String tenantId) {
+		log.trace("MDMSService.fetchMDMSData invoked for tenant: {}", tenantId);
 		StringBuilder uri = new StringBuilder();
 		MdmsCriteriaReq request = prepareMDMSRequest(uri, requestInfo, tenantId);
 		MdmsResponse response = null;
 		try {
+			log.debug("Fetching MDMS data for tenant: {}, endpoint: {}", tenantId, uri.toString());
 			response = restTemplate.postForObject(uri.toString(), request, MdmsResponse.class);
+			log.debug("MDMS data fetched successfully for tenant: {}", tenantId);
 		}catch(Exception e) {
-			log.info("Exception while fetching from MDMS: ",e);
-			log.info("Request: "+ request);
+			log.warn("Exception while fetching MDMS data for tenant: {}", tenantId, e);
 		}
 		return response;
 	}
@@ -103,14 +106,16 @@ public class MDMSService {
 	 * @return
 	 */
 	public MdmsResponse fetchMDMSDataLoc(RequestInfo requestInfo, String tenantId) {
+		log.trace("MDMSService.fetchMDMSDataLoc invoked for tenant: {}", tenantId);
 		StringBuilder uri = new StringBuilder();
 		MdmsCriteriaReq request = prepareMDMSRequestLoc(uri, requestInfo, tenantId);
 		MdmsResponse response = null;
 		try {
+			log.debug("Fetching MDMS location data for tenant: {}, endpoint: {}", tenantId, uri.toString());
 			response = restTemplate.postForObject(uri.toString(), request, MdmsResponse.class);
+			log.debug("MDMS location data fetched successfully for tenant: {}", tenantId);
 		}catch(Exception e) {
-			log.info("Exception while fetching from MDMS: ",e);
-			log.info("Request: "+ request);
+			log.warn("Exception while fetching MDMS location data for tenant: {}", tenantId, e);
 		}
 		return response;
 	}
@@ -124,6 +129,7 @@ public class MDMSService {
 	 * @return
 	 */
 	public MdmsCriteriaReq prepareMDMSRequest(StringBuilder uri, RequestInfo requestInfo, String tenantId) {
+		log.trace("MDMSService.prepareMDMSRequest invoked for tenant: {}", tenantId);
 		Map<String, List<String>> mapOfModulesAndMasters = new HashMap<>();
 		String[] hrMasters = {HRMSConstants.HRMS_MDMS_EMP_STATUS_CODE, HRMSConstants.HRMS_MDMS_EMP_TYPE_CODE, HRMSConstants.HRMS_MDMS_QUALIFICATION_CODE,
 				HRMSConstants.HRMS_MDMS_SERVICE_STATUS_CODE, HRMSConstants.HRMS_MDMS_STREAMS_CODE, HRMSConstants.HRMS_MDMS_DEACT_REASON_CODE, HRMSConstants.HRMS_MDMS_DEPT_TEST_CODE};
@@ -164,6 +170,7 @@ public class MDMSService {
 	 * @return
 	 */
 	public MdmsCriteriaReq prepareMDMSRequestLoc(StringBuilder uri, RequestInfo requestInfo, String tenantId) {
+		log.trace("MDMSService.prepareMDMSRequestLoc invoked for tenant: {}", tenantId);
 		Map<String, List<String>> mapOfModulesAndMasters = new HashMap<>();
 		String[] egovLoccation = {HRMSConstants.HRMS_MDMS_TENANT_BOUNDARY_CODE};
 		mapOfModulesAndMasters.put(HRMSConstants.HRMS_MDMS_EGOV_LOCATION_MASTERS_CODE, Arrays.asList(egovLoccation));

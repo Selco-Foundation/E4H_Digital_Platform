@@ -32,9 +32,11 @@ public class MigrationController {
 
     @RequestMapping(value="/_transform", method = RequestMethod.POST)
     public ResponseEntity<Map> requestsCreatePost(@Valid @RequestBody ServiceResponse request) throws IOException {
-
+        log.trace("MigrationController::requestsCreatePost method invoked");
+        log.info("Received migration transform request for {} services", 
+                request.getServices().size());
         Map<String, Object> response = migrationService.migrate(request);
-
+        log.info("Migration transform completed successfully");
         return new ResponseEntity<>(response, HttpStatus.OK);
 
     }

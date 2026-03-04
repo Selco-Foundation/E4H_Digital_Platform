@@ -51,7 +51,7 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("🚀 Starting migration: Updating health facility index with facility data");
+        log.info("Starting migration: Updating health facility index with facility data");
 
         RestTemplate restTemplate = createRestTemplateWithDisabledSSL();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -174,10 +174,10 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
             migrationLogger.flush();
         }
 
-        log.info("✅ Migration completed: health facility index updated with facility data");
+        log.info("Migration completed: health facility index updated with facility data");
         log.info("Total successful updates: {}", totalUpdated);
         log.info("Total failed updates: {}", totalFailed);
-        log.info("📝 Migration log file: {}", absoluteLogPath);
+        log.info("Migration log file: {}", absoluteLogPath);
     }
 
     private Map<String, FacilityData> loadFacilityMappings(Context context) throws Exception {
@@ -581,7 +581,7 @@ public class V20251110123000__update_health_facility_index_with_facility_data ex
     private PrintWriter initializeMigrationLogger(String logFilePath, String absolutePath) throws Exception {
         Files.createDirectories(Paths.get("./logs"));
         FileWriter fileWriter = new FileWriter(logFilePath, true);
-        log.info("📝 Migration log file created: {}", absolutePath);
+        log.info("Migration log file created: {}", absolutePath);
         return new PrintWriter(fileWriter, true);
     }
 

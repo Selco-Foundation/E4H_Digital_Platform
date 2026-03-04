@@ -44,6 +44,7 @@ public class ScheduledVisitRepository extends GenericRepository<ScheduledVisit> 
     }
 
     public List<ScheduledVisit> getScheduledVisit(ScheduledVisitSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        log.trace("Entering getScheduledVisit method, tenantId: {}, limit: {}, offset: {}", tenantId, limit, offset);
         //Fetch ScheduledVisit based on search criteria
         List<Object> preparedStmtList = new ArrayList<>();
         ScheduledVisitSearchCriteria criteria = request.getSearchCriteria();
@@ -51,21 +52,26 @@ public class ScheduledVisitRepository extends GenericRepository<ScheduledVisit> 
         URLParams urlParams = URLParams.builder().limit(limit).offset(offset).tenantId(tenantId).includeDeleted(includeDeleted).lastChangedSince(lastChangedSince).build();
 
         String query = queryBuilder.getScheduledVisitSearchQuery(criteria, urlParams, preparedStmtList);
+        log.debug("Executing scheduled visit search query for tenantId: {}", tenantId);
         List<ScheduledVisit> scheduledVisitList = jdbcTemplate.query(query, scheduledVisitRowMapper, preparedStmtList.toArray());
 
-        log.info("Fetched project list based on given search criteria");
+        log.info("Fetched {} scheduled visit(s) based on search criteria", scheduledVisitList.size());
         return scheduledVisitList;
     }
 
     public Integer getScheduledVisitCount(ScheduledVisitSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
+        log.trace("Entering getScheduledVisitCount method, tenantId: {}", tenantId);
         List<Object> preparedStatement = new ArrayList<>();
         String query = queryBuilder.getSearchCountQueryString(request, tenantId, lastChangedSince, includeDeleted, preparedStatement);
 
-        if (query == null)
+        if (query == null) {
+            log.debug("Count query is null, returning 0");
             return 0;
+        }
 
+        log.debug("Executing scheduled visit count query for tenantId: {}", tenantId);
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
-        log.info("Total ScheduledVisit count is : " + count);
+        log.info("Total scheduled visit count: {}", count);
         return count;
     }
     

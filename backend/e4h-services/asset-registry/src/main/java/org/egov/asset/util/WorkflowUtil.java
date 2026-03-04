@@ -45,8 +45,10 @@ public class WorkflowUtil {
      * @return
      */
     public BusinessService getBusinessService(RequestInfo requestInfo, String tenantId, String businessServiceCode) {
-        log.info("WorkflowUtil::getBusinessService called | tenantId={} businessServiceCode={}", tenantId, businessServiceCode);
+        log.trace("WorkflowUtil::getBusinessService called");
+        log.info("Getting business service | tenantId={} businessServiceCode={}", tenantId, businessServiceCode);
         if (requestInfo == null || tenantId == null || businessServiceCode == null) {
+            log.error("Invalid input parameters | tenantId={} businessServiceCode={}", tenantId, businessServiceCode);
             throw new CustomException("INVALID_INPUT", "RequestInfo, tenantId, and businessServiceCode cannot be null");
         }
 
@@ -54,7 +56,7 @@ public class WorkflowUtil {
         RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder().requestInfo(requestInfo).build();
         Object result;
         try {
-            log.debug("getBusinessService | fetching business service from WF service url={}", url);
+            log.debug("Fetching business service from workflow service | url={}", url);
             result = repository.fetchResult(url, requestInfoWrapper, String.class);
         } catch (ServiceCallException e) {
             log.error("Error while fetching business service from workflow service", e);
@@ -64,15 +66,23 @@ public class WorkflowUtil {
         BusinessServiceResponse response = null;
         try {
             response = mapper.convertValue(result, BusinessServiceResponse.class);
-            log.debug("getBusinessService | response successfully parsed for businessServiceCode={}", businessServiceCode);
+            log.debug("Business service response parsed successfully | businessServiceCode={}", businessServiceCode);
         } catch (IllegalArgumentException e) {
-            log.error("Error while parsing business service response", e);
+            log.error("Error parsing business service response | businessServiceCode={} error={}",
+                    businessServiceCode, e.getMessage(), e);
             throw new CustomException(PARSING_ERROR, FAILED_TO_PARSE_BUSINESS_SERVICE_SEARCH);
+        } catch (Exception e) {
+            log.error("Error processing business service | businessServiceCode={} error={}",
+                    businessServiceCode, e.getMessage(), e);
+            throw new CustomException("BUSINESS_SERVICE_PROCESSING_ERROR", "Error processing business service: "+e.getMessage());
         }
 
-        if (CollectionUtils.isEmpty(response.getBusinessServices()))
+        if (CollectionUtils.isEmpty(response.getBusinessServices())) {
+            log.error("Business service not found | tenantId={} businessServiceCode={}", tenantId, businessServiceCode);
             throw new CustomException(BUSINESS_SERVICE_NOT_FOUND, THE_BUSINESS_SERVICE + businessServiceCode + NOT_FOUND);
+        }
 
+        log.debug("Business service found | businessServiceCode={}", businessServiceCode);
         return response.getBusinessServices().get(0);
     }
 
@@ -90,14 +100,15 @@ public class WorkflowUtil {
      */
     public String updateWorkflowStatus(RequestInfo requestInfo, String tenantId,
                                        String businessId, String businessServiceCode, Workflow workflow, String wfModuleName) {
-        log.info("WorkflowUtil::updateWorkflowStatus called | tenantId={} businessId={} action={} wfModuleName={}",
-                tenantId, businessId, workflow != null ? workflow.getAction() : "null", wfModuleName);
+        log.trace("WorkflowUtil::updateWorkflowStatus called");
+        log.info("Updating workflow status | tenantId={} businessId={} action={} wfModuleName={}",
+                tenantId, businessId, workflow.getAction(), wfModuleName);
         ProcessInstance processInstance = getProcessInstanceForWorkflow(requestInfo, tenantId, businessId,
                 businessServiceCode, workflow, wfModuleName);
         ProcessInstanceRequest workflowRequest = new ProcessInstanceRequest(requestInfo, Collections.singletonList(processInstance));
         State state = callWorkFlow(workflowRequest);
 
-        log.info("updateWorkflowStatus | updated workflow status={} for businessId={}", state.getApplicationStatus(), businessId);
+        log.info("Workflow status updated successfully | businessId={} newStatus={}", businessId, state.getApplicationStatus());
         return state.getApplicationStatus();
     }
 
@@ -109,13 +120,15 @@ public class WorkflowUtil {
      * @return
      */
     private StringBuilder getSearchURLWithParams(String tenantId, String businessService) {
-        log.debug("WorkflowUtil::getSearchURLWithParams | tenantId={} businessService={}", tenantId, businessService);
+        log.trace("WorkflowUtil::getSearchURLWithParams called");
+        log.debug("Building search URL | tenantId={} businessService={}", tenantId, businessService);
         StringBuilder url = new StringBuilder(configs.getWfHost());
         url.append(configs.getWfBusinessServiceSearchPath());
         url.append(TENANTID);
         url.append(tenantId);
         url.append(BUSINESS_SERVICES);
         url.append(businessService);
+        log.debug("Search URL built | url={}", url.toString());
         return url;
     }
 
@@ -132,17 +145,25 @@ public class WorkflowUtil {
      */
     private ProcessInstance getProcessInstanceForWorkflow(RequestInfo requestInfo, String tenantId,
                                                           String businessId, String businessServiceCode, Workflow workflow, String wfModuleName) {
-
-        log.debug("WorkflowUtil::getProcessInstanceForWorkflow | tenantId={} businessId={} action={}",
-                tenantId, businessId, workflow != null ? workflow.getAction() : "null");
+        log.trace("WorkflowUtil::getProcessInstanceForWorkflow called");
+        log.debug("Creating process instance | tenantId={} businessId={} action={}",
+                tenantId, businessId, workflow.getAction());
         ProcessInstance processInstance = new ProcessInstance();
         processInstance.setBusinessId(businessId);
         processInstance.setAction(workflow.getAction());
         processInstance.setModuleName(wfModuleName);
         processInstance.setTenantId(tenantId);
         BusinessService businessService;
-        businessService = getBusinessService(requestInfo, tenantId, businessServiceCode);
-        processInstance.setBusinessService(businessService.getBusinessService());
+        try {
+            businessService = getBusinessService(requestInfo, tenantId, businessServiceCode);
+            processInstance.setBusinessService(businessService.getBusinessService());
+        } catch (CustomException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error getting business service | tenantId={} businessServiceCode={} error={}",
+                    tenantId, businessServiceCode, e.getMessage(), e);
+            throw new CustomException();
+        }
         processInstance.setDocuments(workflow.getVerificationDocuments());
         processInstance.setComment(workflow.getComments());
 
@@ -156,11 +177,10 @@ public class WorkflowUtil {
             });
 
             processInstance.setAssignes(users);
-            log.debug("getProcessInstanceForWorkflow | assignees added count={}", users.size());
+            log.debug("Assignees added to process instance | businessId={} assigneesCount={}", businessId, users.size());
         }
 
-        log.info("getProcessInstanceForWorkflow | processInstance created for businessId={} action={}",
-                businessId, workflow.getAction());
+        log.info("Process instance created | businessId={} action={}", businessId, workflow.getAction());
         return processInstance;
     }
 
@@ -171,7 +191,9 @@ public class WorkflowUtil {
      * @return
      */
     public Map<String, Workflow> getWorkflow(List<ProcessInstance> processInstances) {
-        log.debug("WorkflowUtil::getWorkflow");
+        log.trace("WorkflowUtil::getWorkflow called");
+        log.debug("Mapping process instances to workflow | processInstancesCount={}",
+                processInstances.size());
         Map<String, Workflow> businessIdToWorkflow = new HashMap<>();
 
         processInstances.forEach(processInstance -> {
@@ -187,12 +209,12 @@ public class WorkflowUtil {
                     .comments(processInstance.getComment())
                     .verificationDocuments(processInstance.getDocuments())
                     .build();
-            log.debug("getWorkflow | mapped businessId={} with action={} assigneesCount={}",
+            log.debug("Mapped workflow | businessId={} action={} assigneesCount={}",
                     processInstance.getBusinessId(), workflow.getAction(), userIds.size());
             businessIdToWorkflow.put(processInstance.getBusinessId(), workflow);
         });
 
-        log.info("getWorkflow | returning workflow map size={}", businessIdToWorkflow.size());
+        log.info("Workflow mapping completed | workflowsCount={}", businessIdToWorkflow.size());
         return businessIdToWorkflow;
     }
 
@@ -203,11 +225,12 @@ public class WorkflowUtil {
      * @return
      */
     private State callWorkFlow(ProcessInstanceRequest workflowReq) {
+        log.trace("WorkflowUtil::callWorkFlow called");
         ProcessInstanceResponse response = null;
         StringBuilder url = new StringBuilder(configs.getWfHost().concat(configs.getWfTransitionPath()));
         Object result;
         try {
-            log.debug("callWorkFlow | invoking WF transition API url={}", url);
+            log.debug("Invoking workflow transition API | url={}", url);
             result = repository.fetchResult(url, workflowReq, String.class);
         } catch (ServiceCallException e) {
             log.error("Error while calling workflow transition API", e);
@@ -223,9 +246,11 @@ public class WorkflowUtil {
         }
 
         if (response == null || CollectionUtils.isEmpty(response.getProcessInstances())) {
+            log.error("Workflow response is empty or null");
             throw new CustomException("WORKFLOW_RESPONSE_ERROR", "No process instances found in workflow response");
         }
 
+        log.debug("Workflow transition completed | processInstancesCount={}", response.getProcessInstances().size());
         return response.getProcessInstances().get(0).getState();
     }
 }

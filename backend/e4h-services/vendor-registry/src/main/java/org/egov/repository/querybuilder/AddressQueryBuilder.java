@@ -26,6 +26,9 @@ public class AddressQueryBuilder {
 
     /* Constructs address search query based on organisation Ids */
     public String getAddressSearchQuery(Set<String> organisationIds, List<Object> preparedStmtList) {
+        log.trace("AddressQueryBuilder::getAddressSearchQuery entry");
+        log.debug("Building address search query for {} organisation IDs", organisationIds != null ? organisationIds.size() : 0);
+        
         StringBuilder queryBuilder = null;
         queryBuilder = new StringBuilder(FETCH_ADDRESS_QUERY);
 
@@ -39,6 +42,9 @@ public class AddressQueryBuilder {
     }
 
     public String getAddressSearchQueryBasedOnCriteria(String boundaryCode, String tenantId, List<Object> preparedStmtList) {
+        log.trace("AddressQueryBuilder::getAddressSearchQueryBasedOnCriteria entry");
+        log.debug("Building address search query based on boundary code: {}, tenant: {}", boundaryCode, tenantId);
+        
         StringBuilder queryBuilder = null;
         queryBuilder = new StringBuilder(FETCH_ADDRESS_QUERY);
 

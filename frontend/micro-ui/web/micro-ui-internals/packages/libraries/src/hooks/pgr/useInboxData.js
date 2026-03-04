@@ -30,12 +30,12 @@ const useInboxData = (searchParams) => {
       : {}),
   };
 
-  const { assignee } = wfFilters;
+  const { assignee, wfStatus } = wfFilters;
 
   const { data, isSuccess, refetch } = Digit.Hooks.useNewInboxGeneral({
     tenantId: Digit.ULBService.getCurrentTenantId(),
     ModuleCode: "Incident",
-    filters: { ...appFilters, assignee, sortOrder: "DESC", services: ["Incident"] },
+    filters: { ...appFilters, assignee, wfStatus, sortOrder: "DESC", services: ["Incident"] },
     config: {
       select: (data) => ({ data } || "-"),
       enabled: Digit.Utils.pgrAccess(),
@@ -98,7 +98,13 @@ const combineResponses = (items, currentUserUuid, currentUser, t) => {
   const closedStates = ["RESOLVED", "CLOSEDAFTERRESOLUTION", "REJECTED", "CLOSEDAFTERREJECTION"];
   const roleStatusMapping = {
     PENDINGFORASSIGNMENT: "COMPLAINT_ASSESSOR",
+    PENDINGFORASSIGNMENT_THEFT: "COMPLAINT_ASSESSOR",
+    PENDINGFORASSIGNMENT_RMS_DEVICE: "COMPLAINT_ASSESSOR",
+    RMS_DEVICE_PENDING_TECH_POC: "COMPLAINT_FACILITATOR_2",
     PENDING_ASSIGNMENT_OUT_OF_WARRANTY: "COMPLAINT_FACILITATOR_1",
+    OUT_OF_WARRANTY_PENDING_TECH_POC: "COMPLAINT_FACILITATOR_2",
+    OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2: "COMPLAINT_FACILITATOR_2",
+    OUT_OF_SCOPE: "COMPLAINT_FACILITATOR_1",
     PENDING_ASSIGNMENT_SPARE_PART_NEEDED: "COMPLAINT_FACILITATOR_2",
   };
 

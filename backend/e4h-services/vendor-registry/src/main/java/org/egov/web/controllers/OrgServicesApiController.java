@@ -2,6 +2,7 @@ package org.egov.web.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiParam;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.service.OrgService;
 import org.egov.util.ResponseInfoFactory;
@@ -27,6 +28,7 @@ import java.util.List;
 
 @Controller
 @RequestMapping("/v1")
+@Slf4j
 public class OrgServicesApiController {
 
     @Autowired
@@ -46,10 +48,17 @@ public class OrgServicesApiController {
     public ResponseEntity<OrgServiceResponse> orgServicesV1CreatePOST(
             @ApiParam(value = "", allowableValues = "application/json") @RequestHeader(value = "Content-Type", required = false) String contentType,
             @ApiParam(value = "") @Valid @RequestBody OrgServiceRequest body) {
-
+        log.trace("OrgServicesApiController::orgServicesV1CreatePOST entry");
+        log.info("Received create organisation service request");
+        
         OrgServiceRequest orgServiceRequest = orgService.createOrganisationWithWorkFlow(body);
+        log.debug("Organisation service request processed, organisation count: {}", 
+                orgServiceRequest.getOrganisations() != null ? orgServiceRequest.getOrganisations().size() : 0);
+        
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(body.getRequestInfo(), true);
         OrgServiceResponse orgServiceResponse = OrgServiceResponse.builder().responseInfo(responseInfo).organisations(orgServiceRequest.getOrganisations()).build();
+        
+        log.info("Create organisation service request completed successfully");
         return new ResponseEntity<OrgServiceResponse>(orgServiceResponse, HttpStatus.OK);
     }
 
@@ -57,11 +66,18 @@ public class OrgServicesApiController {
     public ResponseEntity<OrgServiceResponse> orgServicesV1SearchPOST(
             @ApiParam(value = "", allowableValues = "application/json") @RequestHeader(value = "Content-Type", required = false) String contentType,
             @ApiParam(value = "") @Valid @RequestBody OrgSearchRequest body) {
-
+        log.trace("OrgServicesApiController::orgServicesV1SearchPOST entry");
+        String tenantId = body.getSearchCriteria() != null ? body.getSearchCriteria().getTenantId() : "unknown";
+        log.info("Received search organisation service request for tenant: {}", tenantId);
+        
         List<Organisation> organisations = Collections.emptyList();
+        log.debug("Search returned empty list (method not implemented)");
+        
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(body.getRequestInfo(), true);
         Integer count = 0;
         OrgServiceResponse orgServiceResponse = OrgServiceResponse.builder().responseInfo(responseInfo).organisations(organisations).totalCount(count).build();
+        
+        log.info("Search organisation service request completed");
         return new ResponseEntity<OrgServiceResponse>(orgServiceResponse, HttpStatus.OK);
     }
 
@@ -69,10 +85,17 @@ public class OrgServicesApiController {
     public ResponseEntity<OrgServiceResponse> orgServicesV1UpdatePOST(
             @ApiParam(value = "", allowableValues = "application/json") @RequestHeader(value = "Content-Type", required = false) String contentType,
             @ApiParam(value = "") @Valid @RequestBody OrgServiceRequest body) {
-
+        log.trace("OrgServicesApiController::orgServicesV1UpdatePOST entry");
+        log.info("Received update organisation service request");
+        
         OrgServiceRequest orgServiceRequest = orgService.updateOrganisationWithWorkFlow(body);
+        log.debug("Organisation service request processed, organisation count: {}", 
+                orgServiceRequest.getOrganisations() != null ? orgServiceRequest.getOrganisations().size() : 0);
+        
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(body.getRequestInfo(), true);
         OrgServiceResponse orgServiceResponse = OrgServiceResponse.builder().responseInfo(responseInfo).organisations(orgServiceRequest.getOrganisations()).build();
+        
+        log.info("Update organisation service request completed successfully");
         return new ResponseEntity<OrgServiceResponse>(orgServiceResponse, HttpStatus.OK);
     }
 

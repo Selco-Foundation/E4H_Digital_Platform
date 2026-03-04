@@ -3,8 +3,11 @@ from typing import Dict, Any
 
 import requests
 
+from app.core.logging import AppLogger
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import ResponseInfo
+
+logger = AppLogger().get_logger()
 
 
 class FieldPlanServiceClient:
@@ -26,22 +29,24 @@ class FieldPlanServiceClient:
                 'tenantId': 'in'
             }
         }
+        logger.trace(f"Creating field plan facility: fieldplan_id={fieldPlan_id}, facility_id={facility_id}")
         try:
             response = requests.post(url, headers=headers, json=payload)
-            print(f"FieldPlan Facility called successfully: {json.loads(response.text)}")
+            logger.info(f"Field plan facility created successfully: fieldplan_id={fieldPlan_id}, facility_id={facility_id}")
+            logger.debug(f"Create response: {json.loads(response.text)}")
             return response
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logger.error(f"HTTP error creating field plan facility: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
+            logger.error(f"Connection error creating field plan facility: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
+            logger.error(f"Timeout error creating field plan facility: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
+            logger.error(f"Request error creating field plan facility: {req_err}", exc_info=True)
             raise req_err
 
     def search_fieldPlan(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
@@ -92,16 +97,16 @@ class FieldPlanServiceClient:
             }
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logger.error(f"HTTP error searching field plan: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
+            logger.error(f"Connection error searching field plan: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
+            logger.error(f"Timeout error searching field plan: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
+            logger.error(f"Request error searching field plan: {req_err}", exc_info=True)
             raise req_err
 
     def search_fieldplan_facility(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
@@ -151,16 +156,16 @@ class FieldPlanServiceClient:
             }
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logger.error(f"HTTP error searching field plan facility: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
+            logger.error(f"Connection error searching field plan facility: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
+            logger.error(f"Timeout error searching field plan facility: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
+            logger.error(f"Request error searching field plan facility: {req_err}", exc_info=True)
             raise req_err
 
 
@@ -170,13 +175,14 @@ class FieldPlanServiceClient:
         Unlink a facility from a field plan by setting isDeleted to True
         """
         try:
+            logger.trace(f"Unlinking field plan facility: fieldplan_id={fieldplan_id}, facility_id={facility_id}")
             # Use provided project_facility_data if available, otherwise search for it
             if fieldplan_facility_data:
                 target_facility = fieldplan_facility_data
-                print(f"Using provided FieldPlanFacility data for facility {facility_id}")
+                logger.debug(f"Using provided FieldPlanFacility data for facility {facility_id}")
             else:
                 # Fallback: Use existing search method to find the FieldPlanFacility record
-                print(f"Searching for FieldPlanFacility record for facility {facility_id}")
+                logger.debug(f"Searching for FieldPlanFacility record for facility {facility_id}")
                 search_response = self.search_fieldplan_facility(request_info, fieldplan_id)
                 fieldplan_facilities = search_response.get("FieldPlanFacilities", [])
 
@@ -188,16 +194,16 @@ class FieldPlanServiceClient:
                         break
 
                 if not target_facility:
-                    print(f"No FieldPlanFacility record found for facility {facility_id} and field plan {fieldplan_id}")
+                    logger.warning(f"No FieldPlanFacility record found for facility {facility_id} and field plan {fieldplan_id}")
                     return None
 
             fieldplan_facility_id = target_facility.get("id")
 
             if not fieldplan_facility_id:
-                print("No ID found for FieldPlanFacility record")
+                logger.warning("No ID found for FieldPlanFacility record")
                 return None
 
-            print(f"Found FieldPlanFacility record with ID: {fieldplan_facility_id}")
+            logger.debug(f"Found FieldPlanFacility record with ID: {fieldplan_facility_id}")
 
             # Now update the record to set isDeleted = True
             update_url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/_unassign"
@@ -221,18 +227,19 @@ class FieldPlanServiceClient:
 
             update_response = requests.post(update_url, headers=update_headers, json=update_payload)
             update_response.raise_for_status()
-            print(f"Field Plan Facility unlinked successfully: {json.loads(update_response.text)}")
+            logger.info(f"Field plan facility unlinked successfully: fieldplan_id={fieldplan_id}, facility_id={facility_id}")
+            logger.debug(f"Unlink response: {json.loads(update_response.text)}")
             return update_response
 
         except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
+            logger.error(f"HTTP error unlinking field plan facility: {http_err}", exc_info=True)
             raise http_err
         except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
+            logger.error(f"Connection error unlinking field plan facility: {conn_err}", exc_info=True)
             raise conn_err
         except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
+            logger.error(f"Timeout error unlinking field plan facility: {timeout_err}", exc_info=True)
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
-            print(f"An error occurred: {req_err}")
+            logger.error(f"Request error unlinking field plan facility: {req_err}", exc_info=True)
             raise req_err

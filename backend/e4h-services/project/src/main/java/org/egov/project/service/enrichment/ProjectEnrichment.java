@@ -47,82 +47,104 @@ public class ProjectEnrichment {
 
     /* Enrich Project on Create Request */
     public void enrichProjectOnCreate(ProjectRequest request, List<Project> parentProjects) {
+        log.trace("Entering enrichProjectOnCreate");
+        log.info("Starting project enrichment for create request");
         RequestInfo requestInfo = request.getRequestInfo();
         List<Project> projects = request.getProjects();
+        log.debug("Enriching {} projects", projects != null ? projects.size() : 0);
 
         String rootTenantId = projects.get(0).getTenantId().split("\\.")[0];
+        log.debug("Root tenant ID: {}", rootTenantId);
 
         //Get Project Ids from Idgen Service for Number of projects present in Projects
+        log.debug("Generating project numbers from IdGen service");
         List<String> projectNumbers = getIdList(requestInfo, rootTenantId
                 , config.getIdgenProjectNumberName(), "", projects.size());
+        log.debug("Generated {} project numbers", projectNumbers != null ? projectNumbers.size() : 0);
 
         for (int i = 0; i < projects.size(); i++) {
 
             if (projectNumbers != null && !projectNumbers.isEmpty()) {
                 projects.get(i).setProjectNumber(projectNumbers.get(i));
-                log.info("Project numbers set for projects");
+                log.debug("Set project number: {} for project index: {}", projectNumbers.get(i), i);
             } else {
                 log.error("Error occurred while generating project numbers from IdGen service");
                 throw new CustomException("PROJECT_NUMBER_NOT_GENERATED", "Error occurred while generating project numbers from IdGen service");
             }
 
             //Enrich Project id and audit details
+            log.debug("Enriching project ID and audit details for project index: {}", i);
             enrichProjectRequestOnCreate(projects.get(i), requestInfo, parentProjects);
             log.info("Enriched project request with id and Audit details");
 
             //Enrich Address id and audit details
+            log.debug("Enriching project address for project index: {}", i);
             enrichProjectAddressOnCreate(projects.get(i));
             log.info("Enriched project Address with id and Audit details");
 
             //Enrich target id and audit details
+            log.debug("Enriching project targets for project index: {}", i);
             enrichProjectTargetOnCreate(projects.get(i), requestInfo);
             log.info("Enriched target with id and Audit details");
 
             //Enrich document id and audit details
+            log.debug("Enriching project documents for project index: {}", i);
             enrichProjectDocumentOnCreate(projects.get(i), requestInfo);
             log.info("Enriched documents with id and Audit details");
 
         }
-
+        log.info("Successfully completed project enrichment for create request");
+        log.trace("Exiting enrichProjectOnCreate");
     }
 
     /* Enrich Project on Update Request */
     public void enrichProjectOnUpdate(ProjectRequest request, Project project, Project projectFromDB) {
+        log.trace("Entering enrichProjectOnUpdate for project: {}", project.getId());
+        log.info("Starting project enrichment for update request");
         RequestInfo requestInfo = request.getRequestInfo();
         //Updating lastModifiedTime and lastModifiedBy for Project
+        log.debug("Enriching project audit details");
         enrichProjectRequestOnUpdate(project, projectFromDB, requestInfo);
-        log.info("Enriched project in update project request");
 
         //Add address if id is empty or update lastModifiedTime and lastModifiedBy if id exists
+        log.debug("Enriching project address");
         enrichProjectAddressOnUpdate(project, projectFromDB, requestInfo);
-        log.info("Enriched address in update project request");
 
         //Add new target if id is empty or update lastModifiedTime and lastModifiedBy if id exists
+        log.debug("Enriching project targets");
         enrichProjectTargetOnUpdate(project, projectFromDB, requestInfo);
-        log.info("Enriched target in update project request");
 
         //Add new document if id is empty or update lastModifiedTime and lastModifiedBy if id exists
+        log.debug("Enriching project documents");
         enrichProjectDocumentOnUpdate(project, projectFromDB, requestInfo);
-        log.info("Enriched document in update project request");
+        log.info("Successfully enriched project for update request");
+        log.trace("Exiting enrichProjectOnUpdate");
     }
 
     /* Enrich Project with id and audit details */
     private void enrichProjectRequestOnCreate(Project projectRequest, RequestInfo requestInfo, List<Project> parentProjects) {
+        log.trace("Entering enrichProjectRequestOnCreate for project");
         projectRequest.setId(UUID.randomUUID().toString());
-        log.info("Project id set to " + projectRequest.getId());
+        log.debug("Project ID set: {}", projectRequest.getId());
         AuditDetails auditDetails = projectServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), null, true);
         projectRequest.setAuditDetails(auditDetails);
+        log.debug("Audit details set for project");
         if (parentProjects != null && StringUtils.isNotBlank(projectRequest.getParent())) {
+            log.debug("Enriching project hierarchy with parent");
             enrichProjectHierarchy(projectRequest, parentProjects);
         }
+        log.trace("Exiting enrichProjectRequestOnCreate");
     }
 
     /* Enrich Project update request with last modified by and last modified time */
     public void enrichProjectRequestOnUpdate(Project projectRequest, Project projectFromDB, RequestInfo requestInfo) {
+        log.trace("Entering enrichProjectRequestOnUpdate for project: {}", projectRequest.getId());
+        log.debug("Updating audit details for project");
         projectRequest.setAuditDetails(projectFromDB.getAuditDetails());
         AuditDetails auditDetails = projectServiceUtil.getAuditDetails(requestInfo.getUserInfo().getUuid(), projectFromDB.getAuditDetails(), false);
         projectRequest.setAuditDetails(auditDetails);
-        log.info("Enriched project audit details for project " + projectRequest.getId());
+        log.debug("Audit details updated successfully");
+        log.trace("Exiting enrichProjectRequestOnUpdate");
     }
 
     public void enrichProjectCascadingDatesOnUpdate(Project project, Project projectFromDB) {

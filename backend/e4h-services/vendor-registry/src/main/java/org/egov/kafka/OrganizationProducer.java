@@ -20,6 +20,13 @@ public class OrganizationProducer {
 	}
 
 	public void push(String topic, Object value) {
-		kafkaTemplate.send(topic, value);
+		log.trace("OrganizationProducer::push entry");
+		try {
+			kafkaTemplate.send(topic, value);
+			log.info("Message pushed to Kafka topic: {}", topic);
+		} catch (Exception e) {
+			log.error("Error occurred while pushing message to Kafka topic: {}", topic, e);
+			throw e;
+		}
 	}
 }

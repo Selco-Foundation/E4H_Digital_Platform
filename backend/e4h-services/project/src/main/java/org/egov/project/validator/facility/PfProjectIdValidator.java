@@ -36,28 +36,38 @@ public class PfProjectIdValidator implements Validator<ProjectFacilityBulkReques
 
     @Override
     public Map<ProjectFacility, List<Error>> validate(ProjectFacilityBulkRequest request) {
-        log.info("validating project id");
+        log.trace("Entering validate (PfProjectIdValidator)");
+        log.info("Validating project ID for facilities");
+        log.debug("Validating {} facilities", request.getProjectFacilities() != null ? request.getProjectFacilities().size() : 0);
         Map<ProjectFacility, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectFacility> validEntities = request.getProjectFacilities().stream()
                 .filter(notHavingErrors())
                 .toList();
+        log.debug("Found {} valid facilities to validate", validEntities.size());
         if (!validEntities.isEmpty()) {
             Class<?> objClass = getObjClass(validEntities);
             Method idMethod = getMethod(GET_PROJECT_ID, objClass);
             Map<String, ProjectFacility> eMap = getIdToObjMap(validEntities, idMethod);
             if (!eMap.isEmpty()) {
                 List<String> entityIds = new ArrayList<>(eMap.keySet());
+                log.debug("Validating {} project IDs against repository", entityIds.size());
                 List<String> existingProjectIds = projectRepository.validateIds(entityIds,
                         getIdFieldName(idMethod));
+                log.debug("Found {} existing project IDs", existingProjectIds.size());
                 List<ProjectFacility> invalidEntities = validEntities.stream().filter(notHavingErrors()).filter(entity ->
                                 !existingProjectIds.contains(entity.getProjectId()))
                         .toList();
+                if (!invalidEntities.isEmpty()) {
+                    log.warn("Found {} facilities with invalid project IDs", invalidEntities.size());
+                }
                 invalidEntities.forEach(projectFacility -> {
                     Error error = getErrorForNonExistentRelatedEntity(projectFacility.getProjectId());
                     populateErrorDetails(projectFacility, error, errorDetailsMap);
                 });
             }
         }
+        log.debug("Validation completed - {} errors found", errorDetailsMap.size());
+        log.trace("Exiting validate (PfProjectIdValidator)");
         return errorDetailsMap;
     }
 }

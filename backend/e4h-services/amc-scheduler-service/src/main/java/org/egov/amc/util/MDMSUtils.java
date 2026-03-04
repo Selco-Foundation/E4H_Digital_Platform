@@ -33,13 +33,16 @@ public class MDMSUtils {
     private final AMCServiceConfiguration config;
 
     public Object mDMSCall(AmcConfigurationRequest request, String tenantId) {
+        log.trace("Entering mDMSCall method for tenantId: {}", tenantId);
         RequestInfo requestInfo = request.getRequestInfo();
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId);
         Object result = null;
         try {
+            log.debug("Calling MDMS service for tenantId: {}", tenantId);
             result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
+            log.debug("MDMS service call successful for tenantId: {}", tenantId);
         } catch (ServiceCallException e) {
-            log.error("Error while calling MDMS service", e);
+            log.error("Error while calling MDMS service for tenantId: {}", tenantId, e);
             throw new CustomException("MDMS_ERROR", "Error while calling MDMS: " + e.getMessage());
         }
         return result;

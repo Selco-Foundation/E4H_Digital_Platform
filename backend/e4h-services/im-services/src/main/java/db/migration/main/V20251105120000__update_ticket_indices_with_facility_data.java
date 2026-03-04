@@ -52,7 +52,7 @@ public class V20251105120000__update_ticket_indices_with_facility_data extends B
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("🚀 Starting migration: Updating ES ticket indices with facility data");
+        log.info("Starting migration: Updating ES ticket indices with facility data");
 
         // Create RestTemplate with SSL verification disabled and increased timeouts
         RestTemplate restTemplate = createRestTemplateWithDisabledSSL();
@@ -179,10 +179,10 @@ public class V20251105120000__update_ticket_indices_with_facility_data extends B
             migrationLogger.flush();
         }
 
-        log.info("✅ Migration completed: ES indices updated with facility data");
+        log.info("Migration completed: ES indices updated with facility data");
         log.info("Total successful updates: {}", totalUpdated);
         log.info("Total failed updates: {}", totalFailed);
-        log.info("📝 Migration log file: {}", absoluteLogPath);
+        log.info("Migration log file: {}", absoluteLogPath);
     }
 
     private Map<String, FacilityData> loadFacilityMappings(Context context) throws Exception {
@@ -376,7 +376,7 @@ public class V20251105120000__update_ticket_indices_with_facility_data extends B
     private PrintWriter initializeMigrationLogger(String logFilePath, String absolutePath) throws Exception {
         Files.createDirectories(Paths.get("./logs"));
         FileWriter fileWriter = new FileWriter(logFilePath, true);
-        log.info("📝 Migration log file created: {}", absolutePath);
+        log.info("Migration log file created: {}", absolutePath);
         return new PrintWriter(fileWriter, true);
     }
 

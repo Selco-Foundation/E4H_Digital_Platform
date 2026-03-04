@@ -113,6 +113,9 @@ public class IMConfiguration {
     @Value("${im.kafka.create.topic.indexer}")
     private String createTopicIndexer;
 
+    @Value("${facility.update.topic}")
+    private String updateFacilityTopic;
+
     @Value("${im.kafka.update.topic.indexer}")
     private String updateTopicIndexer;
 
@@ -307,4 +310,14 @@ public class IMConfiguration {
 
     @Value("${egov.boundary.search.path}")
     private String boundarySearchPath;
+
+    // Theft notification (cron + endpoint)
+    @Value("${im.theft.notification.cron:0 0 9 * * ?}")
+    private String theftNotificationCron;
+
+    @Value("${im.theft.notification.crm.mobile:}")
+    private String theftNotificationCrmMobile;
+
+    @Value("${im.theft.notification.tenantid:in}")
+    private String theftNotificationTenantId;
 }

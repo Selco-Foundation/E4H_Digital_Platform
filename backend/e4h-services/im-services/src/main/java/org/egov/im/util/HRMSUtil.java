@@ -2,6 +2,7 @@ package org.egov.im.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.im.config.IMConfiguration;
@@ -16,6 +17,7 @@ import java.util.List;
 
 import static org.egov.im.util.IMConstants.HRMS_DEPARTMENT_JSONPATH;
 
+@Slf4j
 @Component
 public class HRMSUtil {
 
@@ -39,6 +41,8 @@ public class HRMSUtil {
      * @return
      */
     public List<String> getDepartment(List<String> uuids, RequestInfo requestInfo) {
+        log.trace("HRMSUtil::getDepartment method invoked");
+        log.debug("Fetching department for {} UUIDs", uuids != null ? uuids.size() : 0);
 
         StringBuilder url = getHRMSURI(uuids, null, null, null);
 
@@ -51,12 +55,16 @@ public class HRMSUtil {
         try {
             departments = JsonPath.read(res, HRMS_DEPARTMENT_JSONPATH);
         } catch (Exception e) {
+            log.error("Failed to parse HRMS response for department lookup", e);
             throw new CustomException("PARSING_ERROR", "Failed to parse HRMS response");
         }
 
-        if (CollectionUtils.isEmpty(departments))
+        if (CollectionUtils.isEmpty(departments)) {
+            log.warn("No department found for UUIDs: {}", uuids);
             throw new CustomException("DEPARTMENT_NOT_FOUND", "The Department of the user with uuid: " + uuids.toString() + " is not found");
+        }
 
+        log.debug("Found {} departments", departments.size());
         return departments;
 
     }
@@ -69,7 +77,8 @@ public class HRMSUtil {
      */
 
     public StringBuilder getHRMSURI(List<String> uuids, String tenantId, String role, String boundaryCodes) {
-
+        log.trace("HRMSUtil::getHRMSURI method invoked");
+        log.debug("Building HRMS URI for tenantId: {}, role: {}, uuids: {}", tenantId, role, uuids != null ? uuids.size() : 0);
         StringBuilder builder = new StringBuilder(config.getHrmsHost());
         builder.append(config.getHrmsEndPoint());
         if (uuids != null) {

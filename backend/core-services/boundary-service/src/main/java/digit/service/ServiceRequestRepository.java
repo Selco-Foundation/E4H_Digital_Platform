@@ -1,0 +1,85 @@
+package digit.service;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import lombok.extern.slf4j.Slf4j;
+import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
+import org.springframework.stereotype.Repository;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Map;
+
+@Repository
+@Slf4j
+public class ServiceRequestRepository {
+
+    private final ObjectMapper mapper;
+    private final RestTemplate restTemplate;
+
+    public ServiceRequestRepository(ObjectMapper mapper, RestTemplate restTemplate) {
+        this.mapper = mapper;
+        this.restTemplate = restTemplate;
+    }
+
+    public Object fetchResult(StringBuilder uri, Object request) {
+        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        Object response = null;
+        try {
+            response = restTemplate.postForObject(uri.toString(), request, Map.class);
+        } catch (HttpClientErrorException e) {
+            log.error("External Service threw an Exception: ", e);
+            throw new ServiceCallException(e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error("Error during service call: ", e);
+            throw new ServiceCallException();
+        }
+        return response;
+    }
+
+    public <T> T fetchResult(StringBuilder uri, Object request, Class<T> clazz) {
+        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+
+        try {
+            T response = this.restTemplate.postForObject(uri.toString(), request, clazz, new Object[0]);
+            return response;
+        } catch (HttpClientErrorException var6) {
+            throw new CustomException("HTTP_CLIENT_ERROR", String.format("%s - %s", var6.getMessage(), var6.getResponseBodyAsString()));
+        } catch (Exception var7) {
+            throw new CustomException("SERVICE_REQUEST_CLIENT_ERROR", var7.getMessage());
+        }
+    }
+
+    public <T> T fetchResult(StringBuilder uri, Object request, TypeReference<T> responseType) {
+        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        try {
+            String jsonResponse = restTemplate.postForObject(uri.toString(), request, String.class);
+            return mapper.readValue(jsonResponse, responseType);
+        } catch (HttpClientErrorException e) {
+            log.error("External Service threw an Exception: ", e);
+            throw new ServiceCallException(e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error("Error during service call: ", e);
+            throw new ServiceCallException();
+        }
+    }
+
+    public Object fetchResult(StringBuilder uri) {
+        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        Object response = null;
+        try {
+            response = restTemplate.getForObject(uri.toString(), Map.class);
+        } catch (HttpClientErrorException e) {
+            log.error("External Service threw an Exception: ", e);
+            throw new ServiceCallException(e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error("Error during service call: ", e);
+            throw new ServiceCallException();
+        }
+        return response;
+    }
+
+
+}

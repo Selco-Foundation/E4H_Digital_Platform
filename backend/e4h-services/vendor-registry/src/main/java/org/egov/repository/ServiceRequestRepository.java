@@ -30,10 +30,28 @@ public class ServiceRequestRepository {
 	}
 
 	public Object fetchResult(StringBuilder uri, Object request) {
+		log.trace("ServiceRequestRepository::fetchResult entry");
 		mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 		Object response = null;
 		try {
+			log.debug("Calling external service: {}", uri.toString());
 			response = restTemplate.postForObject(uri.toString(), request, Map.class);
+			log.debug("External service call completed successfully");
+		} catch (HttpClientErrorException e) {
+			log.error("External service returned client error for URI: {}", uri.toString(), e);
+			throw new ServiceCallException(e.getResponseBodyAsString());
+		} catch (Exception e) {
+			log.error("Exception while calling external service: {}", uri.toString(), e);
+		}
+
+		return response;
+	}
+
+	public Object fetchEncServiceResult(StringBuilder uri, Object request) {
+		mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+		Object response = null;
+		try {
+			response = restTemplate.postForObject(uri.toString(), request, Object.class);
 		} catch (HttpClientErrorException e) {
 			log.error("HTTP client error during service call: ", e);
 			throw new ServiceCallException(e.getResponseBodyAsString());
@@ -48,7 +66,8 @@ public class ServiceRequestRepository {
 			throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
 		}
 
-		return response;
+		return Objects.requireNonNull(response,
+				() -> "External service returned empty response for URI: " + uri);
 	}
 
 	public Object fetchEncServiceResult(StringBuilder uri, Object request) {

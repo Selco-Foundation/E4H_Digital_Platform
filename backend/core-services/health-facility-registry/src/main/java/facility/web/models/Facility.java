@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.egov.common.contract.models.AuditDetails;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.Map;
@@ -88,4 +89,7 @@ public class Facility {
 
     @JsonProperty("user_id")
     private String userId = null;
+
+    @JsonProperty("auditDetails")
+    private AuditDetails auditDetails = null;
 }

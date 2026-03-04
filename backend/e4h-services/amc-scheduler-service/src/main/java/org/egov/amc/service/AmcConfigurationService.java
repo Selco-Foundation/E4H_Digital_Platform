@@ -58,6 +58,8 @@ public class AmcConfigurationService {
     }
 
     public AmcConfigurationRequest createAmcConfiguration(AmcConfigurationRequest request) {
+        log.trace("Entering createAmcConfiguration method");
+        log.info("Creating {} AMC configuration(s)", request.getAmcConfigurations().size());
         amcConfigurationValidator.validateCreateAmcConfigurationRequest(request);
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             // remove Duplicate Assignments if the same user is AMC_STAFF and AMC_REVIEWER
@@ -77,20 +79,27 @@ public class AmcConfigurationService {
                                 .build())
                         .collect(Collectors.toList());
                 amcConfigurationServiceUtil.createProjectStaff(request.getRequestInfo(), staffs);
+                log.debug("Created {} project staff assignment(s) for configuration", staffs.size());
             }
-            log.info("Enriched with AMC Ids and AuditDetails {}", amcConfiguration);
-            log.info("Pushed to kafka");
+            log.trace("Enriching AMC configuration on create for projectId: {}, facilityId: {}",
+                    amcConfiguration.getProjectId(), amcConfiguration.getFacilityId());
+            log.info("AMC configuration enriched with project ID: {}, facility ID: {}",
+                    amcConfiguration.getProjectId(), amcConfiguration.getFacilityId());
+            log.debug("Enriched AMC configuration details - duration: {} months, visitFrequency: {} months",
+                    amcConfiguration.getDurationMonths(), amcConfiguration.getVisitFrequencyMonths());
         }
+        log.info("Pushing {} AMC configuration(s) to kafka", request.getAmcConfigurations().size());
         producer.push(amcServiceConfiguration.getSaveAmcConfigurationTopic(), request);
         return request;
     }
 
     public AmcConfigurationRequest updateAmcConfiguration(AmcConfigurationRequest request) {
+        log.trace("Entering updateAmcConfiguration method");
         /*
          * Validate the update amcConfiguration request
          */
         amcConfigurationValidator.validateUpdateAmcConfigurationRequest(request);
-        log.info("Update amcConfiguration request validated");
+        log.info("Update AMC configuration request validated, configuration count: {}", request.getAmcConfigurations().size());
 
         /*
          * Search for amcConfiguration based on amcConfiguration IDs provided in the request
@@ -99,7 +108,8 @@ public class AmcConfigurationService {
                 getSearchAmcConfigurationRequest(request.getAmcConfigurations(), request.getRequestInfo()),
                 amcServiceConfiguration.getMaxLimit(), amcServiceConfiguration.getDefaultOffset(),
                 request.getAmcConfigurations().get(0).getTenantId(), false, null);
-        log.info("Fetched amcConfiguration for update request");
+        log.debug("Fetched {} AMC configuration(s) from database for update request", amcConfigurationsFromDB.size());
+        log.info("Fetched AMC configurations for update request");
 
         /*
          * Validate the update amcConfiguration request against the amcConfigurations fetched from the database
@@ -109,9 +119,11 @@ public class AmcConfigurationService {
         /*
          * Process each amcConfiguration in the update request
          */
+        log.debug("Processing {} AMC configuration(s) for update", request.getAmcConfigurations().size());
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             processamcConfigurationUpdate(request, amcConfiguration, amcConfigurationsFromDB);
         }
+        log.info("Successfully processed update for {} AMC configuration(s)", request.getAmcConfigurations().size());
 
         return request;
     }
@@ -131,9 +143,12 @@ public class AmcConfigurationService {
     }
 
     public List<AmcConfiguration> searchAmcConfiguration(AmcConfigurationSearchRequest request, Integer limit, Integer offset, String tenantId, Boolean includeDeleted, Long lastChangedSince) {
+        log.trace("Entering searchAmcConfiguration method, tenantId: {}, limit: {}, offset: {}", tenantId, limit, offset);
         amcConfigurationValidator.validateSearchAmcConfigurationRequest(request, limit, offset, tenantId);
         List<AmcConfiguration> amcConfigurationList = amcConfigurationRepository.getAmcConfiguration(request, limit, offset, tenantId, includeDeleted, lastChangedSince);
         enrichAmcConfiguration(request.getRequestInfo(), amcConfigurationList);
+        log.debug("Found {} AMC configuration(s) matching search criteria", amcConfigurationList.size());
+        log.info("AMC configuration search completed");
         return amcConfigurationList;
     }
 
@@ -211,7 +226,9 @@ public class AmcConfigurationService {
         /*
          * Check and enrich cascading amcConfiguration dates and push the update to the message broker
          */
+        log.debug("Pushing AMC configuration update to kafka for configurationId: {}", amcConfiguration.getId());
         producer.push(amcServiceConfiguration.getUpdateAmcConfigurationTopic(), request);
+        log.info("AMC configuration update pushed to kafka for configurationId: {}", amcConfiguration.getId());
     }
 
     private boolean isValidCascadingUpdate(AmcConfiguration amcConfigurationFromDB, AmcConfiguration amcConfiguration) {
@@ -245,7 +262,7 @@ public class AmcConfigurationService {
             JsonNode originalState = originalNode.get("state");
             JsonNode newState = newNode.get("state");
             if (!Objects.equals(originalState, newState)) {
-                log.warn("State cannot be changed during cascading update");
+                log.warn("State cannot be changed during cascading update - original: {}, new: {}", originalState, newState);
                 return false;
             }
 

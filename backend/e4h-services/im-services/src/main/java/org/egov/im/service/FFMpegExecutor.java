@@ -13,7 +13,8 @@ import java.io.InputStreamReader;
 public class FFMpegExecutor {
 
     public void executeCommand(String command) {
-        log.debug("Executing command: {}", command);
+        log.trace("FFMpegExecutor::executeCommand method invoked");
+        log.debug("Executing FFmpeg command");
         Process process = null;
         try {
             process = Runtime.getRuntime().exec(command);

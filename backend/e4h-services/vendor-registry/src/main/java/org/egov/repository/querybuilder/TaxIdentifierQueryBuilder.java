@@ -17,6 +17,9 @@ public class TaxIdentifierQueryBuilder {
             "FROM eg_tax_identifier i";
 
     public String getTaxIdentifierSearchQuery(Set<String> organisationIds, List<Object> preparedStmtList) {
+        log.trace("TaxIdentifierQueryBuilder::getTaxIdentifierSearchQuery entry");
+        log.debug("Building tax identifier search query for {} organisation IDs", organisationIds != null ? organisationIds.size() : 0);
+        
         StringBuilder queryBuilder = null;
         queryBuilder = new StringBuilder(FETCH_TAX_IDENTIFIER_QUERY);
 
@@ -30,6 +33,9 @@ public class TaxIdentifierQueryBuilder {
     }
 
     public String getTaxIdentifierSearchQueryBasedOnCriteria(String identifierType, String identifierValue, List<Object> preparedStmtList) {
+        log.trace("TaxIdentifierQueryBuilder::getTaxIdentifierSearchQueryBasedOnCriteria entry");
+        log.debug("Building tax identifier search query based on type: {}, value: {}", identifierType, identifierValue != null ? "provided" : "null");
+        
         StringBuilder queryBuilder = null;
         queryBuilder = new StringBuilder(FETCH_TAX_IDENTIFIER_QUERY);
 

@@ -47,7 +47,7 @@ public class V20251119153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
 
     @Override
     public void migrate(Context context) throws Exception {
-        log.info("🚀 Starting migration: Migrating MDMS data from {} to {}", SOURCE_TENANT_ID, TARGET_TENANT_ID);
+        log.info("Starting migration: Migrating MDMS data from {} to {}", SOURCE_TENANT_ID, TARGET_TENANT_ID);
 
         RestTemplate restTemplate = createRestTemplateWithTimeouts();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -141,10 +141,10 @@ public class V20251119153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
             migrationLogger.println("========================================\n");
             migrationLogger.flush();
 
-            log.info("✅ Migration completed");
+            log.info("Migration completed");
             log.info("Schemas created: {}, skipped: {}", totalSchemasCreated, totalSchemasSkipped);
             log.info("Data records created: {}, skipped: {}", totalDataCreated, totalDataSkipped);
-            log.info("📝 Migration log file: {}", absoluteLogPath);
+            log.info("Migration log file: {}", absoluteLogPath);
         }
     }
 
@@ -689,7 +689,7 @@ public class V20251119153500__migrate_mdms_data_to_tenant_in extends BaseJavaMig
     private PrintWriter initializeMigrationLogger(String logFilePath, String absolutePath) throws Exception {
         Files.createDirectories(Paths.get("./logs"));
         FileWriter fileWriter = new FileWriter(logFilePath, true);
-        log.info("📝 Migration log file created: {}", absolutePath);
+        log.info("Migration log file created: {}", absolutePath);
         return new PrintWriter(fileWriter, true);
     }
 

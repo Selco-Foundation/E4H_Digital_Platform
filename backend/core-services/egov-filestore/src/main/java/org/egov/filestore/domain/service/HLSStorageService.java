@@ -27,11 +27,20 @@ public class HLSStorageService {
             List<MultipartFile> filesToStore, String module, String tag,
             String tenantId, RequestInfo requestInfo) {
 
+        log.trace("Entering save method for HLS with module: {}, tag: {}, tenantId: {}, fileCount: {}", 
+                module, tag, tenantId, filesToStore.size());
         log.info(UPLOAD_MESSAGE, module, tag, filesToStore.size());
 
+        log.debug("Mapping {} HLS files to artifacts", filesToStore.size());
         List<Artifact> artifacts =
                 artifactMapper.mapHLSArtifact(filesToStore, module, tag, tenantId);
+        log.debug("Mapped {} files to {} HLS artifacts", filesToStore.size(), artifacts.size());
 
-        return this.artifactRepository.saveHLS(artifacts, requestInfo);
+        log.info("Saving HLS artifacts to repository for module: {}, tag: {}", module, tag);
+        List<String> fileStoreIds = this.artifactRepository.saveHLS(artifacts, requestInfo);
+        log.debug("Saved HLS artifacts, generated {} fileStoreIds", fileStoreIds.size());
+        log.info("HLS file storage completed for module: {}, tag: {}, fileStoreIds count: {}", 
+                module, tag, fileStoreIds.size());
+        return fileStoreIds;
     }
 }

@@ -42,6 +42,7 @@ public class BoundaryUtil {
 
 //    @Cacheable(value="boundaryConfiguration")
     public Map<String, Boundary> getBoundaryByCode() {
+        log.trace("Entering getBoundaryByCode method");
         Map<String, Boundary> listBlock = null;
         String params = "?boundaryType="+boundaryType+"&includeChildren=true&tenantId=in&hierarchyType="+boundaryHierarchyType;
         StringBuilder uri = new StringBuilder();
@@ -49,9 +50,11 @@ public class BoundaryUtil {
         RequestInfo requestInfo = new RequestInfo();
         Object response = null;
         try {
+            log.debug("Calling boundary service at URI: {}", uri);
             response = restTemplate.postForObject(uri.toString(), requestInfo, Map.class);
             if (response == null) {
-              throw new CustomException("CONFIG_ERROR", "Boundary service returned null response");
+                log.error("Boundary service returned null response for URI: {}", uri);
+                throw new CustomException("CONFIG_ERROR", "Boundary service returned null response");
             }
             String jsonString = objectMapper.writeValueAsString(response);
             listBlock = extractBlockToDistrictMapping(jsonString);

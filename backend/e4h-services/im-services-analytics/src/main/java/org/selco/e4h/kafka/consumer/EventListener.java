@@ -28,13 +28,17 @@ public class EventListener implements MessageListener<String, String> {
 	 * index 5. Core indexing
 	 */
 	public void onMessage(ConsumerRecord<String, String> data) {
-		log.info("Topic from CoreIndexMessageListener: " + data.topic());
+		log.trace("Message received from Kafka topic: {}", data.topic());
+		log.info("Processing message from topic: {}", data.topic());
 		// Adding in MDC so that tracer can add it in header
 		MDC.put(ServiceConstants.TENANTID_MDC_STRING, config.getStateLevelTenantId());
+		log.debug("MDC tenant ID set to: {}", config.getStateLevelTenantId());
 		try {
+			log.debug("Updating Elasticsearch document for topic: {}", data.topic());
 			indexerService.updateEsDoc(data.topic(), data.value());
+			log.info("Successfully processed message from topic: {}", data.topic());
 		} catch (Exception e) {
-			log.error("error while updating ES document: ", e);
+			log.error("Error while updating ES document for topic: {}", data.topic(), e);
 		}
 	}
 

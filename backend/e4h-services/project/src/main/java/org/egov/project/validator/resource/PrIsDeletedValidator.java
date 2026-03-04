@@ -22,12 +22,17 @@ public class PrIsDeletedValidator implements Validator<ProjectResourceBulkReques
 
     @Override
     public Map<ProjectResource, List<Error>> validate(ProjectResourceBulkRequest request) {
+        log.trace("Entering validate (PrIsDeletedValidator)");
+        log.info("Validating isDeleted field");
+        log.debug("Validating {} resources for isDeleted field", request.getProjectResource() != null ? request.getProjectResource().size() : 0);
         HashMap<ProjectResource, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectResource> validIndividuals = request.getProjectResource();
         validIndividuals.stream().filter(ProjectResource::getIsDeleted).forEach(individual -> {
             Error error = getErrorForIsDelete();
             populateErrorDetails(individual, error, errorDetailsMap);
         });
+        log.debug("IsDeleted validation completed - found {} errors", errorDetailsMap.size());
+        log.trace("Exiting validate (PrIsDeletedValidator)");
         return errorDetailsMap;
     }
 }
