@@ -35,21 +35,7 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     final appInitRepo = AppInitRepo();
 
     try {
-      final appConfig = await appInitRepo.searchAppConfiguration(
-        MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-            tenantId: env.envConfig.variables.tenantId,
-            moduleDetails: [
-              const MdmsModuleDetailsModel(
-                moduleName: 'E4H-FIELD-APP-CONFIG',
-                masterDetails: [
-                  MdmsMasterDetailsModel('appConfig'),
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
+      final appConfig = await appInitRepo.searchAppConfiguration();
 
       _cachedAppConfig = appConfig;
       emit(InitState.defaulted(appConfig: appConfig));

@@ -93,6 +93,11 @@ class Variables {
     'egov-mdms-service/v1/_search',
   );
 
+  static const _mobileAppGlobal = EnvEntry(
+    'MOBILE_APP_GLOBAL',
+    '',
+  );
+
   static const _tenantId = EnvEntry(
     'TENANT_ID',
     'default',
@@ -117,6 +122,13 @@ class Variables {
       : _dotEnv.get(_mdmsApi.key, fallback: _mdmsApi.value);
 
   String get completeMdmsApiUrl => '${baseUrl}${mdmsApiPath}';
+
+  String get mobileAppGlobalUrl => useFallbackValues
+      ? _mobileAppGlobal.value
+      : _dotEnv.get(
+          _mobileAppGlobal.key,
+          fallback: _mobileAppGlobal.value,
+        );
 
   String get actionMapApiPath => useFallbackValues
       ? _actionMapUrl.value
