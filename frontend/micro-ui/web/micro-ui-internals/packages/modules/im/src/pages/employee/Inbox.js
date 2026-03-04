@@ -9,10 +9,10 @@ const Inbox = () => {
   const { t } = useTranslation();
   let tenantId = Digit.ULBService.getCurrentTenantId();
   const stateTenantId = Digit.ULBService.getStateId();
-  const { userName } = Digit.UserService.getUser().info;
+  const { userName, roles } = Digit.UserService.getUser().info;
   const [totalRecords, setTotalRecords] = useState(0);
-  const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
   const { nearing } = Digit.Hooks.useQueryParams();
+  const isTechPocUser = (roles || []).every((role) => role.code === "COMPLAINT_FACILITATOR_2" || role.code === "EMPLOYEE");
 
   const isCodePresent = (array, codeToCheck) => array.some((item) => item.code === codeToCheck);
 
@@ -31,7 +31,18 @@ const Inbox = () => {
       }
     })() || {
       filters: {
-        wfFilters: { assignee: [{ code: isCodePresent(userRoles, "COMPLAINT_RESOLVER") ? userName : "" }] },
+        wfFilters: isCodePresent(roles, "COMPLAINT_RESOLVER")
+          ? { assignee: [{ code: userName }] }
+          : isTechPocUser
+          ? {
+              assignee: [{ code: userName }],
+              wfStatus: [
+                { code: "RMS_DEVICE_PENDING_TECH_POC" },
+                { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
+                { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
+              ],
+            }
+          : { assignee: [{ code: "" }] },
       },
       search: "",
       sort: {},
