@@ -9,7 +9,18 @@ import org.egov.im.repository.ServiceRequestRepository;
 import org.egov.im.util.HRMSUtil;
 import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
-import org.egov.im.web.models.*;
+import org.egov.im.web.models.AuditDetails;
+import org.egov.im.web.models.Boundary;
+import org.egov.im.web.models.Document;
+import org.egov.im.web.models.Incident;
+import org.egov.im.web.models.IncidentRequest;
+import org.egov.im.web.models.IncidentRequestWrapper;
+import org.egov.im.web.models.IndexView;
+import org.egov.im.web.models.RequestSearchCriteria;
+import org.egov.im.web.models.SendBackReason;
+import org.egov.im.web.models.User;
+import org.egov.im.web.models.Workflow;
+import org.egov.im.web.models.WarrantyStatus;
 import org.egov.im.web.models.Idgen.IdResponse;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -96,6 +107,9 @@ public class EnrichmentService {
 
         incident.setAccountId(incidentRequest.getIncident().getReporter().getUuid());
         incident.setReporterTenant(incidentRequest.getIncident().getReporter().getTenantId());
+        if (incident.getWarrantyStatus() == null) {
+            incident.setWarrantyStatus(WarrantyStatus.WITHIN_WARRANTY);
+        }
 
         log.trace("Enriching localized district and block names");
         localizationService.enrichLocalizedDistrictAndBlockNames(incidentRequest, boundary);
@@ -286,6 +300,11 @@ public class EnrichmentService {
         if (indexView == null) {
             indexView = new IndexView();
             wrapper.setIndexView(indexView);
+        }
+
+        // Set warranty status in index view (raw value)
+        if (incidentRequest.getIncident().getWarrantyStatus() != null) {
+            indexView.setWarrantyStatus(incidentRequest.getIncident().getWarrantyStatus().toString());
         }
 
         // Fetch HCR and Vendor details
@@ -487,5 +506,55 @@ public class EnrichmentService {
                         .collect(Collectors.joining(" , "));
 
         indexView.setDocumentUrls(fileStoreUrls);
+    }
+
+    public Map<String, Object> getFacilityDetailsFromBoundaryCode(IncidentRequest incidentRequest) {
+        Incident incident = incidentRequest.getIncident();
+        String boundaryCode = incident.getBoundaryCode();
+        String tenantId = incident.getTenantId();
+
+        if (boundaryCode == null || boundaryCode.isEmpty()) {
+            log.error("No boundaryCode provided in incident request, cannot enrich facility details");
+            throw new CustomException("BOUNDARY_CODE_MISSING", "Boundary code not provided to enrich facility details");
+        }
+
+        log.trace("Fetching facility details from facility registry for boundaryCode={}", boundaryCode);
+        try {
+            String url = UriComponentsBuilder.fromHttpUrl(config.getFacilityHost() + config.getFacilitySearchPath())
+                    .queryParam("tenantId", tenantId != null ? tenantId : "")
+                    .queryParam("boundaryCode", boundaryCode)
+                    .toUriString();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+            HttpEntity<Object> requestEntity = new HttpEntity<>(headers);
+
+            ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    requestEntity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> responseMap = responseEntity.getBody();
+
+            if (responseMap != null) {
+                List<Map<String, Object>> facilities = (List<Map<String, Object>>) responseMap.get("facilities");
+
+                if (facilities != null && !facilities.isEmpty()) {
+                    Map<String, Object> facility = facilities.get(0);
+                    return facility;
+                } else {
+                    log.warn("No facility found in facility registry for boundaryCode: {}", boundaryCode);
+                    throw new CustomException("FACILITY_NOT_FOUND", "Cannot find facility");
+                }
+            }
+        } catch (CustomException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Exception while enriching facility details for boundaryCode: {}", boundaryCode, e);
+            throw new CustomException("FACILITY_NOT_FOUND", "Cannot find facility");
+        }
+        return Collections.emptyMap();
     }
 }

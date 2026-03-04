@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
-import { Button, Dropdown, Loader, MultiUploadWrapper, PopUp } from "@selco/digit-ui-react-components";
+import { Button, Dropdown, Loader, MultiUploadWrapper, PopUp, Toast } from "@selco/digit-ui-react-components";
 import { useRouteMatch, useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
 import { FormComposer } from "../../../components/FormComposer";
-import { createComplaint } from "../../../redux/actions/index";
+import { populateCreateResponse } from "../../../redux/actions/index";
 import { Link } from "react-router-dom";
 
 export const CreateComplaint = ({ parentUrl }) => {
@@ -33,13 +33,13 @@ export const CreateComplaint = ({ parentUrl }) => {
   const specificFileConstraint = [
     { type: "video", maxSize: 50, maxFiles: 2 },
     { type: "image", maxSize: 10, maxFiles: 5 },
-    { type: "fir", maxSize: 10, maxFiles: 1 },
+    { type: "fir", maxSize: 5, maxFiles: 5 },
   ];
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
   const [error, setError] = useState(null);
+  const [creationError, setCreationError] = useState(null);
   const [canSubmit, setSubmitValve] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const tenantId = window.Digit.SessionStorage.get("Employee.tenantId");
   const [complaintType, setComplaintType] = useState({});
   const [subTypeMenu, setSubTypeMenu] = useState([]);
@@ -47,17 +47,21 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [disbaledUpload, setDisableUpload] = useState(true);
   const [phcMenuNew, setPhcMenu] = useState([]);
   const [subType, setSubType] = useState({});
-  const [systemFunctionality, setSystemFunctionality] = useState();
+  const [systemFunctionality, setSystemFunctionality] = useState({});
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
   const [blockUI, setBlockUI] = useState(false);
   const [selectBoundaryCode, setSelectBoundaryCode] = useState("");
-  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
+    country: ["-"],
+  };
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
   const [stateBoundaryCode, setStateBoundaryCode] = useState("");
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
+  const [isInstallationTicket, setIsInstallationTicket] = useState(false);
+  const [isUninstalledFacility, setIsUninstalledFacility] = useState(false);
   const isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT";
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
@@ -83,10 +87,29 @@ export const CreateComplaint = ({ parentUrl }) => {
       setFacilityOptions(facilityData?.facilities?.map((facility) => ({
         code: facility.boundaryCode,
         id: facility.facilityId,
+        status: facility.facilityStatus,
         parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
       })));
     }
   }, [facilityBoundaries, facilityData]);
+
+  useEffect(() => {
+    if (district?.code && blockOptions?.length) {
+      const newBlocksMenu = blockOptions?.filter((blockOption) => blockOption?.parentCode === district.code);
+      setBlockMenu(newBlocksMenu);
+    } else {
+      setBlockMenu([]);
+    }
+  }, [district, blockOptions]);
+
+  useEffect(() => {
+    if (block?.code && facilityOptions?.length) {
+      const newFacilityMenu = facilityOptions.filter((facility) => facility?.parentCode === block.code);
+      setFacilityMenu(newFacilityMenu);
+    } else {
+      setFacilityMenu([]);
+    }
+  }, [block, facilityOptions]);
 
   useEffect(() => {
     setSortedDistrictMenu(
@@ -126,6 +149,15 @@ export const CreateComplaint = ({ parentUrl }) => {
       setFirState({ newArr: [], mappedArray: [] });
     }
   }, [isTheftIssue]);
+
+  useEffect(() => {
+    if (creationError) {
+      const timeOut = setTimeout(() => {
+        setCreationError("");
+      }, 2500);
+      return () => clearTimeout(timeOut);
+    }
+  }, [creationError]);
 
   let sortedSubMenu = [];
   if (subTypeMenu !== null) {
@@ -219,6 +251,49 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, [t, districtMenu, blockOptions, facilityOptions, selectBoundaryCode, stateBoundaryCode]);
 
   useEffect(() => {
+    if (complaintType?.key?.toUpperCase() === "UNINSTALL") {
+      setIsInstallationTicket(true);
+      setSystemFunctionality({
+        key: "FUNCTIONAL",
+        name: t("Yes"),
+      });
+      setSubType({
+        key: "UninstallSolarSystem",
+        name: t("SERVICEDEFS.UNINSTALLSOLARSYSTEM"),
+      });
+
+    } else if (complaintType?.key?.toUpperCase() === "REINSTALL") {
+      setIsInstallationTicket(true);
+      setSystemFunctionality({
+        key: "NON_FUNCTIONAL",
+        name: t("No"),
+      });
+      setSubType({
+        key: "ReinstallSolarSystem",
+        name: t("SERVICEDEFS.REINSTALLSOLARSYSTEM"),
+      });
+
+    } else {
+      setIsInstallationTicket(false);
+      setSystemFunctionality({});
+      setSubType({});
+    }
+  }, [complaintType, t]);
+
+  useEffect(() => {
+    if (healthcentre?.status === "UNINSTALLED") {
+      setIsUninstalledFacility(true);
+      setComplaintType({
+        key: "Reinstall",
+        name: t("SERVICEDEFS.REINSTALL"),
+      });
+    } else {
+      setIsUninstalledFacility(false);
+      setComplaintType({});
+    }
+  }, [healthcentre, t]);
+
+  useEffect(() => {
     (async () => {
       setError(null);
       if (file) {
@@ -270,24 +345,33 @@ export const CreateComplaint = ({ parentUrl }) => {
                 moduleName: "Incident",
                 status: [
                   "PENDINGFORASSIGNMENT",
+                  "PENDINGFORASSIGNMENT_RMS_DEVICE",
+                  "PENDINGFORASSIGNMENT_THEFT",
+                  "RMS_DEVICE_PENDING_TECH_POC",
                   "PENDINGRESOLUTION",
+                  "OUT_OF_SCOPE",
+                  "OUT_OF_WARRANTY_PENDING_TECH_POC",
+                  "PENDING_REVISION",
+                  "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2",
                   "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
                   "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
+                  "PENDING_RESOLUTION_OUT_OF_SCOPE",
                   "PENDING_RESOLUTION_SPARE_PART_NEEDED",
-                  "PENDING_RESOLUTION_OUT_OF_WARRANTY"
+                  "PENDING_RESOLUTION_OUT_OF_WARRANTY",
                 ],
                 tenantId,
               },
+              jurisdictionSearchCriteria: jurisdictionCurrentBoundary,
               moduleSearchCriteria: {
                 facility: [healthcentre.code],
                 incidentType: [complaintType.key],
                 incidentSubType: [subType?.key],
                 tenantId,
-                sortOrder: "DESC"
+                sortOrder: "DESC",
               },
               limit: 100,
-              offset: 0
-            }
+              offset: 0,
+            },
           });
 
           if (data?.items?.length) {
@@ -327,9 +411,6 @@ export const CreateComplaint = ({ parentUrl }) => {
     setDistrict(selectedDistrict);
     setBlock({});
     setHealthCentre({});
-
-    const newBlocksMenu = blockOptions?.filter((blockOption) => blockOption?.parentCode === selectedDistrict?.code);
-    setBlockMenu(newBlocksMenu);
   };
 
   function selectedSubType(value) {
@@ -348,15 +429,12 @@ export const CreateComplaint = ({ parentUrl }) => {
   const handleBlockChange = (selectedBlock) => {
     setHealthCentre({});
     setBlock(selectedBlock);
-    const newFacilityMenu = facilityOptions.filter((facility) => facility?.parentCode === selectedBlock?.code);
-    setFacilityMenu(newFacilityMenu);
   };
 
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
     if (!canSubmit) return;
-    setSubmitted(true);
-    !submitted && !abc && onSubmit(data);
+    !abc && onSubmit(data);
   };
   const onSubmit = async (data) => {
     Digit.Utils.analytics.trackSubmitTicket({ page_name: "new_ticket_page" });
@@ -378,7 +456,19 @@ export const CreateComplaint = ({ parentUrl }) => {
       uploadedFile,
       tenantId,
     };
-    await dispatch(createComplaint(formData));
+
+    setBlockUI(true);
+    const response = await Digit.Complaint.create(formData);
+
+    if (!response?.IncidentWrappers) {
+      setBlockUI(false);
+      const assignErrorMessage = Array.isArray(response) ? response?.[0]?.message : response?.message || response;
+      setCreationError(assignErrorMessage || t("CS_COMMON_SOMETHING_WENT_WRONG"));
+      return;
+    }
+
+    setBlockUI(false);
+    dispatch(populateCreateResponse(response));
     await client.refetchQueries(["fetchInboxData"]);
     history.push(parentUrl + "/incident/response");
   };
@@ -598,6 +688,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               selected={complaintType}
               select={selectedType}
               required={true}
+              disable={isUninstalledFacility}
             />
           ),
         },
@@ -615,6 +706,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               selected={subType}
               select={selectedSubType}
               required={true}
+              disable={isUninstalledFacility || isInstallationTicket}
             />
           ),
         },
@@ -632,6 +724,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 selected={systemFunctionality}
                 select={selectedSystemFunctionality}
                 required={true}
+                disable={isUninstalledFacility || isInstallationTicket}
               />
             </div>
           ),
@@ -703,7 +796,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 mediaIntent="video"
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
-              <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_VIDEOS")}</div>
+              <div style={{ marginTop: "10px", marginBottom: "20px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_VIDEOS")}</div>
             </div>
           ),
         },
@@ -721,8 +814,8 @@ export const CreateComplaint = ({ parentUrl }) => {
                       getFormState={(state) => getFirData(state)}
                       onUploadStatusChange={setIsFirUploading}
                       allowedFileTypesRegex={/(pdf|jpg|jpeg|png|image)$/i}
-                      allowedMaxSizeInMB={10}
-                      maxFilesAllowed={1}
+                      allowedMaxSizeInMB={5}
+                      maxFilesAllowed={5}
                       disabled={disbaledUpload}
                       ulb={Digit.SessionStorage.get("Employee.tenantId")}
                       acceptFiles={".pdf, .jpg, .jpeg, .png, image/*"}
@@ -776,7 +869,8 @@ export const CreateComplaint = ({ parentUrl }) => {
           <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
         </div>
       </div>
-      <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit && !submitted} label={t("FILE_INCIDENT")} />
+      <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit} label={t("FILE_INCIDENT")} />
+      {creationError && <Toast error={creationError} isDleteBtn={true} label={creationError} onClose={() => setCreationError(null)} />}
 
       {/* <button onClick={(!selectedOption || Object.keys(selectedOption).length == 0)}>Check Errors</button>  
       {errors.map((error, index) => (

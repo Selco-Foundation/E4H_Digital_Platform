@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Fragment } from "react";
+import React, { useState, useEffect, useCallback, Fragment, useMemo } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import {
   BreakLine,
@@ -82,7 +82,8 @@ const TLCaption = ({ data, comments }) => {
 const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup, selectedAction, onAssign, tenant, t }) => {
   // RAIN-5692 PGR : GRO is assigning complaint, Selecting employee and assign. Its not getting assigned.
   // Fix for next action  assignee dropdown issue
-  const stateArray = workflowDetails?.data?.initialActionState?.nextActions?.filter((ele) => ele?.action == selectedAction);
+  const initialActionState = workflowDetails?.data?.initialActionState || workflowDetails?.data?.actionState || {};
+  const stateArray = initialActionState?.nextActions?.filter((ele) => ele?.action == selectedAction);
   const useEmployeeData = Digit.Hooks.pgr.useEmployeeFilter(
     tenant,
     stateArray?.[0]?.assigneeRoles?.length > 0 ? stateArray?.[0]?.assigneeRoles?.join(",") : "",
@@ -116,6 +117,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     "RejectReasons",
     "SendBackReasons",
     "OutOfScopeReasons",
+    "RejectOutOfScopeReasons",
   ]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
   const [oowIssue, setOowIssue] = useState(null);
@@ -128,8 +130,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const processInstances = workflowDetails?.data?.processInstances || [];
   const oowActedVendor = processInstances.find((processInstance) => processInstance.action === "OUT_OF_WARRANTY")?.assigner;
   const currentOwner = processInstances[0]?.assignes?.[0];
-  const isRmsAssignmentToTechPoc = selectedAction === "ASSIGN" && processInstances[0]?.state?.state === "PENDINGFORASSIGNMENT_RMS_DEVICE";
-  const isTechPocRmsResolution = selectedAction === "RESOLVE" && processInstances[0]?.state?.state === "RMS_DEVICE_PENDING_TECH_POC";
+  const currentState = processInstances[0]?.state?.state;
+  const isRmsAssignmentToTechPoc = selectedAction === "ASSIGN" && currentState === "PENDINGFORASSIGNMENT_RMS_DEVICE";
+  const isTechPocRmsResolution = selectedAction === "RESOLVE" && currentState === "RMS_DEVICE_PENDING_TECH_POC";
+  const isRejectOutOfScope = selectedAction === "REJECT" && currentState === "OUT_OF_SCOPE";
 
   useEffect(() => {
     if (selectedAction === "REJECT") {
@@ -155,44 +159,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     setSelectedEmployee(employee);
   }
 
-  function addComment(e) {
-    if (e.target.value.length > 256) {
-      setError(t("CS_COMMENT_LENGTH_LIMIT_EXCEED"));
-    }
-    // else if(!/^[a-zA-Z0-9\s./,]*$/.test(e.target.value)){
-    //   setError(t("CS_COMMENT_INVALID_CHARACTERS"))
-    // }
-    else {
-      setError(null);
-      setComments(e.target.value);
-    }
-  }
-
-  function addOOWResponses(e, setField) {
-    if (e.target.value.length > 256) {
-      setError(t("CS_TEXT_LENGTH_LIMIT_EXCEED"));
-    } else {
-      setError(null);
-      setField(e.target.value);
-    }
-  }
-
-  function addSPCRootAnalysis(e, setField) {
-    if (e.target.value.length > 1000) {
-      setError(t("SPC_ROOT_ANALYSIS_LENGTH_LIMIT_EXCEED"));
-    } else {
-      setError(null);
-      setField(e.target.value);
-    }
-  }
-
-  function addSPCSparePartToBeReplaced(e, setField) {
-    if (e.target.value.length > 200) {
-      setError(t("SPC_PART_TO_BE_REPLACED_LENGTH_LIMIT_EXCEED"));
-    } else {
-      setError(null);
-      setField(e.target.value);
-    }
+  function addUserResponses(e, setField) {
+    setError(null);
+    setField(e.target.value);
   }
 
   function onSelectReopenReason(reason) {
@@ -216,7 +185,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     if (error) {
       const timeOut = setTimeout(() => {
         clearError();
-      }, 1000);
+      }, 2500);
       return () => clearTimeout(timeOut);
     }
   }, [error, clearError]);
@@ -284,6 +253,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               ? t("CS_ACTION_DECLINE_TICKET")
               : selectedAction === "REOPEN"
               ? t("CS_COMMON_REOPEN")
+              : selectedAction === "REOPEN_RMS"
+              ? t("CS_COMMON_REOPEN_RMS")
               : selectedAction === "RESOLVE"
               ? t("CS_COMMON_RESOLVE")
               : selectedAction === "CLOSE"
@@ -316,6 +287,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           ? t("CS_COMMON_DECLINE")
           : selectedAction === "REOPEN"
           ? t("CS_ACTION_REOPEN")
+          : selectedAction === "REOPEN_RMS"
+          ? t("CS_ACTION_REOPEN_RMS")
           : selectedAction === "RESOLVE"
           ? t("CS_COMMON_RESOLVE_BUTTON")
           : selectedAction === "CLOSE"
@@ -340,35 +313,67 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         const isTextareaAction =
           ["SENDBACK", "REJECT", "MARK_OUT_OF_SCOPE"].includes(selectedAction) &&
           (selectedAction === "MARK_OUT_OF_SCOPE"
-            ? selectedOutOfScopeReason?.additionalInputs?.[0].type === "textarea"
+            ? selectedOutOfScopeReason?.additionalInputs?.[0]?.type === "textarea"
             : selectedAction === "SENDBACK"
-            ? selectedSendBackReason?.additionalInputs?.[0].type === "textarea"
-            : selectedRejectReason?.additionalInputs?.[0].type === "textarea");
+            ? selectedSendBackReason?.additionalInputs?.[0]?.type === "textarea"
+            : selectedRejectReason?.additionalInputs?.[0]?.type === "textarea");
 
         const isCommentsMandatory =
           (isTextareaAction || selectedAction === "RESOLVE" || selectedAction === "REVISE" || selectedAction === "STATUS_UPDATE") && !comments.trim();
-
-        const oowMandateCondition =
-          ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !(oowIssue && oowRootCause && oowRecommendedSolution && oowTimeToResolve);
-
-        const spcMandateCondition = selectedAction === "SPARE_PART_NEEDED" && !(spcRootAnalysis && spcSparePartToBeReplaced);
 
         const validations = [
           { condition: selectedAction === "REJECT" && !selectedRejectReason, message: "CS_MANDATORY_DECLINE_REASON" },
           { condition: selectedAction === "SENDBACK" && !selectedSendBackReason, message: "CS_MANDATORY_SENDBACK_REASON" },
           { condition: selectedAction === "MARK_OUT_OF_SCOPE" && !selectedOutOfScopeReason, message: "CS_MANDATORY_OUT_OF_SCOPE_REASON" },
           { condition: isCommentsMandatory, message: "CS_MANDATORY_COMMENTS" },
-          { condition: selectedAction === "REOPEN" && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
+          { condition: comments?.length > 1000, message: "CS_COMMENT_LENGTH_LIMIT_EXCEED" },
+          { condition: ["REOPEN", "REOPEN_RMS"].includes(selectedAction) && selectedReopenReason === null, message: "CS_REOPEN_REASON_MANDATORY" },
           { condition: !isRmsAssignmentToTechPoc && selectedAction === "ASSIGN" && selectedEmployee === null, message: "CS_ASSIGNEE_MANDATORY" },
-          { condition: oowMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
-          { condition: spcMandateCondition, message: "ES_COMMON_PLEASE_ENTER_ALL_MANDATORY_FIELDS" },
-          { condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && !oowTotalCostOfSolution, message: "CS_SOLUTION_COST_MANDATORY" },
+          {
+            condition: selectedAction === "SPARE_PART_NEEDED" && (!spcRootAnalysis?.trim() || spcRootAnalysis?.length > 1000),
+            message: "CS_SPC_ROOT_ANALYSIS_MANDATORY",
+          },
+          {
+            condition: selectedAction === "SPARE_PART_NEEDED" && (!spcSparePartToBeReplaced?.trim() || spcSparePartToBeReplaced?.length > 200),
+            message: "CS_SPC_SPARE_PART_TO_BE_REPLACED_MANDATORY",
+          },
+          {
+            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (!oowIssue?.trim() || oowIssue?.length > 1000),
+            message: "CS_OOW_ISSUE_MANDATORY",
+          },
+          {
+            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (!oowRootCause?.trim() || oowRootCause?.length > 1000),
+            message: "CS_OOW_ROOT_CAUSE_MANDATORY",
+          },
+          {
+            condition:
+              ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (!oowRecommendedSolution?.trim() || oowRecommendedSolution?.length > 1000),
+            message: "CS_OOW_RECOMMENDED_SOLUTION_MANDATORY",
+          },
+          {
+            condition: ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (!oowTimeToResolve?.trim() || oowTimeToResolve?.length > 200),
+            message: "CS_OOW_RESOLUTION_TIME_MANDATORY",
+          },
+          {
+            condition:
+              ["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) &&
+              (!oowTotalCostOfSolution?.trim() || isNaN(parseFloat(oowTotalCostOfSolution)) || parseFloat(oowTotalCostOfSolution) > 10000000),
+            message: "CS_SOLUTION_COST_MANDATORY",
+          },
+          {
+            condition: currentState === "RMS_DEVICE_PENDING_TECH_POC" && selectedAction === "RESOLVE" && comments?.trim()?.length < 100,
+            message: "RMS_TECH_POC_RESOLUTION_COMMENT_MANDATORY"
+          },
           {
             condition:
               ["RESOLVE", "OUT_OF_WARRANTY", "STATUS_UPDATE", "SUBMIT"].includes(selectedAction) &&
               !isTechPocRmsResolution &&
               uploadedFile.length === 0,
             message: "CS_MANDATORY_FILE_UPLOAD",
+          },
+          {
+            condition: selectedAction === "STATUS_UPDATE" && uploadedFile.length > 5,
+            message: "OOW_STATUS_UPDATE_MAX_FILE_ERROR",
           },
           {
             condition: selectedAction === "SPARE_PART_NEEDED" && uploadedFile.length < 2,
@@ -426,7 +431,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <CardLabel>{t("CS_DECLINE_COMPLAINT")}*</CardLabel>
             <Dropdown
               selected={selectedRejectReason}
-              option={rejectSendBackOutOfScopeReasons?.Incident?.RejectReasons?.map((reason) => ({
+              option={(isRejectOutOfScope
+                ? rejectSendBackOutOfScopeReasons?.Incident?.RejectOutOfScopeReasons
+                : rejectSendBackOutOfScopeReasons?.Incident?.RejectReasons
+              )?.map((reason) => ({
                 ...reason,
                 localizedCode: t(reason.code), // Use localized text if available, otherwise fallback to default name
               }))}
@@ -482,53 +490,54 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             )}
           </React.Fragment>
         ) : null}
-        {selectedAction === "REOPEN" ? (
+        {["REOPEN", "REOPEN_RMS"].includes(selectedAction) ? (
           <React.Fragment>
             <CardLabel>{t("CS_REOPEN_COMPLAINT")}*</CardLabel>
             <Dropdown selected={selectedReopenReason} option={reopenReasonMenu} select={onSelectReopenReason} />
           </React.Fragment>
         ) : null}
         {(selectedAction !== "SENDBACK" &&
-          selectedAction !== "MARK_OUT_OF_SCOPE" &&
           selectedAction !== "OUT_OF_WARRANTY" &&
           selectedAction !== "SPARE_PART_NEEDED" &&
           selectedAction !== "SUBMIT") ||
-        selectedSendBackReason?.additionalInputs?.[0].type === "textarea" ||
-        selectedOutOfScopeReason?.additionalInputs?.[0].type === "textarea" ? (
+        selectedSendBackReason?.additionalInputs?.[0]?.type === "textarea" ||
+        selectedOutOfScopeReason?.additionalInputs?.[0]?.type === "textarea" ? (
           <>
             {selectedAction !== "ASSIGN" &&
             selectedAction !== "REOPEN" &&
+            selectedAction !== "REOPEN_RMS" &&
             selectedAction !== "APPROVE" &&
-            !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0].type !== "textarea") ? (
+            !(selectedAction === "REJECT" && selectedRejectReason?.additionalInputs?.[0]?.type !== "textarea") &&
+            !(selectedAction === "MARK_OUT_OF_SCOPE" && selectedOutOfScopeReason?.additionalInputs?.[0]?.type !== "textarea") ? (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}*</CardLabel>
             ) : (
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
             )}
-            <TextArea name="comment" onChange={addComment} value={comments} />
+            <TextArea name="comment" onChange={(e) => addUserResponses(e, setComments)} value={comments} />
           </>
         ) : null}
         {["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (
           <React.Fragment>
             <CardLabel>{t("OOW_ACTION_ISSUE_OBSERVATION")}*</CardLabel>
-            <TextArea name="oowIssue" onChange={(e) => addOOWResponses(e, setOowIssue)} value={oowIssue} />
+            <TextArea name="oowIssue" onChange={(e) => addUserResponses(e, setOowIssue)} value={oowIssue} />
             <CardLabel>{t("OOW_ACTION_ISSUE_ROOT_CAUSE")}*</CardLabel>
-            <TextArea name="oowRootCause" onChange={(e) => addOOWResponses(e, setOowRootCause)} value={oowRootCause} />
+            <TextArea name="oowRootCause" onChange={(e) => addUserResponses(e, setOowRootCause)} value={oowRootCause} />
             <CardLabel>{t("OOW_ACTION_ISSUE_SOLUTION")}*</CardLabel>
-            <TextArea name="oowRecommendedSolution" onChange={(e) => addOOWResponses(e, setOowRecommendedSolution)} value={oowRecommendedSolution} />
+            <TextArea name="oowRecommendedSolution" onChange={(e) => addUserResponses(e, setOowRecommendedSolution)} value={oowRecommendedSolution} />
             <CardLabel>{t("OOW_ACTION_ISSUE_RESOLUTION_TIME")}*</CardLabel>
-            <TextInput t={t} type={"text"} onChange={(e) => addOOWResponses(e, setOowTimeToResolve)} value={oowTimeToResolve} />
+            <TextInput t={t} type={"text"} onChange={(e) => addUserResponses(e, setOowTimeToResolve)} value={oowTimeToResolve} />
             <CardLabel>{t("OOW_ACTION_ISSUE_SOLUTION_COST")}*</CardLabel>
-            <TextInput t={t} type={"number"} onChange={(e) => addOOWResponses(e, setOowTotalCostOfSolution)} value={oowTotalCostOfSolution} />
+            <TextInput t={t} type={"number"} onChange={(e) => addUserResponses(e, setOowTotalCostOfSolution)} value={oowTotalCostOfSolution} />
           </React.Fragment>
         )}
         {selectedAction === "SPARE_PART_NEEDED" && (
           <React.Fragment>
             <CardLabel>{t("SPC_ACTION_ROOT_CAUSE_ANALYSIS")}*</CardLabel>
-            <TextArea name="spcRootAnalysis" onChange={(e) => addSPCRootAnalysis(e, setSpcRootAnalysis)} value={spcRootAnalysis} />
+            <TextArea name="spcRootAnalysis" onChange={(e) => addUserResponses(e, setSpcRootAnalysis)} value={spcRootAnalysis} />
             <CardLabel>{t("SPC_ACTION_SPARE_PART_TO_BE_REPLACED")}*</CardLabel>
             <TextArea
               name="spcSparePartToBeReplaced"
-              onChange={(e) => addSPCSparePartToBeReplaced(e, setSpcSparePartToBeReplaced)}
+              onChange={(e) => addUserResponses(e, setSpcSparePartToBeReplaced)}
               value={spcSparePartToBeReplaced}
             />
           </React.Fragment>
@@ -596,6 +605,8 @@ export const ComplaintDetails = (props) => {
   const history = useHistory();
   const [isIpadView, setIsIpadView] = React.useState(window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth);
   const [blockUI, setBlockUI] = useState(null);
+  const [isRmsTicketToReopen, setIsRmsTicketToReopen] = useState(false);
+
   const onResize = () => {
     if (window.innerWidth <= iPadMaxWidth && window.innerWidth >= iPadMinWidth) {
       setIsIpadView(true);
@@ -637,18 +648,34 @@ export const ComplaintDetails = (props) => {
   let currentLoginUser = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.userName;
 
   const [imagesToShowBelowComplaintDetails, setImagesToShowBelowComplaintDetails] = useState([]);
+  const [timelineState, setTimelineState] = useState([]);
 
-  // RAIN-5692 PGR : GRO is assigning complaint, Selecting employee and assign. Its not getting assigned.
-  // Fix for next action  assignee dropdown issue
-  if (workflowDetails && workflowDetails?.data) {
-    workflowDetails.data.initialActionState = workflowDetails?.data?.initialActionState || { ...workflowDetails?.data?.actionState } || {};
-    workflowDetails.data.actionState = { ...workflowDetails.data };
-  }
-  if (complaintDetails) {
-    complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO = complaintDetails?.details?.CS_COMPLAINT_DETAILS_TICKET_NO.split("/")[0];
-  }
+  const displayedComplaintDetails = useMemo(() => {
+    if (!complaintDetails?.details?.CS_COMPLAINT_DETAILS_TICKET_NO) {
+      return complaintDetails;
+    }
 
-  const timeline = workflowDetails?.data?.timeline || [];
+    return {
+      ...complaintDetails,
+      details: {
+        ...complaintDetails.details,
+        CS_COMPLAINT_DETAILS_TICKET_NO: complaintDetails.details.CS_COMPLAINT_DETAILS_TICKET_NO.split("/")[0],
+      },
+    };
+  }, [complaintDetails]);
+
+  useEffect(() => {
+    if (
+      ["REJECTED", "RESOLVED"].includes(complaintDetails?.incident?.applicationStatus) &&
+      complaintDetails?.incident?.incidentType?.toUpperCase() === "RMS DEVICE"
+    ) {
+      setIsRmsTicketToReopen(true);
+    } else {
+      setIsRmsTicketToReopen(false);
+    }
+  }, [complaintDetails]);
+
+  const timeline = timelineState;
 
   let filteredTimeline = timeline;
 
@@ -670,29 +697,50 @@ export const ComplaintDetails = (props) => {
   }
 
   useEffect(() => {
-    if (workflowDetails) {
-      const { data: { timeline: complaintTimelineData } = {} } = workflowDetails;
-      if (complaintTimelineData) {
-        const applyAction = complaintTimelineData.find((action) => ["APPLY", "APPLY_THEFT", "APPLY_RMS_DEVICE"].includes(action.performedAction));
-        const initiate = complaintTimelineData.find((action) => action.performedAction === "INITIATE");
-        if (!initiate) {
-          const complaintTimelineDataNew = {
-            ...applyAction,
-            performedAction: "INITIATE",
-            state: "PENDINGRESOLUTIONNEW",
-            status: "PENDINGRESOLUTIONNEW",
-          };
-          applyAction["wfComment"] = [];
+    const complaintTimelineData = workflowDetails?.data?.timeline;
 
-          complaintTimelineData.push(complaintTimelineDataNew);
-        }
-        const actionByCitizenOnComplaintCreation = complaintTimelineData?.find((e) => ["APPLY", "APPLY_THEFT", "APPLY_RMS_DEVICE"].includes(e?.performedAction));
-        const { thumbnailsToShow } = actionByCitizenOnComplaintCreation;
-
-        thumbnailsToShow ? setImagesToShowBelowComplaintDetails(thumbnailsToShow) : null;
-      }
+    if (!complaintTimelineData) {
+      setTimelineState([]);
+      setImagesToShowBelowComplaintDetails([]);
+      return;
     }
-  }, [workflowDetails]);
+
+    const clonedTimeline = complaintTimelineData.map((action) => ({ ...action }));
+    const applyActionIndex = clonedTimeline.findIndex((action) =>
+      ["APPLY", "APPLY_THEFT", "APPLY_RMS_DEVICE"].includes(action.performedAction)
+    );
+
+    if (applyActionIndex === -1) {
+      setTimelineState([]);
+      setImagesToShowBelowComplaintDetails([]);
+      return;
+    }
+
+    const applyAction = clonedTimeline[applyActionIndex];
+    const thumbnailsToShow = applyAction?.thumbnailsToShow;
+    setImagesToShowBelowComplaintDetails(thumbnailsToShow || []);
+
+    const hasInitiate = clonedTimeline.some((action) => action.performedAction === "INITIATE");
+
+    if (!hasInitiate) {
+      const complaintTimelineDataNew = {
+        ...applyAction,
+        performedAction: "INITIATE",
+        state: "PENDINGRESOLUTIONNEW",
+        status: "PENDINGRESOLUTIONNEW",
+      };
+
+      clonedTimeline[applyActionIndex] = {
+        ...applyAction,
+        wfComment: [],
+        thumbnailsToShow: {},
+      };
+
+      clonedTimeline.push(complaintTimelineDataNew);
+    }
+
+    setTimelineState(clonedTimeline);
+  }, [workflowDetails?.data]);
 
   useEffect(() => {
     Digit?.Utils?.analytics?.trackPageView("ticket_details_page", {
@@ -713,8 +761,13 @@ export const ComplaintDetails = (props) => {
     setPopup(true);
   }
   useEffect(() => {
-    setTimeout(() => setError(""), 10000);
-  });
+    if (error) {
+      const timeOut = setTimeout(() => {
+        setError("");
+      }, 2500);
+      return () => clearTimeout(timeOut);
+    }
+  }, [error]);
 
   useEffect(() => {
     (async () => {
@@ -771,6 +824,7 @@ export const ComplaintDetails = (props) => {
       case "RESOLVE":
       case "REJECT":
       case "REOPEN":
+      case "REOPEN_RMS":
       case "CLOSE":
       case "SENDBACK":
       case "OUT_OF_WARRANTY":
@@ -815,8 +869,9 @@ export const ComplaintDetails = (props) => {
       spcResponses
     );
     if (!response?.IncidentWrappers) {
-      setError(response);
       setBlockUI(false);
+      const assignErrorMessage = Array.isArray(response) ? response?.[0]?.message : response?.message || response;
+      setError(assignErrorMessage || t("CS_COMMON_SOMETHING_WENT_WRONG"));
       return;
     }
 
@@ -851,6 +906,7 @@ export const ComplaintDetails = (props) => {
     let arrNew = arr.map((abc) => {
       switch (abc.performedAction) {
         case "REOPEN":
+        case "REOPEN_RMS":
           return { ...abc, reopenreason: reopenReasons.shift() };
         case "REJECT":
           return { ...abc, rejectReason: rejectReasons.shift() };
@@ -908,7 +964,10 @@ export const ComplaintDetails = (props) => {
         : {}),
     };
     const isFirstPendingForAssignment = arr.length - (index + 1) === 1 ? true : false;
-    if (checkpoint.status === "PENDINGFORASSIGNMENT" && complaintDetails?.audit) {
+    if (
+      ["PENDINGFORASSIGNMENT", "PENDINGFORASSIGNMENT_THEFT", "PENDINGFORASSIGNMENT_RMS_DEVICE"].includes(checkpoint.status) &&
+      complaintDetails?.audit
+    ) {
       if (isFirstPendingForAssignment) {
         const caption = {
           date: Digit.DateUtils.ConvertEpochToDate(complaintDetails.audit.details.createdTime),
@@ -1091,15 +1150,15 @@ export const ComplaintDetails = (props) => {
           <Loader />
         ) : (
           <StatusTable>
-            {complaintDetails &&
-              Object.keys(complaintDetails?.details).map((k, i, arr) => (
+            {displayedComplaintDetails &&
+              Object.keys(displayedComplaintDetails?.details).map((k, i, arr) => (
                 <Row
                   key={k}
                   label={t(k)}
                   text={
-                    Array.isArray(complaintDetails?.details[k])
-                      ? complaintDetails?.details[k].map((val) => (typeof val === "object" ? t(val?.code) : t(val)))
-                      : t(complaintDetails?.details[k], { defaultValue: complaintDetails?.details[k] }) || "N/A"
+                    Array.isArray(displayedComplaintDetails?.details[k])
+                      ? displayedComplaintDetails?.details[k].map((val) => (typeof val === "object" ? t(val?.code) : t(val)))
+                      : t(displayedComplaintDetails?.details[k], { defaultValue: displayedComplaintDetails?.details[k] }) || "N/A"
                   }
                   last={arr.length - 1 === i}
                 />
@@ -1125,11 +1184,11 @@ export const ComplaintDetails = (props) => {
           <React.Fragment>
             <CardSubHeader>{t(`CS_COMPLAINT_DETAILS_COMPLAINT_TIMELINE`)}</CardSubHeader>
 
-            {workflowDetails?.data?.timeline && workflowDetails?.data?.timeline?.length === 1 ? (
-              <CheckPoint isCompleted={true} label={t("CS_COMMON_" + workflowDetails?.data?.timeline[0]?.status)} />
+            {timeline && timeline.length === 1 ? (
+              <CheckPoint isCompleted={true} label={t("CS_COMMON_" + timeline[0]?.status)} />
             ) : (
               <ConnectingCheckPoints>
-                {workflowDetails?.data?.timeline &&
+                {timeline &&
                   filteredTimeline.map((checkpoint, index, arr) => {
                     return (
                       <React.Fragment key={index}>
@@ -1174,12 +1233,18 @@ export const ComplaintDetails = (props) => {
       {!isLoading && complaintDetails?.incident?.applicationStatus !== "CLOSEDAFTERRESOLUTION" && workflowDetails?.data?.nextActions?.length > 0 && (
         <ActionBar style={{ marginLeft: isIpadView ? "250px" : "none" }}>
           {displayMenu && workflowDetails?.data?.nextActions ? (
-            <Menu options={workflowDetails?.data?.nextActions.map((action) => action.action)} t={t} onSelect={onActionSelect} />
+            <Menu
+              options={(workflowDetails?.data?.nextActions || [])
+                .filter((action) => (!isRmsTicketToReopen || action.action === "REOPEN_RMS"))
+                .map((action) => action.action)}
+              t={t}
+              onSelect={onActionSelect}
+            />
           ) : null}
           <SubmitBar label={t("WF_TAKE_ACTION")} onSubmit={() => setDisplayMenu(!displayMenu)} />
         </ActionBar>
       )}
-      {error && error[0].message && <Toast error={error[0].message} label={error[0].message} onClose={closeToast} />}
+      {error && <Toast error={error} isDleteBtn={true} label={error} onClose={() => setError("")} />}
     </React.Fragment>
   );
 };

@@ -137,13 +137,13 @@ public class InboxService {
 
     public InboxResponse fetchInboxData(InboxSearchCriteria criteria, RequestInfo requestInfo) {
         log.trace("Method invoked: fetchInboxData");
-        String tenantId = criteria.getTenantId();
-        String moduleName = criteria.getProcessSearchCriteria() != null 
+        String tenantIdLog = criteria.getTenantId();
+        String moduleNameLog = criteria.getProcessSearchCriteria() != null
                 ? criteria.getProcessSearchCriteria().getModuleName() : null;
         String userId = requestInfo != null && requestInfo.getUserInfo() != null 
                 ? requestInfo.getUserInfo().getUuid() : null;
         
-        log.info("Fetching inbox data - tenantId: {}, module: {}, userId: {}", tenantId, moduleName, userId);
+        log.info("Fetching inbox data - tenantId: {}, module: {}, userId: {}", tenantIdLog, moduleNameLog, userId);
         
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
         HashMap moduleSearchCriteria = criteria.getModuleSearchCriteria();
