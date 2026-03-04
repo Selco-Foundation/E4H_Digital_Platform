@@ -260,6 +260,14 @@ public class IMService {
         log.trace("Validating update request");
         validator.validateUpdate(request, mdmsData);
         log.trace("Enriching update request");
+        if (request.getIncident().getWarrantyStatus() == null) {
+            request.getIncident().setWarrantyStatus(WarrantyStatus.WITHIN_WARRANTY);
+        }
+        if (request.getWorkflow() != null
+                && request.getWorkflow().getAction() != null
+                && request.getWorkflow().getAction().equalsIgnoreCase("OUT_OF_WARRANTY")) {
+            request.getIncident().setWarrantyStatus(WarrantyStatus.OUT_OF_WARRANTY);
+        }
         enrichmentService.enrichUpdateRequest(request);
         String startingStatus = request.getIncident().getApplicationStatus();
         log.info("Updating workflow status for incident update");
