@@ -110,6 +110,16 @@ public class RequestsApiController{
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
+    @RequestMapping(value="/request/migration/v2/_update", method = RequestMethod.POST)
+    public ResponseEntity<IncidentResponse> migrationV2UpdateTheftStatus(@Valid @RequestBody MigrationV2Request request) {
+        log.trace("RequestsApiController::migrationV2UpdateTheftStatus method invoked");
+        log.info("Received migration v2 update request for tenantId={}", request.getTenantId());
+        MigrationV2Request enrichedReq = imService.migrationV2Update(request);
+        ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
+        IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.emptyList()).build();
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     @RequestMapping(value="/request/_count", method = RequestMethod.POST)
     public ResponseEntity<CountResponse> requestsCountPost(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
                                                            @Valid @ModelAttribute RequestSearchCriteria criteria) {

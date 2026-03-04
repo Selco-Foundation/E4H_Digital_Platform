@@ -247,6 +247,38 @@ public class IMService {
         return sortedServiceWrappers;
     }
 
+    public List<IncidentWrapper> searchMigration(RequestInfo requestInfo, RequestSearchCriteria criteria){
+        log.trace("IMService::search method invoked");
+        log.info("Searching incidents with criteria tenantId={}", criteria.getTenantId());
+        log.trace("Validating search criteria");
+        validator.validateSearch(requestInfo, criteria);
+
+        log.trace("Enriching search request");
+        enrichmentService.enrichSearchRequest(requestInfo, criteria);
+
+        if(criteria.isEmpty()) {
+            log.debug("Search criteria is empty, returning empty list");
+            return new ArrayList<>();
+        }
+
+        if(criteria.getMobileNumber()!=null && CollectionUtils.isEmpty(criteria.getUserIds())) {
+            log.debug("Mobile number provided but no userIds found, returning empty list");
+            return new ArrayList<>();
+        }
+
+        criteria.setIsPlainSearch(false);
+        log.trace("Fetching incidents from repository");
+        List<IncidentWrapper> incidentWrappers = repository.getIncidentWrappers(criteria);
+        log.debug("Found {} incidents from repository", incidentWrappers != null ? incidentWrappers.size() : 0);
+
+        if(CollectionUtils.isEmpty(incidentWrappers)) {
+            log.debug("No incidents found, returning empty list");
+            return new ArrayList<>();
+        }
+
+        return incidentWrappers;
+    }
+
 
     /**
      * Updates the complaint (used to forward the complaint from one application status to another)
@@ -354,6 +386,27 @@ public class IMService {
                 .indexView(new IndexView())
                 .build();
         producer.push(tenantId,config.getUpdateTopic(),wrapper.getIncidentRequest());
+        return request;
+    }
+
+    public MigrationV2Request migrationV2Update(MigrationV2Request request){
+        RequestSearchCriteria criteria = RequestSearchCriteria.builder().tenantId("in").limit(1000).applicationStatus(Set.of("PENDINGFORASSIGNMENT")).incidentSubType(Set.of("Theft")).build();
+        List<IncidentWrapper> response = searchMigration(request.getRequestInfo(), criteria);
+        if(response !=null && !response.isEmpty()){
+            for (IncidentWrapper wrapper: response){
+                wrapper.getIncident().setApplicationStatus("PENDINGFORASSIGNMENT_THEFT");
+                producer.push("in",config.getUpdateMigrationTopic(),wrapper);
+            }
+        }
+
+        RequestSearchCriteria criteriaSparePart = RequestSearchCriteria.builder().tenantId("in").limit(1000).applicationStatus(Set.of("PENDING_ASSIGNMENT_SPARE_PART_NEEDED")).build();
+        List<IncidentWrapper> responseSparePart = searchMigration(request.getRequestInfo(), criteriaSparePart);
+        if(responseSparePart !=null && !responseSparePart.isEmpty()){
+            for (IncidentWrapper wrapper: responseSparePart){
+                wrapper.getIncident().setApplicationStatus("PENDING_RESOLUTION_SPARE_PART_NEEDED");
+                producer.push("in",config.getUpdateMigrationTopic(),wrapper);
+            }
+        }
         return request;
     }
 
