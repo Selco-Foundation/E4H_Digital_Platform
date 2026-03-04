@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/services.dart';
 
 import '../data/remote_client.dart';
 import '../data/secure_storage/secureStore.dart';
@@ -23,10 +22,8 @@ EnvironmentConfiguration envConfig = EnvironmentConfiguration.instance;
 const String mdmsV2Url = "egov-mdms-service/v2/_search";
 
 class AppInitRepo {
-  Future<MdmsResponseModel> searchAppConfiguration(
-      MdmsRequestModel mdmsRequestBody) async {
-    final client = DioClient().dio;
-    final body = mdmsRequestBody.toJson();
+  Future<MdmsResponseModel> searchAppConfiguration() async {
+    final client = Dio();
 
     final SecureStore storage = SecureStore();
     String? localAppConfig = await storage.getAppConfig();
@@ -34,18 +31,8 @@ class AppInitRepo {
       return MdmsResponseModel.fromJson(json.decode(localAppConfig));
     }
 
-    if (envConfig.variables.envType == EnvType.dev) {
-      return _loadLocalAppConfig();
-    }
-
-    final headers = <String, String>{
-      "Access-Control-Allow-Origin": "*",
-      "authorization": "Basic ZWdvdi11c2VyLWNsaWVudDo=",
-    };
-
     try {
-      final response = await client.post(envConfig.variables.completeMdmsApiUrl,
-          data: body, options: Options(headers: headers));
+      final response = await client.get(envConfig.variables.mobileAppGlobalUrl);
 
       final responseBody = MdmsResponseModel.fromJson(
         json.decode(response.toString())['MdmsRes'],
@@ -84,8 +71,7 @@ class AppInitRepo {
     );
   }
 
-  Future<List<Mdms<SystemData>>> searchSystem(
-      MdmsRequestModel mdmsRequestBody,
+  Future<List<Mdms<SystemData>>> searchSystem(MdmsRequestModel mdmsRequestBody,
       {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<SystemData>(
@@ -110,8 +96,7 @@ class AppInitRepo {
     );
   }
 
-  Future<List<Mdms<BrandData>>> searchBrand(
-      MdmsRequestModel mdmsRequestBody,
+  Future<List<Mdms<BrandData>>> searchBrand(MdmsRequestModel mdmsRequestBody,
       {bool useCacheRead = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<BrandData>(
@@ -338,16 +323,5 @@ class AppInitRepo {
 
     existing[name] = updatedEntry;
     await storage.setFormSchemas(existing);
-  }
-
-  Future<MdmsResponseModel> _loadLocalAppConfig() async {
-    try {
-      final jsonString =
-          await rootBundle.loadString('assets/mocks/mockAppConfig.json');
-      final jsonResponse = json.decode(jsonString);
-      return MdmsResponseModel.fromJson(jsonResponse['MdmsRes']);
-    } catch (e) {
-      throw Exception('Failed to load mock app config: $e');
-    }
   }
 }
