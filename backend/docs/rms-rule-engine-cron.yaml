@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rms-rule-engine-cron
+  labels:
+    app: rms-service
+    job-type: rule-engine
+spec:
+  # Every 15 minutes
+  schedule: "*/15 * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: rms-rule-engine-runner
+              image: rms-rule-engine-cron:latest  # Your Docker image
+              imagePullPolicy: IfNotPresent
+          restartPolicy: OnFailure
