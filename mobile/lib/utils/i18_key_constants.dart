@@ -117,6 +117,10 @@ class Scanner {
   String get flashOff => 'FLASH_OFF';
   String get manualScan => 'MANUAL_SCAN';
   String get enterManualCode => 'ENTER_MANUAL_CODE';
+  String get scanFromPhoto => 'SCAN_FROM_PHOTO';
+  String get choosePhoto => 'CHOOSE_PHOTO';
+  String get noCodeFoundInPhoto => 'NO_CODE_FOUND_IN_PHOTO';
+  String get failedToReadPhoto => 'FAILED_TO_READ_PHOTO';
   String get resourceCode => 'RESOURCE_CODE';
   String get coreCommonSubmit => 'Core_common_submit';
   String get coreCommonSubmit2 => 'CORE_COMMON_SUBMIT';
