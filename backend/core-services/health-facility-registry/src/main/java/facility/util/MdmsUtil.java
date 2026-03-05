@@ -7,8 +7,10 @@ import lombok.extern.slf4j.Slf4j;
 import net.minidev.json.JSONArray;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.mdms.model.*;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.egov.tracer.model.CustomException;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -43,13 +45,20 @@ public class MdmsUtil {
         MdmsCriteriaReq mdmsCriteriaReq = getMdmsRequest(requestInfo, tenantId, moduleName, masterNameList);
         Object response = new HashMap<>();
 
-        MdmsResponse mdmsResponse = new MdmsResponse();
+        MdmsResponse mdmsResponse;
         try {
             response = restTemplate.postForObject(uri.toString(), mdmsCriteriaReq, Map.class);
             mdmsResponse = mapper.convertValue(response, MdmsResponse.class);
             log.debug("Successfully fetched MDMS data for module {}", moduleName);
-        } catch (Exception e) {
-            log.error("Error while fetching MDMS data for module {} and tenant {}: {}", moduleName, tenantId, e.getMessage(), e);
+        } catch (HttpClientErrorException e) {
+            log.error("HTTP error while fetching MDMS data for module {} and tenant {}: {}", moduleName, tenantId, e.getMessage(), e);
+            throw new CustomException("MDMS_HTTP_ERROR", ERROR_WHILE_FETCHING_FROM_MDMS + e.getMessage());
+        } catch (RestClientException e) {
+            log.error("Client error while fetching MDMS data for module {} and tenant {}: {}", moduleName, tenantId, e.getMessage(), e);
+            throw new CustomException("MDMS_CLIENT_ERROR", ERROR_WHILE_FETCHING_FROM_MDMS + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            log.error("Parsing error while converting MDMS response for module {} and tenant {}: {}", moduleName, tenantId, e.getMessage(), e);
+            throw new CustomException("MDMS_PARSING_ERROR", ERROR_WHILE_FETCHING_FROM_MDMS + e.getMessage());
         }
 
         Map<String, Map<String, JSONArray>> result = mdmsResponse.getMdmsRes();

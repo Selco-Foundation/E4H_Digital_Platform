@@ -1,6 +1,7 @@
 package digit.repository.rowmapper;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import digit.web.models.BoundaryTypeHierarchy;
 import digit.web.models.BoundaryTypeHierarchyDefinition;
@@ -53,14 +54,10 @@ public class BoundaryHierarchyTypeRowMapper implements ResultSetExtractor<List<B
     }
 
     private List<BoundaryTypeHierarchy> getBoundaryHierarchyList(String boundaryHierarchyJsonString) {
-        List<BoundaryTypeHierarchy> boundaryHierarchyList;
-
         try {
-            boundaryHierarchyList = objectMapper.readValue(boundaryHierarchyJsonString, new TypeReference<List<BoundaryTypeHierarchy>>() {});
-        } catch (Exception e) {
+            return objectMapper.readValue(boundaryHierarchyJsonString, new TypeReference<List<BoundaryTypeHierarchy>>() {});
+        } catch (JsonProcessingException e) {
             throw new CustomException("PARSING_ERR", "Could not parse boundary type hierarchy from PSQL result set.");
         }
-
-        return boundaryHierarchyList;
     }
 }

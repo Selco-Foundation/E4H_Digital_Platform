@@ -1,6 +1,7 @@
 package digit.service.enrichment;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import digit.web.models.BoundaryTypeHierarchy;
 import digit.web.models.BoundaryTypeHierarchyRequest;
@@ -59,8 +60,8 @@ public class BoundaryHierarchyEnricher {
             JsonNode jsonNode = objectMapper.readTree(jsonString);
             log.debug("Successfully converted boundary hierarchy list to JSON node, JSON length={}", jsonString.length());
             return jsonNode;
-        } catch (Exception e) {
-            log.error("Error converting boundary hierarchy list to JSON, list size={}: {}", listSize, e.getMessage(), e);
+        } catch (JsonProcessingException e) {
+            log.error("JSON parsing error while converting boundary hierarchy list to JSON, list size={}", listSize, e);
             throw new CustomException("JSON_PARSING_ERROR", "Error in converting boundary hierarchy list to JSON");
         }
     }

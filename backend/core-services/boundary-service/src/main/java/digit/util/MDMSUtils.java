@@ -4,7 +4,6 @@ import digit.config.ApplicationProperties;
 import digit.service.ServiceRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.mdms.model.MasterDetail;
 import org.egov.mdms.model.MdmsCriteria;
@@ -33,14 +32,16 @@ public class MDMSUtils {
 
     public Object mDMSCall(RequestInfo requestInfo, String tenantId) {
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId);
-        Object result = null;
         try {
-            result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
+            return serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
+        } catch (CustomException e) {
+            // Propagate well-defined downstream error codes (e.g. SERVICE_REQUEST_CLIENT_ERROR)
+            log.error("Error while calling MDMS with code {}: {}", e.getCode(), e.getMessage());
+            throw e;
         } catch (Exception e) {
-            log.error("error while calling mdms", ExceptionUtils.getStackTrace(e));
-            throw new CustomException("MDMS_ERROR", "error while calling mdms");
+            log.error("Unexpected error while calling MDMS", e);
+            throw new CustomException("MDMS_ERROR", "Unexpected error while calling MDMS");
         }
-        return result;
     }
 
     public MdmsCriteriaReq getMDMSRequest(RequestInfo requestInfo, String tenantId) {

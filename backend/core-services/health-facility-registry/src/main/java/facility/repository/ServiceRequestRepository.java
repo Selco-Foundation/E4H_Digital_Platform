@@ -4,10 +4,12 @@ package facility.repository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.tracer.model.CustomException;
 import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -41,9 +43,9 @@ public class ServiceRequestRepository {
         } catch (HttpClientErrorException e) {
             log.error(EXTERNAL_SERVICE_EXCEPTION, e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             log.error(SEARCHER_SERVICE_EXCEPTION, e);
-            throw new ServiceCallException();
+            throw new CustomException("SERVICE_REQUEST_CLIENT_ERROR", e.getMessage());
         }
 
         return Objects.requireNonNull(response,
@@ -58,9 +60,9 @@ public class ServiceRequestRepository {
         } catch (HttpClientErrorException e) {
             log.error(EXTERNAL_SERVICE_EXCEPTION, e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             log.error(SEARCHER_SERVICE_EXCEPTION, e);
-            throw new ServiceCallException();
+            throw new CustomException("SERVICE_REQUEST_CLIENT_ERROR", e.getMessage());
         }
 
         return Objects.requireNonNull(response,
