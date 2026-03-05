@@ -30,7 +30,7 @@ const IMCard = () => {
             assignee: [{ code: userName }],
             wfStatus: "RMS_DEVICE_PENDING_TECH_POC,OUT_OF_WARRANTY_PENDING_TECH_POC,OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2",
           }
-        : { assignee: [{ code: "" }] }),
+        : {}),
     },
     config: {
       select: (data) => {
