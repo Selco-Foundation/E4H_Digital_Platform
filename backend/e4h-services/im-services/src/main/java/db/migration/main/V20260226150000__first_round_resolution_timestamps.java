@@ -25,7 +25,9 @@ import javax.net.ssl.SSLContext;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class V20260226150000__first_round_resolution_timestamps extends BaseJavaMigration {
@@ -199,9 +201,14 @@ public class V20260226150000__first_round_resolution_timestamps extends BaseJava
         String updateByQueryUrl = esHost + "/" + indexName + "/_update_by_query?conflicts=proceed";
         HttpHeaders headers = buildAuthHeaders(esUsername, esPassword);
 
-        for (Map.Entry<String, Long> entry : resolvedMap.entrySet()) {
-            String incidentId = entry.getKey();
-            Long resolvedTs = entry.getValue();
+        // Iterate over union of incidentIds from both maps so that
+        // incidents with only declined events (no resolved events) are also updated.
+        Set<String> incidentIds = new HashSet<>();
+        incidentIds.addAll(resolvedMap.keySet());
+        incidentIds.addAll(declinedMap.keySet());
+
+        for (String incidentId : incidentIds) {
+            Long resolvedTs = resolvedMap.get(incidentId);
             Long declinedTs = declinedMap.get(incidentId);
 
             ObjectNode updateRequest = objectMapper.createObjectNode();
