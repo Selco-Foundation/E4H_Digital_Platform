@@ -202,8 +202,9 @@ class FacilityTemplateService:
                 extra_append_rows=extra_append_rows
             )
 
-            # Non-blank validations and autofit are convenient but add extra
-            # workbook load/save cycles. Skip them in performance-optimized mode.
+            # Non-blank validations are helpful but expensive; keep them only
+            # in fully featured mode. Autofit is needed for usability, so it is
+            # always applied using a lightweight implementation.
             if not optimize_for_performance:
                 add_non_blank_validations_to_file(
                     file_path=output_path,
@@ -212,14 +213,14 @@ class FacilityTemplateService:
                     allow_blank_map=allow_blank_map
                 )
 
-                autofit_columns(
-                    file_path=output_path,
-                    sheet_name="FacilityMapping",
-                )
-                autofit_columns(
-                    file_path=output_path,
-                    sheet_name="BoundaryCodes",
-                )
+            autofit_columns(
+                file_path=output_path,
+                sheet_name="FacilityMapping",
+            )
+            autofit_columns(
+                file_path=output_path,
+                sheet_name="BoundaryCodes",
+            )
             remove_default_empty_sheet(output_path)
             logger.info(f"Successfully created template file at {output_path}")
         except Exception as e:
