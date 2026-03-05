@@ -66,7 +66,7 @@ const isCodePresent = (array, codeToCheck) =>{
 }
 
   const [selectAssigned, setSelectedAssigned] = useState(
-    (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) || isTechPocUser ? assignedToOptions[0] : assignedToOptions[1]
+    isAssignedToMe ? assignedToOptions[0] : assignedToOptions[1]
   );
 
   const [pgrfilters, setPgrFilters] = useState(
@@ -148,9 +148,7 @@ const isCodePresent = (array, codeToCheck) =>{
 
   useEffect(() => {
 
-    setSelectedAssigned(
-      (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) || isTechPocUser ? assignedToOptions[0] : assignedToOptions[1]
-    )
+    setSelectedAssigned(isAssignedToMe ? assignedToOptions[0] : assignedToOptions[1]);
 
     setPgrFilters((prevFilters) => ({
       ...prevFilters,
