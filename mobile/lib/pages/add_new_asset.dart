@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:digit_scanner/blocs/scanner.dart';
-import 'package:digit_scanner/pages/qr_scanner.dart';
 import 'package:digit_ui_components/enum/app_enums.dart';
 import 'package:digit_ui_components/models/DropdownModels.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
@@ -37,6 +36,7 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
+import '../widgets/customized_digit_widget/custom_digit_scanner_page.dart';
 import '../widgets/customized_digit_widget/image_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
@@ -357,6 +357,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     return MultiBlocListener(
       listeners: [
         BlocListener<DigitScannerBloc, DigitScannerState>(
+          listenWhen: (previous, current) =>
+              _scanningIndex != null &&
+              previous.qrCodes.isEmpty &&
+              current.qrCodes.isNotEmpty,
           listener: (ctx, scanState) {
             if (scanState.qrCodes.isNotEmpty && _scanningIndex != null) {
               _updateAsset(_scanningIndex!, scanState.qrCodes.last);
@@ -639,7 +643,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       MaterialPageRoute(
                         builder: (ctx) => BlocProvider.value(
                           value: context.read<DigitScannerBloc>(),
-                          child: const DigitScannerPage(
+                          child: const CustomDigitScannerPage(
                             quantity: 10,
                             isGS1code: false,
                           ),
@@ -673,7 +677,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       MaterialPageRoute(
                         builder: (ctx) => BlocProvider.value(
                           value: context.read<DigitScannerBloc>(),
-                          child: const DigitScannerPage(
+                          child: const CustomDigitScannerPage(
                             quantity: 10,
                             isGS1code: false,
                           ),
