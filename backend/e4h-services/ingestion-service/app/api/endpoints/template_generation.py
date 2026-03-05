@@ -87,17 +87,41 @@ async def get_facility_ingestion_template_with_data(
 
         logger.info("Fetching facilities by boundary codes")
         all_facilities = []
-        if facility_service_url:
+        if facility_service_url and boundary_list:
             facility_client = FacilityServiceClient(facility_service_url)
+
+            # Deduplicate boundaries by code to avoid redundant calls
+            unique_boundaries = {}
             for boundary in boundary_list:
+                if boundary.code and boundary.code not in unique_boundaries:
+                    unique_boundaries[boundary.code] = boundary
+            unique_boundary_list = list(unique_boundaries.values())
+
+            logger.info(f"Total unique boundary codes for facility search: {len(unique_boundary_list)}")
+
+            def fetch_boundary_facilities(boundary):
+                """Fetch facilities for a single boundary code."""
                 try:
                     logger.trace(f"Searching facilities for boundary: {boundary.code}")
                     results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                    facilities = results.get('facilities', [])
-                    all_facilities.extend(facilities)
+                    facilities = results.get('facilities', []) or []
                     logger.debug(f"Found {len(facilities)} facilities for boundary {boundary.code}")
+                    return facilities
                 except Exception as e:
                     logger.error(f"Error fetching boundary facilities for boundary {boundary.code}: {e}", exc_info=True)
+                    return []
+
+            # Fetch facilities for boundaries concurrently to reduce overall latency
+            max_workers = min(8, len(unique_boundary_list)) or 1
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_boundary = {
+                    executor.submit(fetch_boundary_facilities, boundary): boundary.code
+                    for boundary in unique_boundary_list
+                }
+                for future in as_completed(future_to_boundary):
+                    facilities = future.result()
+                    if facilities:
+                        all_facilities.extend(facilities)
 
         # Fetch project-linked facilities if project_id is provided
         logger.info(f"Fetching project-linked facilities: project_id={project_id}")
