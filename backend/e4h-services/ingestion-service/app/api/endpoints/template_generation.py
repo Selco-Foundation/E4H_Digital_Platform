@@ -225,7 +225,8 @@ async def get_facility_ingestion_template_with_data(
                 boundary_list=boundary_list,
                 facility_data=all_facilities,
                 type="project",
-                extra_append_rows=1000
+                extra_append_rows=200,
+                optimize_for_performance=True
             )
             logger.info(f"Successfully created facility ingestion template: {output_filename}")
             logger.debug(f"Template file path: {output_file_path}")
