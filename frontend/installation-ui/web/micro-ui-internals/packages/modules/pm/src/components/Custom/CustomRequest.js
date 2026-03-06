@@ -135,8 +135,8 @@ export const CustomRequest = async ({
 
   const response =
     fileDownload || responseType
-      ? await Axios({ method, url: _url, data, params, headers, responseType: responseType || "blob" })
-      : await Axios({ method, url: _url, data, params, headers });
+      ? await Axios({ method, url: _url, data, params, headers, responseType: responseType || "blob", timeout: 360000 })
+      : await Axios({ method, url: _url, data, params, headers, timeout: 360000 });
 
   if (fileDownload) {
     const blob = new Blob([response.data], {
