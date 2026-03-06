@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.egov.common.contract.models.AuditDetails;
-import org.egov.common.models.core.AdditionalFields;
 
 import javax.validation.Valid;
 import java.util.Map;
@@ -18,20 +17,23 @@ import java.util.Map;
 @Data
 public class OrgUser {
     @JsonProperty("id")
-    protected @Size(
-            min = 2,
-            max = 64
-    ) String id;
+    protected @Size(min = 2, max = 64) String id;
+
     @JsonProperty("tenantId")
-    protected @NotNull @Size(
+    @NotNull
+    @Size(
             min = 2,
             max = 1000
-    ) String tenantId;
+    )
+    protected String tenantId;
+
     @JsonProperty("userId")
-    private @NotNull @Size(
-            min = 2,
-            max = 64
-    ) String userId = null;
+    private String userId;
+
+    @JsonProperty("user")
+    @NotNull
+    private User user = null;
+
     @JsonProperty("organizationId")
     private @NotNull @Size(
             min = 2,

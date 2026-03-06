@@ -15,6 +15,7 @@ import org.egov.activity.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -32,16 +33,16 @@ public class ActivityApiController {
     private final ActivityService activityService;
     private final ActivityFacilityUsersService facilityUsersService;
     private final FacilityWorkflowService facilityWorkflowService;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Autowired
-    public ActivityApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
-                                 Producer producer,
-                                 ActivityConfiguration fieldPlannerConfiguration,
-                                 ActivityService activityService, ActivityFacilityUsersService facilityUsersService, FacilityWorkflowService facilityWorkflowService) {
+    public ActivityApiController(HttpServletRequest httpServletRequest,
+                                 ActivityService activityService, ActivityFacilityUsersService facilityUsersService, FacilityWorkflowService facilityWorkflowService, KafkaTemplate<String, Object> kafkaTemplate) {
         this.httpServletRequest = httpServletRequest;
         this.activityService = activityService;
         this.facilityUsersService = facilityUsersService;
         this.facilityWorkflowService = facilityWorkflowService;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @RequestMapping(value = "/_create", method = RequestMethod.POST)
@@ -108,7 +109,6 @@ public class ActivityApiController {
         Map<String, List<Comment>> commentsByTxnId = allComments.stream()
                 .collect(Collectors.groupingBy(Comment::getTransactionId));
 
-        ObjectMapper mapper = new ObjectMapper();
         List<FacilityStatusWrapper> projectStatusWrappers = new ArrayList<>();
         for (ActivityFacility activityFacility : activityFacilityList) {
             String status = null;
@@ -289,5 +289,14 @@ public class ActivityApiController {
                 .build();
 
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+    }
+
+    @PostMapping("/test_update_activity")
+    public String sendDummyTopicActivityFacility(@Valid @RequestBody ActivityFacilityBulkRequest incidentRequest) {
+        Map<String, Object> producerRecord = new HashMap<>();
+        producerRecord.put("topic", "save-activity-facility-topic");
+        producerRecord.put("value", incidentRequest);
+        kafkaTemplate.send("process-audit-records", producerRecord);
+        return "Object sent!";
     }
 }

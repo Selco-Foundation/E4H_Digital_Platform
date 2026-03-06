@@ -36,6 +36,24 @@ public class FacilityCreate {
     @JsonProperty("facility_name")
     private String facilityName = null;
 
+    @JsonProperty("facility_poc_name")
+    private String facilityPocName = null;
+
+    @JsonProperty("facility_poc_phone")
+    private String facilityPocPhone = null;
+
+    @JsonProperty("facility_poc_email")
+    private String facilityPocEmail = null;
+
+    @JsonProperty("hfr_id")
+    private String hfrId = null;
+
+    @JsonProperty("nin_id")
+    private String ninId = null;
+
+    @JsonProperty("facility_status")
+    private String facilityStatus = null;
+
     @JsonProperty("facility_ownership")
     private String facilityOwnership = null;
 
@@ -63,4 +81,7 @@ public class FacilityCreate {
 
     @JsonProperty("isOnmReady")
     private Boolean isOnmReady = false;
+
+    @JsonProperty("user_id")
+    private String userId = null;
 }

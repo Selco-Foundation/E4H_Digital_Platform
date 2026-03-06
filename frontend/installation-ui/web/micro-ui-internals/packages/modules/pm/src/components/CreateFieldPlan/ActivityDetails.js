@@ -286,7 +286,7 @@ const ActivityDetails = ({
     </div>
   )
 
-  const OrganizationUserDropDownInput = (organization, activity, index, fieldName, fieldValue, isLast) => (
+  const OrganizationUserDropDownInput = (organization, activity, index, fieldName, fieldValue, roleCode, isLast) => (
     <div
       key={index}
       style={{
@@ -296,6 +296,7 @@ const ActivityDetails = ({
     >
       <OrganizationUserDropdown
         t={t}
+        roleCode={roleCode}
         organizationIds={[organization?.value?.id || ""]}
         selected={fieldValue.value}
         onSelect={(option) => handleUserDataChange(activity, index, fieldName, option)}
@@ -444,7 +445,10 @@ const ActivityDetails = ({
         Cell: ({ row }) => GetCell(
           row.original["users"]?.map((userEntry, i, usersArray) => {
             if (userEntry.deleteAssignment) return;
-            return OrganizationUserDropDownInput(userEntry.organization, row.original["activity"], i, "email", userEntry?.email, usersArray.length - 1 === i);
+            return OrganizationUserDropDownInput(
+              userEntry.organization, row.original["activity"], i, "email", userEntry?.email,
+              userEntry?.role?.value?.code, usersArray.length - 1 === i
+            );
           })
         ),
       },

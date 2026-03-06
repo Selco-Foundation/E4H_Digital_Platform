@@ -45,6 +45,11 @@ public class AMCServiceConfiguration {
     @Value("${egov.otp.validate.url}")
     private String otpServiceValidateUrl;
 
+    @Value("${egov.otp.default}")
+    private String defaultOtp;
+
+    @Value("${egov.otp.bypass.validation}")
+    private boolean byPassOtpValidation;
 
     @Value("${egov.facility.host}")
     private String facilityServiceHost;
@@ -126,6 +131,12 @@ public class AMCServiceConfiguration {
 
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
+
+    @Value("${egov.vendor.host}")
+    private String vendorHost;
+
+    @Value("${egov.vendor.search.url}")
+    private String vendorSearchUrl;
 
     @Value("${email.activity.assignment.subject}")
     private String activityEmailSubject;

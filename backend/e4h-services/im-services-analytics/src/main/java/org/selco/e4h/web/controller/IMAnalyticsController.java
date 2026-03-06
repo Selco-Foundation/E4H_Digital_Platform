@@ -49,15 +49,15 @@ public class IMAnalyticsController {
         return "Script done!";
     }
 
-//    @PostMapping("/test_update_phc")
-//    public String sendDummyTopicIncident(@Valid @RequestBody IncidentRequest incidentRequest) {
-//        Map<String, Object> producerRecord = new HashMap<>();
-//        producerRecord.put("topic", "save-im-request");
-//        producerRecord.put("value", incidentRequest);
-////        producerService.getTicket("sk.shyagyongrumtek");
-//        producerService.sendIncident("process-audit-records", producerRecord);
-//        return "User sent!";
-//    }
+    @PostMapping("/test_update_phc")
+    public String sendDummyTopicIncident(@Valid @RequestBody IncidentRequest incidentRequest) {
+        Map<String, Object> producerRecord = new HashMap<>();
+        producerRecord.put("topic", "save-im-request");
+        producerRecord.put("value", incidentRequest);
+//        producerService.getTicket("sk.shyagyongrumtek");
+        producerService.sendIncident("process-audit-records", producerRecord);
+        return "User sent!";
+    }
 //
 //    @PostMapping("/test_update_vendor")
 //    public String sendDummyTopicVendorName(@Valid @RequestBody IncidentRequestWrapper wrapper) {

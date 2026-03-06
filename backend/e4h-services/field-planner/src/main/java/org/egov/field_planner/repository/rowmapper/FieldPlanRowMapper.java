@@ -3,6 +3,8 @@ package org.egov.field_planner.repository.rowmapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.egov.common.contract.models.AuditDetails;
+import org.egov.common.models.project.Address;
+import org.egov.common.models.project.Project;
 import org.egov.field_planner.web.models.FieldPlan;
 import org.egov.tracer.model.CustomException;
 import org.postgresql.util.PGobject;
@@ -42,12 +44,14 @@ public class FieldPlanRowMapper implements ResultSetExtractor<List<FieldPlan>> {
     }
 
     private FieldPlan createFieldPlanObj(ResultSet rs) throws SQLException, DataAccessException {
-        FieldPlan project = getProjectObjFromResultSet(rs);
-        return project;
+        Project project = getProjectObjFromResultSet(rs);
+        FieldPlan fieldPlan = getFieldPlanObjFromResultSet(rs);
+        fieldPlan.setProject(project);
+        return fieldPlan;
     }
 
-    /* Builds Project Object from Result Set and address */
-    private FieldPlan getProjectObjFromResultSet(ResultSet rs) throws SQLException {
+    /* Builds FieldPlan Object from Result Set */
+    private FieldPlan getFieldPlanObjFromResultSet(ResultSet rs) throws SQLException {
         String id = rs.getString("fieldPlanId");
         String name = rs.getString("fp_name");
         String tenantId = rs.getString("fp_tenantId");
@@ -86,6 +90,61 @@ public class FieldPlanRowMapper implements ResultSetExtractor<List<FieldPlan>> {
                 .build();
 
         return fieldPlan;
+    }
+
+    private Project getProjectObjFromResultSet(ResultSet rs) throws SQLException {
+        String project_id = rs.getString("projectId");
+        String project_tenantId = rs.getString("project_tenantId");
+        String project_projectNumber = rs.getString("project_projectNumber");
+        String project_name = rs.getString("project_name");
+        String project_projectType = rs.getString("project_projectType");
+        String project_projectTypeId = rs.getString("project_projectTypeId");
+        String project_projectSubtype = rs.getString("project_projectSubtype");
+        String project_department = rs.getString("project_department");
+        String project_description = rs.getString("project_description");
+        String project_referenceId = rs.getString("project_referenceId");
+        Long project_startDate = rs.getLong("project_startDate");
+        Long project_endDate = rs.getLong("project_endDate");
+        Boolean project_isTaskEnabled = rs.getBoolean("project_isTaskEnabled");
+        String project_projectHierarchy = rs.getString("project_projectHierarchy");
+        String project_parent = rs.getString("project_parent");
+        JsonNode project_additionalDetails = getAdditionalDetail("project_additionalDetails", rs);
+        String project_natureOfWork = rs.getString("project_natureOfWork");
+        Boolean project_isDeleted = rs.getBoolean("project_isDeleted");
+        Integer project_rowVersion = rs.getInt("project_rowVersion");
+        String project_createdBy = rs.getString("project_createdBy");
+        String project_lastModifiedBy = rs.getString("project_lastModifiedBy");
+        Long project_createdTime = rs.getLong("project_createdTime");
+        Long project_lastModifiedTime = rs.getLong("project_lastModifiedTime");
+
+        AuditDetails projectAuditDetails = AuditDetails.builder().createdBy(project_createdBy).createdTime(project_createdTime)
+                .lastModifiedBy(project_lastModifiedBy).lastModifiedTime(project_lastModifiedTime)
+                .build();
+
+        Project project = Project.builder()
+                .id(project_id)
+                .tenantId(project_tenantId)
+                .projectNumber(project_projectNumber)
+                .name(project_name)
+                .projectType(project_projectType)
+                .projectTypeId(project_projectTypeId)
+                .projectSubType(project_projectSubtype)
+                .department(project_department)
+                .description(project_description)
+                .referenceID(project_referenceId)
+                .startDate(project_startDate)
+                .endDate(project_endDate)
+                .isTaskEnabled(project_isTaskEnabled)
+                .parent(project_parent)
+                .projectHierarchy(project_projectHierarchy)
+                .additionalDetails(project_additionalDetails)
+                .natureOfWork(project_natureOfWork)
+                .isDeleted(project_isDeleted)
+                .rowVersion(project_rowVersion)
+                .auditDetails(projectAuditDetails)
+                .build();
+
+        return project;
     }
 
     private JsonNode getAdditionalDetail(String columnName, ResultSet rs)    throws SQLException {

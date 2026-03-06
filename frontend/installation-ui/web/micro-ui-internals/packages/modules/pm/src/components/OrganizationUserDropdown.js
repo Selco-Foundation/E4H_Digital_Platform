@@ -12,9 +12,6 @@ const OrganizationUserDropdown = ({ t, organizationIds = [], selected, onSelect,
 
   useEffect(() => {
     if (roleCode) {
-      setUserOptions((prevState) => (
-        prevState.filter((user) => user.roles.some((role) => role.code === roleCode))
-      ))
       if (selected && selected.roles.every((role) => role.code !== roleCode)) {
         onSelect(null);
       }
@@ -32,7 +29,7 @@ const OrganizationUserDropdown = ({ t, organizationIds = [], selected, onSelect,
         }))
       );
     }
-  }, [organizationUserData])
+  }, [organizationUserData, roleCode])
 
   return (
     <CustomDropdown

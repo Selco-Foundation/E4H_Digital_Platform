@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 
 import javax.validation.constraints.NotNull;
+import java.util.List;
 
 /**
  * Criteria to search for assets. tenantId is mandatory. Send one of the rest
@@ -28,14 +29,20 @@ public class AssetSearchCriteria {
     @JsonProperty("assetID")
     private String assetID = null;
 
+    @JsonProperty("assetType")
+    private List<String> assetType = null;
+
     @JsonProperty("facilityID")
     private String facilityID = null;
+
+    @JsonProperty("isOperational")
+    private Boolean isOperational = null;
 
     @JsonProperty("activityFacilityID")
     private String activityFacilityID = null;
 
     @JsonProperty("serialNumber")
-    private String serialNumber = null;
+    private List<String> serialNumber = null;
 
     @JsonProperty("modelNumber")
     private String modelNumber = null;

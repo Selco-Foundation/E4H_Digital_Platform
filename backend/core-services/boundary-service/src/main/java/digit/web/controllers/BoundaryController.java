@@ -111,5 +111,38 @@ public class BoundaryController {
         return ResponseEntity.ok(paginated);
     }
 
+    @PostMapping("/v2/getAllBoundaries")
+    public ResponseEntity<BoundaryRelationshipV2Response> getAllBoundariesV2(
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "10") int limit, @Valid @RequestBody BoundaryRelationshipSearchRequest criteria) {
+
+        criteria.getCriteria().setIncludeChildren(false);
+        criteria.getCriteria().setIncludeParents(true);
+        criteria.getCriteria().setLimit(limit);
+        criteria.getCriteria().setOffset(offset);
+
+        BoundarySearchResponse response = boundaryRelationshipService.getBoundaryRelationships(criteria.getCriteria(), null);
+        log.info(String.valueOf(response));
+        Integer count = boundaryRelationshipService.countBoundaryRelationships(criteria.getCriteria());
+        List<FlatBoundaryResponse> flatList = new ArrayList<>();
+        for (HierarchyRelation tenantBoundary : response.getTenantBoundary()) {
+            for (EnrichedBoundary country : tenantBoundary.getBoundary()) {
+                boundaryService.buildFlatHierarchy(country, flatList, new ArrayList<>());
+            }
+        }
+
+        // Paginate
+        int end = Math.min(offset + limit, flatList.size());
+        List<FlatBoundaryResponse> paginated = (offset < flatList.size()) ? flatList.subList(offset, end) : Collections.emptyList();
+
+        BoundaryRelationshipV2Response response1 = BoundaryRelationshipV2Response.builder()
+                .responseInfo(null)
+                .totalCount(criteria.getCriteria().getCodes() !=null ? flatList.size() : count)
+                .paginated(paginated)
+                .build();
+
+        return ResponseEntity.ok(response1);
+    }
+
 
 }

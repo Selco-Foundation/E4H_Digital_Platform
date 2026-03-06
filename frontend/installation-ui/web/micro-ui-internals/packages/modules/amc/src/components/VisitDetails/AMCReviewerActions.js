@@ -34,6 +34,7 @@ const AMCReviewerActions = ({ t, revalidateData, setUpdatingWorkflow, aggregated
       );
 
       revalidateData();
+      setUpdatingWorkflow(false);
       setToast({
         key: "success",
         message: t("AMC_VISIT_APPROVE_SUCCESS"),
@@ -41,6 +42,7 @@ const AMCReviewerActions = ({ t, revalidateData, setUpdatingWorkflow, aggregated
 
     } catch (error) {
       console.error("Error approving", error);
+      setUpdatingWorkflow(false);
       setToast({
         key: "error",
         message: t("AMC_VISIT_APPROVE_FAILURE"),
@@ -71,6 +73,7 @@ const AMCReviewerActions = ({ t, revalidateData, setUpdatingWorkflow, aggregated
       );
 
       revalidateData();
+      setUpdatingWorkflow(false);
       setToast({
         key: "success",
         message: t("AMC_VISIT_REJECT_SUCCESS"),
@@ -78,6 +81,7 @@ const AMCReviewerActions = ({ t, revalidateData, setUpdatingWorkflow, aggregated
 
     } catch (error) {
       console.error("Error rejecting", error);
+      setUpdatingWorkflow(false);
       setToast({
         key: "error",
         message: t("AMC_VISIT_REJECT_FAILURE"),

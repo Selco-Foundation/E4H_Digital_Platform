@@ -17,7 +17,15 @@ public class FacilityBulkSearchCriteria {
     private List<String> facilityNames;
     private List<String> hfrIds;
     private List<String> ninIds;
+    private List<String> facilityPocNames;
+    private List<String> facilityPocPhones;
+    private List<String> facilityPocEmails;
+    private List<String> facilityStatus;
+    private List<String> userIds;
     private List<String> boundaryCodes;
+    private List<String> state;
+    private List<String> district;
+    private List<String> block;
     @Builder.Default
     private Boolean sendNonPaginatedResponse = false;
     @Builder.Default

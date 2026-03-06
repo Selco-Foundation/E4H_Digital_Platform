@@ -27,7 +27,10 @@ import java.util.List;
 public class OrgSearchCriteria {
 
     @JsonProperty("id")
-    private List<String> id = null;
+    private String id = null;
+
+    @JsonProperty("ids")
+    private List<String> ids = null;
 
     @JsonProperty("tenantId")
     @Size(min = 2, max = 64)
@@ -46,11 +49,20 @@ public class OrgSearchCriteria {
     @JsonProperty("orgNumber")
     private String orgNumber = null;
 
-    @JsonProperty("applicationStatus")
-    private String applicationStatus = null;
+    @JsonProperty("orgStatus")
+    private String orgStatus = null;
 
-    @JsonProperty("contactMobileNumber")
-    private String contactMobileNumber = null;
+    @JsonProperty("orgType")
+    private String orgType = null;
+
+    @JsonProperty("orgSubType")
+    private String orgSubType = null;
+
+    @JsonProperty("orgPocPhone")
+    private String orgPocPhone = null;
+
+    @JsonProperty("orgPocName")
+    private String orgPocName = null;
 
     @JsonProperty("functions")
     private Function functions = null;
@@ -74,10 +86,10 @@ public class OrgSearchCriteria {
     private Boolean includeDeleted = false;
 
     public OrgSearchCriteria addIdItem(String idItem) {
-        if (this.id == null) {
-            this.id = new ArrayList<>();
+        if (this.ids == null) {
+            this.ids = new ArrayList<>();
         }
-        this.id.add(idItem);
+        this.ids.add(idItem);
         return this;
     }
 

@@ -33,6 +33,9 @@ public class ActivityFacilitySearchCriteria {
     @JsonProperty("activityIds")
     private @Valid List<String> activityId = null;
 
+    @JsonProperty("activityCodes")
+    private @Valid List<String> activityCodes = null;
+
     @JsonProperty("statuses")
     private @Valid List<String> statuses = null;
 
@@ -47,6 +50,13 @@ public class ActivityFacilitySearchCriteria {
 
     @JsonProperty("boundaryCodes")
     private @Valid List<String> boundaryCodes = null;
+
+    /**
+     * Sort direction for created_time: ASC (oldest first) or DESC (newest first).
+     * Defaults to DESC when not specified.
+     */
+    @JsonProperty("sort_direction")
+    private String sortDirection = null;
 
     private String tenantId;
 

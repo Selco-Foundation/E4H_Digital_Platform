@@ -15,10 +15,12 @@ public class AmcConfiguration {
     private String id;
     private String tenantId;
     private String vendorId;
+    private Organisation vendor;
     private String facilityId;
     private Facility facility;
     private String projectId;
     private Project project;
+    private List<AssetAmc> assetsAmc;
     private List<Map<String, Object>> assetTypes;
     private List<AmcConfigurationAssignment> assignments;
     private Integer durationMonths;
@@ -28,5 +30,7 @@ public class AmcConfiguration {
     private String status; // ACTIVE, EXPIRED, CANCELLED
     private Map<String, Object> additionalDetails;
     private AuditDetails auditDetails;
+    private Integer totalVisits;
+    private Integer completedVisits;
 }
 

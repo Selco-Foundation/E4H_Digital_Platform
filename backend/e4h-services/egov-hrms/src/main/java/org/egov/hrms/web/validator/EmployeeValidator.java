@@ -279,19 +279,19 @@ public class EmployeeValidator {
 	private void validateUserData(Employee existingEmp, Employee employee, Map<String, String> errorMap, RequestInfo requestInfo) {
 		if(!employee.getCode().equals(existingEmp.getCode()))
 			errorMap.put(ErrorConstants.HRMS_UPDATE_EMPLOYEE_CODE_CHANGE_CODE,ErrorConstants.HRMS_UPDATE_EMPLOYEE_CODE_CHANGE_MSG);
-		if(!employee.getUser().getMobileNumber().equals(existingEmp.getUser().getMobileNumber())){
-			Map<String, Object> userSearchCriteria = new HashMap<>();
-			userSearchCriteria.put(HRMSConstants.HRMS_USER_SEARCH_CRITERA_TENANTID,employee.getTenantId());
-			userSearchCriteria.put(HRMSConstants.HRMS_USER_SEARCH_CRITERA_MOBILENO,employee.getUser().getMobileNumber());
-			UserResponse userResponse = userService.getUser(requestInfo, userSearchCriteria);
-			if(!CollectionUtils.isEmpty(userResponse.getUser())){
-				if(!employee.getUser().getUuid().equals(userResponse.getUser().get(0).getUuid())){
-					errorMap.put(ErrorConstants.HRMS_UPDATE_EXISTING_MOBNO_CODE,ErrorConstants.HRMS_UPDATE_EXISTING_MOBNO_MSG);
-				}
-			}
-
-
-		}
+//		if(!employee.getUser().getMobileNumber().equals(existingEmp.getUser().getMobileNumber())){
+//			Map<String, Object> userSearchCriteria = new HashMap<>();
+//			userSearchCriteria.put(HRMSConstants.HRMS_USER_SEARCH_CRITERA_TENANTID,employee.getTenantId());
+//			userSearchCriteria.put(HRMSConstants.HRMS_USER_SEARCH_CRITERA_MOBILENO,employee.getUser().getMobileNumber());
+//			UserResponse userResponse = userService.getUser(requestInfo, userSearchCriteria);
+//			if(!CollectionUtils.isEmpty(userResponse.getUser())){
+//				if(!employee.getUser().getUuid().equals(userResponse.getUser().get(0).getUuid())){
+//					errorMap.put(ErrorConstants.HRMS_UPDATE_EXISTING_MOBNO_CODE,ErrorConstants.HRMS_UPDATE_EXISTING_MOBNO_MSG);
+//				}
+//			}
+//
+//
+//		}
 
 	}
 

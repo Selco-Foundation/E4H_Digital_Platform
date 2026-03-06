@@ -9,6 +9,7 @@ import org.egov.activity.util.ActivityServiceUtil;
 import org.egov.activity.util.BoundaryUtil;
 import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.request.Role;
 import org.egov.common.producer.Producer;
 import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.repository.ActivityFacilityRepository;
@@ -23,7 +24,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.sql.Array;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -102,6 +102,8 @@ public class ActivityService {
             for (ActivityFacility activityFacility : activityFacilities) {
                 log.info("processing {} valid entities", activityFacility);
                 activityEnrichment.enrichActivityFacilityRequestOnCreate(activityFacility, request.getRequestInfo());
+                List<ActivityFacilityUser> usersFacility = new ArrayList<>();
+                // Get reviewer users. Can see facility activity on UI directly by getting field plan first
                 if(activityFacility.getReviewerUser() != null && !activityFacility.getReviewerUser().isEmpty()){
                     for (String userId : activityFacility.getReviewerUser()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
@@ -110,23 +112,44 @@ public class ActivityService {
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
                                 .build();
-                        activityFacilityUsers.add(facilityUser);
+                        usersFacility.add(facilityUser);
                     }
                 }
 
-                if(activityFacility.getSpocUser() != null && !activityFacility.getSpocUser().isEmpty()){
-                    for (String userId : activityFacility.getSpocUser()){
+                // Get staff users. Can see facility once activity facility status = ASSIGNED_TO_FIELD_STAFF
+                if(activityFacility.getFieldStaffUsers() != null && !activityFacility.getFieldStaffUsers().isEmpty()){
+                    for (String userId : activityFacility.getFieldStaffUsers()){
                         ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
                                 .activityFacilityId(activityFacility.getId())
                                 .userId(userId)
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
                                 .build();
-                        activityFacilityUsers.add(facilityUser);
+                        usersFacility.add(facilityUser);
                     }
                 }
+
+                // Get supervisor users. Can see facility once activity facility status = ASSIGNED_TO_FIELD_STAFF
+                if(activityFacility.getFieldSupervisorUsers() != null && !activityFacility.getFieldSupervisorUsers().isEmpty()){
+                    for (String userId : activityFacility.getFieldSupervisorUsers()){
+                        ActivityFacilityUser facilityUser = ActivityFacilityUser.builder()
+                                .activityFacilityId(activityFacility.getId())
+                                .userId(userId)
+                                .tenantId(activityFacility.getTenantId())
+                                .isDeleted(false)
+                                .build();
+                        usersFacility.add(facilityUser);
+                    }
+                }
+                // remove Duplicate activity facility users if the same user is REVIEWER, STAFF and SUPERVISOR
+                Set<String> seenUsers = new HashSet<>();
+                usersFacility = usersFacility.stream().filter(a -> seenUsers.add(a.getUserId()))
+                        .toList();
+                activityFacilityUsers.addAll(usersFacility);
             }
 
+
+            // Create linked users, so that reviewer, staff and supervisor are linked to each activity facility. Reviewer can see list of activities on UI.
             if(activityFacilityUsers != null && !activityFacilityUsers.isEmpty()){
                 ActivityFacilityUserBulkRequest activityFacilityUserBulkRequest = ActivityFacilityUserBulkRequest.builder()
                         .requestInfo(request.getRequestInfo())
@@ -190,6 +213,9 @@ public class ActivityService {
         for (ActivityFacility activityFacility : activityFacilities) {
             log.info("processing get activity code", activityFacility);
             activityEnrichment.enrichActivityFacilityOnSearch(request, activityFacility);
+
+            if(activityFacility.getFacility() == null)
+                continue;
 
             Object additionalDetails = activityFacility.getFacility().getAdditionalDetails();
             String boundaryCode = activityFacility.getFacility().getBoundaryCode();
@@ -334,7 +360,7 @@ public class ActivityService {
                 activityConfiguration.getTenantId(), false, null);
 
         if (activityFacilities == null || activityFacilities.isEmpty()) {
-            throw new CustomException("FACILITY_NOT_FOUND", "Facility not found with ID: " + request.getActivityFacilityId());
+            throw new CustomException("FACILITY_NOT_FOUND", "Activity Facility not found with ID: " + request.getActivityFacilityId());
         }
 
         ActivityFacility existingActivityFacitlity = activityFacilities.get(0);
@@ -375,6 +401,7 @@ public class ActivityService {
                 .activatedAt(existingActivityFacitlity.getActivatedAt())
                 .completedAt(System.currentTimeMillis())
                 .scheduledAt(existingActivityFacitlity.getScheduledAt())
+                .additionalDetails(existingActivityFacitlity.getAdditionalDetails())
                 .build();
 
         // 5. Create project request wrapper
@@ -394,6 +421,8 @@ public class ActivityService {
                 updateAssetsForFacility(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
                 // Step 8: Trigger installation completion side effects (Asset AMC creation and visit generation)
                 triggerInstallationCompletionSideEffects(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
+                // Step 9: Mark facility as ONM ready
+                markFacilityOnmReady(existingActivityFacitlity, request.getRequestInfo());
             }
         }
 
@@ -428,6 +457,61 @@ public class ActivityService {
 
     private void handleTransactionUpdate(List<Transaction> transactions) {
         producer.push(activityConfiguration.getTransactionPersistTopic(), new TransactionRequest(transactions));
+    }
+
+    /**
+     * Mark the underlying facility record as ONM ready (is_onm_ready = true) after installation approval.
+     * Flow:
+     *  - Fetch facility by facilityId using facility-service V2 search
+     *  - Call facility-service update API to set is_onm_ready = true
+     */
+    private void markFacilityOnmReady(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        try {
+            String facilityId = activityFacility.getFacilityId();
+            if (facilityId == null || facilityId.isEmpty()) {
+                log.warn("Cannot mark facility ONM ready: facilityId is null for activityFacility {}", activityFacility.getId());
+                return;
+            }
+
+            Facility facility = activityValidator.getFacilityById(facilityId);
+            if (facility == null) {
+                log.warn("Facility not found in facility-service for facilityId {}. Skipping ONM ready update.", facilityId);
+                return;
+            }
+
+            facility.setIsOnmReady(Boolean.TRUE);
+
+            // Ensure roles list exists
+            if (requestInfo.getUserInfo().getRoles() == null) {
+                requestInfo.getUserInfo().setRoles(new ArrayList<>());
+            }
+
+            // Optionally guard against duplicates if needed
+            boolean hasSystemUser = requestInfo.getUserInfo().getRoles().stream()
+                    .anyMatch(r -> "SYSTEM_USER".equals(r.getCode()));
+            if (!hasSystemUser) {
+                requestInfo.getUserInfo().getRoles().add(
+                        Role.builder()
+                                .name("System User")
+                                .code("SYSTEM_USER")
+                                .tenantId("in")
+                                .build()
+                );
+            }
+
+            Map<String, Object> updateRequest = new HashMap<>();
+            updateRequest.put("RequestInfo", requestInfo);
+            updateRequest.put("FacilityUpdate", facility);
+
+            String url = activityConfiguration.getFacilityServiceHost()
+                    + activityConfiguration.getFacilityServiceUpdateUrl();
+
+            log.info("Marking facility {} as ONM ready via {}", facilityId, url);
+            serviceRequest.fetchResult(new StringBuilder(url), updateRequest);
+        } catch (Exception e) {
+            log.error("Failed to mark facility ONM ready for activityFacility {}: {}",
+                    activityFacility.getId(), e.getMessage(), e);
+        }
     }
 
     private void updateAssetsForFacility(ActivityFacility activityFacility, RequestInfo requestInfo, String facilityId) throws CustomException {

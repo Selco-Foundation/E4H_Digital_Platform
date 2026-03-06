@@ -19,8 +19,11 @@ public class IncidentStatusAgregation {
     @JsonProperty("tenantId")
     private String tenantId;
 
-    @JsonProperty("boundaryCode")
-    private String boundaryCode;
+    @JsonProperty("facilityId")
+    private String facilityId;
+
+    @JsonProperty("phcName")
+    private String phcName;
 
     @JsonProperty("totalTickets")
     private int totalOccurences;
@@ -52,6 +55,9 @@ public class IncidentStatusAgregation {
     @JsonProperty("isLive")
     private boolean isLive;
 
+    @JsonProperty("synced")
+    private boolean synced;
+
     @JsonProperty("name")
     private String name;
 
@@ -66,6 +72,9 @@ public class IncidentStatusAgregation {
 
     @JsonProperty("geoPoint")
     private List<Double> geoPoint;
+
+    @JsonProperty("boundary")
+    private Boundary boundary;
 
     @JsonProperty("mappedVendorUserName")
     private String mappedVendorUserName;

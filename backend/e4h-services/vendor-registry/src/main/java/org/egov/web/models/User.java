@@ -8,6 +8,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import java.util.ArrayList;
 import java.util.List;
 
 @Validated
@@ -27,6 +28,7 @@ public class User {
     @JsonProperty("uuid")
     private String uuid;
 
+    @NotNull
     @Size(max=180)
     @JsonProperty("userName")
     private String userName;
@@ -161,6 +163,8 @@ public class User {
     @Size(max=256)
     @JsonProperty("tenantId")
     private String tenantId;
-    
+
+    @JsonProperty("jurisdiction")
+    private List<Jurisdiction> jurisdictions = new ArrayList<>();
 
 }

@@ -66,6 +66,7 @@ public class ActivityFacilityUsersService {
 
         facilityUserValidator.validateCreateActivityFacilityUsersRequest(request);
         List<ActivityFacilityUser> activityFacilityUsers = request.getActivityFacilityUsers();
+        log.info("received activityFacilityUsers to create bulk activity facility users size {}", activityFacilityUsers);
         for (ActivityFacilityUser facilityUser : activityFacilityUsers) {
             ActivityFacilityUserSearchCriteria searchCriteria = ActivityFacilityUserSearchCriteria.builder()
                     .activityFacilityId(new ArrayList<>(List.of(facilityUser.getActivityFacilityId())))
