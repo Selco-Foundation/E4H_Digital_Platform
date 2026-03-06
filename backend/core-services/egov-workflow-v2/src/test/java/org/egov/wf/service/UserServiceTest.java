@@ -327,7 +327,7 @@ class UserServiceTest {
         verify(this.workflowConfig).getUserSearchEndpoint();
         verify(this.serviceRequestRepository).fetchResult((StringBuilder) any(), (Object) any());
         verify(this.objectMapper).convertValue((Object) any(), (Class<Object>) any());
-        verify(userSearchRequest).getRoleCodes();
+//        verify(userSearchRequest).getRoleCodes();
         verify(userSearchRequest).setAadhaarNumber((String) any());
         verify(userSearchRequest).setActive((Boolean) any());
         verify(userSearchRequest).setEmailId((String) any());

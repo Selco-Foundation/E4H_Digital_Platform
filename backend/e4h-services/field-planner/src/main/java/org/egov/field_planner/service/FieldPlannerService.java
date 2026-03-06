@@ -70,37 +70,54 @@ public class FieldPlannerService {
     }
 
     public FieldPlanRequest createFieldPlan(FieldPlanRequest fieldPlanRequest) {
+        log.trace("Entering createFieldPlan method");
+        log.info("Starting field plan creation request");
+
         fieldPlannerValidator.validateCreateFieldPlanRequest(fieldPlanRequest);
+        log.debug("Field plan creation request validated successfully");
+
         for (FieldPlan fieldPlan : fieldPlanRequest.getFieldPlans()) {
+            log.trace("Processing field plan for tenant: {}", fieldPlan.getTenantId());
+
             String baseName = getStateActivitiesYearFormat(fieldPlanRequest, fieldPlan.getTenantId(), fieldPlan);
 //            String baseName = "KA-MT_HO-2024";
             if(baseName == null){
+                log.error("Cannot generate field plan name for tenant: {}", fieldPlan.getTenantId());
                 throw new CustomException("FORMAT ERROR", "Cannot generate the fieldplan name");
-            };
+            }
+            log.debug("Generated base name for field plan: {}", baseName);
+
             fieldPlan.setName(baseName);
             NameResult result = CheckDuplicateAndGenerateName(fieldPlan);
             if (result.isDuplicate()) {
                 fieldPlan.setIsDuplicate(true);
                 fieldPlan.setName(result.getGeneratedName());
-                log.info("Duplicate found. Using generated name: " + result.getGeneratedName());
-//                return fieldPlanRequest;
+                log.info("Duplicate field plan name found, using generated name: {}", result.getGeneratedName());
             } else {
-                log.info("No duplicate. Name is: " + result.getGeneratedName());
+                log.debug("No duplicate found, using base name: {}", result.getGeneratedName());
             }
+
             fieldPlannerEnrichment.enrichFieldPlanOnCreate(fieldPlan, fieldPlanRequest.getRequestInfo());
-            log.info("Enriched with FieldPlan Ids and AuditDetails {}", fieldPlan);
+            log.info("Field plan enriched with ID: {} and audit details", fieldPlan.getId());
+
             producer.push(fieldPlannerConfiguration.getSaveFieldPlanTopic(), fieldPlanRequest);
-            log.info("Pushed to kafka");
+            log.info("Field plan creation request pushed to Kafka topic: {}", fieldPlannerConfiguration.getSaveFieldPlanTopic());
         }
+
+        log.info("Field plan creation request processed successfully");
+        log.trace("Exiting createFieldPlan method");
         return fieldPlanRequest;
     }
 
     public FieldPlanRequest updateFieldPlan(FieldPlanRequest request) {
+        log.trace("Entering updateFieldPlan method");
+        log.info("Starting field plan update request");
+
         /*
          * Validate the update fieldPlan request
          */
         fieldPlannerValidator.validateUpdateFieldPlanRequest(request);
-        log.info("Update fieldplan request validated");
+        log.debug("Field plan update request validated successfully");
 
         /*
          * Search for fieldplan based on fieldplan IDs provided in the request
@@ -109,28 +126,38 @@ public class FieldPlannerService {
                 getSearchFieldPlanRequest(request.getFieldPlans(), request.getRequestInfo()),
                 fieldPlannerConfiguration.getMaxLimit(), fieldPlannerConfiguration.getDefaultOffset(),
                 request.getFieldPlans().get(0).getTenantId(), false, null, null, null);
-        log.info("Fetched fieldPlan for update request");
+        log.info("Fetched {} field plans from database for update", fieldPlansFromDB.size());
 
         /*
          * Validate the update fieldplan request against the fieldplans fetched from the database
          */
         fieldPlannerValidator.validateUpdateAgainstDB(request.getFieldPlans(), fieldPlansFromDB);
+        log.debug("Field plan update request validated against database records");
 
         /*
          * Process each fieldPlan in the update request
          */
         for (FieldPlan fieldPlan : request.getFieldPlans()) {
+            log.trace("Processing update for field plan ID: {}", fieldPlan.getId());
             processFieldPlanUpdate(request, fieldPlan, fieldPlansFromDB);
         }
 
+        log.info("Field plan update request processed successfully");
+        log.trace("Exiting updateFieldPlan method");
         return request;
     }
 
     public Integer countAllFieldPlans(FieldPlanSearchRequest request, String tenantId, Long lastChangedSince, Boolean includeDeleted) {
-        return fieldPlannerRepository.getFieldPlanCount(request, tenantId, lastChangedSince, includeDeleted);
+        log.trace("Entering countAllFieldPlans method");
+        log.debug("Counting field plans for tenant: {}", tenantId);
+        Integer count = fieldPlannerRepository.getFieldPlanCount(request, tenantId, lastChangedSince, includeDeleted);
+        log.debug("Field plan count: {}", count);
+        log.trace("Exiting countAllFieldPlans method");
+        return count;
     }
 
     public NameResult CheckDuplicateAndGenerateName(FieldPlan fieldPlan) {
+        log.trace("Entering CheckDuplicateAndGenerateName method for field plan");
         boolean isDuplicate = false;
         String baseName = fieldPlan.getName();
         String generatedName = baseName;
@@ -186,6 +213,8 @@ public class FieldPlannerService {
         stateCode = boundaryCodeToCode(stateBoundary);
 //        String state = fieldPlanServiceUtil.extractStateName(stateBoundary);
         List<Map<String, Object>> activities = fieldPlan.getActivities();
+        log.debug("Extracted state: {}, activities count: {}", stateCode, activities.size());
+
         try {
             activitiesRes = JsonPath.read(mdmsData, jsonPathForActivities);
             stateInfoRes = JsonPath.read(mdmsData, jsonPathForStateInfo);

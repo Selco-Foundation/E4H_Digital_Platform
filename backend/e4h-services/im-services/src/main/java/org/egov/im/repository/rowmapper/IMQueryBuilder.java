@@ -174,6 +174,17 @@ public class IMQueryBuilder {
             preparedStmtList.add(criteria.getSlaDeltaMaxLimit());
         }
 
+        // Threshold on time elapsed since filed/created (e.g. for theft notification).
+        Long filedDateThresholdMs = criteria.getFiledDateThresholdMs();
+        if (filedDateThresholdMs != null) {
+            if (filedDateThresholdMs < 0) {
+              throw new CustomException("INVALID_SEARCH", "filedDateThresholdMs cannot be negative");
+            }
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ((extract(epoch FROM NOW())*1000) - COALESCE(ser.fileddate, ser.createdtime)) >= ? ");
+            preparedStmtList.add(filedDateThresholdMs);
+        }
+
         Set<String> userIds = criteria.getUserIds();
         if (!CollectionUtils.isEmpty(userIds)) {
             addClauseIfRequired(preparedStmtList, builder);

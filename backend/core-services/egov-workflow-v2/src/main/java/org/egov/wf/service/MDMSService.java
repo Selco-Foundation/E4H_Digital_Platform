@@ -48,7 +48,7 @@ public class MDMSService {
 
         Object mdmsData = getBusinessServiceMDMS();
         List<HashMap<String, Object>> configs = JsonPath.read(mdmsData,JSONPATH_BUSINESSSERVICE_STATELEVEL);
-
+//        List<HashMap<String, Object>> configs = new ArrayList<>();
 
         for (Map map : configs){
 

@@ -81,4 +81,16 @@ public class IMUtils {
             wrapper.getProcessInstance().setBusinessService(businessService);
         }
     }
+
+    public String extractFacilityCode(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isEmpty()) {
+            return null;
+        }
+
+        String[] parts = boundaryCode.split("_");
+        String lastPart = parts[parts.length - 1];
+
+        return lastPart.startsWith("FAC/") ? lastPart : null;
+    }
+
 }
