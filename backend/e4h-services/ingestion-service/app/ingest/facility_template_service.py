@@ -58,7 +58,8 @@ class FacilityTemplateService:
                                boundary_list: List[Boundary],
                                facility_data: List[Dict[str, Any]],
                                extra_append_rows: int,
-                               type: str = None
+                               type: str = None,
+                               optimize_for_performance: bool = False
                                ) -> None:
         """
             Generates FacilityIngestionTemplate.xlsx with:
@@ -164,14 +165,17 @@ class FacilityTemplateService:
                 max_extra_rows= extra_append_rows
             )
 
-            # Add Validations (Regex + Unique) as comments/hints
-            add_validations_to_excel(
-                file_path=output_path,
-                sheet_name="FacilityMapping",
-                validations=column_validations,
-                allow_blank_map=allow_blank_map,
-                max_extra_rows=extra_append_rows
-            )
+            # Add Validations (Regex + Unique) as comments/hints.
+            # These are helpful but expensive on large sheets, so allow skipping
+            # them when optimize_for_performance is enabled.
+            if not optimize_for_performance:
+                add_validations_to_excel(
+                    file_path=output_path,
+                    sheet_name="FacilityMapping",
+                    validations=column_validations,
+                    allow_blank_map=allow_blank_map,
+                    max_extra_rows=extra_append_rows
+                )
 
             # Add Boundary Data Sheet
             boundary_records = self._format_boundary_data(boundary_list)
@@ -199,12 +203,17 @@ class FacilityTemplateService:
                 always_locked_columns=always_locked_columns,
                 extra_append_rows=extra_append_rows
             )
-            add_non_blank_validations_to_file(
-                file_path=output_path,
-                sheet_name="FacilityMapping",
-                facility_schema=facility_schema,
-                allow_blank_map=allow_blank_map
-            )
+
+            # Non-blank validations are helpful but expensive; keep them only
+            # in fully featured mode. Autofit is needed for usability, so it is
+            # always applied using a lightweight implementation.
+            if not optimize_for_performance:
+                add_non_blank_validations_to_file(
+                    file_path=output_path,
+                    sheet_name="FacilityMapping",
+                    facility_schema=facility_schema,
+                    allow_blank_map=allow_blank_map
+                )
 
             autofit_columns(
                 file_path=output_path,

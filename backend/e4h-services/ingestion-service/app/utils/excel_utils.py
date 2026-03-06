@@ -339,27 +339,27 @@ def autofit_columns(
 
     ws = wb[sheet_name]
 
-    # Load data with pandas for convenience
-    try:
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
-    except Exception:
-        df = None  # fallback: will just use worksheet cells
-
+    # Iterate directly over worksheet cells to avoid the overhead of
+    # re-reading the file with pandas for each autofit call.
     for i, col in enumerate(ws.iter_cols(min_row=1, max_row=ws.max_row), start=1):
         col_letter = get_column_letter(i)
 
         if auto_fit:
-            if df is not None and df.shape[1] >= i:
-                texts = [str(df.columns[i - 1])] + df.iloc[:, i - 1].astype(str).tolist()
-            else:
-                texts = [str(cell.value) for cell in col if cell.value is not None]
+            max_length = 0
+            for cell in col:
+                value = cell.value
+                if value is not None:
+                    text = str(value)
+                    if len(text) > max_length:
+                        max_length = len(text)
 
-            max_length = max((len(str(t)) for t in texts if t), default=default_width)
-            ws.column_dimensions[col_letter].width = min(max_length + 2, max_width)  # padding
+            if max_length == 0:
+                max_length = default_width
+
+            ws.column_dimensions[col_letter].width = min(max_length + 2, max_width)
         else:
             ws.column_dimensions[col_letter].width = default_width
 
-        # Apply wrap text to all cells in this column
         if enable_wrap_text:
             for cell in col:
                 cell.alignment = Alignment(wrap_text=True)
