@@ -87,17 +87,41 @@ async def get_facility_ingestion_template_with_data(
 
         logger.info("Fetching facilities by boundary codes")
         all_facilities = []
-        if facility_service_url:
+        if facility_service_url and boundary_list:
             facility_client = FacilityServiceClient(facility_service_url)
+
+            # Deduplicate boundaries by code to avoid redundant calls
+            unique_boundaries = {}
             for boundary in boundary_list:
+                if boundary.code and boundary.code not in unique_boundaries:
+                    unique_boundaries[boundary.code] = boundary
+            unique_boundary_list = list(unique_boundaries.values())
+
+            logger.info(f"Total unique boundary codes for facility search: {len(unique_boundary_list)}")
+
+            def fetch_boundary_facilities(boundary):
+                """Fetch facilities for a single boundary code."""
                 try:
                     logger.trace(f"Searching facilities for boundary: {boundary.code}")
                     results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                    facilities = results.get('facilities', [])
-                    all_facilities.extend(facilities)
+                    facilities = results.get('facilities', []) or []
                     logger.debug(f"Found {len(facilities)} facilities for boundary {boundary.code}")
+                    return facilities
                 except Exception as e:
                     logger.error(f"Error fetching boundary facilities for boundary {boundary.code}: {e}", exc_info=True)
+                    return []
+
+            # Fetch facilities for boundaries concurrently to reduce overall latency
+            max_workers = min(8, len(unique_boundary_list)) or 1
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_boundary = {
+                    executor.submit(fetch_boundary_facilities, boundary): boundary.code
+                    for boundary in unique_boundary_list
+                }
+                for future in as_completed(future_to_boundary):
+                    facilities = future.result()
+                    if facilities:
+                        all_facilities.extend(facilities)
 
         # Fetch project-linked facilities if project_id is provided
         logger.info(f"Fetching project-linked facilities: project_id={project_id}")
@@ -112,16 +136,43 @@ async def get_facility_ingestion_template_with_data(
                 logger.info(f"Found {len(project_linked_facility_ids)} facilities linked to project {project_id}")
                 logger.debug(f"Project facility IDs: {list(project_linked_facility_ids)[:10]}...")  # Log first 10 IDs
 
-                # Fetch full facility data for project-linked facilities
-                for pf in project_facilities:
-                    facility_id = pf.get("facilityId")
-                    if facility_id:
+                # Optimization: avoid redundant facility-service calls for facilities
+                # that are already present from boundary-based search, and fetch the
+                # remaining project facilities in parallel.
+                existing_boundary_facility_ids = {f.get("facility_id") for f in all_facilities}
+                project_facilities_to_fetch = [
+                    pf for pf in project_facilities
+                    if pf.get("facilityId") and pf.get("facilityId") not in existing_boundary_facility_ids
+                ]
+
+                logger.info(
+                    f"Project facilities total={len(project_facilities)}, "
+                    f"already_in_boundaries={len(existing_boundary_facility_ids)}, "
+                    f"to_fetch_from_facility_service={len(project_facilities_to_fetch)}"
+                )
+
+                if facility_service_url and project_facilities_to_fetch:
+                    def fetch_project_facility(facility_id: str):
                         try:
-                            facility_data = facility_client.search_facility(tenant_id='in', facility_id=facility_id)
-                            if facility_data and facility_data.get('facilities'):
-                                project_facilities_data.extend(facility_data.get('facilities', []))
+                            facility_data = facility_client.search_facility(
+                                tenant_id='in',
+                                facility_id=facility_id
+                            )
+                            return facility_data.get('facilities', []) or []
                         except Exception as e:
                             logger.error(f"Error fetching facility {facility_id}: {e}")
+                            return []
+
+                    max_workers = min(8, len(project_facilities_to_fetch)) or 1
+                    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                        future_to_facility_id = {
+                            executor.submit(fetch_project_facility, pf.get("facilityId")): pf.get("facilityId")
+                            for pf in project_facilities_to_fetch
+                        }
+                        for future in as_completed(future_to_facility_id):
+                            facilities = future.result()
+                            if facilities:
+                                project_facilities_data.extend(facilities)
 
             except Exception as e:
                 logger.error(f"Error fetching project facilities: {e}")
@@ -174,7 +225,8 @@ async def get_facility_ingestion_template_with_data(
                 boundary_list=boundary_list,
                 facility_data=all_facilities,
                 type="project",
-                extra_append_rows=1000
+                extra_append_rows=200,
+                optimize_for_performance=True
             )
             logger.info(f"Successfully created facility ingestion template: {output_filename}")
             logger.debug(f"Template file path: {output_file_path}")
