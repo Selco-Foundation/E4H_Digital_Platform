@@ -65,6 +65,9 @@ public class BusinessServiceStateMigration {
         @JsonProperty("state")
         private String state = null;
 
+        @JsonProperty("stateObject")
+        private State stateObject = null;
+
         @JsonProperty("stateSla")
         private Long stateSla = null;
 
