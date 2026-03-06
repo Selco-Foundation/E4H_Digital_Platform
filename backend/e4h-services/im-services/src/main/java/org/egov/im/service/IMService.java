@@ -9,15 +9,7 @@ import org.egov.im.repository.IMRepository;
 import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
-import org.egov.im.web.models.Boundary;
-import org.egov.im.web.models.Incident;
-import org.egov.im.web.models.IncidentRequest;
-import org.egov.im.web.models.IncidentRequestWrapper;
-import org.egov.im.web.models.IncidentWrapper;
-import org.egov.im.web.models.IndexView;
-import org.egov.im.web.models.RequestSearchCriteria;
-import org.egov.im.web.models.Workflow;
-import org.egov.im.web.models.WarrantyStatus;
+import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +47,8 @@ public class IMService {
 
     private BoundaryService boundaryService;
 
+    private RmsStatusUpdateService rmsStatusUpdateService;
+
     @Value("#{'${workflow.ticket.open.statuses}'.split(',')}")
     private Set<String> openTicketStatuses;
 
@@ -69,7 +63,8 @@ public class IMService {
             EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
             ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
             IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils,
-            LocalizationService localizationService, BoundaryService boundaryService
+            LocalizationService localizationService, BoundaryService boundaryService,
+            RmsStatusUpdateService rmsStatusUpdateService
     ) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
@@ -83,6 +78,7 @@ public class IMService {
         this.imUtils = imUtils;
         this.localizationService = localizationService;
         this.boundaryService = boundaryService;
+        this.rmsStatusUpdateService = rmsStatusUpdateService;
     }
 
 
@@ -344,6 +340,10 @@ public class IMService {
         log.trace("Publishing incident to audit indexer topic");
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
         log.info("Incident updated successfully with incidentId={}", request.getIncident().getIncidentId());
+
+        // Notify RMS when ticket status is moved to a closed state.
+        rmsStatusUpdateService.notifyRmsOnStatusUpdate(request);
+
         return request;
     }
 

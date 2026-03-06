@@ -17,11 +17,13 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
@@ -159,11 +161,14 @@ public class WorkflowService {
         }
 
         //get all process instances
-        log.trace("Fetching all process instances for SLA calculation");
+        log.trace("Fetching all process instances for SLA and lifecycle calculation");
         List<ProcessInstance> processInstances = getAllProcessInstances(tenantId,IncidentId, requestInfo);
-        Collections.reverse(processInstances);
 
-        // Step 3: Use BusinessHoursUtil
+        // Compute first-round resolved / declined timestamps (before any reordering)
+        enrichResolvedAndDeclinedTimestamps(wrapper, processInstances);
+
+        // Step 3: Use BusinessHoursUtil (requires latest cycle ordering)
+        Collections.reverse(processInstances);
         log.trace("Calculating business hours elapsed and total SLA");
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
         long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
@@ -174,6 +179,67 @@ public class WorkflowService {
 
         wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
         processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
+    }
+
+    /**
+     * Computes first-round resolved and declined timestamps from the workflow history
+     * and stores them on IndexView so they are available in every index update.
+     */
+    private void enrichResolvedAndDeclinedTimestamps(IncidentRequestWrapper wrapper, List<ProcessInstance> processInstances) {
+        if (CollectionUtils.isEmpty(processInstances)) {
+            return;
+        }
+
+        // Ensure chronological order (oldest first) for first-occurrence detection
+        List<ProcessInstance> ordered = new ArrayList<>(processInstances);
+        ordered.sort(Comparator.comparing(pi -> {
+            if (pi.getAuditDetails() != null && pi.getAuditDetails().getCreatedTime() != null) {
+                return pi.getAuditDetails().getCreatedTime();
+            }
+            // fallback to 0 if timestamps are missing
+            return 0L;
+        }));
+
+        Long firstResolvedTs = null;
+        Long firstDeclinedTs = null;
+
+        for (ProcessInstance pi : ordered) {
+            State state = pi.getState();
+            AuditDetails auditDetails = pi.getAuditDetails();
+
+            if (state == null || auditDetails == null || auditDetails.getCreatedTime() == null) {
+                continue;
+            }
+
+            String status = state.getApplicationStatus();
+            Long ts = auditDetails.getCreatedTime();
+
+            if (status == null) {
+                continue;
+            }
+
+            if (firstResolvedTs == null && "RESOLVED".equalsIgnoreCase(status)) {
+                firstResolvedTs = ts;
+            }
+
+            // Treat REJECTED as decline; extend if you introduce explicit DECLINE statuses
+            if (firstDeclinedTs == null && "REJECTED".equalsIgnoreCase(status)) {
+                firstDeclinedTs = ts;
+            }
+
+            if (firstResolvedTs != null && firstDeclinedTs != null) {
+                break;
+            }
+        }
+
+        IndexView indexView = wrapper.getIndexView();
+        if (indexView == null) {
+            indexView = new IndexView();
+            wrapper.setIndexView(indexView);
+        }
+
+        indexView.setResolvedTimestamp(firstResolvedTs);
+        indexView.setDeclinedTimestamp(firstDeclinedTs);
     }
 
     /**
