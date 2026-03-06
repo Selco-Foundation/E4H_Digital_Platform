@@ -12,7 +12,7 @@ const Inbox = () => {
   const { userName, roles } = Digit.UserService.getUser().info;
   const [totalRecords, setTotalRecords] = useState(0);
   const { nearing } = Digit.Hooks.useQueryParams();
-  const isTechPocUser = (roles || []).every((role) => role.code === "COMPLAINT_FACILITATOR_2" || role.code === "EMPLOYEE");
+  const isTechPocUser = roles?.every((role) => role.code === "COMPLAINT_FACILITATOR_2" || role.code === "EMPLOYEE");
 
   const isCodePresent = (array, codeToCheck) => array.some((item) => item.code === codeToCheck);
 
