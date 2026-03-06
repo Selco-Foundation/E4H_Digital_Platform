@@ -19,7 +19,7 @@ const Filter = (props) => {
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
-  const isTechPocUser = (roles || []).some((role) => role.code === "COMPLAINT_FACILITATOR_2");
+  const isTechPocUser = roles?.every((role) => role.code === "COMPLAINT_FACILITATOR_2" || role.code === "EMPLOYEE");
 
   const assignedToOptions = useMemo(
     () => [
@@ -66,7 +66,7 @@ const isCodePresent = (array, codeToCheck) =>{
 }
 
   const [selectAssigned, setSelectedAssigned] = useState(
-    (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
+    isAssignedToMe ? assignedToOptions[0] : assignedToOptions[1]
   );
 
   const [pgrfilters, setPgrFilters] = useState(
@@ -83,9 +83,18 @@ const isCodePresent = (array, codeToCheck) =>{
 
   const [wfFilters, setWfFilters] = useState(
     searchParams?.filters?.wfFilters ||
-    (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER") ?
-      { assignee: [{ code: userName }] } :
-      { assignee: [{ code: "" }] })
+      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")
+        ? { assignee: [{ code: userName }] }
+        : isTechPocUser
+        ? {
+            assignee: [{ code: userName }],
+            wfStatus: [
+              { code: "RMS_DEVICE_PENDING_TECH_POC" },
+              { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
+              { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
+            ],
+          }
+        : { assignee: [{ code: "" }] })
   );
 
   useEffect(() => {
@@ -139,9 +148,7 @@ const isCodePresent = (array, codeToCheck) =>{
 
   useEffect(() => {
 
-    setSelectedAssigned(
-      (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
-    )
+    setSelectedAssigned(isAssignedToMe ? assignedToOptions[0] : assignedToOptions[1]);
 
     setPgrFilters((prevFilters) => ({
       ...prevFilters,
@@ -371,7 +378,18 @@ const isCodePresent = (array, codeToCheck) =>{
       isSystemFunctional: [],
       applicationStatus: []
     };
-    let wfRest = { assigned: [{ code: [] }] };
+    let wfRest = isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")
+      ? { assignee: [{ code: userName }] }
+      : isTechPocUser
+      ? {
+          assignee: [{ code: userName }],
+          wfStatus: [
+            { code: "RMS_DEVICE_PENDING_TECH_POC" },
+            { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
+            { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
+          ],
+        }
+      : { assignee: [{ code: "" }] };
     setDistrictMenu([]);
     setBlockMenu([]);
     setFacilityMenu([]);
@@ -380,7 +398,7 @@ const isCodePresent = (array, codeToCheck) =>{
     pgrQuery = {};
     wfQuery = {};
     setSelectedAssigned(
-      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
+      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) || isTechPocUser ? assignedToOptions[0] : assignedToOptions[1]
     );
   }
 
