@@ -186,7 +186,11 @@ public class IMService {
         log.info("Incident created successfully with incidentId={}", request.getIncident().getIncidentId());
 
         // Insert into facility_rms_inactive_incident for RMS/Theft tickets (one record per incident).
-        rmsInactiveIncidentService.onIncidentCreated(request);
+        try {
+            rmsInactiveIncidentService.onIncidentCreated(request);
+        } catch (Exception e) {
+            log.error("Failed to sync facility_rms_inactive_incident for incidentId={}", request.getIncident().getIncidentId(), e);
+        }
 
         return request;
     }
@@ -353,7 +357,11 @@ public class IMService {
 
         // Sync facility_rms_inactive_incident: insert on re-open, delete when resolved/declined/closed.
         String workflowAction = request.getWorkflow() != null ? request.getWorkflow().getAction() : null;
-        rmsInactiveIncidentService.onIncidentUpdated(request, workflowAction);
+        try {
+            rmsInactiveIncidentService.onIncidentUpdated(request, workflowAction);
+        } catch (Exception e) {
+            log.error("Failed to sync facility_rms_inactive_incident for incidentId={}", request.getIncident().getIncidentId(), e);
+        }
 
         return request;
     }

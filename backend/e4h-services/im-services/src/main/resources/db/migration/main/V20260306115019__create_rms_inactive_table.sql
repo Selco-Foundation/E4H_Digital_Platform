@@ -1,8 +1,8 @@
 CREATE TABLE facility_rms_inactive_incident(
        id                  character varying(64),
-       tenantId            character varying(256),
+       tenantId            character varying(256)  NOT NULL,
        facilityid          character varying(256)  NOT NULL,
-       incidentId		    character varying(256),
+       incidentid		    character varying(256) NOT NULL,
        createdby           character varying(256)  NOT NULL,
        createdtime         bigint                  NOT NULL,
        lastmodifiedby      character varying(256),
