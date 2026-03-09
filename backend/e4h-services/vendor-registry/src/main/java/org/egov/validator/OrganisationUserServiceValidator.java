@@ -509,24 +509,6 @@ public class OrganisationUserServiceValidator {
         }
     }
 
-    public Map<String, List<Role>> getOrgRoles(RequestInfo requestInfo){
-        Object mdmsData = mdmsUtil.mDMSCall(requestInfo, configuration.getGlobalTenantId());
-        final String jsonPathForOrgRoles = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_ROLES + "[*]";
-        List<Map<String, Object>> orgRolesRes = null;
-        try {
-            orgRolesRes = JsonPath.read(mdmsData, jsonPathForOrgRoles);
-            List<Role> orgRolesList = orgRolesRes.stream()
-                    .map(item -> mapper.convertValue(item, Role.class))
-                    .toList();
-            Map<String, List<Role>> rolesByOrgType = orgRolesList.stream().collect(Collectors.groupingBy(Role::getOrgType));
-            return rolesByOrgType;
-        } catch (Exception e) {
-            e.printStackTrace();
-            log.error(e.getMessage());
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
-        }
-    }
-
     private UserChangeSet detectUserChanges(User existing, User incoming) {
         UserChangeSet changes = new UserChangeSet();
 
@@ -582,67 +564,6 @@ public class OrganisationUserServiceValidator {
                 .map(Jurisdiction::getIsActive)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
-    }
-
-
-    public void validateDeleteOrgUserRequest(DeleteOrgUserRequest request) {
-        RequestInfo requestInfo = request.getRequestInfo();
-
-        //Verify if RequestInfo and UserInfo is present
-        validateRequestInfo(requestInfo);
-        //Verify if org users request and mandatory fields are present
-        validateDeleteUserOrgRequest(request);
-    }
-
-    private void validateDeleteUserOrgRequest(DeleteOrgUserRequest request) {
-        String orgUserId = request.getId();
-        if (orgUserId == null || orgUserId.isBlank()) {
-            log.error("OrgUserId is mandatory in delete");
-            throw new CustomException("Org User", "User is mandatory in delete");
-        }
-
-        OrgUserSearchCriteria searchUserCriteria = OrgUserSearchCriteria.builder().id(List.of(request.getId())).tenantId(configuration.getGlobalTenantId()).build();
-        OrgUserSearchRequest orgUserSearchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria).build();
-        URLParams urlParams = URLParams.builder().limit(1).offset(0).build();
-        List<OrgUser> users = userRepository.getOrgUsers(orgUserSearchRequest, urlParams);
-        if(users == null || users.isEmpty()){
-            log.error("This org user id do not exist");
-            throw new CustomException("Organization", "This org user id do not exist");
-        }
-
-        //Check if user has any activity assignments
-        List<ActivityAssignment> activityAssignmentList = organisationUtil.getFieldPlanActivityAssignment(request);
-        //user has active assignments exist
-        if(activityAssignmentList != null && !activityAssignmentList.isEmpty()){
-            try {
-                OrgUserDeleteErrorResponse errorResponse = OrgUserDeleteErrorResponse.builder()
-                        .message("User cannot be deleted because they have active or pending assignments.")
-                        .blockingAssignments(activityAssignmentList)
-                        .build();
-                throw new ResponseStatusException(HttpStatus.CONFLICT, mapper.writeValueAsString((errorResponse))); // Ici on renvoie l'objet comme message JSON
-            } catch (JsonProcessingException e) {
-                log.error("JSON processing error while serializing error response: {}", e.getMessage(), e);
-                throw new CustomException("Organization", "User cannot be deleted because they have active or pending assignments.");
-            } catch (Exception e) {
-                log.error("Unexpected error while serializing error response: {}", e.getMessage(), e);
-                throw new CustomException("Organization", "User cannot be deleted because they have active or pending assignments.");
-            }
-        }
-    }
-
-    private void validateOrgRoles(Set<String> orgRolesReqSet, List<String> orgRolesCodesMDMS) {
-        if (CollectionUtils.isEmpty(orgRolesCodesMDMS)) {
-            log.error("Org Roles is not configured in MDMS");
-            throw new CustomException("INVALID_ROLES", "Org Roles is not configured in MDMS");
-        } else {
-            if (!CollectionUtils.isEmpty(orgRolesReqSet)) {
-                orgRolesReqSet.removeAll(orgRolesCodesMDMS);
-                if (!CollectionUtils.isEmpty(orgRolesReqSet)) {
-                    log.error("Invalid role assigned to the employee");
-                    throw new CustomException("INVALID_ROLES", "Invalid role assigned to the employee "+orgRolesReqSet);
-                }
-            }
-        }
     }
 
     public Map<String, List<Role>> getOrgRoles(RequestInfo requestInfo){

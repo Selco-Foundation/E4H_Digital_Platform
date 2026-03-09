@@ -144,26 +144,6 @@ public class QueryBuilderUtil {
             params.addAll(criteria.getFacilityStatus());
         }
 
-        if (!CollectionUtils.isEmpty(criteria.getFacilityPocNames())) {
-            whereClause.append(" AND facility_poc_name ILIKE ANY ( ARRAY [ ").append(createQuery(criteria.getFacilityPocNames().size())).append(" ] )");
-            params.addAll(criteria.getFacilityPocNames().stream().map((facilityPocName) -> "%" + facilityPocName + "%").toList());
-        }
-
-        if (!CollectionUtils.isEmpty(criteria.getFacilityPocPhones())) {
-            whereClause.append(" AND facility_poc_phone in ( ").append(createQuery(criteria.getFacilityPocPhones().size())).append(" )");
-            params.addAll(criteria.getFacilityPocPhones());
-        }
-
-        if (!CollectionUtils.isEmpty(criteria.getFacilityPocEmails())) {
-            whereClause.append(" AND facility_poc_email in ( ").append(createQuery(criteria.getFacilityPocEmails().size())).append(" )");
-            params.addAll(criteria.getFacilityPocEmails());
-        }
-
-        if (!CollectionUtils.isEmpty(criteria.getFacilityStatus())) {
-            whereClause.append(" AND facility_status in ( ").append(createQuery(criteria.getFacilityStatus().size())).append(" )");
-            params.addAll(criteria.getFacilityStatus());
-        }
-
         if (!CollectionUtils.isEmpty(criteria.getBoundaryCodes())) {
             whereClause.append(" AND boundary_code in ( ").append(createQuery(criteria.getBoundaryCodes().size())).append(" )");
             params.addAll(criteria.getBoundaryCodes());
