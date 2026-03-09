@@ -628,8 +628,8 @@ public class FacilityService {
                 "SELECT fac.*, " +
                         "fa.latitude AS latitude, " +
                         "fa.longitude AS longitude, " +
-                        "fa.\"addressLine1\" AS \"addressLine1\", " +
-                        "fa.\"addressLine2\" AS \"addressLine2\", " +
+                        "fa.addressLine1 AS addressLine1, " +
+                        "fa.addressLine2 AS addressLine2, " +
                         "fa.city AS city, " +
                         "fa.pincode AS pincode, " +
                         "fa.landmark AS landmark, " +
