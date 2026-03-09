@@ -9,15 +9,7 @@ import org.egov.im.repository.IMRepository;
 import org.egov.im.util.IMUtils;
 import org.egov.im.util.MDMSUtils;
 import org.egov.im.validator.ServiceRequestValidator;
-import org.egov.im.web.models.Boundary;
-import org.egov.im.web.models.Incident;
-import org.egov.im.web.models.IncidentRequest;
-import org.egov.im.web.models.IncidentRequestWrapper;
-import org.egov.im.web.models.IncidentWrapper;
-import org.egov.im.web.models.IndexView;
-import org.egov.im.web.models.RequestSearchCriteria;
-import org.egov.im.web.models.Workflow;
-import org.egov.im.web.models.WarrantyStatus;
+import org.egov.im.web.models.*;
 import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +47,10 @@ public class IMService {
 
     private BoundaryService boundaryService;
 
+    private RmsStatusUpdateService rmsStatusUpdateService;
+
+    private RmsInactiveIncidentService rmsInactiveIncidentService;
+
     @Value("#{'${workflow.ticket.open.statuses}'.split(',')}")
     private Set<String> openTicketStatuses;
 
@@ -69,7 +65,8 @@ public class IMService {
             EnrichmentService enrichmentService, UserService userService, WorkflowService workflowService,
             ServiceRequestValidator serviceRequestValidator, ServiceRequestValidator validator, Producer producer,
             IMConfiguration config, IMRepository repository, MDMSUtils mdmsUtils, IMUtils imUtils,
-            LocalizationService localizationService, BoundaryService boundaryService
+            LocalizationService localizationService, BoundaryService boundaryService,
+            RmsStatusUpdateService rmsStatusUpdateService, RmsInactiveIncidentService rmsInactiveIncidentService
     ) {
         this.enrichmentService = enrichmentService;
         this.userService = userService;
@@ -83,6 +80,8 @@ public class IMService {
         this.imUtils = imUtils;
         this.localizationService = localizationService;
         this.boundaryService = boundaryService;
+        this.rmsStatusUpdateService = rmsStatusUpdateService;
+        this.rmsInactiveIncidentService = rmsInactiveIncidentService;
     }
 
 
@@ -185,6 +184,14 @@ public class IMService {
         log.trace("Publishing incident to audit indexer topic");
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
         log.info("Incident created successfully with incidentId={}", request.getIncident().getIncidentId());
+
+        // Insert into facility_rms_inactive_incident for RMS/Theft tickets (one record per incident).
+        try {
+            rmsInactiveIncidentService.onIncidentCreated(request);
+        } catch (Exception e) {
+            log.error("Failed to sync facility_rms_inactive_incident for incidentId={}", request.getIncident().getIncidentId(), e);
+        }
+
         return request;
     }
 
@@ -344,6 +351,18 @@ public class IMService {
         log.trace("Publishing incident to audit indexer topic");
         producer.push(tenantId,config.getAuditCreateTopicIndexer(),wrapper);
         log.info("Incident updated successfully with incidentId={}", request.getIncident().getIncidentId());
+
+        // Notify RMS when ticket status is moved to a closed state.
+        rmsStatusUpdateService.notifyRmsOnStatusUpdate(request);
+
+        // Sync facility_rms_inactive_incident: insert on re-open, delete when resolved/declined/closed.
+        String workflowAction = request.getWorkflow() != null ? request.getWorkflow().getAction() : null;
+        try {
+            rmsInactiveIncidentService.onIncidentUpdated(request, workflowAction);
+        } catch (Exception e) {
+            log.error("Failed to sync facility_rms_inactive_incident for incidentId={}", request.getIncident().getIncidentId(), e);
+        }
+
         return request;
     }
 

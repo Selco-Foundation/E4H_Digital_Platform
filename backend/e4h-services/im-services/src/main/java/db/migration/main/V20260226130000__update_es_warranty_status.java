@@ -2,6 +2,7 @@ package db.migration.main;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -32,7 +33,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class V20260226130000__update_es_warranty_status extends BaseJavaMigration {
@@ -182,67 +185,112 @@ public class V20260226130000__update_es_warranty_status extends BaseJavaMigratio
                                      PrintWriter migrationLogger) throws Exception {
 
         HttpHeaders headers = buildAuthHeaders(esUsername, esPassword);
-
-        // Build aggregation: terms by incidentId, then filter where endingStatus contains OUT_OF_WARRANTY, then min(lastModifiedTime)
-        ObjectNode searchBody = objectMapper.createObjectNode();
-        searchBody.put("size", 0);
-
-        ObjectNode aggs = objectMapper.createObjectNode();
-        ObjectNode termsNode = objectMapper.createObjectNode();
-        termsNode.put("field", "Data.incident.incidentId.keyword");
-        termsNode.put("size", 10000);
-        ObjectNode byIncident = objectMapper.createObjectNode();
-        byIncident.set("terms", termsNode);
-        ObjectNode matchPhrase = objectMapper.createObjectNode();
-        matchPhrase.put("Data.endingStatus", "OUT_OF_WARRANTY");
-        ObjectNode filterNode = objectMapper.createObjectNode();
-        filterNode.set("match_phrase", matchPhrase);
-        ObjectNode minAgg = objectMapper.createObjectNode();
-        minAgg.put("field", "Data.auditDetails.lastModifiedTime");
-        ObjectNode minTs = objectMapper.createObjectNode();
-        minTs.set("min", minAgg);
-        ObjectNode oowAggs = objectMapper.createObjectNode();
-        oowAggs.set("min_ts", minTs);
-        ObjectNode oowFilter = objectMapper.createObjectNode();
-        oowFilter.set("filter", filterNode);
-        oowFilter.set("aggs", oowAggs);
-        byIncident.set("aggs", objectMapper.createObjectNode().set("out_of_warranty_times", oowFilter));
-        aggs.set("by_incident", byIncident);
-        searchBody.set("aggs", aggs);
-
         String searchUrl = esHost + "/" + indexName + "/_search";
-        HttpEntity<String> searchEntity = new HttpEntity<>(objectMapper.writeValueAsString(searchBody), headers);
-        ResponseEntity<JsonNode> searchResponse = restTemplate.postForEntity(searchUrl, searchEntity, JsonNode.class);
-        JsonNode searchResp = searchResponse.getBody();
-        if (searchResp == null || !searchResp.has("aggregations")) {
-            log.warn("Audit index {}: no aggregations in response; skipping per-incident update", indexName);
-            migrationLogger.println("Audit index: no aggregations; applying simple rule (doc.endingStatus contains OUT_OF_WARRANTY -> OUT, else WITHIN)");
-            migrationLogger.flush();
-            return updateAuditIndexSimple(restTemplate, objectMapper, esHost, indexName, headers, migrationLogger);
+
+        Map<String, Long> incidentToCutoff = new HashMap<>();
+        Set<String> allIncidents = new HashSet<>();
+
+        ObjectNode afterKey = null;
+
+        while (true) {
+            ObjectNode searchBody = objectMapper.createObjectNode();
+            searchBody.put("size", 0);
+
+            ObjectNode aggs = objectMapper.createObjectNode();
+            ObjectNode byIncident = objectMapper.createObjectNode();
+
+            // Composite aggregation over incidentId for pagination
+            ObjectNode composite = objectMapper.createObjectNode();
+            composite.put("size", 1000);
+
+            ArrayNode sources = objectMapper.createArrayNode();
+            ObjectNode incidentIdSource = objectMapper.createObjectNode();
+            ObjectNode incidentIdTerms = objectMapper.createObjectNode();
+            incidentIdTerms.put("field", "Data.incident.incidentId.keyword");
+            incidentIdSource.set("incidentId", objectMapper.createObjectNode().set("terms", incidentIdTerms));
+            sources.add(incidentIdSource);
+            composite.set("sources", sources);
+
+            if (afterKey != null) {
+                composite.set("after", afterKey);
+            }
+
+            byIncident.set("composite", composite);
+
+            // For each incident, find the earliest OUT_OF_WARRANTY transition
+            ObjectNode matchPhrase = objectMapper.createObjectNode();
+            matchPhrase.put("Data.endingStatus", "OUT_OF_WARRANTY");
+            ObjectNode filterNode = objectMapper.createObjectNode();
+            filterNode.set("match_phrase", matchPhrase);
+            ObjectNode minAgg = objectMapper.createObjectNode();
+            minAgg.put("field", "Data.auditDetails.lastModifiedTime");
+            ObjectNode minTs = objectMapper.createObjectNode();
+            minTs.set("min", minAgg);
+            ObjectNode oowAggs = objectMapper.createObjectNode();
+            oowAggs.set("min_ts", minTs);
+            ObjectNode oowFilter = objectMapper.createObjectNode();
+            oowFilter.set("filter", filterNode);
+            oowFilter.set("aggs", oowAggs);
+            byIncident.set("aggs", objectMapper.createObjectNode().set("out_of_warranty_times", oowFilter));
+
+            aggs.set("by_incident", byIncident);
+            searchBody.set("aggs", aggs);
+
+            HttpEntity<String> searchEntity = new HttpEntity<>(objectMapper.writeValueAsString(searchBody), headers);
+            ResponseEntity<JsonNode> searchResponse = restTemplate.postForEntity(searchUrl, searchEntity, JsonNode.class);
+            JsonNode searchResp = searchResponse.getBody();
+
+            if (searchResp == null || !searchResp.has("aggregations")) {
+                log.warn("Audit index {}: no aggregations in response; skipping per-incident update", indexName);
+                migrationLogger.println("Audit index: no aggregations; applying simple rule (doc.endingStatus contains OUT_OF_WARRANTY -> OUT, else WITHIN)");
+                migrationLogger.flush();
+                return updateAuditIndexSimple(restTemplate, objectMapper, esHost, indexName, headers, migrationLogger);
+            }
+
+            JsonNode byIncidentAgg = searchResp.path("aggregations").path("by_incident");
+            JsonNode buckets = byIncidentAgg.path("buckets");
+
+            if (!buckets.isArray() || buckets.size() == 0) {
+                // No more buckets in this page
+                break;
+            }
+
+            for (JsonNode bucket : buckets) {
+                JsonNode keyNode = bucket.path("key");
+                String incidentId = keyNode.path("incidentId").asText(null);
+                if (incidentId == null) continue;
+
+                allIncidents.add(incidentId);
+
+                JsonNode oow = bucket.path("out_of_warranty_times").path("min_ts").path("value");
+                if (oow.isNumber() || oow.isIntegralNumber()) {
+                    incidentToCutoff.put(incidentId, oow.asLong());
+                }
+            }
+
+            JsonNode newAfterKey = byIncidentAgg.path("after_key");
+            if (newAfterKey == null || newAfterKey.isMissingNode() || newAfterKey.isNull() || !newAfterKey.isObject()) {
+                afterKey = null;
+                break;
+            } else {
+                afterKey = (ObjectNode) newAfterKey;
+            }
         }
 
-        JsonNode buckets = searchResp.path("aggregations").path("by_incident").path("buckets");
-        if (!buckets.isArray() || buckets.size() == 0) {
+        if (allIncidents.isEmpty()) {
             log.info("Audit index {}: no incident buckets; setting all to WITHIN_WARRANTY", indexName);
             return updateAuditIndexAllWithin(restTemplate, objectMapper, esHost, indexName, headers, migrationLogger);
         }
 
-        Map<String, Long> incidentToCutoff = new HashMap<>();
-        for (JsonNode bucket : buckets) {
-            String incidentId = bucket.path("key").asText(null);
-            if (incidentId == null) continue;
-            JsonNode oow = bucket.path("out_of_warranty_times").path("min_ts").path("value");
-            if (oow.isNumber() || oow.isIntegralNumber()) {
-                incidentToCutoff.put(incidentId, oow.asLong());
-            }
-        }
-
-        log.info("Audit index: found {} incidents with OUT_OF_WARRANTY cutoff (of {} total buckets)", incidentToCutoff.size(), buckets.size());
+        log.info("Audit index: found {} incidents with OUT_OF_WARRANTY cutoff (of {} total incidents)",
+                incidentToCutoff.size(), allIncidents.size());
         migrationLogger.println("Incidents with OUT_OF_WARRANTY cutoff: " + incidentToCutoff.size());
+        migrationLogger.println("Total incidents in audit index: " + allIncidents.size());
+        migrationLogger.flush();
 
         String updateByQueryUrl = esHost + "/" + indexName + "/_update_by_query?conflicts=proceed";
 
-        // Update each incident: script uses cutoff so that lastModifiedTime >= cutoff -> OUT, else WITHIN
+        // Update each incident with a cutoff: lastModifiedTime >= cutoff -> OUT_OF_WARRANTY, else WITHIN_WARRANTY
         for (Map.Entry<String, Long> entry : incidentToCutoff.entrySet()) {
             String incidentId = entry.getKey();
             long cutoff = entry.getValue();
@@ -283,9 +331,8 @@ public class V20260226130000__update_es_warranty_status extends BaseJavaMigratio
         }
 
         // Incidents that never had OUT_OF_WARRANTY: set all their audit docs to WITHIN_WARRANTY
-        for (JsonNode bucket : buckets) {
-            String incidentId = bucket.path("key").asText(null);
-            if (incidentId == null || incidentToCutoff.containsKey(incidentId)) continue;
+        for (String incidentId : allIncidents) {
+            if (incidentToCutoff.containsKey(incidentId)) continue;
 
             ObjectNode updateRequest = objectMapper.createObjectNode();
             ObjectNode script = objectMapper.createObjectNode();

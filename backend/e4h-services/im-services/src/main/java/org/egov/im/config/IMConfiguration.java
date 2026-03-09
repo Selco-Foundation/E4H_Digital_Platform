@@ -230,6 +230,12 @@ public class IMConfiguration {
     @Value("${egov.complaints.category}")
     private String complaintTypes;
 
+    @Value("${im.save.rms.inactive.topic}")
+    private String saveRmsInactiveIncident;
+
+    @Value("${im.delete.rms.inactive.topic}")
+    private String deleteRmsInactiveIncident;
+
 
     // central-instance configs
 
@@ -296,6 +302,13 @@ public class IMConfiguration {
 
     @Value("${ffmpeg.cpulimitpercentage}")
     private String ffmpegCpuLimitPercentage;
+
+    // RMS Service Config
+    @Value("${egov.rms.host}")
+    private String rmsHost;
+
+    @Value("${egov.rms.ticket.status.update.path}")
+    private String rmsTicketStatusUpdatePath;
 
     //Facility Service Config
     @Value("${egov.facility.host}")

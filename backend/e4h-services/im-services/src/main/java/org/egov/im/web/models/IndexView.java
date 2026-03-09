@@ -69,6 +69,12 @@ public class IndexView {
     @JsonProperty("definedTotalSla")
     private Long definedTotalSla;
 
+    @JsonProperty("resolvedTimestamp")
+    private Long resolvedTimestamp;
+
+    @JsonProperty("declinedTimestamp")
+    private Long declinedTimestamp;
+
     @JsonProperty("comments")
     private String comments;
 

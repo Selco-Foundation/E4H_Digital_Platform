@@ -558,7 +558,8 @@ public class FacilityService {
         QueryBuilderResult result = QueryBuilderUtil.buildWhereClause(request);
         log.debug("Built query with {} parameters", result.getParams().size());
 
-        StringBuilder query = new StringBuilder("SELECT * FROM facility");
+        StringBuilder query = new StringBuilder(
+                "SELECT facility.*, (SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r WHERE r.facilityid = facility.id AND r.tenantid = facility.tenant_id)) AS rms_inactive FROM facility");
         query.append(result.getWhereClause());
         query.append(" ORDER BY created_at DESC NULLS LAST LIMIT ? OFFSET ?");
 
@@ -624,7 +625,8 @@ public class FacilityService {
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
 
-        StringBuilder query = new StringBuilder("SELECT * FROM facility fac");
+        StringBuilder query = new StringBuilder(
+                "SELECT fac.*, (SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive FROM facility fac");
         query.append(" LEFT JOIN facility_address fa ON fac.addressid = fa.id ");
         query.append(result.getWhereClause());
         query.append(" ORDER BY updated_at DESC NULLS LAST ");

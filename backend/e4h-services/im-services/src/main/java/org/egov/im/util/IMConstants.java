@@ -82,6 +82,10 @@ public class IMConstants {
 
     public static final String RMS_DEVICE_PENDINGRESOLUTION = "RMS_DEVICE_PENDINGRESOLUTION";
 
+    /** Ticket types that sync to facility_rms_inactive_incident (create/re-open = insert, resolve/decline/close = delete). */
+    public static final String TICKET_TYPE_RMS = "RMS Device";
+    public static final String TICKET_TYPE_THEFT = "Theft";
+
     public static final String OUT_OF_SCOPE = "OUT_OF_SCOPE";
 
     public static final String OUT_OF_WARRANTY_PENDING_TECH_POC = "OUT_OF_WARRANTY_PENDING_TECH_POC";
