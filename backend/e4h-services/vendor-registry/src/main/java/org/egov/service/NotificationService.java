@@ -231,12 +231,16 @@ public class NotificationService {
             messages = JsonPath.read(result, OrganisationConstant.ORGANISATION_LOCALIZATION_MSGS_JSONPATH);
         } catch (ServiceCallException e) {
             log.error("Service call exception while fetching from localization: {}", e.getMessage(), e);
+            throw e;
         } catch (PathNotFoundException e) {
             log.error("Path not found while parsing localization response: {}", e.getMessage(), e);
+            throw new IllegalStateException("Failed to parse localization response", e);
         } catch (RuntimeException e) {
             log.error("Runtime error while processing localization response: {}", e.getMessage(), e);
+            throw e;
         } catch (Exception e) {
             log.error("Unexpected exception while fetching from localization: {}", e.getMessage(), e);
+            throw new IllegalStateException("Failed to fetch localization response", e);
         }
         if (null != result) {
             for (int i = 0; i < codes.size(); i++) {

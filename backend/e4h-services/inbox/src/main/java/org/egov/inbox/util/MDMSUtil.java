@@ -33,7 +33,6 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
-@Slf4j
 public class MDMSUtil {
     @Autowired
     private RestTemplate restTemplate;

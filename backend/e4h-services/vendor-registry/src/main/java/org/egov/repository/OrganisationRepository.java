@@ -55,7 +55,6 @@ public class OrganisationRepository {
         this.taxIdentifierOrgIdsRowMapper = taxIdentifierOrgIdsRowMapper;
         this.jurisdictionRowMapper = jurisdictionRowMapper;
         this.taxIdentifierQueryBuilder = taxIdentifierQueryBuilder;
-        this.encryptionService = encryptionService;
         this.organisationUtil = organisationUtil;
     }
 
