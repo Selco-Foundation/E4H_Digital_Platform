@@ -87,6 +87,10 @@ public class Facility {
     @JsonProperty("nin_id")
     private String ninId = null;
 
+    /** True when the facility has any row in facility_rms_inactive_incident (open RMS/Theft incidents). */
+    @JsonProperty("rms_inactive")
+    private Boolean rmsInactive = null;
+
     @JsonProperty("user_id")
     private String userId = null;
 
