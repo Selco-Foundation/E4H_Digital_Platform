@@ -29,8 +29,6 @@ import java.util.Map;
 
 import static org.egov.inbox.util.InboxConstants.*;
 
-import lombok.extern.slf4j.Slf4j;
-
 @Slf4j
 @Component
 public class MDMSUtil {
