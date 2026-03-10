@@ -2,9 +2,7 @@ package facility.service;
 
 import facility.config.Configuration;
 import facility.repository.FacilityRepository;
-import facility.util.IdgenUtil;
-import facility.util.QueryBuilderResult;
-import facility.util.QueryBuilderUtil;
+import facility.util.*;
 import facility.web.models.*;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
@@ -248,8 +246,10 @@ public class FacilityService {
         facility.setFacilityDetails(update.getFacilityDetails());
 
         // Validate with MDMS and boundary APIs
+        log.info("Validating facility update against MDMS and boundaries");
         facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
         if (facility.getBoundaryCode() != null) {
+            log.debug("Validating boundary code: {}", facility.getBoundaryCode());
             boundaryValidator.validateBoundaries(
                     Set.of(facility.getBoundaryCode()),
                     update.getTenantId(),
@@ -270,11 +270,15 @@ public class FacilityService {
      * @return List of facilities matching the filter
      */
     public List<Facility> searchFacilities(FacilitySearchRequest request) {
+        log.trace("Entering searchFacilities method");
+        log.info("Searching facilities with limit={}, offset={}", request.getLimit(), request.getOffset());
         QueryBuilderResult result = QueryBuilderUtil.buildWhereClause(request);
+        log.debug("Built query with {} parameters", result.getParams().size());
 
-        StringBuilder query = new StringBuilder("SELECT * FROM facility");
+        StringBuilder query = new StringBuilder(
+                "SELECT facility.*, (SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r WHERE r.facilityid = facility.id AND r.tenantid = facility.tenant_id)) AS rms_inactive FROM facility");
         query.append(result.getWhereClause());
-        query.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+        query.append(" ORDER BY created_at DESC NULLS LAST LIMIT ? OFFSET ?");
 
         List<Object> allParams = new ArrayList<>(result.getParams());
         allParams.add(request.getLimit());
@@ -294,12 +298,25 @@ public class FacilityService {
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
 
-        StringBuilder query = new StringBuilder("SELECT * FROM facility");
+        StringBuilder query = new StringBuilder(
+                "SELECT fac.*, " +
+                        "fa.latitude AS latitude, " +
+                        "fa.longitude AS longitude, " +
+                        "fa.addressLine1 AS addressLine1, " +
+                        "fa.addressLine2 AS addressLine2, " +
+                        "fa.city AS city, " +
+                        "fa.pincode AS pincode, " +
+                        "fa.landmark AS landmark, " +
+                        "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r " +
+                        "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive " +
+                        "FROM facility fac");
+        query.append(" LEFT JOIN facility_address fa ON fac.addressid = fa.id ");
         query.append(result.getWhereClause());
+        query.append(" ORDER BY updated_at DESC NULLS LAST ");
 
         List<Object> allParams = new ArrayList<>(result.getParams());
         if (!Boolean.TRUE.equals(request.getFacilityBulkSearchCriteria().getSendNonPaginatedResponse())) {
-            query.append(" ORDER BY created_at DESC LIMIT ? OFFSET ?");
+            query.append(" LIMIT ? OFFSET ?");
             allParams.add(request.getFacilityBulkSearchCriteria().getLimit());
             allParams.add(request.getFacilityBulkSearchCriteria().getOffset());
         }
@@ -318,32 +335,63 @@ public class FacilityService {
      * @return a FacilitySummary object
      */
     public FacilitySummary getFacilitySummary(String facilityId) {
+        log.trace("Entering getFacilitySummary method for facility: {}", facilityId);
         String sql = "SELECT facility_name, facility_type FROM facility WHERE facility_id = ?";
         try {
-            return jdbcTemplate.queryForObject(sql, new Object[]{facilityId}, (rs, rowNum) -> {
+            FacilitySummary summary = jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
                 String name = rs.getString("facility_name");
                 String type = rs.getString("facility_type");
-                FacilitySummary summary = new FacilitySummary();
-                summary.setSummary("Facility '" + name + "' is of type '" + type + "'.");
-                return summary;
-            });
+                FacilitySummary result = new FacilitySummary();
+                result.setSummary("Facility '" + name + "' is of type '" + type + "'.");
+                return result;
+            }, facilityId);
+            log.debug("Retrieved facility summary for facility: {}", facilityId);
+            log.trace("Exiting getFacilitySummary method");
+            return summary;
         } catch (EmptyResultDataAccessException e) {
+            log.warn("Facility summary not found for facility: {}", facilityId);
             return null;
         }
     }
 
     public int countFacilities(FacilitySearchRequest request) {
+        log.trace("Entering countFacilities method");
         QueryBuilderResult result = QueryBuilderUtil.buildWhereClause(request);
         String query = "SELECT COUNT(*) FROM facility" + result.getWhereClause();
-        return jdbcTemplate.queryForObject(query, result.getParams().toArray(), Integer.class);
+        int count = jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
+        log.debug("Facility count: {}", count);
+        log.trace("Exiting countFacilities method");
+        return count;
     }
 
     public int countFacilitiesForBulkSearch(FacilityBulkSearchRequest request) {
+        log.trace("Entering countFacilitiesForBulkSearch method");
         QueryBuilderResult result = QueryBuilderUtil.buildBulkWhereClause(
                 request.getFacilityBulkSearchCriteria(), request.getRequestInfo(), configs.getOnmNonReadyAllowedRoles()
         );
-        String query = "SELECT COUNT(*) FROM facility" + result.getWhereClause();
-        return jdbcTemplate.queryForObject(query, result.getParams().toArray(), Integer.class);
+        String query = "SELECT COUNT(*) FROM facility fac" + result.getWhereClause();
+        int count = jdbcTemplate.queryForObject(query, Integer.class, result.getParams().toArray());
+        log.debug("Bulk search facility count: {}", count);
+        log.trace("Exiting countFacilitiesForBulkSearch method");
+        return count;
+    }
+
+    /**
+     * Sanitizes a string value for safe logging by removing control characters
+     * that could be used for log injection attacks (newlines, carriage returns).
+     *
+     * @param value The string value to sanitize
+     * @return null if input is null, otherwise the sanitized string with \r and \n replaced by spaces
+     */
+    private String sanitizeForLog(String value) {
+        log.trace("Entering sanitizeForLog method");
+        if (value == null) {
+            log.trace("Exiting sanitizeForLog method, input was null");
+            return null;
+        }
+        String result = value.replace('\r', ' ').replace('\n', ' ');
+        log.trace("Exiting sanitizeForLog method");
+        return result;
     }
 
 
