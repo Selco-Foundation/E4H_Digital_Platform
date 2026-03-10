@@ -134,6 +134,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const isRmsAssignmentToTechPoc = selectedAction === "ASSIGN" && currentState === "PENDINGFORASSIGNMENT_RMS_DEVICE";
   const isTechPocRmsResolution = selectedAction === "RESOLVE" && currentState === "RMS_DEVICE_PENDING_TECH_POC";
   const isRejectOutOfScope = selectedAction === "REJECT" && currentState === "OUT_OF_SCOPE";
+  const isAssignOutOfScope = selectedAction === "ASSIGN" && currentState === "OUT_OF_SCOPE";
 
   useEffect(() => {
     if (selectedAction === "REJECT") {
@@ -362,7 +363,15 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           },
           {
             condition: currentState === "RMS_DEVICE_PENDING_TECH_POC" && selectedAction === "RESOLVE" && comments?.trim()?.length < 100,
-            message: "RMS_TECH_POC_RESOLUTION_COMMENT_MANDATORY"
+            message: "RMS_TECH_POC_RESOLUTION_COMMENT_MANDATORY",
+          },
+          {
+            condition: isRejectOutOfScope && comments?.trim() && comments?.trim()?.length < 50,
+            message: "REJECT_OOS_TICKET_COMMENT_MANDATORY",
+          },
+          {
+            condition: isAssignOutOfScope && comments?.trim()?.length < 500,
+            message: "ASSIGN_OOS_TICKET_COMMENT_MANDATORY",
           },
           {
             condition:
@@ -382,6 +391,10 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
           {
             condition: selectedAction === "SPARE_PART_NEEDED" && uploadedFile.length > 3,
             message: "SPARE_PART_NEEDED_MAX_FILE_ERROR",
+          },
+          {
+            condition: isRejectOutOfScope && uploadedFile.length > 3,
+            message: "REJECT_OOS_TICKET_MAX_FILE_ERROR",
           },
           { condition: selectedAction === "REVISE" && comments?.length < 50, message: "CS_REVISE_ACTION_COMMENT_LENGTH" },
         ];
@@ -411,8 +424,12 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             : null;
 
         onAssign(
-          selectedAction === "STATUS_UPDATE" ? currentOwner : selectedAction === "REVISE" ? oowActedVendor : selectedEmployee,
-          comments,
+          selectedAction === "SPARE_PART_NEEDED" || selectedAction === "STATUS_UPDATE"
+            ? currentOwner
+            : selectedAction === "REVISE"
+            ? oowActedVendor
+            : selectedEmployee,
+          comments?.trim(),
           uploadedFile,
           selectedReopenReason,
           selectedRejectReason,
@@ -503,7 +520,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
         selectedSendBackReason?.additionalInputs?.[0]?.type === "textarea" ||
         selectedOutOfScopeReason?.additionalInputs?.[0]?.type === "textarea" ? (
           <>
-            {selectedAction !== "ASSIGN" &&
+            {(isAssignOutOfScope || selectedAction !== "ASSIGN") &&
             selectedAction !== "REOPEN" &&
             selectedAction !== "REOPEN_RMS" &&
             selectedAction !== "APPROVE" &&
@@ -514,6 +531,9 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
               <CardLabel>{t("CS_COMMON_EMPLOYEE_COMMENTS")}</CardLabel>
             )}
             <TextArea name="comment" onChange={(e) => addUserResponses(e, setComments)} value={comments} />
+            {isAssignOutOfScope && (
+              <CardLabelDesc style={{ marginTop: "-20px", fontSize: "13px" }}> {t("ASSIGN_OOS_COMMENT_DESC")}</CardLabelDesc>
+            )}
           </>
         ) : null}
         {["OUT_OF_WARRANTY", "SUBMIT"].includes(selectedAction) && (
