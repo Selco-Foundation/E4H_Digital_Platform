@@ -74,7 +74,15 @@ public class ServiceRequestValidator {
         if(CollectionUtils.isEmpty(incidentWrappers))
             throw new CustomException("INVALID_UPDATE","The record that you are trying to update does not exists");
 
-        // TO DO
+        /*
+         * Preserve existing warrantyStatus for updates when it is not explicitly
+         * provided in the incoming request. This avoids resetting OUT_OF_WARRANTY
+         * tickets back to WITHIN_WARRANTY on subsequent workflow actions.
+         */
+        Incident existingIncident = incidentWrappers.get(0).getIncident();
+        if (request.getIncident().getWarrantyStatus() == null && existingIncident != null) {
+            request.getIncident().setWarrantyStatus(existingIncident.getWarrantyStatus());
+        }
 
     }
 
