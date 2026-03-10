@@ -1255,7 +1255,7 @@ export const ComplaintDetails = (props) => {
           {displayMenu && workflowDetails?.data?.nextActions ? (
             <Menu
               options={(workflowDetails?.data?.nextActions || [])
-                .filter((action) => (!isRmsTicketToReopen || action.action === "REOPEN_RMS"))
+                .filter((action) => (isRmsTicketToReopen ? action.action === "REOPEN_RMS" : action.action !== "REOPEN_RMS"))
                 .map((action) => action.action)}
               t={t}
               onSelect={onActionSelect}
