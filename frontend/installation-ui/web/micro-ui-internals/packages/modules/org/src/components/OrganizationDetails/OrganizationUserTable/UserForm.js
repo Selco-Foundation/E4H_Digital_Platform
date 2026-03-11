@@ -34,36 +34,70 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     }
   );
 
-  const roles = (mdmsResponse?.Organisation?.OrgRoles || []).filter((role) => (role.orgType === organizationType && ((!role.orgSubType && !organizationSubType) || role.orgSubType === organizationSubType)));
+  const roles = (mdmsResponse?.Organisation?.OrgRoles || [])
+    .filter((role) => (role.orgType === organizationType && ((!role.orgSubType && !organizationSubType) || role.orgSubType === organizationSubType)));
 
   const fetchBoundaryHierarchy = useCallback((boundaryCode, boundaryType) => {
     if (!boundaryData) return;
+    const countries = boundaryData.countries || [];
     const states = boundaryData.states || [];
     const districts = boundaryData.districts || [];
     const blocks = boundaryData.blocks || [];
-    if (boundaryType === "Block") {
+    const facilities = boundaryData.facilities || [];
+
+    if (boundaryType === "Facility") {
+      const facility = facilities.find((facility) => facility.code === boundaryCode);
+      const block = blocks.find((block) => block.code === facility?.parentCode);
+      const district = districts.find((district) => district.code === block?.parentCode);
+      const state = states.find((state) => state.code === district?.parentCode);
+      const country = countries.find((country) => country.code === state?.parentCode);
+      if (!country) return;
+      return {
+        country: { ...country, name: t(`Boundary_${country.code}`) },
+        state: { ...state, name: t(`Boundary_${state.code}`) },
+        district: { ...district, name: t(`Boundary_${district.code}`) },
+        block: { ...block, name: t(`Boundary_${block.code}`) },
+        facility: { ...facility, name: t(`Boundary_${facility.code}`) },
+      };
+
+    } else if (boundaryType === "Block") {
       const block = blocks.find((block) => block.code === boundaryCode);
       const district = districts.find((district) => district.code === block?.parentCode);
       const state = states.find((state) => state.code === district?.parentCode);
-      if (!state) return;
+      const country = countries.find((country) => country.code === state?.parentCode);
+      if (!country) return;
       return {
+        country: { ...country, name: t(`Boundary_${country.code}`) },
         state: { ...state, name: t(`Boundary_${state.code}`) },
         district: { ...district, name: t(`Boundary_${district.code}`) },
         block: { ...block, name: t(`Boundary_${block.code}`) }
       };
+
     } else if (boundaryType === "District") {
       const district = districts.find((district) => district.code === boundaryCode);
       const state = states.find((state) => state.code === district?.parentCode);
-      if (!state) return;
+      const country = countries.find((country) => country.code === state?.parentCode);
+      if (!country) return;
       return {
+        country: { ...country, name: t(`Boundary_${country.code}`) },
         state: { ...state, name: t(`Boundary_${state.code}`) },
         district: { ...district, name: t(`Boundary_${district.code}`) }
       };
+
     } else if (boundaryType === "State") {
       const state = states.find((state) => state.code === boundaryCode);
-      if (!state) return;
+      const country = countries.find((country) => country.code === state?.parentCode);
+      if (!country) return;
       return {
+        country: { ...country, name: t(`Boundary_${country.code}`) },
         state: { ...state, name: t(`Boundary_${state.code}`) }
+      };
+
+    } else if (boundaryType === "Country") {
+      const country = countries.find((country) => country.code === boundaryCode);
+      if (!country) return;
+      return {
+        country: { ...country, name: t(`Boundary_${country.code}`) },
       };
     }
   }, [boundaryData])
@@ -170,6 +204,24 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       body: [
         {
           inline: true,
+          label: "CS_COUNTRY",
+          isMandatory: false,
+          key: "country",
+          type: "component",
+          component: "ORGCountrySelector",
+          customProps: {
+            name: "country",
+            t,
+            boundaryData,
+            disable: disable,
+          },
+          populators: {
+            name: "country",
+            error: t("CORE_COMMON_REQUIRED"),
+          },
+        },
+        {
+          inline: true,
           label: "CS_STATE",
           isMandatory: false,
           key: "state",
@@ -177,6 +229,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           component: "ORGStateSelector",
           customProps: {
             name: "state",
+            countryIdentifier: "country",
             t,
             boundaryData,
             disable: disable,
@@ -224,10 +277,28 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             error: t("CORE_COMMON_REQUIRED"),
           },
         },
+        {
+          inline: true,
+          label: "CS_FACILITY",
+          isMandatory: false,
+          key: "facility",
+          type: "component",
+          component: "ORGFacilitySelector",
+          customProps: {
+            name: "facility",
+            blockIdentifier: "block",
+            t,
+            boundaryData,
+            disable: disable,
+          },
+          populators: {
+            name: "facility",
+            error: t("CORE_COMMON_REQUIRED"),
+          },
+        },
       ],
     },
-  ], [boundaryData]
-  )
+  ], [boundaryData])
 
   const handleFormSubmit = useCallback((formData) => {
     if (formData?.roles?.length) {
@@ -240,6 +311,14 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             ...assignment.savedJurisdiction,
             isActive: !assignment.isDeleted,
           };
+        } else if (assignment.facility?.code) {
+          jurisdiction = {
+            hierarchy: "SELCO",
+            boundary: assignment.facility.code,
+            boundaryType: "Facility",
+            tenantId: tenantId,
+            isActive: !assignment.isDeleted,
+          }
         } else if (assignment.block?.code) {
           jurisdiction = {
             hierarchy: "SELCO",
@@ -264,6 +343,14 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             tenantId: tenantId,
             isActive: !assignment.isDeleted,
           }
+        } else if (assignment.country?.code) {
+          jurisdiction = {
+            hierarchy: "SELCO",
+            boundary: assignment.country.code,
+            boundaryType: "Country",
+            tenantId: tenantId,
+            isActive: !assignment.isDeleted,
+          }
         }
         if (jurisdiction) jurisdictions.push(jurisdiction);
       })
@@ -275,13 +362,17 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   }, [assignments]);
 
   const handleAssignmentFormChange = useCallback((index, _, formData) => {
-    if (CommonUtils.isNotEqual(assignments[index].state, formData.state) || CommonUtils.isNotEqual(assignments[index].district, formData.district) || CommonUtils.isNotEqual(assignments[index].block, formData.block)) {
+    if (CommonUtils.isNotEqual(assignments[index].country, formData.country) ||
+      CommonUtils.isNotEqual(assignments[index].state, formData.state) ||
+      CommonUtils.isNotEqual(assignments[index].district, formData.district) ||
+      CommonUtils.isNotEqual(assignments[index].block, formData.block) ||
+      CommonUtils.isNotEqual(assignments[index].facility, formData.facility)) {
       setAssignments((prevAssignments) => prevAssignments.map((assignment, i) => (i === index ? {...assignment, ...formData} : assignment)));
     }
   }, [assignments]);
 
   const handleAssignmentAddition = () => {
-    setAssignments((prevAssignments) => [...prevAssignments, { state: null, district: null, block: null }]);
+    setAssignments((prevAssignments) => [...prevAssignments, { country: null, state: null, district: null, block: null, facility: null }]);
   }
 
   const deleteAssignment = (index) => {
@@ -349,73 +440,71 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           onClose={() => setFormToast(null)}
         />
       )}
-      {organizationType === "PLATFORM" && (
-        <div style={{ marginBottom: "30px", padding: "10px" }}>
-          <h2 style={{
-            margin: 0,
-            fontSize: "24px",
-            fontWeight: "bold",
-            marginBottom: "20px",
-          }}>
-            {t("ASSIGNMENTS")}
-          </h2>
-          {assignments
-            .map((assignment, index) => !assignment.isDeleted && (
-              <div
-                className={"org-user-assignment"}
-                style={{
-                  border: "1px solid #ccc",
-                  padding: "20px 20px 0",
-                  marginBottom: "10px",
-                  borderRadius: "10px",
-                }}
-              >
-                <div style={{display: "flex", justifyContent: "space-between", marginBottom: "10px"}}>
-                  <h2 style={{
-                    margin: 0,
-                    fontSize: "18px",
-                    fontWeight: "bold",
-                  }}>
-                    {t("ASSIGNMENT") + " " + (index + 1) + ":"}
-                  </h2>
-                  <button onClick={() => deleteAssignment(index)} style={{background: 'none', border: 'none', fontSize: 18, cursor: 'pointer'}}>
-                    <CustomDustbinIcon colourFill={"#bc210a"} />
-                  </button>
-                </div>
-                <FormComposerV2
-                  key={JSON.stringify(assignment)}
-                  defaultValues={assignment}
-                  config={assignmentsConfig(assignment.savedJurisdiction)}
-                  onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
-                  label={""}
-                  heading={""}
-                  cardStyle={{ boxShadow: "none" }}
-                  submitInForm={false}
-                />
+      <div style={{ marginBottom: "30px", padding: "10px" }}>
+        <h2 style={{
+          margin: 0,
+          fontSize: "24px",
+          fontWeight: "bold",
+          marginBottom: "20px",
+        }}>
+          {t("ASSIGNMENTS")}
+        </h2>
+        {assignments
+          .map((assignment, index) => !assignment.isDeleted && (
+            <div
+              className={"org-user-assignment"}
+              style={{
+                border: "1px solid #ccc",
+                padding: "20px 20px 0",
+                marginBottom: "10px",
+                borderRadius: "10px",
+              }}
+            >
+              <div style={{display: "flex", justifyContent: "space-between", marginBottom: "10px"}}>
+                <h2 style={{
+                  margin: 0,
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                }}>
+                  {t("ASSIGNMENT") + " " + (index + 1) + ":"}
+                </h2>
+                <button onClick={() => deleteAssignment(index)} style={{background: 'none', border: 'none', fontSize: 18, cursor: 'pointer'}}>
+                  <CustomDustbinIcon colourFill={"#bc210a"} />
+                </button>
               </div>
-            ))
-          }
-          <Button
-            variation="secondary"
-            label={t("ADD_ASSIGNMENT")}
-            onButtonClick={handleAssignmentAddition}
-            style={{
-              backgroundColor: "white",
-              border: "1px solid #d35400",
-              color: "#d35400",
-              padding: "8px 20px",
-              cursor: "pointer",
-              fontWeight: "bold",
-              fontSize: "16px",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              gap: "5px",
-              height: "40px",
-            }}
-          />
-        </div>
-      )}
+              <FormComposerV2
+                key={JSON.stringify(assignment)}
+                defaultValues={assignment}
+                config={assignmentsConfig(assignment.savedJurisdiction)}
+                onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
+                label={""}
+                heading={""}
+                cardStyle={{ boxShadow: "none" }}
+                submitInForm={false}
+              />
+            </div>
+          ))
+        }
+        <Button
+          variation="secondary"
+          label={t("ADD_ASSIGNMENT")}
+          onButtonClick={handleAssignmentAddition}
+          style={{
+            backgroundColor: "white",
+            border: "1px solid #d35400",
+            color: "#d35400",
+            padding: "8px 20px",
+            cursor: "pointer",
+            fontWeight: "bold",
+            fontSize: "16px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "5px",
+            height: "40px",
+          }}
+        />
+      </div>
     </div>
   );
 };
