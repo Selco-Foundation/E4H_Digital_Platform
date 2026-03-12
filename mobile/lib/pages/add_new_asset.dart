@@ -36,8 +36,8 @@ import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
-import '../widgets/customized_digit_widget/custom_digit_scanner_page.dart';
 import '../widgets/customized_digit_widget/image_uploader.dart';
+import '../widgets/customized_digit_widget/qr_scanner.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
 class AssetModel {
@@ -643,7 +643,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       MaterialPageRoute(
                         builder: (ctx) => BlocProvider.value(
                           value: context.read<DigitScannerBloc>(),
-                          child: const CustomDigitScannerPage(
+                          child: const DigitScannerPage(
                             quantity: 10,
                             isGS1code: false,
                           ),
@@ -677,7 +677,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       MaterialPageRoute(
                         builder: (ctx) => BlocProvider.value(
                           value: context.read<DigitScannerBloc>(),
-                          child: const CustomDigitScannerPage(
+                          child: const DigitScannerPage(
                             quantity: 10,
                             isGS1code: false,
                           ),
@@ -711,6 +711,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
                   final file = snapshot.data;
                   return ImageUploader(
+                    // Stability caps for OEM camera intents (Samsung devices in particular).
                     imageQuality: 60, // 0..100 (lower => smaller)
                     maxWidth: 1280,
                     maxHeight: 1280,
