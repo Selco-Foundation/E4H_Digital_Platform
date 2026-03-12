@@ -25,7 +25,7 @@
 
 
     <application
-        android:label="E4H"
+        android:label="E4H Field Assist"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
