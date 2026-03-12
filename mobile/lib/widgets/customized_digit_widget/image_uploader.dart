@@ -62,12 +62,16 @@ class ImageUploader extends StatefulWidget {
 
 class _ImageUploaderState extends State<ImageUploader>
     with WidgetsBindingObserver {
+  static const MethodChannel _imageToolsChannel =
+      MethodChannel('org.e4h.asset/image_tools');
+
   late final List<File> _imageFiles;
   late DigitTypography currentTypography;
   late bool isMobile;
   late bool isTab;
   String? capitalizedErrorMessage;
   String fileError = '';
+  String? _lastRecoveredPath;
 
   final ImagePicker _picker = ImagePicker();
   bool _picking = false;
@@ -107,13 +111,49 @@ class _ImageUploaderState extends State<ImageUploader>
     // If Android kills our activity while the camera app is open, we can recover on resume.
     if (!widget.recoverLostDataOnResume) return;
     if (state == AppLifecycleState.resumed) {
-      _recoverLostData();
+      Future<void>.delayed(const Duration(milliseconds: 150), () {
+        if (!mounted) return;
+        _recoverLostData();
+      });
     }
+  }
+
+  Future<void> _startImagePick(ImageSource source) async {
+    if (!mounted || _picking) return;
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+    await _getImage(source);
+  }
+
+  Future<File> _normalizeImageFile(File source) async {
+    if (!Platform.isAndroid) return source;
+    try {
+      final String? outPath = await _imageToolsChannel.invokeMethod<String>(
+        'compressImage',
+        <String, dynamic>{
+          'path': source.path,
+          'maxWidth': widget.maxWidth?.round() ?? 1280,
+          'maxHeight': widget.maxHeight?.round() ?? 1280,
+          'quality': widget.imageQuality,
+        },
+      );
+      if (outPath != null && outPath.isNotEmpty) {
+        final outFile = File(outPath);
+        if (await outFile.exists()) return outFile;
+      }
+    } on PlatformException catch (e) {
+      AppLogger.instance.info(
+        'compressImage PlatformException: ${e.code} ${e.message}',
+      );
+    } catch (e) {
+      AppLogger.instance.info('compressImage failed: $e');
+    }
+    return source;
   }
 
   Future<void> _getImage(ImageSource source) async {
     // Guard against rapid multiple taps (can crash some OEM camera flows).
-    if (_picking) return;
+    if (_picking || !mounted) return;
     _picking = true;
 
     try {
@@ -195,9 +235,13 @@ class _ImageUploaderState extends State<ImageUploader>
       if (!mounted) return;
 
       if (pickedFile != null) {
+        final normalizedFile = await _normalizeImageFile(File(pickedFile.path));
+        if (!mounted) return;
+
         if (widget.validators != null) {
           String? validationError =
-              validateImage(pickedFile, widget.validators!, pickedFile.name);
+              validateImage(
+                  XFile(normalizedFile.path), widget.validators!, pickedFile.name);
           if (validationError != null) {
             setState(() {
               fileError = validationError;
@@ -209,11 +253,11 @@ class _ImageUploaderState extends State<ImageUploader>
         setState(() {
           fileError = '';
           if (widget.allowMultiples) {
-            _imageFiles.add(File(pickedFile.path));
+            _imageFiles.add(normalizedFile);
           } else {
             _imageFiles
               ..clear()
-              ..add(File(pickedFile.path));
+              ..add(normalizedFile);
           }
         });
         widget.onImagesSelected(List<File>.from(_imageFiles));
@@ -225,9 +269,15 @@ class _ImageUploaderState extends State<ImageUploader>
     } on PlatformException catch (e) {
       AppLogger.instance
           .info('ImagePicker PlatformException: ${e.code} ${e.message}');
+      final recoverableCodes = <String>{
+        'already_active',
+        'channel-error',
+      };
       if (mounted) {
         setState(() {
-          fileError = e.message ?? 'Failed to open camera/gallery';
+          fileError = recoverableCodes.contains(e.code)
+              ? 'Camera is busy, please try again'
+              : (e.message ?? 'Failed to open camera/gallery');
         });
       }
     } catch (e) {
@@ -259,6 +309,7 @@ class _ImageUploaderState extends State<ImageUploader>
 
   Future<void> _recoverLostData() async {
     if (kIsWeb) return;
+    if (_picking) return;
 
     try {
       final response = await _picker.retrieveLostData();
@@ -274,6 +325,7 @@ class _ImageUploaderState extends State<ImageUploader>
       }
 
       if (!mounted) return;
+      if (_lastRecoveredPath == x.path) return;
 
       if (widget.validators != null) {
         final String? validationError =
@@ -296,6 +348,7 @@ class _ImageUploaderState extends State<ImageUploader>
             ..add(File(x.path));
         }
       });
+      _lastRecoveredPath = x.path;
       widget.onImagesSelected(List<File>.from(_imageFiles));
     } catch (e) {
       AppLogger.instance.info('Error recovering lost picker data: $e');
@@ -343,12 +396,12 @@ class _ImageUploaderState extends State<ImageUploader>
                             _buildInkWell(Icons.camera_enhance,
                                 widget.cameraTitle ?? "Camera", () {
                               Navigator.of(context).pop();
-                              _getImage(ImageSource.camera);
+                              _startImagePick(ImageSource.camera);
                             }, currentTypography),
                             _buildInkWell(Icons.perm_media,
                                 widget.galleryTitle ?? "My Files", () {
                               Navigator.of(context).pop();
-                              _getImage(ImageSource.gallery);
+                              _startImagePick(ImageSource.gallery);
                             }, currentTypography),
                           ],
                         ),
@@ -390,12 +443,12 @@ class _ImageUploaderState extends State<ImageUploader>
           _buildInkWell(Icons.camera_enhance, widget.cameraTitle ?? "Camera",
               () {
             Navigator.of(context).pop();
-            _getImage(ImageSource.camera);
+            _startImagePick(ImageSource.camera);
           }, currentTypography),
           _buildInkWell(Icons.perm_media, widget.galleryTitle ?? "My Files",
               () {
             Navigator.of(context).pop();
-            _getImage(ImageSource.gallery);
+            _startImagePick(ImageSource.gallery);
           }, currentTypography),
         ],
       ),

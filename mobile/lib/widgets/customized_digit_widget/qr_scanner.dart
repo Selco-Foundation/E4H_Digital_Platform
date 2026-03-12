@@ -5,8 +5,10 @@ import 'package:auto_route/auto_route.dart';
 import 'package:camera/camera.dart';
 import 'package:digit_scanner/blocs/scanner.dart';
 import 'package:digit_scanner/utils/extensions/extensions.dart';
+import 'package:digit_scanner/utils/i18_key_constants.dart' as i18;
 import 'package:digit_scanner/utils/scanner_utils.dart';
 import 'package:digit_scanner/widgets/localized.dart';
+import 'package:digit_scanner/widgets/vision_detector_views/detector_view.dart';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/theme/TextTheme/digit_text_theme.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
@@ -22,11 +24,9 @@ import 'package:reactive_forms/reactive_forms.dart';
 
 import '../../utils/extensions.dart';
 import '../../utils/i18_key_constants.dart' as app_i18;
-import 'package:digit_scanner/utils/i18_key_constants.dart' as i18;
-import 'package:digit_scanner/widgets/vision_detector_views/detector_view.dart';
 
 @RoutePage()
-class CustomDigitScannerPage extends LocalizedStatefulWidget {
+class DigitScannerPage extends LocalizedStatefulWidget {
   final bool? singleValue;
   final int? quantity;
   final bool? isGS1code;
@@ -35,7 +35,7 @@ class CustomDigitScannerPage extends LocalizedStatefulWidget {
   final List<dynamic>? validations;
   final bool enableGalleryScan;
 
-  const CustomDigitScannerPage({
+  const DigitScannerPage({
     super.key,
     super.appLocalizations,
     this.quantity = 1,
@@ -48,10 +48,10 @@ class CustomDigitScannerPage extends LocalizedStatefulWidget {
   });
 
   @override
-  State<CustomDigitScannerPage> createState() => _CustomDigitScannerPageState();
+  State<DigitScannerPage> createState() => _CustomDigitScannerPageState();
 }
 
-class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage> {
+class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
   final BarcodeScanner _barcodeScanner = BarcodeScanner();
   final ImagePicker _picker = ImagePicker();
   bool _canProcess = true;
@@ -268,8 +268,9 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
       camera,
       ResolutionPreset.high,
       enableAudio: false,
-      imageFormatGroup:
-          Platform.isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888,
+      imageFormatGroup: Platform.isAndroid
+          ? ImageFormatGroup.nv21
+          : ImageFormatGroup.bgra8888,
     );
   }
 
@@ -307,7 +308,8 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
 
       if (_isGS1) {
         try {
-          final data = (barcodes.first.rawValue ?? barcodes.first.displayValue)?.trim();
+          final data =
+              (barcodes.first.rawValue ?? barcodes.first.displayValue)?.trim();
           if (data == null || data.isEmpty) {
             Toast.showToast(
               context,
@@ -346,7 +348,9 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
         }
       }
 
-      final code = (barcodes.first.displayValue ?? barcodes.first.rawValue)?.trim() ?? '';
+      final code =
+          (barcodes.first.displayValue ?? barcodes.first.rawValue)?.trim() ??
+              '';
       if (code.isEmpty) {
         Toast.showToast(
           context,
@@ -449,14 +453,16 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
 
                           final bloc = context.read<DigitScannerBloc>();
 
-                          final barcodeString = DigitScannerUtils().generateGS1Barcode(
+                          final barcodeString =
+                              DigitScannerUtils().generateGS1Barcode(
                             serialNumber: form
                                 .control(_manualSerialNoFormKey)
                                 .value
                                 .toString()
                                 .trim(),
-                            expiryDate: form.control(_manualExpiryDateFormKey).value
-                                as DateTime,
+                            expiryDate: form
+                                .control(_manualExpiryDateFormKey)
+                                .value as DateTime,
                             batchNumber: form
                                 .control(_manualCodeFormKey)
                                 .value
@@ -483,7 +489,8 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                         },
                         type: DigitButtonType.primary,
                         size: DigitButtonSize.large,
-                        label: localizations.translate(i18.common.coreCommonSubmit),
+                        label: localizations
+                            .translate(i18.common.coreCommonSubmit),
                       ),
                     ),
                     children: [
@@ -492,7 +499,8 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                           Align(
                             alignment: Alignment.topLeft,
                             child: Text(
-                              localizations.translate(i18.scanner.enterManualCode),
+                              localizations
+                                  .translate(i18.scanner.enterManualCode),
                               style: textTheme.headingL.copyWith(
                                 color: theme.colorTheme.text.primary,
                               ),
@@ -501,18 +509,20 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                           ReactiveWrapperField(
                             formControlName: _manualCodeFormKey,
                             validationMessages: {
-                              'required': (object) =>
-                                  localizations.translate(i18.scanner.batchNoRequired),
+                              'required': (object) => localizations
+                                  .translate(i18.scanner.batchNoRequired),
                             },
                             builder: (field) {
                               return LabeledField(
-                                label: localizations.translate(i18.scanner.barCodeBatch),
+                                label: localizations
+                                    .translate(i18.scanner.barCodeBatch),
                                 capitalizedFirstLetter: false,
                                 child: DigitTextFormInput(
                                   errorMessage: field.errorText,
                                   isRequired: true,
                                   onChange: (value) {
-                                    form.control(_manualCodeFormKey).value = value;
+                                    form.control(_manualCodeFormKey).value =
+                                        value;
                                   },
                                 ),
                               );
@@ -521,18 +531,20 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                           ReactiveWrapperField(
                             formControlName: _manualSerialNoFormKey,
                             validationMessages: {
-                              'required': (object) =>
-                                  localizations.translate(i18.scanner.serialNoRequired),
+                              'required': (object) => localizations
+                                  .translate(i18.scanner.serialNoRequired),
                             },
                             builder: (field) {
                               return LabeledField(
-                                label: localizations.translate(i18.scanner.barCodeSerial),
+                                label: localizations
+                                    .translate(i18.scanner.barCodeSerial),
                                 capitalizedFirstLetter: false,
                                 child: DigitTextFormInput(
                                   errorMessage: field.errorText,
                                   isRequired: true,
                                   onChange: (value) {
-                                    form.control(_manualSerialNoFormKey).value = value;
+                                    form.control(_manualSerialNoFormKey).value =
+                                        value;
                                   },
                                 ),
                               );
@@ -541,24 +553,28 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                           ReactiveWrapperField(
                             formControlName: _manualExpiryDateFormKey,
                             validationMessages: {
-                              'required': (object) =>
-                                  localizations.translate(i18.scanner.expiryDateRequired),
+                              'required': (object) => localizations
+                                  .translate(i18.scanner.expiryDateRequired),
                             },
                             builder: (field) {
                               return LabeledField(
-                                label: localizations.translate(i18.scanner.barCodeExpiry),
+                                label: localizations
+                                    .translate(i18.scanner.barCodeExpiry),
                                 capitalizedFirstLetter: false,
                                 child: DigitDateFormInput(
                                   firstDate: DateTime.now(),
                                   isRequired: true,
-                                  confirmText: localizations.translate(i18.common.coreCommonOk),
-                                  cancelText:
-                                      localizations.translate(i18.common.coreCommonCancel),
-                                  initialValue:
-                                      DateFormat('dd/MM/yy').format(field.control.value),
+                                  confirmText: localizations
+                                      .translate(i18.common.coreCommonOk),
+                                  cancelText: localizations
+                                      .translate(i18.common.coreCommonCancel),
+                                  initialValue: DateFormat('dd/MM/yy')
+                                      .format(field.control.value),
                                   readOnly: false,
                                   onChange: (value) {
-                                    form.control(_manualExpiryDateFormKey).value =
+                                    form
+                                            .control(_manualExpiryDateFormKey)
+                                            .value =
                                         DateFormat('dd/MM/yyyy').parse(value);
                                   },
                                 ),
@@ -600,13 +616,18 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                       child: DigitButton(
                         mainAxisSize: MainAxisSize.max,
                         onPressed: () async {
-                          final value =
-                              form.control(_manualCodeFormKey).value?.toString().trim() ?? '';
+                          final value = form
+                                  .control(_manualCodeFormKey)
+                                  .value
+                                  ?.toString()
+                                  .trim() ??
+                              '';
                           if (value.isEmpty) {
                             Toast.showToast(
                               context,
                               type: ToastType.error,
-                              message: localizations.translate(i18.scanner.enterManualCode),
+                              message: localizations
+                                  .translate(i18.scanner.enterManualCode),
                             );
                             return;
                           }
@@ -628,7 +649,8 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                         },
                         type: DigitButtonType.primary,
                         size: DigitButtonSize.large,
-                        label: localizations.translate(i18.common.coreCommonSubmit),
+                        label: localizations
+                            .translate(i18.common.coreCommonSubmit),
                       ),
                     ),
                     children: [
@@ -637,7 +659,8 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                           Align(
                             alignment: Alignment.topLeft,
                             child: Text(
-                              localizations.translate(i18.scanner.enterManualCode),
+                              localizations
+                                  .translate(i18.scanner.enterManualCode),
                               style: textTheme.headingL.copyWith(
                                 color: theme.colorTheme.text.primary,
                               ),
@@ -647,12 +670,14 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                             formControlName: _manualCodeFormKey,
                             builder: (field) {
                               return InputField(
-                                label: localizations.translate(i18.scanner.resourceCode),
+                                label: localizations
+                                    .translate(i18.scanner.resourceCode),
                                 errorMessage: field.errorText,
                                 isRequired: true,
                                 type: InputType.text,
                                 onChange: (value) {
-                                  form.control(_manualCodeFormKey).value = value;
+                                  form.control(_manualCodeFormKey).value =
+                                      value;
                                 },
                               );
                             },
@@ -687,7 +712,8 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
             text: _text,
             onImage: processImage,
             initialCameraLensDirection: _cameraLensDirection,
-            onCameraLensDirectionChanged: (value) => _cameraLensDirection = value,
+            onCameraLensDirectionChanged: (value) =>
+                _cameraLensDirection = value,
             onBackButtonPressed: () {
               context.read<DigitScannerBloc>().add(
                     DigitScannerEvent.handleScanner(
@@ -770,7 +796,7 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Padding(
-              padding: const EdgeInsets.only(top: spacer1),
+              padding: const EdgeInsets.only(top: spacer1, bottom: spacer1),
               child: Text(
                 localizations.translate(i18.scanner.manualScan),
                 style: textTheme.bodyL.copyWith(
@@ -778,37 +804,35 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                 ),
               ),
             ),
-            if (widget.enableGalleryScan)
-              DigitButton(
-                label: _appLocalized(
-                  app_i18.scanner.scanFromPhoto,
-                  'Scan from photo',
-                ),
-                onPressed: _pickAndScanFromGallery,
-                type: DigitButtonType.link,
-                size: DigitButtonSize.large,
-                isDisabled: _isPickingImage,
-              ),
-            if (widget.enableGalleryScan)
-              Text(
-                _appLocalized(
-                  app_i18.scanner.choosePhoto,
-                  'Choose a photo from gallery',
-                ),
-                style: textTheme.bodyS.copyWith(
-                  color: theme.colorTheme.paper.primary,
-                ),
-              ),
-            DigitButton(
-              label: localizations.translate(i18.scanner.enterManualCode),
-              onPressed: () {
+            GestureDetector(
+              onTap: () {
                 setState(() {
                   manualCode = true;
                 });
               },
-              type: DigitButtonType.link,
-              size: DigitButtonSize.large,
+              child: Text(
+                localizations.translate(i18.scanner.enterManualCode),
+                style: textTheme.headingL.copyWith(
+                    color: theme.colorTheme.primary.primary1,
+                    decoration: TextDecoration.underline,
+                    decorationColor: theme.colorTheme.primary.primary1),
+              ),
             ),
+            if (widget.enableGalleryScan) const SizedBox(height: spacer4),
+            if (widget.enableGalleryScan)
+              GestureDetector(
+                onTap: _pickAndScanFromGallery,
+                child: Text(
+                  _appLocalized(
+                    app_i18.scanner.scanFromPhoto,
+                    'Scan from photo',
+                  ),
+                  style: textTheme.headingL.copyWith(
+                      color: theme.colorTheme.primary.primary1,
+                      decoration: TextDecoration.underline,
+                      decorationColor: theme.colorTheme.primary.primary1),
+                ),
+              ),
           ],
         ),
       ),
@@ -827,7 +851,8 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
           width: MediaQuery.of(context).size.width,
           child: DigitCard(
             margin: const EdgeInsets.only(top: spacer1),
-            padding: const EdgeInsets.fromLTRB(spacer3, spacer1, spacer3, spacer1),
+            padding:
+                const EdgeInsets.fromLTRB(spacer3, spacer1, spacer3, spacer1),
             children: [
               DigitButton(
                 label: localizations.translate(i18.common.coreCommonSubmit),
@@ -835,7 +860,8 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                 mainAxisSize: MainAxisSize.max,
                 type: DigitButtonType.primary,
                 onPressed: () async {
-                  final scannedCount = _isGS1 ? state.barCodes.length : state.qrCodes.length;
+                  final scannedCount =
+                      _isGS1 ? state.barCodes.length : state.qrCodes.length;
                   if (scannedCount < _scanLimit) {
                     DigitScannerUtils().buildDialog(
                       context,
@@ -916,7 +942,8 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                 ),
                 Expanded(
                   child: ListView.builder(
-                    itemCount: _isGS1 ? state.barCodes.length : state.qrCodes.length,
+                    itemCount:
+                        _isGS1 ? state.barCodes.length : state.qrCodes.length,
                     itemBuilder: (BuildContext context, int index) {
                       return ListTile(
                         shape: const Border(),
@@ -945,7 +972,8 @@ class _CustomDigitScannerPageState extends LocalizedState<CustomDigitScannerPage
                                 child: Text(
                                   overflow: TextOverflow.ellipsis,
                                   _isGS1
-                                      ? (state.barCodes[index].displayValue() ?? 'Invalid GS1')
+                                      ? (state.barCodes[index].displayValue() ??
+                                          'Invalid GS1')
                                       : DigitScannerUtils().trimString(
                                           state.qrCodes[index].toString(),
                                         ),
