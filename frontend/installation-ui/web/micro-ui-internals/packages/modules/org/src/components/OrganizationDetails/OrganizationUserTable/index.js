@@ -140,13 +140,14 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
     {
       Header: t("ORG_USER_ACTIONS"),
       Cell: ({ row }) => {
-        return GetCell(
-          <div style={{ display: "flex", gap: "5px" }}>
+        return (
+          <div>
             <button
               type="button"
               style={{
                 paddingTop: "3px",
                 backgroundColor: "white",
+                marginRight: "5px",
               }}
               onClick={() => setUserToEdit(row.original)}
             >
