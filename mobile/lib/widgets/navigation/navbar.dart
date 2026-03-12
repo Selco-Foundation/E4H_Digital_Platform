@@ -44,7 +44,7 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
             color: const DigitColors().light.paperPrimary,
           ),
           const SizedBox(width: spacer2),
-          Text("Asset Management",
+          Text("Field Assist",
               style: textTheme.bodyS.copyWith(
                 color: const DigitColors().light.paperPrimary,
               )),
