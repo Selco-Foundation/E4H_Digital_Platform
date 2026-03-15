@@ -43,11 +43,10 @@ class BomRepository {
       final projectNumber = af.fieldPlan?.project?.projectNumber?.toString();
 
       final projectDate = _formatProjectDate(af);
-      final projectState = _resolveProjectBlockOrStateName(
-          af.facility?.boundaryCode?.toString(), true);
-
-      final projectBlock = _resolveProjectBlockOrStateName(
-          af.facility?.boundaryCode?.toString(), false);
+      final locality =
+          parseBoundaryCodeLocality(af.facility?.boundaryCode?.toString());
+      final projectState = locality.state;
+      final projectBlock = locality.block;
 
       final enriched = Map<String, dynamic>.from(bomData);
 
@@ -63,10 +62,10 @@ class BomRepository {
       if (projectDate != null && projectDate.trim().isNotEmpty) {
         enriched['project_date'] = projectDate.trim();
       }
-      if (projectState != null && projectState.trim().isNotEmpty) {
+      if (projectState.trim().isNotEmpty) {
         enriched['project_state'] = projectState.trim();
       }
-      if (projectBlock != null && projectBlock.trim().isNotEmpty) {
+      if (projectBlock.trim().isNotEmpty) {
         enriched['project_block'] = projectBlock.trim();
       }
 
@@ -114,14 +113,6 @@ class BomRepository {
     } catch (_) {
       return null;
     }
-  }
-
-  String _resolveProjectBlockOrStateName(String? boundaryCode, bool? isState) {
-    final raw = (boundaryCode ?? '').trim();
-    if (raw.isEmpty) return '';
-    final parts = raw.split('_').where((p) => p.trim().isNotEmpty).toList();
-    if (parts.length < 2) return '';
-    return isState == true ? parts[1] : parts[parts.length - 2];
   }
 
   Future<void> saveLocal({

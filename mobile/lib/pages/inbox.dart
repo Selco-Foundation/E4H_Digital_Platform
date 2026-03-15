@@ -319,6 +319,9 @@ class _InboxPageState extends State<InboxPage> {
             children: [
               BlocBuilder<InboxTypeBloc, InboxTypeState>(
                 builder: (context, inboxState) {
+                  final locality = parseBoundaryCodeLocality(
+                    project.activityFacility.facility?.boundaryCode,
+                  );
                   return inboxState.when(
                     submitted: () => InboxReportCard(
                         onPress: () {
@@ -334,11 +337,17 @@ class _InboxPageState extends State<InboxPage> {
                         dateAssigned:
                             project.workflow?.auditDetails?.lastModifiedTime ??
                                 DateTime.now(),
-                        status: project.status ?? '---'),
+                        status: project.status ?? '---',
+                        state: locality.state,
+                        district: locality.district,
+                        block: locality.block),
                     rejected: () => InboxReportRejectedCard(
                       title: project.activityFacility.facility?.facilityName ??
                           '---',
                       status: project.status ?? '---',
+                      state: locality.state,
+                      district: locality.district,
+                      block: locality.block,
                       dateAssigned:
                           project.workflow?.auditDetails?.lastModifiedTime ??
                               DateTime.now(),
@@ -364,7 +373,10 @@ class _InboxPageState extends State<InboxPage> {
                         dateAssigned:
                             project.workflow?.auditDetails?.lastModifiedTime ??
                                 DateTime.now(),
-                        status: project.status ?? '---'),
+                        status: project.status ?? '---',
+                        state: locality.state,
+                        district: locality.district,
+                        block: locality.block),
                   );
                 },
               ),

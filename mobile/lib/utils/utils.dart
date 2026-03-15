@@ -88,6 +88,39 @@ Future<File?> resolveFilePath(String path) async {
   }
 }
 
+class BoundaryCodeLocality {
+  final String state;
+  final String district;
+  final String block;
+
+  const BoundaryCodeLocality({
+    this.state = '',
+    this.district = '',
+    this.block = '',
+  });
+}
+
+BoundaryCodeLocality parseBoundaryCodeLocality(String? boundaryCode) {
+  final raw = (boundaryCode ?? '').trim();
+  if (raw.isEmpty) return const BoundaryCodeLocality();
+
+  final parts = raw.split('_').map((e) => e.trim()).where((e) => e.isNotEmpty);
+  final values = parts.toList();
+
+  String valueAt(int index) {
+    if (index < 0 || index >= values.length) return '';
+    final value = values[index];
+    if (value.contains('/')) return '';
+    return value;
+  }
+
+  return BoundaryCodeLocality(
+    state: valueAt(1),
+    district: valueAt(2),
+    block: valueAt(3),
+  );
+}
+
 String truncateText(String text, {int maxLength = 16}) {
   if (text.length > maxLength) {
     return '${text.substring(0, maxLength)}...';

@@ -25,6 +25,7 @@ import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/cards/report_detail_row.dart';
 
 @RoutePage()
 class SelectHealthFacilityPage extends StatefulWidget {
@@ -302,19 +303,27 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           for (final project in projects) ...[
-            InstallationReportCard(
-              onPress: () => _handleProjectTap(project),
-              activityFacility: project,
-              projectId: project.activityFacility.id,
-              title: project.activityFacility.facility?.facilityName ?? '—',
-              dateAssigned:
-                  project.activityFacility.scheduledAt ?? DateTime.now(),
-              status: project.status ?? '—',
-              systemDesignCode: project.activityFacility.facility
-                      ?.facilityDetails?.solar_solution_design_type ??
-                  '',
-              fraction: _fractionForProject(project.activityFacility.id),
-            ),
+            Builder(builder: (context) {
+              final locality = parseBoundaryCodeLocality(
+                project.activityFacility.facility?.boundaryCode,
+              );
+              return InstallationReportCard(
+                onPress: () => _handleProjectTap(project),
+                activityFacility: project,
+                projectId: project.activityFacility.id,
+                title: project.activityFacility.facility?.facilityName ?? '—',
+                dateAssigned:
+                    project.activityFacility.scheduledAt ?? DateTime.now(),
+                status: project.status ?? '—',
+                systemDesignCode: project.activityFacility.facility
+                        ?.facilityDetails?.solar_solution_design_type ??
+                    '',
+                fraction: _fractionForProject(project.activityFacility.id),
+                state: locality.state,
+                district: locality.district,
+                block: locality.block,
+              );
+            }),
             const SizedBox(height: spacer5),
           ],
         ],
@@ -390,6 +399,9 @@ class InstallationReportCard extends StatelessWidget {
   final String? projectId;
   final String? title;
   final String? status;
+  final String? state;
+  final String? district;
+  final String? block;
   final DateTime dateAssigned;
   final String? systemDesignCode;
   final Function() onPress;
@@ -401,6 +413,9 @@ class InstallationReportCard extends StatelessWidget {
     this.projectId,
     this.title,
     this.status,
+    this.state,
+    this.district,
+    this.block,
     required this.dateAssigned,
     this.systemDesignCode,
     required this.onPress,
@@ -442,90 +457,63 @@ class InstallationReportCard extends StatelessWidget {
                 ),
                 const SizedBox(height: spacer4),
                 const DigitDivider(dividerType: DividerType.small),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: spacer4),
-                          Text(
-                            'Status',
-                            style: textTheme.headingS
-                                .copyWith(color: theme.colorTheme.text.primary),
-                          ),
-                          const SizedBox(height: spacer4),
-                          Text(
-                            'Date Assigned',
-                            style: textTheme.headingS
-                                .copyWith(color: theme.colorTheme.text.primary),
-                          ),
-                          const SizedBox(height: spacer4),
-                          Text(
-                            'Solution Doc',
-                            style: textTheme.headingS
-                                .copyWith(color: theme.colorTheme.text.primary),
-                          )
-                        ],
+                ReportDetailRow(
+                  label: 'Status',
+                  value: _detailText(
+                    context.translate('$status'),
+                    textTheme,
+                    theme,
+                  ),
+                ),
+                ReportDetailRow(
+                  label: 'Date Assigned',
+                  value: _detailText(formattedDate, textTheme, theme),
+                ),
+                ReportDetailRow(
+                  label: 'Solution Doc',
+                  value: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.picture_as_pdf,
+                        color: theme.colorTheme.primary.primary1,
                       ),
-                    ),
-                    const SizedBox(width: spacer12),
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: spacer4),
-                          Text(
-                            context.translate('$status'),
+                      const SizedBox(width: spacer1),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            if (solutionDocsUrl.isNotEmpty) {
+                              context.router.push(PdfViewerRoute(
+                                  path:
+                                      "$fileStoreFileUrl$solutionDocsUrl"));
+                            }
+                          },
+                          child: Text(
+                            "Solution Doc",
                             style: textTheme.bodyL.copyWith(
-                              color: theme.colorTheme.text.primary,
+                              color: theme.colorTheme.text.disabled,
+                              fontSize: spacer3,
                             ),
                             softWrap: true,
                             overflow: TextOverflow.visible,
                           ),
-                          const SizedBox(height: spacer4),
-                          Text(
-                            formattedDate,
-                            style: textTheme.bodyL.copyWith(
-                              color: theme.colorTheme.text.primary,
-                            ),
-                          ),
-                          const SizedBox(height: spacer4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.picture_as_pdf,
-                                color: theme.colorTheme.primary.primary1,
-                              ),
-                              const SizedBox(width: spacer1),
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () {
-                                    if (solutionDocsUrl.isNotEmpty) {
-                                      context.router.push(PdfViewerRoute(
-                                          path:
-                                              "$fileStoreFileUrl$solutionDocsUrl"));
-                                    }
-                                  },
-                                  child: Text(
-                                    "Solution Doc",
-                                    style: textTheme.bodyL.copyWith(
-                                      color: theme.colorTheme.text.disabled,
-                                      fontSize: spacer3,
-                                    ),
-                                    softWrap: true,
-                                    overflow: TextOverflow.visible,
-                                  ),
-                                ),
-                              )
-                            ],
-                          )
-                        ],
-                      ),
-                    ),
-                  ],
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+                ReportDetailRow(
+                  label: 'State',
+                  value: _detailText(_displayValue(state), textTheme, theme),
+                ),
+                ReportDetailRow(
+                  label: 'District',
+                  value:
+                      _detailText(_displayValue(district), textTheme, theme),
+                ),
+                ReportDetailRow(
+                  label: 'Block',
+                  value: _detailText(_displayValue(block), textTheme, theme),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: spacer4),
@@ -582,6 +570,20 @@ class InstallationReportCard extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  String _displayValue(String? value) {
+    final normalized = value?.trim() ?? '';
+    return normalized.isEmpty ? '---' : normalized;
+  }
+
+  Widget _detailText(String value, dynamic textTheme, ThemeData theme) {
+    return Text(
+      value,
+      style: textTheme.bodyL.copyWith(color: theme.colorTheme.text.primary),
+      softWrap: true,
+      overflow: TextOverflow.visible,
     );
   }
 }

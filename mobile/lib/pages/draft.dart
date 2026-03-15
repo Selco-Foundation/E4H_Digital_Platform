@@ -241,6 +241,10 @@ class _DraftPageState extends State<DraftPage> {
                             return Column(
                               children: [
                                 ...visibleDrafts.map((project) {
+                                  final locality = parseBoundaryCodeLocality(
+                                    project.activityFacility.facility
+                                        ?.boundaryCode,
+                                  );
                                   return Column(
                                     children: [
                                       InboxReportCard(
@@ -264,6 +268,9 @@ class _DraftPageState extends State<DraftPage> {
                                                 ?.lastModifiedTime ??
                                             DateTime.now(),
                                         status: project.status ?? '---',
+                                        state: locality.state,
+                                        district: locality.district,
+                                        block: locality.block,
                                       ),
                                       const SizedBox(height: spacer6),
                                     ],
