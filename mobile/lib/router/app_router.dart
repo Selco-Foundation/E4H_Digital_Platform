@@ -1,4 +1,5 @@
 import 'package:auto_route/auto_route.dart';
+import 'package:digit_scanner/blocs/app_localization.dart';
 import 'package:flutter/material.dart';
 
 import '../model/scheduled_visit/scheduled_visit.dart';
@@ -42,6 +43,7 @@ import '../pages/video_player.dart';
 import '../pages/welcome.dart';
 import '../router/routes.dart';
 import '../utils/utils.dart';
+import '../widgets/customized_digit_widget/qr_scanner.dart';
 
 export 'package:auto_route/auto_route.dart';
 

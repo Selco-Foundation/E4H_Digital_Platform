@@ -17,6 +17,7 @@ import 'package:location/location.dart';
 
 import '../blocs/cache_amc_media_upload/cache_amc_media_upload.dart';
 import '../blocs/scheduled_visit/scheduled_visit.dart';
+import 'blocs/send_back/send_back.dart';
 import 'blocs/activity_facility/activity_facility.dart';
 import 'blocs/activity_facility_bom/activity_facility_bom.dart';
 import 'blocs/amc_otp/amc_otp.dart';
@@ -134,6 +135,7 @@ class _MainAppState extends State<MainApp> {
             BlocProvider(
                 create: (context) => ActivityFacilityBomBloc(widget.isar)),
             BlocProvider(create: (context) => RejectionBloc(widget.isar)),
+            BlocProvider(create: (context) => SendBackBloc(widget.isar)),
             BlocProvider(create: (context) => ScheduledVisitBloc(widget.isar)),
             BlocProvider(
                 lazy: true,

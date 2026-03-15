@@ -33,6 +33,7 @@ import '../widgets/button/bom_buttons.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/customized_digit_widget/file_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
 
@@ -110,6 +111,9 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     selState.whenOrNull(selected: (selProject) {
       activityFacilityId = selProject.activityFacility.id;
       project = selProject;
+      context
+          .read<AssetSubmissionBloc>()
+          .add(AssetSubmissionEvent.watch(activityFacilityId));
       _loadRejectionReasonsFromWorkflow(project);
       context
           .read<CacheAssetBloc>()
@@ -310,26 +314,14 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
           BlocListener<AssetSubmissionBloc, AssetSubmissionState>(
             listener: (context, submissionState) {
               submissionState.maybeWhen(
-                loading: () {
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) => const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  );
-                },
                 success: () {
-                  Navigator.of(context, rootNavigator: true).pop();
                   context.router.replace(const InboxRoute());
                 },
-                failure: (message) {
-                  Navigator.of(context, rootNavigator: true).pop();
+                failure: (progress) {
+                  final message = progress.errorMessage ?? 'Failed.';
                   if (isSessionExpiredMessage(message)) {
                     handleSessionExpired(context);
-                    return;
                   }
-                  context.showSnackBar(SnackBar(content: Text(message)));
                 },
                 orElse: () {},
               );
@@ -347,250 +339,288 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                 );
               }),
         ],
-        child: ScrollableContent(
-          enableFixedDigitButton: true,
-          backgroundColor: theme.colorTheme.generic.background,
-          header: const BackNavigationHelpHeaderWidget(
-              showBackNavigation: true, showHelp: false),
-          footer: BlocBuilder<SelectedActivityFacilityBloc,
-              SelectedActivityFacilityState>(
-            builder: (context, selProjectState) {
-              return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
-                builder: (context, submissionState) {
-                  final submitting = submissionState.maybeWhen(
-                      loading: () => true, orElse: () => false);
-
-                  final selProject =
-                      selProjectState.whenOrNull(selected: (wf) => wf);
-                  if (selProject == null) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final isRejectedByQc = selProject.status ==
-                      WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
-                  bool isFieldStaff = userType == USER_TYPES.FIELD_STAFF.name;
-
-                  if (isFieldStaff && isRejectedByQc) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final requireCompletion = isSupervisor;
-                  final hasCompletion =
-                      _existingReports.isNotEmpty || _pickedFiles.isNotEmpty;
-
-                  final notAllRejectionsChecked =
-                      (_rejectionReasons.isNotEmpty &&
-                          _selectedRejectionReasons.length !=
-                              _rejectionReasons.length);
-
-                  final isDisabled = notAllRejectionsChecked ||
-                      submitting ||
-                      (requireCompletion && !hasCompletion);
-
-                  return FooterButton(
-                      showSuffixIcon: false,
-                      isDisabled: isDisabled,
-                      text:
-                          submitting ? "loading..." : "Re-Submit for Approval",
-                      onPress: () async {
-                        if (isDisabled) return;
-                        await _ensureLocationLoaded();
-
-                        final lat = _latitude?.toString() ?? '';
-                        final lng = _longitude?.toString() ?? '';
-
-                        final inputs = <CompletionFileInput>[];
-                        for (final e in _existingReports) {
-                          inputs.add(CompletionFileInput(
-                            projectId: activityFacilityId,
-                            filePath: e.filePath,
-                            fileType: e.fileType,
-                            fileName: e.fileName,
-                            latitude: lat,
-                            longitude: lng,
-                            index: null,
-                          ));
-                        }
-                        for (final pf in _pickedFiles) {
-                          if (pf.path == null) continue;
-                          inputs.add(CompletionFileInput(
-                            projectId: activityFacilityId,
-                            filePath: pf.path!,
-                            fileType: inferFileType(pf.path!),
-                            fileName: pf.name,
-                            latitude: lat,
-                            longitude: lng,
-                            index: null,
-                          ));
-                        }
-
-                        final selState =
-                            context.read<SelectedActivityFacilityBloc>().state;
-
-                        selState.whenOrNull(selected: (project) {
-                          context.read<ActivityFacilityBloc>().add(
-                                ActivityFacilityEvent.addUnSubmitted(
-                                    project, userType),
-                              );
-
-                          context.read<CacheCompletionReportBloc>().add(
-                                CacheCompletionReportEvent.replaceAllForProject(
-                                  projectId: activityFacilityId!,
-                                  files: inputs,
-                                ),
-                              );
-                          context.read<AssetSubmissionBloc>().add(
-                                AssetSubmissionEvent.submitAll(
-                                    activityFacilityId: activityFacilityId,
-                                    facilityId: project.activityFacility
-                                            .facility?.facilityId ??
-                                        "",
-                                    userType: userType),
-                              );
-                        });
-                      });
-                },
-              );
-            },
-          ),
+        child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                  vertical: spacer2, horizontal: spacer4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Summary',
-                    style: textTheme.headingXl
-                        .copyWith(color: theme.colorTheme.primary.primary2),
-                  ),
-                  const SizedBox(height: spacer4),
-                  const RejectedEditAssetSummary(),
-                  const SizedBox(height: spacer4),
-                  DigitCard(
+            ScrollableContent(
+              enableFixedDigitButton: true,
+              backgroundColor: theme.colorTheme.generic.background,
+              header: const BackNavigationHelpHeaderWidget(
+                  showBackNavigation: true, showHelp: false),
+              footer: BlocBuilder<SelectedActivityFacilityBloc,
+                  SelectedActivityFacilityState>(
+                builder: (context, selProjectState) {
+                  return BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
+                    builder: (context, submissionState) {
+                      final progress = submissionState.maybeWhen(
+                        inProgress: (progress) => progress,
+                        failure: (progress) => progress,
+                        orElse: () => null,
+                      );
+                      final submitting = progress?.isActive ?? false;
+
+                      final selProject =
+                          selProjectState.whenOrNull(selected: (wf) => wf);
+                      if (selProject == null) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final isRejectedByQc = selProject.status ==
+                          WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
+                      bool isFieldStaff =
+                          userType == USER_TYPES.FIELD_STAFF.name;
+
+                      if (isFieldStaff && isRejectedByQc) {
+                        return const SizedBox.shrink();
+                      }
+
+                      final requireCompletion = isSupervisor;
+                      final hasCompletion = _existingReports.isNotEmpty ||
+                          _pickedFiles.isNotEmpty;
+
+                      final notAllRejectionsChecked =
+                          (_rejectionReasons.isNotEmpty &&
+                              _selectedRejectionReasons.length !=
+                                  _rejectionReasons.length);
+
+                      final isDisabled = notAllRejectionsChecked ||
+                          submitting ||
+                          (requireCompletion && !hasCompletion);
+
+                      return FooterButton(
+                          showSuffixIcon: false,
+                          isDisabled: isDisabled,
+                          text: submitting
+                              ? "Submitting..."
+                              : "Re-Submit for Approval",
+                          onPress: () async {
+                            if (isDisabled) return;
+                            await _ensureLocationLoaded();
+
+                            final lat = _latitude?.toString() ?? '';
+                            final lng = _longitude?.toString() ?? '';
+
+                            final inputs = <CompletionFileInput>[];
+                            for (final e in _existingReports) {
+                              inputs.add(CompletionFileInput(
+                                projectId: activityFacilityId,
+                                filePath: e.filePath,
+                                fileType: e.fileType,
+                                fileName: e.fileName,
+                                latitude: lat,
+                                longitude: lng,
+                                index: null,
+                              ));
+                            }
+                            for (final pf in _pickedFiles) {
+                              if (pf.path == null) continue;
+                              inputs.add(CompletionFileInput(
+                                projectId: activityFacilityId,
+                                filePath: pf.path!,
+                                fileType: inferFileType(pf.path!),
+                                fileName: pf.name,
+                                latitude: lat,
+                                longitude: lng,
+                                index: null,
+                              ));
+                            }
+
+                            final selState = context
+                                .read<SelectedActivityFacilityBloc>()
+                                .state;
+
+                            selState.whenOrNull(selected: (project) {
+                              context.read<ActivityFacilityBloc>().add(
+                                    ActivityFacilityEvent.addUnSubmitted(
+                                        project, userType),
+                                  );
+
+                              context.read<CacheCompletionReportBloc>().add(
+                                    CacheCompletionReportEvent
+                                        .replaceAllForProject(
+                                      projectId: activityFacilityId!,
+                                      files: inputs,
+                                    ),
+                                  );
+                              context.read<AssetSubmissionBloc>().add(
+                                    AssetSubmissionEvent.submitAll(
+                                        activityFacilityId: activityFacilityId,
+                                        facilityId: project.activityFacility
+                                                .facility?.facilityId ??
+                                            "",
+                                        userType: userType),
+                                  );
+                            });
+                          });
+                    },
+                  );
+                },
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      vertical: spacer2, horizontal: spacer4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Installation Completion Report',
-                        style: textTheme.headingM
+                        'Summary',
+                        style: textTheme.headingXl
                             .copyWith(color: theme.colorTheme.primary.primary2),
                       ),
-                      ...[
-                        BlocBuilder<AppInitialization, InitState>(
-                          builder: (context, state) {
-                            return state.maybeWhen(
-                              orElse: () => const SizedBox.shrink(),
-                              initialized: (
-                                appConfig,
-                                assetCount,
-                                assetType,
-                                system,
-                                warranty,
-                                brand,
-                                solutionDesign,
-                                solutionDesignBom,
-                              ) {
-                                return Column(
-                                  children: [
-                                    if (_system != null)
-                                      BomButtonsSection(
-                                        key: PageStorageKey(
-                                            'bom-buttons-$activityFacilityId'),
-                                        solutionDesignBom: solutionDesignBom,
-                                        systemCode: _system!,
-                                        projectId: activityFacilityId,
-                                        origin: FormOrigin.submitForApproval,
-                                      ),
-                                  ],
+                      const SizedBox(height: spacer4),
+                      const RejectedEditAssetSummary(),
+                      const SizedBox(height: spacer4),
+                      DigitCard(
+                        children: [
+                          Text(
+                            'Installation Completion Report',
+                            style: textTheme.headingM.copyWith(
+                                color: theme.colorTheme.primary.primary2),
+                          ),
+                          ...[
+                            BlocBuilder<AppInitialization, InitState>(
+                              builder: (context, state) {
+                                return state.maybeWhen(
+                                  orElse: () => const SizedBox.shrink(),
+                                  initialized: (
+                                    appConfig,
+                                    assetCount,
+                                    assetType,
+                                    system,
+                                    warranty,
+                                    brand,
+                                    solutionDesign,
+                                    solutionDesignBom,
+                                  ) {
+                                    return Column(
+                                      children: [
+                                        if (_system != null)
+                                          BomButtonsSection(
+                                            key: PageStorageKey(
+                                                'bom-buttons-$activityFacilityId'),
+                                            solutionDesignBom:
+                                                solutionDesignBom,
+                                            systemCode: _system!,
+                                            projectId: activityFacilityId,
+                                            origin:
+                                                FormOrigin.submitForApproval,
+                                          ),
+                                      ],
+                                    );
+                                  },
                                 );
                               },
-                            );
-                          },
-                        )
-                      ],
-                      Text(
-                        'Please scan and upload the installation completion report',
-                        style: textTheme.bodyS
-                            .copyWith(color: theme.colorTheme.text.secondary),
-                      ),
-                      FileUploadWidget(
-                        allowedExtensions: const ["pdf", "jpg", "jpeg", "png"],
-                        showPreview: true,
-                        allowMultiples: true,
-                        label: 'Upload',
-                        onFilesSelected: (files) {
-                          if (files.isEmpty) {
-                            return <PlatformFile, String?>{};
-                          }
-                          _ensureLocationLoaded();
-                          _handleUploads(files);
-                          return <PlatformFile, String?>{};
-                        },
-                      ),
-                      ExistingFilesOrLoader(
-                        existingReports: _existingReports,
-                        workflowDocuments: project?.workflow?.documents ?? [],
-                        isLoading: _isInitialCompletionLoading,
-                        readOnly: false,
-                        onRemove: (r) {
-                          setState(() {
-                            _existingReports.remove(r);
-                          });
-                        },
-                      ),
-                      RejectionReasonsList(
-                        comments: context
-                                .read<SelectedActivityFacilityBloc>()
-                                .state
-                                .whenOrNull(
-                                  selected: (wf) => wf.transactions
-                                      ?.expand(
-                                          (tx) => tx.comments ?? <Comment>[])
-                                      .toList(),
-                                ) ??
-                            <Comment>[],
-                        excludeStandardTypes: true,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: spacer4),
-                  Text(
-                    "Rejection List",
-                    style: textTheme.headingXl
-                        .copyWith(color: theme.colorTheme.primary.primary2),
-                  ),
-                  const SizedBox(height: spacer1),
-                  DigitCard(
-                    children: [
-                      SizedBox(width: context.width),
-                      if (_rejectionReasons.isEmpty)
-                        Text(
-                          "No rejection reasons found",
-                          style: textTheme.bodyS,
-                        )
-                      else
-                        for (final reason in _rejectionReasons) ...[
-                          DigitCheckbox(
-                            key: ValueKey(
-                                'rej-${activityFacilityId.isEmpty ? "none" : activityFacilityId}-$reason'),
-                            label: reason,
-                            value: _selectedRejectionReasons.contains(reason),
-                            onChanged: (value) {
-                              final checked = value ?? false;
+                            )
+                          ],
+                          Text(
+                            'Please scan and upload the installation completion report',
+                            style: textTheme.bodyS.copyWith(
+                                color: theme.colorTheme.text.secondary),
+                          ),
+                          FileUploadWidget(
+                            allowedExtensions: const [
+                              "pdf",
+                              "jpg",
+                              "jpeg",
+                              "png"
+                            ],
+                            showPreview: true,
+                            allowMultiples: true,
+                            label: 'Upload',
+                            onFilesSelected: (files) {
+                              if (files.isEmpty) {
+                                return <PlatformFile, String?>{};
+                              }
+                              _ensureLocationLoaded();
+                              _handleUploads(files);
+                              return <PlatformFile, String?>{};
+                            },
+                          ),
+                          ExistingFilesOrLoader(
+                            existingReports: _existingReports,
+                            workflowDocuments:
+                                project?.workflow?.documents ?? [],
+                            isLoading: _isInitialCompletionLoading,
+                            readOnly: false,
+                            onRemove: (r) {
                               setState(() {
-                                if (checked)
-                                  _selectedRejectionReasons.add(reason);
-                                else
-                                  _selectedRejectionReasons.remove(reason);
+                                _existingReports.remove(r);
                               });
                             },
                           ),
-                          const SizedBox(height: spacer1),
+                          RejectionReasonsList(
+                            comments: context
+                                    .read<SelectedActivityFacilityBloc>()
+                                    .state
+                                    .whenOrNull(
+                                      selected: (wf) => wf.transactions
+                                          ?.expand((tx) =>
+                                              tx.comments ?? <Comment>[])
+                                          .toList(),
+                                    ) ??
+                                <Comment>[],
+                            excludeStandardTypes: true,
+                          ),
                         ],
+                      ),
+                      const SizedBox(height: spacer4),
+                      Text(
+                        "Rejection List",
+                        style: textTheme.headingXl
+                            .copyWith(color: theme.colorTheme.primary.primary2),
+                      ),
+                      const SizedBox(height: spacer1),
+                      DigitCard(
+                        children: [
+                          SizedBox(width: context.width),
+                          if (_rejectionReasons.isEmpty)
+                            Text(
+                              "No rejection reasons found",
+                              style: textTheme.bodyS,
+                            )
+                          else
+                            for (final reason in _rejectionReasons) ...[
+                              DigitCheckbox(
+                                key: ValueKey(
+                                    'rej-${activityFacilityId.isEmpty ? "none" : activityFacilityId}-$reason'),
+                                label: reason,
+                                value:
+                                    _selectedRejectionReasons.contains(reason),
+                                onChanged: (value) {
+                                  final checked = value ?? false;
+                                  setState(() {
+                                    if (checked)
+                                      _selectedRejectionReasons.add(reason);
+                                    else
+                                      _selectedRejectionReasons.remove(reason);
+                                  });
+                                },
+                              ),
+                              const SizedBox(height: spacer1),
+                            ],
+                        ],
+                      )
                     ],
-                  )
-                ],
-              ),
+                  ),
+                ),
+              ],
+            ),
+            BlocBuilder<AssetSubmissionBloc, AssetSubmissionState>(
+              builder: (context, state) {
+                final progress = state.maybeWhen(
+                  inProgress: (progress) => progress,
+                  failure: (progress) => progress,
+                  orElse: () => null,
+                );
+                return OperationProgressOverlay(
+                  progress: progress,
+                  onClose: progress?.isFailure == true
+                      ? () => context
+                          .read<AssetSubmissionBloc>()
+                          .add(const AssetSubmissionEvent.dismiss())
+                      : null,
+                );
+              },
             ),
           ],
         ),

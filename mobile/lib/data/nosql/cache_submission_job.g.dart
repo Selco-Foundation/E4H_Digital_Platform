@@ -23,18 +23,58 @@ const CacheSubmissionJobSchema = CollectionSchema(
       name: r'activityFacilityId',
       type: IsarType.string,
     ),
-    r'error': PropertySchema(
+    r'completedSteps': PropertySchema(
       id: 1,
-      name: r'error',
+      name: r'completedSteps',
+      type: IsarType.long,
+    ),
+    r'isBlocking': PropertySchema(
+      id: 2,
+      name: r'isBlocking',
+      type: IsarType.bool,
+    ),
+    r'lastError': PropertySchema(
+      id: 3,
+      name: r'lastError',
+      type: IsarType.string,
+    ),
+    r'operationType': PropertySchema(
+      id: 4,
+      name: r'operationType',
+      type: IsarType.string,
+    ),
+    r'progressPercent': PropertySchema(
+      id: 5,
+      name: r'progressPercent',
+      type: IsarType.long,
+    ),
+    r'retryCount': PropertySchema(
+      id: 6,
+      name: r'retryCount',
+      type: IsarType.long,
+    ),
+    r'stageKey': PropertySchema(
+      id: 7,
+      name: r'stageKey',
+      type: IsarType.string,
+    ),
+    r'stageLabel': PropertySchema(
+      id: 8,
+      name: r'stageLabel',
       type: IsarType.string,
     ),
     r'status': PropertySchema(
-      id: 2,
+      id: 9,
       name: r'status',
       type: IsarType.string,
     ),
+    r'totalSteps': PropertySchema(
+      id: 10,
+      name: r'totalSteps',
+      type: IsarType.long,
+    ),
     r'updatedAt': PropertySchema(
-      id: 3,
+      id: 11,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -58,6 +98,19 @@ const CacheSubmissionJobSchema = CollectionSchema(
         )
       ],
     ),
+    r'operationType': IndexSchema(
+      id: 7940488376024458150,
+      name: r'operationType',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'operationType',
+          type: IndexType.hash,
+          caseSensitive: false,
+        )
+      ],
+    ),
     r'status': IndexSchema(
       id: -107785170620420283,
       name: r'status',
@@ -68,6 +121,19 @@ const CacheSubmissionJobSchema = CollectionSchema(
           name: r'status',
           type: IndexType.hash,
           caseSensitive: true,
+        )
+      ],
+    ),
+    r'stageKey': IndexSchema(
+      id: 907655490056677013,
+      name: r'stageKey',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'stageKey',
+          type: IndexType.hash,
+          caseSensitive: false,
         )
       ],
     )
@@ -88,11 +154,14 @@ int _cacheSubmissionJobEstimateSize(
   var bytesCount = offsets.last;
   bytesCount += 3 + object.activityFacilityId.length * 3;
   {
-    final value = object.error;
+    final value = object.lastError;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
     }
   }
+  bytesCount += 3 + object.operationType.length * 3;
+  bytesCount += 3 + object.stageKey.length * 3;
+  bytesCount += 3 + object.stageLabel.length * 3;
   bytesCount += 3 + object.status.length * 3;
   return bytesCount;
 }
@@ -104,9 +173,17 @@ void _cacheSubmissionJobSerialize(
   Map<Type, List<int>> allOffsets,
 ) {
   writer.writeString(offsets[0], object.activityFacilityId);
-  writer.writeString(offsets[1], object.error);
-  writer.writeString(offsets[2], object.status);
-  writer.writeDateTime(offsets[3], object.updatedAt);
+  writer.writeLong(offsets[1], object.completedSteps);
+  writer.writeBool(offsets[2], object.isBlocking);
+  writer.writeString(offsets[3], object.lastError);
+  writer.writeString(offsets[4], object.operationType);
+  writer.writeLong(offsets[5], object.progressPercent);
+  writer.writeLong(offsets[6], object.retryCount);
+  writer.writeString(offsets[7], object.stageKey);
+  writer.writeString(offsets[8], object.stageLabel);
+  writer.writeString(offsets[9], object.status);
+  writer.writeLong(offsets[10], object.totalSteps);
+  writer.writeDateTime(offsets[11], object.updatedAt);
 }
 
 CacheSubmissionJob _cacheSubmissionJobDeserialize(
@@ -117,11 +194,19 @@ CacheSubmissionJob _cacheSubmissionJobDeserialize(
 ) {
   final object = CacheSubmissionJob(
     activityFacilityId: reader.readString(offsets[0]),
-    error: reader.readStringOrNull(offsets[1]),
-    status: reader.readString(offsets[2]),
+    completedSteps: reader.readLongOrNull(offsets[1]) ?? 0,
+    isBlocking: reader.readBoolOrNull(offsets[2]) ?? true,
+    lastError: reader.readStringOrNull(offsets[3]),
+    operationType: reader.readString(offsets[4]),
+    progressPercent: reader.readLongOrNull(offsets[5]) ?? 0,
+    retryCount: reader.readLongOrNull(offsets[6]) ?? 0,
+    stageKey: reader.readString(offsets[7]),
+    stageLabel: reader.readString(offsets[8]),
+    status: reader.readString(offsets[9]),
+    totalSteps: reader.readLongOrNull(offsets[10]) ?? 1,
   );
   object.id = id;
-  object.updatedAt = reader.readDateTime(offsets[3]);
+  object.updatedAt = reader.readDateTime(offsets[11]);
   return object;
 }
 
@@ -135,10 +220,26 @@ P _cacheSubmissionJobDeserializeProp<P>(
     case 0:
       return (reader.readString(offset)) as P;
     case 1:
-      return (reader.readStringOrNull(offset)) as P;
+      return (reader.readLongOrNull(offset) ?? 0) as P;
     case 2:
-      return (reader.readString(offset)) as P;
+      return (reader.readBoolOrNull(offset) ?? true) as P;
     case 3:
+      return (reader.readStringOrNull(offset)) as P;
+    case 4:
+      return (reader.readString(offset)) as P;
+    case 5:
+      return (reader.readLongOrNull(offset) ?? 0) as P;
+    case 6:
+      return (reader.readLongOrNull(offset) ?? 0) as P;
+    case 7:
+      return (reader.readString(offset)) as P;
+    case 8:
+      return (reader.readString(offset)) as P;
+    case 9:
+      return (reader.readString(offset)) as P;
+    case 10:
+      return (reader.readLongOrNull(offset) ?? 1) as P;
+    case 11:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -346,6 +447,51 @@ extension CacheSubmissionJobQueryWhere
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterWhereClause>
+      operationTypeEqualTo(String operationType) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'operationType',
+        value: [operationType],
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterWhereClause>
+      operationTypeNotEqualTo(String operationType) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'operationType',
+              lower: [],
+              upper: [operationType],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'operationType',
+              lower: [operationType],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'operationType',
+              lower: [operationType],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'operationType',
+              lower: [],
+              upper: [operationType],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterWhereClause>
       statusEqualTo(String status) {
     return QueryBuilder.apply(this, (query) {
       return query.addWhereClause(IndexWhereClause.equalTo(
@@ -384,6 +530,51 @@ extension CacheSubmissionJobQueryWhere
               indexName: r'status',
               lower: [],
               upper: [status],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterWhereClause>
+      stageKeyEqualTo(String stageKey) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'stageKey',
+        value: [stageKey],
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterWhereClause>
+      stageKeyNotEqualTo(String stageKey) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'stageKey',
+              lower: [],
+              upper: [stageKey],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'stageKey',
+              lower: [stageKey],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'stageKey',
+              lower: [stageKey],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'stageKey',
+              lower: [],
+              upper: [stageKey],
               includeUpper: false,
             ));
       }
@@ -530,155 +721,57 @@ extension CacheSubmissionJobQueryFilter
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorIsNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNull(
-        property: r'error',
-      ));
-    });
-  }
-
-  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorIsNotNull() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(const FilterCondition.isNotNull(
-        property: r'error',
-      ));
-    });
-  }
-
-  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorEqualTo(
-    String? value, {
-    bool caseSensitive = true,
-  }) {
+      completedStepsEqualTo(int value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'error',
+        property: r'completedSteps',
         value: value,
-        caseSensitive: caseSensitive,
       ));
     });
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorGreaterThan(
-    String? value, {
+      completedStepsGreaterThan(
+    int value, {
     bool include = false,
-    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         include: include,
-        property: r'error',
+        property: r'completedSteps',
         value: value,
-        caseSensitive: caseSensitive,
       ));
     });
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorLessThan(
-    String? value, {
+      completedStepsLessThan(
+    int value, {
     bool include = false,
-    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.lessThan(
         include: include,
-        property: r'error',
+        property: r'completedSteps',
         value: value,
-        caseSensitive: caseSensitive,
       ));
     });
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorBetween(
-    String? lower,
-    String? upper, {
+      completedStepsBetween(
+    int lower,
+    int upper, {
     bool includeLower = true,
     bool includeUpper = true,
-    bool caseSensitive = true,
   }) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.between(
-        property: r'error',
+        property: r'completedSteps',
         lower: lower,
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorStartsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.startsWith(
-        property: r'error',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorEndsWith(
-    String value, {
-    bool caseSensitive = true,
-  }) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.endsWith(
-        property: r'error',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorContains(String value, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.contains(
-        property: r'error',
-        value: value,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorMatches(String pattern, {bool caseSensitive = true}) {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.matches(
-        property: r'error',
-        wildcard: pattern,
-        caseSensitive: caseSensitive,
-      ));
-    });
-  }
-
-  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorIsEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.equalTo(
-        property: r'error',
-        value: '',
-      ));
-    });
-  }
-
-  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
-      errorIsNotEmpty() {
-    return QueryBuilder.apply(this, (query) {
-      return query.addFilterCondition(FilterCondition.greaterThan(
-        property: r'error',
-        value: '',
       ));
     });
   }
@@ -735,6 +828,690 @@ extension CacheSubmissionJobQueryFilter
         includeLower: includeLower,
         upper: upper,
         includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      isBlockingEqualTo(bool value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'isBlocking',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'lastError',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'lastError',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'lastError',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'lastError',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'lastError',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'lastError',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'lastError',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'lastError',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'lastError',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'lastError',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'lastError',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      lastErrorIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'lastError',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      operationTypeEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'operationType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      operationTypeGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'operationType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      operationTypeLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'operationType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      operationTypeBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'operationType',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      operationTypeStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'operationType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      operationTypeEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'operationType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      operationTypeContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'operationType',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      operationTypeMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'operationType',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      operationTypeIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'operationType',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      operationTypeIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'operationType',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      progressPercentEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'progressPercent',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      progressPercentGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'progressPercent',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      progressPercentLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'progressPercent',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      progressPercentBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'progressPercent',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      retryCountEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'retryCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      retryCountGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'retryCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      retryCountLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'retryCount',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      retryCountBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'retryCount',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageKeyEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'stageKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageKeyGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'stageKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageKeyLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'stageKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageKeyBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'stageKey',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageKeyStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'stageKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageKeyEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'stageKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageKeyContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'stageKey',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageKeyMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'stageKey',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageKeyIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'stageKey',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageKeyIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'stageKey',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageLabelEqualTo(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'stageLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageLabelGreaterThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'stageLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageLabelLessThan(
+    String value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'stageLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageLabelBetween(
+    String lower,
+    String upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'stageLabel',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageLabelStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'stageLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageLabelEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'stageLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageLabelContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'stageLabel',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageLabelMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'stageLabel',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageLabelIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'stageLabel',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageLabelIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'stageLabel',
+        value: '',
       ));
     });
   }
@@ -876,6 +1653,62 @@ extension CacheSubmissionJobQueryFilter
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      totalStepsEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'totalSteps',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      totalStepsGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'totalSteps',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      totalStepsLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'totalSteps',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      totalStepsBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'totalSteps',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
       updatedAtEqualTo(DateTime value) {
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.equalTo(
@@ -955,16 +1788,114 @@ extension CacheSubmissionJobQuerySortBy
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
-      sortByError() {
+      sortByCompletedSteps() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'error', Sort.asc);
+      return query.addSortBy(r'completedSteps', Sort.asc);
     });
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
-      sortByErrorDesc() {
+      sortByCompletedStepsDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'error', Sort.desc);
+      return query.addSortBy(r'completedSteps', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByIsBlocking() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isBlocking', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByIsBlockingDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isBlocking', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByLastError() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastError', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByLastErrorDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastError', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByOperationType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'operationType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByOperationTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'operationType', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByProgressPercent() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'progressPercent', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByProgressPercentDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'progressPercent', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByRetryCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'retryCount', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByRetryCountDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'retryCount', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByStageKey() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageKey', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByStageKeyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageKey', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByStageLabel() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageLabel', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByStageLabelDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageLabel', Sort.desc);
     });
   }
 
@@ -979,6 +1910,20 @@ extension CacheSubmissionJobQuerySortBy
       sortByStatusDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByTotalSteps() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'totalSteps', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByTotalStepsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'totalSteps', Sort.desc);
     });
   }
 
@@ -1014,16 +1959,16 @@ extension CacheSubmissionJobQuerySortThenBy
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
-      thenByError() {
+      thenByCompletedSteps() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'error', Sort.asc);
+      return query.addSortBy(r'completedSteps', Sort.asc);
     });
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
-      thenByErrorDesc() {
+      thenByCompletedStepsDesc() {
     return QueryBuilder.apply(this, (query) {
-      return query.addSortBy(r'error', Sort.desc);
+      return query.addSortBy(r'completedSteps', Sort.desc);
     });
   }
 
@@ -1042,6 +1987,104 @@ extension CacheSubmissionJobQuerySortThenBy
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByIsBlocking() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isBlocking', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByIsBlockingDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'isBlocking', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByLastError() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastError', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByLastErrorDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'lastError', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByOperationType() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'operationType', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByOperationTypeDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'operationType', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByProgressPercent() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'progressPercent', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByProgressPercentDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'progressPercent', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByRetryCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'retryCount', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByRetryCountDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'retryCount', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByStageKey() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageKey', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByStageKeyDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageKey', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByStageLabel() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageLabel', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByStageLabelDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageLabel', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
       thenByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
@@ -1052,6 +2095,20 @@ extension CacheSubmissionJobQuerySortThenBy
       thenByStatusDesc() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByTotalSteps() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'totalSteps', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByTotalStepsDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'totalSteps', Sort.desc);
     });
   }
 
@@ -1081,9 +2138,59 @@ extension CacheSubmissionJobQueryWhereDistinct
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
-      distinctByError({bool caseSensitive = true}) {
+      distinctByCompletedSteps() {
     return QueryBuilder.apply(this, (query) {
-      return query.addDistinctBy(r'error', caseSensitive: caseSensitive);
+      return query.addDistinctBy(r'completedSteps');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
+      distinctByIsBlocking() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'isBlocking');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
+      distinctByLastError({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'lastError', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
+      distinctByOperationType({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'operationType',
+          caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
+      distinctByProgressPercent() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'progressPercent');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
+      distinctByRetryCount() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'retryCount');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
+      distinctByStageKey({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'stageKey', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
+      distinctByStageLabel({bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'stageLabel', caseSensitive: caseSensitive);
     });
   }
 
@@ -1091,6 +2198,13 @@ extension CacheSubmissionJobQueryWhereDistinct
       distinctByStatus({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'status', caseSensitive: caseSensitive);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
+      distinctByTotalSteps() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'totalSteps');
     });
   }
 
@@ -1117,15 +2231,70 @@ extension CacheSubmissionJobQueryProperty
     });
   }
 
-  QueryBuilder<CacheSubmissionJob, String?, QQueryOperations> errorProperty() {
+  QueryBuilder<CacheSubmissionJob, int, QQueryOperations>
+      completedStepsProperty() {
     return QueryBuilder.apply(this, (query) {
-      return query.addPropertyName(r'error');
+      return query.addPropertyName(r'completedSteps');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, bool, QQueryOperations>
+      isBlockingProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'isBlocking');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, String?, QQueryOperations>
+      lastErrorProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'lastError');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, String, QQueryOperations>
+      operationTypeProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'operationType');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, int, QQueryOperations>
+      progressPercentProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'progressPercent');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, int, QQueryOperations> retryCountProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'retryCount');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, String, QQueryOperations>
+      stageKeyProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'stageKey');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, String, QQueryOperations>
+      stageLabelProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'stageLabel');
     });
   }
 
   QueryBuilder<CacheSubmissionJob, String, QQueryOperations> statusProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'status');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, int, QQueryOperations> totalStepsProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'totalSteps');
     });
   }
 

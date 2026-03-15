@@ -36,6 +36,7 @@ import '../widgets/button/footer_button.dart';
 import '../widgets/files/video_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/images/cached_image.dart';
+import '../widgets/progress_indicator/operation_progress_overlay.dart';
 
 class _ReasonEntry {
   String? selectedCode;
@@ -81,6 +82,9 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         activityFacilityName =
             proj.activityFacility.facility?.facilityName ?? '---';
         status = proj.status ?? '---';
+        context
+            .read<RejectionBloc>()
+            .add(RejectionEvent.watch(proj.activityFacility.id));
 
         context.read<AssetSummaryBloc>().add(
               AssetSummaryEvent.load(
@@ -115,23 +119,14 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
     return BlocListener<RejectionBloc, RejectionState>(
       listener: (context, state) {
         state.maybeWhen(
-          loading: () {
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              useRootNavigator: true,
-              builder: (_) => const Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          },
           success: () {
-            Navigator.of(context, rootNavigator: true).pop();
             Navigator.of(context).maybePop();
           },
-          failure: (message) {
-            Navigator.of(context, rootNavigator: true).pop();
-            context.showSnackBar(SnackBar(content: Text(message)));
+          failure: (progress) {
+            final message = progress.errorMessage ?? 'Failed.';
+            if (isSessionExpiredMessage(message)) {
+              handleSessionExpired(context);
+            }
           },
           orElse: () {},
         );
@@ -146,49 +141,70 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
           );
 
           return Scaffold(
-            body: ScrollableContent(
-              enableFixedDigitButton: true,
-              backgroundColor: theme.colorTheme.generic.background,
-              header: const BackNavigationHelpHeaderWidget(
-                showBackNavigation: true,
-                showHelp: false,
-              ),
-              footer: _buildFooter(),
+            body: Stack(
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                      vertical: spacer2, horizontal: spacer4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: spacer2),
-                      Text(
-                        '$heading Summary',
-                        style: textTheme.headingXl.copyWith(
-                          color: theme.colorTheme.primary.primary2,
-                        ),
-                      ),
-                      const SizedBox(height: spacer2),
-                      BlocBuilder<AssetSummaryBloc, AssetSummaryState>(
-                        builder: (context, state) {
-                          return state.when(
-                            initial: () => const Center(
-                              child: Text('Loading summary...'),
-                            ),
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            error: (msg) => Center(
-                              child: Text('Error loading summary:\n$msg'),
-                            ),
-                            loaded: (summary) {
-                              return _buildSummaryCards(summary, heading);
-                            },
-                          );
-                        },
-                      ),
-                    ],
+                ScrollableContent(
+                  enableFixedDigitButton: true,
+                  backgroundColor: theme.colorTheme.generic.background,
+                  header: const BackNavigationHelpHeaderWidget(
+                    showBackNavigation: true,
+                    showHelp: false,
                   ),
+                  footer: _buildFooter(),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: spacer2, horizontal: spacer4),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: spacer2),
+                          Text(
+                            '$heading Summary',
+                            style: textTheme.headingXl.copyWith(
+                              color: theme.colorTheme.primary.primary2,
+                            ),
+                          ),
+                          const SizedBox(height: spacer2),
+                          BlocBuilder<AssetSummaryBloc, AssetSummaryState>(
+                            builder: (context, state) {
+                              return state.when(
+                                initial: () => const Center(
+                                  child: Text('Loading summary...'),
+                                ),
+                                loading: () => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                                error: (msg) => Center(
+                                  child: Text('Error loading summary:\n$msg'),
+                                ),
+                                loaded: (summary) {
+                                  return _buildSummaryCards(summary, heading);
+                                },
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                BlocBuilder<RejectionBloc, RejectionState>(
+                  builder: (context, rejectionState) {
+                    final progress = rejectionState.maybeWhen(
+                      inProgress: (progress) => progress,
+                      failure: (progress) => progress,
+                      orElse: () => null,
+                    );
+                    return OperationProgressOverlay(
+                      progress: progress,
+                      onClose: progress?.isFailure == true
+                          ? () => context
+                              .read<RejectionBloc>()
+                              .add(const RejectionEvent.dismiss())
+                          : null,
+                    );
+                  },
                 ),
               ],
             ),
@@ -205,6 +221,13 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
           builder: (context, reportState) {
             return BlocBuilder<InboxTypeBloc, InboxTypeState>(
               builder: (context, inboxState) {
+                final rejectionProgress =
+                    context.watch<RejectionBloc>().state.maybeWhen(
+                          inProgress: (progress) => progress,
+                          failure: (progress) => progress,
+                          orElse: () => null,
+                        );
+                final rejecting = rejectionProgress?.isActive ?? false;
                 final isApproved = inboxState.maybeWhen(
                   approved: () => true,
                   orElse: () => false,
@@ -229,7 +252,8 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                 return reportState.maybeWhen(
                   sendBack: () => FooterButton(
                     showSuffixIcon: false,
-                    text: "Reject",
+                    text: rejecting ? "Rejecting..." : "Reject",
+                    isDisabled: rejecting,
                     onPress: () => _showSendBackPopup(context),
                   ),
                   orElse: () => FooterButton(

@@ -11,8 +11,11 @@ import 'package:isar/isar.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_amc_installation_form.dart';
 import '../data/nosql/cache_amc_media_upload.dart';
+import '../data/nosql/cache_activity_facility_workflow.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_media_upload.dart';
+import '../data/nosql/cache_operation_checkpoint.dart';
 import '../data/nosql/cache_schedule_visit_form_values.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/nosql/cache_submission_job.dart';
@@ -20,13 +23,16 @@ import '../data/secure_storage/secureStore.dart';
 import '../model/asset/asset.dart';
 import '../model/audit_details/audit_details.dart';
 import '../model/document/document.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/transaction/transaction.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
+import '../repositories/operation_progress_repo.dart';
 import '../repositories/scheduled_visit_repo.dart';
+import '../utils/operation_progress.dart';
 import '../utils/utils.dart';
 import 'app_logger.dart';
 import 'constants.dart';
@@ -41,6 +47,10 @@ const String kMethodReject = 'reject_project';
 const String kEvtRejectDone = 'rejection_done';
 const String kEvtRejectError = 'rejection_error';
 
+const String kMethodSendBack = 'send_back_project';
+const String kEvtSendBackDone = 'send_back_done';
+const String kEvtSendBackError = 'send_back_error';
+
 const String kMethodSubmitVisit = 'submit_schedule_visit';
 const String kEvtScheduleVisitDone = 'schedule_visit_done';
 const String kEvtScheduleVisitError = 'schedule_visit_error';
@@ -52,6 +62,7 @@ const String kCmdForeground = 'bring_to_foreground';
 const String _svcChannelId = 'asset_submission_channel';
 const String _svcChannelName = 'Asset Submission';
 const int _svcNotifId = 728331;
+const String _svcNotifIcon = 'ic_bg_service_small';
 
 String installationReportBom = "INSTALLATION_REPORT_BOM";
 
@@ -61,6 +72,8 @@ StreamSubscription? _uiErrSub;
 StreamSubscription? _uiDoneSub;
 StreamSubscription? _uiRejErrSub;
 StreamSubscription? _uiRejDoneSub;
+StreamSubscription? _uiSendBackErrSub;
+StreamSubscription? _uiSendBackDoneSub;
 
 Future<void> ensureAndroidNotificationPermission() async {
   if (!Platform.isAndroid) return;
@@ -79,7 +92,7 @@ Future<void> setupBackgroundService() async {
   await envConfig.initialize();
   final isar = await Constants().isar;
 
-  const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const androidInit = AndroidInitializationSettings(_svcNotifIcon);
   const iosInit = DarwinInitializationSettings();
   await _fln.initialize(const InitializationSettings(
     android: androidInit,
@@ -125,7 +138,9 @@ Future<void> setupBackgroundService() async {
     await writeJobStatus(
       isar: uiIsar,
       activityFacilityId: pid,
+      operationType: OperationTypes.submit,
       status: 'failed',
+      stageKey: (data?['stageKey'] as String?) ?? 'preparing_submission',
       error: msg,
     );
   });
@@ -136,7 +151,12 @@ Future<void> setupBackgroundService() async {
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
-        isar: uiIsar, activityFacilityId: pid, status: 'success');
+      isar: uiIsar,
+      activityFacilityId: pid,
+      operationType: OperationTypes.submit,
+      status: 'success',
+      stageKey: 'submission_successful',
+    );
   });
 
   _uiRejErrSub?.cancel();
@@ -146,7 +166,13 @@ Future<void> setupBackgroundService() async {
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
-        isar: uiIsar, activityFacilityId: pid, status: 'failed', error: msg);
+      isar: uiIsar,
+      activityFacilityId: pid,
+      operationType: OperationTypes.reject,
+      status: 'failed',
+      stageKey: (data?['stageKey'] as String?) ?? 'submitting_rejection',
+      error: msg,
+    );
   });
 
   _uiRejDoneSub?.cancel();
@@ -155,7 +181,42 @@ Future<void> setupBackgroundService() async {
     if (pid == null) return;
     final uiIsar = await Constants().isar;
     await writeJobStatus(
-        isar: uiIsar, activityFacilityId: pid, status: 'success');
+      isar: uiIsar,
+      activityFacilityId: pid,
+      operationType: OperationTypes.reject,
+      status: 'success',
+      stageKey: 'rejection_successful',
+    );
+  });
+
+  _uiSendBackErrSub?.cancel();
+  _uiSendBackErrSub = uiService.on(kEvtSendBackError).listen((data) async {
+    final pid = data?['activityFacilityId'] as String?;
+    final msg = data?['message']?.toString();
+    if (pid == null) return;
+    final uiIsar = await Constants().isar;
+    await writeJobStatus(
+      isar: uiIsar,
+      activityFacilityId: pid,
+      operationType: OperationTypes.sendBack,
+      status: 'failed',
+      stageKey: (data?['stageKey'] as String?) ?? 'sending_report_back',
+      error: msg,
+    );
+  });
+
+  _uiSendBackDoneSub?.cancel();
+  _uiSendBackDoneSub = uiService.on(kEvtSendBackDone).listen((data) async {
+    final pid = data?['activityFacilityId'] as String?;
+    if (pid == null) return;
+    final uiIsar = await Constants().isar;
+    await writeJobStatus(
+      isar: uiIsar,
+      activityFacilityId: pid,
+      operationType: OperationTypes.sendBack,
+      status: 'success',
+      stageKey: 'send_back_successful',
+    );
   });
 }
 
@@ -181,7 +242,10 @@ class BackgroundServiceController {
           .info('[UI] service already running -> invoke directly');
 
       await ensureAndroidNotificationPermission();
-      service.invoke(kCmdForeground, {'content': 'Preparing…'});
+      service.invoke(kCmdForeground, {
+        'title': operationTitle(OperationTypes.submit),
+        'content': 'Preparing…',
+      });
 
       await _forceStartJobImmediately(
         service: service,
@@ -228,7 +292,10 @@ class BackgroundServiceController {
           .info('[UI] service already running -> invoke REJECTION directly');
 
       await ensureAndroidNotificationPermission();
-      service.invoke(kCmdForeground, {'content': 'Preparing rejection…'});
+      service.invoke(kCmdForeground, {
+        'title': operationTitle(OperationTypes.reject),
+        'content': 'Preparing rejection…',
+      });
 
       await _forceStartJobImmediately(
         service: service,
@@ -255,6 +322,47 @@ class BackgroundServiceController {
         'activityFacilityId': activityFacilityId,
         'userType': userType,
         'transactions': transactions,
+      },
+      logTag: '[UI]',
+      readyStream: readyStream,
+    );
+  }
+
+  Future<void> enqueueSendBack({
+    required String activityFacilityId,
+    required String userType,
+  }) async {
+    final service = FlutterBackgroundService();
+
+    if (await service.isRunning()) {
+      await ensureAndroidNotificationPermission();
+      service.invoke(kCmdForeground, {
+        'title': operationTitle(OperationTypes.sendBack),
+        'content': 'Preparing send back…',
+      });
+      await _forceStartJobImmediately(
+        service: service,
+        method: kMethodSendBack,
+        payload: <String, dynamic>{
+          'activityFacilityId': activityFacilityId,
+          'userType': userType,
+        },
+        logTag: '[UI]',
+        readyStream: null,
+      );
+      return;
+    }
+
+    final readyStream = service.on(kEvtReady);
+    await service.startService();
+    await service.isRunning();
+
+    await _forceStartJobImmediately(
+      service: service,
+      method: kMethodSendBack,
+      payload: <String, dynamic>{
+        'activityFacilityId': activityFacilityId,
+        'userType': userType,
       },
       logTag: '[UI]',
       readyStream: readyStream,
@@ -425,40 +533,58 @@ void onStart(ServiceInstance service) async {
     if (activityFacilityId == null || userType == null) return;
 
     try {
-      await writeJobStatus(
-          isar: isar, activityFacilityId: activityFacilityId, status: 'queued');
-      await writeJobStatus(
-          isar: isar,
-          activityFacilityId: activityFacilityId,
-          status: 'running');
+      await _writeOperationStage(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        status: OperationStatuses.running,
+        stageKey: 'starting_secure_upload_service',
+        completedSteps: 3,
+        service: service,
+      );
 
       await _performSubmissionForActivityFacility(
         isar: isar,
         activityFacilityId: activityFacilityId,
         facilityId: facilityId!,
         userType: userType,
+        service: service,
       );
 
-      await writeJobStatus(
-          isar: isar,
-          activityFacilityId: activityFacilityId,
-          status: 'success');
-      service.invoke(kEvtProgress, {'completed': 1, 'total': 1});
+      await _writeOperationStage(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        status: OperationStatuses.success,
+        stageKey: 'submission_successful',
+        completedSteps: submitStages.length,
+        service: service,
+      );
 
       service.invoke(kEvtDone, {'activityFacilityId': activityFacilityId});
+      await _stopServiceIfIdle(isar: isar, service: service);
     } catch (e, st) {
       AppLogger.instance.info('$e\n$st', title: "[BG] ERROR:");
 
       final msg = _pretty(e);
-      await writeJobStatus(
+      final stageKey =
+          (payload?['stageKey'] as String?) ?? 'preparing_submission';
+      await _writeOperationStage(
         isar: isar,
-        activityFacilityId: activityFacilityId!,
-        status: 'failed',
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        status: OperationStatuses.failed,
+        stageKey: stageKey,
+        completedSteps: 0,
         error: msg,
+        service: service,
       );
-
-      service.invoke(kEvtError,
-          {'activityFacilityId': activityFacilityId, 'message': msg});
+      service.invoke(kEvtError, {
+        'activityFacilityId': activityFacilityId,
+        'message': msg,
+        'stageKey': stageKey
+      });
+      await _stopServiceIfIdle(isar: isar, service: service);
     }
   });
 
@@ -472,34 +598,119 @@ void onStart(ServiceInstance service) async {
     if (activityFacilityId == null || userType == null) return;
 
     try {
-      await writeJobStatus(
-          isar: isar,
-          activityFacilityId: activityFacilityId,
-          status: 'running');
+      await _writeOperationStage(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.reject,
+        status: OperationStatuses.running,
+        stageKey: 'preparing_rejection',
+        completedSteps: 1,
+        service: service,
+      );
 
       await _performRejectionForActivityFacility(
         isar: isar,
         activityFacilityId: activityFacilityId,
         userType: userType,
         transactions: txList.map((m) => Map<String, dynamic>.from(m)).toList(),
+        service: service,
       );
 
+      await _writeOperationStage(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.reject,
+        status: OperationStatuses.success,
+        stageKey: 'rejection_successful',
+        completedSteps: rejectionStages.length,
+        service: service,
+      );
       service
           .invoke(kEvtRejectDone, {'activityFacilityId': activityFacilityId});
+      await _stopServiceIfIdle(isar: isar, service: service);
     } catch (e, st) {
       AppLogger.instance.info('$e\n$st', title: "[BG][REJECT] ERROR: ");
 
-      await writeJobStatus(
+      final msg = _pretty(e);
+      await _writeOperationStage(
         isar: isar,
         activityFacilityId: activityFacilityId,
-        status: 'failed',
-        error: _pretty(e),
+        operationType: OperationTypes.reject,
+        status: OperationStatuses.failed,
+        stageKey: 'submitting_rejection',
+        completedSteps: 0,
+        error: msg,
+        service: service,
       );
 
       service.invoke(kEvtRejectError, {
         'activityFacilityId': activityFacilityId,
-        'message': _pretty(e),
+        'message': msg,
+        'stageKey': 'submitting_rejection',
       });
+      await _stopServiceIfIdle(isar: isar, service: service);
+    }
+  });
+
+  service.on(kMethodSendBack).listen((payload) async {
+    if (_shouldDropDuplicate(payload)) return;
+    final isar = await isarFuture;
+    await envFuture;
+
+    final activityFacilityId = payload?['activityFacilityId'] as String?;
+    final userType = payload?['userType'] as String?;
+    if (activityFacilityId == null || userType == null) return;
+
+    try {
+      await _writeOperationStage(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.sendBack,
+        status: OperationStatuses.running,
+        stageKey: 'preparing_send_back',
+        completedSteps: 1,
+        service: service,
+      );
+
+      await _performSendBackForActivityFacility(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        userType: userType,
+        service: service,
+      );
+
+      await _writeOperationStage(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.sendBack,
+        status: OperationStatuses.success,
+        stageKey: 'send_back_successful',
+        completedSteps: sendBackStages.length,
+        service: service,
+      );
+      service.invoke(kEvtSendBackDone, {
+        'activityFacilityId': activityFacilityId,
+      });
+      await _stopServiceIfIdle(isar: isar, service: service);
+    } catch (e, st) {
+      AppLogger.instance.info('$e\n$st', title: "[BG][SEND_BACK] ERROR: ");
+      final msg = _pretty(e);
+      await _writeOperationStage(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.sendBack,
+        status: OperationStatuses.failed,
+        stageKey: 'sending_report_back',
+        completedSteps: 0,
+        error: msg,
+        service: service,
+      );
+      service.invoke(kEvtSendBackError, {
+        'activityFacilityId': activityFacilityId,
+        'message': msg,
+        'stageKey': 'sending_report_back',
+      });
+      await _stopServiceIfIdle(isar: isar, service: service);
     }
   });
 
@@ -519,13 +730,17 @@ void onStart(ServiceInstance service) async {
       await writeJobStatus(
         isar: isar,
         activityFacilityId: visitId,
+        operationType: OperationTypes.submitVisit,
         status: 'queued',
+        stageKey: 'preparing_submission',
       );
 
       await writeJobStatus(
         isar: isar,
         activityFacilityId: visitId,
+        operationType: OperationTypes.submitVisit,
         status: 'running',
+        stageKey: 'starting_secure_upload_service',
       );
 
       await _performScheduleVisitSubmission(
@@ -537,12 +752,15 @@ void onStart(ServiceInstance service) async {
       await writeJobStatus(
         isar: isar,
         activityFacilityId: visitId,
+        operationType: OperationTypes.submitVisit,
         status: 'success',
+        stageKey: 'submission_successful',
       );
 
       service.invoke(kEvtScheduleVisitDone, {
         'scheduledVisitId': visitId,
       });
+      await _stopServiceIfIdle(isar: isar, service: service);
     } catch (e, st) {
       AppLogger.instance.error(
         title: '[BG] _performScheduleVisitSubmission failed',
@@ -562,7 +780,9 @@ void onStart(ServiceInstance service) async {
       await writeJobStatus(
         isar: isar,
         activityFacilityId: visitId,
+        operationType: OperationTypes.submitVisit,
         status: 'failed',
+        stageKey: 'finalizing_workflow_submission',
         error: msg,
       );
 
@@ -570,6 +790,7 @@ void onStart(ServiceInstance service) async {
         'scheduledVisitId': visitId,
         'message': msg,
       });
+      await _stopServiceIfIdle(isar: isar, service: service);
     }
   });
 
@@ -584,7 +805,7 @@ void onStart(ServiceInstance service) async {
     if (service is AndroidServiceInstance) {
       service.setAsForegroundService();
       await service.setForegroundNotificationInfo(
-        title: 'Submitting assets',
+        title: (data?['title'] as String?) ?? 'Submitting assets',
         content: (data?['content'] as String?) ?? 'Working…',
       );
     }
@@ -596,29 +817,147 @@ void onStart(ServiceInstance service) async {
 Future<void> writeJobStatus({
   required Isar isar,
   required String activityFacilityId,
+  required String operationType,
   required String status,
+  required String stageKey,
   String? error,
 }) async {
-  await isar.writeTxn(() async {
-    final existing = await isar.cacheSubmissionJobs
-        .where()
-        .activityFacilityIdEqualTo(activityFacilityId)
-        .findFirst();
+  final stages = stagesForOperation(operationType);
+  final completed = status == OperationStatuses.success ? stages.length : 0;
+  await _writeOperationStage(
+    isar: isar,
+    activityFacilityId: activityFacilityId,
+    operationType: operationType,
+    status: status,
+    stageKey: stageKey,
+    completedSteps: completed,
+    error: error,
+  );
+}
 
-    if (existing == null) {
-      final job = CacheSubmissionJob(
-        activityFacilityId: activityFacilityId,
-        status: status,
-        error: error,
-      );
-      await isar.cacheSubmissionJobs.put(job);
-    } else {
-      existing
-        ..status = status
-        ..error = error;
-      await isar.cacheSubmissionJobs.put(existing);
-    }
+Future<void> _writeOperationStage({
+  required Isar isar,
+  required String activityFacilityId,
+  required String operationType,
+  required String status,
+  required String stageKey,
+  required int completedSteps,
+  String? error,
+  bool incrementRetry = false,
+  ServiceInstance? service,
+}) async {
+  final repo = OperationProgressRepository(isar);
+  final stages = stagesForOperation(operationType);
+  await repo.upsertJob(
+    activityFacilityId: activityFacilityId,
+    operationType: operationType,
+    status: status,
+    stageKey: stageKey,
+    completedSteps: completedSteps,
+    totalSteps: stages.length,
+    errorMessage: error,
+    incrementRetry: incrementRetry,
+  );
+
+  final label = stageForKey(operationType, stageKey).label;
+  if (service is AndroidServiceInstance) {
+    await service.setForegroundNotificationInfo(
+      title: operationTitle(operationType),
+      content: label,
+    );
+  } else if (service != null) {
+    service.invoke(kCmdForeground, {
+      'title': operationTitle(operationType),
+      'content': label,
+    });
+  }
+
+  service?.invoke(kEvtProgress, {
+    'activityFacilityId': activityFacilityId,
+    'operationType': operationType,
+    'status': status,
+    'stageKey': stageKey,
+    'stageLabel': label,
+    'completedSteps': completedSteps,
+    'totalSteps': stages.length,
+    'progressPercent': progressPercent(
+      completedSteps: completedSteps,
+      totalSteps: stages.length,
+    ),
+    if (error != null) 'message': error,
   });
+}
+
+Future<void> _stopServiceIfIdle({
+  required Isar isar,
+  required ServiceInstance service,
+}) async {
+  final jobs = await isar.cacheSubmissionJobs.where().findAll();
+  final hasActiveJobs = jobs.any(
+    (job) =>
+        job.status == OperationStatuses.queued ||
+        job.status == OperationStatuses.running ||
+        job.status == OperationStatuses.partial,
+  );
+  if (hasActiveJobs) {
+    return;
+  }
+  if (service is AndroidServiceInstance) {
+    service.setAsBackgroundService();
+  }
+  await service.stopSelf();
+}
+
+Future<void> _saveCheckpoint({
+  required Isar isar,
+  required String activityFacilityId,
+  required String operationType,
+  required String checkpointKey,
+  required String itemKey,
+  required String status,
+  String? remoteId,
+  String? error,
+  Map<String, dynamic>? payload,
+}) async {
+  await OperationProgressRepository(isar).saveCheckpoint(
+    activityFacilityId: activityFacilityId,
+    operationType: operationType,
+    checkpointKey: checkpointKey,
+    itemKey: itemKey,
+    status: status,
+    remoteId: remoteId,
+    error: error,
+    payload: payload,
+  );
+}
+
+Future<CacheOperationCheckpoint?> _getCheckpoint({
+  required Isar isar,
+  required String activityFacilityId,
+  required String operationType,
+  required String checkpointKey,
+  required String itemKey,
+}) {
+  return OperationProgressRepository(isar).getCheckpoint(
+    activityFacilityId: activityFacilityId,
+    operationType: operationType,
+    checkpointKey: checkpointKey,
+    itemKey: itemKey,
+  );
+}
+
+Future<List<R>> _runBatches<T, R>({
+  required List<T> items,
+  required Future<R> Function(T item) run,
+  int concurrency = 2,
+}) async {
+  final out = <R>[];
+  for (var i = 0; i < items.length; i += concurrency) {
+    final batch = items.skip(i).take(concurrency).toList();
+    final result = await Future.wait(batch.map(run));
+    out.addAll(result);
+  }
+  return out;
 }
 
 bool _isInstallBomPdfNameOrPath(String value) {
@@ -649,10 +988,29 @@ Future<void> _performSubmissionForActivityFacility({
   required String activityFacilityId,
   required String facilityId,
   required String userType,
+  required ServiceInstance service,
 }) async {
   try {
     final repo = AssetRepository();
     const types = ['inverter', 'battery', 'panel'];
+    final now = DateTime.now().toUtc();
+    final currentUserId = await SecureStore().getSelectedIndividual() ?? '';
+    final remoteRepo = ActivityFacilityRemoteRepository();
+    final workflowRepo = ActivityFacilityWorkflowRepository();
+
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.submit,
+      status: OperationStatuses.running,
+      stageKey: 'checking_saved_asset_data',
+      completedSteps: 2,
+      service: service,
+    );
+
+    final assetsByType = <String, List<CacheAddNewAsset>>{};
+    final specByType = <String, CacheSpecification>{};
+    final detailByType = <String, CacheAssetDetail>{};
 
     for (final type in types) {
       final assets = await isar.cacheAddNewAssets
@@ -661,7 +1019,6 @@ Future<void> _performSubmissionForActivityFacility({
           .filter()
           .assetTypeEqualTo(type)
           .findAll();
-
       if (assets.isEmpty) {
         throw Exception("No cached assets found for type $type.");
       }
@@ -672,28 +1029,340 @@ Future<void> _performSubmissionForActivityFacility({
           .filter()
           .assetTypeEqualTo(type)
           .findFirst();
-
       final detail = await isar.cacheAssetDetails
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
           .filter()
           .assetTypeEqualTo(type)
           .findFirst();
-
       if (spec == null || detail == null) {
         throw Exception("Missing specification or detail for type $type.");
       }
 
-      for (final saved in assets) {
+      assetsByType[type] = assets;
+      specByType[type] = spec;
+      detailByType[type] = detail;
+    }
+
+    final workflowMedia = await isar.cacheMediaUploads
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .filter()
+        .userTypeEqualTo(userType)
+        .findAll();
+
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.submit,
+      status: OperationStatuses.running,
+      stageKey: 'uploading_asset_media',
+      completedSteps: 4,
+      service: service,
+    );
+
+    await _runBatches<CacheMediaUpload, void>(
+      items: workflowMedia.where((item) => item.filePath.isNotEmpty).toList(),
+      concurrency: 3,
+      run: (media) async {
+        final itemKey = media.id.toString();
+        final checkpoint = await _getCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'asset_media_upload',
+          itemKey: itemKey,
+        );
+        if (checkpoint?.status == OperationCheckpointStatuses.success &&
+            (checkpoint?.remoteId?.isNotEmpty ?? false)) {
+          return;
+        }
+        final remoteId = await getFilestoreUrl(media.filePath);
+        await _saveCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'asset_media_upload',
+          itemKey: itemKey,
+          status: OperationCheckpointStatuses.success,
+          remoteId: remoteId,
+        );
+      },
+    );
+
+    final assetPhotoItems = assetsByType.values
+        .expand((items) => items)
+        .where((a) => a.photoPath.isNotEmpty)
+        .toList();
+    await _runBatches<CacheAddNewAsset, void>(
+      items: assetPhotoItems,
+      concurrency: 3,
+      run: (asset) async {
+        final itemKey = asset.id.toString();
+        final checkpoint = await _getCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'asset_photo_upload',
+          itemKey: itemKey,
+        );
+        if (checkpoint?.status == OperationCheckpointStatuses.success &&
+            (checkpoint?.remoteId?.isNotEmpty ?? false)) {
+          return;
+        }
+        final remoteId = await getFilestoreUrl(asset.photoPath);
+        await _saveCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'asset_photo_upload',
+          itemKey: itemKey,
+          status: OperationCheckpointStatuses.success,
+          remoteId: remoteId,
+        );
+      },
+    );
+
+    final workflowDocuments = <Document>[];
+    for (final media
+        in workflowMedia.where((item) => item.filePath.isNotEmpty)) {
+      final checkpoint = await _getCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        checkpointKey: 'asset_media_upload',
+        itemKey: media.id.toString(),
+      );
+      final remoteId = checkpoint?.remoteId;
+      if (remoteId == null || remoteId.isEmpty) continue;
+      workflowDocuments.add(
+        Document(
+          documentType: '${media.assetType}-${media.itemType}',
+          fileStore: remoteId,
+          documentUid: 'DOC-${media.assetType}-${media.itemType}-${media.id}',
+          geoLocation: GeoLocation(
+            latitude: media.latitude,
+            longitude: media.longitude,
+          ),
+        ),
+      );
+    }
+
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.submit,
+      status: OperationStatuses.running,
+      stageKey: 'uploading_completion_reports',
+      completedSteps: 5,
+      service: service,
+    );
+
+    final completionReports = await isar.cacheCompletionReports
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .findAll();
+    final usableReports = completionReports.where((report) {
+      if (report.filePath.isEmpty) return false;
+      final fileName = (report.fileName ?? '').trim().isNotEmpty
+          ? report.fileName!.trim()
+          : report.filePath;
+      return !_isInstallBomPdfNameOrPath(fileName);
+    }).toList();
+
+    await _runBatches<CacheCompletionReport, void>(
+      items: usableReports,
+      concurrency: 3,
+      run: (report) async {
+        final itemKey = report.entryId;
+        final checkpoint = await _getCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'completion_report_upload',
+          itemKey: itemKey,
+        );
+        if (checkpoint?.status == OperationCheckpointStatuses.success &&
+            (checkpoint?.remoteId?.isNotEmpty ?? false)) {
+          return;
+        }
+        final remoteId = await getFilestoreUrl(report.filePath);
+        await _saveCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'completion_report_upload',
+          itemKey: itemKey,
+          status: OperationCheckpointStatuses.success,
+          remoteId: remoteId,
+        );
+      },
+    );
+
+    final completionDocuments = <Document>[];
+    for (final report in usableReports) {
+      final checkpoint = await _getCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        checkpointKey: 'completion_report_upload',
+        itemKey: report.entryId,
+      );
+      final remoteId = checkpoint?.remoteId;
+      if (remoteId == null || remoteId.isEmpty) continue;
+      completionDocuments.add(
+        Document(
+          documentType: 'INSTALLATION_REPORT',
+          fileStore: remoteId,
+          documentUid: 'INSTALLATION-REPORT-${report.fileType}-$remoteId',
+          geoLocation: GeoLocation(
+            latitude: report.latitude,
+            longitude: report.longitude,
+          ),
+        ),
+      );
+    }
+
+    final resolvedBomUserType = await BomRepository().resolveBomUserType(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
+
+    if (resolvedBomUserType != null) {
+      await _writeOperationStage(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        status: OperationStatuses.running,
+        stageKey: 'generating_bom_pdf',
+        completedSteps: 6,
+        service: service,
+      );
+
+      final bomCheckpoint = await _getCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        checkpointKey: 'bom_pdf',
+        itemKey: activityFacilityId,
+      );
+      String bomFileStoreId = bomCheckpoint?.remoteId ?? '';
+      if (bomFileStoreId.isEmpty) {
+        bomFileStoreId = await BomRepository().generateBomPdf(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          userType: userType,
+        );
+        await _saveCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'bom_pdf',
+          itemKey: activityFacilityId,
+          status: OperationCheckpointStatuses.success,
+          remoteId: bomFileStoreId,
+        );
+      }
+
+      workflowDocuments.removeWhere((d) =>
+          (d.documentType ?? '').toUpperCase().contains(installationReportBom));
+      final lat = workflowDocuments.isNotEmpty
+          ? workflowDocuments.first.geoLocation?.latitude ?? ''
+          : '';
+      final lon = workflowDocuments.isNotEmpty
+          ? workflowDocuments.first.geoLocation?.longitude ?? ''
+          : '';
+      workflowDocuments.add(
+        Document(
+          documentType: installationReportBom,
+          fileStore: bomFileStoreId,
+          documentUid:
+              'BOM-$activityFacilityId-${DateTime.now().millisecondsSinceEpoch}',
+          geoLocation: GeoLocation(latitude: lat, longitude: lon),
+        ),
+      );
+
+      await _writeOperationStage(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        status: OperationStatuses.running,
+        stageKey: 'submitting_bom',
+        completedSteps: 7,
+        service: service,
+      );
+
+      final bomSubmissionCheckpoint = await _getCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        checkpointKey: 'bom_submit',
+        itemKey: activityFacilityId,
+      );
+      if (bomSubmissionCheckpoint?.status !=
+          OperationCheckpointStatuses.success) {
+        final tenantId = envConfig.variables.tenantId;
+        await BomRepository().submitMergedForProject(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          tenantId: tenantId,
+          facilityId: facilityId,
+          assignUserUuid: currentUserId,
+          userType: userType,
+        );
+        await _saveCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'bom_submit',
+          itemKey: activityFacilityId,
+          status: OperationCheckpointStatuses.success,
+        );
+      }
+    }
+
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.submit,
+      status: OperationStatuses.running,
+      stageKey: 'submitting_assets',
+      completedSteps: 8,
+      service: service,
+    );
+
+    for (final type in types) {
+      final spec = specByType[type]!;
+      final detail = detailByType[type]!;
+      for (final saved in assetsByType[type]!) {
+        final checkpoint = await _getCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'asset_submit',
+          itemKey: saved.id.toString(),
+        );
+        if (checkpoint?.status == OperationCheckpointStatuses.success) {
+          continue;
+        }
+
         final documents = <Document>[];
         if (saved.photoPath.isNotEmpty) {
-          final photoId = await getFilestoreUrl(saved.photoPath);
+          final photoCheckpoint = await _getCheckpoint(
+            isar: isar,
+            activityFacilityId: activityFacilityId,
+            operationType: OperationTypes.submit,
+            checkpointKey: 'asset_photo_upload',
+            itemKey: saved.id.toString(),
+          );
+          final photoId = photoCheckpoint?.remoteId ?? saved.photoPath;
           documents.add(
             Document(
               id: saved.documentId,
-              documentType: "ASSET",
+              documentType: 'ASSET',
               fileStore: photoId,
-              documentUid: "DOC-ASSET-${saved.serialNumber}",
+              documentUid: 'DOC-ASSET-${saved.serialNumber}',
               additionalDetailsJson: null,
               geoLocation: GeoLocation(
                 latitude: saved.latitude,
@@ -703,12 +1372,11 @@ Future<void> _performSubmissionForActivityFacility({
           );
         }
 
-        final now = DateTime.now().toUtc();
         final years = parseWarrantyYears(detail.warranty);
-        final startIso = years > 0 ? now.toIso8601String() : "";
-        final endIso = (years > 0)
+        final startIso = years > 0 ? now.toIso8601String() : '';
+        final endIso = years > 0
             ? now.add(Duration(days: 365 * years)).toIso8601String()
-            : "";
+            : '';
 
         final assetDetails = AssetDetails(
           totalCapacity: spec.totalCapacity,
@@ -744,9 +1412,8 @@ Future<void> _performSubmissionForActivityFacility({
               : null,
         );
 
-        final userId = await SecureStore().getSelectedIndividual();
-        final audit = AuditDetails(lastModifiedBy: userId, lastModified: now);
-
+        final audit =
+            AuditDetails(lastModifiedBy: currentUserId, lastModified: now);
         final assetModel = Asset(
           assetId: saved.assetId,
           tenantId: envConfig.variables.tenantId,
@@ -761,138 +1428,105 @@ Future<void> _performSubmissionForActivityFacility({
           warrantyDuration: years,
           warrantyEndDate: endIso,
           modelNumber: detail.model,
-          wfStatus: "CREATED",
+          wfStatus: 'CREATED',
           isActive: true,
           documents: documents,
           auditDetails: (saved.assetId?.isNotEmpty ?? false) ? audit : null,
         );
 
-        await repo.createOrUpdateAsset(asset: assetModel, isar: isar);
+        final updatedAsset =
+            await repo.createOrUpdateAsset(asset: assetModel, isar: isar);
+        await _saveCheckpoint(
+          isar: isar,
+          activityFacilityId: activityFacilityId,
+          operationType: OperationTypes.submit,
+          checkpointKey: 'asset_submit',
+          itemKey: saved.id.toString(),
+          status: OperationCheckpointStatuses.success,
+          remoteId: updatedAsset.assetId,
+        );
       }
     }
 
-    final remoteRepo = ActivityFacilityRemoteRepository();
-    final workflowDocuments = <Document>[];
-
-    const typesForDocs = ['inverter', 'battery', 'panel'];
-    final workflowDocumentFromCache =
-        await ActivityFacilityWorkflowRepository().collectWorkflowMediaDocs(
+    await _writeOperationStage(
       isar: isar,
       activityFacilityId: activityFacilityId,
-      types: typesForDocs,
-      userType: userType,
+      operationType: OperationTypes.submit,
+      status: OperationStatuses.running,
+      stageKey: 'finalizing_workflow_submission',
+      completedSteps: 9,
+      service: service,
     );
-    workflowDocuments.addAll(workflowDocumentFromCache);
 
-    final completionReports = await isar.cacheCompletionReports
-        .where()
-        .activityFacilityIdEqualTo(activityFacilityId)
-        .findAll();
-
-    final completionDocuments = <Document>[];
-    for (final report in completionReports) {
-      if (report.filePath.isEmpty) continue;
-      final fileName = (report.fileName ?? '').trim().isNotEmpty
-          ? report.fileName!.trim()
-          : report.filePath;
-
-      final isBomPdf = _isInstallBomPdfNameOrPath(fileName);
-
-      if (isBomPdf) {
-        await _deleteLocalFileIfExists(report.filePath);
-        continue;
-      }
-      final mediaId = await getFilestoreUrl(report.filePath);
-      completionDocuments.add(
-        Document(
-          documentType: "INSTALLATION_REPORT",
-          fileStore: mediaId,
-          documentUid: "INSTALLATION-REPORT-${report.fileType}-$mediaId",
-          geoLocation: GeoLocation(
-            latitude: report.latitude,
-            longitude: report.longitude,
-          ),
-        ),
+    final workflowCheckpoint = await _getCheckpoint(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.submit,
+      checkpointKey: 'workflow_finalize',
+      itemKey: activityFacilityId,
+    );
+    if (workflowCheckpoint?.status != OperationCheckpointStatuses.success) {
+      await remoteRepo.updateActivityFacilityWorkflow(
+        activityFacilityId: activityFacilityId,
+        action: userType == USER_TYPES.FIELD_STAFF.name
+            ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
+            : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
+        documents: [...workflowDocuments, ...completionDocuments],
+      );
+      await _saveCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        checkpointKey: 'workflow_finalize',
+        itemKey: activityFacilityId,
+        status: OperationCheckpointStatuses.success,
       );
     }
 
-    final resolvedBomUserType = await BomRepository().resolveBomUserType(
-        isar: isar, activityFacilityId: activityFacilityId, userType: userType);
-
-    if (resolvedBomUserType != null) {
-      try {
-        workflowDocuments.removeWhere((d) => (d.documentType ?? '')
-            .toUpperCase()
-            .contains(installationReportBom));
-        final bomFileStoreId = await BomRepository().generateBomPdf(
-          isar: isar,
-          activityFacilityId: activityFacilityId,
-          userType: userType,
-        );
-
-        String lat = "", lon = "";
-        if (workflowDocuments.isNotEmpty) {
-          lat = workflowDocuments.first.geoLocation?.latitude ?? "";
-          lon = workflowDocuments.first.geoLocation?.longitude ?? "";
-        }
-
-        workflowDocuments.add(
-          Document(
-            documentType: installationReportBom,
-            fileStore: bomFileStoreId,
-            documentUid:
-                "BOM-$activityFacilityId-${DateTime.now().millisecondsSinceEpoch}",
-            geoLocation: GeoLocation(latitude: lat, longitude: lon),
-          ),
-        );
-      } catch (_) {
-        throw Exception("Failed to attach BOM PDF:");
-      }
-
-      try {
-        final tenantId = envConfig.variables.tenantId;
-        final assignUserUuid =
-            await SecureStore().getSelectedIndividual() ?? '';
-
-        await BomRepository().submitMergedForProject(
-          isar: isar,
-          activityFacilityId: activityFacilityId,
-          tenantId: tenantId,
-          facilityId: facilityId,
-          assignUserUuid: assignUserUuid,
-          userType: userType,
-        );
-      } catch (_) {
-        throw Exception("BOM submission error");
-      }
-    }
-
-    await remoteRepo.updateActivityFacilityWorkflow(
-      activityFacilityId: activityFacilityId,
-      action: userType == USER_TYPES.FIELD_STAFF.name
-          ? WORKFLOW_ACTIONS.SUBMIT_REPORT_A.name
-          : WORKFLOW_ACTIONS.SUBMIT_REPORT_B.name,
-      documents: [...workflowDocuments, ...completionDocuments],
-    );
-
-    await UnsubmittedActivityFacilityRepository(isar)
-        .delete(activityFacilityId, userType);
-    await UnsubmittedActivityFacilityRepository(isar)
-        .deleteAddNewAsset(activityFacilityId);
-    await PrefilledActivityFacilityRepository(isar)
-        .delete(activityFacilityId: activityFacilityId, userType: userType);
-    await CompletionReportRepository(isar)
-        .delete(projectId: activityFacilityId);
-    await BomRepository()
-        .delete(isar: isar, activityFacilityId: activityFacilityId);
-    await BomRepository()
-        .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
-    await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
+    await _writeOperationStage(
       isar: isar,
       activityFacilityId: activityFacilityId,
-      userType: userType,
+      operationType: OperationTypes.submit,
+      status: OperationStatuses.running,
+      stageKey: 'cleaning_up_local_cache',
+      completedSteps: 10,
+      service: service,
     );
-    return;
+
+    final cleanupCheckpoint = await _getCheckpoint(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.submit,
+      checkpointKey: 'cleanup',
+      itemKey: activityFacilityId,
+    );
+    if (cleanupCheckpoint?.status != OperationCheckpointStatuses.success) {
+      await UnsubmittedActivityFacilityRepository(isar)
+          .delete(activityFacilityId, userType);
+      await UnsubmittedActivityFacilityRepository(isar)
+          .deleteAddNewAsset(activityFacilityId);
+      await PrefilledActivityFacilityRepository(isar)
+          .delete(activityFacilityId: activityFacilityId, userType: userType);
+      await CompletionReportRepository(isar)
+          .delete(projectId: activityFacilityId);
+      await BomRepository()
+          .delete(isar: isar, activityFacilityId: activityFacilityId);
+      await BomRepository()
+          .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
+      await workflowRepo.deleteWorkflowMediaDocs(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        userType: userType,
+      );
+      await _saveCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.submit,
+        checkpointKey: 'cleanup',
+        itemKey: activityFacilityId,
+        status: OperationCheckpointStatuses.success,
+      );
+    }
   } catch (e) {
     AppLogger.instance.info("e ${e.toString()}");
     throw PlainError(_pretty(e));
@@ -904,38 +1538,225 @@ Future<void> _performRejectionForActivityFacility({
   required String activityFacilityId,
   required String userType,
   required List<Map<String, dynamic>> transactions,
+  required ServiceInstance service,
 }) async {
   try {
-    const types = ['inverter', 'battery', 'panel'];
-    final workflowDocuments = <Document>[];
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.reject,
+      status: OperationStatuses.running,
+      stageKey: 'validating_rejection_reasons',
+      completedSteps: 2,
+      service: service,
+    );
+    await _saveCheckpoint(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.reject,
+      checkpointKey: 'rejection_payload',
+      itemKey: activityFacilityId,
+      status: OperationCheckpointStatuses.success,
+      payload: <String, dynamic>{'transactions': transactions},
+    );
 
-    final fromCache = await ActivityFacilityWorkflowRepository()
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.reject,
+      status: OperationStatuses.running,
+      stageKey: 'loading_workflow_documents',
+      completedSteps: 3,
+      service: service,
+    );
+    final docsCheckpoint = await _getCheckpoint(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.reject,
+      checkpointKey: 'workflow_documents',
+      itemKey: activityFacilityId,
+    );
+    final workflowDocuments = await ActivityFacilityWorkflowRepository()
         .collectWorkflowDocsForRejection(
       isar: isar,
       activityFacilityId: activityFacilityId,
     );
-    workflowDocuments.addAll(fromCache);
+    if (docsCheckpoint?.status != OperationCheckpointStatuses.success) {
+      await _saveCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.reject,
+        checkpointKey: 'workflow_documents',
+        itemKey: activityFacilityId,
+        status: OperationCheckpointStatuses.success,
+      );
+    }
 
-    await AssetRepository().submitRejection(
-      activityFacilityId: activityFacilityId,
-      transactions: transactions.map((m) => Transaction.fromJson(m)).toList(),
-      documents: workflowDocuments,
-    );
-
-    await UnsubmittedActivityFacilityRepository(isar)
-        .delete(activityFacilityId, userType);
-    await PrefilledActivityFacilityRepository(isar)
-        .delete(activityFacilityId: activityFacilityId, userType: userType);
-    await CompletionReportRepository(isar)
-        .delete(projectId: activityFacilityId);
-    await BomRepository()
-        .delete(isar: isar, activityFacilityId: activityFacilityId);
-    await BomRepository()
-        .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
-    await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
+    await _writeOperationStage(
       isar: isar,
       activityFacilityId: activityFacilityId,
-      userType: userType,
+      operationType: OperationTypes.reject,
+      status: OperationStatuses.running,
+      stageKey: 'submitting_rejection',
+      completedSteps: 4,
+      service: service,
+    );
+    final submitCheckpoint = await _getCheckpoint(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.reject,
+      checkpointKey: 'rejection_submit',
+      itemKey: activityFacilityId,
+    );
+    if (submitCheckpoint?.status != OperationCheckpointStatuses.success) {
+      await AssetRepository().submitRejection(
+        activityFacilityId: activityFacilityId,
+        transactions: transactions.map((m) => Transaction.fromJson(m)).toList(),
+        documents: workflowDocuments,
+      );
+      await _saveCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.reject,
+        checkpointKey: 'rejection_submit',
+        itemKey: activityFacilityId,
+        status: OperationCheckpointStatuses.success,
+      );
+    }
+
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.reject,
+      status: OperationStatuses.running,
+      stageKey: 'cleaning_up_local_cache',
+      completedSteps: 5,
+      service: service,
+    );
+    final cleanupCheckpoint = await _getCheckpoint(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.reject,
+      checkpointKey: 'cleanup',
+      itemKey: activityFacilityId,
+    );
+    if (cleanupCheckpoint?.status != OperationCheckpointStatuses.success) {
+      await UnsubmittedActivityFacilityRepository(isar)
+          .delete(activityFacilityId, userType);
+      await PrefilledActivityFacilityRepository(isar)
+          .delete(activityFacilityId: activityFacilityId, userType: userType);
+      await CompletionReportRepository(isar)
+          .delete(projectId: activityFacilityId);
+      await BomRepository()
+          .delete(isar: isar, activityFacilityId: activityFacilityId);
+      await BomRepository()
+          .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
+      await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        userType: userType,
+      );
+      await _saveCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.reject,
+        checkpointKey: 'cleanup',
+        itemKey: activityFacilityId,
+        status: OperationCheckpointStatuses.success,
+      );
+    }
+  } catch (e) {
+    throw PlainError(_pretty(e));
+  }
+}
+
+Future<void> _performSendBackForActivityFacility({
+  required Isar isar,
+  required String activityFacilityId,
+  required String userType,
+  required ServiceInstance service,
+}) async {
+  try {
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.sendBack,
+      status: OperationStatuses.running,
+      stageKey: 'validating_current_workflow_state',
+      completedSteps: 2,
+      service: service,
+    );
+
+    final workflowRow = await isar.cacheActivityFacilityWorkflows
+        .where()
+        .activityFacilityIdEqualTo(activityFacilityId)
+        .findFirst();
+    if (workflowRow == null) {
+      throw Exception('No workflow found for send back.');
+    }
+
+    await _saveCheckpoint(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.sendBack,
+      checkpointKey: 'validation',
+      itemKey: activityFacilityId,
+      status: OperationCheckpointStatuses.success,
+    );
+
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.sendBack,
+      status: OperationStatuses.running,
+      stageKey: 'sending_report_back',
+      completedSteps: 3,
+      service: service,
+    );
+    final sendBackCheckpoint = await _getCheckpoint(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.sendBack,
+      checkpointKey: 'workflow_update',
+      itemKey: activityFacilityId,
+    );
+    if (sendBackCheckpoint?.status != OperationCheckpointStatuses.success) {
+      await ActivityFacilityRemoteRepository().sendBackActivityFacilityWorkflow(
+        activityFacilityWorkflow: ActivityFacilityWorkflow(
+          activityFacility: workflowRow.activityFacility,
+          status: workflowRow.status,
+          transactions: workflowRow.transactions,
+          workflow: workflowRow.workflow,
+        ),
+        userType: userType,
+        isar: isar,
+      );
+      await _saveCheckpoint(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        operationType: OperationTypes.sendBack,
+        checkpointKey: 'workflow_update',
+        itemKey: activityFacilityId,
+        status: OperationCheckpointStatuses.success,
+      );
+    }
+
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.sendBack,
+      status: OperationStatuses.running,
+      stageKey: 'refreshing_local_data',
+      completedSteps: 4,
+      service: service,
+    );
+    await _saveCheckpoint(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.sendBack,
+      checkpointKey: 'refresh_local',
+      itemKey: activityFacilityId,
+      status: OperationCheckpointStatuses.success,
     );
   } catch (e) {
     throw PlainError(_pretty(e));
