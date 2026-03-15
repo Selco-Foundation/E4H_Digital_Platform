@@ -24,6 +24,7 @@ import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/cards/report_detail_row.dart';
 
 @RoutePage()
 class AmcSelectFacilityPage extends StatefulWidget {
@@ -150,6 +151,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                     ),
                                     builder: (context, snapshot) {
                                       final label = snapshot.data ?? 'Start';
+                                      final locality = parseBoundaryCodeLocality(
+                                        items[index].facility?.boundaryCode,
+                                      );
                                       return AMCInstallationReportCard(
                                           scheduledVisitId: items[index].id,
                                           label: label,
@@ -158,6 +162,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                                   ?.facilityName ??
                                               '',
                                           status: items[index].status,
+                                          state: locality.state,
+                                          district: locality.district,
+                                          block: locality.block,
                                           dateAssigned:
                                               items[index].scheduledDate ??
                                                   DateTime.now(),
@@ -325,6 +332,9 @@ class AMCInstallationReportCard extends StatefulWidget {
   final String? title;
   final String? status;
   final String? label;
+  final String? state;
+  final String? district;
+  final String? block;
   final DateTime dateAssigned;
   final String? systemDesignCode;
   final Function() onPress;
@@ -335,6 +345,9 @@ class AMCInstallationReportCard extends StatefulWidget {
     this.title,
     this.status,
     this.label,
+    this.state,
+    this.district,
+    this.block,
     required this.dateAssigned,
     this.systemDesignCode,
     required this.onPress,
@@ -390,54 +403,30 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
             ),
             const SizedBox(height: spacer4),
             const DigitDivider(dividerType: DividerType.small),
-            Row(
-              children: [
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: spacer4),
-                      Text(
-                        'Status',
-                        style: textTheme.headingS
-                            .copyWith(color: theme.colorTheme.text.primary),
-                      ),
-                      const SizedBox(height: spacer4),
-                      Text(
-                        'AMC Date',
-                        style: textTheme.headingS
-                            .copyWith(color: theme.colorTheme.text.primary),
-                      )
-                    ],
-                  ),
-                ),
-                const SizedBox(width: spacer12),
-                Expanded(
-                  flex: 3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: spacer4),
-                      Text(
-                        context.translate(widget.status ?? ''),
-                        style: textTheme.bodyL.copyWith(
-                          color: theme.colorTheme.text.primary,
-                        ),
-                        softWrap: true,
-                        overflow: TextOverflow.visible,
-                      ),
-                      const SizedBox(height: spacer4),
-                      Text(
-                        formattedDate,
-                        style: textTheme.bodyL.copyWith(
-                          color: theme.colorTheme.text.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            ReportDetailRow(
+              label: 'Status',
+              value: _detailText(
+                context.translate(widget.status ?? ''),
+                textTheme,
+                theme,
+              ),
+            ),
+            ReportDetailRow(
+              label: 'AMC Date',
+              value: _detailText(formattedDate, textTheme, theme),
+            ),
+            ReportDetailRow(
+              label: 'State',
+              value: _detailText(_displayValue(widget.state), textTheme, theme),
+            ),
+            ReportDetailRow(
+              label: 'District',
+              value:
+                  _detailText(_displayValue(widget.district), textTheme, theme),
+            ),
+            ReportDetailRow(
+              label: 'Block',
+              value: _detailText(_displayValue(widget.block), textTheme, theme),
             ),
             const SizedBox(height: spacer4),
             DigitButton(
@@ -470,6 +459,20 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
           ],
         )
       ],
+    );
+  }
+
+  String _displayValue(String? value) {
+    final normalized = value?.trim() ?? '';
+    return normalized.isEmpty ? '---' : normalized;
+  }
+
+  Widget _detailText(String value, dynamic textTheme, ThemeData theme) {
+    return Text(
+      value,
+      style: textTheme.bodyL.copyWith(color: theme.colorTheme.text.primary),
+      softWrap: true,
+      overflow: TextOverflow.visible,
     );
   }
 }

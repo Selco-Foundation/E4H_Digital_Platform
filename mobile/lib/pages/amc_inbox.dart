@@ -262,21 +262,28 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
         for (final visit in items)
           Column(
             children: [
-              if (_selectedTabIndex == 0)
-                AMCInstallationReportCard(
-                  label: "View",
-                  title: visit.facility?.facilityName ?? '',
-                  status: visit.status ?? '---',
-                  dateAssigned: visit.scheduledDate ?? DateTime.now(),
-                  onPress: () {
-                    context
-                        .read<SelectedScheduledVisitBloc>()
-                        .add(SelectedScheduledVisitEvent.select(visit));
-                    context.router.push(const AmcRejctionReasonsRoute());
-                  },
-                )
-              else
-                InboxReportCard(
+              Builder(builder: (context) {
+                final locality =
+                    parseBoundaryCodeLocality(visit.facility?.boundaryCode);
+                if (_selectedTabIndex == 0) {
+                  return AMCInstallationReportCard(
+                    label: "View",
+                    title: visit.facility?.facilityName ?? '',
+                    status: visit.status ?? '---',
+                    dateAssigned: visit.scheduledDate ?? DateTime.now(),
+                    state: locality.state,
+                    district: locality.district,
+                    block: locality.block,
+                    onPress: () {
+                      context
+                          .read<SelectedScheduledVisitBloc>()
+                          .add(SelectedScheduledVisitEvent.select(visit));
+                      context.router.push(const AmcRejctionReasonsRoute());
+                    },
+                  );
+                }
+
+                return InboxReportCard(
                   onPress: () {
                     context
                         .read<SelectedScheduledVisitBloc>()
@@ -297,8 +304,12 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                   title: visit.facility?.facilityName ?? '',
                   dateAssigned: visit.scheduledDate ?? DateTime.now(),
                   status: visit.status ?? '---',
+                  state: locality.state,
+                  district: locality.district,
+                  block: locality.block,
                   isAmc: true,
-                ),
+                );
+              }),
               const SizedBox(height: spacer5),
             ],
           ),
