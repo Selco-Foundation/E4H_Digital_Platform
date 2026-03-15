@@ -62,7 +62,7 @@ const String kCmdForeground = 'bring_to_foreground';
 const String _svcChannelId = 'asset_submission_channel';
 const String _svcChannelName = 'Asset Submission';
 const int _svcNotifId = 728331;
-const String _svcNotifIcon = 'ic_bg_service_small';
+const String _svcNotifIcon = '@mipmap/ic_launcher';
 
 String installationReportBom = "INSTALLATION_REPORT_BOM";
 
