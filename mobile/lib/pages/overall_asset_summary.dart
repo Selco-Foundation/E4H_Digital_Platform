@@ -34,6 +34,7 @@ import '../widgets/button/footer_button.dart';
 import '../widgets/cards/element_asset_summary.dart';
 import '../widgets/customized_digit_widget/file_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
+import '../widgets/progress_indicator/operation_progress_overlay.dart';
 import '../widgets/summary/existing_or_loader.dart';
 import '../widgets/summary/summary.dart';
 
@@ -97,6 +98,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     selState.whenOrNull(selected: (project) {
       _currentProjectId = project.activityFacility.id;
       projectWorkflow = project;
+      context
+          .read<AssetSubmissionBloc>()
+          .add(AssetSubmissionEvent.watch(_currentProjectId!));
       context.read<CacheAssetBloc>().add(CacheAssetEvent.start(
           project.activityFacility.id, userType, project));
 
@@ -317,7 +321,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                             }
                           });
                         },
-                        failure: (error) {
+                        failure: (progress) {
+                          final error = progress.errorMessage ?? 'Failed.';
                           ScaffoldMessenger.of(context).clearSnackBars();
                           if (isSessionExpiredMessage(error)) {
                             handleSessionExpired(context);
@@ -327,319 +332,338 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                               .showSnackBar(SnackBar(content: Text("$error")));
                           _didNavigateAfterSubmit = false;
                         },
-                        loading: () {},
-                        progress: (completed, total) {},
                         initial: () {},
                       );
                     },
                     builder: (BuildContext context,
                         AssetSubmissionState assetSubmissionState) {
-                      return ScrollableContent(
-                        enableFixedDigitButton: true,
-                        backgroundColor: theme.colorTheme.generic.background,
-                        header: const BackNavigationHelpHeaderWidget(
-                          showBackNavigation: true,
-                          showHelp: false,
-                        ),
-                        footer: BlocBuilder<OverallAssetSummaryBloc,
-                            OverallAssetSummaryState>(
-                          builder: (context, overallState) {
-                            int batteryCount = 0,
-                                inverterCount = 0,
-                                panelCount = 0;
-
-                            overallState.when(
-                              initial: () {},
-                              loading: () {},
-                              error: (_) {},
-                              loaded: (bCount, iCount, pCount) {
-                                batteryCount = bCount;
-                                inverterCount = iCount;
-                                panelCount = pCount;
-                              },
-                            );
-
-                            final String resolvedUserType = userState.maybeWhen(
-                              supervisor: () => USER_TYPES.SUPERVISOR.name,
-                              orElse: () => USER_TYPES.FIELD_STAFF.name,
-                            );
-
-                            final bool requireCompletionForSupervisor =
-                                resolvedUserType == USER_TYPES.SUPERVISOR.name;
-
-                            final bool hasAnyCompletion =
-                                _existingReports.isNotEmpty ||
-                                    _pickedFiles.isNotEmpty;
-
-                            final bool isDisabled = (batteryCount == 0 ||
-                                inverterCount == 0 ||
-                                panelCount == 0 ||
-                                (requireCompletionForSupervisor &&
-                                    !hasAnyCompletion));
-
-                            return reportState.maybeWhen(
-                              submitted: () => const SizedBox.shrink(),
-                              orElse: () => FooterButton(
-                                showSuffixIcon: false,
-                                text: assetSubmissionState.maybeWhen(
-                                  loading: () => 'Submitting...',
-                                  progress: (completed, total) =>
-                                      'Submitting... ($completed/$total)',
-                                  orElse: () => context
-                                      .translate(i18.common.coreCommonSubmit),
-                                ),
-                                isDisabled: assetSubmissionState.maybeWhen(
-                                  loading: () => true,
-                                  progress: (_, __) => true,
-                                  orElse: () => isDisabled,
-                                ),
-                                onPress: assetSubmissionState.maybeWhen(
-                                  loading: () => () {},
-                                  progress: (_, __) => () {},
-                                  orElse: () => () async {
-                                    if (isDisabled) return;
-                                    await _ensureLocationLoaded();
-
-                                    final selState = context
-                                        .read<SelectedActivityFacilityBloc>()
-                                        .state;
-                                    selState.whenOrNull(selected: (project) {
-                                      context.read<ActivityFacilityBloc>().add(
-                                            ActivityFacilityEvent
-                                                .addUnSubmitted(
-                                                    project, resolvedUserType),
-                                          );
-
-                                      final lat = _latitude?.toString() ?? '';
-                                      final lng = _longitude?.toString() ?? '';
-
-                                      final keptExisting = _existingReports
-                                          .map((e) => CompletionFileInput(
-                                                projectId: _currentProjectId!,
-                                                filePath: e.filePath,
-                                                fileType: e.fileType,
-                                                fileName: e.fileName,
-                                                latitude: lat,
-                                                longitude: lng,
-                                                index: null,
-                                              ));
-
-                                      final pickedInputs = _pickedFiles
-                                          .where((pf) =>
-                                              pf.path != null &&
-                                              pf.path!.isNotEmpty)
-                                          .map((pf) => CompletionFileInput(
-                                                projectId: _currentProjectId!,
-                                                filePath: pf.path!,
-                                                fileType:
-                                                    inferFileType(pf.path!),
-                                                fileName: pf.name.isNotEmpty
-                                                    ? pf.name
-                                                    : p.basename(pf.path!),
-                                                latitude: lat,
-                                                longitude: lng,
-                                                index: null,
-                                              ));
-
-                                      final inputs = [
-                                        ...keptExisting,
-                                        ...pickedInputs
-                                      ].toList();
-
-                                      context
-                                          .read<CacheCompletionReportBloc>()
-                                          .add(
-                                            CacheCompletionReportEvent
-                                                .replaceAllForProject(
-                                              projectId: _currentProjectId!,
-                                              files: inputs,
-                                            ),
-                                          );
-                                      context.read<AssetSubmissionBloc>().add(
-                                            AssetSubmissionEvent.submitAll(
-                                              activityFacilityId:
-                                                  project.activityFacility.id,
-                                              facilityId: project
-                                                      .activityFacility
-                                                      .facility
-                                                      ?.facilityId ??
-                                                  "",
-                                              userType: resolvedUserType,
-                                            ),
-                                          );
-                                    });
-                                  },
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                      final progress = assetSubmissionState.maybeWhen(
+                        inProgress: (progress) => progress,
+                        failure: (progress) => progress,
+                        orElse: () => null,
+                      );
+                      return Stack(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                vertical: spacer2, horizontal: spacer4),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Summary',
-                                  style: textTheme.headingXl.copyWith(
-                                      color: theme.colorTheme.primary.primary2),
-                                ),
-                                const SizedBox(height: spacer4),
-                                BlocBuilder<OverallAssetSummaryBloc,
-                                    OverallAssetSummaryState>(
-                                  builder: (context, state) {
-                                    return state.when(
-                                      initial: () {
-                                        return DigitCard(
-                                          children: [
-                                            const ElementAssetSummary(
-                                                count: 0, text: 'Batteries'),
-                                            const ElementAssetSummary(
-                                              count: 0,
-                                              text: 'Inverters',
-                                            ),
-                                            const ElementAssetSummary(
-                                                count: 0, text: 'Panels'),
-                                            const SizedBox(height: spacer6),
-                                            DigitButton(
-                                              mainAxisSize: MainAxisSize.max,
-                                              label: 'Add More Assets',
-                                              prefixIcon: Icons.add_box,
-                                              onPressed: () {},
-                                              type: DigitButtonType.primary,
-                                              size: DigitButtonSize.medium,
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                      loading: () {
-                                        return DigitCard(
-                                          children: [
-                                            const Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.spaceEvenly,
+                          ScrollableContent(
+                            enableFixedDigitButton: true,
+                            backgroundColor:
+                                theme.colorTheme.generic.background,
+                            header: const BackNavigationHelpHeaderWidget(
+                              showBackNavigation: true,
+                              showHelp: false,
+                            ),
+                            footer: BlocBuilder<OverallAssetSummaryBloc,
+                                OverallAssetSummaryState>(
+                              builder: (context, overallState) {
+                                int batteryCount = 0,
+                                    inverterCount = 0,
+                                    panelCount = 0;
+
+                                overallState.when(
+                                  initial: () {},
+                                  loading: () {},
+                                  error: (_) {},
+                                  loaded: (bCount, iCount, pCount) {
+                                    batteryCount = bCount;
+                                    inverterCount = iCount;
+                                    panelCount = pCount;
+                                  },
+                                );
+
+                                final String resolvedUserType =
+                                    userState.maybeWhen(
+                                  supervisor: () => USER_TYPES.SUPERVISOR.name,
+                                  orElse: () => USER_TYPES.FIELD_STAFF.name,
+                                );
+
+                                final bool requireCompletionForSupervisor =
+                                    resolvedUserType ==
+                                        USER_TYPES.SUPERVISOR.name;
+
+                                final bool hasAnyCompletion =
+                                    _existingReports.isNotEmpty ||
+                                        _pickedFiles.isNotEmpty;
+
+                                final bool isDisabled = (batteryCount == 0 ||
+                                    inverterCount == 0 ||
+                                    panelCount == 0 ||
+                                    (requireCompletionForSupervisor &&
+                                        !hasAnyCompletion));
+
+                                return reportState.maybeWhen(
+                                  submitted: () => const SizedBox.shrink(),
+                                  orElse: () => FooterButton(
+                                    showSuffixIcon: false,
+                                    text: progress?.isActive == true
+                                        ? 'Submitting...'
+                                        : context.translate(
+                                            i18.common.coreCommonSubmit),
+                                    isDisabled: progress?.isActive == true
+                                        ? true
+                                        : isDisabled,
+                                    onPress: progress?.isActive == true
+                                        ? () {}
+                                        : () async {
+                                            if (isDisabled) return;
+                                            await _ensureLocationLoaded();
+
+                                            final selState = context
+                                                .read<
+                                                    SelectedActivityFacilityBloc>()
+                                                .state;
+                                            selState.whenOrNull(
+                                                selected: (project) {
+                                              context
+                                                  .read<ActivityFacilityBloc>()
+                                                  .add(
+                                                    ActivityFacilityEvent
+                                                        .addUnSubmitted(project,
+                                                            resolvedUserType),
+                                                  );
+
+                                              final lat =
+                                                  _latitude?.toString() ?? '';
+                                              final lng =
+                                                  _longitude?.toString() ?? '';
+
+                                              final keptExisting =
+                                                  _existingReports.map((e) =>
+                                                      CompletionFileInput(
+                                                        projectId:
+                                                            _currentProjectId!,
+                                                        filePath: e.filePath,
+                                                        fileType: e.fileType,
+                                                        fileName: e.fileName,
+                                                        latitude: lat,
+                                                        longitude: lng,
+                                                        index: null,
+                                                      ));
+
+                                              final pickedInputs = _pickedFiles
+                                                  .where((pf) =>
+                                                      pf.path != null &&
+                                                      pf.path!.isNotEmpty)
+                                                  .map((pf) =>
+                                                      CompletionFileInput(
+                                                        projectId:
+                                                            _currentProjectId!,
+                                                        filePath: pf.path!,
+                                                        fileType: inferFileType(
+                                                            pf.path!),
+                                                        fileName:
+                                                            pf.name.isNotEmpty
+                                                                ? pf.name
+                                                                : p.basename(
+                                                                    pf.path!),
+                                                        latitude: lat,
+                                                        longitude: lng,
+                                                        index: null,
+                                                      ));
+
+                                              final inputs = [
+                                                ...keptExisting,
+                                                ...pickedInputs
+                                              ].toList();
+
+                                              context
+                                                  .read<
+                                                      CacheCompletionReportBloc>()
+                                                  .add(
+                                                    CacheCompletionReportEvent
+                                                        .replaceAllForProject(
+                                                      projectId:
+                                                          _currentProjectId!,
+                                                      files: inputs,
+                                                    ),
+                                                  );
+                                              context
+                                                  .read<AssetSubmissionBloc>()
+                                                  .add(
+                                                    AssetSubmissionEvent
+                                                        .submitAll(
+                                                      activityFacilityId:
+                                                          project
+                                                              .activityFacility
+                                                              .id,
+                                                      facilityId: project
+                                                              .activityFacility
+                                                              .facility
+                                                              ?.facilityId ??
+                                                          "",
+                                                      userType:
+                                                          resolvedUserType,
+                                                    ),
+                                                  );
+                                            });
+                                          },
+                                  ),
+                                );
+                              },
+                            ),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: spacer2, horizontal: spacer4),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Summary',
+                                      style: textTheme.headingXl.copyWith(
+                                          color: theme
+                                              .colorTheme.primary.primary2),
+                                    ),
+                                    const SizedBox(height: spacer4),
+                                    BlocBuilder<OverallAssetSummaryBloc,
+                                        OverallAssetSummaryState>(
+                                      builder: (context, state) {
+                                        return state.when(
+                                          initial: () {
+                                            return DigitCard(
                                               children: [
-                                                ElementAssetSummary(
+                                                const ElementAssetSummary(
                                                     count: 0,
                                                     text: 'Batteries'),
-                                                ElementAssetSummary(
-                                                    count: 0,
-                                                    text: 'Inverters'),
-                                                ElementAssetSummary(
+                                                const ElementAssetSummary(
+                                                  count: 0,
+                                                  text: 'Inverters',
+                                                ),
+                                                const ElementAssetSummary(
                                                     count: 0, text: 'Panels'),
+                                                const SizedBox(height: spacer6),
+                                                DigitButton(
+                                                  mainAxisSize:
+                                                      MainAxisSize.max,
+                                                  label: 'Add More Assets',
+                                                  prefixIcon: Icons.add_box,
+                                                  onPressed: () {},
+                                                  type: DigitButtonType.primary,
+                                                  size: DigitButtonSize.medium,
+                                                ),
                                               ],
-                                            ),
-                                            const SizedBox(height: spacer6),
-                                            const Center(
-                                                child:
-                                                    CircularProgressIndicator()),
-                                            const SizedBox(height: spacer6),
-                                            DigitButton(
-                                              mainAxisSize: MainAxisSize.max,
-                                              label: 'Add More Assets',
-                                              prefixIcon: Icons.add_box,
-                                              onPressed: () {},
-                                              type: DigitButtonType.primary,
-                                              size: DigitButtonSize.medium,
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                      error: (message) {
-                                        return DigitCard(
-                                          children: [
-                                            Center(
-                                              child: Text(
-                                                'Error loading counts:\n$message',
-                                                style: textTheme.bodyL.copyWith(
-                                                    color: theme.colorTheme
-                                                        .alert.error),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                            ),
-                                            const SizedBox(height: spacer6),
-                                            DigitButton(
-                                              mainAxisSize: MainAxisSize.max,
-                                              label: 'Retry',
-                                              prefixIcon: Icons.refresh,
-                                              onPressed: () {
-                                                final selState = context
-                                                    .read<
-                                                        SelectedActivityFacilityBloc>()
-                                                    .state;
-                                                selState.whenOrNull(
-                                                    selected: (project) {
-                                                  context
-                                                      .read<
-                                                          OverallAssetSummaryBloc>()
-                                                      .add(
-                                                        OverallAssetSummaryEvent
-                                                            .loadCounts(
-                                                          activityFacilityId:
-                                                              project
-                                                                  .activityFacility
-                                                                  .id,
-                                                        ),
-                                                      );
-                                                });
-                                              },
-                                              type: DigitButtonType.primary,
-                                              size: DigitButtonSize.medium,
-                                            ),
-                                          ],
-                                        );
-                                      },
-                                      loaded: (int batteryCount,
-                                          int inverterCount, int panelCount) {
-                                        return DigitCard(
-                                          children: [
-                                            ElementAssetSummary(
-                                              count: batteryCount,
-                                              text: 'Batteries',
-                                              onPress: () {
-                                                context
-                                                    .read<AssetTypeBloc>()
-                                                    .add(const AssetTypeEvent
-                                                        .typeSelected(
-                                                        "BATTERY"));
-                                                context.router.push(
-                                                    const AssetSummaryRoute());
-                                              },
-                                            ),
-                                            ElementAssetSummary(
-                                              count: inverterCount,
-                                              text: 'Inverters',
-                                              onPress: () {
-                                                context
-                                                    .read<AssetTypeBloc>()
-                                                    .add(const AssetTypeEvent
-                                                        .typeSelected(
-                                                        "INVERTER"));
-                                                context.router.push(
-                                                    const AssetSummaryRoute());
-                                              },
-                                            ),
-                                            reportState.maybeWhen(
-                                              submitted: () =>
-                                                  ElementAssetSummary(
-                                                lastCard: true,
-                                                count: panelCount,
-                                                text: 'Panels',
-                                                onPress: () {
-                                                  context
-                                                      .read<AssetTypeBloc>()
-                                                      .add(const AssetTypeEvent
-                                                          .typeSelected(
-                                                          "PANEL"));
-                                                  context.router.push(
-                                                      const AssetSummaryRoute());
-                                                },
-                                              ),
-                                              orElse: () => Column(
-                                                children: [
-                                                  ElementAssetSummary(
+                                            );
+                                          },
+                                          loading: () {
+                                            return DigitCard(
+                                              children: [
+                                                const Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment
+                                                          .spaceEvenly,
+                                                  children: [
+                                                    ElementAssetSummary(
+                                                        count: 0,
+                                                        text: 'Batteries'),
+                                                    ElementAssetSummary(
+                                                        count: 0,
+                                                        text: 'Inverters'),
+                                                    ElementAssetSummary(
+                                                        count: 0,
+                                                        text: 'Panels'),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: spacer6),
+                                                const Center(
+                                                    child:
+                                                        CircularProgressIndicator()),
+                                                const SizedBox(height: spacer6),
+                                                DigitButton(
+                                                  mainAxisSize:
+                                                      MainAxisSize.max,
+                                                  label: 'Add More Assets',
+                                                  prefixIcon: Icons.add_box,
+                                                  onPressed: () {},
+                                                  type: DigitButtonType.primary,
+                                                  size: DigitButtonSize.medium,
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                          error: (message) {
+                                            return DigitCard(
+                                              children: [
+                                                Center(
+                                                  child: Text(
+                                                    'Error loading counts:\n$message',
+                                                    style: textTheme.bodyL
+                                                        .copyWith(
+                                                            color: theme
+                                                                .colorTheme
+                                                                .alert
+                                                                .error),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: spacer6),
+                                                DigitButton(
+                                                  mainAxisSize:
+                                                      MainAxisSize.max,
+                                                  label: 'Retry',
+                                                  prefixIcon: Icons.refresh,
+                                                  onPressed: () {
+                                                    final selState = context
+                                                        .read<
+                                                            SelectedActivityFacilityBloc>()
+                                                        .state;
+                                                    selState.whenOrNull(
+                                                        selected: (project) {
+                                                      context
+                                                          .read<
+                                                              OverallAssetSummaryBloc>()
+                                                          .add(
+                                                            OverallAssetSummaryEvent
+                                                                .loadCounts(
+                                                              activityFacilityId:
+                                                                  project
+                                                                      .activityFacility
+                                                                      .id,
+                                                            ),
+                                                          );
+                                                    });
+                                                  },
+                                                  type: DigitButtonType.primary,
+                                                  size: DigitButtonSize.medium,
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                          loaded: (int batteryCount,
+                                              int inverterCount,
+                                              int panelCount) {
+                                            return DigitCard(
+                                              children: [
+                                                ElementAssetSummary(
+                                                  count: batteryCount,
+                                                  text: 'Batteries',
+                                                  onPress: () {
+                                                    context
+                                                        .read<AssetTypeBloc>()
+                                                        .add(
+                                                            const AssetTypeEvent
+                                                                .typeSelected(
+                                                                "BATTERY"));
+                                                    context.router.push(
+                                                        const AssetSummaryRoute());
+                                                  },
+                                                ),
+                                                ElementAssetSummary(
+                                                  count: inverterCount,
+                                                  text: 'Inverters',
+                                                  onPress: () {
+                                                    context
+                                                        .read<AssetTypeBloc>()
+                                                        .add(
+                                                            const AssetTypeEvent
+                                                                .typeSelected(
+                                                                "INVERTER"));
+                                                    context.router.push(
+                                                        const AssetSummaryRoute());
+                                                  },
+                                                ),
+                                                reportState.maybeWhen(
+                                                  submitted: () =>
+                                                      ElementAssetSummary(
+                                                    lastCard: true,
                                                     count: panelCount,
                                                     text: 'Panels',
                                                     onPress: () {
@@ -653,141 +677,179 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                           const AssetSummaryRoute());
                                                     },
                                                   ),
-                                                  DigitButton(
-                                                    mainAxisSize:
-                                                        MainAxisSize.max,
-                                                    label: 'Add More Assets',
-                                                    prefixIcon: Icons.add_box,
-                                                    onPressed: () {
-                                                      context.router.push(
-                                                          const SelectAssetTypeRoute());
-                                                    },
-                                                    type:
-                                                        DigitButtonType.primary,
-                                                    size:
-                                                        DigitButtonSize.medium,
-                                                  )
-                                                ],
-                                              ),
-                                            ),
-                                          ],
+                                                  orElse: () => Column(
+                                                    children: [
+                                                      ElementAssetSummary(
+                                                        count: panelCount,
+                                                        text: 'Panels',
+                                                        onPress: () {
+                                                          context
+                                                              .read<
+                                                                  AssetTypeBloc>()
+                                                              .add(const AssetTypeEvent
+                                                                  .typeSelected(
+                                                                  "PANEL"));
+                                                          context.router.push(
+                                                              const AssetSummaryRoute());
+                                                        },
+                                                      ),
+                                                      DigitButton(
+                                                        mainAxisSize:
+                                                            MainAxisSize.max,
+                                                        label:
+                                                            'Add More Assets',
+                                                        prefixIcon:
+                                                            Icons.add_box,
+                                                        onPressed: () {
+                                                          context.router.push(
+                                                              const SelectAssetTypeRoute());
+                                                        },
+                                                        type: DigitButtonType
+                                                            .primary,
+                                                        size: DigitButtonSize
+                                                            .medium,
+                                                      )
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
                                         );
                                       },
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: spacer4),
-                                DigitCard(
-                                  children: [
-                                    Text(
-                                      'Installation Completion Report',
-                                      style: textTheme.headingM.copyWith(
-                                        color:
-                                            theme.colorTheme.primary.primary2,
-                                      ),
                                     ),
-                                    ...(isNewReport || isInboxReport
-                                        ? [
-                                            Text(
-                                              'Please fill out all sections of the report or upload relevant documents.',
-                                              style: textTheme.bodyS.copyWith(
-                                                  color: theme.colorTheme
-                                                      .primary.primary2),
-                                            ),
-                                          ]
-                                        : []),
-                                    ...[
-                                      BlocBuilder<AppInitialization, InitState>(
-                                        builder: (context, state) {
-                                          return state.maybeWhen(
-                                            orElse: () =>
-                                                const SizedBox.shrink(),
-                                            initialized: (
-                                              appConfig,
-                                              assetCount,
-                                              assetType,
-                                              system,
-                                              warranty,
-                                              brand,
-                                              solutionDesign,
-                                              solutionDesignBom,
-                                            ) {
-                                              return Column(
-                                                children: [
-                                                  if (_system != null)
-                                                    BomButtonsSection(
-                                                      key: PageStorageKey(
-                                                          'bom-buttons-${_currentProjectId!}'),
-                                                      solutionDesignBom:
-                                                          solutionDesignBom,
-                                                      systemCode: _system!,
-                                                      projectId:
-                                                          _currentProjectId!,
-                                                      origin: isSubmittedReport
-                                                          ? FormOrigin.submitted
-                                                          : FormOrigin
-                                                              .overallSummary,
-                                                    ),
-                                                ],
+                                    const SizedBox(height: spacer4),
+                                    DigitCard(
+                                      children: [
+                                        Text(
+                                          'Installation Completion Report',
+                                          style: textTheme.headingM.copyWith(
+                                            color: theme
+                                                .colorTheme.primary.primary2,
+                                          ),
+                                        ),
+                                        ...(isNewReport || isInboxReport
+                                            ? [
+                                                Text(
+                                                  'Please fill out all sections of the report or upload relevant documents.',
+                                                  style: textTheme.bodyS
+                                                      .copyWith(
+                                                          color: theme
+                                                              .colorTheme
+                                                              .primary
+                                                              .primary2),
+                                                ),
+                                              ]
+                                            : []),
+                                        ...[
+                                          BlocBuilder<AppInitialization,
+                                              InitState>(
+                                            builder: (context, state) {
+                                              return state.maybeWhen(
+                                                orElse: () =>
+                                                    const SizedBox.shrink(),
+                                                initialized: (
+                                                  appConfig,
+                                                  assetCount,
+                                                  assetType,
+                                                  system,
+                                                  warranty,
+                                                  brand,
+                                                  solutionDesign,
+                                                  solutionDesignBom,
+                                                ) {
+                                                  return Column(
+                                                    children: [
+                                                      if (_system != null)
+                                                        BomButtonsSection(
+                                                          key: PageStorageKey(
+                                                              'bom-buttons-${_currentProjectId!}'),
+                                                          solutionDesignBom:
+                                                              solutionDesignBom,
+                                                          systemCode: _system!,
+                                                          projectId:
+                                                              _currentProjectId!,
+                                                          origin: isSubmittedReport
+                                                              ? FormOrigin
+                                                                  .submitted
+                                                              : FormOrigin
+                                                                  .overallSummary,
+                                                        ),
+                                                    ],
+                                                  );
+                                                },
                                               );
                                             },
-                                          );
-                                        },
-                                      )
-                                    ],
-                                    ...(isNewReport || isInboxReport
-                                        ? [
-                                            FileUploadWidget(
-                                                allowedExtensions: const [
-                                                  "pdf",
-                                                  "jpg",
-                                                  "jpeg",
-                                                  "png"
-                                                ],
-                                                showPreview: true,
-                                                allowMultiples: true,
-                                                label: 'Upload',
-                                                onFilesSelected: (files) {
-                                                  if (files.isEmpty) {
-                                                    return <PlatformFile,
-                                                        String?>{};
-                                                  }
-                                                  _ensureLocationLoaded();
-                                                  _handleUploads(files);
+                                          )
+                                        ],
+                                        ...(isNewReport || isInboxReport
+                                            ? [
+                                                FileUploadWidget(
+                                                    allowedExtensions: const [
+                                                      "pdf",
+                                                      "jpg",
+                                                      "jpeg",
+                                                      "png"
+                                                    ],
+                                                    showPreview: true,
+                                                    allowMultiples: true,
+                                                    label: 'Upload',
+                                                    onFilesSelected: (files) {
+                                                      if (files.isEmpty) {
+                                                        return <PlatformFile,
+                                                            String?>{};
+                                                      }
+                                                      _ensureLocationLoaded();
+                                                      _handleUploads(files);
 
-                                                  return <PlatformFile,
-                                                      String?>{};
-                                                }),
-                                            ExistingFilesOrLoader(
-                                              existingReports: _existingReports,
-                                              workflowDocuments: projectWorkflow
-                                                      ?.workflow?.documents ??
-                                                  [],
-                                              isLoading:
-                                                  _isInitialCompletionLoading,
-                                              readOnly: false,
-                                              onRemove: (r) {
-                                                setState(() {
-                                                  _existingReports.remove(r);
-                                                });
-                                              },
-                                            ),
-                                          ]
-                                        : [
-                                            ExistingFilesOrLoader(
-                                              existingReports: _existingReports,
-                                              workflowDocuments: projectWorkflow
-                                                      ?.workflow?.documents ??
-                                                  [],
-                                              isLoading:
-                                                  _isInitialCompletionLoading,
-                                              readOnly: true,
-                                            ),
-                                          ]),
+                                                      return <PlatformFile,
+                                                          String?>{};
+                                                    }),
+                                                ExistingFilesOrLoader(
+                                                  existingReports:
+                                                      _existingReports,
+                                                  workflowDocuments:
+                                                      projectWorkflow?.workflow
+                                                              ?.documents ??
+                                                          [],
+                                                  isLoading:
+                                                      _isInitialCompletionLoading,
+                                                  readOnly: false,
+                                                  onRemove: (r) {
+                                                    setState(() {
+                                                      _existingReports
+                                                          .remove(r);
+                                                    });
+                                                  },
+                                                ),
+                                              ]
+                                            : [
+                                                ExistingFilesOrLoader(
+                                                  existingReports:
+                                                      _existingReports,
+                                                  workflowDocuments:
+                                                      projectWorkflow?.workflow
+                                                              ?.documents ??
+                                                          [],
+                                                  isLoading:
+                                                      _isInitialCompletionLoading,
+                                                  readOnly: true,
+                                                ),
+                                              ]),
+                                      ],
+                                    ),
                                   ],
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
+                          ),
+                          OperationProgressOverlay(
+                            progress: progress,
+                            onClose: progress?.isFailure == true
+                                ? () => context
+                                    .read<AssetSubmissionBloc>()
+                                    .add(const AssetSubmissionEvent.dismiss())
+                                : null,
                           ),
                         ],
                       );

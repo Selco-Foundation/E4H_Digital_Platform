@@ -1,71 +1,49 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
 import '../../data/nosql/cache_submission_job.dart';
 import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_activity_facility.dart';
-import '../../repositories/activity_facility_repo.dart';
-import '../../utils/app_logger.dart';
+import '../../repositories/operation_progress_repo.dart';
 import '../../utils/background_service.dart';
+import '../../utils/operation_progress.dart';
 
 part 'asset_submission.freezed.dart';
 
 class AssetSubmissionBloc
     extends Bloc<AssetSubmissionEvent, AssetSubmissionState> {
   final Isar _isar;
-  final UnsubmittedActivityFacilityRepository _draftRepo;
+  late final OperationProgressRepository _progressRepo;
 
-  StreamSubscription? _jobSub;
+  StreamSubscription<CacheSubmissionJob?>? _jobSub;
   StreamSubscription? _bulkJobsSub;
-  StreamSubscription? _svcErrSub;
-  StreamSubscription? _svcDoneSub;
 
-  bool _isBatchMode = false;
-  List<String> _batchIds = const [];
-
-  String? _activeSingleActivityFacilityId;
+  String? _activeWatchId;
+  Set<String> _activeBulkSyncIds = const {};
+  int _bulkWatchToken = 0;
+  int? _bulkFirstSnapshotToken;
 
   AssetSubmissionBloc(this._isar)
-      : _draftRepo = UnsubmittedActivityFacilityRepository(_isar),
-        super(const AssetSubmissionState.initial()) {
+      : super(const AssetSubmissionState.initial()) {
+    _progressRepo = OperationProgressRepository(_isar);
+
     on<_SubmitAll>(_onSubmitAll);
+    on<_Retry>(_onRetry);
+    on<_Watch>(_onWatch);
+    on<_JobChanged>(_onJobChanged);
     on<_SubmitAllDrafts>(_onSubmitAllDrafts);
+    on<_BulkJobsChanged>(_onBulkJobsChanged);
+    on<_Dismiss>(_onDismiss);
+  }
 
-    on<AssetSubmissionEvent>((event, emit) async {
-      await event.maybeMap(
-        svcError: (e) async =>
-            await _handleSvcError(e.activityFacilityId, e.message, emit),
-        svcDone: (e) async => await _handleSvcDone(e.activityFacilityId, emit),
-        orElse: () async {},
-      );
-    });
-
-    final svc = FlutterBackgroundService();
-
-    _svcErrSub?.cancel();
-    _svcErrSub = svc.on(kEvtError).listen((data) {
-      final pid = data?['activityFacilityId'] as String?;
-      final msg = data?['message']?.toString();
-      AppLogger.instance
-          .info('[BLoC] kEvtError stream received pid=$pid msg=$msg');
-      if (pid != null) {
-        add(AssetSubmissionEvent.svcError(
-            activityFacilityId: pid, message: msg));
-      }
-    });
-
-    _svcDoneSub?.cancel();
-    _svcDoneSub = svc.on(kEvtDone).listen((data) {
-      final pid = data?['activityFacilityId'] as String?;
-      AppLogger.instance.info('[BLoC] kEvtDone stream received pid=$pid');
-      if (pid != null) {
-        add(AssetSubmissionEvent.svcDone(activityFacilityId: pid));
-      }
-    });
+  @override
+  Future<void> close() async {
+    await _jobSub?.cancel();
+    await _bulkJobsSub?.cancel();
+    return super.close();
   }
 
   Future<void> upsertSyncRecord(String userType) async {
@@ -87,20 +65,99 @@ class AssetSubmissionBloc
     });
   }
 
-  @override
-  Future<void> close() {
-    _bulkJobsSub?.cancel();
-    _jobSub?.cancel();
-    _svcErrSub?.cancel();
-    _svcDoneSub?.cancel();
-    return super.close();
+  Future<void> _onWatch(
+    _Watch event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    _activeWatchId = event.activityFacilityId;
+    await _jobSub?.cancel();
+    _jobSub = _progressRepo.watchJob(event.activityFacilityId).listen((job) {
+      add(AssetSubmissionEvent.jobChanged(job));
+    });
+  }
+
+  Future<void> _onSubmitAll(
+    _SubmitAll event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    add(AssetSubmissionEvent.watch(event.activityFacilityId));
+    await _progressRepo.upsertJob(
+      activityFacilityId: event.activityFacilityId,
+      operationType: OperationTypes.submit,
+      status: OperationStatuses.queued,
+      stageKey: 'preparing_submission',
+      completedSteps: 1,
+      totalSteps: submitStages.length,
+      incrementRetry: event.isRetry,
+    );
+
+    await BackgroundServiceController.I.enqueueSubmission(
+      activityFacilityId: event.activityFacilityId,
+      facilityId: event.facilityId,
+      userType: event.userType,
+      fromDraft: false,
+    );
+  }
+
+  Future<void> _onRetry(
+    _Retry event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    add(AssetSubmissionEvent.submitAll(
+      activityFacilityId: event.activityFacilityId,
+      facilityId: event.facilityId,
+      userType: event.userType,
+      isRetry: true,
+    ));
+  }
+
+  Future<void> _onDismiss(
+    _Dismiss event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    emit(const AssetSubmissionState.initial());
+  }
+
+  Future<void> _onJobChanged(
+    _JobChanged event,
+    Emitter<AssetSubmissionState> emit,
+  ) async {
+    final job = event.job;
+    if (job == null ||
+        job.activityFacilityId != _activeWatchId ||
+        job.operationType != OperationTypes.submit) {
+      return;
+    }
+
+    final model = _toProgressModel(job);
+    switch (job.status) {
+      case OperationStatuses.queued:
+      case OperationStatuses.running:
+      case OperationStatuses.partial:
+        emit(AssetSubmissionState.inProgress(model));
+        break;
+      case OperationStatuses.failed:
+        emit(AssetSubmissionState.failure(model));
+        break;
+      case OperationStatuses.success:
+        if (state.maybeWhen(
+          inProgress: (_) => true,
+          failure: (_) => true,
+          orElse: () => false,
+        )) {
+          emit(const AssetSubmissionState.success());
+        }
+        break;
+      default:
+        emit(const AssetSubmissionState.initial());
+        break;
+    }
   }
 
   Future<void> _onSubmitAllDrafts(
     _SubmitAllDrafts event,
     Emitter<AssetSubmissionState> emit,
   ) async {
-    emit(const AssetSubmissionState.loading());
     await upsertSyncRecord(event.userType);
 
     final localEntries = await _isar.cacheUnsubmittedActivityFacilitys
@@ -110,24 +167,26 @@ class AssetSubmissionBloc
         .findAll();
 
     final activityFacilityIds =
-        localEntries.map((e) => e.activityFacility.id).toList();
-
-    _isBatchMode = true;
-    _batchIds = activityFacilityIds;
-    _activeSingleActivityFacilityId = null;
+        localEntries.map((e) => e.activityFacility.id).toList(growable: false);
+    _activeBulkSyncIds = activityFacilityIds.toSet();
 
     if (activityFacilityIds.isEmpty) {
-      emit(const AssetSubmissionState.failure("No drafts to sync."));
-      _isBatchMode = false;
-      _batchIds = const [];
+      emit(const AssetSubmissionState.bulkFailure('No drafts to sync.'));
       return;
     }
 
     for (final entry in localEntries) {
       final pid = entry.activityFacility.id;
-      final facilityId = entry.activityFacility.facility?.facilityId ?? "";
+      final facilityId = entry.activityFacility.facility?.facilityId ?? '';
 
-      await _writeJobStatusUI(activityFacilityId: pid, status: 'queued');
+      await _progressRepo.upsertJob(
+        activityFacilityId: pid,
+        operationType: OperationTypes.submit,
+        status: OperationStatuses.queued,
+        stageKey: 'preparing_submission',
+        completedSteps: 1,
+        totalSteps: submitStages.length,
+      );
       await BackgroundServiceController.I.enqueueSubmission(
         activityFacilityId: pid,
         facilityId: facilityId,
@@ -137,231 +196,124 @@ class AssetSubmissionBloc
     }
 
     await _bulkJobsSub?.cancel();
+    final watchToken = ++_bulkWatchToken;
+    _bulkFirstSnapshotToken = watchToken;
     _bulkJobsSub = _isar.cacheSubmissionJobs.watchLazy().listen((_) async {
-      await _emitBulkProgress(
-          activityFacilityIds: activityFacilityIds, emit: emit);
+      final jobs = await _isar.cacheSubmissionJobs
+          .where()
+          .anyOf(activityFacilityIds,
+              (q, pid) => q.activityFacilityIdEqualTo(pid.toString()))
+          .findAll();
+      if (isClosed || watchToken != _bulkWatchToken) return;
+      add(AssetSubmissionEvent.bulkJobsChanged(
+        jobs: jobs,
+        watchToken: watchToken,
+      ));
     });
 
-    if (!emit.isDone) {
-      emit(AssetSubmissionState.progress(
-          completed: 0, total: activityFacilityIds.length));
-    }
-  }
-
-  Future<void> _emitBulkProgress({
-    required List<String> activityFacilityIds,
-    required Emitter<AssetSubmissionState> emit,
-  }) async {
-    final jobs = await _isar.cacheSubmissionJobs
-        .where()
-        .anyOf(
-            activityFacilityIds, (q, pid) => q.activityFacilityIdEqualTo(pid))
-        .findAll();
-
-    final total = activityFacilityIds.length;
-    final successes = jobs.where((j) => j.status == 'success').length;
-    final anyFailed = jobs.any((j) => j.status == 'failed');
-    final anySessionExpired = jobs
-        .any((j) => j.status == 'failed' && _isSessionExpiredMessage(j.error));
-
-    final anyRunningOrQueued =
-        jobs.any((j) => j.status == 'running' || j.status == 'queued');
-
-    if (!emit.isDone) {
-      emit(AssetSubmissionState.progress(completed: successes, total: total));
-    }
-
-    if (!anyRunningOrQueued) {
-      await BackgroundServiceController.I.stopNow();
-
-      if (anyFailed) {
-        if (!emit.isDone) {
-          emit(AssetSubmissionState.failure(anySessionExpired
-              ? 'SESSION_EXPIRED'
-              : 'Some submissions failed.'));
-        }
-      } else {
-        if (!emit.isDone) {
-          emit(const AssetSubmissionState.success());
-        }
-      }
-
-      await _bulkJobsSub?.cancel();
-      _bulkJobsSub = null;
-
-      _isBatchMode = false;
-      _batchIds = const [];
-    }
-  }
-
-  Future<void> _onSubmitAll(
-    _SubmitAll event,
-    Emitter<AssetSubmissionState> emit,
-  ) =>
-      _handleSubmit(
-        activityFacilityId: event.activityFacilityId,
-        facilityId: event.facilityId,
-        userType: event.userType,
-        emit: emit,
-        fromDraft: false,
-      );
-
-  Future<bool> _handleSubmit({
-    required String activityFacilityId,
-    required String facilityId,
-    required String userType,
-    required Emitter<AssetSubmissionState> emit,
-    required bool fromDraft,
-  }) async {
-    _isBatchMode = false;
-    _batchIds = const [];
-
-    emit(const AssetSubmissionState.loading());
-    _activeSingleActivityFacilityId = fromDraft ? null : activityFacilityId;
-
-    await _writeJobStatusUI(
-        activityFacilityId: activityFacilityId, status: 'queued');
-
-    AppLogger.instance.info(
-        '[BLoC] single submit firing for $activityFacilityId | _isBatchMode=$_isBatchMode | _activeSingleActivityFacilityId=$_activeSingleActivityFacilityId');
-
-    await BackgroundServiceController.I.enqueueSubmission(
-      activityFacilityId: activityFacilityId,
-      facilityId: facilityId,
-      userType: userType,
-      fromDraft: fromDraft,
+    emit(
+      AssetSubmissionState.bulkProgress(
+        BulkOperationProgressModel(
+          completed: 0,
+          total: activityFacilityIds.length,
+          progressPercent: 0,
+          activeCount: activityFacilityIds.length,
+          label: 'Preparing sync',
+        ),
+      ),
     );
-
-    if (!fromDraft) {
-      await _jobSub?.cancel();
-      _jobSub = _isar.cacheSubmissionJobs
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .watch(fireImmediately: true)
-          .listen((rows) async {
-        if (rows.isEmpty) return;
-        final job = rows.first;
-
-        switch (job.status) {
-          case 'running':
-            break;
-
-          case 'success':
-            if (!emit.isDone) emit(const AssetSubmissionState.success());
-            _activeSingleActivityFacilityId = null;
-            await _jobSub?.cancel();
-            _jobSub = null;
-            await BackgroundServiceController.I.stopNow();
-            break;
-
-          case 'failed':
-            if (!emit.isDone) {
-              emit(AssetSubmissionState.failure(
-                  _normalizeErrorMessage(job.error)));
-            }
-            _activeSingleActivityFacilityId = null;
-            await _jobSub?.cancel();
-            _jobSub = null;
-            await BackgroundServiceController.I.stopNow();
-            break;
-
-          case 'queued':
-          default:
-            break;
-        }
-      });
-    }
-
-    return true;
   }
 
-  Future<void> _handleSvcError(
-    String activityFacilityId,
-    String? message,
+  Future<void> _onBulkJobsChanged(
+    _BulkJobsChanged event,
     Emitter<AssetSubmissionState> emit,
   ) async {
-    final normalized = _normalizeErrorMessage(message);
-    await _writeJobStatusUI(
-      activityFacilityId: activityFacilityId,
-      status: 'failed',
-      error: normalized,
-    );
-
-    if (!_isBatchMode &&
-        _activeSingleActivityFacilityId != null &&
-        _activeSingleActivityFacilityId == activityFacilityId) {
-      emit(AssetSubmissionState.failure(normalized));
-      _activeSingleActivityFacilityId = null;
-      await BackgroundServiceController.I.stopNow();
+    if (event.watchToken != _bulkWatchToken || _activeBulkSyncIds.isEmpty) {
       return;
     }
 
-    AppLogger.instance.info('[BLoC] _handleSvcError -> batch emit failure');
-    if (!emit.isDone) {
-      emit(AssetSubmissionState.failure(normalized));
+    final isFirstSnapshotForWatch = _bulkFirstSnapshotToken == event.watchToken;
+    if (isFirstSnapshotForWatch) {
+      _bulkFirstSnapshotToken = null;
     }
-    await BackgroundServiceController.I.stopNow();
-  }
 
-  Future<void> _handleSvcDone(
-    String activityFacilityId,
-    Emitter<AssetSubmissionState> emit,
-  ) async {
-    await _writeJobStatusUI(
-      activityFacilityId: activityFacilityId,
-      status: 'success',
+    final total = _activeBulkSyncIds.length;
+    final jobsById = <String, CacheSubmissionJob>{};
+    for (final job in event.jobs) {
+      if (job.operationType != OperationTypes.submit) continue;
+      if (!_activeBulkSyncIds.contains(job.activityFacilityId)) continue;
+      jobsById[job.activityFacilityId] = job;
+    }
+
+    var completed = 0;
+    var activeCount = 0;
+    var progressSum = 0;
+    CacheSubmissionJob? failedJob;
+
+    for (final activityFacilityId in _activeBulkSyncIds) {
+      final job = jobsById[activityFacilityId];
+      if (job == null) continue;
+
+      progressSum += job.progressPercent;
+      if (job.status == OperationStatuses.success) {
+        completed += 1;
+      }
+      if (job.status == OperationStatuses.queued ||
+          job.status == OperationStatuses.running ||
+          job.status == OperationStatuses.partial) {
+        activeCount += 1;
+      }
+      if (failedJob == null && job.status == OperationStatuses.failed) {
+        failedJob = job;
+      }
+    }
+
+    final progress = BulkOperationProgressModel(
+      completed: completed,
+      total: total,
+      progressPercent: total == 0 ? 0 : (progressSum / total).round(),
+      activeCount: activeCount,
+      label: completed >= total
+          ? 'Sync completed'
+          : 'Syncing $completed of $total reports',
     );
 
-    if (!_isBatchMode) {
-      AppLogger.instance.info(
-          '[BLoC] _handleSvcDone -> single emit success (force by !_isBatchMode)');
-      if (!emit.isDone) {
-        emit(const AssetSubmissionState.success());
-      }
-      _activeSingleActivityFacilityId = null;
-      await BackgroundServiceController.I.stopNow();
+    emit(AssetSubmissionState.bulkProgress(progress));
+
+    if (isFirstSnapshotForWatch && event.jobs.isEmpty) {
       return;
     }
-    AppLogger.instance
-        .info('[BLoC] _handleSvcDone -> batch (no immediate emit)');
+
+    if (activeCount > 0) return;
+
+    _activeBulkSyncIds = const {};
+    await _bulkJobsSub?.cancel();
+    _bulkJobsSub = null;
+
+    if (failedJob != null) {
+      emit(AssetSubmissionState.bulkFailure(
+        failedJob.lastError ?? 'Some submissions failed.',
+      ));
+      return;
+    }
+
+    emit(const AssetSubmissionState.success());
   }
 
-  bool _isSessionExpiredMessage(String? message) {
-    final msg = (message ?? '').toLowerCase();
-    return msg.contains('session_expired');
-  }
-
-  String _normalizeErrorMessage(String? message) {
-    if (_isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
-    final m = (message ?? '').trim();
-    return m.isEmpty ? 'Failed.' : m;
-  }
-
-  Future<void> _writeJobStatusUI({
-    required String activityFacilityId,
-    required String status,
-    String? error,
-  }) async {
-    await _isar.writeTxn(() async {
-      final existing = await _isar.cacheSubmissionJobs
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .findFirst();
-
-      if (existing == null) {
-        await _isar.cacheSubmissionJobs.put(
-          CacheSubmissionJob(
-              activityFacilityId: activityFacilityId,
-              status: status,
-              error: error),
-        );
-      } else {
-        existing
-          ..status = status
-          ..error = error;
-        await _isar.cacheSubmissionJobs.put(existing);
-      }
-    });
+  OperationProgressModel _toProgressModel(CacheSubmissionJob job) {
+    return OperationProgressModel(
+      activityFacilityId: job.activityFacilityId,
+      operationType: job.operationType,
+      status: job.status,
+      stageKey: job.stageKey,
+      stageLabel: job.stageLabel,
+      completedSteps: job.completedSteps,
+      totalSteps: job.totalSteps,
+      progressPercent: job.progressPercent,
+      retryCount: job.retryCount,
+      isBlocking: job.isBlocking,
+      errorMessage: job.lastError,
+    );
   }
 }
 
@@ -371,31 +323,43 @@ class AssetSubmissionEvent with _$AssetSubmissionEvent {
     required String activityFacilityId,
     required String facilityId,
     required String userType,
+    @Default(false) bool isRetry,
   }) = _SubmitAll;
+
+  const factory AssetSubmissionEvent.retry({
+    required String activityFacilityId,
+    required String facilityId,
+    required String userType,
+  }) = _Retry;
+
+  const factory AssetSubmissionEvent.watch(String activityFacilityId) = _Watch;
+
+  const factory AssetSubmissionEvent.jobChanged(CacheSubmissionJob? job) =
+      _JobChanged;
 
   const factory AssetSubmissionEvent.submitAllDrafts({
     required String userType,
   }) = _SubmitAllDrafts;
 
-  const factory AssetSubmissionEvent.svcError({
-    required String activityFacilityId,
-    String? message,
-  }) = _SvcError;
+  const factory AssetSubmissionEvent.bulkJobsChanged({
+    required List<CacheSubmissionJob> jobs,
+    required int watchToken,
+  }) = _BulkJobsChanged;
 
-  const factory AssetSubmissionEvent.svcDone({
-    required String activityFacilityId,
-  }) = _SvcDone;
+  const factory AssetSubmissionEvent.dismiss() = _Dismiss;
 }
 
 @freezed
 class AssetSubmissionState with _$AssetSubmissionState {
   const factory AssetSubmissionState.initial() = _Initial;
-  const factory AssetSubmissionState.loading() = _Loading;
+  const factory AssetSubmissionState.inProgress(
+      OperationProgressModel progress) = _InProgress;
+  const factory AssetSubmissionState.failure(OperationProgressModel progress) =
+      _Failure;
   const factory AssetSubmissionState.success() = _Success;
-  const factory AssetSubmissionState.failure(String errorMessage) = _Failure;
-
-  const factory AssetSubmissionState.progress({
-    required int completed,
-    required int total,
-  }) = _Progress;
+  const factory AssetSubmissionState.bulkProgress(
+    BulkOperationProgressModel progress,
+  ) = _BulkProgress;
+  const factory AssetSubmissionState.bulkFailure(String errorMessage) =
+      _BulkFailure;
 }

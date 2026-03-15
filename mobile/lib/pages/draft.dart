@@ -87,16 +87,16 @@ class _DraftPageState extends State<DraftPage> {
   void _handleAssetSubmissionState(
       BuildContext context, AssetSubmissionState state) {
     state.whenOrNull(
-      progress: (completed, total) {
+      bulkProgress: (_) {
         if (_syncRoute == null) {
           _syncRoute = MaterialPageRoute(
             fullscreenDialog: true,
-            builder: (_) => SyncLoadingPage(completed: completed, total: total),
+            builder: (_) => const SyncLoadingPage(),
           );
           Navigator.of(context).push(_syncRoute!);
         }
       },
-      failure: (errorMessage) {
+      bulkFailure: (errorMessage) {
         if (_syncRoute != null) {
           Navigator.of(context).pop();
           _syncRoute = null;

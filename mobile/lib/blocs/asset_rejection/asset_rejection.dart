@@ -1,59 +1,34 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:isar/isar.dart';
 
 import '../../data/nosql/cache_submission_job.dart';
-import '../../utils/app_logger.dart';
-import '../../utils/background_service.dart'
-    show BackgroundServiceController, kEvtRejectDone, kEvtRejectError;
+import '../../repositories/operation_progress_repo.dart';
+import '../../utils/background_service.dart';
+import '../../utils/operation_progress.dart';
 
 part 'asset_rejection.freezed.dart';
 
 class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
-  final Isar _isar;
+  final OperationProgressRepository _progressRepo;
+  StreamSubscription<CacheSubmissionJob?>? _jobSub;
+  String? _activeWatchId;
 
-  StreamSubscription? _rejDoneSub;
-  StreamSubscription? _rejErrSub;
-
-  RejectionBloc(this._isar) : super(const RejectionState.initial()) {
+  RejectionBloc(Isar isar)
+      : _progressRepo = OperationProgressRepository(isar),
+        super(const RejectionState.initial()) {
     on<_SubmitRejection>(_onSubmitRejection);
-    on<_BgRejectDone>(_onBgDone);
-    on<_BgRejectError>(_onBgError);
-
-    final svc = FlutterBackgroundService();
-
-    _rejDoneSub?.cancel();
-    _rejDoneSub = svc.on(kEvtRejectDone).listen((data) {
-      final aFid = data?['activityFacilityId'] as String?;
-      if (aFid != null) {
-        add(RejectionEvent.bgRejectDone(activityFacilityId: aFid));
-      } else {
-        AppLogger.instance.info("kEvtRejectDone missing activityFacilityId",
-            title: "Warning: ");
-      }
-    });
-
-    _rejErrSub?.cancel();
-    _rejErrSub = svc.on(kEvtRejectError).listen((data) {
-      final aFid = data?['activityFacilityId'] as String?;
-      final msg = data?['message']?.toString();
-      if (aFid != null) {
-        add(RejectionEvent.bgRejectError(
-            activityFacilityId: aFid, message: msg));
-      } else {
-        AppLogger.instance.info("kEvtRejectError missing activityFacilityId",
-            title: "Warning: ");
-      }
-    });
+    on<_Retry>(_onRetry);
+    on<_Watch>(_onWatch);
+    on<_JobChanged>(_onJobChanged);
+    on<_Dismiss>(_onDismiss);
   }
 
   @override
   Future<void> close() async {
-    await _rejDoneSub?.cancel();
-    await _rejErrSub?.cancel();
+    await _jobSub?.cancel();
     return super.close();
   }
 
@@ -61,100 +36,138 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
     _SubmitRejection event,
     Emitter<RejectionState> emit,
   ) async {
-    emit(const RejectionState.loading());
+    final txMaps = event.transactions.map<Map<String, dynamic>>((t) {
+      if (t is Map<String, dynamic>) return t;
+      try {
+        final m = (t as dynamic).toJson();
+        if (m is Map<String, dynamic>) return m;
+      } catch (_) {}
+      try {
+        final m = (t as dynamic).toMap();
+        if (m is Map<String, dynamic>) return m;
+      } catch (_) {}
+      throw Exception('Transaction must be Map or have toJson/toMap');
+    }).toList();
 
-    try {
-      final txMaps = event.transactions.map<Map<String, dynamic>>((t) {
-        if (t is Map<String, dynamic>) return t;
-        try {
-          final m = (t as dynamic).toJson();
-          if (m is Map<String, dynamic>) return m;
-        } catch (_) {}
-        try {
-          final m = (t as dynamic).toMap();
-          if (m is Map<String, dynamic>) return m;
-        } catch (_) {}
-        throw Exception('Transaction must be Map or have toJson/toMap');
-      }).toList();
-
-      await _writeJobStatusUI(
-        activityFacilityId: event.activityFacilityId,
-        status: 'queued',
-      );
-
-      await BackgroundServiceController.I.enqueueRejection(
-        activityFacilityId: event.activityFacilityId,
-        userType: event.userType,
-        transactions: txMaps,
-      );
-    } catch (e) {
-      await _writeJobStatusUI(
-        activityFacilityId: event.activityFacilityId,
-        status: 'failed',
-        error: _normalizeErrorMessage(e.toString()),
-      );
-      emit(RejectionState.failure(_normalizeErrorMessage(e.toString())));
-    }
-  }
-
-  Future<void> _onBgDone(
-    _BgRejectDone event,
-    Emitter<RejectionState> emit,
-  ) async {
-    await _writeJobStatusUI(
-        activityFacilityId: event.activityFacilityId, status: 'success');
-    emit(const RejectionState.success());
-    await BackgroundServiceController.I.stopNow();
-  }
-
-  Future<void> _onBgError(
-    _BgRejectError event,
-    Emitter<RejectionState> emit,
-  ) async {
-    await _writeJobStatusUI(
+    await _progressRepo.upsertJob(
       activityFacilityId: event.activityFacilityId,
-      status: 'failed',
-      error: _normalizeErrorMessage(event.message),
+      operationType: OperationTypes.reject,
+      status: OperationStatuses.queued,
+      stageKey: 'preparing_rejection',
+      completedSteps: 1,
+      totalSteps: rejectionStages.length,
+      incrementRetry: event.isRetry,
     );
-    emit(RejectionState.failure(
-        _normalizeErrorMessage(event.message ?? 'Failed to reject.')));
-    await BackgroundServiceController.I.stopNow();
+
+    emit(
+      RejectionState.inProgress(
+        OperationProgressModel(
+          activityFacilityId: event.activityFacilityId,
+          operationType: OperationTypes.reject,
+          status: OperationStatuses.queued,
+          stageKey: 'preparing_rejection',
+          stageLabel:
+              stageForKey(OperationTypes.reject, 'preparing_rejection').label,
+          completedSteps: 1,
+          totalSteps: rejectionStages.length,
+          progressPercent: progressPercent(
+            completedSteps: 1,
+            totalSteps: rejectionStages.length,
+          ),
+          retryCount: state.maybeWhen(
+            inProgress: (progress) => progress.retryCount,
+            failure: (progress) => progress.retryCount,
+            orElse: () => 0,
+          ),
+          isBlocking: true,
+        ),
+      ),
+    );
+
+    await BackgroundServiceController.I.enqueueRejection(
+      activityFacilityId: event.activityFacilityId,
+      userType: event.userType,
+      transactions: txMaps,
+    );
   }
 
-  bool _isSessionExpiredMessage(String? message) {
-    final msg = (message ?? '').toLowerCase();
-    return msg.contains('session_expired');
+  Future<void> _onRetry(
+    _Retry event,
+    Emitter<RejectionState> emit,
+  ) async {
+    add(RejectionEvent.submitRejection(
+      activityFacilityId: event.activityFacilityId,
+      userType: event.userType,
+      transactions: event.transactions,
+      isRetry: true,
+    ));
   }
 
-  String _normalizeErrorMessage(String? message) {
-    if (_isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
-    final m = (message ?? '').trim();
-    return m.isEmpty ? 'Failed.' : m;
+  Future<void> _onDismiss(
+    _Dismiss event,
+    Emitter<RejectionState> emit,
+  ) async {
+    emit(const RejectionState.initial());
   }
 
-  Future<void> _writeJobStatusUI({
-    required String activityFacilityId,
-    required String status,
-    String? error,
-  }) async {
-    await _isar.writeTxn(() async {
-      final existing = await _isar.cacheSubmissionJobs
-          .where()
-          .activityFacilityIdEqualTo(activityFacilityId)
-          .findFirst();
-
-      if (existing == null) {
-        await _isar.cacheSubmissionJobs.put(CacheSubmissionJob(
-            activityFacilityId: activityFacilityId,
-            status: status,
-            error: error));
-      } else {
-        existing
-          ..status = status
-          ..error = error;
-        await _isar.cacheSubmissionJobs.put(existing);
-      }
+  Future<void> _onWatch(
+    _Watch event,
+    Emitter<RejectionState> emit,
+  ) async {
+    _activeWatchId = event.activityFacilityId;
+    await _jobSub?.cancel();
+    _jobSub = _progressRepo.watchJob(event.activityFacilityId).listen((job) {
+      add(RejectionEvent.jobChanged(job));
     });
+  }
+
+  Future<void> _onJobChanged(
+    _JobChanged event,
+    Emitter<RejectionState> emit,
+  ) async {
+    final job = event.job;
+    if (job == null ||
+        job.activityFacilityId != _activeWatchId ||
+        job.operationType != OperationTypes.reject) {
+      return;
+    }
+
+    final progress = OperationProgressModel(
+      activityFacilityId: job.activityFacilityId,
+      operationType: job.operationType,
+      status: job.status,
+      stageKey: job.stageKey,
+      stageLabel: job.stageLabel,
+      completedSteps: job.completedSteps,
+      totalSteps: job.totalSteps,
+      progressPercent: job.progressPercent,
+      retryCount: job.retryCount,
+      isBlocking: job.isBlocking,
+      errorMessage: job.lastError,
+    );
+
+    switch (job.status) {
+      case OperationStatuses.queued:
+      case OperationStatuses.running:
+      case OperationStatuses.partial:
+        emit(RejectionState.inProgress(progress));
+        break;
+      case OperationStatuses.failed:
+        emit(RejectionState.failure(progress));
+        break;
+      case OperationStatuses.success:
+        if (state.maybeWhen(
+          inProgress: (_) => true,
+          failure: (_) => true,
+          orElse: () => false,
+        )) {
+          emit(const RejectionState.success());
+        }
+        break;
+      default:
+        emit(const RejectionState.initial());
+        break;
+    }
   }
 }
 
@@ -164,22 +177,29 @@ class RejectionEvent with _$RejectionEvent {
     required String activityFacilityId,
     required String userType,
     required List<dynamic> transactions,
+    @Default(false) bool isRetry,
   }) = _SubmitRejection;
 
-  const factory RejectionEvent.bgRejectDone({
+  const factory RejectionEvent.retry({
     required String activityFacilityId,
-  }) = _BgRejectDone;
+    required String userType,
+    required List<dynamic> transactions,
+  }) = _Retry;
 
-  const factory RejectionEvent.bgRejectError({
-    required String activityFacilityId,
-    String? message,
-  }) = _BgRejectError;
+  const factory RejectionEvent.watch(String activityFacilityId) = _Watch;
+
+  const factory RejectionEvent.jobChanged(CacheSubmissionJob? job) =
+      _JobChanged;
+
+  const factory RejectionEvent.dismiss() = _Dismiss;
 }
 
 @freezed
 class RejectionState with _$RejectionState {
   const factory RejectionState.initial() = _Initial;
-  const factory RejectionState.loading() = _Loading;
+  const factory RejectionState.inProgress(OperationProgressModel progress) =
+      _InProgress;
+  const factory RejectionState.failure(OperationProgressModel progress) =
+      _Failure;
   const factory RejectionState.success() = _Success;
-  const factory RejectionState.failure(String errorMessage) = _Failure;
 }
