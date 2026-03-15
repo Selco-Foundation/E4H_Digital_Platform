@@ -72,12 +72,12 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
         state.maybeWhen(
           resendSuccess: () {
             ctx.showSnackBar(
-              const SnackBar(content: Text('OTP resent successfully')),
+              const SnackBar(content: Text('AMC Service completion code resent successfully')),
             );
           },
           submitSuccess: () {
             ctx.showSnackBar(
-              const SnackBar(content: Text('OTP verified successfully')),
+              const SnackBar(content: Text('AMC Service completion code verified successfully')),
             );
             ctx.router.push(const AmcHomeRoute());
           },
@@ -134,7 +134,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                       const SizedBox(height: spacer6),
                       Center(
                         child: Text(
-                          'Please ask for OTP from the HCR',
+                          'Please ask for AMC Service completion code from the HCR',
                           style: textTheme.headingM.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
@@ -151,7 +151,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                             },
                           },
                           builder: (field) => DigitOTPInput(
-                            label: "Enter OTP",
+                            label: "Enter AMC Service completion code",
                             inputFormatter: [
                               FilteringTextInputFormatter.digitsOnly
                             ],
@@ -175,7 +175,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                                   },
                             child: Text(
                               textAlign: TextAlign.end,
-                              isResendLoading ? 'Resending...' : 'Resend OTP',
+                              isResendLoading ? 'Resending...' : 'Resend AMC Service completion code',
                               style: textTheme.linkM.copyWith(
                                   color: theme.colorTheme.alert.error),
                             ),

@@ -35,9 +35,9 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       await scheduledVisitRepo.resendVisitOtp();
       emit(const AmcOtpState.resendSuccess());
     } catch (e) {
-      AppLogger.instance.error(title: "Resend OTP", message: e.toString());
+      AppLogger.instance.error(title: "Resend AMC Service completion code", message: e.toString());
       emit(
-        const AmcOtpState.failure('Failed to resend OTP. Please try again.'),
+        const AmcOtpState.failure('Failed to resend AMC Service completion code. Please try again.'),
       );
     }
   }
@@ -136,9 +136,9 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
       }
       emit(const AmcOtpState.submitSuccess());
     } catch (e) {
-      AppLogger.instance.error(title: "AMC OTP Submit", message: e.toString());
+      AppLogger.instance.error(title: "AMC AMC Service completion code Submit", message: e.toString());
       emit(const AmcOtpState.failure(
-          'Invalid OTP or request failed. Please try again.'));
+          'Invalid AMC Service completion code or request failed. Please try again.'));
     }
   }
 }
