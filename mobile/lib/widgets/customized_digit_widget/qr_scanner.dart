@@ -825,7 +825,7 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
                 child: Text(
                   _appLocalized(
                     app_i18.scanner.scanFromPhoto,
-                    'Scan from photo',
+                    'Upload from Gallery',
                   ),
                   style: textTheme.headingL.copyWith(
                       color: theme.colorTheme.primary.primary1,
