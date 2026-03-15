@@ -272,6 +272,11 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
+                        Text(
+                          'Please add all images of the $assetType',
+                          style: textTheme.bodyL.copyWith(
+                              color: theme.colorTheme.primary.primary2),
+                        ),
                         const SizedBox(height: spacer2),
                         FileUploadWidget(
                           allowedExtensions: const [
@@ -304,10 +309,20 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       ]),
                       const SizedBox(height: spacer4),
                       DigitCard(children: [
-                        Text(
-                          '$assetType Videos',
-                          style: textTheme.headingXl.copyWith(
-                              color: theme.colorTheme.primary.primary2),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '$assetType Videos',
+                              style: textTheme.headingXl.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                            Text(
+                              '(Optional)',
+                              style: textTheme.bodyL.copyWith(
+                                  color: theme.colorTheme.primary.primary2),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: spacer2),
                         FileUploadWidget(
