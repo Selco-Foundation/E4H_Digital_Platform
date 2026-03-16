@@ -189,12 +189,6 @@ def lock_prefilled_rows_in_excel(
     grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
     no_fill = PatternFill()  # reset
 
-    # Unlock all cells first
-    for row in ws.iter_rows():
-        for cell in row:
-            cell.protection = Protection(locked=False)
-            cell.fill = no_fill
-
     # Get header row values
     header_row = [cell.value for cell in ws[1]]
 
@@ -211,7 +205,10 @@ def lock_prefilled_rows_in_excel(
     ]
 
     # Lock prefilled rows completely (grey out non-editable cells)
-    for row_idx in range(2, total_rows + 2):
+    # Data rows start at row 2; end at row (1 + total_rows)
+    prefilled_start_row = 2
+    prefilled_end_row = 1 + total_rows
+    for row_idx in range(prefilled_start_row, prefilled_end_row + 1):
         for col_idx in range(1, total_columns + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
             # If column is editable -> unlock
@@ -227,9 +224,11 @@ def lock_prefilled_rows_in_excel(
                 cell.protection = Protection(locked=True)
                 cell.fill = grey_fill
 
-    # Leave appendable rows fully unlocked, but respect always_locked columns
-    # Only apply gray fill to cells that have values, not empty cells
-    for row_idx in range(total_rows + 2, total_rows + extra_append_rows + 2):
+    # Leave appendable rows mostly unlocked, but respect always_locked columns.
+    # Only apply gray fill to cells that have values, not empty cells.
+    append_start_row = prefilled_end_row + 1
+    append_end_row = prefilled_end_row + extra_append_rows
+    for row_idx in range(append_start_row, append_end_row + 1):
         for col_idx in range(1, total_columns + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
             cell_value = cell.value
@@ -324,7 +323,8 @@ def autofit_columns(
     auto_fit: bool = True,
     default_width: int = 20,
     max_width: int = 40,
-    enable_wrap_text: bool = True
+    enable_wrap_text: bool = True,
+    max_rows_to_scan: Optional[int] = None,
 ) -> None:
     """
     Adjust column widths in a given Excel sheet and optionally apply wrap text.
@@ -343,9 +343,17 @@ def autofit_columns(
 
     ws = wb[sheet_name]
 
+    # Limit how many rows we scan per column for width calculation.
+    # This keeps the operation fast on very large sheets while still
+    # basing widths on real data instead of a fixed default.
+    if max_rows_to_scan is not None and max_rows_to_scan > 0:
+        max_row = min(ws.max_row, max_rows_to_scan)
+    else:
+        max_row = ws.max_row
+
     # Iterate directly over worksheet cells to avoid the overhead of
     # re-reading the file with pandas for each autofit call.
-    for i, col in enumerate(ws.iter_cols(min_row=1, max_row=ws.max_row), start=1):
+    for i, col in enumerate(ws.iter_cols(min_row=1, max_row=max_row), start=1):
         col_letter = get_column_letter(i)
 
         if auto_fit:

@@ -216,10 +216,16 @@ class FacilityTemplateService:
             autofit_columns(
                 file_path=output_path,
                 sheet_name="FacilityMapping",
+                auto_fit=True,
+                max_rows_to_scan=10,
+                enable_wrap_text=False,
             )
             autofit_columns(
                 file_path=output_path,
                 sheet_name="BoundaryCodes",
+                auto_fit=True,
+                max_rows_to_scan=10,
+                enable_wrap_text=False,
             )
             remove_default_empty_sheet(output_path)
             logger.info(f"Successfully created template file at {output_path}")

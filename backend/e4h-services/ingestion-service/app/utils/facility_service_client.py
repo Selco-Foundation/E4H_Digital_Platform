@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 import requests
 
@@ -15,7 +15,7 @@ class FacilityServiceClient:
         headers = {"Content-Type": "application/json"}
         payload = facility_payload
         try:
-            response = requests.post(url, headers=headers, json=payload)
+            response = requests.post(url, headers=headers, json=payload, timeout=30)
             return response
 
         except requests.exceptions.HTTPError as http_err:
@@ -39,43 +39,60 @@ class FacilityServiceClient:
         hfr_id: Optional[str] = None,
         nin_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        limit = 1000
-        offset = 0
-        all_facilities = []
-
+        """
+        Search facilities with two optimized paths:
+        - ID-based (facility_id / hfr_id / nin_id): single, non-paginated call – fast for template generation.
+        - Boundary-based: paginated with larger page size to reduce round-trips.
+        """
         url = f"{self.facility_service_url}/facility-service/v2/facility/search"
-
         headers = {"Accept": "application/json"}
 
         try:
-            # First request to get total count
-            params = {"tenantId": tenant_id, "limit": limit, "offset": offset}
+            # Fast path for identifier-based lookups used by ingestion templates
+            if facility_id or hfr_id or nin_id:
+                params: Dict[str, Any] = {
+                    "tenantId": tenant_id,
+                    "limit": 200,  # more than enough for single-id lookups
+                    "offset": 0,
+                }
+                if facility_id:
+                    params["facilityId"] = facility_id
+                if hfr_id:
+                    params["hfrId"] = hfr_id
+                if nin_id:
+                    params["ninId"] = nin_id
 
-            # Add optional facility_id parameter if provided
-            if facility_id:
-                params["facilityId"] = facility_id
+                response = requests.get(url, headers=headers, params=params, timeout=30)
+                response.raise_for_status()
+                data = response.json()
+                facilities = data.get("facilities", []) or []
+                return {"totalCount": len(facilities), "facilities": facilities}
+
+            # Boundary-based search: keep pagination but with higher page size
+            limit = 5000  # reduce number of pages vs. previous 1000
+            offset = 0
+            all_facilities: List[Dict[str, Any]] = []
+
+            params: Dict[str, Any] = {"tenantId": tenant_id, "limit": limit, "offset": offset}
             if boundary_code:
                 params["boundaryCode"] = boundary_code
-            if hfr_id:
-                params["hfrId"] = hfr_id
-            if nin_id:
-                params["ninId"] = nin_id
 
-            response = requests.get(url, headers=headers, params=params)
+            # First request to get total count
+            response = requests.get(url, headers=headers, params=params, timeout=60)
             response.raise_for_status()
 
             data = response.json()
             total_count = data.get("totalCount", 0)
-            all_facilities.extend(data.get("facilities", []))
+            all_facilities.extend(data.get("facilities", []) or [])
 
             # If more pages are present, fetch them
             while len(all_facilities) < total_count:
                 offset += limit
                 params["offset"] = offset
-                response = requests.get(url, headers=headers, params=params)
+                response = requests.get(url, headers=headers, params=params, timeout=60)
                 response.raise_for_status()
                 data = response.json()
-                all_facilities.extend(data.get("facilities", []))
+                all_facilities.extend(data.get("facilities", []) or [])
 
             return {"totalCount": total_count, "facilities": all_facilities}
 
