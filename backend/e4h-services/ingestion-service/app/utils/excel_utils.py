@@ -225,25 +225,18 @@ def lock_prefilled_rows_in_excel(
                 cell.fill = grey_fill
 
     # Leave appendable rows mostly unlocked, but respect always_locked columns.
-    # Only apply gray fill to cells that have values, not empty cells.
+    # For performance, avoid applying any fill styles on extra rows – only
+    # adjust protection flags so the user experience is preserved without
+    # expensive formatting operations on thousands of empty cells.
     append_start_row = prefilled_end_row + 1
     append_end_row = prefilled_end_row + extra_append_rows
     for row_idx in range(append_start_row, append_end_row + 1):
         for col_idx in range(1, total_columns + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
-            cell_value = cell.value
-            is_empty = cell_value is None or (isinstance(cell_value, str) and cell_value.strip() == "")
-
             if col_idx in always_locked_indices:
                 cell.protection = Protection(locked=True)
-                # Only apply gray fill if cell has a value, otherwise leave it white
-                if not is_empty:
-                    cell.fill = grey_fill
-                else:
-                    cell.fill = no_fill
             else:
                 cell.protection = Protection(locked=False)
-                cell.fill = no_fill
 
     # Enable protection
     ws.protection.select_unlocked_cells = True
