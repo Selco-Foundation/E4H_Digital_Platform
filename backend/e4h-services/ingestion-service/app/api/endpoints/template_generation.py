@@ -99,29 +99,28 @@ async def get_facility_ingestion_template_with_data(
 
             logger.info(f"Total unique boundary codes for facility search: {len(unique_boundary_list)}")
 
-            def fetch_boundary_facilities(boundary):
-                """Fetch facilities for a single boundary code."""
-                try:
-                    logger.trace(f"Searching facilities for boundary: {boundary.code}")
-                    results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                    facilities = results.get('facilities', []) or []
-                    logger.debug(f"Found {len(facilities)} facilities for boundary {boundary.code}")
-                    return facilities
-                except Exception as e:
-                    logger.error(f"Error fetching boundary facilities for boundary {boundary.code}: {e}", exc_info=True)
-                    return []
-
-            # Fetch facilities for boundaries concurrently to reduce overall latency
-            max_workers = min(8, len(unique_boundary_list)) or 1
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                future_to_boundary = {
-                    executor.submit(fetch_boundary_facilities, boundary): boundary.code
-                    for boundary in unique_boundary_list
-                }
-                for future in as_completed(future_to_boundary):
-                    facilities = future.result()
-                    if facilities:
-                        all_facilities.extend(facilities)
+            # Use bulk facility search by boundary codes to reduce number of API calls
+            boundary_codes = [b.code for b in unique_boundary_list if b.code]
+            try:
+                if boundary_codes:
+                    bulk_result = facility_client.bulk_search_facility(
+                        request_info=request_info,
+                        tenant_ids=["in"],
+                        boundary_codes=boundary_codes,
+                        limit=max(len(boundary_codes) * 50, 50),
+                        send_non_paginated_response=True,
+                    )
+                    facilities = bulk_result.get("facilities", []) or []
+                    all_facilities.extend(facilities)
+                    logger.info(
+                        f"Fetched {len(facilities)} facilities from bulk facility search for "
+                        f"{len(boundary_codes)} boundary codes"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Error fetching facilities via bulk boundary facility search: {e}",
+                    exc_info=True,
+                )
 
         # Fetch project-linked facilities if project_id is provided
         logger.info(f"Fetching project-linked facilities: project_id={project_id}")
@@ -138,7 +137,7 @@ async def get_facility_ingestion_template_with_data(
 
                 # Optimization: avoid redundant facility-service calls for facilities
                 # that are already present from boundary-based search, and fetch the
-                # remaining project facilities in parallel.
+                # remaining project facilities via bulk search.
                 existing_boundary_facility_ids = {f.get("facility_id") for f in all_facilities}
                 project_facilities_to_fetch = [
                     pf for pf in project_facilities
@@ -152,27 +151,30 @@ async def get_facility_ingestion_template_with_data(
                 )
 
                 if facility_service_url and project_facilities_to_fetch:
-                    def fetch_project_facility(facility_id: str):
-                        try:
-                            facility_data = facility_client.search_facility(
-                                tenant_id='in',
-                                facility_id=facility_id
+                    facility_ids_to_fetch = [
+                        pf.get("facilityId")
+                        for pf in project_facilities_to_fetch
+                        if pf.get("facilityId")
+                    ]
+                    try:
+                        if facility_ids_to_fetch:
+                            bulk_result = facility_client.bulk_search_facility(
+                                request_info=request_info,
+                                tenant_ids=["in"],
+                                facility_ids=facility_ids_to_fetch,
+                                limit=max(len(facility_ids_to_fetch), 50),
+                                send_non_paginated_response=True,
                             )
-                            return facility_data.get('facilities', []) or []
-                        except Exception as e:
-                            logger.error(f"Error fetching facility {facility_id}: {e}")
-                            return []
-
-                    max_workers = min(8, len(project_facilities_to_fetch)) or 1
-                    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                        future_to_facility_id = {
-                            executor.submit(fetch_project_facility, pf.get("facilityId")): pf.get("facilityId")
-                            for pf in project_facilities_to_fetch
-                        }
-                        for future in as_completed(future_to_facility_id):
-                            facilities = future.result()
-                            if facilities:
-                                project_facilities_data.extend(facilities)
+                            facilities = bulk_result.get("facilities", []) or []
+                            project_facilities_data.extend(facilities)
+                            logger.info(
+                                f"Fetched {len(facilities)} facilities from bulk facility search for project {project_id}"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"Error fetching project facilities via bulk facility search: {e}",
+                            exc_info=True,
+                        )
 
             except Exception as e:
                 logger.error(f"Error fetching project facilities: {e}")

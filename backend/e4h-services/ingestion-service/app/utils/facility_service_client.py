@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Sequence, Union
 
 import requests
 
@@ -107,4 +107,84 @@ class FacilityServiceClient:
             raise timeout_err
         except requests.exceptions.RequestException as req_err:
             logger.error(f"An error occurred: {req_err}")
+            raise req_err
+
+    def bulk_search_facility(
+        self,
+        request_info: Union[Dict[str, Any], Any],
+        tenant_ids: Sequence[str],
+        facility_ids: Optional[Sequence[str]] = None,
+        boundary_codes: Optional[Sequence[str]] = None,
+        hfr_ids: Optional[Sequence[str]] = None,
+        nin_ids: Optional[Sequence[str]] = None,
+        limit: int = 10000,
+        offset: int = 0,
+        send_non_paginated_response: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Bulk search facilities using facility-service bulk search endpoint.
+
+        Mirrors the curl contract:
+        POST /facility-service/v2/facility/_bulk-search
+        {
+          "RequestInfo": {...},
+          "Facility": {
+            "tenantIds": [...],
+            "facilityIds": [...],
+            "boundaryCodes": [...],
+            ...
+          }
+        }
+        """
+        url = f"{self.facility_service_url}/facility-service/v2/facility/_bulk-search"
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+
+        # Support both Pydantic RequestInfo and plain dict
+        if hasattr(request_info, "model_dump"):
+            request_info_payload = request_info.model_dump(by_alias=True, exclude_none=True)
+        else:
+            request_info_payload = request_info or {}
+
+        payload: Dict[str, Any] = {
+            "RequestInfo": request_info_payload,
+            "Facility": {
+                "tenantIds": list(tenant_ids),
+                "facilityIds": list(facility_ids) if facility_ids else [],
+                "facilityNames": [],
+                "hfrIds": list(hfr_ids) if hfr_ids else [],
+                "ninIds": list(nin_ids) if nin_ids else [],
+                "facilityPocNames": [],
+                "facilityPocPhones": [],
+                "facilityPocEmails": [],
+                "facilityStatus": [],
+                "userIds": [],
+                "boundaryCodes": list(boundary_codes) if boundary_codes else [],
+                "state": [],
+                "district": [],
+                "block": [],
+                "sendNonPaginatedResponse": send_non_paginated_response,
+                "limit": limit,
+                "offset": offset,
+                "isOnmReady": None,
+            },
+        }
+
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=60)
+            response.raise_for_status()
+            data = response.json() or {}
+            facilities = data.get("facilities", []) or data.get("Facilities", []) or []
+            total_count = data.get("totalCount", len(facilities))
+            return {"totalCount": total_count, "facilities": facilities}
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error occurred during bulk facility search: {http_err}")
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error occurred during bulk facility search: {conn_err}")
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error occurred during bulk facility search: {timeout_err}")
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"An error occurred during bulk facility search: {req_err}")
             raise req_err
