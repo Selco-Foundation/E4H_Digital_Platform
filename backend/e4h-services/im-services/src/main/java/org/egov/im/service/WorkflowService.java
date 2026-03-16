@@ -165,11 +165,10 @@ public class WorkflowService {
         Collections.reverse(processInstances);
         log.trace("Calculating business hours elapsed and total SLA");
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
-        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
         long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), processInstances);
         long totalSlaRemaining = slaService.computeTotalSlaRemaining(this.getStates(), processInstances, businessHourList,processInstance);
-        log.debug("SLA calculation completed: definedTotalSla={}, businessHoursElapsed={}, totalSlaRemaining={}",
-                definedTotalSla, businessHoursElapsed, totalSlaRemaining);
+        log.debug("SLA calculation completed: definedTotalSla={}, totalSlaRemaining={}",
+                definedTotalSla, totalSlaRemaining);
 
         wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
         processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
@@ -194,9 +193,6 @@ public class WorkflowService {
             return 0L;
         }));
 
-        Long firstResolvedTs = null;
-        Long firstDeclinedTs = null;
-
         for (ProcessInstance pi : ordered) {
             State state = pi.getState();
             AuditDetails auditDetails = pi.getAuditDetails();
@@ -211,19 +207,6 @@ public class WorkflowService {
             if (status == null) {
                 continue;
             }
-
-            if (firstResolvedTs == null && "RESOLVED".equalsIgnoreCase(status)) {
-                firstResolvedTs = ts;
-            }
-
-            // Treat REJECTED as decline; extend if you introduce explicit DECLINE statuses
-            if (firstDeclinedTs == null && "REJECTED".equalsIgnoreCase(status)) {
-                firstDeclinedTs = ts;
-            }
-
-            if (firstResolvedTs != null && firstDeclinedTs != null) {
-                break;
-            }
         }
 
         IndexView indexView = wrapper.getIndexView();
@@ -231,9 +214,6 @@ public class WorkflowService {
             indexView = new IndexView();
             wrapper.setIndexView(indexView);
         }
-
-        indexView.setResolvedTimestamp(firstResolvedTs);
-        indexView.setDeclinedTimestamp(firstDeclinedTs);
     }
 
     /**
