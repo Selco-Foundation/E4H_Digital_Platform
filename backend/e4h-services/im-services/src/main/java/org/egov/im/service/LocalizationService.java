@@ -80,8 +80,12 @@ public class LocalizationService {
                 .map(String::toUpperCase)
                 .map(status -> "CS_COMMON_" + status)
                 .orElse("");
+        String warrantyStatusCode = Optional.ofNullable(incident.getWarrantyStatus())
+                .map(Enum::name)
+                .map(status -> "CS_COMMON_" + status)
+                .orElse("");
 
-        String imCodes = String.join(",", incidentTypeCode, incidentSubTypeCode, appStatusCode);
+        String imCodes = String.join(",", incidentTypeCode, incidentSubTypeCode, appStatusCode, warrantyStatusCode);
         String boundaryCodes = String.join(",", stateCode, facilityCode);
 
         LocalizationResponse boundaryResponse = getLocalizationMessages(requestInfo, stateTenant, "rainmaker-in", locale, boundaryCodes);
@@ -91,6 +95,7 @@ public class LocalizationService {
         indexView.setIncidentTypeLocalized(imResponse.getMessageByCode(incidentTypeCode));
         indexView.setIncidentSubTypeLocalized(imResponse.getMessageByCode(incidentSubTypeCode));
         indexView.setApplicationStatusLocalized(imResponse.getMessageByCode(appStatusCode));
+        indexView.setWarrantyStatusLocalized(imResponse.getMessageByCode(warrantyStatusCode));
         indexView.setTenantIdLocalized(boundaryResponse.getMessageByCode(facilityCode));
     }
 
