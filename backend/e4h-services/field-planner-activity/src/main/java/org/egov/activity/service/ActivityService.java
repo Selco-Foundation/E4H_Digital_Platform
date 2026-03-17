@@ -1082,31 +1082,8 @@ public class ActivityService {
 
             List<?> orgUsers = (List<?>) orgUsersObj;
             for (Object obj : orgUsers) {
-                if (!(obj instanceof Map)) {
-                    continue;
-                }
-                Map<String, Object> orgUser = (Map<String, Object>) obj;
-                Object userObj = orgUser.get("user");
-                if (!(userObj instanceof Map)) {
-                    continue;
-                }
-                Map<String, Object> user = (Map<String, Object>) userObj;
-                Object rolesObj = user.get("roles");
-                if (!(rolesObj instanceof List)) {
-                    continue;
-                }
-
-                List<?> roles = (List<?>) rolesObj;
-                boolean isComplaintResolver = roles.stream().anyMatch(roleObj -> {
-                    if (!(roleObj instanceof Map)) {
-                        return false;
-                    }
-                    Object codeObj = ((Map<String, Object>) roleObj).get("code");
-                    return codeObj != null && "COMPLAINT_RESOLVER".equalsIgnoreCase(codeObj.toString());
-                });
-
-                if (isComplaintResolver) {
-                    return orgUser;
+                if (obj instanceof Map && isComplaintResolverOrgUser((Map<String, Object>) obj)) {
+                    return (Map<String, Object>) obj;
                 }
             }
 
@@ -1115,6 +1092,28 @@ public class ActivityService {
             log.error("Error while fetching COMPLAINT_RESOLVER for organisation {} and activityFacility {}", organisationId, activityFacility.getId(), e);
             return null;
         }
+    }
+
+    private boolean isComplaintResolverOrgUser(Map<String, Object> orgUser) {
+        Object userObj = orgUser.get("user");
+        if (!(userObj instanceof Map)) {
+            return false;
+        }
+
+        Map<String, Object> user = (Map<String, Object>) userObj;
+        Object rolesObj = user.get("roles");
+        if (!(rolesObj instanceof List)) {
+            return false;
+        }
+
+        List<?> roles = (List<?>) rolesObj;
+        return roles.stream().anyMatch(roleObj -> {
+            if (!(roleObj instanceof Map)) {
+                return false;
+            }
+            Object codeObj = ((Map<String, Object>) roleObj).get("code");
+            return codeObj != null && "COMPLAINT_RESOLVER".equalsIgnoreCase(codeObj.toString());
+        });
     }
 
     private void updateComplaintResolverJurisdictionsWithFacility(Map<String, Object> orgUser,
