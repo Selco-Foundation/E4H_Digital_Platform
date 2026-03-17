@@ -16,6 +16,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../utils/app_logger.dart';
 
+enum _PickerSessionPhase { idle, launching, awaitingResult, recovering }
+
 class ImageUploader extends StatefulWidget {
   final Function(List<File>) onImagesSelected;
   final bool allowMultiples;
@@ -72,16 +74,27 @@ class _ImageUploaderState extends State<ImageUploader>
   String? capitalizedErrorMessage;
   String fileError = '';
   String? _lastRecoveredPath;
+  String? _lastDeliveredPath;
 
   final ImagePicker _picker = ImagePicker();
-  bool _picking = false;
+  _PickerSessionPhase _pickerPhase = _PickerSessionPhase.idle;
+  ImageSource? _activeSource;
+  int _sessionToken = 0;
+  int? _activeSessionToken;
+  int? _lastCompletedSessionToken;
+  bool _recoveryAttemptedSinceResume = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _imageFiles = List<File>.from(widget.initialImages ?? const []);
-    _recoverLostData(); // important for Android camera/gallery flows
+    unawaited(
+      _recoverLostDataIfNeeded(
+        trigger: 'init',
+        allowWithoutActiveSession: true,
+      ),
+    );
   }
 
   @override
@@ -108,21 +121,58 @@ class _ImageUploaderState extends State<ImageUploader>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // If Android kills our activity while the camera app is open, we can recover on resume.
-    if (!widget.recoverLostDataOnResume) return;
     if (state == AppLifecycleState.resumed) {
+      AppLogger.instance.info(
+        'ImageUploader lifecycle resumed phase=${_pickerPhase.name} session=${_activeSessionToken ?? -1}',
+      );
+      if (!widget.recoverLostDataOnResume) return;
+      if (!_hasActivePickerSession || _recoveryAttemptedSinceResume) return;
+      _recoveryAttemptedSinceResume = true;
       Future<void>.delayed(const Duration(milliseconds: 150), () {
         if (!mounted) return;
-        _recoverLostData();
+        unawaited(
+          _recoverLostDataIfNeeded(
+            trigger: 'resume',
+            allowWithoutActiveSession: false,
+          ),
+        );
       });
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _recoveryAttemptedSinceResume = false;
     }
   }
 
+  bool get _hasActivePickerSession =>
+      _pickerPhase == _PickerSessionPhase.launching ||
+      _pickerPhase == _PickerSessionPhase.awaitingResult ||
+      _pickerPhase == _PickerSessionPhase.recovering;
+
   Future<void> _startImagePick(ImageSource source) async {
-    if (!mounted || _picking) return;
-    await Future<void>.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
-    await _getImage(source);
+    if (_hasActivePickerSession) {
+      setState(() {
+        fileError = 'Camera is still opening, please wait';
+      });
+      AppLogger.instance.info(
+        'ImageUploader ignored duplicate launch phase=${_pickerPhase.name} session=${_activeSessionToken ?? -1}',
+      );
+      return;
+    }
+    final sessionToken = ++_sessionToken;
+    _activeSessionToken = sessionToken;
+    _activeSource = source;
+    _recoveryAttemptedSinceResume = false;
+    setState(() {
+      fileError = '';
+      _pickerPhase = _PickerSessionPhase.launching;
+    });
+    AppLogger.instance.info(
+      'ImageUploader start source=${source.name} session=$sessionToken',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted || _activeSessionToken != sessionToken) return;
+    await _getImage(source, sessionToken);
   }
 
   Future<File> _normalizeImageFile(File source) async {
@@ -151,11 +201,8 @@ class _ImageUploaderState extends State<ImageUploader>
     return source;
   }
 
-  Future<void> _getImage(ImageSource source) async {
-    // Guard against rapid multiple taps (can crash some OEM camera flows).
-    if (_picking || !mounted) return;
-    _picking = true;
-
+  Future<void> _getImage(ImageSource source, int sessionToken) async {
+    if (!mounted || _activeSessionToken != sessionToken) return;
     try {
       if (kIsWeb && source == ImageSource.camera) {
         if (!mounted) return;
@@ -177,6 +224,7 @@ class _ImageUploaderState extends State<ImageUploader>
                           : 720,
                 ),
                 onCrossTap: () {
+                  _completeSession(sessionToken);
                   Navigator.of(context).pop();
                 },
                 title: widget.cameraTitle ?? 'Camera',
@@ -199,6 +247,7 @@ class _ImageUploaderState extends State<ImageUploader>
                     size: DigitButtonSize.large,
                     type: DigitButtonType.secondary,
                     onPressed: () {
+                      _completeSession(sessionToken);
                       Navigator.of(context).pop();
                     },
                   ),
@@ -223,6 +272,11 @@ class _ImageUploaderState extends State<ImageUploader>
 
       // Mobile: give camera stack a brief moment to settle (helps on some Samsung devices).
       await Future.delayed(const Duration(milliseconds: 180));
+      if (!mounted || _activeSessionToken != sessionToken) return;
+
+      setState(() {
+        _pickerPhase = _PickerSessionPhase.awaitingResult;
+      });
 
       final pickedFile = await _picker.pickImage(
         source: source,
@@ -232,40 +286,21 @@ class _ImageUploaderState extends State<ImageUploader>
         requestFullMetadata: widget.requestFullMetadata,
       );
 
-      if (!mounted) return;
+      if (!mounted || _activeSessionToken != sessionToken) return;
 
-      if (pickedFile != null) {
-        final normalizedFile = await _normalizeImageFile(File(pickedFile.path));
-        if (!mounted) return;
-
-        if (widget.validators != null) {
-          String? validationError =
-              validateImage(
-                  XFile(normalizedFile.path), widget.validators!, pickedFile.name);
-          if (validationError != null) {
-            setState(() {
-              fileError = validationError;
-            });
-            return;
-          }
-        }
-
-        setState(() {
-          fileError = '';
-          if (widget.allowMultiples) {
-            _imageFiles.add(normalizedFile);
-          } else {
-            _imageFiles
-              ..clear()
-              ..add(normalizedFile);
-          }
-        });
-        widget.onImagesSelected(List<File>.from(_imageFiles));
-      } else {
+      if (pickedFile == null) {
         if (kDebugMode) {
           AppLogger.instance.info('No image selected.');
         }
+        _completeSession(sessionToken);
+        return;
       }
+
+      await _processPickedFile(
+        pickedFile,
+        sessionToken: sessionToken,
+        fromRecovery: false,
+      );
     } on PlatformException catch (e) {
       AppLogger.instance
           .info('ImagePicker PlatformException: ${e.code} ${e.message}');
@@ -280,6 +315,7 @@ class _ImageUploaderState extends State<ImageUploader>
               : (e.message ?? 'Failed to open camera/gallery');
         });
       }
+      _completeSession(sessionToken);
     } catch (e) {
       AppLogger.instance.info('Error picking image: $e');
       if (mounted) {
@@ -287,13 +323,13 @@ class _ImageUploaderState extends State<ImageUploader>
           fileError = 'Failed to pick image';
         });
       }
-    } finally {
-      _picking = false;
+      _completeSession(sessionToken);
     }
   }
 
   Future<void> _handleImageCapture(File image) async {
     if (!mounted) return;
+    final sessionToken = _activeSessionToken;
     setState(() {
       fileError = '';
       if (widget.allowMultiples) {
@@ -305,15 +341,107 @@ class _ImageUploaderState extends State<ImageUploader>
       }
     });
     widget.onImagesSelected(List<File>.from(_imageFiles));
+    if (sessionToken != null) {
+      _completeSession(sessionToken);
+    }
   }
 
-  Future<void> _recoverLostData() async {
+  Future<void> _processPickedFile(
+    XFile pickedFile, {
+    required int sessionToken,
+    required bool fromRecovery,
+  }) async {
+    if (!mounted || _activeSessionToken != sessionToken) return;
+
+    final normalizedFile = await _normalizeImageFile(File(pickedFile.path));
+    if (!mounted || _activeSessionToken != sessionToken) return;
+
+    final normalizedXFile = XFile(
+      normalizedFile.path,
+      name: pickedFile.name,
+      mimeType: pickedFile.mimeType,
+    );
+
+    if (widget.validators != null) {
+      final String? validationError =
+          validateImage(normalizedXFile, widget.validators!, pickedFile.name);
+      if (validationError != null) {
+        setState(() {
+          fileError = validationError;
+        });
+        _completeSession(sessionToken);
+        return;
+      }
+    }
+
+    if (fromRecovery && _lastRecoveredPath == normalizedFile.path) {
+      AppLogger.instance.info(
+        'ImageUploader suppress duplicate recovery path=${normalizedFile.path} session=$sessionToken',
+      );
+      _completeSession(sessionToken);
+      return;
+    }
+
+    if (_lastDeliveredPath == normalizedFile.path &&
+        _lastCompletedSessionToken == sessionToken) {
+      AppLogger.instance.info(
+        'ImageUploader suppress duplicate dispatch path=${normalizedFile.path} session=$sessionToken',
+      );
+      _completeSession(sessionToken);
+      return;
+    }
+
+    setState(() {
+      fileError = '';
+      if (widget.allowMultiples) {
+        _imageFiles.add(normalizedFile);
+      } else {
+        _imageFiles
+          ..clear()
+          ..add(normalizedFile);
+      }
+    });
+    _lastRecoveredPath = fromRecovery ? normalizedFile.path : _lastRecoveredPath;
+    _lastDeliveredPath = normalizedFile.path;
+    AppLogger.instance.info(
+      'ImageUploader dispatch source=${_activeSource?.name ?? 'unknown'} recovery=$fromRecovery session=$sessionToken',
+    );
+    widget.onImagesSelected(List<File>.from(_imageFiles));
+    _completeSession(sessionToken);
+  }
+
+  Future<void> _recoverLostDataIfNeeded({
+    required String trigger,
+    required bool allowWithoutActiveSession,
+  }) async {
     if (kIsWeb) return;
-    if (_picking) return;
+    if (!mounted) return;
+    if (!allowWithoutActiveSession && !_hasActivePickerSession) return;
+
+    final sessionToken = _activeSessionToken ?? ++_sessionToken;
+    _activeSessionToken ??= sessionToken;
+
+    if (!mounted) return;
+    setState(() {
+      _pickerPhase = _PickerSessionPhase.recovering;
+    });
+    AppLogger.instance.info(
+      'ImageUploader recover trigger=$trigger session=$sessionToken active=${_activeSource?.name ?? 'none'}',
+    );
 
     try {
       final response = await _picker.retrieveLostData();
-      if (response.isEmpty) return;
+      if (!mounted || _activeSessionToken != sessionToken) return;
+      if (response.isEmpty) {
+        if (allowWithoutActiveSession) {
+          _completeSession(sessionToken);
+        } else {
+          setState(() {
+            _pickerPhase = _PickerSessionPhase.awaitingResult;
+          });
+        }
+        return;
+      }
 
       final x = response.file;
       if (x == null) {
@@ -321,37 +449,40 @@ class _ImageUploaderState extends State<ImageUploader>
           AppLogger.instance
               .info('retrieveLostData exception: ${response.exception}');
         }
+        if (mounted) {
+          setState(() {
+            fileError = 'Camera result was lost, please try again';
+          });
+        }
+        _completeSession(sessionToken);
         return;
       }
 
-      if (!mounted) return;
-      if (_lastRecoveredPath == x.path) return;
-
-      if (widget.validators != null) {
-        final String? validationError =
-            validateImage(x, widget.validators!, x.name);
-        if (validationError != null) {
-          setState(() {
-            fileError = validationError;
-          });
-          return;
-        }
-      }
-
-      setState(() {
-        fileError = '';
-        if (widget.allowMultiples) {
-          _imageFiles.add(File(x.path));
-        } else {
-          _imageFiles
-            ..clear()
-            ..add(File(x.path));
-        }
-      });
-      _lastRecoveredPath = x.path;
-      widget.onImagesSelected(List<File>.from(_imageFiles));
+      await _processPickedFile(
+        x,
+        sessionToken: sessionToken,
+        fromRecovery: true,
+      );
     } catch (e) {
       AppLogger.instance.info('Error recovering lost picker data: $e');
+      if (mounted) {
+        setState(() {
+          fileError = 'Failed to restore camera result';
+        });
+      }
+      _completeSession(sessionToken);
+    }
+  }
+
+  void _completeSession(int sessionToken) {
+    if (_activeSessionToken != sessionToken) return;
+    _lastCompletedSessionToken = sessionToken;
+    _activeSessionToken = null;
+    _activeSource = null;
+    if (mounted) {
+      setState(() {
+        _pickerPhase = _PickerSessionPhase.idle;
+      });
     }
   }
 
@@ -367,6 +498,12 @@ class _ImageUploaderState extends State<ImageUploader>
       highlightColor: const DigitColors().transparent,
       splashColor: const DigitColors().transparent,
       onTap: () {
+        if (_hasActivePickerSession) {
+          setState(() {
+            fileError = 'Camera is still opening, please wait';
+          });
+          return;
+        }
         setState(() {
           fileError = '';
         });
@@ -562,6 +699,16 @@ class _ImageUploaderState extends State<ImageUploader>
                       ),
               ),
             ],
+          ),
+        if (_hasActivePickerSession)
+          Padding(
+            padding: const EdgeInsets.only(top: spacer1),
+            child: Text(
+              'Opening camera...',
+              style: currentTypography.bodyS.copyWith(
+                color: const DigitColors().light.primary1,
+              ),
+            ),
           ),
         if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
           const SizedBox(height: spacer2),

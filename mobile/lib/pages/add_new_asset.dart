@@ -106,6 +106,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   double? _longitude;
   StreamSubscription<LocationState>? _locSub;
   final Map<int, Future<File?>> _cachedImageFutures = {};
+  final Map<int, String> _lastProcessedPickerPaths = {};
 
   @override
   void initState() {
@@ -718,7 +719,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     requestFullMetadata: false,
                     initialImages: file != null ? [file] : [],
                     onImagesSelected: (List<File> imageFile) async {
-                      if (imageFile.isEmpty) return;
+                      if (imageFile.isEmpty) {
+                        _lastProcessedPickerPaths.remove(index);
+                        return;
+                      }
+                      final selectedPath = imageFile.first.path;
+                      if (_lastProcessedPickerPaths[index] == selectedPath) {
+                        return;
+                      }
+                      _lastProcessedPickerPaths[index] = selectedPath;
                       final ok = await _ensureLocationLoaded();
                       if (!ok) {
                         context.showSnackBar(
@@ -727,8 +736,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                         );
                         return;
                       }
-                      final copiedPath =
-                          await copyFileToLocalDir(imageFile.first);
+                      final copiedPath = await copyFileToLocalDir(imageFile.first);
                       setState(() {
                         asset.photoPath = copiedPath;
                         asset.latitude = _latitude.toString();

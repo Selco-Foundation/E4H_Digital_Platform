@@ -19,6 +19,8 @@ import 'package:path/path.dart' show basename;
 
 import '../../utils/app_logger.dart';
 
+enum _VideoPickerSessionPhase { idle, launching, awaitingResult, recovering }
+
 class VideoUploader extends StatefulWidget {
   final Function(List<File>) onVideosSelected;
   final bool allowMultiples;
@@ -60,15 +62,26 @@ class _VideoUploaderState extends State<VideoUploader>
   late bool isTab;
   String? capitalizedErrorMessage;
   String fileError = '';
-  bool _picking = false;
   String? _lastRecoveredPath;
+  String? _lastDeliveredPath;
+  _VideoPickerSessionPhase _pickerPhase = _VideoPickerSessionPhase.idle;
+  ImageSource? _activeSource;
+  int _sessionToken = 0;
+  int? _activeSessionToken;
+  int? _lastCompletedSessionToken;
+  bool _recoveryAttemptedSinceResume = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _videoFiles = List<File>.from(widget.initialVideos ?? const []);
-    _recoverLostData();
+    unawaited(
+      _recoverLostDataIfNeeded(
+        trigger: 'init',
+        allowWithoutActiveSession: true,
+      ),
+    );
   }
 
   @override
@@ -96,69 +109,95 @@ class _VideoUploaderState extends State<VideoUploader>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      AppLogger.instance.info(
+        'VideoUploader lifecycle resumed phase=${_pickerPhase.name} session=${_activeSessionToken ?? -1}',
+      );
+      if (!_hasActivePickerSession || _recoveryAttemptedSinceResume) return;
+      _recoveryAttemptedSinceResume = true;
       Future<void>.delayed(const Duration(milliseconds: 150), () {
         if (!mounted) return;
-        _recoverLostData();
+        unawaited(
+          _recoverLostDataIfNeeded(
+            trigger: 'resume',
+            allowWithoutActiveSession: false,
+          ),
+        );
       });
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _recoveryAttemptedSinceResume = false;
     }
   }
 
+  bool get _hasActivePickerSession =>
+      _pickerPhase == _VideoPickerSessionPhase.launching ||
+      _pickerPhase == _VideoPickerSessionPhase.awaitingResult ||
+      _pickerPhase == _VideoPickerSessionPhase.recovering;
+
   Future<void> _startVideoPick(ImageSource source) async {
-    if (!mounted || _picking) return;
-    await Future<void>.delayed(const Duration(milliseconds: 300));
     if (!mounted) return;
-    await _getVideo(source);
+    if (_hasActivePickerSession) {
+      setState(() {
+        fileError = 'Camera is still opening, please wait';
+      });
+      AppLogger.instance.info(
+        'VideoUploader ignored duplicate launch phase=${_pickerPhase.name} session=${_activeSessionToken ?? -1}',
+      );
+      return;
+    }
+    final sessionToken = ++_sessionToken;
+    _activeSessionToken = sessionToken;
+    _activeSource = source;
+    _recoveryAttemptedSinceResume = false;
+    setState(() {
+      fileError = '';
+      _pickerPhase = _VideoPickerSessionPhase.launching;
+    });
+    AppLogger.instance.info(
+      'VideoUploader start source=${source.name} session=$sessionToken',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (!mounted || _activeSessionToken != sessionToken) return;
+    await _getVideo(source, sessionToken);
   }
 
-  Future<void> _getVideo(ImageSource source) async {
-    if (_picking || !mounted) return;
-    _picking = true;
-
+  Future<void> _getVideo(ImageSource source, int sessionToken) async {
+    if (!mounted || _activeSessionToken != sessionToken) return;
     try {
       await Future.delayed(const Duration(milliseconds: 180));
-
-      final pickedFile = await _picker.pickVideo(source: source);
-      if (!mounted || pickedFile == null) return;
-
-      final file = File(pickedFile.path);
-
-      if (widget.validators != null) {
-        final size = await file.length();
-        final validationError = validateFile(
-          PlatformFile(
-            name: basename(file.path),
-            path: file.path,
-            size: size,
-          ),
-          widget.validators!,
-        );
-        if (validationError != null) {
-          setState(() {
-            fileError = validationError;
-          });
-          return;
-        }
-      }
+      if (!mounted || _activeSessionToken != sessionToken) return;
 
       setState(() {
-        fileError = '';
-        if (widget.allowMultiples) {
-          _videoFiles.add(file);
-        } else {
-          _videoFiles
-            ..clear()
-            ..add(file);
-        }
+        _pickerPhase = _VideoPickerSessionPhase.awaitingResult;
       });
-      widget.onVideosSelected(List<File>.from(_videoFiles));
+
+      final pickedFile = await _picker.pickVideo(source: source);
+      if (!mounted || _activeSessionToken != sessionToken) return;
+      if (pickedFile == null) {
+        _completeSession(sessionToken);
+        return;
+      }
+
+      await _processPickedVideo(
+        pickedFile,
+        sessionToken: sessionToken,
+        fromRecovery: false,
+      );
     } on PlatformException catch (e) {
       AppLogger.instance
           .info('VideoPicker PlatformException: ${e.code} ${e.message}');
+      final recoverableCodes = <String>{
+        'already_active',
+        'channel-error',
+      };
       if (mounted) {
         setState(() {
-          fileError = e.message ?? 'Failed to open camera/gallery';
+          fileError = recoverableCodes.contains(e.code)
+              ? 'Camera is busy, please try again'
+              : (e.message ?? 'Failed to open camera/gallery');
         });
       }
+      _completeSession(sessionToken);
     } catch (e) {
       AppLogger.instance.info('Error picking video: $e');
       if (mounted) {
@@ -166,55 +205,143 @@ class _VideoUploaderState extends State<VideoUploader>
           fileError = 'Failed to pick video';
         });
       }
-    } finally {
-      _picking = false;
+      _completeSession(sessionToken);
     }
   }
 
-  Future<void> _recoverLostData() async {
-    if (kIsWeb || _picking) return;
+  Future<void> _processPickedVideo(
+    XFile pickedFile, {
+    required int sessionToken,
+    required bool fromRecovery,
+  }) async {
+    if (!mounted || _activeSessionToken != sessionToken) return;
+
+    final file = File(pickedFile.path);
+
+    if (widget.validators != null) {
+      final size = await file.length();
+      if (!mounted || _activeSessionToken != sessionToken) return;
+      final validationError = validateFile(
+        PlatformFile(
+          name: basename(file.path),
+          path: file.path,
+          size: size,
+        ),
+        widget.validators!,
+      );
+      if (validationError != null) {
+        setState(() {
+          fileError = validationError;
+        });
+        _completeSession(sessionToken);
+        return;
+      }
+    }
+
+    if (fromRecovery && _lastRecoveredPath == file.path) {
+      AppLogger.instance.info(
+        'VideoUploader suppress duplicate recovery path=${file.path} session=$sessionToken',
+      );
+      _completeSession(sessionToken);
+      return;
+    }
+
+    if (_lastDeliveredPath == file.path &&
+        _lastCompletedSessionToken == sessionToken) {
+      AppLogger.instance.info(
+        'VideoUploader suppress duplicate dispatch path=${file.path} session=$sessionToken',
+      );
+      _completeSession(sessionToken);
+      return;
+    }
+
+    setState(() {
+      fileError = '';
+      if (widget.allowMultiples) {
+        _videoFiles.add(file);
+      } else {
+        _videoFiles
+          ..clear()
+          ..add(file);
+      }
+    });
+    _lastRecoveredPath = fromRecovery ? file.path : _lastRecoveredPath;
+    _lastDeliveredPath = file.path;
+    AppLogger.instance.info(
+      'VideoUploader dispatch source=${_activeSource?.name ?? 'unknown'} recovery=$fromRecovery session=$sessionToken',
+    );
+    widget.onVideosSelected(List<File>.from(_videoFiles));
+    _completeSession(sessionToken);
+  }
+
+  Future<void> _recoverLostDataIfNeeded({
+    required String trigger,
+    required bool allowWithoutActiveSession,
+  }) async {
+    if (kIsWeb) return;
+    if (!mounted) return;
+    if (!allowWithoutActiveSession && !_hasActivePickerSession) return;
+
+    final sessionToken = _activeSessionToken ?? ++_sessionToken;
+    _activeSessionToken ??= sessionToken;
+
+    setState(() {
+      _pickerPhase = _VideoPickerSessionPhase.recovering;
+    });
+    AppLogger.instance.info(
+      'VideoUploader recover trigger=$trigger session=$sessionToken active=${_activeSource?.name ?? 'none'}',
+    );
 
     try {
       final response = await _picker.retrieveLostData();
-      if (response.isEmpty) return;
-
-      final x = response.file;
-      if (x == null || !mounted || _lastRecoveredPath == x.path) return;
-
-      final file = File(x.path);
-
-      if (widget.validators != null) {
-        final size = await file.length();
-        final validationError = validateFile(
-          PlatformFile(
-            name: basename(file.path),
-            path: file.path,
-            size: size,
-          ),
-          widget.validators!,
-        );
-        if (validationError != null) {
+      if (!mounted || _activeSessionToken != sessionToken) return;
+      if (response.isEmpty) {
+        if (allowWithoutActiveSession) {
+          _completeSession(sessionToken);
+        } else {
           setState(() {
-            fileError = validationError;
+            _pickerPhase = _VideoPickerSessionPhase.awaitingResult;
           });
-          return;
         }
+        return;
       }
 
-      setState(() {
-        fileError = '';
-        if (widget.allowMultiples) {
-          _videoFiles.add(file);
-        } else {
-          _videoFiles
-            ..clear()
-            ..add(file);
+      final x = response.file;
+      if (x == null) {
+        if (mounted) {
+          setState(() {
+            fileError = 'Camera result was lost, please try again';
+          });
         }
-      });
-      _lastRecoveredPath = x.path;
-      widget.onVideosSelected(List<File>.from(_videoFiles));
+        _completeSession(sessionToken);
+        return;
+      }
+
+      await _processPickedVideo(
+        x,
+        sessionToken: sessionToken,
+        fromRecovery: true,
+      );
     } catch (e) {
       AppLogger.instance.info('Error recovering lost video data: $e');
+      if (mounted) {
+        setState(() {
+          fileError = 'Failed to restore camera result';
+        });
+      }
+      _completeSession(sessionToken);
+    }
+  }
+
+  void _completeSession(int sessionToken) {
+    if (_activeSessionToken != sessionToken) return;
+    _lastCompletedSessionToken = sessionToken;
+    _activeSessionToken = null;
+    _activeSource = null;
+    if (mounted) {
+      setState(() {
+        _pickerPhase = _VideoPickerSessionPhase.idle;
+      });
     }
   }
 
@@ -230,6 +357,12 @@ class _VideoUploaderState extends State<VideoUploader>
       highlightColor: const DigitColors().transparent,
       splashColor: const DigitColors().transparent,
       onTap: () {
+        if (_hasActivePickerSession) {
+          setState(() {
+            fileError = 'Camera is still opening, please wait';
+          });
+          return;
+        }
         setState(() {
           fileError = '';
         });
@@ -425,6 +558,16 @@ class _VideoUploaderState extends State<VideoUploader>
                       ),
               ),
             ],
+          ),
+        if (_hasActivePickerSession)
+          Padding(
+            padding: const EdgeInsets.only(top: spacer1),
+            child: Text(
+              'Opening camera...',
+              style: currentTypography.bodyS.copyWith(
+                color: const DigitColors().light.primary1,
+              ),
+            ),
           ),
         if (!(widget.allowMultiples == false && _videoFiles.isNotEmpty))
           const SizedBox(height: spacer2),
