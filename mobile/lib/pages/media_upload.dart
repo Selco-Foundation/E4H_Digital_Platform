@@ -300,6 +300,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                               style: textTheme.headingXl.copyWith(
                                   color: theme.colorTheme.primary.primary2),
                             ),
+                            const SizedBox(width: spacer1),
                             Text(
                               '(Optional)',
                               style: textTheme.bodyL.copyWith(
