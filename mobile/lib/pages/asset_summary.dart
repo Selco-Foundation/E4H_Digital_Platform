@@ -468,7 +468,6 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 
     final warrantyDuration = summary.detailEntry?.warranty ?? '—';
     final brandCode = summary.detailEntry?.brand ?? '—';
-    final model = summary.detailEntry?.model ?? '—';
     final systemCode = summary.specEntry?.system ?? '—';
     final capacity = summary.specEntry?.totalCapacity.toString() ?? '—';
     final capacityUnit = summary.specEntry?.totalCapacityUnit ?? '-';
@@ -636,13 +635,11 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
               'Warranty Start Date',
               'Warranty Duration',
               'Brand',
-              'Model No.'
             ]),
             ValueColumn(values: [
               warrantyStart,
               parseWarrantyYears(warrantyDuration).toString() ?? '',
               brand,
-              model
             ]),
           ]),
         ]),

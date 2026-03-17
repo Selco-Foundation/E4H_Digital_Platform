@@ -42,7 +42,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   String? selectedBrandCode;
   String? selectedBrandName;
 
-  final TextEditingController modelController = TextEditingController();
   final TextEditingController brandController = TextEditingController();
 
   @override
@@ -97,7 +96,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
 
   @override
   void dispose() {
-    modelController.dispose();
     brandController.dispose();
     super.dispose();
   }
@@ -138,7 +136,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                 }
                 brandController.text = selectedBrandName ?? '';
                 selectedWarranty = entry.warranty;
-                modelController.text = entry.model ?? '';
               });
             }
           },
@@ -154,9 +151,8 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
             panel: () => 'Panel Details',
           );
 
-          final bool isEnabledSupervisor = selectedWarranty != null &&
-              selectedBrandCode != null &&
-              modelController.text.trim().isNotEmpty;
+          final bool isEnabledSupervisor =
+              selectedWarranty != null && selectedBrandCode != null;
 
           final bool isEnabledFieldUser = selectedBrandCode != null;
 
@@ -189,7 +185,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                             assetType: assetTypeTitle,
                             warranty: selectedWarranty,
                             brand: selectedBrandCode!,
-                            model: modelController.text.trim(),
                           );
 
                           context
@@ -270,20 +265,6 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                 isDisabled: true,
                                 readOnly: true,
                                 keyboardType: TextInputType.none,
-                              ),
-                            ),
-                            LabeledField(
-                              label: 'Model Number',
-                              labelStyle: textTheme.headingS.copyWith(
-                                  color: theme.colorTheme.text.primary),
-                              capitalizedFirstLetter: false,
-                              child: DigitTextFormInput(
-                                controller: modelController,
-                                innerLabel: 'SR45934295',
-                                keyboardType: TextInputType.text,
-                                onChange: (value) {
-                                  setState(() {});
-                                },
                               ),
                             ),
                           ])

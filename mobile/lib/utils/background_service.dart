@@ -1427,7 +1427,7 @@ Future<void> _performSubmissionForActivityFacility({
           warrantyStartDate: startIso,
           warrantyDuration: years,
           warrantyEndDate: endIso,
-          modelNumber: detail.model,
+          modelNumber: '',
           wfStatus: 'CREATED',
           isActive: true,
           documents: documents,
