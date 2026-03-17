@@ -294,7 +294,6 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       const SizedBox(height: spacer4),
                       DigitCard(children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               '$assetType Videos',
