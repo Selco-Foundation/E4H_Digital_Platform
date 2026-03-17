@@ -287,8 +287,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
       );
 
       final kvFromThisPage = extractKVFromRawDoc(withValues);
-      final filtered = Map<String, dynamic>.from(kvFromThisPage)
-        ..removeWhere((k, v) => v is String && v.trim().isEmpty);
+      final kvUpdate = Map<String, dynamic>.from(kvFromThisPage);
 
       final existingAllKV = await BomRepository().getProjectBomKV(
             isar: isar,
@@ -298,7 +297,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
           <String, dynamic>{};
 
       bool changed = false;
-      filtered.forEach((k, v) {
+      kvUpdate.forEach((k, v) {
         if (!existingAllKV.containsKey(k)) {
           changed = true;
           return;
@@ -315,7 +314,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
         isar: isar,
         projectId: projectId,
         userType: widget.userType,
-        kvUpdate: filtered,
+        kvUpdate: kvUpdate,
       );
 
       if (changed) {
