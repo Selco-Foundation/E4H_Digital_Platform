@@ -1009,27 +1009,7 @@ public class ActivityService {
                     .criteria(criteria)
                     .build();
 
-            StringBuilder url = new StringBuilder(activityConfiguration.getOrgUserHost())
-                    .append(activityConfiguration.getOrgUserSearchUrl())
-                    .append("?tenantId=").append(activityFacility.getTenantId())
-                    .append("&offset=0&limit=10");
-
-            Map<String, Object> response = serviceRequest.fetchResult(
-                    url,
-                    searchRequest,
-                    new TypeReference<Map<String, Object>>() {
-                    });
-
-            if (response == null) {
-                return null;
-            }
-
-            Object orgUsersObj = response.get("OrgUsers");
-            if (!(orgUsersObj instanceof List)) {
-                return null;
-            }
-
-            List<?> orgUsers = (List<?>) orgUsersObj;
+            List<?> orgUsers = searchOrgUsers(searchRequest, activityFacility.getTenantId(), 0, 10);
             if (orgUsers.isEmpty()) {
                 return null;
             }
@@ -1060,34 +1040,27 @@ public class ActivityService {
                     .criteria(criteria)
                     .build();
 
-            StringBuilder url = new StringBuilder(activityConfiguration.getOrgUserHost())
-                    .append(activityConfiguration.getOrgUserSearchUrl())
-                    .append("?tenantId=").append(activityFacility.getTenantId())
-                    .append("&offset=0&limit=100");
+            int offset = 0;
 
-            Map<String, Object> response = serviceRequest.fetchResult(
-                    url,
-                    searchRequest,
-                    new TypeReference<Map<String, Object>>() {
-                    });
-
-            if (response == null) {
-                return null;
-            }
-
-            Object orgUsersObj = response.get("OrgUsers");
-            if (!(orgUsersObj instanceof List)) {
-                return null;
-            }
-
-            List<?> orgUsers = (List<?>) orgUsersObj;
-            for (Object obj : orgUsers) {
-                if (obj instanceof Map && isComplaintResolverOrgUser((Map<String, Object>) obj)) {
-                    return (Map<String, Object>) obj;
+            while (true) {
+                List<?> orgUsers = searchOrgUsers(searchRequest, activityFacility.getTenantId(), offset, 100);
+                if (orgUsers.isEmpty()) {
+                    return null;
                 }
-            }
 
-            return null;
+                for (Object obj : orgUsers) {
+                    if (obj instanceof Map && isComplaintResolverOrgUser((Map<String, Object>) obj)) {
+                        return (Map<String, Object>) obj;
+                    }
+                }
+
+                if (orgUsers.size() < 100) {
+                    // No more pages
+                    return null;
+                }
+
+                offset += 100;
+            }
         } catch (Exception e) {
             log.error("Error while fetching COMPLAINT_RESOLVER for organisation {} and activityFacility {}", organisationId, activityFacility.getId(), e);
             return null;
@@ -1114,6 +1087,34 @@ public class ActivityService {
             Object codeObj = ((Map<String, Object>) roleObj).get("code");
             return codeObj != null && "COMPLAINT_RESOLVER".equalsIgnoreCase(codeObj.toString());
         });
+    }
+
+    /**
+     * Common helper to call org-user search and return the OrgUsers list (or empty list).
+     */
+    private List<?> searchOrgUsers(OrgUserSearchRequest searchRequest, String tenantId, int offset, int limit) {
+        StringBuilder url = new StringBuilder(activityConfiguration.getOrgUserHost())
+                .append(activityConfiguration.getOrgUserSearchUrl())
+                .append("?tenantId=").append(tenantId)
+                .append("&offset=").append(offset)
+                .append("&limit=").append(limit);
+
+        Map<String, Object> response = serviceRequest.fetchResult(
+                url,
+                searchRequest,
+                new TypeReference<Map<String, Object>>() {
+                });
+
+        if (response == null) {
+            return Collections.emptyList();
+        }
+
+        Object orgUsersObj = response.get("OrgUsers");
+        if (!(orgUsersObj instanceof List)) {
+            return Collections.emptyList();
+        }
+
+        return (List<?>) orgUsersObj;
     }
 
     private void updateComplaintResolverJurisdictionsWithFacility(Map<String, Object> orgUser,
@@ -1177,7 +1178,7 @@ public class ActivityService {
             updateBody.put("OrgUser", orgUser);
 
             StringBuilder url = new StringBuilder(activityConfiguration.getOrgUserHost())
-                    .append("/organisation/v1/user/_update");
+                    .append(activityConfiguration.getOrgUserUpdateUrl());
 
             serviceRequest.fetchResult(url, updateBody);
             log.info("Successfully updated complaint resolver jurisdiction for boundary {}", boundaryCode);
