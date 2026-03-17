@@ -128,16 +128,10 @@ class AssetRepository {
         AppLogger.instance.info(
             "Fetching Duplicate isCreate: $isCreate isDuplicate: $isDuplicate");
 
-        final remoteBySerial = await _fetchAssetBySerialOrModel(
+        final remote = await _fetchAssetBySerial(
           activityFacilityId: asset.activityFacilityID ?? '',
           serialNumber: asset.serialNumber ?? '',
         );
-
-        final remote = remoteBySerial ??
-            await _fetchAssetBySerialOrModel(
-              activityFacilityId: asset.activityFacilityID ?? '',
-              modelNumber: asset.modelNumber ?? '',
-            );
 
         final remoteAssetId =
             (remote?['assetId'] ?? remote?['assetID'] ?? '').toString();
@@ -411,15 +405,13 @@ class AssetRepository {
     }
   }
 
-  Future<Map<String, dynamic>?> _fetchAssetBySerialOrModel({
+  Future<Map<String, dynamic>?> _fetchAssetBySerial({
     required String activityFacilityId,
     String? serialNumber,
-    String? modelNumber,
   }) async {
     final sn = (serialNumber ?? '').trim();
-    final mn = (modelNumber ?? '').trim();
 
-    if (sn.isEmpty && mn.isEmpty) return null;
+    if (sn.isEmpty) return null;
 
     final criteria = <String, dynamic>{
       'tenantId': envConfig.variables.tenantId,
@@ -428,10 +420,6 @@ class AssetRepository {
 
     if (sn.isNotEmpty) {
       criteria['serialNumber'] = [sn];
-    }
-
-    if (mn.isNotEmpty) {
-      criteria['modelNumber'] = mn;
     }
 
     final resp = await _dio.post(
@@ -446,13 +434,6 @@ class AssetRepository {
         if (sn.isNotEmpty) {
           return data.cast<Map<String, dynamic>?>().firstWhere(
                 (m) => (m?['serialNumber'] ?? '').toString() == sn,
-                orElse: () => null,
-              );
-        }
-
-        if (mn.isNotEmpty) {
-          return data.cast<Map<String, dynamic>?>().firstWhere(
-                (m) => (m?['modelNumber'] ?? '').toString() == mn,
                 orElse: () => null,
               );
         }
