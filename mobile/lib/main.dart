@@ -203,11 +203,17 @@ class _MainAppState extends State<MainApp> {
                     }));
               }
 
+              final cachedAppConfig =
+                  context.read<AppInitialization>().cachedAppConfig;
+
               return state.maybeWhen(
                 orElse: () =>
                     const Scaffold(body: Center(child: Text('loading...'))),
                 loadingMdms: (appConfig) => buildShell(appConfig),
                 defaulted: (appConfig) => buildShell(appConfig),
+                error: (_) => cachedAppConfig != null
+                    ? buildShell(cachedAppConfig)
+                    : const Scaffold(body: Center(child: Text('loading...'))),
                 initialized: (
                   appConfig,
                   assetCount,

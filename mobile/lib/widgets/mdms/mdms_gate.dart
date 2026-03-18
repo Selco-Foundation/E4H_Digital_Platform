@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/app_init/app_init.dart';
 import '../../blocs/auth/authbloc.dart';
 import '../../router/app_router.dart';
+import '../../utils/utils.dart';
 
 class MdmsGate extends StatefulWidget {
   const MdmsGate({super.key});
@@ -15,6 +16,7 @@ class MdmsGate extends StatefulWidget {
 class _MdmsGateState extends State<MdmsGate> {
   bool _dialogShown = false;
   bool _fetchScheduled = false;
+  bool _logoutInFlight = false;
 
   void _postFrame(VoidCallback fn) =>
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -81,6 +83,40 @@ class _MdmsGateState extends State<MdmsGate> {
     context.read<AppInitialization>().add(const InitEvent.fetchMdms());
   }
 
+  Future<void> _logoutToWelcome(String message) async {
+    if (_logoutInFlight) return;
+    _logoutInFlight = true;
+
+    final authBloc = context.read<AuthBloc>();
+    authBloc.add(const AuthEvent.logout());
+
+    final alreadyLoggedOut = authBloc.state.maybeWhen(
+      unauthenticated: () => true,
+      orElse: () => false,
+    );
+
+    if (!alreadyLoggedOut) {
+      await authBloc.stream.firstWhere(
+        (state) => state.maybeWhen(
+          unauthenticated: () => true,
+          orElse: () => false,
+        ),
+      );
+    }
+
+    if (!mounted) return;
+
+    final rootRouter = context.router.root;
+    _postFrame(() {
+      if (!mounted) return;
+      rootRouter.replaceAll([const UnauthenticatedRouteWrapper()]);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+      _logoutInFlight = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<AppInitialization, InitState>(
@@ -95,15 +131,12 @@ class _MdmsGateState extends State<MdmsGate> {
           error: (err) async {
             _closeBlockingLoader();
 
-            context.read<AuthBloc>().add(const AuthEvent.logout());
+            final isSessionExpired = isSessionExpiredMessage(err.message);
+            final message = isSessionExpired
+                ? 'Token expired! Please login again.'
+                : err.message;
 
-            _postFrame(() {
-              if (!mounted) return;
-              context.router.replaceAll([const UnauthenticatedRouteWrapper()]);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(err.message)),
-              );
-            });
+            await _logoutToWelcome(message);
           },
         );
       },

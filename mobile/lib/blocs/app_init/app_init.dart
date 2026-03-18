@@ -20,6 +20,10 @@ import '../../utils/utils.dart';
 
 part 'app_init.freezed.dart';
 
+const _sessionExpiredMdmsError = 'SESSION_EXPIRED';
+const _mdmsFallbackFailureMessage =
+    'Failed to load configuration data. Please login and try again.';
+
 class AppInitialization extends Bloc<InitEvent, InitState> {
   AppInitialization() : super(const InitState.uninitialized()) {
     on<_AppLaunchEvent>(_onAppLaunch);
@@ -27,6 +31,8 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
   }
 
   MdmsResponseModel? _cachedAppConfig;
+
+  MdmsResponseModel? get cachedAppConfig => _cachedAppConfig;
 
   FutureOr<void> _onAppLaunch(
     _AppLaunchEvent event,
@@ -59,128 +65,178 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
     emit(InitState.loadingMdms(appConfig: appConfig));
 
     try {
-      final assetCountFut = appInitRepo.searchAssetCount(MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset-registry.AssetCountSchema",
-        moduleDetails: [],
-      )));
+      final results = await _fetchMdmsResults(appInitRepo);
+      await _emitInitializedState(
+        emit: emit,
+        appConfig: appConfig,
+        appInitRepo: appInitRepo,
+        results: results,
+      );
+    } catch (e) {
+      AppLogger.instance.info(e.toString());
 
-      final assetTypeFut = appInitRepo.searchAssetType(MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset-registry.AssetTypeSchema",
-        moduleDetails: [],
-      )));
+      if (isSessionExpiredMessage(e.toString())) {
+        emit(const InitState.error(_sessionExpiredMdmsError));
+        return;
+      }
 
-      final systemFut = appInitRepo.searchSystem(MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset-registry.SystemSchema",
-        moduleDetails: [],
-      )));
+      try {
+        final cachedResults =
+            await _fetchMdmsResults(appInitRepo, cacheOnly: true);
+        await _emitInitializedState(
+          emit: emit,
+          appConfig: appConfig,
+          appInitRepo: appInitRepo,
+          results: cachedResults,
+        );
+      } catch (cacheError) {
+        AppLogger.instance.info(cacheError.toString());
+        emit(const InitState.error(_mdmsFallbackFailureMessage));
+      }
+    }
+  }
 
-      final warrantyFut = appInitRepo.searchWarranty(MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset-registry.WarrantyDurationSchema",
-        moduleDetails: [],
-      )));
+  Future<List<dynamic>> _fetchMdmsResults(
+    AppInitRepo appInitRepo, {
+    bool cacheOnly = false,
+  }) {
+    final tenantId = env.envConfig.variables.tenantId;
 
-      final brandFut = appInitRepo.searchBrand(MdmsRequestModel(
-          mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "asset-registry.BrandSchema",
-        moduleDetails: [],
-      )));
-
-      final solutionDesignFut =
-          appInitRepo.searchSolutionDesign(MdmsRequestModel(
-              mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "facility.SolarSolutionDesignType",
-        moduleDetails: [],
-      )));
-
-      final solutionDesignBomFut =
-          appInitRepo.searchSolutionDesignTypeBom(MdmsRequestModel(
-              mdmsCriteria: MdmsCriteriaModel(
-        tenantId: env.envConfig.variables.tenantId,
-        schemaCode: "common-masters.SolutionDesignTypeBOMForms",
-        moduleDetails: [],
-      )));
-
-      final formsDocsFut = appInitRepo.searchFormConfigsRaw(
+    return Future.wait([
+      appInitRepo.searchAssetCount(
         MdmsRequestModel(
           mdmsCriteria: MdmsCriteriaModel(
-            tenantId: env.envConfig.variables.tenantId,
+            tenantId: tenantId,
+            schemaCode: "asset-registry.AssetCountSchema",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      ),
+      appInitRepo.searchAssetType(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "asset-registry.AssetTypeSchema",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      ),
+      appInitRepo.searchSystem(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "asset-registry.SystemSchema",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      ),
+      appInitRepo.searchWarranty(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "asset-registry.WarrantyDurationSchema",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      ),
+      appInitRepo.searchBrand(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "asset-registry.BrandSchema",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      ),
+      appInitRepo.searchSolutionDesign(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "facility.SolarSolutionDesignType",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      ),
+      appInitRepo.searchSolutionDesignTypeBom(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "common-masters.SolutionDesignTypeBOMForms",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      ),
+      appInitRepo.searchFormConfigsRaw(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
             schemaCode: "common-masters.BOMFormSchema",
             moduleDetails: [],
           ),
         ),
-      );
+        cacheOnly: cacheOnly,
+      ),
+    ]);
+  }
 
-      final results = await Future.wait([
-        assetCountFut,
-        assetTypeFut,
-        systemFut,
-        warrantyFut,
-        brandFut,
-        solutionDesignFut,
-        solutionDesignBomFut,
-        formsDocsFut,
-      ]);
+  Future<void> _emitInitializedState({
+    required Emitter<InitState> emit,
+    required MdmsResponseModel appConfig,
+    required AppInitRepo appInitRepo,
+    required List<dynamic> results,
+  }) async {
+    final List<Mdms<AssetCountData>> assetCount =
+        (results[0] as List<Mdms<AssetCountData>>?) ?? <Mdms<AssetCountData>>[];
 
-      final List<Mdms<AssetCountData>> assetCount =
-          (results[0] as List<Mdms<AssetCountData>>?) ??
-              <Mdms<AssetCountData>>[];
+    final List<Mdms<AssetTypeData>> assetType =
+        (results[1] as List<Mdms<AssetTypeData>>?) ?? <Mdms<AssetTypeData>>[];
 
-      final List<Mdms<AssetTypeData>> assetType =
-          (results[1] as List<Mdms<AssetTypeData>>?) ?? <Mdms<AssetTypeData>>[];
+    final List<Mdms<SystemData>> system =
+        (results[2] as List<Mdms<SystemData>>?) ?? <Mdms<SystemData>>[];
 
-      final List<Mdms<SystemData>> system =
-          (results[2] as List<Mdms<SystemData>>?) ?? <Mdms<SystemData>>[];
+    final List<Mdms<WarrantyData>> warranty =
+        (results[3] as List<Mdms<WarrantyData>>?) ?? <Mdms<WarrantyData>>[];
 
-      final List<Mdms<WarrantyData>> warranty =
-          (results[3] as List<Mdms<WarrantyData>>?) ?? <Mdms<WarrantyData>>[];
+    final List<Mdms<BrandData>> brand =
+        (results[4] as List<Mdms<BrandData>>?) ?? <Mdms<BrandData>>[];
 
-      final List<Mdms<BrandData>> brand =
-          (results[4] as List<Mdms<BrandData>>?) ?? <Mdms<BrandData>>[];
+    final List<Mdms<SolutionDesignType>> solutionDesign =
+        (results[5] as List<Mdms<SolutionDesignType>>?) ??
+            <Mdms<SolutionDesignType>>[];
 
-      final List<Mdms<SolutionDesignType>> solutionDesign =
-          (results[5] as List<Mdms<SolutionDesignType>>?) ??
-              <Mdms<SolutionDesignType>>[];
+    final List<Mdms<SolutionDesignTypeBom>> solutionDesignBom =
+        (results[6] as List<Mdms<SolutionDesignTypeBom>>?) ??
+            <Mdms<SolutionDesignTypeBom>>[];
 
-      final List<Mdms<SolutionDesignTypeBom>> solutionDesignBom =
-          (results[6] as List<Mdms<SolutionDesignTypeBom>>?) ??
-              <Mdms<SolutionDesignTypeBom>>[];
+    final List<Map<String, dynamic>> formsDocs =
+        (results[7] as List<dynamic>).cast<Map<String, dynamic>>();
 
-      final List<dynamic> formsDocs = results[7] as List<dynamic>;
-
-      for (final doc in formsDocs) {
-        final transformed = transformSelcoFormMdmsDocToSchema(doc);
-        final uniqueId = doc['uniqueIdentifier']?.toString();
-        if (uniqueId != null && uniqueId.isNotEmpty) {
-          transformed['uniqueIdentifier'] = uniqueId;
-        }
-        await appInitRepo.upsertTransformedSchema(transformed);
+    for (final doc in formsDocs) {
+      final transformed = transformSelcoFormMdmsDocToSchema(doc);
+      final uniqueId = doc['uniqueIdentifier']?.toString();
+      if (uniqueId != null && uniqueId.isNotEmpty) {
+        transformed['uniqueIdentifier'] = uniqueId;
       }
-
-      emit(InitState.initialized(
-        appConfig: appConfig,
-        assetCount: assetCount,
-        assetType: assetType,
-        system: system,
-        warranty: warranty,
-        brand: brand,
-        solutionDesign: solutionDesign,
-        solutionDesignBom: solutionDesignBom,
-      ));
-    } catch (e) {
-      AppLogger.instance.info(e.toString());
-      emit(const InitState.error(
-          'Failed to load configuration data. Please try again.'));
+      await appInitRepo.upsertTransformedSchema(transformed);
     }
+
+    emit(InitState.initialized(
+      appConfig: appConfig,
+      assetCount: assetCount,
+      assetType: assetType,
+      system: system,
+      warranty: warranty,
+      brand: brand,
+      solutionDesign: solutionDesign,
+      solutionDesignBom: solutionDesignBom,
+    ));
   }
 }
 
