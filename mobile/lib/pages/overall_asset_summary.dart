@@ -28,6 +28,7 @@ import '../repositories/activity_facility_workflow_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/sync_popup_guard.dart';
 import '../utils/utils.dart';
 import '../widgets/button/bom_buttons.dart';
 import '../widgets/button/footer_button.dart';
@@ -311,6 +312,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                           );
 
                           final router = context.router.root;
+                          SyncPopupGuard.suppressNextHomePopup();
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (!mounted) return;
                             if (router.canPop()) {
