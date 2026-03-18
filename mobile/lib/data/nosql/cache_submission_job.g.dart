@@ -63,18 +63,28 @@ const CacheSubmissionJobSchema = CollectionSchema(
       name: r'stageLabel',
       type: IsarType.string,
     ),
-    r'status': PropertySchema(
+    r'stageProgressCurrent': PropertySchema(
       id: 9,
+      name: r'stageProgressCurrent',
+      type: IsarType.long,
+    ),
+    r'stageProgressTotal': PropertySchema(
+      id: 10,
+      name: r'stageProgressTotal',
+      type: IsarType.long,
+    ),
+    r'status': PropertySchema(
+      id: 11,
       name: r'status',
       type: IsarType.string,
     ),
     r'totalSteps': PropertySchema(
-      id: 10,
+      id: 12,
       name: r'totalSteps',
       type: IsarType.long,
     ),
     r'updatedAt': PropertySchema(
-      id: 11,
+      id: 13,
       name: r'updatedAt',
       type: IsarType.dateTime,
     )
@@ -181,9 +191,11 @@ void _cacheSubmissionJobSerialize(
   writer.writeLong(offsets[6], object.retryCount);
   writer.writeString(offsets[7], object.stageKey);
   writer.writeString(offsets[8], object.stageLabel);
-  writer.writeString(offsets[9], object.status);
-  writer.writeLong(offsets[10], object.totalSteps);
-  writer.writeDateTime(offsets[11], object.updatedAt);
+  writer.writeLong(offsets[9], object.stageProgressCurrent);
+  writer.writeLong(offsets[10], object.stageProgressTotal);
+  writer.writeString(offsets[11], object.status);
+  writer.writeLong(offsets[12], object.totalSteps);
+  writer.writeDateTime(offsets[13], object.updatedAt);
 }
 
 CacheSubmissionJob _cacheSubmissionJobDeserialize(
@@ -202,11 +214,13 @@ CacheSubmissionJob _cacheSubmissionJobDeserialize(
     retryCount: reader.readLongOrNull(offsets[6]) ?? 0,
     stageKey: reader.readString(offsets[7]),
     stageLabel: reader.readString(offsets[8]),
-    status: reader.readString(offsets[9]),
-    totalSteps: reader.readLongOrNull(offsets[10]) ?? 1,
+    stageProgressCurrent: reader.readLongOrNull(offsets[9]) ?? 0,
+    stageProgressTotal: reader.readLongOrNull(offsets[10]) ?? 0,
+    status: reader.readString(offsets[11]),
+    totalSteps: reader.readLongOrNull(offsets[12]) ?? 1,
   );
   object.id = id;
-  object.updatedAt = reader.readDateTime(offsets[11]);
+  object.updatedAt = reader.readDateTime(offsets[13]);
   return object;
 }
 
@@ -236,10 +250,14 @@ P _cacheSubmissionJobDeserializeProp<P>(
     case 8:
       return (reader.readString(offset)) as P;
     case 9:
-      return (reader.readString(offset)) as P;
+      return (reader.readLongOrNull(offset) ?? 0) as P;
     case 10:
-      return (reader.readLongOrNull(offset) ?? 1) as P;
+      return (reader.readLongOrNull(offset) ?? 0) as P;
     case 11:
+      return (reader.readString(offset)) as P;
+    case 12:
+      return (reader.readLongOrNull(offset) ?? 1) as P;
+    case 13:
       return (reader.readDateTime(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -1517,6 +1535,118 @@ extension CacheSubmissionJobQueryFilter
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageProgressCurrentEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'stageProgressCurrent',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageProgressCurrentGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'stageProgressCurrent',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageProgressCurrentLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'stageProgressCurrent',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageProgressCurrentBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'stageProgressCurrent',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageProgressTotalEqualTo(int value) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'stageProgressTotal',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageProgressTotalGreaterThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'stageProgressTotal',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageProgressTotalLessThan(
+    int value, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'stageProgressTotal',
+        value: value,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
+      stageProgressTotalBetween(
+    int lower,
+    int upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'stageProgressTotal',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterFilterCondition>
       statusEqualTo(
     String value, {
     bool caseSensitive = true,
@@ -1900,6 +2030,34 @@ extension CacheSubmissionJobQuerySortBy
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByStageProgressCurrent() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageProgressCurrent', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByStageProgressCurrentDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageProgressCurrent', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByStageProgressTotal() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageProgressTotal', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      sortByStageProgressTotalDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageProgressTotal', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
       sortByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
@@ -2085,6 +2243,34 @@ extension CacheSubmissionJobQuerySortThenBy
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByStageProgressCurrent() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageProgressCurrent', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByStageProgressCurrentDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageProgressCurrent', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByStageProgressTotal() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageProgressTotal', Sort.asc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
+      thenByStageProgressTotalDesc() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addSortBy(r'stageProgressTotal', Sort.desc);
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QAfterSortBy>
       thenByStatus() {
     return QueryBuilder.apply(this, (query) {
       return query.addSortBy(r'status', Sort.asc);
@@ -2195,6 +2381,20 @@ extension CacheSubmissionJobQueryWhereDistinct
   }
 
   QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
+      distinctByStageProgressCurrent() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'stageProgressCurrent');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
+      distinctByStageProgressTotal() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addDistinctBy(r'stageProgressTotal');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, CacheSubmissionJob, QDistinct>
       distinctByStatus({bool caseSensitive = true}) {
     return QueryBuilder.apply(this, (query) {
       return query.addDistinctBy(r'status', caseSensitive: caseSensitive);
@@ -2283,6 +2483,20 @@ extension CacheSubmissionJobQueryProperty
       stageLabelProperty() {
     return QueryBuilder.apply(this, (query) {
       return query.addPropertyName(r'stageLabel');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, int, QQueryOperations>
+      stageProgressCurrentProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'stageProgressCurrent');
+    });
+  }
+
+  QueryBuilder<CacheSubmissionJob, int, QQueryOperations>
+      stageProgressTotalProperty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addPropertyName(r'stageProgressTotal');
     });
   }
 
