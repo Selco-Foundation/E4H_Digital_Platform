@@ -331,7 +331,7 @@ class BomRepository {
         isUpdate ? 'activity/v1/bom/_update' : 'activity/v1/bom/_create';
     final response = await _dio.post(path, data: payload);
     final returnedId = _extractBomId(response.data);
-    final finalId = isUpdate ? (existingId ?? '') : ((returnedId ?? '').trim());
+    final finalId = isUpdate ? existingId : (returnedId ?? '').trim();
 
     await isar.writeTxn(() async {
       for (final d in allDocs) {
@@ -387,7 +387,7 @@ class BomRepository {
   }) async {
     final tenantId = envConfigs.variables.tenantId;
     final path =
-        "/activity/v1/bom/_search?tenantId=${tenantId}&offset=$offset&limit=$limit";
+        "/activity/v1/bom/_search?tenantId=$tenantId&offset=$offset&limit=$limit";
 
     Response response;
     final body = {
@@ -618,21 +618,41 @@ class BomRepository {
     }
   }
 
-  Future<Map<String, dynamic>> getInitialFormValues({
+  Future<bool> hasLocalBomForSchema({
     required Isar isar,
     required String activityFacilityId,
-    required String userType,
+    required String schemaKey,
   }) async {
-    final backendOrLocal = await getProjectBomKV(
+    final rec = await getLocal(
       isar: isar,
       activityFacilityId: activityFacilityId,
-      userType: userType,
+      schemaKey: schemaKey,
     );
+    return rec != null;
+  }
 
-    if (backendOrLocal != null && backendOrLocal.isNotEmpty) {
-      return Map<String, dynamic>.from(backendOrLocal);
-    }
+  Future<bool> _hasAnyLocalBomDocs({
+    required Isar isar,
+    required String activityFacilityId,
+  }) async {
+    final docs = await getAllForProject(isar, activityFacilityId);
+    return docs.isNotEmpty;
+  }
 
+  Future<bool> _hasAnyServerBackedBomDoc({
+    required Isar isar,
+    required String activityFacilityId,
+  }) async {
+    final docs = await getAllForProject(isar, activityFacilityId);
+    return docs.any(
+      (d) => (d.serverBomId ?? '').trim().isNotEmpty,
+    );
+  }
+
+  Future<Map<String, dynamic>> _getModelBomValues({
+    required Isar isar,
+    required String activityFacilityId,
+  }) async {
     Map<String, dynamic> modelBom = <String, dynamic>{};
     try {
       final row = await isar.cacheActivityFacilityWorkflows
@@ -646,6 +666,72 @@ class BomRepository {
     } catch (_) {}
 
     return modelBom;
+  }
+
+  Future<Map<String, dynamic>> getInitialFormValuesForSchema({
+    required Isar isar,
+    required String activityFacilityId,
+    required String userType,
+    required String schemaKey,
+  }) async {
+    final globalKv = await getProjectBomKV(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
+
+    if (globalKv != null && globalKv.isNotEmpty) {
+      final hasLocalForSchema = await hasLocalBomForSchema(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        schemaKey: schemaKey,
+      );
+
+      if (hasLocalForSchema) {
+        return Map<String, dynamic>.from(globalKv);
+      }
+
+      final hasServerBackedBom = await _hasAnyServerBackedBomDoc(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+      );
+      if (hasServerBackedBom) {
+        return Map<String, dynamic>.from(globalKv);
+      }
+
+      final hasAnyLocalDocs = await _hasAnyLocalBomDocs(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+      );
+      if (!hasAnyLocalDocs) {
+        return Map<String, dynamic>.from(globalKv);
+      }
+    }
+
+    return _getModelBomValues(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+    );
+  }
+
+  Future<Map<String, dynamic>> getInitialFormValues({
+    required Isar isar,
+    required String activityFacilityId,
+    required String userType,
+  }) async {
+    final backendOrLocal = await getProjectBomKV(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
+    if (backendOrLocal != null && backendOrLocal.isNotEmpty) {
+      return Map<String, dynamic>.from(backendOrLocal);
+    }
+
+    return _getModelBomValues(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+    );
   }
 
   Stream<void> watchBomForSchema({

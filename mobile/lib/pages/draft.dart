@@ -33,6 +33,15 @@ class _DraftPageState extends State<DraftPage> {
   int _visibleCount = _pageSize;
   bool _isLoadingMore = false;
 
+  List<String> _draftStatusesForUserType() {
+    return userType == USER_TYPES.FIELD_STAFF.name
+        ? [WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name]
+        : [
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.SUBMITTED_BY_SUPERVISOR.name,
+            WORKFLOW_STATUS_FIELD_SUPERVISOR.PENDING_APPROVAL_FLAGGED_FOR_QC.name,
+          ];
+  }
+
   @override
   void initState() {
     super.initState();
@@ -43,14 +52,7 @@ class _DraftPageState extends State<DraftPage> {
           );
       context.read<ActivityFacilityBloc>().add(
             ActivityFacilityEvent.loadUnSubmitted(
-              userType == USER_TYPES.FIELD_STAFF.name
-                  ? [WORKFLOW_STATUS_FIELD_STAFF.SUBMITTED_BY_FIELD_STAFF.name]
-                  : [
-                      WORKFLOW_STATUS_FIELD_SUPERVISOR
-                          .SUBMITTED_BY_SUPERVISOR.name,
-                      WORKFLOW_STATUS_FIELD_SUPERVISOR
-                          .PENDING_APPROVAL_FLAGGED_FOR_QC.name
-                    ],
+              _draftStatusesForUserType(),
               userType,
             ),
           );
@@ -117,13 +119,7 @@ class _DraftPageState extends State<DraftPage> {
         );
         context.read<ActivityFacilityBloc>().add(
               ActivityFacilityEvent.loadUnSubmitted(
-                [
-                  userType == USER_TYPES.FIELD_STAFF.name
-                      ? WORKFLOW_STATUS_FIELD_STAFF
-                          .SUBMITTED_BY_FIELD_STAFF.name
-                      : WORKFLOW_STATUS_FIELD_SUPERVISOR
-                          .SUBMITTED_BY_SUPERVISOR.name,
-                ],
+                _draftStatusesForUserType(),
                 userType,
               ),
             );

@@ -81,6 +81,12 @@ class AssetSubmissionBloc
     Emitter<AssetSubmissionState> emit,
   ) async {
     add(AssetSubmissionEvent.watch(event.activityFacilityId));
+    if (!event.isRetry) {
+      await _progressRepo.clearOperationCheckpoints(
+        activityFacilityId: event.activityFacilityId,
+        operationType: OperationTypes.submit,
+      );
+    }
     await _progressRepo.upsertJob(
       activityFacilityId: event.activityFacilityId,
       operationType: OperationTypes.submit,
@@ -179,6 +185,10 @@ class AssetSubmissionBloc
       final pid = entry.activityFacility.id;
       final facilityId = entry.activityFacility.facility?.facilityId ?? '';
 
+      await _progressRepo.clearOperationCheckpoints(
+        activityFacilityId: pid,
+        operationType: OperationTypes.submit,
+      );
       await _progressRepo.upsertJob(
         activityFacilityId: pid,
         operationType: OperationTypes.submit,
