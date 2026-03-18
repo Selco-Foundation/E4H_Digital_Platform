@@ -88,6 +88,13 @@ public class RequestSearchCriteria {
     @JsonProperty("slaDeltaMinLimit")
     private Long slaDeltaMinLimit;
 
+    /**
+     * When set, only incidents where (currentTime - COALESCE(filedDate, createdTime)) >= this value (ms) are returned.
+     * Used e.g. for theft notification threshold.
+     */
+    @JsonProperty("filedDateThresholdMs")
+    private Long filedDateThresholdMs;
+
     @JsonProperty("limit")
     private Integer limit;
 
