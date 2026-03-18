@@ -24,12 +24,7 @@ const String mdmsV2Url = "egov-mdms-service/v2/_search";
 class AppInitRepo {
   Future<MdmsResponseModel> searchAppConfiguration() async {
     final client = Dio();
-
     final SecureStore storage = SecureStore();
-    String? localAppConfig = await storage.getAppConfig();
-    if (localAppConfig != null) {
-      return MdmsResponseModel.fromJson(json.decode(localAppConfig));
-    }
 
     try {
       final response = await client.get(envConfig.variables.mobileAppGlobalUrl);
@@ -40,8 +35,17 @@ class AppInitRepo {
       storage.setAppConfig(responseBody);
 
       return responseBody;
-    } catch (err) {
-      rethrow;
+    } catch (remoteError) {
+      final localAppConfig = await storage.getAppConfig();
+      if (localAppConfig == null) {
+        rethrow;
+      }
+
+      try {
+        return MdmsResponseModel.fromJson(json.decode(localAppConfig));
+      } catch (_) {
+        rethrow;
+      }
     }
   }
 
