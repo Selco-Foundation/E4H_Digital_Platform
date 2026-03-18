@@ -62,22 +62,9 @@ public class FacilityServiceClient {
                         String status = String.valueOf(facility.get("facility_status"));
 
                         if ("UNINSTALLED".equalsIgnoreCase(status)) {
-                            log.info("Facility {} is UNINSTALLED. Skipping ticket creation.", hfrId);
+                            log.info("Facility {} is UNINSTALLED. Skipping further processing.", hfrId);
                             return null;
                         }
-                    }
-
-                    // Skip facilities that are marked as RMS inactive (open RMS/Theft incidents already present)
-                    Object rmsInactiveObj = facility.get("rms_inactive");
-                    boolean rmsInactive = false;
-                    if (rmsInactiveObj instanceof Boolean) {
-                        rmsInactive = (Boolean) rmsInactiveObj;
-                    } else if (rmsInactiveObj != null) {
-                        rmsInactive = Boolean.parseBoolean(String.valueOf(rmsInactiveObj));
-                    }
-                    if (rmsInactive) {
-                        log.info("Facility {} is marked as rms_inactive=true. Skipping ticket creation.", hfrId);
-                        return null;
                     }
 
                     FacilityDetails details = mapToFacilityDetails(facility);
@@ -120,11 +107,6 @@ public class FacilityServiceClient {
 //                    .phcSubType((String) facility.get("phcSubType"))
                     .tenantId((String) facility.get("tenant_id"))
                     .boundaryCode((String) facility.get("boundaryCode"))
-                    .rmsInactive(facility.get("rms_inactive") instanceof Boolean
-                            ? (Boolean) facility.get("rms_inactive")
-                            : facility.get("rms_inactive") != null
-                                ? Boolean.parseBoolean(String.valueOf(facility.get("rms_inactive")))
-                                : null)
                     .build();
         } catch (Exception e) {
             log.error("Error mapping facility details", e);

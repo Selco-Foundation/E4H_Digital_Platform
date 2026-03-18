@@ -42,7 +42,6 @@ public class FacilityRowMapper {
         facility.setIsActive(rs.getBoolean("is_active"));
         facility.setFacilityRegion(rs.getString("facility_region"));
         facility.setIsOnmReady(rs.getBoolean("is_onm_ready"));
-        facility.setRmsInactive(rs.getObject("rms_inactive") != null ? rs.getBoolean("rms_inactive") : null);
 
         String addressId = rs.getString("addressid");
 

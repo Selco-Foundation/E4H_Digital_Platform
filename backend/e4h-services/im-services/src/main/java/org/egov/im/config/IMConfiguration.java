@@ -236,12 +236,6 @@ public class IMConfiguration {
     @Value("${egov.complaints.category}")
     private String complaintTypes;
 
-    @Value("${im.save.rms.inactive.topic}")
-    private String saveRmsInactiveIncident;
-
-    @Value("${im.delete.rms.inactive.topic}")
-    private String deleteRmsInactiveIncident;
-
 
     // central-instance configs
 
