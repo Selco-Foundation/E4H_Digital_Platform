@@ -165,10 +165,11 @@ public class WorkflowService {
         Collections.reverse(processInstances);
         log.trace("Calculating business hours elapsed and total SLA");
         BusinessHoursUtil util = new BusinessHoursUtil(businessHourList);
+        long businessHoursElapsed = util.calculateBusinessDurationForAllStates(processInstances);
         long definedTotalSla = slaService.computeTotalSla(applicationStatus, this.getStates(), processInstances);
         long totalSlaRemaining = slaService.computeTotalSlaRemaining(this.getStates(), processInstances, businessHourList,processInstance);
-        log.debug("SLA calculation completed: definedTotalSla={}, totalSlaRemaining={}",
-                definedTotalSla, totalSlaRemaining);
+        log.debug("SLA calculation completed: definedTotalSla={}, businessHoursElapsed={}, totalSlaRemaining={}",
+                definedTotalSla, businessHoursElapsed, totalSlaRemaining);
 
         wrapper.getIndexView().setDefinedTotalSla(definedTotalSla);
         processInstance.getState().setTotalSlaRemaining(totalSlaRemaining);
@@ -193,6 +194,9 @@ public class WorkflowService {
             return 0L;
         }));
 
+        Long firstResolvedTs = null;
+        Long firstDeclinedTs = null;
+
         for (ProcessInstance pi : ordered) {
             State state = pi.getState();
             AuditDetails auditDetails = pi.getAuditDetails();
@@ -207,6 +211,19 @@ public class WorkflowService {
             if (status == null) {
                 continue;
             }
+
+            if (firstResolvedTs == null && "RESOLVED".equalsIgnoreCase(status)) {
+                firstResolvedTs = ts;
+            }
+
+            // Treat REJECTED as decline; extend if you introduce explicit DECLINE statuses
+            if (firstDeclinedTs == null && "REJECTED".equalsIgnoreCase(status)) {
+                firstDeclinedTs = ts;
+            }
+
+            if (firstResolvedTs != null && firstDeclinedTs != null) {
+                break;
+            }
         }
 
         IndexView indexView = wrapper.getIndexView();
@@ -214,6 +231,9 @@ public class WorkflowService {
             indexView = new IndexView();
             wrapper.setIndexView(indexView);
         }
+
+        indexView.setResolvedTimestamp(firstResolvedTs);
+        indexView.setDeclinedTimestamp(firstDeclinedTs);
     }
 
     /**
@@ -315,15 +335,12 @@ public class WorkflowService {
         log.debug("Creating process instance for incident: {} with action: {}", incident.getIncidentId(), action);
         if (action.equalsIgnoreCase("RESOLVE") || action.equalsIgnoreCase("REJECT")) {
             reassignWorkflow(workflow, request, "COMPLAINANT");
-        }
-//        else if (action.equalsIgnoreCase("OUT_OF_WARRANTY")) {
-//            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
-//        }
-//        else if (request.getIncident()!=null && request.getIncident().getApplicationStatus()!= null &&
-//                request.getIncident().getApplicationStatus().trim().equals("PENDING_REVISION") && action.equalsIgnoreCase("SUBMIT")) {
-//            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
-//        }
-        else if (request.getIncident()!=null && request.getIncident().getApplicationStatus()!= null &&
+        } else if (action.equalsIgnoreCase("OUT_OF_WARRANTY")) {
+            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
+        } else if (request.getIncident()!=null && request.getIncident().getApplicationStatus()!= null &&
+                request.getIncident().getApplicationStatus().trim().equals("PENDING_REVISION") && action.equalsIgnoreCase("SUBMIT")) {
+            reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_2");
+        } else if (request.getIncident()!=null && request.getIncident().getApplicationStatus()!= null &&
                 request.getIncident().getApplicationStatus().trim().equals("PENDINGRESOLUTION") && action.equalsIgnoreCase("MARK_OUT_OF_SCOPE")) {
             reassignWorkflow(workflow, request, "COMPLAINT_FACILITATOR_1");
         }
