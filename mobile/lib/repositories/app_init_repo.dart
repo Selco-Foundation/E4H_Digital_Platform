@@ -47,7 +47,8 @@ class AppInitRepo {
 
   Future<List<Mdms<AssetCountData>>> searchAssetCount(
       MdmsRequestModel mdmsRequestBody,
-      {bool useCacheRead = false}) async {
+      {bool useCacheRead = false,
+      bool cacheOnly = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<AssetCountData>(
       request: mdmsRequestBody,
@@ -55,12 +56,14 @@ class AppInitRepo {
       writeCache: (list) => storage.setAssetCount(list),
       dataFromJson: AssetCountData.fromJson,
       useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
     );
   }
 
   Future<List<Mdms<AssetTypeData>>> searchAssetType(
       MdmsRequestModel mdmsRequestBody,
-      {bool useCacheRead = false}) async {
+      {bool useCacheRead = false,
+      bool cacheOnly = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<AssetTypeData>(
       request: mdmsRequestBody,
@@ -68,11 +71,12 @@ class AppInitRepo {
       writeCache: (list) => storage.setAssetType(list),
       dataFromJson: AssetTypeData.fromJson,
       useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
     );
   }
 
   Future<List<Mdms<SystemData>>> searchSystem(MdmsRequestModel mdmsRequestBody,
-      {bool useCacheRead = false}) async {
+      {bool useCacheRead = false, bool cacheOnly = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<SystemData>(
       request: mdmsRequestBody,
@@ -80,12 +84,14 @@ class AppInitRepo {
       writeCache: (list) => storage.setSystem(list),
       dataFromJson: SystemData.fromJson,
       useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
     );
   }
 
   Future<List<Mdms<WarrantyData>>> searchWarranty(
       MdmsRequestModel mdmsRequestBody,
-      {bool useCacheRead = false}) async {
+      {bool useCacheRead = false,
+      bool cacheOnly = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<WarrantyData>(
       request: mdmsRequestBody,
@@ -93,11 +99,12 @@ class AppInitRepo {
       writeCache: (list) => storage.setWarranty(list),
       dataFromJson: WarrantyData.fromJson,
       useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
     );
   }
 
   Future<List<Mdms<BrandData>>> searchBrand(MdmsRequestModel mdmsRequestBody,
-      {bool useCacheRead = false}) async {
+      {bool useCacheRead = false, bool cacheOnly = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<BrandData>(
       request: mdmsRequestBody,
@@ -105,12 +112,14 @@ class AppInitRepo {
       writeCache: (list) => storage.setBrand(list),
       dataFromJson: BrandData.fromJson,
       useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
     );
   }
 
   Future<List<Mdms<SolutionDesignType>>> searchSolutionDesign(
       MdmsRequestModel mdmsRequestBody,
-      {bool useCacheRead = false}) async {
+      {bool useCacheRead = false,
+      bool cacheOnly = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<SolutionDesignType>(
       request: mdmsRequestBody,
@@ -118,12 +127,14 @@ class AppInitRepo {
       writeCache: (list) => storage.setSolutionDesignType(list),
       dataFromJson: SolutionDesignType.fromJson,
       useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
     );
   }
 
   Future<List<Mdms<SolutionDesignTypeBom>>> searchSolutionDesignTypeBom(
       MdmsRequestModel mdmsRequestBody,
-      {bool useCacheRead = false}) async {
+      {bool useCacheRead = false,
+      bool cacheOnly = false}) async {
     final storage = SecureStore();
     return _searchCachedMdms<SolutionDesignTypeBom>(
       request: mdmsRequestBody,
@@ -131,30 +142,35 @@ class AppInitRepo {
       writeCache: (list) => storage.setSolutionDesignTypeBom(list),
       dataFromJson: SolutionDesignTypeBom.fromJson,
       useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
     );
   }
 
   Future<List<Map<String, dynamic>>> searchFormConfigsRaw(
       MdmsRequestModel mdmsRequestBody,
-      {bool useCacheRead = false}) async {
+      {bool useCacheRead = false,
+      bool cacheOnly = false}) async {
     final storage = SecureStore();
     return _searchCachedRawDocs(
       request: mdmsRequestBody,
       readCache: storage.getFormConfigsRaw,
       writeCache: (list) => storage.setFormConfigsRaw(list),
       useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
     );
   }
 
   Future<List<Map<String, dynamic>>> searchAMCFormConfigsRaw(
       MdmsRequestModel mdmsRequestBody,
-      {bool useCacheRead = false}) async {
+      {bool useCacheRead = false,
+      bool cacheOnly = false}) async {
     final storage = SecureStore();
     return _searchCachedRawDocs(
       request: mdmsRequestBody,
       readCache: storage.getAMCFormConfigsRaw,
       writeCache: (list) => storage.setAMCFormConfigsRaw(list),
       useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
     );
   }
 
@@ -196,23 +212,28 @@ class AppInitRepo {
     required Future<void> Function(List<Mdms<T>>) writeCache,
     required T Function(Map<String, dynamic>) dataFromJson,
     required bool useCacheRead,
+    required bool cacheOnly,
   }) async {
-    if (useCacheRead) {
+    if (useCacheRead || cacheOnly) {
       final cachedRaw = await readCache();
-      if (cachedRaw != null) {
-        try {
-          final cachedList = _readCachedMdmsList(cachedRaw);
-          if (cachedList != null) {
-            return cachedList
-                .map((item) => Mdms<T>.fromJson(
-                      item as Map<String, dynamic>,
-                      (json) => dataFromJson(json as Map<String, dynamic>),
-                    ))
-                .toList();
-          }
-        } catch (_) {
-          // Ignore malformed cache and continue with network fetch.
+      try {
+        final cachedList = _readCachedMdmsList(cachedRaw);
+        if (cachedList != null && cachedList.isNotEmpty) {
+          return cachedList
+              .map((item) => Mdms<T>.fromJson(
+                    item as Map<String, dynamic>,
+                    (json) => dataFromJson(json as Map<String, dynamic>),
+                  ))
+              .toList();
         }
+      } catch (_) {
+        if (cacheOnly) {
+          throw Exception('Cached MDMS data is invalid');
+        }
+      }
+
+      if (cacheOnly) {
+        throw Exception('Cached MDMS data is missing');
       }
     }
 
@@ -233,21 +254,26 @@ class AppInitRepo {
     required Future<String?> Function() readCache,
     required Future<void> Function(List<Map<String, dynamic>>) writeCache,
     required bool useCacheRead,
+    required bool cacheOnly,
   }) async {
-    if (useCacheRead) {
+    if (useCacheRead || cacheOnly) {
       final cachedRaw = await readCache();
-      if (cachedRaw != null) {
-        try {
-          final cachedList = _readCachedMdmsList(cachedRaw);
-          if (cachedList != null) {
-            return cachedList
-                .whereType<Map>()
-                .map((e) => Map<String, dynamic>.from(e))
-                .toList();
-          }
-        } catch (_) {
-          // Ignore malformed cache and continue with network fetch.
+      try {
+        final cachedList = _readCachedMdmsList(cachedRaw);
+        if (cachedList != null && cachedList.isNotEmpty) {
+          return cachedList
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
         }
+      } catch (_) {
+        if (cacheOnly) {
+          throw Exception('Cached MDMS form config is invalid');
+        }
+      }
+
+      if (cacheOnly) {
+        throw Exception('Cached MDMS form config is missing');
       }
     }
 
