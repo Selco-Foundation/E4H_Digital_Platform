@@ -270,6 +270,7 @@ public class IMService {
         Object mdmsData = mdmsUtils.mDMSCall(request);
         log.trace("Validating update request");
         validator.validateUpdate(request, mdmsData);
+        log.trace("Enriching update request");
         if (request.getIncident().getWarrantyStatus() == null) {
             request.getIncident().setWarrantyStatus(WarrantyStatus.WITHIN_WARRANTY);
         }
