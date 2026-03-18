@@ -148,9 +148,16 @@ OperationStage stageForKey(String operationType, String stageKey) {
 int progressPercent({
   required int completedSteps,
   required int totalSteps,
+  int stageProgressCurrent = 0,
+  int stageProgressTotal = 0,
 }) {
   if (totalSteps <= 0) return 0;
-  final raw = ((completedSteps / totalSteps) * 100).round();
+  var effectiveCompleted = completedSteps.toDouble();
+  if (stageProgressTotal > 0) {
+    final current = stageProgressCurrent.clamp(0, stageProgressTotal);
+    effectiveCompleted += current / stageProgressTotal;
+  }
+  final raw = ((effectiveCompleted / totalSteps) * 100).round();
   if (raw < 0) return 0;
   if (raw > 100) return 100;
   return raw;

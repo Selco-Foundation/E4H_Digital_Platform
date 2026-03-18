@@ -842,6 +842,8 @@ Future<void> _writeOperationStage({
   required String status,
   required String stageKey,
   required int completedSteps,
+  int stageProgressCurrent = 0,
+  int stageProgressTotal = 0,
   String? error,
   bool incrementRetry = false,
   ServiceInstance? service,
@@ -855,6 +857,8 @@ Future<void> _writeOperationStage({
     stageKey: stageKey,
     completedSteps: completedSteps,
     totalSteps: stages.length,
+    stageProgressCurrent: stageProgressCurrent,
+    stageProgressTotal: stageProgressTotal,
     errorMessage: error,
     incrementRetry: incrementRetry,
   );
@@ -880,9 +884,13 @@ Future<void> _writeOperationStage({
     'stageLabel': label,
     'completedSteps': completedSteps,
     'totalSteps': stages.length,
+    'stageProgressCurrent': stageProgressCurrent,
+    'stageProgressTotal': stageProgressTotal,
     'progressPercent': progressPercent(
       completedSteps: completedSteps,
       totalSteps: stages.length,
+      stageProgressCurrent: stageProgressCurrent,
+      stageProgressTotal: stageProgressTotal,
     ),
     if (error != null) 'message': error,
   });
@@ -958,6 +966,61 @@ Future<List<R>> _runBatches<T, R>({
     out.addAll(result);
   }
   return out;
+}
+
+Future<void> _runUploadStage<T>({
+  required Isar isar,
+  required String activityFacilityId,
+  required String stageKey,
+  required int completedSteps,
+  required List<T> items,
+  required int totalItems,
+  required ServiceInstance service,
+  required Future<void> Function(T item) run,
+  int initialStageProgressCurrent = 0,
+  int concurrency = 3,
+}) async {
+  var completedItems = initialStageProgressCurrent;
+
+  Future<void> markProgress() async {
+    completedItems += 1;
+    await _writeOperationStage(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      operationType: OperationTypes.submit,
+      status: OperationStatuses.running,
+      stageKey: stageKey,
+      completedSteps: completedSteps,
+      stageProgressCurrent: completedItems,
+      stageProgressTotal: totalItems,
+      service: service,
+    );
+  }
+
+  await _writeOperationStage(
+    isar: isar,
+    activityFacilityId: activityFacilityId,
+    operationType: OperationTypes.submit,
+    status: OperationStatuses.running,
+    stageKey: stageKey,
+    completedSteps: completedSteps,
+    stageProgressCurrent: initialStageProgressCurrent,
+    stageProgressTotal: totalItems,
+    service: service,
+  );
+
+  if (items.isEmpty) {
+    return;
+  }
+
+  await _runBatches<T, void>(
+    items: items,
+    concurrency: concurrency,
+    run: (item) async {
+      await run(item);
+      await markProgress();
+    },
+  );
 }
 
 bool _isInstallBomPdfNameOrPath(String value) {
@@ -1051,18 +1114,23 @@ Future<void> _performSubmissionForActivityFacility({
         .userTypeEqualTo(userType)
         .findAll();
 
-    await _writeOperationStage(
+    final workflowMediaItems =
+        workflowMedia.where((item) => item.filePath.isNotEmpty).toList();
+    final assetPhotoItems = assetsByType.values
+        .expand((items) => items)
+        .where((a) => a.photoPath.isNotEmpty)
+        .toList();
+    final totalAssetMediaUploads =
+        workflowMediaItems.length + assetPhotoItems.length;
+
+    await _runUploadStage<CacheMediaUpload>(
       isar: isar,
       activityFacilityId: activityFacilityId,
-      operationType: OperationTypes.submit,
-      status: OperationStatuses.running,
       stageKey: 'uploading_asset_media',
       completedSteps: 4,
+      items: workflowMediaItems,
+      totalItems: totalAssetMediaUploads,
       service: service,
-    );
-
-    await _runBatches<CacheMediaUpload, void>(
-      items: workflowMedia.where((item) => item.filePath.isNotEmpty).toList(),
       concurrency: 3,
       run: (media) async {
         final itemKey = media.id.toString();
@@ -1090,12 +1158,15 @@ Future<void> _performSubmissionForActivityFacility({
       },
     );
 
-    final assetPhotoItems = assetsByType.values
-        .expand((items) => items)
-        .where((a) => a.photoPath.isNotEmpty)
-        .toList();
-    await _runBatches<CacheAddNewAsset, void>(
+    await _runUploadStage<CacheAddNewAsset>(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      stageKey: 'uploading_asset_media',
+      completedSteps: 4,
       items: assetPhotoItems,
+      totalItems: totalAssetMediaUploads,
+      service: service,
+      initialStageProgressCurrent: workflowMediaItems.length,
       concurrency: 3,
       run: (asset) async {
         final itemKey = asset.id.toString();
@@ -1148,16 +1219,6 @@ Future<void> _performSubmissionForActivityFacility({
       );
     }
 
-    await _writeOperationStage(
-      isar: isar,
-      activityFacilityId: activityFacilityId,
-      operationType: OperationTypes.submit,
-      status: OperationStatuses.running,
-      stageKey: 'uploading_completion_reports',
-      completedSteps: 5,
-      service: service,
-    );
-
     final completionReports = await isar.cacheCompletionReports
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
@@ -1170,8 +1231,14 @@ Future<void> _performSubmissionForActivityFacility({
       return !_isInstallBomPdfNameOrPath(fileName);
     }).toList();
 
-    await _runBatches<CacheCompletionReport, void>(
+    await _runUploadStage<CacheCompletionReport>(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      stageKey: 'uploading_completion_reports',
+      completedSteps: 5,
       items: usableReports,
+      totalItems: usableReports.length,
+      service: service,
       concurrency: 3,
       run: (report) async {
         final itemKey = report.entryId;

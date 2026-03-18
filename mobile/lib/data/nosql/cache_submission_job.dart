@@ -22,6 +22,8 @@ class CacheSubmissionJob {
 
   late String stageLabel;
   int completedSteps = 0;
+  int stageProgressCurrent = 0;
+  int stageProgressTotal = 0;
   int totalSteps = 1;
   int progressPercent = 0;
   int retryCount = 0;
@@ -36,6 +38,8 @@ class CacheSubmissionJob {
     required this.stageKey,
     required this.stageLabel,
     this.completedSteps = 0,
+    this.stageProgressCurrent = 0,
+    this.stageProgressTotal = 0,
     this.totalSteps = 1,
     this.progressPercent = 0,
     this.retryCount = 0,

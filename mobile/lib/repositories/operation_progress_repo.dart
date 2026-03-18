@@ -43,6 +43,8 @@ class OperationProgressRepository {
     required String stageKey,
     required int completedSteps,
     required int totalSteps,
+    int stageProgressCurrent = 0,
+    int stageProgressTotal = 0,
     bool isBlocking = true,
     String? errorMessage,
     bool incrementRetry = false,
@@ -64,9 +66,13 @@ class OperationProgressRepository {
             stageLabel: label,
             completedSteps: completedSteps,
             totalSteps: totalSteps,
+            stageProgressCurrent: stageProgressCurrent,
+            stageProgressTotal: stageProgressTotal,
             progressPercent: progressPercent(
               completedSteps: completedSteps,
               totalSteps: totalSteps,
+              stageProgressCurrent: stageProgressCurrent,
+              stageProgressTotal: stageProgressTotal,
             ),
             isBlocking: isBlocking,
           );
@@ -77,10 +83,14 @@ class OperationProgressRepository {
         ..stageKey = stageKey
         ..stageLabel = label
         ..completedSteps = completedSteps
+        ..stageProgressCurrent = stageProgressCurrent
+        ..stageProgressTotal = stageProgressTotal
         ..totalSteps = totalSteps
         ..progressPercent = progressPercent(
           completedSteps: completedSteps,
           totalSteps: totalSteps,
+          stageProgressCurrent: stageProgressCurrent,
+          stageProgressTotal: stageProgressTotal,
         )
         ..isBlocking = isBlocking
         ..lastError = errorMessage
