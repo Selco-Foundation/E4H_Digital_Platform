@@ -1818,7 +1818,7 @@ async def update_incidents_data_from_excel(
                 df.at[index, 'error'] = 'Missing Tenant ID'
                 continue
 
-            incident_request_info = get_incident_data_update_request_info()
+            incident_request_info = get_incident_request_info()
 
             try:
                 search_response = incident_client.search_incident(
@@ -1839,7 +1839,7 @@ async def update_incidents_data_from_excel(
                     )
                 }
 
-                update_payload = create_incident_data_update_payload(search_response, update_data)
+                update_payload = create_update_payload(search_response, update_data)
                 update_response = incident_client.update_incident_data(update_payload)
 
                 process_update_incident_data_response(update_response, df, index)
