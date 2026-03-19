@@ -284,6 +284,7 @@ async def validate_facilities_excel_sheet(
 
         df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
+        df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
 
         # ----------------- Read Facility Column ----------------- #
         if 'Facility Id' not in df.columns:
@@ -450,6 +451,7 @@ async def upload_facilities_excel_sheet(
             dst.write(src.read())
 
         df = pd.read_excel(facility_file_path, sheet_name=facility_sheet_name)
+        df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
 
         if 'status' not in df.columns:
             df['status'] = ''
@@ -468,7 +470,7 @@ async def upload_facilities_excel_sheet(
         if facility_service_url and not df.empty:
             facility_client = FacilityServiceClient(facility_service_url)
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
-            for index, row in df[df['status'] != 'success'].iterrows():
+            for index, row in df[(df['status'] != 'success') & (df['status'] != 'failed')].iterrows():
                 try:
                     facility_data_payload = create_facility_payload(request_info, row, are_facilities_onm_ready, facility_schema)
                     response = facility_client.create_facility(facility_data_payload)
@@ -1949,6 +1951,7 @@ async def validate_facilities_excel_sheet(
 
         df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
+        df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
 
         # ----------------- Read Facility Column ----------------- #
         if 'Facility Id' not in df.columns:
@@ -2079,6 +2082,7 @@ async def validate_facilities_excel_sheet(
 
         df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
+        df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
 
         # ----------------- Read Facility Column ----------------- #
         if 'Facility Id' not in df.columns:
