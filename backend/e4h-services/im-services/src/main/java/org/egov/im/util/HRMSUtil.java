@@ -91,6 +91,10 @@ public class HRMSUtil {
             builder.append("&roles=");
             builder.append(role);
         }
+        if ("COMPLAINANT".equals(role)) {
+            builder.append("&searchOnlyInBoundary=");
+            builder.append(true);
+        }
         builder.append("&isActive=");
         builder.append(true);
 
