@@ -25,7 +25,7 @@ localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 
 class FacilityTemplateService:
 
-    def get_all_boundaries(self) -> List[Boundary]:
+    def get_all_boundaries(self, request_info: RequestInfo) -> List[Boundary]:
         url = f"{boundary_service_url}/boundary-service/boundary/getAllBoundaries"
         params = {
             "page": 0,
@@ -34,7 +34,22 @@ class FacilityTemplateService:
             "hierarchyType": "SELCO",
             "boundaryType": "Block"
         }
-        response = requests.get(url, params=params)
+        payload = {
+            "apiId": "org.egov.boundary",
+            "ver": "1.0",
+            "ts": "",
+            "action": "search",
+            "did": "",
+            "key": "",
+            "msgId": "",
+            "authToken": request_info.auth_token
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/plain, */*"
+        }
+        response = requests.get(url, params=params, headers=headers, json=payload)
         return convert_json_to_boundary(response.text)
 
 
