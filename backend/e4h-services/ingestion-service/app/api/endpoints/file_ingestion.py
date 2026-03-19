@@ -37,8 +37,9 @@ from app.utils.convertor import request_info_from_json, create_vendor_request, c
     get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, \
     get_user_creation_payload_supervisors, \
     get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
-    get_staff_search_payload, create_incident_data_update_payload, \
-    get_incident_data_update_request_info
+    get_staff_search_payload, create_update_payload, get_incident_request_info, \
+    resolve_boundary_codes_for_dataframe
+from app.utils.boundary_service_client import BoundaryServiceClient
 from app.utils.facility_service_client import FacilityServiceClient
 from app.utils.fieldplan_activity_service_client import FieldPlanActivityServiceClient
 from app.utils.fieldplan_service_client import FieldPlanServiceClient
@@ -65,6 +66,8 @@ facility_service_url = os.getenv("FACILITY_SERVICE_URL")
 hrms_service_url = os.getenv("HRMS_SERVICE_URL")
 im_services_url = os.getenv("IM_SERVICES_URL")
 amc_scheduler_service_url = os.getenv("AMC_SCHEDULER_SERVICE_URL")
+localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
+boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
 DEFAULT_AMC_ASSET_TYPES = ["INVERTER", "PANEL", "BATTERY"]
 ENVIRONMENT = os.getenv("ENVIRONMENT", "uat").lower()
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -292,6 +295,50 @@ async def validate_facilities_excel_sheet(
         if 'error' not in df.columns:
             df['error'] = ''
 
+        # Resolve boundary codes from State/District/Block via localization
+        df = resolve_boundary_codes_for_dataframe(
+            df, localization_service_url,
+            boundary_code_column='Boundary Code (Mandatory)',
+            logger=logger,
+        )
+
+        # ----------------- Verify resolved codes via Boundary Service ----------------- #
+        resolved_codes = df.loc[
+            df['Boundary Code (Mandatory)'].astype(str).str.strip() != '',
+            'Boundary Code (Mandatory)'
+        ].unique().tolist()
+
+        if resolved_codes and boundary_service_url:
+            boundary_client = BoundaryServiceClient(boundary_service_url)
+            existing_codes = set()
+            chunk_size = 50
+            for i in range(0, len(resolved_codes), chunk_size):
+                chunk = resolved_codes[i:i + chunk_size]
+                try:
+                    response_data = boundary_client.search_boundaries(
+                        request_info=request_info_obj,
+                        tenant_id="in",
+                        codes=chunk,
+                    )
+                    if response_data and "Boundary" in response_data:
+                        for b in response_data["Boundary"]:
+                            existing_codes.add(b["code"])
+                except Exception as e:
+                    logger.error(f"Error verifying boundary codes: {e}", exc_info=True)
+
+            missing_codes = set(resolved_codes) - existing_codes
+            if missing_codes:
+                logger.warning(f"Boundary codes not found in boundary service: {missing_codes}")
+                for index, row in df.iterrows():
+                    code = str(row.get('Boundary Code (Mandatory)', '') or '').strip()
+                    if code in missing_codes:
+                        state_val = str(row.get('State (Mandatory)', '') or '').strip()
+                        district_val = str(row.get('District (Mandatory)', '') or '').strip()
+                        block_val = str(row.get('Block (Mandatory)', '') or '').strip()
+                        df.at[index, 'Boundary Code (Mandatory)'] = ''
+                        df.at[index, 'status'] = 'FAILED'
+                        df.at[index, 'error'] = f"Boundary code for State '{state_val}' District '{district_val}' Block '{block_val}' not found"
+
         # ----------------- Run Validation ----------------- #
         validation_errors = facility_validation(
             df,
@@ -302,10 +349,17 @@ async def validate_facilities_excel_sheet(
             'data-ingestion.FacilityIngestionSchema'
         )
 
-        # Mark rows based on validation results
+        # Mark rows based on validation results, preserving earlier boundary errors
         error_count = 0
         for i, errs in enumerate(validation_errors):
-            if errs:
+            existing_status = str(df.at[i, 'status']).strip().upper() if pd.notna(df.at[i, 'status']) else ''
+            existing_error = str(df.at[i, 'error']).strip() if pd.notna(df.at[i, 'error']) else ''
+
+            if existing_status == 'FAILED':
+                if errs:
+                    df.at[i, 'error'] = existing_error + "; " + "; ".join(dict.fromkeys(errs))
+                error_count += 1
+            elif errs:
                 df.at[i, 'status'] = 'FAILED'
                 df.at[i, 'error'] = "; ".join(dict.fromkeys(errs))
                 error_count += 1
@@ -317,20 +371,13 @@ async def validate_facilities_excel_sheet(
         ws = wb[facility_sheet_name]
         header_values = [cell.value for cell in ws[1]]
 
-        # Add status/error columns if missing
-        for col_name in ["status", "error"]:
+        # Add columns in same order as DataFrame: status, error, Boundary Code
+        for col_name in ["status", "error", "Boundary Code (Mandatory)"]:
             if col_name not in header_values:
                 new_col_idx = len(header_values) + 1
                 cell = ws.cell(row=1, column=new_col_idx, value=col_name)
                 cell.font = Font(bold=True)
                 header_values.append(col_name)
-
-                # lock header cell
-                # cell.protection = Protection(locked=True)
-
-                # lock all data cells in this new column
-                # for r_idx in range(2, ws.max_row + 1):
-                #     ws.cell(row=r_idx, column=new_col_idx).protection = Protection(locked=True)
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
@@ -408,6 +455,15 @@ async def upload_facilities_excel_sheet(
             df['status'] = ''
         if 'error' not in df.columns:
             df['error'] = ''
+        df['status'] = df['status'].fillna('').astype(str)
+        df['error'] = df['error'].fillna('').astype(str)
+
+        # Resolve boundary codes from State/District/Block via localization
+        df = resolve_boundary_codes_for_dataframe(
+            df, localization_service_url,
+            boundary_code_column='Boundary Code (Mandatory)',
+            logger=logger,
+        )
 
         if facility_service_url and not df.empty:
             facility_client = FacilityServiceClient(facility_service_url)

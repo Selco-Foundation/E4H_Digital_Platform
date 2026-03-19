@@ -404,7 +404,7 @@ async def get_facility_ingestion_template(
         output_filename = f"facility_ingestion_template_{timestamp}.xlsx"
         output_file_path = create_temp_file(suffix=".xlsx")
         try:
-            facility_schema = mdms_client.get_column_definitions_with_metadata(request_info, 'data-ingestion.FacilityIngestionSchema')
+            facility_schema = mdms_client.get_column_definitions_with_metadata(request_info, 'data-ingestion.FacilityIngestionSchemaWithoutBoundaryCode')
             boundary_data = facility_service.get_all_boundaries(request_info)
             vendor_data = facility_service.get_all_vendor_codes(request_info)
         except Exception as e:
