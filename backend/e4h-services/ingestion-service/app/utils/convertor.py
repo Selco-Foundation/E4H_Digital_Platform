@@ -682,7 +682,7 @@ def check_role_mismatch_for_user_type(existing_user: Dict[str, Any], user_type: 
         "mismatch_details": mismatch_details.strip()
     }
 
-def get_incident_data_update_request_info():
+def get_incident_request_info():
     return {
         "apiId": "Rainmaker",
         "authToken": "222d0cf6-07c2-4d90-8a71-0292c200ae74",
@@ -756,7 +756,7 @@ def get_incident_data_update_request_info():
     }
 
 
-def create_incident_data_update_payload(search_response: dict, update_data: dict) -> dict:
+def create_update_payload(search_response: dict, update_data: dict) -> dict:
     wrappers = search_response.get("IncidentWrappers") or []
     if not wrappers:
         raise ValueError("Incident not found in search response (empty IncidentWrappers).")
@@ -773,7 +773,7 @@ def create_incident_data_update_payload(search_response: dict, update_data: dict
 
 
 
-    request_info = get_incident_data_update_request_info()
+    request_info = get_incident_request_info()
 
     original_type = incident.get('incidentType', '')
     original_subtype = incident.get('incidentSubType', '')
@@ -921,19 +921,34 @@ def resolve_boundary_codes_for_dataframe(
                 locale="en_IN",
                 module="rainmaker-in",
             )
-            reverse_map = build_localization_reverse_map(loc_response.get("messages", []))
+            messages = loc_response.get("messages", [])
+            if logger:
+                logger.info(f"Localization service returned {len(messages)} messages for boundary resolution")
+            reverse_map = build_localization_reverse_map(messages)
+            if logger:
+                logger.info(f"Built reverse map with {len(reverse_map)} entries")
         except Exception as e:
             if logger:
                 logger.error(f"Error fetching localizations for boundary resolution: {e}", exc_info=True)
+    else:
+        if logger:
+            logger.warning("localization_service_url is not set; boundary code resolution will be skipped")
+
+    if logger:
+        logger.info(f"DataFrame columns: {list(df.columns)}")
 
     for index, row in df.iterrows():
         existing_code = str(row.get(boundary_code_column, '') or '').strip()
         if existing_code:
             continue
 
-        state_val = str(row.get('State (Mandatory)', '') or '').strip()
-        district_val = str(row.get('District (Mandatory)', '') or '').strip()
-        block_val = str(row.get('Block (Mandatory)', '') or '').strip()
+        state_col = 'State (Mandatory)' if 'State (Mandatory)' in df.columns else 'State'
+        district_col = 'District (Mandatory)' if 'District (Mandatory)' in df.columns else 'District'
+        block_col = 'Block (Mandatory)' if 'Block (Mandatory)' in df.columns else 'Block'
+
+        state_val = str(row.get(state_col, '') or '').strip()
+        district_val = str(row.get(district_col, '') or '').strip()
+        block_val = str(row.get(block_col, '') or '').strip()
 
         if not reverse_map:
             df.at[index, 'status'] = 'failed'
