@@ -52,7 +52,7 @@ export const VendorService = {
       "Content-Type" : "application/json"
     }
 
-    return await Request({
+    const response = await Request({
       url : endpoint,
       data: queryObject,
       userService : true,
@@ -60,6 +60,8 @@ export const VendorService = {
       auth : true,
       headers : headers,
     });
+
+    return response?.data;
   },
 
   editOrganizationUser: async (queryObject) => {
@@ -68,7 +70,7 @@ export const VendorService = {
       "Content-Type" : "application/json"
     }
 
-    return await Request({
+    const response = await Request({
       url : endpoint,
       data: queryObject,
       userService : true,
@@ -76,6 +78,8 @@ export const VendorService = {
       auth : true,
       headers : headers,
     });
+
+    return response?.data;
   },
 
   deleteOrganizationUser: async (queryObject) => {
@@ -84,7 +88,7 @@ export const VendorService = {
       "Content-Type" : "application/json"
     }
 
-    return await Request({
+    const response = Request({
       url : endpoint,
       data: queryObject,
       userService : true,
@@ -92,6 +96,8 @@ export const VendorService = {
       auth : true,
       headers : headers,
     });
+
+    return response?.data;
   },
 
 }
