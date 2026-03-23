@@ -392,7 +392,9 @@ public class FacilityService {
         }
 
         // Check if the facility exists in DB before attempting an update
-        String fetchFullFacilitySql = "SELECT * FROM facility WHERE id = ? AND tenant_id = ?";
+        String fetchFullFacilitySql = "SELECT fac.*, " +
+                " (SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive " +
+                " FROM facility fac WHERE fac.id = ? AND fac.tenant_id = ?";
         Facility existingFacility;
         try {
             existingFacility = jdbcTemplate.queryForObject(fetchFullFacilitySql, new Object[]{update.getFacilityId(), update.getTenantId()}, facilityRowMapper.rowMapper);
