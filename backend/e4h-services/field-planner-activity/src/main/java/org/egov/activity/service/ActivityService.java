@@ -406,11 +406,17 @@ public class ActivityService {
                     request.getRequestInfo(),
                     request.getWorkflow().getComments()
             );
-            log.debug("Workflow transition successful, new state: {}", updatedWorkflow.getState() != null ? updatedWorkflow.getState().getState() : "null");
-        } catch (Exception e) {
-            log.error("Failed to transition workflow for activity facility: {}, action: {}", request.getActivityFacilityId(), request.getWorkflow().getAction(), e);
+        } catch (CustomException e) {
+            log.error("Workflow transition failed for facility: {}", request.getActivityFacilityId(), e);
+            throw e;
+        } catch (ServiceCallException e) {
+            log.error("Service call error during workflow transition for facility: {}", request.getActivityFacilityId(), e);
             throw new CustomException("WORKFLOW_TRANSITION_FAILED",
-                    "Failed to transition workflow for facility: " + request.getActivityFacilityId());
+                    "Failed to transition workflow for facility: " + request.getActivityFacilityId() + ". Error: " + e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Runtime error during workflow transition for facility: {}", request.getActivityFacilityId(), e);
+            throw new CustomException("WORKFLOW_TRANSITION_FAILED",
+                    "Failed to transition workflow for facility: " + request.getActivityFacilityId() + ". Error: " + e.getMessage());
         }
 
         if(request.getTransactions() != null && !request.getTransactions().isEmpty()) {
@@ -547,9 +553,12 @@ public class ActivityService {
             log.info("Marking facility as ONM ready, facilityId: {}, activityFacilityId: {}", facilityId, activityFacility.getId());
             log.debug("Calling facility service update endpoint: {}", url);
             serviceRequest.fetchResult(new StringBuilder(url), updateRequest);
-            log.debug("Successfully marked facility as ONM ready, facilityId: {}", facilityId);
-        } catch (Exception e) {
-            log.error("Failed to mark facility ONM ready, facilityId: {}, activityFacilityId: {}", facilityId, activityFacility.getId(), e);
+        } catch (ServiceCallException e) {
+            log.error("Service call error marking facility ONM ready for activityFacility {}: {}",
+                    activityFacility.getId(), e.getMessage(), e);
+        } catch (RuntimeException e) {
+            log.error("Error marking facility ONM ready for activityFacility {}: {}",
+                    activityFacility.getId(), e.getMessage(), e);
         }
     }
 
@@ -583,11 +592,11 @@ public class ActivityService {
                 log.debug("No assets found for facility: {}", facilityId);
             }
         } catch (ServiceCallException e) {
-            log.error("Service call failed while processing assets, activityFacilityId: {}, facilityId: {}", activityFacility.getId(), facilityId, e);
-            throw new CustomException("ASSET_UPDATE_FAILED", "Failed to update asset operational status");
-        } catch (Exception e) {
-            log.error("Unexpected error while processing assets, activityFacilityId: {}, facilityId: {}", activityFacility.getId(), facilityId, e);
-            throw new CustomException("ASSET_PROCESSING_ERROR", "An error occurred while processing assets");
+            log.error("Service call failed while processing assets for project {}: {}", activityFacility.getId(), e.getMessage());
+            throw new CustomException("ASSET_UPDATE_FAILED", "Failed to update asset operational status: " + e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Unexpected error while processing assets for project {}: {}", activityFacility.getId(), e.getMessage(), e);
+            throw new CustomException("ASSET_PROCESSING_ERROR", "An error occurred while processing assets: " + e.getMessage());
         }
     }
 
@@ -613,9 +622,10 @@ public class ActivityService {
 
             log.debug("Updating asset operational status, assetId: {}", asset.getAssetId());
             serviceRequest.fetchResult(assetUpdateUri, createRequest);
-            log.debug("Successfully updated asset operational status, assetId: {}", asset.getAssetId());
-        } catch (Exception e) {
-            log.error("Failed to update asset operational status, assetId: {}", asset.getAssetId(), e);
+        } catch (ServiceCallException e) {
+            log.error("Service call error updating asset {}: {}", asset.getAssetId(), e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Error updating asset {}: {}", asset.getAssetId(), e.getMessage());
         }
     }
 
@@ -688,6 +698,9 @@ public class ActivityService {
                 FacilityStatusWrapper updatedProject = updateFacilityWorkflow(workflowRequest);
                 log.debug("Successfully updated workflow for activity facility: {}", activityFacilityId);
                 succeededActivityFacilityIDs.add(activityFacilityId);
+            } catch (CustomException e) {
+                log.error("Custom exception updating workflow for activity facility {}: {}", activityFacilityId, e.getMessage());
+                failedActivityFacilityIDs.add(activityFacilityId);
             } catch (Exception e) {
                 log.error("Failed to update workflow for activity facility: {}", activityFacilityId, e);
                 failedActivityFacilityIDs.add(activityFacilityId);
@@ -1263,8 +1276,15 @@ public class ActivityService {
 
             log.info("Successfully triggered installation completion side effects for activity facility: {}, assets processed: {}", activityFacilityId, assetCount);
 
-        } catch (Exception e) {
-            log.error("Error triggering installation completion side effects for activity facility: {}", activityFacilityId, e);
+        } catch (CustomException e) {
+            log.error("Custom exception triggering installation completion side effects for activity facility {}: {}",
+                    activityFacilityId, e.getMessage(), e);
+        } catch (ServiceCallException e) {
+            log.error("Service call error triggering installation completion side effects for activity facility {}: {}",
+                    activityFacilityId, e.getMessage(), e);
+        } catch (RuntimeException e) {
+            log.error("Error triggering installation completion side effects for activity facility {}: {}",
+                    activityFacilityId, e.getMessage(), e);
         }
     }
 

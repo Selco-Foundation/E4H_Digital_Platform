@@ -9,6 +9,9 @@ import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import static org.egov.asset.config.ServiceConstants.EXTERNAL_SERVICE_EXCEPTION;
@@ -40,11 +43,17 @@ public class ServiceRequestRepository {
             log.debug("Successfully fetched result from service | uri={}", uriString);
             return result;
         } catch (HttpClientErrorException e) {
-            log.error("HTTP client error while fetching from service | uri={} statusCode={} error={}", 
+            log.error("HTTP client error while fetching from service | uri={} statusCode={} error={}",
                     uriString, e.getStatusCode(), e.getMessage(), e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
-            log.error("Error while fetching from service | uri={} error={}", uriString, e.getMessage(), e);
+        } catch (HttpServerErrorException e) {
+            log.error(SEARCHER_SERVICE_EXCEPTION, e);
+            throw new ServiceCallException("Server error while fetching from service: " + e.getResponseBodyAsString());
+        } catch (ResourceAccessException e) {
+            log.error(SEARCHER_SERVICE_EXCEPTION, e);
+            throw new ServiceCallException("Connection error while fetching from service: " + e.getMessage());
+        } catch (RestClientException e) {
+            log.error(SEARCHER_SERVICE_EXCEPTION, e);
             throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
         }
     }

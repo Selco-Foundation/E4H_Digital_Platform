@@ -9,6 +9,7 @@ import org.egov.project.repository.UserActionRepository;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
@@ -55,9 +56,12 @@ public class UaRowVersionValidator implements Validator<UserActionBulkRequest, U
                     populateErrorDetails(individual, error, errorDetailsMap);
                 });
             }
+        } catch (DataAccessException e) {
+            log.error("Data access exception during row version validation: {}", e.getMessage(), e);
+            throw new CustomException("PROJECT_USER_ACTION_ROW_VERSION_VALIDATION_ERROR", "Database error while validating row versions: " + e.getMessage());
         } catch (Exception e) {
-            log.error("Exception occurred during validation: {}", e.getMessage());
-            throw new CustomException("PROJECT_USER_ACTION_PROJECT_ID_VALIDATION_ERROR", "Error occurred while validating project IDs" + e);
+            log.error("Unexpected exception during row version validation: {}", e.getMessage(), e);
+            throw new CustomException("PROJECT_USER_ACTION_ROW_VERSION_VALIDATION_ERROR", "Unexpected error occurred while validating row versions: " + e.getMessage());
         }
         return errorDetailsMap;
     }

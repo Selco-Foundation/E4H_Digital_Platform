@@ -14,6 +14,7 @@ import digit.web.models.BoundaryRequest;
 import digit.web.models.BoundarySearchCriteria;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.RestTemplate;
 
@@ -82,17 +83,16 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
                             ps.setString(index++, boundary.getAuditDetails().getLastModifiedBy());
                             ps.setLong(index++, boundary.getAuditDetails().getCreatedTime());
                             ps.setLong(index, boundary.getAuditDetails().getLastModifiedTime());
-                        } catch (Exception e) {
-                            log.error("Error setting parameters for boundary insert, code={}: {}", 
-                                    boundary.getCode(), e.getMessage(), e);
-                            throw new RuntimeException("Error preparing boundary insert statement", e);
+                        } catch (RuntimeException e) {
+                            log.error("Error setting parameters for boundary insert, code={}", boundary.getCode(), e);
+                            throw e;
                         }
                     }
             );
-            
+
             log.info("Successfully created {} boundary entities", boundaryCount);
-        } catch (Exception e) {
-            log.error("Error creating boundary entities, boundary count={}: {}", boundaryCount, e.getMessage(), e);
+        } catch (DataAccessException e) {
+            log.error("Data access error creating boundary entities, boundary count={}", boundaryCount, e);
             throw new RuntimeException("Failed to create boundary entities", e);
         }
     }

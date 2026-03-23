@@ -539,9 +539,12 @@ public class FieldPlannerService {
                     createFacilityActivity(request.getRequestInfo(), activityFacilities);
 
                 }
+            } catch (CustomException e) {
+                log.error("Error creating facility activities", e);
+                throw e;
             } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException(e);
+                log.error("Error creating facility activities", e);
+                throw new RuntimeException("Failed to create facility activities: " + e.getMessage(), e);
             }
         }
 
@@ -607,7 +610,7 @@ public class FieldPlannerService {
             log.trace("Exiting isValidGeographyDetailsUpdate method");
             return true;
 
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             log.error("Error validating geographyDetails update", e);
             log.trace("Exiting isValidGeographyDetailsUpdate method");
             return false;
@@ -751,6 +754,12 @@ public class FieldPlannerService {
             log.trace("Exiting getFacilitiesLinkedToFacility method");
             return result;
 
+        } catch (CustomException e) {
+            log.error("Error getting facilities linked to project: {}", fieldPlanId, e);
+            return new ArrayList<>();
+        } catch (RuntimeException e) {
+            log.error("Error getting facilities linked to project: {}", fieldPlanId, e);
+            return new ArrayList<>();
         } catch (Exception e) {
             log.error("Error getting facilities linked to project: {}", fieldPlanId, e);
             log.trace("Exiting getFacilitiesLinkedToFacility method");
@@ -842,8 +851,7 @@ public class FieldPlannerService {
                     }
                 }
             }
-            log.debug("Extracted {} boundary codes", boundaryCodes.size());
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             log.error("Error extracting boundary codes from geography details", e);
         }
 
@@ -916,7 +924,10 @@ public class FieldPlannerService {
 
             log.info("Successfully unlinked {} facilities for project: {} by setting isDeleted=true", facilitiesToUpdate.size(), fieldPlanId);
 
-        } catch (Exception e) {
+        } catch (CustomException e) {
+            log.error("Error unlinking facilities for project: {}", fieldPlanId, e);
+            throw e;
+        } catch (RuntimeException e) {
             log.error("Error unlinking facilities for project: {}", fieldPlanId, e);
             throw new CustomException("FACILITY_UNLINKING_FAILED",
                     "Failed to unlink facilities for project: " + fieldPlanId + ". Error: " + e.getMessage());
@@ -948,7 +959,7 @@ public class FieldPlannerService {
 
             log.info("Found {} unique facilities across {} boundary codes", facilityIds.size(), boundaryCodes.size());
 
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("Error getting facilities by boundary codes: {}", boundaryCodes, e);
         }
 

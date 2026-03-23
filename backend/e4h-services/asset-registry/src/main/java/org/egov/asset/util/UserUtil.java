@@ -8,7 +8,9 @@ import digit.models.coremodels.user.enums.UserType;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.config.Configuration;
 import org.egov.asset.repository.ServiceRequestRepository;
+import org.egov.asset.util.ErrorConstants;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -73,9 +75,9 @@ public class UserUtil {
         } catch (IllegalArgumentException e) {
             log.error("Error parsing user response | uri={} error={}", uriString, e.getMessage(), e);
             throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION_CODE, OBJECTMAPPER_UNABLE_TO_CONVERT);
-        } catch (Exception e) {
-            log.error("Unexpected error in user call | uri={} error={}", uriString, e.getMessage(), e);
-            throw new CustomException();
+        } catch (ServiceCallException e) {
+            log.error("Error while calling user service", e);
+            throw new CustomException(ErrorConstants.USER_SERVICE_CALL_ERROR_CODE, ErrorConstants.USER_SERVICE_CALL_ERROR_MSG + ": " + e.getMessage());
         }
     }
 
@@ -129,7 +131,7 @@ public class UserUtil {
         try {
             d = f.parse(date);
         } catch (ParseException e) {
-            log.warn("Date format parsing error | date={} format={} error={}", date, format, e.getMessage());
+            log.error("Error parsing date: {} with format: {}", date, format, e);
             throw new CustomException(INVALID_DATE_FORMAT_CODE, INVALID_DATE_FORMAT_MESSAGE);
         } catch (Exception e) {
             log.error("Error processing date | date={} format={} error={}", date, format, e.getMessage(), e);

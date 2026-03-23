@@ -8,6 +8,10 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
@@ -75,10 +79,15 @@ public class MdmsUtil {
         try {
             log.debug("Calling MDMS service | uri={}", uri.toString());
             response = restTemplate.postForObject(uri.toString(), request, MdmsResponse.class);
-            log.debug("MDMS service call successful | tenantId={}", tenantId);
-        } catch (Exception e) {
-            log.error("Error fetching MDMS data | tenantId={} error={}", tenantId, e.getMessage(), e);
-            throw new CustomException(ErrorConstants.MDMS_SERVICE_ERROR_CODE, ErrorConstants.MDMS_SERVICE_ERROR_MSG);
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("HTTP error while fetching from MDMS: {}", e.getResponseBodyAsString(), e);
+            throw new CustomException(ErrorConstants.MDMS_SERVICE_ERROR_CODE, ErrorConstants.MDMS_SERVICE_ERROR_MSG + ": " + e.getMessage());
+        } catch (ResourceAccessException e) {
+            log.error("Connection error while fetching from MDMS", e);
+            throw new CustomException(ErrorConstants.MDMS_SERVICE_ERROR_CODE, ErrorConstants.MDMS_SERVICE_ERROR_MSG + ": Connection failed");
+        } catch (RestClientException e) {
+            log.error("Error while fetching from MDMS", e);
+            throw new CustomException(ErrorConstants.MDMS_SERVICE_ERROR_CODE, ErrorConstants.MDMS_SERVICE_ERROR_MSG + ": " + e.getMessage());
         }
         return response;
     }

@@ -42,9 +42,9 @@ public class InboxV2Controller {
     public ResponseEntity<InboxResponse> searchNewInbox(@Valid @RequestBody  InboxRequest inboxRequest) {
         log.trace("Method invoked: searchNewInbox");
         String tenantId = inboxRequest.getInbox() != null ? inboxRequest.getInbox().getTenantId() : null;
-        String moduleName = inboxRequest.getInbox() != null && inboxRequest.getInbox().getProcessSearchCriteria() != null 
+        String moduleName = inboxRequest.getInbox() != null && inboxRequest.getInbox().getProcessSearchCriteria() != null
                 ? inboxRequest.getInbox().getProcessSearchCriteria().getModuleName() : null;
-        
+
         log.info("Received inbox search request - tenantId: {}, module: {}", tenantId, moduleName);
         try {
             log.debug("Processing inbox search request");
@@ -65,9 +65,9 @@ public class InboxV2Controller {
     public ResponseEntity<ProjectResponse> searchNewInboxProject(@Valid @RequestBody  InboxRequest inboxRequest) {
         log.trace("Method invoked: searchNewInboxProject");
         String tenantId = inboxRequest.getInbox() != null ? inboxRequest.getInbox().getTenantId() : null;
-        String moduleName = inboxRequest.getInbox() != null && inboxRequest.getInbox().getProcessSearchCriteria() != null 
+        String moduleName = inboxRequest.getInbox() != null && inboxRequest.getInbox().getProcessSearchCriteria() != null
                 ? inboxRequest.getInbox().getProcessSearchCriteria().getModuleName() : null;
-        
+
         log.info("Received project inbox search request - tenantId: {}, module: {}", tenantId, moduleName);
 
         try {
@@ -89,11 +89,11 @@ public class InboxV2Controller {
     @PostMapping(value = "/_getFields")
     public ResponseEntity<SearchResponse> searchFields(@Valid @RequestBody SearchRequest searchRequest) {
         log.trace("Method invoked: searchFields");
-        String tenantId = searchRequest.getIndexSearchCriteria() != null 
+        String tenantId = searchRequest.getIndexSearchCriteria() != null
                 ? searchRequest.getIndexSearchCriteria().getTenantId() : null;
-        String moduleName = searchRequest.getIndexSearchCriteria() != null 
+        String moduleName = searchRequest.getIndexSearchCriteria() != null
                 ? searchRequest.getIndexSearchCriteria().getModuleName() : null;
-        
+
         log.info("Received search fields request - tenantId: {}, module: {}", tenantId, moduleName);
         try {
             log.debug("Processing search fields request");

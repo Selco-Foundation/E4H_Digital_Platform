@@ -48,23 +48,18 @@ public class IdgenUtil {
         StringBuilder uri = new StringBuilder(configs.getIdGenHost()).append(configs.getIdGenPath());
         log.debug("ID generation URI: {}", uri);
         
-        try {
-            IdGenerationResponse response = mapper.convertValue(restRepo.fetchResult(uri, request), IdGenerationResponse.class);
+        IdGenerationResponse response = mapper.convertValue(restRepo.fetchResult(uri, request), IdGenerationResponse.class);
 
-            List<IdResponse> idResponses = response.getIdResponses();
+        List<IdResponse> idResponses = response.getIdResponses();
 
-            if (CollectionUtils.isEmpty(idResponses)) {
-                log.error("ID generation service returned empty response for idName: {}, tenantId: {}", idName, tenantId);
-                throw new CustomException(IDGEN_ERROR, NO_IDS_FOUND_ERROR);
-            }
-
-            List<String> ids = idResponses.stream().map(IdResponse::getId).toList();
-            log.info("Successfully generated {} IDs of type {} for tenant {}", ids.size(), idName, tenantId);
-            log.trace("Exiting getIdList method");
-            return ids;
-        } catch (Exception e) {
-            log.error("Error generating IDs of type {} for tenant {}: {}", idName, tenantId, e.getMessage(), e);
-            throw e;
+        if (CollectionUtils.isEmpty(idResponses)) {
+            log.error("ID generation service returned empty response for idName: {}, tenantId: {}", idName, tenantId);
+            throw new CustomException(IDGEN_ERROR, NO_IDS_FOUND_ERROR);
         }
+
+        List<String> ids = idResponses.stream().map(IdResponse::getId).toList();
+        log.info("Successfully generated {} IDs of type {} for tenant {}", ids.size(), idName, tenantId);
+        log.trace("Exiting getIdList method");
+        return ids;
     }
 }

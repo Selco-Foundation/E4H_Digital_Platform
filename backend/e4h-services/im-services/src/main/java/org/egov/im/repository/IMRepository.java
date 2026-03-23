@@ -10,7 +10,6 @@ import org.egov.im.web.models.RequestSearchCriteria;
 import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.Workflow;
 import org.egov.tracer.model.CustomException;
-import org.egov.common.exception.InvalidTenantIdException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -78,10 +77,9 @@ public class IMRepository {
         String query = queryBuilder.getPGRSearchQuery(criteria, preparedStmtList);
         try {
             query = utils.replaceSchemaPlaceholder(query, tenantId);
-        } catch (Exception e) {
-            log.error("Failed to replace schema placeholder for tenantId: {}", tenantId, e);
+        } catch (CustomException e) {
             throw new CustomException("PGR_UPDATE_ERROR",
-                    "TenantId length is not sufficient to replace query schema in a multi state instance");
+                    "TenantId length is not sufficient to replace query schema in a multi state instance: " + e.getMessage());
         }
         
         log.debug("Executing search query for tenantId: {}", tenantId);
@@ -105,7 +103,7 @@ public class IMRepository {
         } catch (Exception e) {
             log.error("Failed to replace schema placeholder for count query, tenantId: {}", tenantId, e);
             throw new CustomException("PGR_REQUEST_COUNT_ERROR",
-                    "TenantId length is not sufficient to replace query schema in a multi state instance");
+                    "TenantId length is not sufficient to replace query schema in a multi state instance: " + e.getMessage());
         }
         log.debug("Executing count query for tenantId: {}", tenantId);
         Integer count =  jdbcTemplate.queryForObject(query, preparedStmtList.toArray(), Integer.class);
@@ -124,7 +122,7 @@ public class IMRepository {
         } catch (Exception e) {
             log.error("Failed to replace schema placeholder for dynamic data query, tenantId: {}", tenantId, e);
             throw new CustomException("PGR_SEARCH_ERROR",
-                    "TenantId length is not sufficient to replace query schema in a multi state instance");
+                    "TenantId length is not sufficient to replace query schema in a multi state instance: " + e.getMessage());
         }
 		log.trace("Executing resolved complaints query");
 		int complaintsResolved = jdbcTemplate.queryForObject(query,preparedStmtListCompalintsResolved.toArray(),Integer.class);
@@ -136,7 +134,7 @@ public class IMRepository {
         } catch (Exception e) {
             log.error("Failed to replace schema placeholder for average resolution time query, tenantId: {}", tenantId, e);
             throw new CustomException("PGR_SEARCH_ERROR",
-                    "TenantId length is not sufficient to replace query schema in a multi state instance");
+                    "TenantId length is not sufficient to replace query schema in a multi state instance: " + e.getMessage());
         }
 		log.trace("Executing average resolution time query");
 		int averageResolutionTime = jdbcTemplate.queryForObject(query, preparedStmtListAverageResolutionTime.toArray(),Integer.class);
@@ -144,7 +142,7 @@ public class IMRepository {
 		Map<String, Integer> dynamicData = new HashMap<String,Integer>();
 		dynamicData.put(IMConstants.COMPLAINTS_RESOLVED, complaintsResolved);
 		dynamicData.put(IMConstants.AVERAGE_RESOLUTION_TIME, averageResolutionTime);
-		log.debug("Dynamic data fetched successfully - complaintsResolved: {}, averageResolutionTime: {}", 
+		log.debug("Dynamic data fetched successfully - complaintsResolved: {}, averageResolutionTime: {}",
 				complaintsResolved, averageResolutionTime);
 
 		return dynamicData;

@@ -11,6 +11,7 @@ import org.egov.mdms.model.MdmsCriteria;
 import org.egov.mdms.model.MdmsCriteriaReq;
 import org.egov.mdms.model.ModuleDetail;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -40,9 +41,9 @@ public class MDMSUtils {
             log.debug("Calling MDMS service for tenantId: {}", tenantId);
             result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
             log.debug("MDMS service call successful for tenantId: {}", tenantId);
-        } catch (Exception e) {
+        } catch (ServiceCallException e) {
             log.error("Error while calling MDMS service for tenantId: {}", tenantId, e);
-            throw new CustomException("MDMS_ERROR", "error while calling mdms");
+            throw new CustomException("MDMS_ERROR", "Error while calling MDMS: " + e.getMessage());
         }
         return result;
     }

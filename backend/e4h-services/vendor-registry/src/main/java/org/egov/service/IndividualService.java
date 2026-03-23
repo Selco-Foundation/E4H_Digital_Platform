@@ -59,10 +59,10 @@ public class IndividualService {
     public void createIndividual(OrgRequest request) {
         log.trace("IndividualService::createIndividual entry");
         List<Organisation> organisationList = request.getOrganisations();
-        String tenantId = organisationList != null && !organisationList.isEmpty() 
+        String tenantId = organisationList != null && !organisationList.isEmpty()
                 ? organisationList.get(0).getTenantId() : "unknown";
         log.info("Starting individual creation for organisation in tenant: {}", tenantId);
-        
+
         StringBuilder uri = new StringBuilder(config.getIndividualHost());
         String stateLevelTenantId = multiStateInstanceUtil.getStateLevelTenant(organisationList.get(0).getTenantId());
         RequestInfo requestInfo = request.getRequestInfo();
@@ -138,7 +138,7 @@ public class IndividualService {
         RequestInfo requestInfo = request.getRequestInfo();
         String tenantId = organisationList.get(0).getTenantId();
         log.info("Starting individual update for tenant: {}", tenantId);
-        
+
         String stateLevelTenantId = multiStateInstanceUtil.getStateLevelTenant(organisationList.get(0).getTenantId());
         Role role = getOrgAdminRole();
 
@@ -192,7 +192,7 @@ public class IndividualService {
                 orgContactUpdateDiff.setNewContacts(newMembers);
                 organizationProducer.push(config.getOrganisationContactDetailsUpdateTopic(), orgContactUpdateDiff);
 
-                log.info("Organisation contact update - Organisation ID: {}, members to be removed: {}, members to be added: {}", 
+                log.info("Organisation contact update - Organisation ID: {}, members to be removed: {}, members to be added: {}",
                         organisation.getId(), toBeRemovedMembers.size(), newMembers.size());
                 log.debug("Contact update message pushed to Kafka topic: {}", config.getOrganisationContactDetailsUpdateTopic());
             }
@@ -370,9 +370,12 @@ public class IndividualService {
                 return new IndividualBulkResponse(ResponseInfo.builder().build(), 0L, new ArrayList<>());
             }
         }
-        catch (Exception e) {
-            log.error("Error occurred during individual search call", e);
-            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR);
+        catch (IllegalArgumentException e) {
+            log.error("Illegal argument exception while converting response to IndividualBulkResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected exception while converting response to IndividualBulkResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
         }
     }
 
@@ -394,9 +397,12 @@ public class IndividualService {
                 return new IndividualResponse(ResponseInfo.builder().build(), new Individual());
             }
         }
-        catch (Exception e) {
-            log.error("Error occurred during individual create call", e);
-            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR);
+        catch (IllegalArgumentException e) {
+            log.error("Illegal argument exception while converting response to IndividualResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected exception while converting response to IndividualResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
         }
     }
 
@@ -416,9 +422,12 @@ public class IndividualService {
                 return new IndividualResponse(ResponseInfo.builder().build(), new Individual());
             }
         }
-        catch (Exception e) {
-            log.error("Error occurred during individual update call", e);
-            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR);
+        catch (IllegalArgumentException e) {
+            log.error("Illegal argument exception while converting response to IndividualResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected exception while converting response to IndividualResponse: {}", e.getMessage(), e);
+            throw new CustomException(ILLEGAL_ARGUMENT_EXCEPTION, OBJECTMAPPER_CONVERSION_ERROR + ": " + e.getMessage());
         }
     }
 

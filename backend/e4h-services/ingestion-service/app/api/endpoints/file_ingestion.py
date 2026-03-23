@@ -170,9 +170,21 @@ async def upload_vendors_excel_sheet(
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+    except HTTPException:
+        # Preserve explicit HTTP errors (e.g. bad input) from inner logic
+        raise
+    except requests.exceptions.RequestException as e:
+        logger.error(f"External service error while processing vendor data: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to communicate with downstream services while processing vendor data"
+        )
     except Exception as e:
-        logger.error(f"Error processing vendor data: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to process vendor data: {str(e)}")
+        logger.error(f"Unexpected error processing vendor data: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred while processing vendor data"
+        )
 
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
@@ -232,12 +244,20 @@ async def upload_boundaries_excel_sheet(
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+    except HTTPException:
+        raise
+    except requests.exceptions.RequestException as e:
+        logger.error(f"External service error while processing boundary data: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to communicate with downstream services while processing boundary data"
+        )
     except Exception as e:
-        logger.error(f"Error processing boundary data: {e}")
+        logger.error(f"Unexpected error processing boundary data: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail="Failed to process boundary data"
-        ) from e
+            detail="An unexpected error occurred while processing boundary data"
+        )
 
 
     finally:
@@ -413,8 +433,11 @@ async def validate_facilities_excel_sheet(
 
         return response
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
+        logger.error(f"Unexpected error during facility validation: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred during facility validation")
     finally:
         if temp_input_file and os.path.exists(temp_input_file.name):
             os.unlink(temp_input_file.name)
@@ -497,11 +520,19 @@ async def upload_facilities_excel_sheet(
             filename=output_filename,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+    except HTTPException:
+        raise
+    except requests.exceptions.RequestException as e:
+        logger.error(f"External service error while processing facility data: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to communicate with downstream services while processing facility data"
+        )
     except Exception as e:
-        logger.error(f"Error processing facility data: {e}")
+        logger.error(f"Unexpected error processing facility data: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to process facility data: {str(e)}"
+            detail="An unexpected error occurred while processing facility data"
         )
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
@@ -567,11 +598,19 @@ async def upload_facilities_with_workstream(
             content="Connection failed with project service and hrms service."
         )
 
+    except HTTPException:
+        raise
+    except requests.exceptions.RequestException as e:
+        logger.error(f"External service error while processing facility/workstream data: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to communicate with downstream services while processing facility/workstream data"
+        )
     except Exception as e:
-        logger.error(f"Error processing facility data: {e}")
+        logger.error(f"Unexpected error processing facility/workstream data: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to process facility data: {str(e)}"
+            detail="An unexpected error occurred while processing facility/workstream data"
         )
 
 
@@ -1294,11 +1333,19 @@ async def upload_facility_selection_excel_sheet(
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+    except HTTPException:
+        raise
+    except requests.exceptions.RequestException as e:
+        logger.error(f"External service error while processing facility selection data: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail="Failed to communicate with downstream services while processing facility selection data"
+        )
     except Exception as e:
-        logger.error(f"Error processing facility selection data: {e}")
+        logger.error(f"Unexpected error processing facility selection data: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to process facility selection data: {str(e)}"
+            detail="An unexpected error occurred while processing facility selection data"
         )
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
@@ -1312,9 +1359,12 @@ def get_hrms_employee_info(codes: List[str], db_conn) -> Dict[str, str]:
             cursor.execute(sql, (codes,))
             rows = cursor.fetchall()
             return {row[0]: row[1] for row in rows}
+    except psycopg2.Error as e:
+        logger.error(f"Database error fetching HRMS employee info: {e}", exc_info=True)
+        raise
     except Exception as e:
-        logger.error(f"Error fetching HRMS employee info: {e}")
-        return {}
+        logger.error(f"Unexpected error fetching HRMS employee info: {e}", exc_info=True)
+        raise
 
 def get_tenant_mapping(request_info: RequestInfo, tenant_ids: List[str]) -> Dict:
     """
@@ -1420,9 +1470,12 @@ def get_user_info_for_mizoram(usernames: List[str], db_conn) -> Dict[str, str]:
             cursor.execute(sql, (usernames,))
             rows = cursor.fetchall()
             return {row[0]: row[1] for row in rows}
+    except psycopg2.Error as e:
+        logger.error(f"Database error fetching user info for Mizoram: {e}", exc_info=True)
+        raise
     except Exception as e:
-        logger.error(f"Error fetching user info for Mizoram: {e}")
-        return {}
+        logger.error(f"Unexpected error fetching user info for Mizoram: {e}", exc_info=True)
+        raise
 
 
 @router.post("/legacy_ticket_ingestion", summary="Upload and ingest legacy tickets Excel file")
@@ -1672,8 +1725,11 @@ async def check_duplicate_tickets(
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error during duplicate check: {str(e)}")
+        logger.error(f"Unexpected error during duplicate check: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred during duplicate check")
 
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):
@@ -1774,8 +1830,11 @@ async def flag_for_qc(
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error during facility status update: {str(e)}")
+        logger.error(f"Unexpected error during facility status update: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An unexpected error occurred during facility status update")
 
     finally:
         if input_temp_file and os.path.exists(input_temp_file.name):

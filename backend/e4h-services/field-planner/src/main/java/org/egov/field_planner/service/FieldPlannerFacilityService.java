@@ -16,6 +16,7 @@ import org.egov.field_planner.util.MDMSUtils;
 import org.egov.field_planner.validator.FieldPlannerValidator;
 import org.egov.field_planner.web.models.*;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -78,10 +79,10 @@ public class FieldPlannerFacilityService {
     public List<FieldPlanFacility> create(FieldPlanFacilityBulkRequest request, boolean isBulk) {
         log.trace("Entering create method for bulk field plan facility, isBulk: {}", isBulk);
         log.info("Received request to create bulk field plan facility, count: {}", request.getFieldPlanFacilities().size());
-        
+
         validateCreateFieldPlanRequest(request);
         log.debug("Field plan facility creation request validated");
-        
+
         List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
         try {
             if (!fieldPlanFacilities.isEmpty()) {
@@ -146,10 +147,10 @@ public class FieldPlannerFacilityService {
     public List<FieldPlanFacility> unassignBulk(FieldPlanFacilityBulkRequest request, boolean isBulk) {
         log.trace("Entering unassignBulk method for field plan facility, isBulk: {}", isBulk);
         log.info("Received request to unassign bulk field plan facility, count: {}", request.getFieldPlanFacilities().size());
-        
+
         validateCreateFieldPlanRequest(request);
         log.debug("Field plan facility unassign request validated");
-        
+
         List<FieldPlanFacility> fieldPlanFacilities = request.getFieldPlanFacilities();
         try {
             if (!fieldPlanFacilities.isEmpty()) {
@@ -208,9 +209,12 @@ public class FieldPlannerFacilityService {
                         errorMap.put("INVALID_FACILITY"+i, "FacilityId does not exist: " + facility.getFacilityId());
                     }
 
-                } catch (Exception e) {
-                    log.error("Error while fetching facility list for facility ID: {}", facility.getFacilityId(), e);
-                    throw new CustomException("FACILITY_ERROR", "error while calling facility service");
+                } catch (ServiceCallException e) {
+                    log.error("Service call error while fetching facility: {}", facility.getFacilityId(), e);
+                    throw new CustomException("FACILITY_ERROR", "Error while calling facility service: " + e.getMessage());
+                } catch (RuntimeException e) {
+                    log.error("Error while fetching facility: {}", facility.getFacilityId(), e);
+                    throw new CustomException("FACILITY_ERROR", "Error while calling facility service: " + e.getMessage());
                 }
             }
         }
@@ -239,9 +243,9 @@ public class FieldPlannerFacilityService {
                         })
                         .toList();
 
-            } catch (Exception e) {
+            } catch (RuntimeException e) {
                 log.error("Error while validating field plan IDs", e);
-                throw new CustomException("FIELDPLAN_ERROR", "error while calling fieldplan");
+                throw new CustomException("FIELDPLAN_ERROR", "Error while calling fieldplan: " + e.getMessage());
             }
         }
         log.debug("Field plan IDs validation completed");
@@ -300,7 +304,9 @@ public class FieldPlannerFacilityService {
                 }
             }
 
-        } catch (Exception e) {
+        } catch (ServiceCallException e) {
+            log.error("Service call error searching facilities for boundary code: {}", boundaryCode, e);
+        } catch (RuntimeException e) {
             log.error("Error searching facilities for boundary code: {}", boundaryCode, e);
         }
 

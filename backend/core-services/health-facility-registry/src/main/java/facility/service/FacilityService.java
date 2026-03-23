@@ -12,6 +12,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import static facility.config.ServiceConstants.FACILITY_ADMIN;
 
 import java.util.*;
 import java.util.stream.Collectors;

@@ -7,10 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
 import org.egov.tracer.model.ServiceCallException;
 import org.springframework.stereotype.Repository;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
+import java.io.IOException;
 
 @Repository
 @Slf4j
@@ -32,9 +34,9 @@ public class ServiceRequestRepository {
         } catch (HttpClientErrorException e) {
             log.error("External Service threw an Exception: ", e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             log.error("Error during service call: ", e);
-            throw new ServiceCallException();
+            throw new CustomException("SERVICE_REQUEST_CLIENT_ERROR", e.getMessage());
         }
         return response;
     }
@@ -47,7 +49,7 @@ public class ServiceRequestRepository {
             return response;
         } catch (HttpClientErrorException var6) {
             throw new CustomException("HTTP_CLIENT_ERROR", String.format("%s - %s", var6.getMessage(), var6.getResponseBodyAsString()));
-        } catch (Exception var7) {
+        } catch (RestClientException var7) {
             throw new CustomException("SERVICE_REQUEST_CLIENT_ERROR", var7.getMessage());
         }
     }
@@ -60,9 +62,12 @@ public class ServiceRequestRepository {
         } catch (HttpClientErrorException e) {
             log.error("External Service threw an Exception: ", e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             log.error("Error during service call: ", e);
-            throw new ServiceCallException();
+            throw new CustomException("SERVICE_REQUEST_CLIENT_ERROR", e.getMessage());
+        } catch (IOException e) {
+            log.error("Error parsing service response: ", e);
+            throw new CustomException("SERVICE_RESPONSE_PARSING_ERROR", e.getMessage());
         }
     }
 
@@ -74,9 +79,9 @@ public class ServiceRequestRepository {
         } catch (HttpClientErrorException e) {
             log.error("External Service threw an Exception: ", e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             log.error("Error during service call: ", e);
-            throw new ServiceCallException();
+            throw new CustomException("SERVICE_REQUEST_CLIENT_ERROR", e.getMessage());
         }
         return response;
     }

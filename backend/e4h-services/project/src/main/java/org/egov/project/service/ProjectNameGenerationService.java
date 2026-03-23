@@ -54,7 +54,7 @@ public class ProjectNameGenerationService {
                 
                 log.info("Fetching project type code for project type: {} from tenant: {}", projectTypeName, tenantId);
                 log.debug("Calling MDMS to get project type code");
-                
+
                 String projectCode = getCodeFromMDMS(project, requestInfo, tenantId, "ProjectType", projectTypeName);
                 if (projectCode != null) {
                     log.info("Found project type code: {} for project type: {}", projectCode, projectTypeName);
@@ -71,9 +71,11 @@ public class ProjectNameGenerationService {
             log.trace("Exiting getProjectCode");
             return projectConfiguration.getProjectNameDefaultCode();
             
-        } catch (Exception e) {
-            log.error("Error getting project code for project: {}, using default", project.getId(), e);
-            log.trace("Exiting getProjectCode");
+        } catch (CustomException e) {
+            log.error("Custom error getting project code for project: {}, using default", project.getId(), e);
+            return projectConfiguration.getProjectNameDefaultCode();
+        } catch (RuntimeException e) {
+            log.error("Unexpected error getting project code for project: {}, using default", project.getId(), e);
             return projectConfiguration.getProjectNameDefaultCode();
         }
     }
@@ -99,7 +101,7 @@ public class ProjectNameGenerationService {
             stateName = boundaryParts[0];
         }
         log.debug("Extracted state name: {} from boundary", stateName);
-        
+
         // Validate state name is not placeholder/invalid
         if (stateName != null && !stateName.equalsIgnoreCase("nan") && 
             !stateName.equalsIgnoreCase("XYZ") && stateName.trim().length() > 0) {
@@ -153,11 +155,12 @@ public class ProjectNameGenerationService {
             log.trace("Exiting getStateCode");
             return fallbackCode;
             
-        } catch (Exception e) {
-            log.error("Error getting state code for project: {}, using fallback", project.getId(), e);
-            String fallbackCode = getStateCodeFromFallback(project);
-            log.trace("Exiting getStateCode");
-            return fallbackCode;
+        } catch (CustomException e) {
+            log.error("Custom error getting state code for project: {}, using fallback", project.getId(), e);
+            return getStateCodeFromFallback(project);
+        } catch (RuntimeException e) {
+            log.error("Unexpected error getting state code for project: {}, using fallback", project.getId(), e);
+            return getStateCodeFromFallback(project);
         }
     }
 
@@ -169,7 +172,7 @@ public class ProjectNameGenerationService {
         try {
             String rootTenantId = tenantId.split("\\.")[0];
             log.debug("Calling MDMS for masterType: {}, searchName: {}, rootTenantId: {}", masterType, searchName, rootTenantId);
-            
+
             // Create a dummy project for MDMS call
             Project dummyProject = Project.builder()
                     .tenantId(tenantId)
@@ -183,12 +186,14 @@ public class ProjectNameGenerationService {
             // Call MDMS to get data
             Object mdmsResponse = mdmsUtils.mDMSCall(projectRequest, rootTenantId);
             log.debug("Received MDMS response, extracting code");
-            
+
             return extractCodeFromMDMSResponse(mdmsResponse, masterType, searchName);
             
-        } catch (Exception e) {
-            log.error("Error getting {} code from MDMS for {}: {}", masterType, searchName, e.getMessage(), e);
-            log.trace("Exiting getCodeFromMDMS");
+        } catch (CustomException e) {
+            log.error("Custom error getting {} code from MDMS for {}: {}", masterType, searchName, e.getMessage());
+            return null;
+        } catch (RuntimeException e) {
+            log.error("Unexpected error getting {} code from MDMS for {}: {}", masterType, searchName, e.getMessage());
             return null;
         }
     }
@@ -328,7 +333,7 @@ public class ProjectNameGenerationService {
         int startYear = startDate.getYear();
         int endYear = endDate.getYear();
         log.debug("Extracted years - start: {}, end: {}", startYear, endYear);
-        
+
         // Format as YYYY-YY
         return String.format("%d-%02d", startYear, endYear % 100);
     }
@@ -352,7 +357,7 @@ public class ProjectNameGenerationService {
         log.debug("Highest existing name: {}", highestExistingName);
         int nextSuffix = extractAndIncrementSuffix(highestExistingName, baseName);
         log.debug("Calculated next suffix: {}", nextSuffix);
-        
+
         // Validate that the next suffix is reasonable (prevent infinite loops)
         if (nextSuffix > 1000) {
             log.error("Generated suffix {} is too high for base name: {}. This might indicate a problem.", nextSuffix, baseName);
@@ -394,7 +399,7 @@ public class ProjectNameGenerationService {
             // Extract the part after base name
             String suffixPart = existingName.substring(baseName.length());
             log.debug("Extracted suffix part: {}", suffixPart);
-            
+
             // Remove leading dash if present
             if (suffixPart.startsWith("-")) {
                 suffixPart = suffixPart.substring(1);
@@ -454,7 +459,7 @@ public class ProjectNameGenerationService {
             String duration = getDuration(project);
             String baseName = String.format("%s-%s-%s", projectCode, stateCode, duration);
             log.debug("Generated base name: {}", baseName);
-            
+
             // Check if base name exists (with optional exclusion for updates)
             boolean isDuplicate;
             if (excludeProjectId != null) {
@@ -467,7 +472,7 @@ public class ProjectNameGenerationService {
                 isDuplicate = isProjectNameExists(baseName, project.getTenantId());
             }
             log.debug("Duplicate check result: {}", isDuplicate);
-            
+
             if (isDuplicate) {
                 // Generate unique name with suffix
                 log.info("Base name is duplicate, generating unique name with suffix");
@@ -488,9 +493,12 @@ public class ProjectNameGenerationService {
                     .build();
             }
             
-        } catch (Exception e) {
-            log.error("Error generating project name for project: {}", project.getId(), e);
-            throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name: " + e);
+        } catch (CustomException e) {
+            // Re-throw CustomException as-is
+            throw e;
+        } catch (RuntimeException e) {
+            log.error("Unexpected error generating project name for project: {}", project.getId(), e);
+            throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name: " + e.getMessage());
         }
     }
 }

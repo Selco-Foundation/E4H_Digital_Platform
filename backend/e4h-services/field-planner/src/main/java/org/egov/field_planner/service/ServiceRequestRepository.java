@@ -8,7 +8,12 @@ import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.util.Map;
 
@@ -35,9 +40,15 @@ public class ServiceRequestRepository {
         } catch (HttpClientErrorException e) {
             log.error("External service returned error for URL: {}, status: {}", uri, e.getStatusCode(), e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
-            log.error("Error during external service call to URL: {}", uri, e);
-            throw new ServiceCallException();
+        } catch (HttpServerErrorException e) {
+            log.error("HTTP server error during service call: ", e);
+            throw new ServiceCallException("Server error while fetching from service: " + e.getResponseBodyAsString());
+        } catch (ResourceAccessException e) {
+            log.error("Connection error during service call: ", e);
+            throw new ServiceCallException("Connection error while fetching from service: " + e.getMessage());
+        } catch (RestClientException e) {
+            log.error("Error during service call: ", e);
+            throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
         }
         log.trace("Exiting fetchResult method");
         return response;
@@ -54,9 +65,18 @@ public class ServiceRequestRepository {
         } catch (HttpClientErrorException e) {
             log.error("External service returned error for URL: {}, status: {}", uri, e.getStatusCode(), e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
-            log.error("Error during external service call to URL: {}", uri, e);
-            throw new ServiceCallException();
+        } catch (HttpServerErrorException e) {
+            log.error("HTTP server error during service call: ", e);
+            throw new ServiceCallException("Server error while fetching from service: " + e.getResponseBodyAsString());
+        } catch (ResourceAccessException e) {
+            log.error("Connection error during service call: ", e);
+            throw new ServiceCallException("Connection error while fetching from service: " + e.getMessage());
+        } catch (JsonProcessingException e) {
+            log.error("JSON processing error during service call: ", e);
+            throw new ServiceCallException("Error parsing response: " + e.getMessage());
+        } catch (RestClientException e) {
+            log.error("Error during service call: ", e);
+            throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
         }
     }
 
@@ -71,9 +91,15 @@ public class ServiceRequestRepository {
         } catch (HttpClientErrorException e) {
             log.error("External service returned error for URL: {}, status: {}", uri, e.getStatusCode(), e);
             throw new ServiceCallException(e.getResponseBodyAsString());
-        } catch (Exception e) {
-            log.error("Error during external service call to URL: {}", uri, e);
-            throw new ServiceCallException();
+        } catch (HttpServerErrorException e) {
+            log.error("HTTP server error during service call: ", e);
+            throw new ServiceCallException("Server error while fetching from service: " + e.getResponseBodyAsString());
+        } catch (ResourceAccessException e) {
+            log.error("Connection error during service call: ", e);
+            throw new ServiceCallException("Connection error while fetching from service: " + e.getMessage());
+        } catch (RestClientException e) {
+            log.error("Error during service call: ", e);
+            throw new ServiceCallException("Error while fetching from service: " + e.getMessage());
         }
         log.trace("Exiting fetchResult method");
         return response;

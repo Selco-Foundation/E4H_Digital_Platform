@@ -1,7 +1,9 @@
 package org.egov.validator;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.PathNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
@@ -513,24 +515,6 @@ public class OrganisationUserServiceValidator {
         }
     }
 
-    public Map<String, List<Role>> getOrgRoles(RequestInfo requestInfo){
-        Object mdmsData = mdmsUtil.mDMSCall(requestInfo, configuration.getGlobalTenantId());
-        final String jsonPathForOrgRoles = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_ROLES + "[*]";
-        List<Map<String, Object>> orgRolesRes = null;
-        try {
-            orgRolesRes = JsonPath.read(mdmsData, jsonPathForOrgRoles);
-            List<Role> orgRolesList = orgRolesRes.stream()
-                    .map(item -> mapper.convertValue(item, Role.class))
-                    .toList();
-            Map<String, List<Role>> rolesByOrgType = orgRolesList.stream().collect(Collectors.groupingBy(Role::getOrgType));
-            return rolesByOrgType;
-        } catch (Exception e) {
-            e.printStackTrace();
-            log.error(e.getMessage());
-            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response");
-        }
-    }
-
     private UserChangeSet detectUserChanges(User existing, User incoming) {
         UserChangeSet changes = new UserChangeSet();
 
@@ -588,5 +572,27 @@ public class OrganisationUserServiceValidator {
                 .collect(Collectors.toSet());
     }
 
+    public Map<String, List<Role>> getOrgRoles(RequestInfo requestInfo){
+        Object mdmsData = mdmsUtil.mDMSCall(requestInfo, configuration.getGlobalTenantId());
+        final String jsonPathForOrgRoles = MDMS_RES + MDMS_ORGANIZATION_MODULE_NAME + "." + MASTER_ORG_ROLES + "[*]";
+        List<Map<String, Object>> orgRolesRes = null;
+        try {
+            orgRolesRes = JsonPath.read(mdmsData, jsonPathForOrgRoles);
+            List<Role> orgRolesList = orgRolesRes.stream()
+                    .map(item -> mapper.convertValue(item, Role.class))
+                    .toList();
+            Map<String, List<Role>> rolesByOrgType = orgRolesList.stream().collect(Collectors.groupingBy(Role::getOrgType));
+            return rolesByOrgType;
+        } catch (PathNotFoundException e) {
+            log.error("Path not found while parsing MDMS response for org roles: {}", e.getMessage(), e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: Path not found");
+        } catch (RuntimeException e) {
+            log.error("Runtime error while parsing MDMS response for org roles: {}", e.getMessage(), e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error while parsing MDMS response for org roles: {}", e.getMessage(), e);
+            throw new CustomException("JSONPATH_ERROR", "Failed to parse mdms response: " + e.getMessage());
+        }
+    }
 
 }

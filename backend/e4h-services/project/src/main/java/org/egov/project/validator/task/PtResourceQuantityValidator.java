@@ -19,6 +19,7 @@ import org.egov.mdms.model.MdmsCriteriaReq;
 import org.egov.mdms.model.ModuleDetail;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -200,8 +201,12 @@ public class PtResourceQuantityValidator implements Validator<TaskBulkRequest, T
         MdmsCriteriaReq serviceRegistry = getMdmsRequest(requestInfo, tenantId, name, moduleName);
         try {
             return mdmsService.fetchConfig(serviceRegistry, JsonNode.class).get(MDMS_RESPONSE);
+        } catch (ServiceCallException e) {
+            log.error("Service call exception while fetching MDMS config for task quantity: {}", e.getMessage(), e);
+            throw new CustomException(INTERNAL_SERVER_ERROR, "Error while fetching MDMS config: " + e.getMessage());
         } catch (Exception e) {
-            throw new CustomException(INTERNAL_SERVER_ERROR, "Error while fetching mdms config");
+            log.error("Unexpected exception while fetching MDMS config for task quantity: {}", e.getMessage(), e);
+            throw new CustomException(INTERNAL_SERVER_ERROR, "Unexpected error while fetching MDMS config: " + e.getMessage());
         }
     }
 

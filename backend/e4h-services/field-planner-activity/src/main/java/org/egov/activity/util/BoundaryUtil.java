@@ -10,6 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
@@ -49,11 +53,18 @@ public class BoundaryUtil {
             }
             String jsonString = objectMapper.writeValueAsString(response);
             listBlock = extractBlockToDistrictMapping(jsonString);
-            int boundaryCount = listBlock != null ? listBlock.size() : 0;
-            log.debug("Successfully loaded {} boundaries from boundary service", boundaryCount);
-        }catch(Exception e) {
-            log.error("Error fetching boundaries from boundary service", e);
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("HTTP error while fetching boundary: status={} body={}", e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new CustomException("CONFIG_ERROR", "HTTP error while fetching boundary: " + e.getMessage());
+        } catch (ResourceAccessException e) {
+            log.error("Network error while fetching boundary: ", e);
+            throw new CustomException("CONFIG_ERROR", "Network error connecting to boundary service: " + e.getMessage());
+        } catch (RestClientException e) {
+            log.error("Error while fetching boundary: ", e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query boundary: " + e.getMessage());
+        } catch (IOException e) {
+            log.error("IO error while processing boundary response: ", e);
+            throw new CustomException("CONFIG_ERROR", "Error processing boundary response: " + e.getMessage());
         }
 
         return listBlock;

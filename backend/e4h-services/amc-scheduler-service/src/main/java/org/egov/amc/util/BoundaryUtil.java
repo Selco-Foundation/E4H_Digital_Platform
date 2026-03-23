@@ -9,6 +9,10 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
@@ -54,10 +58,15 @@ public class BoundaryUtil {
             }
             String jsonString = objectMapper.writeValueAsString(response);
             listBlock = extractBlockToDistrictMapping(jsonString);
-            log.debug("Successfully fetched {} boundary mappings", listBlock != null ? listBlock.size() : 0);
-        }catch(Exception e) {
-            log.error("Error in fetching boundary data from service, URI: {}", uri, e);
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query boundary ");
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("HTTP error while fetching boundary data: {}", e.getResponseBodyAsString(), e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query boundary: " + e.getMessage());
+        } catch (ResourceAccessException e) {
+            log.error("Connection error while fetching boundary data", e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query boundary: Connection failed");
+        } catch (RestClientException | IOException e) {
+            log.error("Error while fetching or processing boundary data", e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query boundary: " + e.getMessage());
         }
 
         return listBlock;

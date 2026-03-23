@@ -2,7 +2,6 @@ package org.egov.field_planner.util;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
 import org.egov.common.models.project.Project;
@@ -14,6 +13,7 @@ import org.egov.mdms.model.MdmsCriteriaReq;
 import org.egov.mdms.model.ModuleDetail;
 import org.egov.field_planner.config.FieldPlannerConfiguration;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -36,16 +36,16 @@ public class MDMSUtils {
     public Object mDMSCall(FieldPlanRequest request, String tenantId) {
         log.trace("Entering mDMSCall method for tenant: {}", tenantId);
         log.debug("Calling MDMS service for tenant: {}", tenantId);
-        
+
         RequestInfo requestInfo = request.getRequestInfo();
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId);
         Object result = null;
         try {
             result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
             log.debug("MDMS service call completed successfully for tenant: {}", tenantId);
-        } catch (Exception e) {
+        } catch (ServiceCallException e) {
             log.error("Error while calling MDMS service for tenant: {}", tenantId, e);
-            throw new CustomException("MDMS_ERROR", "error while calling mdms");
+            throw new CustomException("MDMS_ERROR", "Error while calling MDMS: " + e.getMessage());
         }
         log.trace("Exiting mDMSCall method");
         return result;

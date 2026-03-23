@@ -14,7 +14,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
@@ -23,8 +28,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.egov.inbox.util.InboxConstants.*;
-
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
@@ -60,10 +63,22 @@ public class MDMSUtil {
             response = restTemplate.postForObject(uri.toString(), mdmsCriteriaReq, Map.class);
             String jsonpath = MDMS_RESPONSE_JSONPATH.replace(MODULE_PLACEHOLDER, moduleName);
             configs = JsonPath.read(response, jsonpath);
-            log.debug("MDMS response parsed - configCount: {}", configs != null ? configs.size() : 0);
-        }catch(Exception e) {
-            log.error("Error in fetching inbox query configuration from MDMS - tenantId: {}, module: {}", tenantId, moduleName, e);
-            throw new CustomException("CONFIG_ERROR","Error in fetching inbox query configuration from MDMS for: " + moduleName);
+        } catch (HttpClientErrorException | HttpServerErrorException e) {
+            log.error("HTTP error while fetching inbox configuration from MDMS for module: {} status={} body={}",
+                    moduleName, e.getStatusCode(), e.getResponseBodyAsString(), e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query configuration from MDMS for: " + moduleName);
+        } catch (ResourceAccessException e) {
+            log.error("Network error while fetching inbox configuration from MDMS for module: {}", moduleName, e);
+            throw new CustomException("CONFIG_ERROR", "Network error while fetching inbox query configuration from MDMS for: " + moduleName);
+        } catch (RestClientException e) {
+            log.error("Error while fetching inbox configuration from MDMS for module: {}", moduleName, e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query configuration from MDMS for: " + moduleName);
+        } catch (com.jayway.jsonpath.PathNotFoundException e) {
+            log.error("Path not found while parsing MDMS response for module: {}", moduleName, e);
+            throw new CustomException("CONFIG_ERROR", "Error parsing inbox query configuration from MDMS for: " + moduleName);
+        } catch (RuntimeException e) {
+            log.error("Error while fetching inbox configuration from MDMS for module: {}", moduleName, e);
+            throw new CustomException("CONFIG_ERROR", "Error in fetching inbox query configuration from MDMS for: " + moduleName);
         }
 
         if (CollectionUtils.isEmpty(configs)) {

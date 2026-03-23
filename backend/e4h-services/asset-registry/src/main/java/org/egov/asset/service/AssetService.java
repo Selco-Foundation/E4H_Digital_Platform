@@ -55,14 +55,14 @@ public class AssetService {
             List<String> documentIds = idgenUtil.getIdList(request.getRequestInfo(), tenantId,
                     "documentId", "DOCUMENT-[SEQ_DOCUMENT_ID]", request.getAssetDetail().getAsset().getDocuments().size());
             log.debug("Generated document IDs count={}", documentIds.size());
-            
+
             if (!ids.isEmpty()) {
                 request.getAssetDetail().getAsset().setAssetId(ids.get(0));
             } else {
                 log.error("ID generation failed for asset | tenantId={}", tenantId);
                 throw new CustomException(ErrorConstants.ID_GEN_SERVICE_ERROR_CODE, ErrorConstants.ID_GEN_SERVICE_ERROR_MSG);
             }
-            
+
             if (request.getAssetDetail().getAsset().getAuditDetails() == null) {
                 log.debug("Setting audit details for assetId={}", request.getAssetDetail().getAsset().getAssetId());
                 AuditDetails auditDetails = AuditDetails.builder()
@@ -78,7 +78,7 @@ public class AssetService {
 
             log.info("Pushing asset creation to repository | assetId={}", request.getAssetDetail().getAsset().getAssetId());
             assetRepository.pushCreateAsset(request.getAssetDetail().getAsset());
-            log.info("Asset created successfully | assetId={} tenantId={}", 
+            log.info("Asset created successfully | assetId={} tenantId={}",
                     request.getAssetDetail().getAsset().getAssetId(), tenantId);
             return AssetCreateResponse.builder()
                     .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true))
@@ -198,7 +198,7 @@ public class AssetService {
             log.debug("Asset search completed | resultsCount={}", results.size());
             return results;
         } catch (Exception e) {
-            log.error("Error executing asset search query | tenantId={} error={}", 
+            log.error("Error executing asset search query | tenantId={} error={}",
                     asset.getTenantId(), e.getMessage(), e);
             throw new CustomException("ASSET_SEARCH_ERROR", "Failed to search assets: " + e.getMessage());
         }
@@ -295,7 +295,7 @@ public class AssetService {
             log.debug("Document search completed | documentsMapSize={}", documentsMap.size());
             return documentsMap;
         } catch (Exception e) {
-            log.error("Error executing document search query | tenantId={} assetIdsCount={} error={}", 
+            log.error("Error executing document search query | tenantId={} assetIdsCount={} error={}",
                     tenantId, assetIdsCount, e.getMessage(), e);
             throw new CustomException("DOCUMENT_SEARCH_ERROR", "Failed to search documents: " + e.getMessage());
         }

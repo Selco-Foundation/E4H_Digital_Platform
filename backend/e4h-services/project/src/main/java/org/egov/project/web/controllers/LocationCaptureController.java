@@ -15,6 +15,8 @@ import org.egov.common.producer.Producer;
 import org.egov.common.utils.ResponseInfoFactory;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.service.LocationCaptureService;
+import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -81,7 +83,11 @@ public class LocationCaptureController {
             log.debug("Pushing location capture bulk create request to Kafka topic");
             // Send the request to the Kafka topic for bulk creation.
             producer.push(projectConfiguration.getBulkCreateLocationCaptureTopic(), request);
-            log.info("Successfully pushed location capture bulk create request to Kafka");
+        } catch (RuntimeException e) {
+            log.error("Kafka runtime exception while sending bulk create request for location captures: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), false)
+            );
         } catch (Exception e) {
             log.error("Error sending bulk create request for location captures to Kafka", e);
             log.trace("Exiting locationCaptureTaskV1BulkCreatePost with error");
@@ -104,7 +110,6 @@ public class LocationCaptureController {
      * @param urlParams                    URL parameters for the search.
      * @param locationCaptureSearchRequest The request containing search criteria for location capture tasks.
      * @return A ResponseEntity containing the search results with HTTP status OK.
-     * @throws Exception if there is an error during the search operation.
      */
     @RequestMapping(value = "/v1/_search", method = RequestMethod.POST)
     public ResponseEntity<UserActionBulkResponse> locationCaptureTaskV2SearchPost(
@@ -131,6 +136,20 @@ public class LocationCaptureController {
             log.info("Successfully completed location capture search");
             log.trace("Exiting locationCaptureTaskV2SearchPost");
             return ResponseEntity.status(HttpStatus.OK).body(response);
+        } catch (CustomException e) {
+            log.error("Custom exception during search operation for location captures: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    UserActionBulkResponse.builder()
+                            .responseInfo(ResponseInfoFactory.createResponseInfo(locationCaptureSearchRequest.getRequestInfo(), false))
+                            .build()
+            );
+        } catch (ServiceCallException e) {
+            log.error("Service call exception during search operation for location captures: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    UserActionBulkResponse.builder()
+                            .responseInfo(ResponseInfoFactory.createResponseInfo(locationCaptureSearchRequest.getRequestInfo(), false))
+                            .build()
+            );
         } catch (Exception e) {
             log.error("Error occurred during search operation for location captures", e);
             log.trace("Exiting locationCaptureTaskV2SearchPost with error");

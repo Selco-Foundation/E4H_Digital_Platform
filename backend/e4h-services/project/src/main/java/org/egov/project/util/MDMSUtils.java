@@ -2,7 +2,6 @@ package org.egov.project.util;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.http.client.ServiceRequestClient;
 import org.egov.common.models.project.Project;
@@ -13,6 +12,7 @@ import org.egov.mdms.model.MdmsCriteriaReq;
 import org.egov.mdms.model.ModuleDetail;
 import org.egov.project.config.ProjectConfiguration;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -45,9 +45,9 @@ public class MDMSUtils {
             result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
             log.debug("Successfully received MDMS response");
             log.info("MDMS call completed successfully for tenantId: {}", tenantId);
-        } catch (Exception e) {
+        } catch (ServiceCallException e) {
             log.error("Error while calling MDMS for tenantId: {}", tenantId, e);
-            throw new CustomException("MDMS_ERROR", "error while calling mdms");
+            throw new CustomException("MDMS_ERROR", "Error while calling MDMS: " + e.getMessage());
         }
         log.trace("Exiting mDMSCall");
         return result;

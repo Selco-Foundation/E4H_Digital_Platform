@@ -10,6 +10,7 @@ import org.egov.project.repository.ProjectBeneficiaryRepository;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -86,9 +87,12 @@ public class PbVoucherTagUniqueForUpdateValidator implements Validator<Beneficia
                     projectBeneficiarySearch,
                     validProjectBeneficiaries.size(), 0, validProjectBeneficiaries.get(0).getTenantId(), null, false
             ).getResponse();
+        } catch (DataAccessException e) {
+            log.error("Data access exception while fetching project beneficiary: {}", e.getMessage(), e);
+            throw new CustomException("PROJECT_BENEFICIARY_SEARCH_FAILED", "Error occurred while fetching project beneficiary based on ids. Database error: " + e.getMessage());
         } catch (Exception e) {
-            log.error("Exception while fetching project beneficiary service : ", e);
-            throw new CustomException("PROJECT_BENEFICIARY_SEARCH_FAILED", "Error occurred while fetching project beneficiary based on ids. " + e);
+            log.error("Unexpected exception while fetching project beneficiary: {}", e.getMessage(), e);
+            throw new CustomException("PROJECT_BENEFICIARY_SEARCH_FAILED", "Error occurred while fetching project beneficiary based on ids: " + e.getMessage());
         }
         return existingProjectBeneficiaries;
     }

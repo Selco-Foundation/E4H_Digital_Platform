@@ -7,6 +7,7 @@ import org.egov.activity.config.ActivityConfiguration;
 import org.egov.activity.web.models.Asset;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
+import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -124,7 +125,10 @@ public class AmcSchedulerService {
 
             return new ArrayList<>();
 
-        } catch (Exception e) {
+        } catch (ServiceCallException e) {
+            log.error("Service call error fetching AMC configurations: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        } catch (RuntimeException e) {
             log.error("Error fetching AMC configurations: {}", e.getMessage(), e);
             return new ArrayList<>();
         }
@@ -227,7 +231,11 @@ public class AmcSchedulerService {
             serviceRequest.fetchResult(url, createRequest);
             log.info("Successfully created {} Asset AMCs", assetAmcsToCreate.size());
 
-        } catch (Exception e) {
+        } catch (ServiceCallException e) {
+            log.error("Service call error creating Asset AMCs: {}", e.getMessage(), e);
+            throw new CustomException("ASSET_AMC_CREATION_ERROR",
+                    "Failed to create Asset AMCs: " + e.getMessage());
+        } catch (RuntimeException e) {
             log.error("Error creating Asset AMCs: {}", e.getMessage(), e);
             throw new CustomException("ASSET_AMC_CREATION_ERROR",
                     "Failed to create Asset AMCs: " + e.getMessage());
@@ -307,7 +315,9 @@ public class AmcSchedulerService {
                     assetTypeIds.add(assetTypeId.toString());
                 }
             }
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
+            log.error("Error extracting asset types: {}", e.getMessage(), e);
+        } catch (RuntimeException e) {
             log.error("Error extracting asset types: {}", e.getMessage(), e);
         }
 

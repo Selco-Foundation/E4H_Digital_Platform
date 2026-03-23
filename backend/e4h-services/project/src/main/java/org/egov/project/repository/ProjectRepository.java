@@ -17,6 +17,7 @@ import org.egov.project.web.models.ProjectSearchCriteria;
 import org.egov.project.web.models.ProjectSortCriteria;
 import org.egov.project.web.models.ProjectStatusAgregation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -237,8 +238,8 @@ public class ProjectRepository extends GenericRepository<Project> {
             log.debug("Project name exists check result: {} (count: {})", exists, count);
             log.trace("Exiting isProjectNameExists");
             return exists;
-        } catch (Exception e) {
-            log.error("Error checking for existing project name: {} for tenantId: {}", projectName, tenantId, e);
+        } catch (DataAccessException e) {
+            log.error("Error checking for existing project name: {}", projectName, e);
             // If we can't check, assume it exists to be safe
             log.warn("Assuming project name exists due to error");
             log.trace("Exiting isProjectNameExists with error");
@@ -260,12 +261,13 @@ public class ProjectRepository extends GenericRepository<Project> {
         try {
             String sql = queryBuilder.getCheckProjectNameExistsExcludingProjectQuery();
             Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectName, tenantId, excludeProjectId);
-            boolean exists = count != null && count > 0;
-            log.debug("Project name exists check result: {} (count: {})", exists, count);
-            log.trace("Exiting isProjectNameExistsExcludingProject");
-            return exists;
+            return count != null && count > 0;
+        } catch (DataAccessException e) {
+            log.error("Data access error checking for existing project name excluding project {}: {}", excludeProjectId, projectName, e);
+            // If we can't check, assume it exists to be safe
+            return true;
         } catch (Exception e) {
-            log.error("Error checking for existing project name excluding project {}: {} for tenantId: {}", excludeProjectId, projectName, tenantId, e);
+            log.error("Unexpected error checking for existing project name excluding project {}: {}", excludeProjectId, projectName, e);
             // If we can't check, assume it exists to be safe
             log.warn("Assuming project name exists due to error");
             log.trace("Exiting isProjectNameExistsExcludingProject with error");
@@ -286,13 +288,13 @@ public class ProjectRepository extends GenericRepository<Project> {
             // Escape LIKE wildcards in baseName to prevent SQL injection and incorrect matching
             String escapedBaseName = queryBuilder.escapeLikeWildcards(baseName);
             log.debug("Escaped base name for SQL query");
-            
+
             // Get all names that match the pattern to find the highest numeric suffix
             String sql = queryBuilder.getFindHighestExistingProjectNameQuery();
             log.debug("Executing query to find existing names");
             List<String> existingNames = jdbcTemplate.queryForList(sql, String.class, escapedBaseName + "%", tenantId);
             log.debug("Found {} existing names matching pattern", existingNames != null ? existingNames.size() : 0);
-            
+
             if (existingNames.isEmpty()) {
                 log.debug("No existing names found, returning null");
                 log.trace("Exiting findHighestExistingProjectName");
@@ -329,9 +331,8 @@ public class ProjectRepository extends GenericRepository<Project> {
             log.info("Highest existing name found: {} (suffix: {})", highestName, highestSuffix);
             log.trace("Exiting findHighestExistingProjectName");
             return highestName;
-        } catch (Exception e) {
-            log.error("Error finding highest existing name for base: {} and tenantId: {}", baseName, tenantId, e);
-            log.trace("Exiting findHighestExistingProjectName with error");
+        } catch (DataAccessException e) {
+            log.error("Error finding highest existing name for base: {}", baseName, e);
             return null;
         }
     }

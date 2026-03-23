@@ -1,6 +1,7 @@
 package org.egov.service;
 
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.kafka.OrganizationProducer;
@@ -82,9 +83,10 @@ public class OrganisationService {
 
         try {
             notificationService.sendNotification(orgRequest, true);
-            log.debug("Notification sent successfully");
-        }catch (Exception e){
-            log.warn("Failed to send notification for organisation creation, continuing without notification", e);
+        } catch (RuntimeException e) {
+            log.error("Runtime exception while sending notification: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Unexpected exception while sending notification: {}", e.getMessage(), e);
         }
 
         log.info("Organisation creation process completed successfully for tenant: {}", tenantId);
@@ -113,16 +115,20 @@ public class OrganisationService {
         OrgRequest clone;
         try {
             clone = mapper.readValue(mapper.writeValueAsString(orgRequest), OrgRequest.class);
-        }catch (Exception e) {
-            log.error("Error while cloning organisation request", e);
-            throw new CustomException("CLONING_ERROR", "Error while cloning");
+        } catch (JsonProcessingException e) {
+            log.error("JSON processing error while cloning organisation request: {}", e.getMessage(), e);
+            throw new CustomException("CLONING_ERROR", "Error while cloning organisation request: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Unexpected error while cloning organisation request: {}", e.getMessage(), e);
+            throw new CustomException("CLONING_ERROR", "Unexpected error while cloning organisation request: " + e.getMessage());
         }
 
         try {
             notificationService.sendNotification(orgRequest,false);
-            log.debug("Notification sent successfully");
-        }catch (Exception e){
-            log.warn("Failed to send notification for organisation update, continuing without notification", e);
+        } catch (RuntimeException e) {
+            log.error("Runtime exception while sending notification: {}", e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("Unexpected exception while sending notification: {}", e.getMessage(), e);
         }
 //        encryptionService.encryptDetails(clone,ORGANISATION_ENCRYPT_KEY);
         organizationProducer.push(configuration.getOrgKafkaUpdateTopic(), clone);
