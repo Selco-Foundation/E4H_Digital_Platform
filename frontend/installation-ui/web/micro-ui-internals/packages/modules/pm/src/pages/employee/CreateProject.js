@@ -7,8 +7,6 @@ import useBoundary from "../../hooks/useBoundary";
 import {ProjectService} from "../../services/Project";
 import useProject from "../../hooks/useProject";
 import {useHistory, useLocation} from "react-router-dom";
-import CustomArrowRight from "../../components/Custom/CustomArrowRight";
-import CustomCloseSvg from "../../components/Custom/CustomCloseSvg";
 import { PMService } from "../../services/PMService";
 import { useDispatch } from "react-redux";
 import { populateResponsePage, populateWorkingProject } from "../../redux/actions";
@@ -471,12 +469,12 @@ const CreateProject = () => {
     }
 
     try {
-      const projectResponse = await ProjectService.upsertProject(projectUpsertData);
-      const createdProjectResponse = projectResponse.Project?.[0];
+      const upsertedProjectResponse = await ProjectService.upsertProject(projectUpsertData);
+      const upsertedProject = upsertedProjectResponse?.[0];
       await invalidateProjectData();
       history.replace({
         pathname: location.pathname,
-        search: `projectId=${createdProjectResponse.id}&key=${currentKey + 1}`,
+        search: `projectId=${upsertedProject?.id}&key=${currentKey + 1}`,
       });
       setCurrentKey(prev => prev + 1);
       setBlockUI(false);
@@ -490,7 +488,7 @@ const CreateProject = () => {
       setBlockUI(false);
       setToast({
         key: "error",
-        label: createdProject?.id ? t("PM_TOAST_DRAFT_PROJECT_UPDATION_ERROR") : t("PM_TOAST_DRAFT_PROJECT_CREATION_ERROR"),
+        label: CommonUtils.getApiErrorMessage(e) || (createdProject?.id ? t("PM_TOAST_DRAFT_PROJECT_UPDATION_ERROR") : t("PM_TOAST_DRAFT_PROJECT_CREATION_ERROR")),
       })
 
     } finally {
@@ -581,7 +579,7 @@ const CreateProject = () => {
       setBlockUI(false);
       setToast({
         key: "error",
-        label: t("PM_TOAST_DRAFT_PROJECT_WORKFLOW_UPDATE_ERROR"),
+        label: CommonUtils.getApiErrorMessage(error) || t("PM_TOAST_DRAFT_PROJECT_WORKFLOW_UPDATE_ERROR"),
       })
     } finally {
       setBlockUI(false);
