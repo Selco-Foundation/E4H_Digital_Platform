@@ -38,13 +38,12 @@ const ActivitySelector = ({
         options={activityMenu}
         isSearchable={true}
         optionsKey={"name"}
-        onSelect={(e) => {
+        onSelect={() => {
           // Triggering state update here causes render issues since dropdown within is remains open
+        }}
+        onClose={(e) => {
           handleActivitySelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e))
         }}
-        // onClose={(e) => {
-        //   handleActivitySelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e))
-        // }}
         defaultLabel={selectedActivities.length ? `${selectedActivities.length} Selected` : ""}
         selected={selectedActivities}
         addSelectAllCheck={true}
