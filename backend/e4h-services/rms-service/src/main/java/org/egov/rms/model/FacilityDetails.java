@@ -41,5 +41,12 @@ public class FacilityDetails {
 
     @JsonProperty("boundaryCode")
     private String boundaryCode;
+
+    /**
+     * True when the facility has any row in facility_rms_inactive_incident (open RMS/Theft incidents).
+     * This is fetched from health-facility-registry as 'rms_inactive'.
+     */
+    @JsonProperty("rmsInactive")
+    private Boolean rmsInactive;
 }
 

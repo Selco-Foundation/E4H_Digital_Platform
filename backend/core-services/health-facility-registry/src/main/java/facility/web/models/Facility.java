@@ -64,4 +64,9 @@ public class Facility {
 
     @JsonProperty("isOnmReady")
     private Boolean isOnmReady = false;
+
+    /** True when the facility has any row in facility_rms_inactive_incident (open RMS/Theft incidents). */
+    @JsonProperty("rms_inactive")
+    private Boolean rmsInactive = null;
+
 }
