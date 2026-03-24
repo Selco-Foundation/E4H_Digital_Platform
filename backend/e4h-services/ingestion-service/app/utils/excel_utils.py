@@ -185,12 +185,6 @@ def lock_prefilled_rows_in_excel(
     grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
     no_fill = PatternFill()  # reset
 
-    # Unlock all cells first
-    for row in ws.iter_rows():
-        for cell in row:
-            cell.protection = Protection(locked=False)
-            cell.fill = no_fill
-
     # Get header row values
     header_row = [cell.value for cell in ws[1]]
 
@@ -207,7 +201,10 @@ def lock_prefilled_rows_in_excel(
     ]
 
     # Lock prefilled rows completely (grey out non-editable cells)
-    for row_idx in range(2, total_rows + 2):
+    # Data rows start at row 2; end at row (1 + total_rows)
+    prefilled_start_row = 2
+    prefilled_end_row = 1 + total_rows
+    for row_idx in range(prefilled_start_row, prefilled_end_row + 1):
         for col_idx in range(1, total_columns + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
             # If column is editable -> unlock
@@ -223,24 +220,19 @@ def lock_prefilled_rows_in_excel(
                 cell.protection = Protection(locked=True)
                 cell.fill = grey_fill
 
-    # Leave appendable rows fully unlocked, but respect always_locked columns
-    # Only apply gray fill to cells that have values, not empty cells
-    for row_idx in range(total_rows + 2, total_rows + extra_append_rows + 2):
+    # Leave appendable rows mostly unlocked, but respect always_locked columns.
+    # For performance, avoid applying any fill styles on extra rows – only
+    # adjust protection flags so the user experience is preserved without
+    # expensive formatting operations on thousands of empty cells.
+    append_start_row = prefilled_end_row + 1
+    append_end_row = prefilled_end_row + extra_append_rows
+    for row_idx in range(append_start_row, append_end_row + 1):
         for col_idx in range(1, total_columns + 1):
             cell = ws.cell(row=row_idx, column=col_idx)
-            cell_value = cell.value
-            is_empty = cell_value is None or (isinstance(cell_value, str) and cell_value.strip() == "")
-
             if col_idx in always_locked_indices:
                 cell.protection = Protection(locked=True)
-                # Only apply gray fill if cell has a value, otherwise leave it white
-                if not is_empty:
-                    cell.fill = grey_fill
-                else:
-                    cell.fill = no_fill
             else:
                 cell.protection = Protection(locked=False)
-                cell.fill = no_fill
 
     # Enable protection
     ws.protection.select_unlocked_cells = True
@@ -320,7 +312,8 @@ def autofit_columns(
     auto_fit: bool = True,
     default_width: int = 20,
     max_width: int = 40,
-    enable_wrap_text: bool = True
+    enable_wrap_text: bool = True,
+    max_rows_to_scan: Optional[int] = None,
 ) -> None:
     """
     Adjust column widths in a given Excel sheet and optionally apply wrap text.
@@ -339,27 +332,35 @@ def autofit_columns(
 
     ws = wb[sheet_name]
 
-    # Load data with pandas for convenience
-    try:
-        df = pd.read_excel(file_path, sheet_name=sheet_name)
-    except Exception:
-        df = None  # fallback: will just use worksheet cells
+    # Limit how many rows we scan per column for width calculation.
+    # This keeps the operation fast on very large sheets while still
+    # basing widths on real data instead of a fixed default.
+    if max_rows_to_scan is not None and max_rows_to_scan > 0:
+        max_row = min(ws.max_row, max_rows_to_scan)
+    else:
+        max_row = ws.max_row
 
-    for i, col in enumerate(ws.iter_cols(min_row=1, max_row=ws.max_row), start=1):
+    # Iterate directly over worksheet cells to avoid the overhead of
+    # re-reading the file with pandas for each autofit call.
+    for i, col in enumerate(ws.iter_cols(min_row=1, max_row=max_row), start=1):
         col_letter = get_column_letter(i)
 
         if auto_fit:
-            if df is not None and df.shape[1] >= i:
-                texts = [str(df.columns[i - 1])] + df.iloc[:, i - 1].astype(str).tolist()
-            else:
-                texts = [str(cell.value) for cell in col if cell.value is not None]
+            max_length = 0
+            for cell in col:
+                value = cell.value
+                if value is not None:
+                    text = str(value)
+                    if len(text) > max_length:
+                        max_length = len(text)
 
-            max_length = max((len(str(t)) for t in texts if t), default=default_width)
-            ws.column_dimensions[col_letter].width = min(max_length + 2, max_width)  # padding
+            if max_length == 0:
+                max_length = default_width
+
+            ws.column_dimensions[col_letter].width = min(max_length + 2, max_width)
         else:
             ws.column_dimensions[col_letter].width = default_width
 
-        # Apply wrap text to all cells in this column
         if enable_wrap_text:
             for cell in col:
                 cell.alignment = Alignment(wrap_text=True)
