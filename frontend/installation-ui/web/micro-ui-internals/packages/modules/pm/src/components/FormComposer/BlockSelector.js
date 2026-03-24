@@ -56,13 +56,12 @@ const BlockSelector = ({
         options={blockMenu}
         optionsKey={"name"}
         isSearchable={true}
-        onSelect={(e) => {
+        onSelect={() => {
           // Triggering state update here causes render issues since dropdown within remains open
+        }}
+        onClose={(e) => {
           handleBlockSelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e));
         }}
-        // onClose={(e) => {
-        //   handleBlockSelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e));
-        // }}
         defaultLabel={selectedBlocks.length ? `${selectedBlocks.length} Selected` : ""}
         selected={selectedBlocks}
         addSelectAllCheck={true}
