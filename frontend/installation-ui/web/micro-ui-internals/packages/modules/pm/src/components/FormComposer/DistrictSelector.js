@@ -56,12 +56,13 @@ const DistrictSelector = ({
         options={districtMenu}
         optionsKey={"name"}
         isSearchable={true}
-        onSelect={() => {
+        onSelect={(e) => {
           // Triggering state update here causes render issues since dropdown within is remains open
-        }}
-        onClose={(e) => {
           handleDistrictSelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e))
         }}
+        // onClose={(e) => {
+        //   handleDistrictSelection(e?.map(row=>{return row?.[1] ? row[1] : null}).filter(e=>e))
+        // }}
         defaultLabel={selectedDistricts.length ? `${selectedDistricts.length} Selected` :  ""}
         selected={selectedDistricts}
         addSelectAllCheck={true}
