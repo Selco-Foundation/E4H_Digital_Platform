@@ -852,15 +852,15 @@ def resolve_boundary_code(
 
     # --- State ---
     state_normalized = state.strip().lower().replace(" ", "") if state else ""
-    if not state_normalized:
-        return None, "Boundary code for State not found, value is empty"
+    if not state_normalized or state_normalized == "nan":
+        return None, "State is not provided"
 
     state_candidates = reverse_map.get(state_normalized, [])
     if not state_candidates:
         return None, f"Boundary code for State '{state}' not found"
 
     state_prefix = f"Boundary_{country}_"
-    state_matches = [c for c in state_candidates if c.startswith(state_prefix)]
+    state_matches = [c for c in state_candidates if c.startswith(state_prefix) and '_' not in c[len(state_prefix):]]
     if not state_matches:
         return None, f"Boundary code for State '{state}' not found"
     if len(state_matches) > 1:
@@ -870,15 +870,15 @@ def resolve_boundary_code(
 
     # --- District ---
     district_normalized = district.strip().lower().replace(" ", "") if district else ""
-    if not district_normalized:
-        return None, "Boundary code for District not found, value is empty"
+    if not district_normalized or district_normalized == "nan":
+        return None, "District is not provided"
 
     district_candidates = reverse_map.get(district_normalized, [])
     if not district_candidates:
         return None, f"Boundary code for District '{district}' not found"
 
     district_prefix = f"Boundary_{state_boundary}_"
-    district_matches = [c for c in district_candidates if c.startswith(district_prefix)]
+    district_matches = [c for c in district_candidates if c.startswith(district_prefix) and '_' not in c[len(district_prefix):]]
     if not district_matches:
         return None, f"Boundary code for District '{district}' under State '{state}' not found"
     if len(district_matches) > 1:
@@ -888,15 +888,15 @@ def resolve_boundary_code(
 
     # --- Block ---
     block_normalized = block.strip().lower().replace(" ", "") if block else ""
-    if not block_normalized:
-        return None, "Boundary code for Block not found, value is empty"
+    if not block_normalized or block_normalized == "nan":
+        return None, "Block is not provided"
 
     block_candidates = reverse_map.get(block_normalized, [])
     if not block_candidates:
         return None, f"Boundary code for Block '{block}' not found"
 
     block_prefix = f"Boundary_{district_boundary}_"
-    block_matches = [c for c in block_candidates if c.startswith(block_prefix)]
+    block_matches = [c for c in block_candidates if c.startswith(block_prefix) and '_' not in c[len(block_prefix):]]
     if not block_matches:
         return None, f"Boundary code for Block '{block}' under District '{district}' not found"
     if len(block_matches) > 1:
@@ -916,7 +916,7 @@ def resolve_boundary_codes_for_dataframe(
     """
     Resolve boundary codes from State/District/Block columns for every row
     in the DataFrame. Populates `boundary_code_column` with the resolved code.
-    Rows that fail resolution get status='failed' and the error in 'error'.
+    Rows that fail resolution get status='FAILED' and the error in 'error'.
     """
     if boundary_code_column not in df.columns:
         df[boundary_code_column] = ''
@@ -937,16 +937,24 @@ def resolve_boundary_codes_for_dataframe(
                 logger.error(f"Error fetching localizations for boundary resolution: {e}", exc_info=True)
 
     for index, row in df.iterrows():
-        existing_code = str(row.get(boundary_code_column, '') or '').strip()
+        raw_code = row.get(boundary_code_column, '')
+        existing_code = '' if pd.isna(raw_code) else str(raw_code).strip()
         if existing_code:
             continue
 
-        state_val = str(row.get('State (Mandatory)', '') or '').strip()
-        district_val = str(row.get('District (Mandatory)', '') or '').strip()
-        block_val = str(row.get('Block (Mandatory)', '') or '').strip()
+        state_col = 'State (Mandatory)' if 'State (Mandatory)' in df.columns else 'State'
+        district_col = 'District (Mandatory)' if 'District (Mandatory)' in df.columns else 'District'
+        block_col = 'Block (Mandatory)' if 'Block (Mandatory)' in df.columns else 'Block'
+
+        raw_state = row.get(state_col, '')
+        raw_district = row.get(district_col, '')
+        raw_block = row.get(block_col, '')
+        state_val = '' if pd.isna(raw_state) else str(raw_state).strip()
+        district_val = '' if pd.isna(raw_district) else str(raw_district).strip()
+        block_val = '' if pd.isna(raw_block) else str(raw_block).strip()
 
         if not reverse_map:
-            df.at[index, 'status'] = 'failed'
+            df.at[index, 'status'] = 'FAILED'
             df.at[index, 'error'] = 'Localization service unavailable; cannot resolve boundary code'
             continue
 
@@ -957,7 +965,7 @@ def resolve_boundary_codes_for_dataframe(
             reverse_map=reverse_map,
         )
         if error:
-            df.at[index, 'status'] = 'failed'
+            df.at[index, 'status'] = 'FAILED'
             df.at[index, 'error'] = error
         else:
             df.at[index, boundary_code_column] = boundary_code
