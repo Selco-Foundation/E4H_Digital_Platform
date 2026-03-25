@@ -3,6 +3,7 @@ import UserModal from "./UserModal";
 import { Toast, Loader } from "@egovernments/digit-ui-react-components";
 import {VendorService} from "../../../services/Vendor";
 import {useQueryClient} from "react-query";
+import CommonUtils from "../../../utilities/CommonUtils";
 
 const OrganizationUserAdminActions = ({ t, organizationId, organizationType, organizationSubType }) => {
 
@@ -65,7 +66,7 @@ const OrganizationUserAdminActions = ({ t, organizationId, organizationType, org
       setBlockUI(false);
       setFormToast({
         key: "error",
-        label: t("ORGANIZATION_USER_CREATION_FAILED"),
+        label: CommonUtils.getApiErrorMessage(e) || t("ORGANIZATION_USER_CREATION_FAILED"),
       });
     }
   }
