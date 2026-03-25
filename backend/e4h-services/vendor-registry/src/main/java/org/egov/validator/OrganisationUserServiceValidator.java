@@ -210,14 +210,18 @@ public class OrganisationUserServiceValidator {
                     existingEmployee.getUser().setEmailId(orgUser.getEmailId());
                     existingEmployee.getUser().setRoles(orgUser.getRoles());
 
+                    long now = System.currentTimeMillis();
                     List<Assignment> previousAssignments = existingEmployee.getAssignments();
                     if (previousAssignments != null) {
                         for (Assignment assignment : previousAssignments) {
                             if (isDefaultAssignment(assignment)) {
-                                continue;
+                                assignment.setIsCurrentAssignment(true);
+                                assignment.setToDate(null);
+                                assignment.setFromDate(now);
+                            } else if (Boolean.TRUE.equals(assignment.getIsCurrentAssignment())) {
+                                assignment.setIsCurrentAssignment(false);
+                                assignment.setToDate(now);
                             }
-                            assignment.setIsCurrentAssignment(false);
-                            assignment.setToDate(System.currentTimeMillis());
                         }
                     }
                     List<Assignment> updatedAssignments = new ArrayList<>(
