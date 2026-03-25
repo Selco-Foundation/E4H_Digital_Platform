@@ -16,6 +16,7 @@ import org.egov.activity.repository.ActivityFacilityRepository;
 import org.egov.activity.service.enrichment.ActivityEnrichment;
 import org.egov.activity.validator.ActivityValidator;
 import org.egov.activity.web.models.*;
+import org.egov.common.models.core.SearchResponse;
 import org.egov.tracer.model.CustomException;
 import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,7 @@ import java.sql.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.egov.activity.util.ActivityConstants.SUBMITTED_BY_SUPERVISOR;
+import static org.egov.activity.util.ActivityConstants.*;
 import static org.egov.common.utils.CommonUtils.populateErrorDetails;
 
 @Service
@@ -111,6 +112,7 @@ public class ActivityService {
                                 .userId(userId)
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
+                                .additionalDetails(Map.of(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY, LINKAGE_TYPE_INSTALLATION_REVIEWER))
                                 .build();
                         usersFacility.add(facilityUser);
                     }
@@ -124,6 +126,7 @@ public class ActivityService {
                                 .userId(userId)
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
+                                .additionalDetails(Map.of(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY, LINKAGE_TYPE_FIELD_STAFF))
                                 .build();
                         usersFacility.add(facilityUser);
                     }
@@ -137,6 +140,7 @@ public class ActivityService {
                                 .userId(userId)
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
+                                .additionalDetails(Map.of(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY, LINKAGE_TYPE_FIELD_SUPERVISOR))
                                 .build();
                         usersFacility.add(facilityUser);
                     }
@@ -898,16 +902,10 @@ public class ActivityService {
                 return;
             }
 
-            // Determine a reference user from field staff or supervisor
-            String referenceUserId = null;
-            if (activityFacility.getFieldStaffUsers() != null && !activityFacility.getFieldStaffUsers().isEmpty()) {
-                referenceUserId = activityFacility.getFieldStaffUsers().get(0);
-            } else if (activityFacility.getFieldSupervisorUsers() != null && !activityFacility.getFieldSupervisorUsers().isEmpty()) {
-                referenceUserId = activityFacility.getFieldSupervisorUsers().get(0);
-            }
-
+            // Field staff / supervisor lists are not loaded from DB on search; resolve from activity_facility_users + assignedUser
+            String referenceUserId = resolveReferenceUserIdForComplaintResolver(activityFacility, requestInfo);
             if (referenceUserId == null) {
-                log.info("No reference user (field staff/supervisor/assigned) found for activityFacility {}, skipping complaint resolver jurisdiction update", activityFacility.getId());
+                log.info("No reference user (field staff/supervisor from activity_facility_users or assigned) found for activityFacility {}, skipping complaint resolver jurisdiction update", activityFacility.getId());
                 return;
             }
 
@@ -931,6 +929,87 @@ public class ActivityService {
         } catch (Exception e) {
             log.error("Error while updating complaint resolver jurisdiction for activityFacility {}", activityFacility != null ? activityFacility.getId() : "null", e);
         }
+    }
+
+    /**
+     * Prefer first field staff, then first field supervisor. Sources: request payload lists (if present),
+     * persisted {@code activity_facility_users} rows with linkageType (FIELD_STAFF / FIELD_SUPERVISOR),
+     * then {@link ActivityFacility#getAssignedUser()}.
+     */
+    private String resolveReferenceUserIdForComplaintResolver(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        if (activityFacility.getFieldStaffUsers() != null && !activityFacility.getFieldStaffUsers().isEmpty()) {
+            return activityFacility.getFieldStaffUsers().get(0);
+        }
+        if (activityFacility.getFieldSupervisorUsers() != null && !activityFacility.getFieldSupervisorUsers().isEmpty()) {
+            return activityFacility.getFieldSupervisorUsers().get(0);
+        }
+        List<ActivityFacilityUser> linked = fetchActivityFacilityUsers(activityFacility.getId(), activityFacility.getTenantId(), requestInfo);
+        String fromLinked = pickReferenceUserIdFromLinkedActivityFacilityUsers(linked);
+        if (fromLinked != null) {
+            return fromLinked;
+        }
+        if (activityFacility.getAssignedUser() != null && !activityFacility.getAssignedUser().isBlank()) {
+            return activityFacility.getAssignedUser();
+        }
+        return null;
+    }
+
+    private List<ActivityFacilityUser> fetchActivityFacilityUsers(String activityFacilityId, String tenantId, RequestInfo requestInfo) {
+        try {
+            ActivityFacilityUserSearchCriteria criteria = ActivityFacilityUserSearchCriteria.builder()
+                    .activityFacilityId(List.of(activityFacilityId))
+                    .tenantId(tenantId)
+                    .build();
+            ActivityFacilityUserSearchRequest searchRequest = ActivityFacilityUserSearchRequest.builder()
+                    .criteria(criteria)
+                    .requestInfo(requestInfo)
+                    .build();
+            SearchResponse<ActivityFacilityUser> response = facilityUsersService.search(
+                    searchRequest,
+                    activityConfiguration.getMaxLimit(),
+                    0,
+                    tenantId,
+                    null,
+                    false);
+            if (response == null || response.getResponse() == null) {
+                return Collections.emptyList();
+            }
+            return response.getResponse();
+        } catch (Exception e) {
+            log.error("Error while fetching activity facility users for activityFacility {}", activityFacilityId, e);
+            return Collections.emptyList();
+        }
+    }
+
+    private String pickReferenceUserIdFromLinkedActivityFacilityUsers(List<ActivityFacilityUser> linked) {
+        if (linked == null || linked.isEmpty()) {
+            return null;
+        }
+        for (ActivityFacilityUser u : linked) {
+            if (Boolean.TRUE.equals(u.getIsDeleted())) {
+                continue;
+            }
+            if (LINKAGE_TYPE_FIELD_STAFF.equalsIgnoreCase(String.valueOf(getLinkageTypeFromActivityFacilityUser(u)))) {
+                return u.getUserId();
+            }
+        }
+        for (ActivityFacilityUser u : linked) {
+            if (Boolean.TRUE.equals(u.getIsDeleted())) {
+                continue;
+            }
+            if (LINKAGE_TYPE_FIELD_SUPERVISOR.equalsIgnoreCase(String.valueOf(getLinkageTypeFromActivityFacilityUser(u)))) {
+                return u.getUserId();
+            }
+        }
+        return null;
+    }
+
+    private String getLinkageTypeFromActivityFacilityUser(ActivityFacilityUser u) {
+        if (u.getAdditionalDetails() == null) {
+            return null;
+        }
+        Object v = u.getAdditionalDetails().get(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY);
+        return v != null ? v.toString() : null;
     }
 
     private String fetchOrganisationIdForUser(String userId, ActivityFacility activityFacility, RequestInfo requestInfo) {
