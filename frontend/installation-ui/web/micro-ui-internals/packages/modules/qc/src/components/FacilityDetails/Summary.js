@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Section from "./Section";
 import AddRejectionReasonModal from "./AddRejectionReasonModal";
 import SystemParameterReport from "./SystemParameterReport";
