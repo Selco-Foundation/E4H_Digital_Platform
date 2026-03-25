@@ -301,20 +301,20 @@ public class FacilityService {
                 .path(configs.getLocalizationUpsertPath())
                 .toUriString();
 
-        int chunkSize = 50;
-        for (int i = 0; i < messages.size(); i += chunkSize) {
-            List<Map<String, String>> chunk = messages.subList(i, Math.min(i + chunkSize, messages.size()));
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("RequestInfo", requestInfo);
-            payload.put("tenantId", LOCALIZATION_TENANT_ID);
-            payload.put("messages", chunk);
+        log.info("Upserting facility boundary localizations: messages={}, module={}, locale={}",
+                messages.size(), LOCALIZATION_MODULE, LOCALIZATION_LOCALE);
 
-            try {
-                restTemplate.postForObject(upsertUrl, payload, Map.class);
-            } catch (Exception e) {
-                // Best-effort: boundary already exists; we don't want to fail the entire facility create due to localization.
-                log.error("Localization upsert failed for facility boundary codes (chunk size {})", chunk.size(), e);
-            }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("RequestInfo", requestInfo);
+        payload.put("tenantId", LOCALIZATION_TENANT_ID);
+        payload.put("messages", messages);
+
+        try {
+            restTemplate.postForObject(upsertUrl, payload, Map.class);
+            log.info("Completed facility boundary localization upsert successfully: messages={}", messages.size());
+        } catch (Exception e) {
+            // Best-effort: we don't want to fail the entire facility create due to localization.
+            log.error("Localization upsert failed for facility boundary localizations: messages={}", messages.size(), e);
         }
     }
 
