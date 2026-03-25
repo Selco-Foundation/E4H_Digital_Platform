@@ -88,7 +88,7 @@ export const VendorService = {
       "Content-Type" : "application/json"
     }
 
-    const response = Request({
+    const response = await Request({
       url : endpoint,
       data: queryObject,
       userService : true,
