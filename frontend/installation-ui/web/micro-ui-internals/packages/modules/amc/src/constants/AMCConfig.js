@@ -17,9 +17,9 @@ export const amcConfig = {
           ]
         },
         {
-          "sectionName": "Inverter",
+          "sectionName": "Inverter or Charge Controller",
           "properties": [
-            { "field": "check_inverter_cleaned", "label": "Inverter cleaned during visit" },
+            { "field": "check_inverter_cleaned", "label": "Inverter or Charge Controller cleaned during visit" },
             { "field": "check_inverter_cables", "label": "Cables & Connections found secure and no wear and tear observed" }
           ]
         },
@@ -59,7 +59,7 @@ export const amcConfig = {
       "sectionName": "II. Performance and Preventive Maintenance",
       "properties": [
         { "field": "battery_bank_voltage", "label": "Battery Bank Voltage" },
-        { "field": "inverter_reading", "label": "Inverter display (Reading after measurement)" },
+        { "field": "inverter_reading", "label": "Inverter or Charge Controller display (Reading after measurement)" },
       ],
       "children": [
         {
