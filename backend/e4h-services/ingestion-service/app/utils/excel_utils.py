@@ -11,6 +11,48 @@ from app.core.logging import AppLogger
 
 logger = AppLogger().get_logger()
 
+def add_required_non_blank_validations_for_headers(
+    file_path: str,
+    sheet_name: str,
+    required_headers: List[str],
+    max_extra_rows: int = 1000,
+) -> None:
+    """
+    Add lightweight non-blank validations for specific header names.
+
+    This is intentionally narrower than `add_non_blank_validations_to_file` so it can be
+    used even in performance-optimized template generation.
+    """
+    wb = load_workbook(file_path)
+    if sheet_name not in wb.sheetnames:
+        raise ValueError(f"Sheet '{sheet_name}' not found in {file_path}")
+
+    ws = wb[sheet_name]
+    header_row = 1
+    header_cells = {str(cell.value).strip(): cell for cell in ws[header_row] if cell.value is not None}
+
+    # Apply validation only to a bounded range (existing rows + extra rows).
+    max_row = max(ws.max_row + max_extra_rows, 2)
+
+    for header in required_headers:
+        header_cell = header_cells.get(header)
+        if not header_cell:
+            continue
+
+        col_letter = get_column_letter(header_cell.column)
+        dv = DataValidation(
+            type="custom",
+            formula1=f'LEN(TRIM({col_letter}2))>0',
+            allow_blank=False,
+            showErrorMessage=True,
+            error="This field cannot be left blank",
+            errorTitle="Missing Required Field",
+        )
+        ws.add_data_validation(dv)
+        dv.add(f"{col_letter}2:{col_letter}{max_row}")
+
+    wb.save(file_path)
+
 """
     Add dropdowns to Excel using hidden sheets for maximum compatibility.
 
