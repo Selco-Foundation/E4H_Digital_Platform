@@ -217,9 +217,7 @@ public class OrganisationUserServiceValidator {
                                 continue;
                             }
                             assignment.setIsCurrentAssignment(false);
-                            if (assignment.getToDate() == null) {
-                                assignment.setToDate(System.currentTimeMillis());
-                            }
+                            assignment.setToDate(System.currentTimeMillis());
                         }
                     }
                     List<Assignment> updatedAssignments = new ArrayList<>(
