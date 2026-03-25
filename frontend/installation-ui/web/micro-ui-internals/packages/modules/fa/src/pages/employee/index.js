@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo} from "react";
+import React, {useEffect} from "react";
 import {useTranslation} from "react-i18next";
 import {Route, Switch, useRouteMatch} from "react-router-dom";
 import {BreadCrumb} from "@egovernments/digit-ui-components";

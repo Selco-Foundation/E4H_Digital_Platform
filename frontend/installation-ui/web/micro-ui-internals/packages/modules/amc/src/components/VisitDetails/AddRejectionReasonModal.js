@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Dropdown, DustbinIcon, TextArea } from "@egovernments/digit-ui-react-components";
+import React, { useState } from "react";
+import { DustbinIcon, TextArea } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import CustomDropdown from "../Custom/CustomDropdown";
 

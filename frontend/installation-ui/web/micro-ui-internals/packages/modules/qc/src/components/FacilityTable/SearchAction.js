@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { TextInput, SubmitBar, LinkLabel, TickMark, DownloadIcon, SearchIconSvg, SearchIcon, Toast } from "@egovernments/digit-ui-react-components";
+import { TextInput, LinkLabel, TickMark, DownloadIcon, SearchIcon, Toast } from "@egovernments/digit-ui-react-components";
 import { DoneAll } from "@egovernments/digit-ui-svg-components";
 import { ActivityService } from "../../services/Activity";
 

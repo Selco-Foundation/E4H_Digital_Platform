@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import useProject from "../../hooks/useProject";
 import InfoCard from "../../components/ProjectFieldPlans/InfoCard";
-import { Button, Loader, Table } from "@egovernments/digit-ui-react-components";
+import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
 import { Link, useHistory, useRouteMatch } from "react-router-dom";
 import { populateWorkingProject } from "../../redux/actions";

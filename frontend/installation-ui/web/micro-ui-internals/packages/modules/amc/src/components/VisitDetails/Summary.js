@@ -3,7 +3,7 @@ import Section from "./Section";
 import SystemParameterReport from "./SystemParameterReport";
 import { ImageViewer } from "@egovernments/digit-ui-react-components";
 
-const Summary = ({ t, sectionName, section, data, images, report, isDocument, supportingDocuments = [] }) => {
+const Summary = ({ t, section, data, images, report, isDocument, supportingDocuments = [] }) => {
 
   const [expanded, setExpanded] = useState(false);
   const [imageToView, setImageToView] = useState(null);
@@ -24,7 +24,7 @@ const Summary = ({ t, sectionName, section, data, images, report, isDocument, su
     </div>
   )
 
-  const renderSummary = (dataToRender, isParent) => {
+  const renderSummary = (dataToRender) => {
     return (
       <div>
         {!!dataToRender?.properties?.length && (
