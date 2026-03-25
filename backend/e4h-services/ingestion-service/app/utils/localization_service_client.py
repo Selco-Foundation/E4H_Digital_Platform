@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import requests
 from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
@@ -55,4 +55,45 @@ class LocalizationServiceClient:
             raise
         except RequestException as e:
             logger.error(f"Unexpected request error during localization upsert: {e}")
+            raise
+
+
+    def search_messages(
+        self,
+        tenant_id: str,
+        locale: str,
+        module: str,
+        codes: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Call /localization/messages/v1/_search.
+        Does NOT send RequestInfo in body (per your requirement).
+        """
+        if not self.base_url:
+            logger.warning("LOCALIZATION_SERVICE_URL not set; skipping localization search")
+            return {}
+        url = f"{self.base_url}/localization/messages/v1/_search"
+        params = {
+            "tenantId": tenant_id,
+            "locale": locale,
+            "module": module,
+        }
+        payload: Dict[str, Any] = {}
+        if codes:
+            payload["codes"] = codes
+        try:
+            response = requests.post(url, params=params, json=payload, timeout=time_out)
+            response.raise_for_status()
+            return response.json() if response.content else {}
+        except HTTPError as e:
+            logger.error(f"HTTP error during localization search: {e}")
+            raise
+        except ConnectionError as e:
+            logger.error(f"Connection error during localization search: {e}")
+            raise
+        except Timeout as e:
+            logger.error(f"Timeout during localization search: {e}")
+            raise
+        except RequestException as e:
+            logger.error(f"Unexpected error during localization search: {e}")
             raise

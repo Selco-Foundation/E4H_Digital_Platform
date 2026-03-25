@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { Toast } from "@egovernments/digit-ui-react-components";
 import { clearRejectionReasons } from "../../redux/actions";
 import { ActivityService } from "../../services/Activity";
+import CommonUtils from "../../utilities/CommonUtils";
 
 const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments }) => {
 
@@ -42,7 +43,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
       setUpdatingWorkflow(false);
       setToast({
         key: "error",
-        message: t("QC_FACILITY_APPROVE_FAILURE"),
+        message: CommonUtils.getApiErrorMessage(error) || t("QC_FACILITY_APPROVE_FAILURE"),
       });
     } finally {
       setUpdatingWorkflow(false);
@@ -97,7 +98,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
       setUpdatingWorkflow(false);
       setToast({
         key: "error",
-        message: t("QC_FACILITY_REJECT_FAILURE"),
+        message: CommonUtils.getApiErrorMessage(error) || t("QC_FACILITY_REJECT_FAILURE"),
       });
     } finally {
       setUpdatingWorkflow(false);
@@ -128,7 +129,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
       setUpdatingWorkflow(false);
       setToast({
         key: "error",
-        message: t("QC_FACILITY_FLAG_FOR_QC_FAILURE"),
+        message: CommonUtils.getApiErrorMessage(error) || t("QC_FACILITY_FLAG_FOR_QC_FAILURE"),
       });
     } finally {
       setUpdatingWorkflow(false);

@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader, Table, Button } from "@egovernments/digit-ui-react-components";
+import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import { useHistory, useLocation } from "react-router-dom";
 
 import useNormalizedBoundary from "../../hooks/useNormalizedBoundary";
 import Filter from "../../components/BoundaryTable/Filter";
-import BoundaryModal from "../../components/BoundaryModal";
 import BoundaryAdminActions from "../../components/BoundaryTable/BoundaryAdminActions";
 
 const ROOT_BOUNDARY_TYPE = "Block";

@@ -1,5 +1,5 @@
 import React from "react";
-import { PopUp, Button, Toast, Loader } from "@egovernments/digit-ui-react-components";
+import { PopUp, Button } from "@egovernments/digit-ui-react-components";
 import OrganizationForm from "./OrganizationForm";
 
 const OrganizationModal = ({ t, heading, onClose, onSubmit, formToast, setFormToast, createdOrganization, orgType }) => {

@@ -4,6 +4,7 @@ import { FacilityService } from "../../services/Facility";
 import FacilityModal from "../FacilityModal";
 import { useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
+import CommonUtils from "../../utilities/CommonUtils";
 
 const FacilityAdminActions = ({ t }) => {
 
@@ -90,7 +91,7 @@ const FacilityAdminActions = ({ t }) => {
       setBlockUI(false);
       setFormToast({
         key: "error",
-        label: t("FACILITY_CREATION_FAILED"),
+        label: CommonUtils.getApiErrorMessage(e) || t("FACILITY_CREATION_FAILED"),
       });
     }
   };
