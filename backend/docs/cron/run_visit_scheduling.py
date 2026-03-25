@@ -95,43 +95,64 @@ print(f"Found {len(visits)} DRAFT visits")
 if len(visits) == 0:
     print(f"No DRAFT visits found for tenant {tenant_id}")
 else:
-    # Step 2: Call /_update for each visit
-    print("Updating visits (service will check notice period and apply SCHEDULE if needed)...")
-    update_url = f'{SERVICE_HOST}/asset-amc/v1/visit/_update'
-    success_count = 0
-    
+    # Step 2: Filter visits that are within one month of the scheduled date
+    print("Filtering visits that are within one month of their scheduled date...")
+    now_ms = int(time.time() * 1000)
+    one_month_ms = 30 * 24 * 60 * 60 * 1000
+
+    eligible_visits = []
     for visit in visits:
-        visit_id = visit.get("id")
-        visit_to_update = {
-            "id": visit.get("id"),
-            "tenantId": visit.get("tenantId"),
-            "amcConfigurationId": visit.get("amcConfigurationId"),
-            "facilityId": visit.get("facilityId"),
-            "projectId": visit.get("projectId"),
-            "visitNumber": visit.get("visitNumber"),
-            "scheduledDate": visit.get("scheduledDate"),
-            "status": visit.get("status"),
-            "actualVisitDate": visit.get("actualVisitDate"),
-            "visitReport": visit.get("visitReport"),
-            "assignments": visit.get("assignments", []),
-            "additionalDetails": visit.get("additionalDetails")
-        }
-        
-        update_request = {
-            "RequestInfo": request_info["RequestInfo"],
-            "ScheduledVisit": [visit_to_update]
-        }
-        
-        try:
-            response = requests.post(update_url, headers=headers, json=update_request, timeout=30)
-            if response.status_code == 202:  # ACCEPTED
-                success_count += 1
-                print(f"Processed visit: {visit_id}")
-            else:
-                print(f"Failed to process visit: {visit_id} - Status: {response.status_code}")
-        except Exception as e:
-            print(f"Error updating visit {visit_id}: {e}")
-    
-    print(f"Completed processing tenant {tenant_id}: {success_count}/{len(visits)} visits processed")
+        scheduled_date = visit.get("scheduledDate")
+        if scheduled_date is None:
+            continue
+
+        # Only consider visits whose scheduled date is in the future (or today)
+        # and within the next one month window.
+        if 0 <= (scheduled_date - now_ms) <= one_month_ms:
+            eligible_visits.append(visit)
+
+    print(f"{len(eligible_visits)} visits are within one month of their scheduled date")
+
+    if len(eligible_visits) == 0:
+        print("No visits are due for scheduling within the next month.")
+    else:
+        # Step 3: Call /_update for each eligible visit
+        print("Updating eligible visits (service will mark them as SCHEDULED)...")
+        update_url = f'{SERVICE_HOST}/asset-amc/v1/visit/_update'
+        success_count = 0
+
+        for visit in eligible_visits:
+            visit_id = visit.get("id")
+            visit_to_update = {
+                "id": visit.get("id"),
+                "tenantId": visit.get("tenantId"),
+                "amcConfigurationId": visit.get("amcConfigurationId"),
+                "facilityId": visit.get("facilityId"),
+                "projectId": visit.get("projectId"),
+                "visitNumber": visit.get("visitNumber"),
+                "scheduledDate": visit.get("scheduledDate"),
+                "status": visit.get("status"),
+                "actualVisitDate": visit.get("actualVisitDate"),
+                "visitReport": visit.get("visitReport"),
+                "assignments": visit.get("assignments", []),
+                "additionalDetails": visit.get("additionalDetails")
+            }
+
+            update_request = {
+                "RequestInfo": request_info["RequestInfo"],
+                "ScheduledVisit": [visit_to_update]
+            }
+
+            try:
+                response = requests.post(update_url, headers=headers, json=update_request, timeout=30)
+                if response.status_code == 202:  # ACCEPTED
+                    success_count += 1
+                    print(f"Processed visit: {visit_id}")
+                else:
+                    print(f"Failed to process visit: {visit_id} - Status: {response.status_code}")
+            except Exception as e:
+                print(f"Error updating visit {visit_id}: {e}")
+
+        print(f"Completed processing tenant {tenant_id}: {success_count}/{len(eligible_visits)} eligible visits processed")
 
 print("Visit scheduling cron job completed")
