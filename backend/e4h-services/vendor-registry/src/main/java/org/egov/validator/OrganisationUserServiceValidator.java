@@ -213,6 +213,9 @@ public class OrganisationUserServiceValidator {
                     List<Assignment> previousAssignments = existingEmployee.getAssignments();
                     if (previousAssignments != null) {
                         for (Assignment assignment : previousAssignments) {
+                            if (isDefaultAssignment(assignment)) {
+                                continue;
+                            }
                             assignment.setIsCurrentAssignment(false);
                             if (assignment.getToDate() == null) {
                                 assignment.setToDate(System.currentTimeMillis());
@@ -221,7 +224,9 @@ public class OrganisationUserServiceValidator {
                     }
                     List<Assignment> updatedAssignments = new ArrayList<>(
                             previousAssignments != null ? previousAssignments : Collections.emptyList());
-                    updatedAssignments.addAll(hrmsUtils.buildAssignments());
+                    if (request.getAssignments() != null && !request.getAssignments().isEmpty()) {
+                        updatedAssignments.addAll(request.getAssignments());
+                    }
                     existingEmployee.setAssignments(updatedAssignments);
 
                     EmployeeRequest employeeRequest = EmployeeRequest.builder()
@@ -646,5 +651,9 @@ public class OrganisationUserServiceValidator {
                 .collect(Collectors.toSet());
     }
 
+    private boolean isDefaultAssignment(Assignment assignment) {
+        return "DESIG_01".equals(assignment.getDesignation())
+                && "DEPT_1".equals(assignment.getDepartment());
+    }
 
 }
