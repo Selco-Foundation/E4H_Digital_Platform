@@ -209,7 +209,20 @@ public class OrganisationUserServiceValidator {
                     existingEmployee.getUser().setName(orgUser.getName());
                     existingEmployee.getUser().setEmailId(orgUser.getEmailId());
                     existingEmployee.getUser().setRoles(orgUser.getRoles());
-                    existingEmployee.setAssignments(hrmsUtils.buildAssignments());
+
+                    List<Assignment> previousAssignments = existingEmployee.getAssignments();
+                    if (previousAssignments != null) {
+                        for (Assignment assignment : previousAssignments) {
+                            assignment.setIsCurrentAssignment(false);
+                            if (assignment.getToDate() == null) {
+                                assignment.setToDate(System.currentTimeMillis());
+                            }
+                        }
+                    }
+                    List<Assignment> updatedAssignments = new ArrayList<>(
+                            previousAssignments != null ? previousAssignments : Collections.emptyList());
+                    updatedAssignments.addAll(hrmsUtils.buildAssignments());
+                    existingEmployee.setAssignments(updatedAssignments);
 
                     EmployeeRequest employeeRequest = EmployeeRequest.builder()
                             .requestInfo(request.getRequestInfo())
