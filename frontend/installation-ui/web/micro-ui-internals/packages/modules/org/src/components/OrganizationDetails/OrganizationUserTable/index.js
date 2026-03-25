@@ -8,6 +8,7 @@ import ConfirmationAlert from "./ConfirmationAlert";
 import {useQueryClient} from "react-query";
 import UserModal from "./UserModal";
 import {VendorService} from "../../../services/Vendor";
+import CommonUtils from "../../../utilities/CommonUtils";
 
 const OrganizationUserTable = ({ t, organizationId, organizationType, organizationSubType }) => {
 
@@ -76,7 +77,7 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
       setBlockUI(false);
       setToast({
         key: "error",
-        label: t("ORGANIZATION_USER_DELETION_FAILED"),
+        label: CommonUtils.getApiErrorMessage(e) || t("ORGANIZATION_USER_DELETION_FAILED"),
       });
     }
   }
@@ -271,7 +272,7 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
       setBlockUI(false);
       setFormToast({
         key: "error",
-        label: t("ORGANIZATION_USER_UPDATION_FAILED"),
+        label: CommonUtils.getApiErrorMessage(e) || t("ORGANIZATION_USER_UPDATION_FAILED"),
       });
     }
   }

@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  Dropdown,
   RemoveableTag,
   Loader
 } from "@egovernments/digit-ui-react-components";

@@ -27,7 +27,7 @@ export const FacilityService = {
       "Content-Type": "application/json",
     };
 
-    return await CustomRequest({
+    const response = await CustomRequest({
       url: endpoint,
       userService: true,
       method: "POST",
@@ -35,6 +35,8 @@ export const FacilityService = {
       data: facilityPayload,
       headers: headers,
     });
+
+    return response?.data;
   },
 
   updateFacility: async (facilityPayload) => {
@@ -43,7 +45,7 @@ export const FacilityService = {
       "Content-Type": "application/json",
     };
 
-    return await Request({
+    const response = await Request({
       url: endpoint,
       userService: true,
       method: "POST",
@@ -51,5 +53,7 @@ export const FacilityService = {
       data: facilityPayload,
       headers: headers,
     });
+
+    return response?.data;
   },
 };

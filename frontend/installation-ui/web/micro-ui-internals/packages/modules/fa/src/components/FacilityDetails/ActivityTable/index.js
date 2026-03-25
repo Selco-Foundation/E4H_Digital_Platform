@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import useActivity from "../../../hooks/useActivity";
 import { Loader, Table } from "@egovernments/digit-ui-react-components";
 import Filter from "./Filter";
-import { setSelectedFacility } from "@selco/digit-ui-module-qc/src/redux/actions";
 import { Link } from "react-router-dom";
 
 const ActivityTable = ({ t, facilityId }) => {
