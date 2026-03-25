@@ -40,7 +40,7 @@ export const VisitService = {
       "Content-Type" : "application/json"
     }
 
-    return await Request({
+    const response = await Request({
       url : endpoint,
       data : queryObj,
       method : "POST",
@@ -48,6 +48,8 @@ export const VisitService = {
       auth : true,
       headers : headers,
     });
+
+    return response?.data;
   },
 
 }

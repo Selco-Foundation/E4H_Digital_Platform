@@ -66,7 +66,7 @@ export const ActivityService = {
       "Content-Type" : "application/json"
     }
 
-    return await Request({
+    const response = await Request({
       url : endpoint,
       data : queryObj,
       method : "POST",
@@ -74,6 +74,8 @@ export const ActivityService = {
       auth : true,
       headers : headers,
     });
+
+    return response?.data;
   },
 
   bulkApproveActivityFacilities: async (filters, mainCheck, activityFacilityIds) => {

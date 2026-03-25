@@ -35,7 +35,7 @@ export const FieldPlanService = {
       endpoint = "/field-planner/v1/field-plans/_update";
     }
 
-    return await Request({
+    const response = await Request({
       url: endpoint,
       data: fieldPlanData,
       userService: true,
@@ -43,6 +43,8 @@ export const FieldPlanService = {
       auth: true,
       headers: headers,
     });
+
+    return response?.FieldPlans;
   },
 
 }

@@ -93,7 +93,6 @@ const VisitDetails = ({t}) => {
       {!!visitReport && (
         <Summary
           t={t}
-          sectionName="AMC_INSTALLATION_FORM"
           section="AMC_INSTALLATION_FORM"
           data={visitReport}
           images={visitData?.visitImages || []}
@@ -103,7 +102,6 @@ const VisitDetails = ({t}) => {
       {!!reportDocumentAggregation?.amcInstallationForm && (
         <Summary
           t={t}
-          sectionName="AMC_INSTALLATION_REPORT"
           section="AMC_INSTALLATION_REPORT"
           report={{
             ...reportDocumentAggregation?.amcInstallationForm,
