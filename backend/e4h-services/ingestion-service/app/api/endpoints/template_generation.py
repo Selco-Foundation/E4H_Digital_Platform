@@ -85,17 +85,40 @@ async def get_facility_ingestion_template_with_data(
 
         logger.info("Fetching facilities by boundary codes")
         all_facilities = []
-        if facility_service_url:
+        if facility_service_url and boundary_list:
             facility_client = FacilityServiceClient(facility_service_url)
+
+            # Deduplicate boundaries by code to avoid redundant calls
+            unique_boundaries = {}
             for boundary in boundary_list:
-                try:
-                    logger.trace(f"Searching facilities for boundary: {boundary.code}")
-                    results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                    facilities = results.get('facilities', [])
+                if boundary.code and boundary.code not in unique_boundaries:
+                    unique_boundaries[boundary.code] = boundary
+            unique_boundary_list = list(unique_boundaries.values())
+
+            logger.info(f"Total unique boundary codes for facility search: {len(unique_boundary_list)}")
+
+            # Use bulk facility search by boundary codes to reduce number of API calls
+            boundary_codes = [b.code for b in unique_boundary_list if b.code]
+            try:
+                if boundary_codes:
+                    bulk_result = facility_client.bulk_search_facility(
+                        request_info=request_info,
+                        tenant_ids=["in"],
+                        boundary_codes=boundary_codes,
+                        limit=max(len(boundary_codes) * 50, 50),
+                        send_non_paginated_response=True,
+                    )
+                    facilities = bulk_result.get("facilities", []) or []
                     all_facilities.extend(facilities)
-                    logger.debug(f"Found {len(facilities)} facilities for boundary {boundary.code}")
-                except Exception as e:
-                    logger.error(f"Error fetching boundary facilities for boundary {boundary.code}: {e}", exc_info=True)
+                    logger.info(
+                        f"Fetched {len(facilities)} facilities from bulk facility search for "
+                        f"{len(boundary_codes)} boundary codes"
+                    )
+            except Exception as e:
+                logger.error(
+                    f"Error fetching facilities via bulk boundary facility search: {e}",
+                    exc_info=True,
+                )
 
         # Fetch project-linked facilities if project_id is provided
         logger.info(f"Fetching project-linked facilities: project_id={project_id}")
@@ -110,16 +133,46 @@ async def get_facility_ingestion_template_with_data(
                 logger.info(f"Found {len(project_linked_facility_ids)} facilities linked to project {project_id}")
                 logger.debug(f"Project facility IDs: {list(project_linked_facility_ids)[:10]}...")  # Log first 10 IDs
 
-                # Fetch full facility data for project-linked facilities
-                for pf in project_facilities:
-                    facility_id = pf.get("facilityId")
-                    if facility_id:
-                        try:
-                            facility_data = facility_client.search_facility(tenant_id='in', facility_id=facility_id)
-                            if facility_data and facility_data.get('facilities'):
-                                project_facilities_data.extend(facility_data.get('facilities', []))
-                        except Exception as e:
-                            logger.error(f"Error fetching facility {facility_id}: {e}")
+                # Optimization: avoid redundant facility-service calls for facilities
+                # that are already present from boundary-based search, and fetch the
+                # remaining project facilities via bulk search.
+                existing_boundary_facility_ids = {f.get("facility_id") for f in all_facilities}
+                project_facilities_to_fetch = [
+                    pf for pf in project_facilities
+                    if pf.get("facilityId") and pf.get("facilityId") not in existing_boundary_facility_ids
+                ]
+
+                logger.info(
+                    f"Project facilities total={len(project_facilities)}, "
+                    f"already_in_boundaries={len(existing_boundary_facility_ids)}, "
+                    f"to_fetch_from_facility_service={len(project_facilities_to_fetch)}"
+                )
+
+                if facility_service_url and project_facilities_to_fetch:
+                    facility_ids_to_fetch = [
+                        pf.get("facilityId")
+                        for pf in project_facilities_to_fetch
+                        if pf.get("facilityId")
+                    ]
+                    try:
+                        if facility_ids_to_fetch:
+                            bulk_result = facility_client.bulk_search_facility(
+                                request_info=request_info,
+                                tenant_ids=["in"],
+                                facility_ids=facility_ids_to_fetch,
+                                limit=max(len(facility_ids_to_fetch), 50),
+                                send_non_paginated_response=True,
+                            )
+                            facilities = bulk_result.get("facilities", []) or []
+                            project_facilities_data.extend(facilities)
+                            logger.info(
+                                f"Fetched {len(facilities)} facilities from bulk facility search for project {project_id}"
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"Error fetching project facilities via bulk facility search: {e}",
+                            exc_info=True,
+                        )
 
             except Exception as e:
                 logger.error(f"Error fetching project facilities: {e}")
@@ -172,7 +225,8 @@ async def get_facility_ingestion_template_with_data(
                 boundary_list=boundary_list,
                 facility_data=all_facilities,
                 type="project",
-                extra_append_rows=1000
+                extra_append_rows=200,
+                optimize_for_performance=True
             )
             logger.info(f"Successfully created facility ingestion template: {output_filename}")
             logger.debug(f"Template file path: {output_file_path}")

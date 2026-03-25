@@ -3,6 +3,7 @@ import { useSelector } from "react-redux";
 import { Toast } from "@egovernments/digit-ui-react-components";
 import AddRejectionReasonModal from "./AddRejectionReasonModal";
 import {VisitService} from "../../services/VisitService";
+import CommonUtils from "../../utilities/CommonUtils";
 
 const AMCReviewerActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments }) => {
 
@@ -45,7 +46,7 @@ const AMCReviewerActions = ({ t, revalidateData, setUpdatingWorkflow, aggregated
       setUpdatingWorkflow(false);
       setToast({
         key: "error",
-        message: t("AMC_VISIT_APPROVE_FAILURE"),
+        message: CommonUtils.getApiErrorMessage(error) || t("AMC_VISIT_APPROVE_FAILURE"),
       });
 
     } finally {
@@ -84,7 +85,7 @@ const AMCReviewerActions = ({ t, revalidateData, setUpdatingWorkflow, aggregated
       setUpdatingWorkflow(false);
       setToast({
         key: "error",
-        message: t("AMC_VISIT_REJECT_FAILURE"),
+        message: CommonUtils.getApiErrorMessage(error) || t("AMC_VISIT_REJECT_FAILURE"),
       });
 
     } finally {

@@ -36,6 +36,13 @@ const isNotEqual = (a, b) => {
   return !_.isEqual(normA, normB);
 };
 
+const getApiErrorMessage = (e) => {
+  return (e?.response?.data?.Errors?.[0]?.message)
+    ? e.response.data.Errors[0].message
+    : (e?.message ? e.message : "");
+};
+
 export default {
   isNotEqual,
+  getApiErrorMessage,
 }
