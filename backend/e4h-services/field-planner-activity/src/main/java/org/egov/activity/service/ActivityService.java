@@ -145,10 +145,32 @@ public class ActivityService {
                         usersFacility.add(facilityUser);
                     }
                 }
-                // remove Duplicate activity facility users if the same user is REVIEWER, STAFF and SUPERVISOR
-                Set<String> seenUsers = new HashSet<>();
-                usersFacility = usersFacility.stream().filter(a -> seenUsers.add(a.getUserId()))
-                        .toList();
+                // Remove duplicates by userId while preserving the most relevant linkageType:
+                // FIELD_STAFF > FIELD_SUPERVISOR > INSTALLATION_REVIEWER
+                Map<String, ActivityFacilityUser> byUserId = new LinkedHashMap<>();
+                for (ActivityFacilityUser u : usersFacility) {
+                    if (u.getUserId() == null) {
+                        continue;
+                    }
+                    ActivityFacilityUser existing = byUserId.get(u.getUserId());
+                    if (existing == null) {
+                        byUserId.put(u.getUserId(), u);
+                        continue;
+                    }
+                    String existingType = existing.getAdditionalDetails() == null
+                            ? null
+                            : String.valueOf(existing.getAdditionalDetails().get(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY));
+                    String newType = u.getAdditionalDetails() == null
+                            ? null
+                            : String.valueOf(u.getAdditionalDetails().get(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY));
+
+                    int existingPriority = getLinkagePriority(existingType);
+                    int newPriority = getLinkagePriority(newType);
+                    if (newPriority > existingPriority) {
+                        byUserId.put(u.getUserId(), u);
+                    }
+                }
+                usersFacility = new ArrayList<>(byUserId.values());
                 activityFacilityUsers.addAll(usersFacility);
             }
 
@@ -957,7 +979,7 @@ public class ActivityService {
     private List<ActivityFacilityUser> fetchActivityFacilityUsers(String activityFacilityId, String tenantId, RequestInfo requestInfo) {
         try {
             ActivityFacilityUserSearchCriteria criteria = ActivityFacilityUserSearchCriteria.builder()
-                    .activityFacilityId(List.of(activityFacilityId))
+                    .activityFacilityId(new ArrayList<>(List.of(activityFacilityId)))
                     .tenantId(tenantId)
                     .build();
             ActivityFacilityUserSearchRequest searchRequest = ActivityFacilityUserSearchRequest.builder()
@@ -1010,6 +1032,23 @@ public class ActivityService {
         }
         Object v = u.getAdditionalDetails().get(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY);
         return v != null ? v.toString() : null;
+    }
+
+    private int getLinkagePriority(String linkageType) {
+        if (linkageType == null) {
+            return 0;
+        }
+        String type = linkageType.toUpperCase(Locale.ROOT);
+        if (LINKAGE_TYPE_FIELD_STAFF.equalsIgnoreCase(type)) {
+            return 3;
+        }
+        if (LINKAGE_TYPE_FIELD_SUPERVISOR.equalsIgnoreCase(type)) {
+            return 2;
+        }
+        if (LINKAGE_TYPE_INSTALLATION_REVIEWER.equalsIgnoreCase(type)) {
+            return 1;
+        }
+        return 0;
     }
 
     private String fetchOrganisationIdForUser(String userId, ActivityFacility activityFacility, RequestInfo requestInfo) {
