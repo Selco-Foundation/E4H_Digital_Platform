@@ -54,6 +54,9 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
   int _formSeed = 0;
   static final Map<String, String> _schemaOwnerByFacility = {};
   String? get _baseSchemaKey => widget.schemaName ?? widget.uniqueIdentifier;
+  bool get _isReadOnlyOrigin =>
+      widget.origin == FormOrigin.inboxSummary ||
+      widget.origin == FormOrigin.submitted;
 
   late FormsBloc _formsBloc;
   bool _isPreparingForm = false;
@@ -67,12 +70,18 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             activityFacilityId: widget.activityFacilityId,
             userType: widget.userType,
           )
-        : await BomRepository().getInitialFormValuesForSchema(
-            isar: isar,
-            activityFacilityId: widget.activityFacilityId,
-            userType: widget.userType,
-            schemaKey: schemaKey,
-          );
+        : _isReadOnlyOrigin
+            ? await BomRepository().getInitialFormValuesForSchema(
+                isar: isar,
+                activityFacilityId: widget.activityFacilityId,
+                userType: widget.userType,
+                schemaKey: schemaKey,
+              )
+            : await BomRepository().getOrCreateInitialFormValuesForSchema(
+                isar: isar,
+                activityFacilityId: widget.activityFacilityId,
+                userType: widget.userType,
+              );
     if (!mounted) return;
     setState(() {
       _activityFacilityInitialKV = kv;
