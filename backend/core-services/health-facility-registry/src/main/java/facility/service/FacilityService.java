@@ -12,6 +12,8 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -40,6 +42,12 @@ public class FacilityService {
 
     private final HRMSUtils hrmsUtils;
     private final HRMSService hrmsService;
+    private final RestTemplate restTemplate;
+
+    private static final String LOCALIZATION_MODULE = "rainmaker-in";
+    private static final String LOCALIZATION_LOCALE = "en_IN";
+    // Existing boundary localization upsert uses tenantId="in" (see ingestion-service / im-service migrations)
+    private static final String LOCALIZATION_TENANT_ID = "in";
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -52,7 +60,12 @@ public class FacilityService {
             BoundaryService boundaryService,
             Configuration configs,
             FacilityKibanaMapper facilityKibanaMapper,
-            EncryptionDecryptionUtil encryptionDecryptionUtil, BoundaryUtil boundaryUtil, FacilityRowMapperV2 facilityRowMapperV2, HRMSUtils hrmsUtils, HRMSService hrmsService) {
+            EncryptionDecryptionUtil encryptionDecryptionUtil,
+            BoundaryUtil boundaryUtil,
+            FacilityRowMapperV2 facilityRowMapperV2,
+            HRMSUtils hrmsUtils,
+            HRMSService hrmsService,
+            RestTemplate restTemplate) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.facilityRowMapper = facilityRowMapper;
@@ -68,6 +81,7 @@ public class FacilityService {
         this.facilityRowMapperV2 = facilityRowMapperV2;
         this.hrmsUtils = hrmsUtils;
         this.hrmsService = hrmsService;
+        this.restTemplate = restTemplate;
     }
 
     /**
@@ -200,6 +214,9 @@ public class FacilityService {
                 boundaryService.createBoundaryRelationship(boundaryRelationshipRequest);
             }
 
+            // Create localization messages for each facility boundary (code: Boundary_{facilityBoundaryCode})
+            upsertFacilityBoundaryLocalizations(tenantFacilities, request.getRequestInfo());
+
             log.info("Pushing {} facilities to Kafka for tenant {}", tenantFacilities.size(), tenantId);
             for (Facility facility : tenantFacilities) {
                 // Keep original (unencrypted) POC mobile number for HRMS user creation
@@ -237,6 +254,68 @@ public class FacilityService {
         log.info("Successfully created {} facilities", validatedFacilities.size());
         log.trace("Exiting createFacility method");
         return validatedFacilities;
+    }
+
+    private void upsertFacilityBoundaryLocalizations(List<Facility> facilities, RequestInfo requestInfo) {
+        if (facilities == null || facilities.isEmpty()) {
+            return;
+        }
+
+        // Build localization messages
+        List<Map<String, String>> messages = new ArrayList<>();
+        for (Facility facility : facilities) {
+            if (facility == null) continue;
+            String facilityBoundaryCode = facility.getBoundaryCode();
+            if (facilityBoundaryCode == null || facilityBoundaryCode.isBlank()) continue;
+
+            String localizationCode = "Boundary_" + facilityBoundaryCode;
+
+            // Display name for this boundary localization: use facility name when available.
+            String displayName = facility.getFacilityName();
+            if (displayName == null || displayName.isBlank()) {
+                displayName = localizationCode;
+            }
+
+            messages.add(Map.of(
+                    "code", localizationCode,
+                    "message", displayName,
+                    "module", LOCALIZATION_MODULE,
+                    "locale", LOCALIZATION_LOCALE
+            ));
+        }
+
+        if (messages.isEmpty()) {
+            return;
+        }
+
+        String localizationHost = configs.getLocalizationHost();
+        String localizationContextPath = configs.getLocalizationContextPath();
+        if (localizationHost == null || localizationHost.isBlank()
+                || localizationContextPath == null || localizationContextPath.isBlank()) {
+            log.warn("Localization host/context not configured; skipping facility boundary localization upsert");
+            return;
+        }
+
+        String upsertUrl = UriComponentsBuilder.fromUriString(localizationHost)
+                .path(localizationContextPath)
+                .path(configs.getLocalizationUpsertPath())
+                .toUriString();
+
+        log.info("Upserting facility boundary localizations: messages={}, module={}, locale={}",
+                messages.size(), LOCALIZATION_MODULE, LOCALIZATION_LOCALE);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("RequestInfo", requestInfo);
+        payload.put("tenantId", LOCALIZATION_TENANT_ID);
+        payload.put("messages", messages);
+
+        try {
+            restTemplate.postForObject(upsertUrl, payload, Map.class);
+            log.info("Completed facility boundary localization upsert successfully: messages={}", messages.size());
+        } catch (Exception e) {
+            // Best-effort: we don't want to fail the entire facility create due to localization.
+            log.error("Localization upsert failed for facility boundary localizations: messages={}", messages.size(), e);
+        }
     }
 
     /**
