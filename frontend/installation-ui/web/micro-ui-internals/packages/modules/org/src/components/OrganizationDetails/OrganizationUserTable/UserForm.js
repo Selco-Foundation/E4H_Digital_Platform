@@ -3,6 +3,7 @@ import { FormComposerV2, Loader, Table, TextInput, Toast, Button } from "@egover
 import useBoundary from "../../../hooks/useBoundary";
 import CommonUtils from "../../../utilities/CommonUtils";
 import CustomDustbinIcon from "../../Custom/CustomDustbinIcon";
+import CustomUndoIcon from "../../Custom/CustomUndoButton";
 
 const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, organizationSubType, formToast, setFormToast }) => {
 
@@ -74,7 +75,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
 
   useEffect(() => {
     const filteredSavedAssignments = savedAssignments
-      .filter((savedAssignment) => !savedAssignment.isDeleted)
+      // .filter((savedAssignment) => !savedAssignment.isDeleted)
       .filter((savedAssignment) => {
         if(!debouncedJurisdictionSearch) return true;
         const name = t(`Boundary_${savedAssignment.boundary}`)?.toUpperCase();
@@ -355,8 +356,21 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     ));
   }
 
-  const GetCell = (value) => (
-    <span className="cell-text" style={{ color: "#000000" }}>
+  const undoSavedAssignmentDeletion = (id) => {
+    setSavedAssignments((prevSavedAssignments) => prevSavedAssignments.reduce(
+      (aggregate, savedAssignment) => {
+        if (savedAssignment.id === id) {
+          aggregate.push({ ...savedAssignment, isDeleted: false });
+        } else {
+          aggregate.push(savedAssignment);
+        }
+        return aggregate;
+      }, []
+    ));
+  }
+
+  const GetCell = (value, isDeleted) => (
+    <span className="cell-text" style={{ color: isDeleted ? "#bc210a" : "#000000" }}>
       {value}
     </span>
   );
@@ -365,32 +379,45 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     {
       Header: t("BOUNDARY_NAME"),
       Cell: ({ row }) => {
-        return GetCell(row.original["boundary"] ? t(`Boundary_${row.original["boundary"]}`) : "-");
+        return GetCell(row.original["boundary"] ? t(`Boundary_${row.original["boundary"]}`) : "-", row.original["isDeleted"]);
       },
     },
     {
       Header: t("BOUNDARY_TYPE"),
       Cell: ({ row }) => {
-        return GetCell(row.original["boundaryType"] ? row.original["boundaryType"] : "-");
+        return GetCell(row.original["boundaryType"] ? row.original["boundaryType"] : "-", row.original["isDeleted"]);
       },
     },
     {
       Header: t("BOUNDARY_CODE"),
       Cell: ({ row }) => {
-        return GetCell(row.original["boundary"] ? row.original["boundary"] : "-");
+        return GetCell(row.original["boundary"] ? row.original["boundary"] : "-", row.original["isDeleted"]);
       },
     },
     {
       Header: t("CS_COMMON_ACTIONS"),
       Cell: ({ row }) => {
         return GetCell(
-          <button
-            type="button"
-            style={{background: "none"}}
-            onClick={() => deleteSavedAssignment(row.original["id"])}
-          >
-            <CustomDustbinIcon colourFill={"#bc210a"} />
-          </button>
+          row.original["isDeleted"] ?
+            (
+              <button
+                type="button"
+                style={{background: "none"}}
+                onClick={() => undoSavedAssignmentDeletion(row.original["id"])}
+              >
+                <CustomUndoIcon colourFill={"#00703C"} height={"18"} strokeWidth={"3"} />
+              </button>
+            )
+            :
+            (
+              <button
+                type="button"
+                style={{background: "none"}}
+                onClick={() => deleteSavedAssignment(row.original["id"])}
+              >
+                <CustomDustbinIcon colourFill={"#bc210a"} />
+              </button>
+            )
         );
       },
     }
