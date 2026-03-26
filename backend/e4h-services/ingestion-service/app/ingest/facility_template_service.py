@@ -248,6 +248,10 @@ class FacilityTemplateService:
             dropdowns_map = {}
             allow_blank_map = {}
             for col in facility_schema:
+                col_name = col.get("name")
+                if col_name and str(col_name).strip().lower() == "include in project":
+                    #remove "Include in Project" from facility ingestion template
+                    continue
                 mandatory_indicator = "(Mandatory)" if col.get("required") else ""
                 header_name = f"{col.get('name')} {mandatory_indicator}".strip()
                 output_list.append(header_name)
