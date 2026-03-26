@@ -1,6 +1,6 @@
 # services/facility_service.py
 import os
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 import pandas as pd
 import requests
@@ -11,8 +11,7 @@ from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse
 from app.utils.convertor import convert_json_to_boundary, format_facility_data_for_template
 from app.utils.excel_utils import add_dropdowns_to_excel, lock_excel_columns, add_validations_to_excel, \
-    lock_prefilled_rows_in_excel, add_non_blank_validations_to_file, autofit_columns, \
-    add_required_any_non_blank_validations_for_headers
+    lock_prefilled_rows_in_excel, add_non_blank_validations_to_file, autofit_columns
 from app.utils.file_utils import create_empty_excel_file, create_excel_data_writer, remove_default_empty_sheet
 from app.utils.localization_service_client import LocalizationServiceClient
 
@@ -245,48 +244,15 @@ class FacilityTemplateService:
         try:
             create_empty_excel_file(output_path)
 
-            def _is_hfr_or_nin_column(col_name: str) -> bool:
-                raw = (col_name or "").strip().lower()
-                normalized = "".join(ch for ch in raw if ch.isalnum())
-                # Examples handled: "HFR ID", "NIN ID", "HFRID", "NINID"
-                return (("hfr" in normalized and "id" in normalized) or
-                        ("nin" in normalized and "id" in normalized))
-
             output_list = []
             dropdowns_map = {}
             allow_blank_map = {}
-            hfr_header: Optional[str] = None
-            nin_header: Optional[str] = None
-
             for col in facility_schema:
-                col_name = col.get("name")
-                if col_name and str(col_name).strip().lower() == "include in project":
-                    # ADM-013: remove "Include in Project" from facility ingestion template
-                    continue
-
-                required = bool(col.get("required", False))
-                col_name_str = str(col_name or "").strip()
-                normalized_col = "".join(ch for ch in col_name_str.lower() if ch.isalnum())
-                is_hfr_col = normalized_col == "hfrid"
-                is_nin_col = normalized_col == "ninid"
-                if col_name and _is_hfr_or_nin_column(str(col_name)):
-                    # ADM-011: HFRID / NIN ID must be mandatory in the template
-                    required = True
-
-                mandatory_indicator = "(Mandatory)" if required else ""
-                header_name = f"{col_name} {mandatory_indicator}".strip()
+                mandatory_indicator = "(Mandatory)" if col.get("required") else ""
+                header_name = f"{col.get('name')} {mandatory_indicator}".strip()
                 output_list.append(header_name)
 
-                # For "HFRID or NINID" requirement, each column can be blank as long as
-                # the other one is filled. So allow blanks for both columns.
-                if is_hfr_col:
-                    hfr_header = header_name
-                    allow_blank_map[header_name] = True
-                elif is_nin_col:
-                    nin_header = header_name
-                    allow_blank_map[header_name] = True
-                else:
-                    allow_blank_map[header_name] = not required
+                allow_blank_map[header_name] = not col.get("required", False)
 
                 mdms_values = col.get("mdms_values")
                 if mdms_values:
@@ -307,22 +273,6 @@ class FacilityTemplateService:
                 dropdowns=dropdowns_map,
                 allow_blank_map=allow_blank_map
             )
-
-            # ADM-011: Require at least one of (HFR ID, NIN ID) to be filled.
-            if hfr_header or nin_header:
-                required_any_headers = []
-                if hfr_header:
-                    required_any_headers.append(hfr_header)
-                if nin_header:
-                    required_any_headers.append(nin_header)
-
-                add_required_any_non_blank_validations_for_headers(
-                    file_path=output_path,
-                    sheet_name="FacilityIngestionTemplate",
-                    required_headers=required_any_headers,
-                    error_message="Either HFR ID or NIN ID is mandatory",
-                    max_extra_rows=1000,
-                )
 
             boundary_records = self._format_boundary_data(boundary_data)
             df_boundary = pd.DataFrame(boundary_records)
