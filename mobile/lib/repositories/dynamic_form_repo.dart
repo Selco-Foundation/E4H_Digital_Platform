@@ -583,6 +583,7 @@ class BomRepository {
     required String projectId,
     required String schemaKey,
     required FormOrigin origin,
+    required bool isSystemParameters,
   }) async {
     if (origin == FormOrigin.inboxSummary || origin == FormOrigin.submitted) {
       return 'View';
@@ -595,7 +596,7 @@ class BomRepository {
 
     return exists
         ? 'Edit'
-        : origin == FormOrigin.overallSummary
+        : origin == FormOrigin.overallSummary && isSystemParameters
             ? 'Fill'
             : 'View';
   }
