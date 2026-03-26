@@ -455,16 +455,22 @@ class BomRepository {
     required String userType,
   }) async {
     try {
-      final entryKey = '$activityFacilityId::$userType';
-      final rec = await isar.cacheActivityFacilityBomValues
-          .where()
-          .entryKeyEqualTo(entryKey)
-          .findFirst();
-      if (rec == null) {
+      final cachedBomData = await getProjectBomKV(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+        userType: userType,
+      );
+      final fallbackBomData = await _getModelBomValues(
+        isar: isar,
+        activityFacilityId: activityFacilityId,
+      );
+      final bomData = cachedBomData != null && cachedBomData.isNotEmpty
+          ? Map<String, dynamic>.from(cachedBomData)
+          : Map<String, dynamic>.from(fallbackBomData);
+
+      if (bomData.isEmpty) {
         throw Exception("No BOM values found for project");
       }
-      final Map<String, dynamic> bomData =
-          jsonDecode(rec.dataJson) as Map<String, dynamic>;
 
       final spec = await isar.cacheSpecifications
           .where()
@@ -526,6 +532,11 @@ class BomRepository {
         .findFirst();
 
     if (rec != null) return userType;
+    final fallbackBomData = await _getModelBomValues(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+    );
+    if (fallbackBomData.isNotEmpty) return userType;
     return null;
   }
 
