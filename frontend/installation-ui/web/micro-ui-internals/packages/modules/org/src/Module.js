@@ -6,6 +6,8 @@ import ORGCard from "./components/ORGCard";
 import StateSelector from "./components/FormComposer/StateSelector";
 import DistrictSelector from "./components/FormComposer/DistrictSelector";
 import BlockSelector from "./components/FormComposer/BlockSelector";
+import CountrySelector from "./components/FormComposer/CountrySelector";
+import FacilitySelector from "./components/FormComposer/FacilitySelector";
 
 export const ORGReducers = getRootReducer;
 
@@ -31,9 +33,11 @@ const ORGModule = ({ stateCode, userType, tenants }) => {
 const componentsToRegister = {
   ORGModule,
   ORGCard,
+  ORGCountrySelector: CountrySelector,
   ORGStateSelector: StateSelector,
   ORGDistrictSelector: DistrictSelector,
   ORGBlockSelector: BlockSelector,
+  ORGFacilitySelector: FacilitySelector,
 };
 
 export const initORGComponents = () => {
