@@ -3,19 +3,13 @@ import useBoundary from "../../hooks/useBoundary";
 import useMDMS from "../../hooks/useMDMS";
 import useProject from "../../hooks/useProject";
 import { useTranslation } from "react-i18next";
-import { Button, FormComposerV2, Loader, PopUp, Toast } from "@egovernments/digit-ui-react-components";
+import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import { Stepper } from "@egovernments/digit-ui-components";
 import { useDispatch } from "react-redux";
-import { populateResponsePage, populateWorkingFieldPlan, populateWorkingProject } from "../../redux/actions";
+import { populateResponsePage, populateWorkingProject } from "../../redux/actions";
 import { useHistory } from "react-router-dom";
-import useFieldPlan from "../../hooks/useFieldPlan";
-import { FieldPlanService } from "../../services/FieldPlan";
 import { PMService } from "../../services/PMService";
-import { ActivityService } from "../../services/Activity";
 import useOrganization from "../../hooks/useOrganization";
-import useOrganizationUser from "../../hooks/useOrganizationUser";
-import useActivityAssignment from "../../hooks/useActivityAssignment";
-import CommonUtils from "../../utilities/CommonUtils";
 import UnsavedDataAlert from "../../components/UnsavedDataAlert";
 
 const CreateAMC = () => {

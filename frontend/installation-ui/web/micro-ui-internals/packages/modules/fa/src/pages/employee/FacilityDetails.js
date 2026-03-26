@@ -11,6 +11,7 @@ import ActivityTable from "../../components/FacilityDetails/ActivityTable";
 import AssetTable from "../../components/FacilityDetails/AssetTable";
 import AMCTable from "../../components/FacilityDetails/AMCTable";
 import { FacilityService } from "../../services/Facility";
+import CommonUtils from "../../utilities/CommonUtils";
 
 const FacilityDetails = () => {
 
@@ -149,7 +150,7 @@ const FacilityDetails = () => {
       setBlockUI(false);
       setFormToast({
         key: "error",
-        label: t("FACILITY_UPDATION_FAILED"),
+        label: CommonUtils.getApiErrorMessage(e) || t("FACILITY_UPDATION_FAILED"),
       });
     }
   }

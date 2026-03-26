@@ -110,4 +110,14 @@ public class Configuration {
     //Facility Search
     @Value("${onm-non-ready.allowed.roles}")
     private List<String> onmNonReadyAllowedRoles;
+
+    //Localization
+    @Value("${egov.localization.host}")
+    private String localizationHost;
+
+    @Value("${egov.localization.context.path}")
+    private String localizationContextPath;
+
+    @Value("${egov.localization.upsert.path}")
+    private String localizationUpsertPath;
 }

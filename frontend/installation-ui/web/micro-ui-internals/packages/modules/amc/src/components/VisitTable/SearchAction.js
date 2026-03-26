@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { TextInput, SubmitBar, LinkLabel, TickMark, DownloadIcon, SearchIconSvg, SearchIcon, Toast } from "@egovernments/digit-ui-react-components";
+import { TextInput, LinkLabel, SearchIcon, Toast } from "@egovernments/digit-ui-react-components";
 
 const SearchActionCentre = ({ t, projectQueryFilter, onSearch }) => {
 
