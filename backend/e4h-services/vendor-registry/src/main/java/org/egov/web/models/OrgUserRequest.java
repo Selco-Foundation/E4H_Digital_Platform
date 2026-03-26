@@ -48,4 +48,8 @@ public class OrgUserRequest {
 
     @JsonProperty("isDeleted")
     private Boolean isDeleted;
+
+
+    @JsonProperty("assignments")
+    private List<Assignment> assignments = null;
 }

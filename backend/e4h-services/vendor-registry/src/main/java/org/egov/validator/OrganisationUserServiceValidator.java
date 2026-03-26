@@ -180,14 +180,79 @@ public class OrganisationUserServiceValidator {
             List<String> uuids = employee.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
             OrgUserSearchCriteria searchUserCriteria = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
             OrgUserSearchRequest orgUserSearchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria).build();
-            URLParams urlParams = URLParams.builder().limit(1).offset(0).build();
+            URLParams urlParams = URLParams.builder().limit(100).offset(0).build();
             List<OrgUser> users = userRepository.getOrgUsers(orgUserSearchRequest, urlParams);
             if(users != null && !users.isEmpty()){
-                log.error("This user already belong to another org");
-                throw new CustomException("Organization", "This user already belong to another org");
+                OrgUser sameOrgUser = users.stream()
+                        .filter(u -> request.getOrganizationId().equals(u.getOrganizationId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (sameOrgUser != null) {
+                    log.info("User with phone {} already exists in org {}, updating existing user",
+                            orgUser.getMobileNumber(), request.getOrganizationId());
+                    Employee existingEmployee = employee.get(0);
+                    Organisation organisation = organisations.get(0);
+                    String orgType = organisation.getOrgType();
+
+                    Map<String, List<Role>> rolesMap = getOrgRoles(request.getRequestInfo());
+                    if (rolesMap != null && !rolesMap.isEmpty() && orgType != null && !orgType.isBlank()) {
+                        List<Role> roles = rolesMap.get(orgType);
+                        if (roles != null) {
+                            List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
+                            List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
+                            Set<String> orgRolesReqSet = new HashSet<>(requestRoleCodes);
+                            validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
+                        }
+                    }
+
+                    existingEmployee.getUser().setName(orgUser.getName());
+                    existingEmployee.getUser().setEmailId(orgUser.getEmailId());
+                    existingEmployee.getUser().setRoles(orgUser.getRoles());
+
+                    long now = System.currentTimeMillis();
+                    List<Assignment> previousAssignments = existingEmployee.getAssignments();
+                    if (previousAssignments != null) {
+                        for (Assignment assignment : previousAssignments) {
+                            if (isDefaultAssignment(assignment)) {
+                                assignment.setIsCurrentAssignment(true);
+                                assignment.setToDate(null);
+                                assignment.setFromDate(now);
+                            } else if (Boolean.TRUE.equals(assignment.getIsCurrentAssignment())) {
+                                assignment.setIsCurrentAssignment(false);
+                                assignment.setToDate(now);
+                            }
+                        }
+                    }
+                    List<Assignment> updatedAssignments = new ArrayList<>(
+                            previousAssignments != null ? previousAssignments : Collections.emptyList());
+                    if (request.getAssignments() != null && !request.getAssignments().isEmpty()) {
+                        updatedAssignments.addAll(request.getAssignments());
+                    }
+                    existingEmployee.setAssignments(updatedAssignments);
+
+                    EmployeeRequest employeeRequest = EmployeeRequest.builder()
+                            .requestInfo(request.getRequestInfo())
+                            .employees(List.of(existingEmployee))
+                            .build();
+                    List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+
+                    if (updatedEmployees == null || updatedEmployees.isEmpty()) {
+                        throw new CustomException("HRMS_UPDATE", "Error occurred while updating the existing user");
+                    }
+
+                    Employee updated = updatedEmployees.get(0);
+                    request.setUser(updated.getUser());
+                    request.setUserId(updated.getUser().getUuid());
+                    request.setId(sameOrgUser.getId());
+                    log.info("Successfully updated existing HRMS user {} in org {}",
+                            updated.getUser().getUuid(), request.getOrganizationId());
+                } else {
+                    log.error("This user already belong to another org");
+                    throw new CustomException("Organization", "This user already belong to another org");
+                }
             }
             else{
-//                request.getUser().setUuid(employee.get(0).getUser().getUuid());
                 request.setUser(employee.get(0).getUser());
                 request.setUserId(employee.get(0).getUser().getUuid());
             }
@@ -588,5 +653,9 @@ public class OrganisationUserServiceValidator {
                 .collect(Collectors.toSet());
     }
 
+    private boolean isDefaultAssignment(Assignment assignment) {
+        return "DESIG_01".equals(assignment.getDesignation())
+                && "DEPT_1".equals(assignment.getDepartment());
+    }
 
 }
