@@ -598,7 +598,7 @@ class BomRepository {
         ? 'Edit'
         : origin == FormOrigin.overallSummary && isSystemParameters
             ? 'Fill'
-            : 'View';
+            : 'View/Edit';
   }
 
   Future<Map<String, dynamic>?> getProjectBomKV({
@@ -667,6 +667,49 @@ class BomRepository {
     } catch (_) {}
 
     return modelBom;
+  }
+
+  bool _sameKvMap(
+    Map<String, dynamic> left,
+    Map<String, dynamic> right,
+  ) {
+    return json.encode(jsonSafe(left)) == json.encode(jsonSafe(right));
+  }
+
+  Future<Map<String, dynamic>> getOrCreateInitialFormValuesForSchema({
+    required Isar isar,
+    required String activityFacilityId,
+    required String userType,
+  }) async {
+    final modelBom = await _getModelBomValues(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+    );
+
+    final globalKv = await getProjectBomKV(
+      isar: isar,
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
+
+    final resolved = globalKv == null || globalKv.isEmpty
+        ? Map<String, dynamic>.from(modelBom)
+        : deepMerge(
+            Map<String, dynamic>.from(modelBom),
+            Map<String, dynamic>.from(globalKv),
+          );
+
+    if (resolved.isNotEmpty &&
+        (globalKv == null || !_sameKvMap(globalKv, resolved))) {
+      await mergeKvForEntryKey(
+        isar: isar,
+        projectId: activityFacilityId,
+        userType: userType,
+        kvUpdate: resolved,
+      );
+    }
+
+    return resolved;
   }
 
   Future<Map<String, dynamic>> getInitialFormValuesForSchema({
