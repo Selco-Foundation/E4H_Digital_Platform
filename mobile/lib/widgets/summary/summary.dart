@@ -127,6 +127,7 @@ Future<
       String pageName,
       String schemaCode,
       String uniqueIdentifier,
+      bool isSystemParameters,
     })> bomRouteAndLabel(String name) async {
   final r = AppInitRepo();
   final nameLower = name.toLowerCase();
@@ -201,15 +202,17 @@ Future<
   final schemaCode = _str(best['schemaCode']).trim();
   final uniqueIdentifier = _str(best['uniqueIdentifier']).trim();
 
-  // 4) Build a human label from the token (you can tweak this mapping freely)
-  String labelFromName(String n) {
+  String tokenFromName(String n) {
     final lower = n.toLowerCase();
     final afterBom = RegExp(r'_bom_([a-z0-9]+)$').firstMatch(lower)?.group(1);
     final alreadyPrefixed =
         RegExp(r'\bbom[_\-\s]([a-z0-9]+)\b').firstMatch(lower)?.group(1);
-    final token =
-        (afterBom ?? alreadyPrefixed ?? lower.split('_').last).toLowerCase();
+    return (afterBom ?? alreadyPrefixed ?? lower.split('_').last).toLowerCase();
+  }
 
+  // 4) Build a human label from the token (you can tweak this mapping freely)
+  String labelFromName(String n) {
+    final token = tokenFromName(n);
     switch (token) {
       case 'solar':
       case 'solarsystem':
@@ -237,7 +240,19 @@ Future<
     }
   }
 
+  bool isSystemParametersName(String n) {
+    switch (tokenFromName(n)) {
+      case 'system':
+      case 'parameters':
+      case 'parameter':
+        return true;
+      default:
+        return false;
+    }
+  }
+
   final label = labelFromName(name);
+  final isSystemParameters = isSystemParametersName(name);
 
   return (
     label: label,
@@ -245,5 +260,6 @@ Future<
     pageName: pageName,
     schemaCode: schemaCode,
     uniqueIdentifier: uniqueIdentifier,
+    isSystemParameters: isSystemParameters,
   );
 }

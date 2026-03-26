@@ -127,6 +127,7 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
           projectId: widget.projectId,
           schemaKey: r.schemaName,
           origin: widget.origin,
+          isSystemParameters: r.isSystemParameters,
         );
         results.add(_BtnModel(
           actionWord: action,
