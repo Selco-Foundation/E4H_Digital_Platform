@@ -109,7 +109,7 @@ public class IncidentService {
         if (statusAgregations != null && !statusAgregations.isEmpty()) {
             IncidentStatusAgregation incidentStatusAgregation = statusAgregations.get(0);
 
-            // systemFunctional = NON_FUNCTIONAL if at least one NON_FUNCTIONAL, otherwise FUNCTIONAL
+            // systemFunctional=NON_FUNCTIONAL if at least one NON_FUNCTIONAL, otherwise FUNCTIONAL
             boolean hasNonFunctional = false;
             if (systemFunctional != null) {
                 hasNonFunctional = systemFunctional.stream()
