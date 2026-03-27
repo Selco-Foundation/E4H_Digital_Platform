@@ -923,11 +923,27 @@ public class ActivityService {
                 log.warn("Cannot update complaint resolver jurisdiction: activityFacility or tenantId is null");
                 return;
             }
+            log.info("Complaint-resolver jurisdiction flow started for activityFacilityId={}, facilityId={}, tenantId={}",
+                    activityFacility.getId(), activityFacility.getFacilityId(), activityFacility.getTenantId());
 
-            // Field staff / supervisor lists are not loaded from DB on search; resolve from activity_facility_users + assignedUser
-            String referenceUserId = resolveReferenceUserIdForComplaintResolver(activityFacility, requestInfo);
+            // Determine a reference user from field staff or supervisor
+            String referenceUserId = null;
+            if (activityFacility.getFieldStaffUsers() != null && !activityFacility.getFieldStaffUsers().isEmpty()) {
+                referenceUserId = activityFacility.getFieldStaffUsers().get(0);
+                log.info("Reference user resolved from fieldStaffUsers: userId={}, totalFieldStaffUsers={}",
+                        referenceUserId, activityFacility.getFieldStaffUsers().size());
+            } else if (activityFacility.getFieldSupervisorUsers() != null && !activityFacility.getFieldSupervisorUsers().isEmpty()) {
+                referenceUserId = activityFacility.getFieldSupervisorUsers().get(0);
+                log.info("Reference user resolved from fieldSupervisorUsers: userId={}, totalFieldSupervisorUsers={}",
+                        referenceUserId, activityFacility.getFieldSupervisorUsers().size());
+            } else if (activityFacility.getAssignedUser() != null && !activityFacility.getAssignedUser().isBlank()) {
+                // Backward compatibility: field staff/supervisor lists are often not populated on DB search.
+                referenceUserId = activityFacility.getAssignedUser();
+                log.info("Reference user resolved from assignedUser fallback: userId={}", referenceUserId);
+            }
+
             if (referenceUserId == null) {
-                log.info("No reference user (field staff/supervisor from activity_facility_users or assigned) found for activityFacility {}, skipping complaint resolver jurisdiction update", activityFacility.getId());
+                log.info("No reference user (field staff/supervisor/assigned) found for activityFacility {}, skipping complaint resolver jurisdiction update", activityFacility.getId());
                 return;
             }
 
@@ -937,6 +953,8 @@ public class ActivityService {
                 log.info("No organisation found for user {} and activityFacility {}, skipping complaint resolver jurisdiction update", referenceUserId, activityFacility.getId());
                 return;
             }
+            log.info("Resolved organisationId={} for referenceUserId={} and activityFacilityId={}",
+                    organisationId, referenceUserId, activityFacility.getId());
 
             // From that organisation, find the first COMPLAINT_RESOLVER user
             Map<String, Object> complaintResolverOrgUser = fetchFirstComplaintResolverForOrganisation(organisationId, activityFacility, requestInfo);
@@ -944,9 +962,12 @@ public class ActivityService {
                 log.info("No COMPLAINT_RESOLVER found in organisation {} for activityFacility {}, skipping jurisdiction update", organisationId, activityFacility.getId());
                 return;
             }
+            log.info("Found COMPLAINT_RESOLVER org-user for organisationId={} and activityFacilityId={}",
+                    organisationId, activityFacility.getId());
 
             // Add facility to resolver's jurisdiction and call organisation user update
             updateComplaintResolverJurisdictionsWithFacility(complaintResolverOrgUser, activityFacility, requestInfo);
+            log.info("Complaint-resolver jurisdiction flow finished for activityFacilityId={}", activityFacility.getId());
 
         } catch (Exception e) {
             log.error("Error while updating complaint resolver jurisdiction for activityFacility {}", activityFacility != null ? activityFacility.getId() : "null", e);
@@ -1053,6 +1074,7 @@ public class ActivityService {
 
     private String fetchOrganisationIdForUser(String userId, ActivityFacility activityFacility, RequestInfo requestInfo) {
         try {
+            log.info("Searching organisation for reference userId={} and tenantId={}", userId, activityFacility.getTenantId());
             OrgUserSearchCriteria criteria = OrgUserSearchCriteria.builder()
                     .userId(List.of(userId))
                     .tenantId(activityFacility.getTenantId())
@@ -1065,11 +1087,14 @@ public class ActivityService {
 
             List<?> orgUsers = searchOrgUsers(searchRequest, activityFacility.getTenantId(), 0, 10);
             if (orgUsers.isEmpty()) {
+                log.info("Organisation search returned 0 records for userId={} and tenantId={}", userId, activityFacility.getTenantId());
                 return null;
             }
+            log.info("Organisation search returned {} records for userId={}", orgUsers.size(), userId);
 
             Object first = orgUsers.get(0);
             if (!(first instanceof Map)) {
+                log.warn("First org-user search result is not a map for userId={}", userId);
                 return null;
             }
 
@@ -1084,6 +1109,8 @@ public class ActivityService {
 
     private Map<String, Object> fetchFirstComplaintResolverForOrganisation(String organisationId, ActivityFacility activityFacility, RequestInfo requestInfo) {
         try {
+            log.info("Searching COMPLAINT_RESOLVER users for organisationId={} and tenantId={}",
+                    organisationId, activityFacility.getTenantId());
             OrgUserSearchCriteria criteria = OrgUserSearchCriteria.builder()
                     .organizationId(List.of(organisationId))
                     .tenantId(activityFacility.getTenantId())
@@ -1099,11 +1126,14 @@ public class ActivityService {
             while (true) {
                 List<?> orgUsers = searchOrgUsers(searchRequest, activityFacility.getTenantId(), offset, 100);
                 if (orgUsers.isEmpty()) {
+                    log.info("No org-users found for organisationId={} at offset={}", organisationId, offset);
                     return null;
                 }
+                log.info("Fetched {} org-users for organisationId={} at offset={}", orgUsers.size(), organisationId, offset);
 
                 for (Object obj : orgUsers) {
                     if (obj instanceof Map && isComplaintResolverOrgUser((Map<String, Object>) obj)) {
+                        log.info("Matched COMPLAINT_RESOLVER for organisationId={} at offset={}", organisationId, offset);
                         return (Map<String, Object>) obj;
                     }
                 }
@@ -1152,6 +1182,7 @@ public class ActivityService {
                 .append("?tenantId=").append(tenantId)
                 .append("&offset=").append(offset)
                 .append("&limit=").append(limit);
+        log.info("Calling org-user search API url={} tenantId={} offset={} limit={}", url, tenantId, offset, limit);
 
         Map<String, Object> response = serviceRequest.fetchResult(
                 url,
@@ -1186,6 +1217,10 @@ public class ActivityService {
             }
 
             Map<String, Object> user = (Map<String, Object>) userObj;
+            Object userUuidObj = user.get("uuid");
+            Object userIdObj = user.get("id");
+            log.info("Preparing jurisdiction update for resolver userUuid={} userId={} activityFacilityId={}",
+                    userUuidObj, userIdObj, activityFacility.getId());
 
             // Jurisdiction list is under key "jurisdiction" as per vendor-registry User model
             Object jurisdictionsObj = user.get("jurisdiction");
@@ -1205,6 +1240,8 @@ public class ActivityService {
                 log.warn("Boundary code is null for activityFacility {}, skipping jurisdiction update", activityFacility.getId());
                 return;
             }
+            log.info("Jurisdiction boundary candidate for resolver update: boundaryCode={} tenantId={}",
+                    boundaryCode, activityFacility.getTenantId());
 
             boolean alreadyPresent = jurisdictions.stream().anyMatch(j -> {
                 Object boundary = j.get("boundary");
@@ -1233,6 +1270,8 @@ public class ActivityService {
 
             StringBuilder url = new StringBuilder(activityConfiguration.getOrgUserHost())
                     .append(activityConfiguration.getOrgUserUpdateUrl());
+            log.info("Calling org-user update API url={} for resolver userUuid={} with new boundary={}",
+                    url, userUuidObj, boundaryCode);
 
             serviceRequest.fetchResult(url, updateBody);
             log.info("Successfully updated complaint resolver jurisdiction for boundary {}", boundaryCode);
