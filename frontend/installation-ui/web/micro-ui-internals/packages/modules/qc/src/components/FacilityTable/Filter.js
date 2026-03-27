@@ -1,9 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dropdown,
   RemoveableTag,
-  FilterIcon,
-  CheckBox,
   Loader
 } from "@egovernments/digit-ui-react-components";
 import RefreshButton from "../RefreshButton";

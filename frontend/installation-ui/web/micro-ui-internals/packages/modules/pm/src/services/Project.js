@@ -42,7 +42,7 @@ export const ProjectService = {
       endpoint = "/project/v1/_update";
     }
 
-    return await Request({
+    const response = await Request({
       url: endpoint,
       data: projectData,
       userService: true,
@@ -50,6 +50,8 @@ export const ProjectService = {
       auth: true,
       headers: headers,
     });
+
+    return response?.Project;
   },
 
   updateProjectWorkflow: async (projectId, workflowAction, workflowComment, transactionComments) => {
@@ -74,7 +76,7 @@ export const ProjectService = {
       "Content-Type": "application/json"
     }
 
-    return await Request({
+    const response = await Request({
       url: endpoint,
       data: queryObj,
       method: "POST",
@@ -82,6 +84,8 @@ export const ProjectService = {
       auth: true,
       headers: headers,
     });
+
+    return response?.Project;
   },
 
 }
