@@ -1,4 +1,4 @@
-.org-users-table {
+.user-jurisdictions-table {
   overflow-x: auto;
   box-shadow: 1px 1px 4px 0px rgba(0,0,0,0.2);
   width: 100%;
@@ -23,6 +23,10 @@
         font-size: 14px;
         line-height: 18px;
         border: 1px solid #D6D5D4;
+
+        &:first-child {
+          min-width: fit-content;
+        }
 
         &:last-child {
           text-align: center !important;
