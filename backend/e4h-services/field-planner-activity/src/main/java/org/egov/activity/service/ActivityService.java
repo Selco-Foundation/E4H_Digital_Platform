@@ -925,6 +925,11 @@ public class ActivityService {
             }
             log.info("Complaint-resolver jurisdiction flow started for activityFacilityId={}, facilityId={}, tenantId={}",
                     activityFacility.getId(), activityFacility.getFacilityId(), activityFacility.getTenantId());
+            log.info("Reference-user inputs for activityFacilityId={}: fieldStaffUsers={}, fieldSupervisorUsers={}, assignedUser={}",
+                    activityFacility.getId(),
+                    activityFacility.getFieldStaffUsers(),
+                    activityFacility.getFieldSupervisorUsers(),
+                    activityFacility.getAssignedUser());
 
             // Determine a reference user from field staff or supervisor
             String referenceUserId = null;
