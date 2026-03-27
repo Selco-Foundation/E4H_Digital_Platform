@@ -1,15 +1,25 @@
-import React, {useCallback, useEffect, useMemo, useState } from "react";
-import { FormComposerV2, Loader, Toast, Button } from "@egovernments/digit-ui-react-components";
+import React, {Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { FormComposerV2, Loader, Table, TextInput, Toast, Button } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../../../hooks/useBoundary";
 import CommonUtils from "../../../utilities/CommonUtils";
 import CustomDustbinIcon from "../../Custom/CustomDustbinIcon";
+import CustomUndoIcon from "../../Custom/CustomUndoButton";
 
 const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organizationType, organizationSubType, formToast, setFormToast }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
+  const { info } = Digit.UserService.getUser()
   const [defaultValues, setDefaultValues] = useState({});
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
-  const [assignments, setAssignments] = useState([])
+  const [assignments, setAssignments] = useState([]);
+  const [savedAssignments, setSavedAssignments] = useState([]);
+  const [savedAssignmentsToDisplay, setSavedAssignmentsToDisplay] = useState([]);
+  const [pageSize, setPageSize] = useState(10);
+  const [pageOffset, setPageOffset] = useState(0);
+  const [jurisdictionSearch, setJurisdictionSearch] = useState("");
+  const [debouncedJurisdictionSearch, setDebouncedJurisdictionSearch] = useState("");
+  const isPlatformOrgAdmin = (info?.roles || []).map((role) => role?.code).includes("ORG_PLATFORM_ADMIN");
+  const [totalAssignmentsToDisplay, setTotalAssignmentsToDisplay] = useState(0);
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -34,39 +44,8 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     }
   );
 
-  const roles = (mdmsResponse?.Organisation?.OrgRoles || []).filter((role) => (role.orgType === organizationType && ((!role.orgSubType && !organizationSubType) || role.orgSubType === organizationSubType)));
-
-  const fetchBoundaryHierarchy = useCallback((boundaryCode, boundaryType) => {
-    if (!boundaryData) return;
-    const states = boundaryData.states || [];
-    const districts = boundaryData.districts || [];
-    const blocks = boundaryData.blocks || [];
-    if (boundaryType === "Block") {
-      const block = blocks.find((block) => block.code === boundaryCode);
-      const district = districts.find((district) => district.code === block?.parentCode);
-      const state = states.find((state) => state.code === district?.parentCode);
-      if (!state) return;
-      return {
-        state: { ...state, name: t(`Boundary_${state.code}`) },
-        district: { ...district, name: t(`Boundary_${district.code}`) },
-        block: { ...block, name: t(`Boundary_${block.code}`) }
-      };
-    } else if (boundaryType === "District") {
-      const district = districts.find((district) => district.code === boundaryCode);
-      const state = states.find((state) => state.code === district?.parentCode);
-      if (!state) return;
-      return {
-        state: { ...state, name: t(`Boundary_${state.code}`) },
-        district: { ...district, name: t(`Boundary_${district.code}`) }
-      };
-    } else if (boundaryType === "State") {
-      const state = states.find((state) => state.code === boundaryCode);
-      if (!state) return;
-      return {
-        state: { ...state, name: t(`Boundary_${state.code}`) }
-      };
-    }
-  }, [boundaryData])
+  const roles = (mdmsResponse?.Organisation?.OrgRoles || [])
+    .filter((role) => (role.orgType === organizationType && ((!role.orgSubType && !organizationSubType) || role.orgSubType === organizationSubType)));
 
   useEffect(() => {
     if (createdUser?.orgUserId && mdmsResponse) {
@@ -84,13 +63,29 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   useEffect(() => {
     const createdAssessments = [];
     (createdUser?.jurisdiction || []).forEach(jurisdiction => {
-      const assignment = fetchBoundaryHierarchy(jurisdiction.boundary, jurisdiction.boundaryType);
-      if (assignment) {
-        createdAssessments.push({ ...assignment, savedJurisdiction: jurisdiction });
-      }
+      createdAssessments.push(jurisdiction);
     })
-    setAssignments(createdAssessments);
-  }, [fetchBoundaryHierarchy]);
+    setSavedAssignments(createdAssessments);
+  }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {setDebouncedJurisdictionSearch(jurisdictionSearch)}, 500);
+    return () => clearTimeout(timeout);
+  }, [jurisdictionSearch]);
+
+  useEffect(() => {
+    const filteredSavedAssignments = savedAssignments
+      // .filter((savedAssignment) => !savedAssignment.isDeleted)
+      .filter((savedAssignment) => {
+        if(!debouncedJurisdictionSearch) return true;
+        const name = t(`Boundary_${savedAssignment.boundary}`)?.toUpperCase();
+        const code = savedAssignment.boundary?.toUpperCase();
+        const searchedValue = debouncedJurisdictionSearch?.toUpperCase();
+        return name.includes(searchedValue) || code.includes(searchedValue);
+      });
+    setTotalAssignmentsToDisplay(filteredSavedAssignments.length);
+    setSavedAssignmentsToDisplay(filteredSavedAssignments.slice(pageOffset, Math.min(filteredSavedAssignments.length, pageOffset + pageSize)));
+  }, [t, savedAssignments, debouncedJurisdictionSearch, pageOffset, pageSize]);
 
   const isFormLoading = boundaryLoading || mdmsLoading;
 
@@ -170,6 +165,24 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       body: [
         {
           inline: true,
+          label: "CS_COUNTRY",
+          isMandatory: false,
+          key: "country",
+          type: "component",
+          component: "ORGCountrySelector",
+          customProps: {
+            name: "country",
+            t,
+            boundaryData,
+            disable: disable,
+          },
+          populators: {
+            name: "country",
+            error: t("CORE_COMMON_REQUIRED"),
+          },
+        },
+        {
+          inline: true,
           label: "CS_STATE",
           isMandatory: false,
           key: "state",
@@ -177,6 +190,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           component: "ORGStateSelector",
           customProps: {
             name: "state",
+            countryIdentifier: "country",
             t,
             boundaryData,
             disable: disable,
@@ -224,22 +238,44 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             error: t("CORE_COMMON_REQUIRED"),
           },
         },
+        {
+          inline: true,
+          label: "CS_FACILITY",
+          isMandatory: false,
+          key: "facility",
+          type: "component",
+          component: "ORGFacilitySelector",
+          customProps: {
+            name: "facility",
+            blockIdentifier: "block",
+            t,
+            boundaryData,
+            disable: disable,
+          },
+          populators: {
+            name: "facility",
+            error: t("CORE_COMMON_REQUIRED"),
+          },
+        },
       ],
     },
-  ], [boundaryData]
-  )
+  ], [boundaryData])
 
   const handleFormSubmit = useCallback((formData) => {
     if (formData?.roles?.length) {
-      const jurisdictions = [];
+      const jurisdictions = (savedAssignments || [])
+        .map((savedAssignment) => ({...savedAssignment, isActive: !savedAssignment.isDeleted}));
 
       assignments.forEach((assignment) => {
         let jurisdiction;
-        if (assignment.savedJurisdiction) {
+        if (assignment.facility?.code) {
           jurisdiction = {
-            ...assignment.savedJurisdiction,
+            hierarchy: "SELCO",
+            boundary: assignment.facility.code,
+            boundaryType: "Facility",
+            tenantId: tenantId,
             isActive: !assignment.isDeleted,
-          };
+          }
         } else if (assignment.block?.code) {
           jurisdiction = {
             hierarchy: "SELCO",
@@ -264,6 +300,14 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
             tenantId: tenantId,
             isActive: !assignment.isDeleted,
           }
+        } else if (assignment.country?.code) {
+          jurisdiction = {
+            hierarchy: "SELCO",
+            boundary: assignment.country.code,
+            boundaryType: "Country",
+            tenantId: tenantId,
+            isActive: !assignment.isDeleted,
+          }
         }
         if (jurisdiction) jurisdictions.push(jurisdiction);
       })
@@ -272,32 +316,125 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
     } else {
       setFormToast({ key: "error", label: t("USER_CREATION_SELECT_ROLE_ERROR") });
     }
-  }, [assignments]);
+  }, [assignments, savedAssignments]);
 
   const handleAssignmentFormChange = useCallback((index, _, formData) => {
-    if (CommonUtils.isNotEqual(assignments[index].state, formData.state) || CommonUtils.isNotEqual(assignments[index].district, formData.district) || CommonUtils.isNotEqual(assignments[index].block, formData.block)) {
+    if (CommonUtils.isNotEqual(assignments[index].country, formData.country) ||
+      CommonUtils.isNotEqual(assignments[index].state, formData.state) ||
+      CommonUtils.isNotEqual(assignments[index].district, formData.district) ||
+      CommonUtils.isNotEqual(assignments[index].block, formData.block) ||
+      CommonUtils.isNotEqual(assignments[index].facility, formData.facility)) {
       setAssignments((prevAssignments) => prevAssignments.map((assignment, i) => (i === index ? {...assignment, ...formData} : assignment)));
     }
   }, [assignments]);
 
   const handleAssignmentAddition = () => {
-    setAssignments((prevAssignments) => [...prevAssignments, { state: null, district: null, block: null }]);
+    setAssignments((prevAssignments) => [{ country: null, state: null, district: null, block: null, facility: null }, ...prevAssignments]);
   }
 
   const deleteAssignment = (index) => {
     setAssignments((prevAssignments) => prevAssignments.reduce(
       (aggregate, assignment, i) => {
-        if (i === index) {
-          if (assignment.savedJurisdiction) {
-            aggregate.push({ ...assignment, isDeleted: true });
-          }
-        } else {
+        if (i !== index) {
           aggregate.push(assignment);
         }
         return aggregate;
       }, []
     ));
   }
+
+  const deleteSavedAssignment = (id) => {
+    setSavedAssignments((prevSavedAssignments) => prevSavedAssignments.reduce(
+      (aggregate, savedAssignment) => {
+        if (savedAssignment.id === id) {
+          aggregate.push({ ...savedAssignment, isDeleted: true });
+        } else {
+          aggregate.push(savedAssignment);
+        }
+        return aggregate;
+      }, []
+    ));
+  }
+
+  const undoSavedAssignmentDeletion = (id) => {
+    setSavedAssignments((prevSavedAssignments) => prevSavedAssignments.reduce(
+      (aggregate, savedAssignment) => {
+        if (savedAssignment.id === id) {
+          aggregate.push({ ...savedAssignment, isDeleted: false });
+        } else {
+          aggregate.push(savedAssignment);
+        }
+        return aggregate;
+      }, []
+    ));
+  }
+
+  const GetCell = (value, isDeleted) => (
+    <span className="cell-text" style={{ color: isDeleted ? "#bc210a" : "#000000" }}>
+      {value}
+    </span>
+  );
+
+  const columns = [
+    {
+      Header: t("BOUNDARY_NAME"),
+      Cell: ({ row }) => {
+        return GetCell(row.original["boundary"] ? t(`Boundary_${row.original["boundary"]}`) : "-", row.original["isDeleted"]);
+      },
+    },
+    {
+      Header: t("BOUNDARY_TYPE"),
+      Cell: ({ row }) => {
+        return GetCell(row.original["boundaryType"] ? row.original["boundaryType"] : "-", row.original["isDeleted"]);
+      },
+    },
+    {
+      Header: t("BOUNDARY_CODE"),
+      Cell: ({ row }) => {
+        return GetCell(row.original["boundary"] ? row.original["boundary"] : "-", row.original["isDeleted"]);
+      },
+    },
+    {
+      Header: t("CS_COMMON_ACTIONS"),
+      Cell: ({ row }) => {
+        return GetCell(
+          row.original["isDeleted"] ?
+            (
+              <button
+                type="button"
+                style={{background: "none"}}
+                onClick={() => undoSavedAssignmentDeletion(row.original["id"])}
+              >
+                <CustomUndoIcon colourFill={"#00703C"} height={"18"} strokeWidth={"3"} />
+              </button>
+            )
+            :
+            (
+              <button
+                type="button"
+                style={{background: "none"}}
+                onClick={() => deleteSavedAssignment(row.original["id"])}
+              >
+                <CustomDustbinIcon colourFill={"#bc210a"} />
+              </button>
+            )
+        );
+      },
+    }
+  ];
+
+  const onPageSizeChange = (e) => {
+    setPageSize(parseInt(e.target.value));
+    setPageOffset(0);
+  };
+
+  const onNextPage = () => {
+    setPageOffset(pageOffset + pageSize);
+  };
+
+  const onPrevPage = () => {
+    setPageOffset(pageOffset - pageSize);
+  };
 
   if (isFormLoading) {
     return (
@@ -349,7 +486,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           onClose={() => setFormToast(null)}
         />
       )}
-      {organizationType === "PLATFORM" && (
+      {isPlatformOrgAdmin && (
         <div style={{ marginBottom: "30px", padding: "10px" }}>
           <h2 style={{
             margin: 0,
@@ -359,6 +496,36 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
           }}>
             {t("ASSIGNMENTS")}
           </h2>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+            {createdUser?.orgUserId && (
+              <TextInput
+                t={t}
+                onChange={(e) => setJurisdictionSearch(e.target.value)}
+                placeholder={t("SEARCH_ASSIGNMENTS")}
+                textInputStyle={{ maxWidth: "300px", marginBottom: "0" }}
+                style={{ marginBottom: "0" }}
+              />
+            )}
+            <Button
+              variation="secondary"
+              label={t("ADD_ASSIGNMENT")}
+              onButtonClick={handleAssignmentAddition}
+              style={{
+                backgroundColor: "white",
+                border: "1px solid #d35400",
+                color: "#d35400",
+                padding: "8px 20px",
+                cursor: "pointer",
+                fontWeight: "bold",
+                fontSize: "16px",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: "5px",
+                height: "40px",
+              }}
+            />
+          </div>
           {assignments
             .map((assignment, index) => !assignment.isDeleted && (
               <div
@@ -376,7 +543,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                     fontSize: "18px",
                     fontWeight: "bold",
                   }}>
-                    {t("ASSIGNMENT") + " " + (index + 1) + ":"}
+                    {t("NEW_ASSIGNMENT") + ":"}
                   </h2>
                   <button onClick={() => deleteAssignment(index)} style={{background: 'none', border: 'none', fontSize: 18, cursor: 'pointer'}}>
                     <CustomDustbinIcon colourFill={"#bc210a"} />
@@ -385,7 +552,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
                 <FormComposerV2
                   key={JSON.stringify(assignment)}
                   defaultValues={assignment}
-                  config={assignmentsConfig(assignment.savedJurisdiction)}
+                  config={assignmentsConfig(false)}
                   onFormValueChange={(_, formData) => handleAssignmentFormChange(index, _, formData)}
                   label={""}
                   heading={""}
@@ -395,25 +562,56 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
               </div>
             ))
           }
-          <Button
-            variation="secondary"
-            label={t("ADD_ASSIGNMENT")}
-            onButtonClick={handleAssignmentAddition}
-            style={{
-              backgroundColor: "white",
-              border: "1px solid #d35400",
-              color: "#d35400",
-              padding: "8px 20px",
-              cursor: "pointer",
-              fontWeight: "bold",
-              fontSize: "16px",
+          {!!savedAssignmentsToDisplay?.length ? (
+            <Fragment>
+              <div
+                style={{
+                  backgroundColor: "white",
+                }}
+              >
+                <div
+                  className={"health-facility-table-wrapper"}
+                  style={{
+                    margin: "0",
+                    overflow: "auto",
+                  }}
+                >
+                  <Table
+                    t={t}
+                    customTableWrapperClassName={"user-jurisdictions-table"}
+                    data={savedAssignmentsToDisplay}
+                    columns={columns}
+                    getCellProps={() => {
+                      return {
+                        style: {
+                          maxWidth: "100%",
+                          padding: "17.24px 18px",
+                          fontSize: "15px",
+                        },
+                      };
+                    }}
+                    onNextPage={onNextPage}
+                    onPrevPage={onPrevPage}
+                    currentPage={Math.floor(pageOffset / pageSize)}
+                    totalRecords={totalAssignmentsToDisplay}
+                    onPageSizeChange={onPageSizeChange}
+                    pageSizeLimit={pageSize}
+                  />
+                </div>
+              </div>
+            </Fragment>
+          ) : (!assignments?.length && createdUser?.orgUserId) && (
+            <div style={{
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
-              gap: "5px",
-              height: "40px",
-            }}
-          />
+              height: "200px",
+              fontSize: "18px",
+              color: "#666"
+            }}>
+              {t("NO_ASSIGNMENTS_FOUND")}
+            </div>
+          )}
         </div>
       )}
     </div>
