@@ -36,11 +36,5 @@ public class ActivityConstants {
     public static final String INSTALLATION_REPORT_APPROVER_QC_TEAM = "INSTALLATION_REPORT_APPROVER_QC_TEAM";
     public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
 
-    /** Stored in activity_facility_users.additionalDetails (linkageType) for complaint-resolver org resolution */
-    public static final String ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY = "linkageType";
-    public static final String LINKAGE_TYPE_FIELD_STAFF = "FIELD_STAFF";
-    public static final String LINKAGE_TYPE_FIELD_SUPERVISOR = "FIELD_SUPERVISOR";
-    public static final String LINKAGE_TYPE_INSTALLATION_REVIEWER = "INSTALLATION_REVIEWER";
-
 
 }

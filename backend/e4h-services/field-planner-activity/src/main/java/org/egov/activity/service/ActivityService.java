@@ -28,7 +28,7 @@ import java.sql.Array;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.egov.activity.util.ActivityConstants.*;
+import static org.egov.activity.util.ActivityConstants.SUBMITTED_BY_SUPERVISOR;
 import static org.egov.common.utils.CommonUtils.populateErrorDetails;
 
 @Service
@@ -112,7 +112,6 @@ public class ActivityService {
                                 .userId(userId)
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
-                                .additionalDetails(Map.of(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY, LINKAGE_TYPE_INSTALLATION_REVIEWER))
                                 .build();
                         usersFacility.add(facilityUser);
                     }
@@ -126,7 +125,6 @@ public class ActivityService {
                                 .userId(userId)
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
-                                .additionalDetails(Map.of(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY, LINKAGE_TYPE_FIELD_STAFF))
                                 .build();
                         usersFacility.add(facilityUser);
                     }
@@ -140,37 +138,14 @@ public class ActivityService {
                                 .userId(userId)
                                 .tenantId(activityFacility.getTenantId())
                                 .isDeleted(false)
-                                .additionalDetails(Map.of(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY, LINKAGE_TYPE_FIELD_SUPERVISOR))
                                 .build();
                         usersFacility.add(facilityUser);
                     }
                 }
-                // Remove duplicates by userId while preserving the most relevant linkageType:
-                // FIELD_STAFF > FIELD_SUPERVISOR > INSTALLATION_REVIEWER
-                Map<String, ActivityFacilityUser> byUserId = new LinkedHashMap<>();
-                for (ActivityFacilityUser u : usersFacility) {
-                    if (u.getUserId() == null) {
-                        continue;
-                    }
-                    ActivityFacilityUser existing = byUserId.get(u.getUserId());
-                    if (existing == null) {
-                        byUserId.put(u.getUserId(), u);
-                        continue;
-                    }
-                    String existingType = existing.getAdditionalDetails() == null
-                            ? null
-                            : String.valueOf(existing.getAdditionalDetails().get(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY));
-                    String newType = u.getAdditionalDetails() == null
-                            ? null
-                            : String.valueOf(u.getAdditionalDetails().get(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY));
-
-                    int existingPriority = getLinkagePriority(existingType);
-                    int newPriority = getLinkagePriority(newType);
-                    if (newPriority > existingPriority) {
-                        byUserId.put(u.getUserId(), u);
-                    }
-                }
-                usersFacility = new ArrayList<>(byUserId.values());
+                // remove Duplicate activity facility users if the same user is REVIEWER, STAFF and SUPERVISOR
+                Set<String> seenUsers = new HashSet<>();
+                usersFacility = usersFacility.stream().filter(a -> seenUsers.add(a.getUserId()))
+                        .toList();
                 activityFacilityUsers.addAll(usersFacility);
             }
 
@@ -914,7 +889,7 @@ public class ActivityService {
 
     /**
      * After installation approval, find the COMPLAINT_RESOLVER user within the organisation
-     * for the field staff / field supervisor who performed the installation and add this
+     * for a linked user on the installation (see {@link ActivityFacility#getLinkedUsers()}) and add this
      * facility to their jurisdiction (first COMPLAINT_RESOLVER only).
      */
     private void addFacilityToComplaintResolverJurisdiction(ActivityFacility activityFacility, RequestInfo requestInfo) {
@@ -925,32 +900,19 @@ public class ActivityService {
             }
             log.info("Complaint-resolver jurisdiction flow started for activityFacilityId={}, facilityId={}, tenantId={}",
                     activityFacility.getId(), activityFacility.getFacilityId(), activityFacility.getTenantId());
-            log.info("Reference-user inputs for activityFacilityId={}: fieldStaffUsers={}, fieldSupervisorUsers={}, assignedUser={}",
+            log.info("Reference-user inputs for activityFacilityId={}: linkedUsers={}, assignedUser={}",
                     activityFacility.getId(),
-                    activityFacility.getFieldStaffUsers(),
-                    activityFacility.getFieldSupervisorUsers(),
+                    activityFacility.getLinkedUsers(),
                     activityFacility.getAssignedUser());
 
-            // Determine a reference user from field staff or supervisor
-            String referenceUserId = null;
-            if (activityFacility.getFieldStaffUsers() != null && !activityFacility.getFieldStaffUsers().isEmpty()) {
-                referenceUserId = activityFacility.getFieldStaffUsers().get(0);
-                log.info("Reference user resolved from fieldStaffUsers: userId={}, totalFieldStaffUsers={}",
-                        referenceUserId, activityFacility.getFieldStaffUsers().size());
-            } else if (activityFacility.getFieldSupervisorUsers() != null && !activityFacility.getFieldSupervisorUsers().isEmpty()) {
-                referenceUserId = activityFacility.getFieldSupervisorUsers().get(0);
-                log.info("Reference user resolved from fieldSupervisorUsers: userId={}, totalFieldSupervisorUsers={}",
-                        referenceUserId, activityFacility.getFieldSupervisorUsers().size());
-            } else if (activityFacility.getAssignedUser() != null && !activityFacility.getAssignedUser().isBlank()) {
-                // Backward compatibility: field staff/supervisor lists are often not populated on DB search.
-                referenceUserId = activityFacility.getAssignedUser();
-                log.info("Reference user resolved from assignedUser fallback: userId={}", referenceUserId);
-            }
+            // Reference user: linkedUsers (search aggregate) -> activity_facility_users rows -> assignedUser
+            String referenceUserId = resolveReferenceUserIdForComplaintResolver(activityFacility, requestInfo);
 
             if (referenceUserId == null) {
-                log.info("No reference user (field staff/supervisor/assigned) found for activityFacility {}, skipping complaint resolver jurisdiction update", activityFacility.getId());
+                log.info("No reference user (linkedUsers / activity_facility_users / assignedUser) found for activityFacility {}, skipping complaint resolver jurisdiction update", activityFacility.getId());
                 return;
             }
+            log.info("Reference user resolved for activityFacilityId={}: userId={}", activityFacility.getId(), referenceUserId);
 
             // Fetch organisation of the reference user from vendor-registry via org-user search
             String organisationId = fetchOrganisationIdForUser(referenceUserId, activityFacility, requestInfo);
@@ -980,24 +942,56 @@ public class ActivityService {
     }
 
     /**
-     * Prefer first field staff, then first field supervisor. Sources: request payload lists (if present),
-     * persisted {@code activity_facility_users} rows with linkageType (FIELD_STAFF / FIELD_SUPERVISOR),
-     * then {@link ActivityFacility#getAssignedUser()}.
+     * Resolve org reference from linked users (same as _search {@code linkedUsers}), then DB rows, then assigned user.
      */
     private String resolveReferenceUserIdForComplaintResolver(ActivityFacility activityFacility, RequestInfo requestInfo) {
-        if (activityFacility.getFieldStaffUsers() != null && !activityFacility.getFieldStaffUsers().isEmpty()) {
-            return activityFacility.getFieldStaffUsers().get(0);
-        }
-        if (activityFacility.getFieldSupervisorUsers() != null && !activityFacility.getFieldSupervisorUsers().isEmpty()) {
-            return activityFacility.getFieldSupervisorUsers().get(0);
+        String fromLinkedUsersArray = pickReferenceUserIdFromLinkedUsersField(activityFacility, requestInfo);
+        if (fromLinkedUsersArray != null) {
+            log.info("Reference user resolved from activityFacility.linkedUsers: userId={}, totalLinkedUsers={}",
+                    fromLinkedUsersArray,
+                    activityFacility.getLinkedUsers() != null ? activityFacility.getLinkedUsers().size() : 0);
+            return fromLinkedUsersArray;
         }
         List<ActivityFacilityUser> linked = fetchActivityFacilityUsers(activityFacility.getId(), activityFacility.getTenantId(), requestInfo);
-        String fromLinked = pickReferenceUserIdFromLinkedActivityFacilityUsers(linked);
-        if (fromLinked != null) {
-            return fromLinked;
+        String fromRows = pickFirstActiveLinkedUserId(linked);
+        if (fromRows != null) {
+            log.info("Reference user resolved from activity_facility_users: userId={}, linkedUserCount={}",
+                    fromRows, linked.size());
+            return fromRows;
         }
         if (activityFacility.getAssignedUser() != null && !activityFacility.getAssignedUser().isBlank()) {
+            log.info("Reference user resolved from assignedUser fallback: userId={}", activityFacility.getAssignedUser());
             return activityFacility.getAssignedUser();
+        }
+        return null;
+    }
+
+    /**
+     * Uses {@link ActivityFacility#getLinkedUsers()} populated from SQL aggregate on facility search
+     * (same as _search response). Prefers a user other than the current approver when possible.
+     */
+    private String pickReferenceUserIdFromLinkedUsersField(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        List<String> linkedUsers = activityFacility.getLinkedUsers();
+        if (linkedUsers == null || linkedUsers.isEmpty()) {
+            return null;
+        }
+        String currentApproverUuid = null;
+        if (requestInfo != null && requestInfo.getUserInfo() != null) {
+            currentApproverUuid = requestInfo.getUserInfo().getUuid();
+        }
+        for (String uid : linkedUsers) {
+            if (uid == null || uid.isBlank()) {
+                continue;
+            }
+            if (currentApproverUuid != null && currentApproverUuid.equalsIgnoreCase(uid)) {
+                continue;
+            }
+            return uid;
+        }
+        for (String uid : linkedUsers) {
+            if (uid != null && !uid.isBlank()) {
+                return uid;
+            }
         }
         return null;
     }
@@ -1029,7 +1023,7 @@ public class ActivityService {
         }
     }
 
-    private String pickReferenceUserIdFromLinkedActivityFacilityUsers(List<ActivityFacilityUser> linked) {
+    private String pickFirstActiveLinkedUserId(List<ActivityFacilityUser> linked) {
         if (linked == null || linked.isEmpty()) {
             return null;
         }
@@ -1037,44 +1031,11 @@ public class ActivityService {
             if (Boolean.TRUE.equals(u.getIsDeleted())) {
                 continue;
             }
-            if (LINKAGE_TYPE_FIELD_STAFF.equalsIgnoreCase(String.valueOf(getLinkageTypeFromActivityFacilityUser(u)))) {
-                return u.getUserId();
-            }
-        }
-        for (ActivityFacilityUser u : linked) {
-            if (Boolean.TRUE.equals(u.getIsDeleted())) {
-                continue;
-            }
-            if (LINKAGE_TYPE_FIELD_SUPERVISOR.equalsIgnoreCase(String.valueOf(getLinkageTypeFromActivityFacilityUser(u)))) {
+            if (u.getUserId() != null && !u.getUserId().isBlank()) {
                 return u.getUserId();
             }
         }
         return null;
-    }
-
-    private String getLinkageTypeFromActivityFacilityUser(ActivityFacilityUser u) {
-        if (u.getAdditionalDetails() == null) {
-            return null;
-        }
-        Object v = u.getAdditionalDetails().get(ACTIVITY_FACILITY_USER_LINKAGE_TYPE_KEY);
-        return v != null ? v.toString() : null;
-    }
-
-    private int getLinkagePriority(String linkageType) {
-        if (linkageType == null) {
-            return 0;
-        }
-        String type = linkageType.toUpperCase(Locale.ROOT);
-        if (LINKAGE_TYPE_FIELD_STAFF.equalsIgnoreCase(type)) {
-            return 3;
-        }
-        if (LINKAGE_TYPE_FIELD_SUPERVISOR.equalsIgnoreCase(type)) {
-            return 2;
-        }
-        if (LINKAGE_TYPE_INSTALLATION_REVIEWER.equalsIgnoreCase(type)) {
-            return 1;
-        }
-        return 0;
     }
 
     private String fetchOrganisationIdForUser(String userId, ActivityFacility activityFacility, RequestInfo requestInfo) {
