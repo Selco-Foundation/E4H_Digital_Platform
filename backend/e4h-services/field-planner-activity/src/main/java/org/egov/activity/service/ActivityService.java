@@ -1231,8 +1231,15 @@ public class ActivityService {
 
             // Build update request payload for organisation user update API
             Map<String, Object> updateBody = new HashMap<>();
+            Object orgUserOrgId = orgUser.get("organizationId");
+            Object orgUserUser = orgUser.get("user");
+            if (orgUserOrgId == null || orgUserUser == null) {
+                log.warn("Skipping complaint resolver jurisdiction update due to missing OrgUser fields: organizationId={}, userPresent={}", orgUserOrgId, orgUserUser != null);
+                return;
+            }
+
+            updateBody.putAll(orgUser);
             updateBody.put("RequestInfo", requestInfo);
-            updateBody.put("OrgUser", orgUser);
 
             StringBuilder url = new StringBuilder(activityConfiguration.getOrgUserHost())
                     .append(activityConfiguration.getOrgUserUpdateUrl());
