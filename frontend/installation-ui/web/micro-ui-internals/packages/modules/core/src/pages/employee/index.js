@@ -109,11 +109,11 @@ const EmployeeApp = ({
                   }}
                 />
               </Route>
-              <Route path={`${path}/user/language-selection`}>
-                <LanguageSelection />
-              </Route>
+              {/*<Route path={`${path}/user/language-selection`}>*/}
+              {/*  <LanguageSelection />*/}
+              {/*</Route>*/}
               <Route>
-                <Redirect to={`${path}/user/language-selection`} />
+                <Redirect to={`${path}/user/login`} />
               </Route>
             </Switch>
           </div>
@@ -158,7 +158,7 @@ const EmployeeApp = ({
           </div>
         </Route>
         <Route>
-          <Redirect to={`${path}/user/language-selection`} />
+          <Redirect to={`${path}/user/login`} />
         </Route>
       </Switch>
     </div>

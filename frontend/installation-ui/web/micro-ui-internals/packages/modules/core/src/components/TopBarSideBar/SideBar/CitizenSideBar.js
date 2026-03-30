@@ -175,7 +175,7 @@ export const CitizenSideBar = ({
 
   const redirectToLoginPage = () => {
     if (isEmployee) {
-      history.push(`/${window?.contextPath}/employee/user/language-selection`);
+      history.push(`/${window?.contextPath}/employee/user/login`);
     } else {
       history.push(`/${window?.contextPath}/citizen/login`);
     }
