@@ -41,6 +41,9 @@ public class ActivityFacility {
     @JsonProperty("reviewerUser")
     private List<String> reviewerUser = null;
 
+    @JsonProperty("linkedUsers")
+    private List<String> linkedUsers = null;
+
     @JsonProperty("fieldPlanId")
     private String fieldPlanId = null;
 
