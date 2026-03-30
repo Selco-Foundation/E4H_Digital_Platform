@@ -5,6 +5,7 @@ import { loginConfig as defaultLoginConfig } from "./config";
 import { LoginOtpConfig as defaultLoginOtpConfig } from "./ConfigOtp";
 import LoginComponent from "./login";
 import { useHistory, useLocation } from "react-router-dom";
+import { Loader } from "@egovernments/digit-ui-components";
 
 const EmployeeLogin = ({ stateCode }) => {
   const { t } = useTranslation();
@@ -81,6 +82,8 @@ const EmployeeLogin = ({ stateCode }) => {
       [loginOtpConfig]
     )
   );
+
+  if (isLoading) return <Loader />
 
   return (
     <Switch>
