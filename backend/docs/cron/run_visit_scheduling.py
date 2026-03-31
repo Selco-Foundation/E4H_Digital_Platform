@@ -29,7 +29,7 @@ base_request_info = {
         "authToken": "cronjob-token",
         "userInfo": {
             "id": None,
-            "uuid": "c8ed7e51-c0e5-4552-a420-76eeeee1e1dc",
+            "uuid": "225ca2e1-960e-49cd-9786-9c4e5f34c1e6",
             "userName": "CRONJOB_VISIT_SCHEDULING",
             "name": "Cron Job - Visit Scheduling",
             "mobileNumber": "0000000000",
