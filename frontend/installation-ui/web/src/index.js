@@ -5,6 +5,9 @@ import "./index.css";
 import App from './App';
 import { TLCustomisations } from './Customisations/tl/TLCustomisation';
 
+import "@egovernments/digit-ui-components-css/dist/index.css";
+import "@egovernments/digit-ui-css/dist/index.css";
+import "@selco/installation-ui-css/dist/index.css";
 
 initLibraries();
 

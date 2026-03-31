@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import tempfile
 
+from openpyxl import load_workbook
+
 from app.core.logging import AppLogger
 from app.ingest.excel_data_writer import ExcelDataWriter
 
@@ -37,3 +39,22 @@ def create_empty_excel_file(file_path: str) -> None:
     except Exception as e:
         logger.error(f"Error creating empty Excel file: {e}")
         raise
+
+def remove_default_empty_sheet(file_path: str) -> None:
+    """
+    Removes the default empty sheet (Sheet1) if it exists and there are other sheets present.
+    This should be called at the end of template generation.
+    """
+    try:
+        wb = load_workbook(file_path)
+        if "Sheet1" in wb.sheetnames and len(wb.sheetnames) > 1:
+            std = wb["Sheet1"]
+            wb.remove(std)
+            wb.save(file_path)
+            logger.info("Removed default empty sheet from workbook")
+        else:
+            logger.info("No default empty sheet found or only one sheet exists")
+    except Exception as e:
+        logger.error(f"Error removing default empty sheet: {e}")
+        raise
+

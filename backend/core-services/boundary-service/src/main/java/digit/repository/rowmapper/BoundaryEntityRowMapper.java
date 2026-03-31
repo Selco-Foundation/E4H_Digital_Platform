@@ -37,12 +37,14 @@ public class BoundaryEntityRowMapper implements ResultSetExtractor<List<Boundary
 
             Boundary boundary;
             try {
+                String geometryStr = resultSet.getString("geometry");
+                String additionalDetailsStr = resultSet.getString("additionaldetails");
                 boundary = Boundary.builder()
                         .id(resultSet.getString("id"))
                         .code(resultSet.getString("code"))
                         .auditDetails(auditDetails)
-                        .geometry(mapper.readTree(resultSet.getString("geometry")))
-                        .additionalDetails(mapper.readTree(resultSet.getString("additionaldetails")))
+                        .geometry(geometryStr != null ? mapper.readTree(geometryStr) : null)
+                        .additionalDetails(additionalDetailsStr != null ? mapper.readTree(additionalDetailsStr) : null)
                         .tenantId(resultSet.getString("tenantid"))
                         .build();
             } catch (JsonProcessingException e) {

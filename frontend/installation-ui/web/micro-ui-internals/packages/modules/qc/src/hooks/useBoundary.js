@@ -1,9 +1,9 @@
 import { useQuery, useQueryClient } from "react-query";
-import { QCService } from "../services/QC";
+import { BoundaryService } from "../services/Boundary";
 
 const fetchBoundaries = async (codes, boundaryType) => {
 
-  const boundaryResponse = await QCService.fetchBoundaryRelations(codes, boundaryType);
+  const boundaryResponse = await BoundaryService.fetchBoundaryRelations(codes, boundaryType);
   const stateObject = boundaryResponse?.TenantBoundary?.[0]?.boundary?.[0];
 
   const state = [

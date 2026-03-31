@@ -22,13 +22,16 @@ public class AssetRowMapper {
         asset.setTenantId(rs.getString("tenant_id"));
         asset.setSystem(rs.getString("system"));
         asset.setFacilityID(rs.getString("facility_id"));
+        asset.setActivityFacilityID(rs.getString("activity_facility_id"));
         asset.setAssetTypeID(rs.getString("asset_type_id"));
         asset.setSerialNumber(rs.getString("serial_number"));
         asset.setModelNumber(rs.getString("model_number"));
         asset.setBrandID(rs.getString("brand_id"));
-        asset.setWarrantyStartDate(new Date(rs.getLong("warranty_start_date")));
+        Long startDate = rs.getLong("warranty_start_date");
+        Long endDate = rs.getLong("warranty_end_date");
+        asset.setWarrantyStartDate(startDate!=null && startDate>0 ? new Date(rs.getLong("warranty_start_date")) : null);
         asset.setWarrantyDuration(rs.getInt("warranty_duration"));
-        asset.setWarrantyEndDate(new Date(rs.getLong("warranty_end_date")));
+        asset.setWarrantyEndDate(endDate!=null && endDate>0 ? new Date(rs.getLong("warranty_end_date")) : null);
         asset.setWfStatus(rs.getString("wf_status"));
         asset.setIsActive(rs.getBoolean("is_active"));
         asset.setIsOperational(rs.getBoolean("is_operational"));

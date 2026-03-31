@@ -2,19 +2,18 @@ package org.egov.util;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Collections;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
-import org.egov.common.contract.request.Role;
-import org.egov.common.contract.request.User;
 import org.egov.common.contract.user.UserDetailResponse;
 import org.egov.common.contract.user.enums.UserType;
 import org.egov.config.Configuration;
 import org.egov.repository.ServiceRequestRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.tracer.model.CustomException;
+import org.egov.web.models.RoleRequest;
+import org.egov.web.models.User;
+import org.egov.web.models.UserRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -47,16 +46,32 @@ public class UserUtil {
 	 */
 
 	public UserDetailResponse userCall(Object userRequest, StringBuilder uri) {
+		log.trace("UserUtil::userCall entry");
 		String dobFormat = null;
 		if (uri.toString().contains(configs.getUserSearchEndpoint())
 				|| uri.toString().contains(configs.getUserUpdateEndpoint()))
 			dobFormat = "yyyy-MM-dd";
 		else if (uri.toString().contains(configs.getUserCreateEndpoint()))
 			dobFormat = "dd/MM/yyyy";
+		log.debug("Calling user service with URI: {}, date format: {}", uri.toString(), dobFormat);
 		try {
 			LinkedHashMap responseMap = (LinkedHashMap) serviceRequestRepository.fetchResult(uri, userRequest);
 			parseResponse(responseMap, dobFormat);
-            return mapper.convertValue(responseMap, UserDetailResponse.class);
+            UserDetailResponse response = mapper.convertValue(responseMap, UserDetailResponse.class);
+            log.debug("User service call completed successfully");
+            return response;
+		} catch (IllegalArgumentException e) {
+			log.error("Error converting user service response", e);
+			throw new CustomException("IllegalArgumentException", "ObjectMapper not able to convertValue in userCall");
+		}
+	}
+
+	public UserDetailResponse updateUserPassword(Object userRequest, StringBuilder uri) {
+		String dobFormat = "yyyy-MM-dd";
+		try {
+			LinkedHashMap responseMap = (LinkedHashMap) serviceRequestRepository.fetchResult(uri, userRequest);
+			parseResponse(responseMap, dobFormat);
+			return mapper.convertValue(responseMap, UserDetailResponse.class);
 		} catch (IllegalArgumentException e) {
 			throw new CustomException("IllegalArgumentException", "ObjectMapper not able to convertValue in userCall");
 		}
@@ -69,9 +84,11 @@ public class UserUtil {
 	 */
 
 	public void parseResponse(LinkedHashMap responseMap, String dobFormat) {
+		log.trace("UserUtil::parseResponse entry");
 		List<LinkedHashMap> users = (List<LinkedHashMap>) responseMap.get("user");
 		String format1 = "dd-MM-yyyy HH:mm:ss";
 		if (users != null) {
+			log.debug("Parsing dates for {} users", users.size());
 			users.forEach(map -> {
 				map.put("createdDate", dateTolong((String) map.get("createdDate"), format1));
 				if ((String) map.get(LAST_MODIFIED_DATE) != null)
@@ -92,11 +109,13 @@ public class UserUtil {
 	 * @return Long value of date
 	 */
 	private Long dateTolong(String date, String format) {
+		log.trace("UserUtil::dateTolong entry");
 		SimpleDateFormat f = new SimpleDateFormat(format);
 		Date d = null;
 		try {
 			d = f.parse(date);
 		} catch (ParseException e) {
+			log.error("Failed to parse date: {} with format: {}", date, format, e);
 			throw new CustomException("INVALID_DATE_FORMAT", "Failed to parse date format in user");
 		}
 		return d.getTime();
@@ -110,13 +129,13 @@ public class UserUtil {
 	 * @param tenantId
 	 * @param userInfo
 	 */
-	public void addUserDefaultFields(String mobileNumber, String tenantId, User userInfo, UserType userType) {
-		Role role = getCitizenRole(tenantId);
-		userInfo.setRoles(Collections.singletonList(role));
-		userInfo.setType(userType.toString());
-		userInfo.setUserName(mobileNumber);
-		userInfo.setTenantId(getStateLevelTenant(tenantId));
-	}
+//	public void addUserDefaultFields(String mobileNumber, String tenantId, User userInfo, UserType userType) {
+//		Role role = getCitizenRole(tenantId);
+//		userInfo.setRoles(Collections.singletonList(role));
+//		userInfo.setType(userType.toString());
+//		userInfo.setUserName(mobileNumber);
+//		userInfo.setTenantId(getStateLevelTenant(tenantId));
+//	}
 
 	/**
 	 * Returns role object for citizen
@@ -124,16 +143,87 @@ public class UserUtil {
 	 * @param tenantId
 	 * @return
 	 */
-	private Role getCitizenRole(String tenantId) {
-		Role role = Role.builder().build();
-		role.setCode("CITIZEN");
-		role.setName("Citizen");
-		role.setTenantId(getStateLevelTenant(tenantId));
-		return role;
-	}
+//	private Role getCitizenRole(String tenantId) {
+//		Role role = Role.builder().build();
+//		role.setCode("CITIZEN");
+//		role.setName("Citizen");
+//		role.setTenantId(getStateLevelTenant(tenantId));
+//		return role;
+//	}
 
 	public String getStateLevelTenant(String tenantId) {
-		return tenantId.split("\\.")[0];
+		log.trace("UserUtil::getStateLevelTenant entry");
+		String stateLevelTenant = tenantId.split("\\.")[0];
+		log.debug("Extracted state level tenant: {} from tenant: {}", stateLevelTenant, tenantId);
+		return stateLevelTenant;
 	}
+
+	public UserRequest mapToUserRequest(User user) {
+
+		if (user == null) return null;
+
+		return UserRequest.builder()
+				.id(user.getId())
+				.uuid(user.getUuid())
+				.userName(user.getUserName())
+				.salutation(user.getSalutation())
+				.name(user.getName())
+				.gender(user.getGender())
+				.mobileNumber(user.getMobileNumber())
+				.emailId(user.getEmailId())
+				.altContactNumber(user.getAltContactNumber())
+				.pan(user.getPan())
+				.aadhaarNumber(user.getAadhaarNumber())
+				.permanentAddress(user.getPermanentAddress())
+				.permanentCity(user.getPermanentCity())
+				.permanentPinCode(user.getPermanentPincode())
+				.correspondenceAddress(user.getCorrespondenceAddress())
+				.correspondenceCity(user.getCorrespondenceCity())
+				.correspondencePinCode(user.getCorrespondencePincode())
+				.active(user.getActive())
+				.locale(user.getLocale())
+				.accountLocked(user.getAccountLocked())
+				.fatherOrHusbandName(user.getFatherOrHusbandName())
+				.signature(user.getSignature())
+				.bloodGroup(user.getBloodGroup())
+				.photo(user.getPhoto())
+				.identificationMark(user.getIdentificationMark())
+				.password(user.getPassword())
+				.otpReference(user.getOtpReference())
+				.tenantId(user.getTenantId())
+
+				// Long → Date
+				.createdDate(user.getCreatedDate() != null
+						? new Date(user.getCreatedDate())
+						: null)
+				.lastModifiedDate(user.getLastModifiedDate() != null
+						? new Date(user.getLastModifiedDate())
+						: null)
+				.dob(user.getDob() != null
+						? new Date(user.getDob())
+						: null)
+				.pwdExpiryDate(user.getPwdExpiryDate() != null
+						? new Date(user.getPwdExpiryDate())
+						: null)
+
+				// Roles
+				.roles(mapRoleRequests(user.getRoles()))
+
+				.build();
+	}
+
+	private Set<RoleRequest> mapRoleRequests(List<org.egov.web.models.Role> roles) {
+
+		if (roles == null) return new HashSet<>();
+
+		return roles.stream()
+				.map(r -> RoleRequest.builder()
+						.code(r.getCode())
+						.name(r.getName())
+						.tenantId(r.getTenantId())
+						.build())
+				.collect(Collectors.toSet());
+	}
+
 
 }

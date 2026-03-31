@@ -1,0 +1,1 @@
+ALTER TABLE public.facility_activities ALTER COLUMN status DROP DEFAULT;

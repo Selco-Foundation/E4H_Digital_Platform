@@ -11,36 +11,26 @@ import java.util.List;
 @RequiredArgsConstructor
 public class IncidentQueryBuilder {
 
+    private static final String CLOSED_STATUSES =
+            "'RESOLVED', 'CLOSEDAFTERRESOLUTION', 'REJECTED', 'CLOSEDAFTERREJECTION'";
+
     private static final String STATUS_COUNT_QUERY =
             "SELECT " +
                     "    boundarycode, " +
                     "    COUNT(*) AS total_occurrences, " +
-                    "    SUM(CASE WHEN applicationstatus IN (" +
-                    "        'PENDINGFORASSIGNMENT', " +
-                    "        'PENDING_ASSIGNMENT_SPARE_PART_NEEDED', " +
-                    "        'PENDING_ASSIGNMENT_OUT_OF_WARRANTY', " +
-                    "        'PENDING_RESOLUTION_SPARE_PART_NEEDED', " +
-                    "        'PENDING_RESOLUTION_OUT_OF_WARRANTY', " +
-                    "        'PENDINGRESOLUTION') " +
+                    "    SUM(CASE WHEN applicationstatus NOT IN (" +
+                    "        " + CLOSED_STATUSES + ") " +
                     "    THEN 1 ELSE 0 END) AS total_open_occurrences, " +
                     "    SUM(CASE WHEN applicationstatus IN (" +
-                    "        'RESOLVED', " +
-                    "        'CLOSEDAFTERRESOLUTION', " +
-                    "        'REJECTED', " +
-                    "        'CLOSEDAFTERREJECTION') " +
+                    "        " + CLOSED_STATUSES + ") " +
                     "    THEN 1 ELSE 0 END) AS total_close_occurrences " +
                     "FROM public.eg_incident_v2 ";
 
     private static final String SYSTEM_FUNCTIONAL_STATUS =
             "SELECT id, systemfunctional " +
                     "FROM public.eg_incident_v2 " +
-                    "WHERE applicationstatus IN ( " +
-                    "  'PENDINGFORASSIGNMENT', " +
-                    "  'PENDING_ASSIGNMENT_SPARE_PART_NEEDED', " +
-                    "  'PENDING_ASSIGNMENT_OUT_OF_WARRANTY', " +
-                    "  'PENDING_RESOLUTION_SPARE_PART_NEEDED', " +
-                    "  'PENDING_RESOLUTION_OUT_OF_WARRANTY', " +
-                    "  'PENDINGRESOLUTION' " +
+                    "WHERE applicationstatus NOT IN (" +
+                    "  " + CLOSED_STATUSES +
                     ")";
 
     public String getStatusIncidentOccurence(String boundaryCode, List<Object> preparedStmtList) {

@@ -2,6 +2,10 @@ package org.egov.asset.util;
 
 import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.config.Configuration;
+import org.egov.asset.repository.ServiceRequestRepository;
+import org.egov.asset.web.models.ActivityFacilitySearchCriteria;
+import org.egov.asset.web.models.ActivityFacilitySearchRequest;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
@@ -23,11 +27,13 @@ public class FacilityUtil {
     private final RestTemplate restTemplate;
 
     private final Configuration configuration;
+    private final ServiceRequestRepository serviceRequestRepository;
 
     @Autowired
-    public FacilityUtil(RestTemplate restTemplate, Configuration configuration) {
+    public FacilityUtil(RestTemplate restTemplate, Configuration configuration, ServiceRequestRepository serviceRequestRepository) {
         this.restTemplate = restTemplate;
         this.configuration = configuration;
+        this.serviceRequestRepository = serviceRequestRepository;
     }
 
     public List<Object> searchFacility(String tenantId, String facilityId) {
@@ -61,5 +67,14 @@ public class FacilityUtil {
             builder.queryParam("facilityId", facilityId);
         }
         return builder.toUriString();
+    }
+
+    public List<Object> getActivityFacilityById(RequestInfo request, String activityFacilityId, String tenantId) {
+        ActivityFacilitySearchCriteria searchCriteria = ActivityFacilitySearchCriteria.builder().ids(List.of(activityFacilityId)).tenantId(tenantId).build();
+        ActivityFacilitySearchRequest fieldPlanRequest = ActivityFacilitySearchRequest.builder().requestInfo(request).criteria(searchCriteria).build();
+        String url = configuration.getActivityFacilityHost() + configuration.getActivityFacilitySearchPath()+ "?tenantId="+tenantId+"&offset=0&limit=100";
+        Map<String,Object> response = serviceRequestRepository.fetchResult(new StringBuilder(url), fieldPlanRequest, Map.class);
+
+        return Collections.singletonList(response.get("facility"));
     }
 }

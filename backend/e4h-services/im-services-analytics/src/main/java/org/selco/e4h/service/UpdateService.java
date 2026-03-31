@@ -7,6 +7,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.selco.e4h.config.ConsumerConfiguration;
+import org.springframework.beans.factory.annotation.Value;
 import org.selco.e4h.util.UpdateUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
@@ -22,6 +23,9 @@ import java.util.Optional;
 @Service
 @Slf4j
 public class UpdateService {
+
+    @Value("${es.index.computed.sla.im.services}")
+    private String computedSlaImServicesIndex;
 
 	@Autowired
 	private UpdateUtils indexerUtils;
@@ -156,7 +160,7 @@ public class UpdateService {
 		updateBody.put("doc", doc);
 
 
-		String url = config.getEsHostUrl() + "/computed-sla-im-services/_update/" + incidentId;
+		String url = config.getEsHostUrl() + "/" + computedSlaImServicesIndex + "/_update/" + incidentId;
 		HttpEntity<Map<String, Object>> entity = new HttpEntity<>(updateBody, buildHeaders());
 
 		try {

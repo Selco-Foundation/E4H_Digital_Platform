@@ -54,8 +54,26 @@ public class Organisation {
     @JsonProperty("orgNumber")
     private String orgNumber = null;//idgen formatted number once workflow is 'APPROVED'
 
-    @JsonProperty("applicationStatus")
-    private ApplicationStatus applicationStatus = null;
+    @JsonProperty("orgStatus")
+    private ApplicationStatus orgStatus = null;
+
+    @JsonProperty("orgType")
+    private String orgType = null;
+
+    @JsonProperty("orgSubType")
+    private String orgSubType = null;
+
+    @JsonProperty("orgPocName")
+    private String orgPocName = null;
+
+    @JsonProperty("orgPocPhone")
+    private String orgPocPhone = null;
+
+    @JsonProperty("orgPocEmail")
+    private String orgPocEmail = null;
+
+    @JsonProperty("orgPocUsername")
+    private String orgPocUsername = null;
 
     @JsonProperty("externalRefNumber")
     @Size(min = 2, max = 64)
@@ -68,10 +86,11 @@ public class Organisation {
     @Valid
     private List<Address> orgAddress = null;//no
 
+
+//    @Valid
+//    @NotNull
+//    @Size(min = 1)
     @JsonProperty("contactDetails")
-    @Valid
-    @NotNull
-    @Size(min = 1)
     private List<ContactDetails> contactDetails = null;//no, as of now,it'll be only one
 
     @JsonProperty("identifiers")
@@ -79,9 +98,9 @@ public class Organisation {
     @Size(min = 1)
     private List<Identifier> identifiers = null;//upsert
 
+//    @Valid
+//    @Size(min = 1)
     @JsonProperty("functions")
-    @Valid
-    @Size(min = 1)
     private List<Function> functions = null;//upsert
 
     @JsonProperty("jurisdiction")

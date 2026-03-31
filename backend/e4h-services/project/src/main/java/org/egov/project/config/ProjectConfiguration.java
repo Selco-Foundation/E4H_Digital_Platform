@@ -278,4 +278,8 @@ public class ProjectConfiguration {
 
     @Value("${egov.hrms.search.url}")
     private String hrmsSearchUrl;
+
+    // Project Name Generation Configuration
+    @Value("${project.name.default.code:E4H}")
+    private String projectNameDefaultCode;
 }

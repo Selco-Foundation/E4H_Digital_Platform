@@ -1,0 +1,594 @@
+{
+	"info": {
+		"_postman_id": "1f5080e3-785b-4d5c-b4a8-b5075aecf2f5",
+		"name": "Project Service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "41985468"
+	},
+	"item": [
+		{
+			"name": "Create Project",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"project-api\",\n        \"ver\": \"1.0\",\n        \"ts\": 1715510400000,\n        \"action\": \"create\",\n        \"did\": \"device-id\",\n        \"key\": \"api-key\",\n        \"msgId\": \"msg-001\",\n        \"authToken\": \"Bearer your-auth-token\",\n        \"correlationId\": \"corr-id-001\",\n        \"plainAccessRequest\": null,\n        \"userInfo\": {\n            \"tenantId\": \"stribi\",\n            \"id\": 0,\n            \"uuid\": \"stribi\"\n        }\n    },\n    \"Projects\": [\n        {\n            \"tenantId\": \"in\",\n            \"name\": \"Field Plan - Gachibowli Road\",\n            \"projectType\": \"FieldPlan\",\n            \"projectSubType\": \"\",\n            \"department\": \"\",\n            \"description\": \"\",\n            \"referenceID\": \"1\",\n            \"startDate\": 1715510400000,\n            \"endDate\": 1718192400000,\n            \"parent\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7\",\n\n            \"address\": {\n                \"boundary\": \"India_Telangana_Hyderabad_Gachibowli\",\n                \"boundaryType\": \"Block\"\n            }\n        }\n    ],\n    \"isCascadingProjectDateUpdate\": false,\n    \"apiOperation\": \"CREATE\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/project/v1/_create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"project",
+						"v1",
+						"_create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Search Facility",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"facility-api\",\n    \"ver\": \"1.0\",\n    \"ts\": 1715510400000,\n    \"action\": \"search\",\n    \"did\": \"device-id\",\n    \"key\": \"api-key\",\n    \"msgId\": \"msg-003\",\n    \"authToken\": \"Bearer your-auth-token\",\n    \"correlationId\": \"corr-id-003\",\n    \"plainAccessRequest\": null,\n    \"userInfo\": null\n  },\n  \"ProjectFacility\": {\n    \"projectId\": [\"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7\"]\n  }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/project/facility/v1/_search?tenantId=in&limit=10&offset=0&includeDeleted=false",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"project",
+						"facility",
+						"v1",
+						"_search"
+					],
+					"query": [
+						{
+							"key": "tenantId",
+							"value": "in"
+						},
+						{
+							"key": "limit",
+							"value": "10"
+						},
+						{
+							"key": "offset",
+							"value": "0"
+						},
+						{
+							"key": "includeDeleted",
+							"value": "false"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create facility project link",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"facility-api\",\n    \"ver\": \"1.0\",\n    \"ts\": 1715510400000,\n    \"action\": \"search\",\n    \"did\": \"device-id\",\n    \"key\": \"api-key\",\n    \"msgId\": \"msg-003\",\n    \"authToken\": \"Bearer your-auth-token\",\n    \"correlationId\": \"corr-id-003\",\n    \"plainAccessRequest\": null,\n    \"userInfo\": {\n            \"tenantId\": \"stribi\",\n            \"id\": 0,\n            \"uuid\": \"stribi\"\n        }\n  },\n  \"ProjectFacility\": {\n    \"facilityId\": \"FAC/2025/000049\",\n    \"projectId\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7\",\n    \"isDeleted\": false,\n    \"tenantId\" : \"in\"\n  }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/project/facility/v1/_create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"project",
+						"facility",
+						"v1",
+						"_create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Staff creation",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"RequestInfo\": {\n    \"apiId\": \"org.egov.project\",\n    \"ver\": \"1.0\",\n    \"ts\": 0,\n    \"action\": \"create\",\n    \"authToken\": \"your-auth-token\",\n    \"userInfo\": {\n      \"uuid\": \"user-uuid\"\n    }\n  },\n  \"ProjectStaff\": {\n    \"userId\": \"user-001\",\n    \"projectId\": \"project-001\",\n    \"startDate\": 1715568000000,\n    \"endDate\": 1718159999000,\n    \"channel\": \"MOBILE\",\n    \"isDeleted\": false,\n    \"tenantId\": \"in\"\n  }\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/project/staff/v1/_create",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"project",
+						"staff",
+						"v1",
+						"_create"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Search Project",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n      \"apiId\": \"project-api\",\n      \"ver\": \"1.0\",\n      \"ts\": 1672531200000,\n      \"action\": \"search\",\n      \"did\": \"1\",\n      \"key\": \"\",\n      \"msgId\": \"20250101\",\n      \"authToken\": \"your-auth-token-here\",\n      \"userInfo\": {\n            \"tenantId\": \"stribi\",\n            \"id\": 0,\n            \"uuid\": \"stribi\"\n        }\n    },\n    \"Project\": {\n      \"projectTypeId\": \"FieldPlan\"\n    }\n  }",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/project/v2/_search?tenantId=in&offset=0&limit=100&includeAncestors=false&includeDescendants=false",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"project",
+						"v2",
+						"_search"
+					],
+					"query": [
+						{
+							"key": "tenantId",
+							"value": "in"
+						},
+						{
+							"key": "offset",
+							"value": "0"
+						},
+						{
+							"key": "limit",
+							"value": "100"
+						},
+						{
+							"key": "includeAncestors",
+							"value": "false"
+						},
+						{
+							"key": "includeDescendants",
+							"value": "false"
+						}
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Field Plan Call",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"RequestInfo\": {\n      \"apiId\": \"project-api\",\n      \"ver\": \"1.0\",\n      \"ts\": 1672531200000,\n      \"action\": \"search\",\n      \"did\": \"1\",\n      \"key\": \"\",\n      \"msgId\": \"20250101\",\n      \"authToken\": \"your-auth-token-here\",\n      \"userInfo\": {\n            \"tenantId\": \"stribi\",\n            \"id\": 0,\n            \"uuid\": \"stribi\"\n        }\n    },\n    \"Project\": {\n      \"projectTypeId\": \"FieldPlan\"\n    }\n  }",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/project/v2/_search?tenantId=in&offset=0&limit=100&includeAncestors=false&includeDescendants=false",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"project",
+								"v2",
+								"_search"
+							],
+							"query": [
+								{
+									"key": "tenantId",
+									"value": "in"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "limit",
+									"value": "100"
+								},
+								{
+									"key": "includeAncestors",
+									"value": "false"
+								},
+								{
+									"key": "includeDescendants",
+									"value": "false"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Date",
+							"value": "Thu, 15 May 2025 12:54:11 GMT"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=60"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"ResponseInfo\": {\n\n        \"ts\": 1747313651168,\n        \"resMsgId\": \"20250101\",\n        \"msgId\": \"20250101\",\n        \"status\": \"successful\"\n    },\n    \"Project\": [\n        {\n            \"id\": \"ba5a52f3-1ff9-4254-a2b8-4caf03ad3d56\",\n            \"tenantId\": \"in\",\n            \"projectNumber\": \"PROJ/2025/000086\",\n            \"name\": \"Field Plan - Gachibowli Road\",\n            \"projectType\": \"FieldPlan\",\n            \"projectSubType\": \"\",\n            \"department\": \"\",\n            \"description\": \"Field Plan Gachibowli Road\",\n            \"referenceID\": \"1\",\n            \"projectTypeId\": null,\n            \"documents\": null,\n            \"address\": null,\n            \"startDate\": 1715510400000,\n            \"endDate\": 1718192400000,\n            \"isTaskEnabled\": false,\n            \"parent\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7\",\n            \"projectHierarchy\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7.ba5a52f3-1ff9-4254-a2b8-4caf03ad3d56\",\n            \"natureOfWork\": null,\n            \"ancestors\": null,\n            \"descendants\": null,\n            \"targets\": null,\n            \"additionalDetails\": null,\n            \"isDeleted\": false,\n            \"rowVersion\": 0,\n            \"auditDetails\": {\n                \"createdBy\": \"stribi\",\n                \"lastModifiedBy\": \"stribi\",\n                \"createdTime\": 1747294432949,\n                \"lastModifiedTime\": 1747294432949\n            }\n        },\n        {\n            \"id\": \"2cf41c8c-7168-432f-8ac1-91312353c7f8\",\n            \"tenantId\": \"in\",\n            \"projectNumber\": \"PROJ/2025/000024\",\n            \"name\": \"Field Plan - Gachibowli Road\",\n            \"projectType\": \"FieldPlan\",\n            \"projectSubType\": \"\",\n            \"department\": \"\",\n            \"description\": \"\",\n            \"referenceID\": \"1\",\n            \"projectTypeId\": null,\n            \"documents\": null,\n            \"address\": null,\n            \"startDate\": 1715510400000,\n            \"endDate\": 1718192400000,\n            \"isTaskEnabled\": false,\n            \"parent\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7\",\n            \"projectHierarchy\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7.2cf41c8c-7168-432f-8ac1-91312353c7f8\",\n            \"natureOfWork\": null,\n            \"ancestors\": null,\n            \"descendants\": null,\n            \"targets\": null,\n            \"additionalDetails\": null,\n            \"isDeleted\": false,\n            \"rowVersion\": 0,\n            \"auditDetails\": {\n                \"createdBy\": \"stribi\",\n                \"lastModifiedBy\": \"stribi\",\n                \"createdTime\": 1747209064651,\n                \"lastModifiedTime\": 1747209064651\n            }\n        },\n        {\n            \"id\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7\",\n            \"tenantId\": \"in\",\n            \"projectNumber\": \"PROJ/2025/000023\",\n            \"name\": \"Field Plan - Gachibowli Road\",\n            \"projectType\": \"FieldPlan\",\n            \"projectSubType\": \"\",\n            \"department\": \"\",\n            \"description\": \"\",\n            \"referenceID\": \"1\",\n            \"projectTypeId\": null,\n            \"documents\": null,\n            \"address\": null,\n            \"startDate\": 1715510400000,\n            \"endDate\": 1718192400000,\n            \"isTaskEnabled\": false,\n            \"parent\": null,\n            \"projectHierarchy\": null,\n            \"natureOfWork\": null,\n            \"ancestors\": null,\n            \"descendants\": null,\n            \"targets\": null,\n            \"additionalDetails\": null,\n            \"isDeleted\": false,\n            \"rowVersion\": 0,\n            \"auditDetails\": {\n                \"createdBy\": \"stribi\",\n                \"lastModifiedBy\": \"stribi\",\n                \"createdTime\": 1747209047449,\n                \"lastModifiedTime\": 1747209047449\n            }\n        },\n        {\n            \"id\": \"eece17c6-f30f-46ed-b304-442a422c06ab\",\n            \"tenantId\": \"in\",\n            \"projectNumber\": \"PROJ/2025/000022\",\n            \"name\": \"Field Plan - Gachibowli Road\",\n            \"projectType\": \"FieldPlan\",\n            \"projectSubType\": \"\",\n            \"department\": \"\",\n            \"description\": \"\",\n            \"referenceID\": \"1\",\n            \"projectTypeId\": null,\n            \"documents\": null,\n            \"address\": null,\n            \"startDate\": 1715510400000,\n            \"endDate\": 1718192400000,\n            \"isTaskEnabled\": false,\n            \"parent\": null,\n            \"projectHierarchy\": null,\n            \"natureOfWork\": null,\n            \"ancestors\": null,\n            \"descendants\": null,\n            \"targets\": null,\n            \"additionalDetails\": null,\n            \"isDeleted\": false,\n            \"rowVersion\": 0,\n            \"auditDetails\": {\n                \"createdBy\": \"stribi\",\n                \"lastModifiedBy\": \"stribi\",\n                \"createdTime\": 1747209013380,\n                \"lastModifiedTime\": 1747209013380\n            }\n        },\n        {\n            \"id\": \"caf3fb85-fbb8-4b65-8d37-3d491ac89937\",\n            \"tenantId\": \"in\",\n            \"projectNumber\": \"PROJ/2025/000021\",\n            \"name\": \"Field Plan - Gachibowli Road\",\n            \"projectType\": \"FieldPlan\",\n            \"projectSubType\": \"\",\n            \"department\": \"\",\n            \"description\": \"\",\n            \"referenceID\": \"1\",\n            \"projectTypeId\": null,\n            \"documents\": null,\n            \"address\": null,\n            \"startDate\": 1715510400000,\n            \"endDate\": 1718192400000,\n            \"isTaskEnabled\": false,\n            \"parent\": null,\n            \"projectHierarchy\": null,\n            \"natureOfWork\": null,\n            \"ancestors\": null,\n            \"descendants\": null,\n            \"targets\": null,\n            \"additionalDetails\": null,\n            \"isDeleted\": false,\n            \"rowVersion\": 0,\n            \"auditDetails\": {\n                \"createdBy\": \"stribi\",\n                \"lastModifiedBy\": \"stribi\",\n                \"createdTime\": 1747208916010,\n                \"lastModifiedTime\": 1747208916010\n            }\n        }\n    ],\n    \"TotalCount\": 5\n}"
+				}
+			]
+		},
+		{
+			"name": "Project Workflow Update",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"project-api\",\n        \"ver\": \"1.0\",\n        \"ts\": \"\",\n        \"action\": \"update\",\n        \"did\": \"\",\n        \"key\": \"\",\n        \"msgId\": \"20240617\",\n        \"authToken\": \"sample-token\",\n        \"userInfo\": {\n            \"id\": 1,\n            \"uuid\": \"72743f47-9f1a-47de-ac43-b12cde70afc1\",\n            \"roles\": [\n                {\n                    \"name\": \"INSTALLATION_REPORT_PART_A_REVIEWER\",\n                    \"code\": \"INSTALLATION_REPORT_PART_A_REVIEWER\",\n                    \"tenantId\": \"in\"\n                },\n                {\n                    \"name\": \"INSTALLATION_REPORT_PART_B_EDITOR\",\n                    \"code\": \"INSTALLATION_REPORT_PART_B_EDITOR\",\n                    \"tenantId\": \"in\"\n                }\n            ],\n            \"type\": \"EMPLOYEE\"\n        }\n    },\n    \"projectId\": \"eaee31b8-e523-4e76-97d6-c73c9269d9a9\",\n    \"action\": \"REJECT\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/project/v1/project/workflow/update",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"project",
+						"v1",
+						"project",
+						"workflow",
+						"update"
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "Project Workflow Update",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"project-api\",\n        \"ver\": \"1.0\",\n        \"ts\": \"\",\n        \"action\": \"update\",\n        \"did\": \"\",\n        \"key\": \"\",\n        \"msgId\": \"20240617\",\n        \"authToken\": \"sample-token\",\n        \"userInfo\": {\n            \"id\": 1,\n            \"uuid\": \"72743f47-9f1a-47de-ac43-b12cde70afc1\",\n            \"roles\": [\n                {\n                    \"name\": \"INSTALLATION_REPORT_PART_A_EDITOR\",\n                    \"code\": \"INSTALLATION_REPORT_PART_A_EDITOR\",\n                    \"tenantId\": \"in\"\n                }\n            ],\n            \"type\": \"EMPLOYEE\"\n        }\n    },\n    \"projectId\": \"2cf41c8c-7168-432f-8ac1-91312353c7f8\",\n    \"action\": \"ASSIGN\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/project/v1/project/workflow/update",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"project",
+								"v1",
+								"project",
+								"workflow",
+								"update"
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 17 Jun 2025 11:18:58 GMT"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=60"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"totalCount\": null,\n    \"ResponseInfo\": {\n        \"apiId\": \"project-api\",\n        \"ver\": \"1.0\",\n        \"ts\": 1750159138365,\n        \"resMsgId\": \"20240617\",\n        \"msgId\": \"20240617\",\n        \"status\": \"successful\"\n    },\n    \"Project\": [\n        {\n            \"project\": {\n                \"id\": \"2cf41c8c-7168-432f-8ac1-91312353c7f8\",\n                \"tenantId\": \"in\",\n                \"projectNumber\": \"PROJ/2025/000024\",\n                \"name\": null,\n                \"projectType\": \"FieldPlan\",\n                \"projectSubType\": \"\",\n                \"department\": \"\",\n                \"description\": \"\",\n                \"referenceID\": \"1\",\n                \"projectTypeId\": null,\n                \"documents\": null,\n                \"address\": null,\n                \"startDate\": 1715510400000,\n                \"endDate\": 1718192400000,\n                \"isTaskEnabled\": false,\n                \"parent\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7\",\n                \"projectHierarchy\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7.2cf41c8c-7168-432f-8ac1-91312353c7f8\",\n                \"natureOfWork\": null,\n                \"ancestors\": null,\n                \"descendants\": null,\n                \"targets\": null,\n                \"additionalDetails\": {\n                    \"status\": \"ASSIGNED_TO_FIELD_STAFF\"\n                },\n                \"isDeleted\": false,\n                \"rowVersion\": 0,\n                \"auditDetails\": {\n                    \"createdBy\": \"stribi\",\n                    \"lastModifiedBy\": \"72743f47-9f1a-47de-ac43-b12cde70afc1\",\n                    \"createdTime\": 1747209064651,\n                    \"lastModifiedTime\": 1750159138357\n                }\n            },\n            \"state\": \"ASSIGNED_TO_FIELD_STAFF\"\n        }\n    ]\n}"
+				}
+			]
+		},
+		{
+			"name": "Search With Workflow",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"project-api\",\n        \"ver\": \"1.0\",\n        \"ts\": \"\",\n        \"action\": \"update\",\n        \"did\": \"\",\n        \"key\": \"\",\n        \"msgId\": \"20240617\",\n        \"authToken\": \"sample-token\",\n        \"userInfo\": {\n            \"id\": 1,\n            \"uuid\": \"648b434a-9587-4b8f-8c7c-d1e4ec2ee559\",\n            \"roles\": [\n                {\n                    \"name\": \"INSTALLATION_REPORT_PART_A_EDITOR\",\n                    \"code\": \"INSTALLATION_REPORT_PART_A_EDITOR\",\n                    \"tenantId\": \"in\"\n                }\n            ],\n            \"type\": \"EMPLOYEE\"\n        }\n    },\n    \"Project\": {\n        \"tenantId\": \"in\"\n    },\n    \"workflowStatus\": [\n        \"DRAFT_IN_PROGRESS\"\n    ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/project/v2/_search?tenantId=in&limit=10&offset=0&includeAncestors=false&includeDescendants=false",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"project",
+						"v2",
+						"_search"
+					],
+					"query": [
+						{
+							"key": "tenantId",
+							"value": "in"
+						},
+						{
+							"key": "limit",
+							"value": "10"
+						},
+						{
+							"key": "offset",
+							"value": "0"
+						},
+						{
+							"key": "includeAncestors",
+							"value": "false"
+						},
+						{
+							"key": "includeDescendants",
+							"value": "false"
+						}
+					]
+				}
+			},
+			"response": [
+				{
+					"name": "\"ASSIGNED_TO_FIELD_STAFF\"",
+					"originalRequest": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"RequestInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"authToken\": \"sample-authtoken\",\n        \"userInfo\": {\n            \"id\": 1,\n            \"uuid\": \"sample-uuid\",\n            \"userName\": \"admin\",\n            \"name\": \"Admin\",\n            \"mobileNumber\": \"9999999999\",\n            \"type\": \"EMPLOYEE\",\n            \"roles\": [\n                {\n                    \"name\": \"System\",\n                    \"code\": \"SYSTEM\",\n                    \"tenantId\": \"in\"\n                }\n            ],\n            \"active\": true,\n            \"tenantId\": \"in\"\n        }\n    },\n    \"Project\": {\n        \"tenantId\": \"in\"\n    },\n    \"workflowStatus\": [\n        \"ASSIGNED_TO_FIELD_STAFF\"\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8080/project/v2/_search?tenantId=in&limit=10&offset=0&includeAncestors=false&includeDescendants=false",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8080",
+							"path": [
+								"project",
+								"v2",
+								"_search"
+							],
+							"query": [
+								{
+									"key": "tenantId",
+									"value": "in"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "offset",
+									"value": "0"
+								},
+								{
+									"key": "includeAncestors",
+									"value": "false"
+								},
+								{
+									"key": "includeDescendants",
+									"value": "false"
+								}
+							]
+						}
+					},
+					"status": "OK",
+					"code": 200,
+					"_postman_previewlanguage": "json",
+					"header": [
+						{
+							"key": "Content-Type",
+							"value": "application/json"
+						},
+						{
+							"key": "Transfer-Encoding",
+							"value": "chunked"
+						},
+						{
+							"key": "Date",
+							"value": "Tue, 17 Jun 2025 11:35:44 GMT"
+						},
+						{
+							"key": "Keep-Alive",
+							"value": "timeout=60"
+						},
+						{
+							"key": "Connection",
+							"value": "keep-alive"
+						}
+					],
+					"cookie": [],
+					"body": "{\n    \"totalCount\": 4,\n    \"ResponseInfo\": {\n        \"apiId\": \"Rainmaker\",\n        \"ver\": null,\n        \"ts\": 1750160144931,\n        \"resMsgId\": null,\n        \"msgId\": null,\n        \"status\": \"successful\"\n    },\n    \"Project\": [\n        {\n            \"project\": {\n                \"id\": \"2cf41c8c-7168-432f-8ac1-91312353c7f8\",\n                \"tenantId\": \"in\",\n                \"projectNumber\": \"PROJ/2025/000024\",\n                \"name\": null,\n                \"projectType\": \"FieldPlan\",\n                \"projectSubType\": \"\",\n                \"department\": \"\",\n                \"description\": \"\",\n                \"referenceID\": \"1\",\n                \"projectTypeId\": null,\n                \"documents\": null,\n                \"address\": null,\n                \"startDate\": 1715510400000,\n                \"endDate\": 1718192400000,\n                \"isTaskEnabled\": false,\n                \"parent\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7\",\n                \"projectHierarchy\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7.2cf41c8c-7168-432f-8ac1-91312353c7f8\",\n                \"natureOfWork\": null,\n                \"ancestors\": null,\n                \"descendants\": null,\n                \"targets\": null,\n                \"additionalDetails\": {\n                    \"status\": \"ASSIGNED_TO_FIELD_STAFF\"\n                },\n                \"isDeleted\": false,\n                \"rowVersion\": 0,\n                \"auditDetails\": {\n                    \"createdBy\": \"stribi\",\n                    \"lastModifiedBy\": \"72743f47-9f1a-47de-ac43-b12cde70afc1\",\n                    \"createdTime\": 1747209064651,\n                    \"lastModifiedTime\": 1750159138357\n                }\n            },\n            \"state\": \"ASSIGNED_TO_FIELD_STAFF\"\n        },\n        {\n            \"project\": {\n                \"id\": \"f7ebee1e-726b-4225-ac5e-d0ab3b6eb0c7\",\n                \"tenantId\": \"in\",\n                \"projectNumber\": \"PROJ/2025/000023\",\n                \"name\": null,\n                \"projectType\": \"FieldPlan\",\n                \"projectSubType\": \"\",\n                \"department\": \"\",\n                \"description\": \"\",\n                \"referenceID\": \"1\",\n                \"projectTypeId\": null,\n                \"documents\": null,\n                \"address\": null,\n                \"startDate\": 1715510400000,\n                \"endDate\": 1718192400000,\n                \"isTaskEnabled\": false,\n                \"parent\": null,\n                \"projectHierarchy\": null,\n                \"natureOfWork\": null,\n                \"ancestors\": null,\n                \"descendants\": null,\n                \"targets\": null,\n                \"additionalDetails\": {\n                    \"status\": \"ASSIGNED_TO_FIELD_STAFF\"\n                },\n                \"isDeleted\": false,\n                \"rowVersion\": 0,\n                \"auditDetails\": {\n                    \"createdBy\": \"stribi\",\n                    \"lastModifiedBy\": \"72743f47-9f1a-47de-ac43-b12cde70afc1\",\n                    \"createdTime\": 1747209047449,\n                    \"lastModifiedTime\": 1750159094123\n                }\n            },\n            \"state\": \"ASSIGNED_TO_FIELD_STAFF\"\n        },\n        {\n            \"project\": {\n                \"id\": \"eece17c6-f30f-46ed-b304-442a422c06ab\",\n                \"tenantId\": \"in\",\n                \"projectNumber\": \"PROJ/2025/000022\",\n                \"name\": null,\n                \"projectType\": \"FieldPlan\",\n                \"projectSubType\": \"\",\n                \"department\": \"\",\n                \"description\": \"\",\n                \"referenceID\": \"1\",\n                \"projectTypeId\": null,\n                \"documents\": null,\n                \"address\": null,\n                \"startDate\": 1715510400000,\n                \"endDate\": 1718192400000,\n                \"isTaskEnabled\": false,\n                \"parent\": null,\n                \"projectHierarchy\": null,\n                \"natureOfWork\": null,\n                \"ancestors\": null,\n                \"descendants\": null,\n                \"targets\": null,\n                \"additionalDetails\": {\n                    \"status\": \"ASSIGNED_TO_FIELD_STAFF\"\n                },\n                \"isDeleted\": false,\n                \"rowVersion\": 0,\n                \"auditDetails\": {\n                    \"createdBy\": \"stribi\",\n                    \"lastModifiedBy\": \"72743f47-9f1a-47de-ac43-b12cde70afc1\",\n                    \"createdTime\": 1747209013380,\n                    \"lastModifiedTime\": 1750159074304\n                }\n            },\n            \"state\": \"ASSIGNED_TO_FIELD_STAFF\"\n        },\n        {\n            \"project\": {\n                \"id\": \"caf3fb85-fbb8-4b65-8d37-3d491ac89937\",\n                \"tenantId\": \"in\",\n                \"projectNumber\": \"PROJ/2025/000021\",\n                \"name\": null,\n                \"projectType\": \"FieldPlan\",\n                \"projectSubType\": \"\",\n                \"department\": \"\",\n                \"description\": \"\",\n                \"referenceID\": \"1\",\n                \"projectTypeId\": null,\n                \"documents\": null,\n                \"address\": null,\n                \"startDate\": 1715510400000,\n                \"endDate\": 1718192400000,\n                \"isTaskEnabled\": false,\n                \"parent\": null,\n                \"projectHierarchy\": null,\n                \"natureOfWork\": null,\n                \"ancestors\": null,\n                \"descendants\": null,\n                \"targets\": null,\n                \"additionalDetails\": {\n                    \"status\": \"ASSIGNED_TO_FIELD_STAFF\"\n                },\n                \"isDeleted\": false,\n                \"rowVersion\": 0,\n                \"auditDetails\": {\n                    \"createdBy\": \"stribi\",\n                    \"lastModifiedBy\": \"72743f47-9f1a-47de-ac43-b12cde70afc1\",\n                    \"createdTime\": 1747208916010,\n                    \"lastModifiedTime\": 1750159017429\n                }\n            },\n            \"state\": \"ASSIGNED_TO_FIELD_STAFF\"\n        }\n    ]\n}"
+				}
+			]
+		},
+		{
+			"name": "Update Workflow with comment",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"RequestInfo\": {\n        \"apiId\": \"project-api\",\n        \"ver\": \"1.0\",\n        \"ts\": \"\",\n        \"action\": \"update\",\n        \"did\": \"\",\n        \"key\": \"\",\n        \"msgId\": \"20240617\",\n        \"authToken\": \"sample-token\",\n        \"userInfo\": {\n            \"id\": 1,\n            \"uuid\": \"72743f47-9f1a-47de-ac43-b12cde70afc1\",\n            \"roles\": [\n                {\n                    \"name\": \"INSTALLATION_REPORT_PART_A_EDITOR\",\n                    \"code\": \"INSTALLATION_REPORT_PART_A_EDITOR\",\n                    \"tenantId\": \"in\"\n                }\n            ],\n            \"type\": \"EMPLOYEE\"\n        }\n    },\n  \"projectId\": \"55b91b21-2149-4360-8d22-c8716bb5c9b4\",\n  \"workflow\": {\n    \"action\": \"REJECT\",\n    \"comment\": \"Submitting project\",\n    \"documents\": []\n  },\n  \"transactions\": [\n    {\n      \"transactionId\": null,\n      \"comments\": [\n        {\n          \"commentId\": null,\n          \"commentMessage\": \"Initial remark by field staff\",\n          \"assetType\": \"Electrical\"\n        }\n      ]\n    }\n  ]\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8080/project/v1/project/workflow/update",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8080",
+					"path": [
+						"project",
+						"v1",
+						"project",
+						"workflow",
+						"update"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

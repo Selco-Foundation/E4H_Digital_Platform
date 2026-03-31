@@ -29,14 +29,14 @@ public class FacilityQueryDao {
 
         // Dynamically add condition for hfrId if provided
         if (hfrId != null && !hfrId.isBlank()) {
-            sql.append(" AND facility_details ->> 'hfr_id' = ?");
+            sql.append(" AND hfr_id = ?");
             params.add(hfrId);
         }
 
         // Add condition for ninId, with proper SQL handling depending on hfrId presence
         if (ninId != null && !ninId.isBlank()) {
             sql.append(hfrId != null && !hfrId.isBlank() ? " OR" : " AND");
-            sql.append(" facility_details ->> 'nin_id' = ?");
+            sql.append(" nin_id = ?");
             params.add(ninId);
         }
 

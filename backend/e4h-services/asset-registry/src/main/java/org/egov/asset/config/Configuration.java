@@ -61,6 +61,13 @@ public class Configuration {
     @Value("${egov.facility.search.path}")
     private String facilitySearchPath;
 
+    //Activity Facility config
+    @Value("${egov.activity.facility.host}")
+    private String activityFacilityHost;
+
+    @Value("${egov.activity.facility.search.path}")
+    private String activityFacilitySearchPath;
+
     //MDMS
     @Value("${egov.mdms.host}")
     private String mdmsHost;

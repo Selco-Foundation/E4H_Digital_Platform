@@ -23,10 +23,8 @@ const FieldPlanTable = ({ t }) => {
       return null;
     }
   })() || {
-    Project : {
-      projectTypeId: "FieldPlan",
-      name: ""
-    }
+    projectTypeId: "FieldPlan",
+    name: ""
   });
   const prevSearchParamsRef = useRef(JSON.stringify(queryFilter));
   const [pageSize, setPageSize] = useState(parseInt(queryParams.get("pageSize")) || 10);
@@ -55,18 +53,14 @@ const FieldPlanTable = ({ t }) => {
 
   const onSearch = (textToSearch) => {
     setQueryFilter({
-      Project : {
-        projectTypeId: "FieldPlan",
-        name: textToSearch
-      }
+      projectTypeId: "FieldPlan",
+      name: textToSearch
     });
   }
 
   const onClear = () => {
     setQueryFilter({
-      Project : {
-        projectTypeId: "FieldPlan"
-      }
+      projectTypeId: "FieldPlan"
     });
   }
 
@@ -143,7 +137,7 @@ const FieldPlanTable = ({ t }) => {
     {
       Header: t("CS_ACTIVITY_TYPE"),
       Cell: ({ row }) => {
-        return GetCell(`${row.original["projectType"]}`);
+        return GetCell(`${row.original["activityType"]}`);
       },
     },
     {

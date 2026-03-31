@@ -1,0 +1,1 @@
+update asset set is_operational = false where is_operational is null

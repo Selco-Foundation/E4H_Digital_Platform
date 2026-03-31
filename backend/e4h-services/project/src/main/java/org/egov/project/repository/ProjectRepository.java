@@ -202,6 +202,95 @@ public class ProjectRepository extends GenericRepository<Project> {
         return statusAgregations;
     }
 
+    /**
+     * Checks if a project name already exists in the database for a given tenant
+     * @param projectName The project name to check
+     * @param tenantId The tenant ID
+     * @return true if the project name exists, false otherwise
+     */
+    public boolean isProjectNameExists(String projectName, String tenantId) {
+        try {
+            String sql = queryBuilder.getCheckProjectNameExistsQuery();
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectName, tenantId);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            log.error("Error checking for existing project name: {}", projectName, e);
+            // If we can't check, assume it exists to be safe
+            return true;
+        }
+    }
+
+    /**
+     * Checks if a project name already exists in the database for a given tenant, excluding a specific project
+     * This is useful during updates to avoid false positives when the current project has the same name
+     * @param projectName The project name to check
+     * @param tenantId The tenant ID
+     * @param excludeProjectId The project ID to exclude from the check
+     * @return true if the project name exists (excluding the specified project), false otherwise
+     */
+    public boolean isProjectNameExistsExcludingProject(String projectName, String tenantId, String excludeProjectId) {
+        try {
+            String sql = queryBuilder.getCheckProjectNameExistsExcludingProjectQuery();
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectName, tenantId, excludeProjectId);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            log.error("Error checking for existing project name excluding project {}: {}", excludeProjectId, projectName, e);
+            // If we can't check, assume it exists to be safe
+            return true;
+        }
+    }
+
+    /**
+     * Finds the highest existing project name with the given base name pattern
+     * @param baseName The base name pattern to search for
+     * @param tenantId The tenant ID
+     * @return The highest existing name or null if none found
+     */
+    public String findHighestExistingProjectName(String baseName, String tenantId) {
+        try {
+            // Escape LIKE wildcards in baseName to prevent SQL injection and incorrect matching
+            String escapedBaseName = queryBuilder.escapeLikeWildcards(baseName);
+            
+            // Get all names that match the pattern to find the highest numeric suffix
+            String sql = queryBuilder.getFindHighestExistingProjectNameQuery();
+            List<String> existingNames = jdbcTemplate.queryForList(sql, String.class, escapedBaseName + "%", tenantId);
+            
+            if (existingNames.isEmpty()) {
+                return null;
+            }
+            
+            // Find the name with the highest numeric suffix
+            String highestName = baseName; // Start with base name
+            int highestSuffix = 0;
+            
+            for (String name : existingNames) {
+                if (name.equals(baseName)) {
+                    // Exact match - this is the base name
+                    highestName = name;
+                    highestSuffix = 0;
+                } else if (name.startsWith(baseName + "-")) {
+                    // Name with suffix like "Base-1", "Base-2", etc.
+                    try {
+                        String suffixPart = name.substring((baseName + "-").length());
+                        int suffix = Integer.parseInt(suffixPart);
+                        if (suffix > highestSuffix) {
+                            highestSuffix = suffix;
+                            highestName = name;
+                        }
+                    } catch (NumberFormatException e) {
+                        // Skip names with non-numeric suffixes
+                        log.debug("Skipping name with non-numeric suffix: {}", name);
+                    }
+                }
+            }
+            
+            return highestName;
+        } catch (Exception e) {
+            log.error("Error finding highest existing name for base: {}", baseName, e);
+            return null;
+        }
+    }
+
     /* Fetch Project descendants based on Project ids */
     private List<Project> getProjectsDescendantsBasedOnProjectIds(List<String> projectIds, List<Object> preparedStmtListDescendants) {
         String query = queryBuilder.getProjectDescendantsSearchQueryBasedOnIds(projectIds, preparedStmtListDescendants);

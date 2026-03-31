@@ -114,6 +114,20 @@
 @import "./pages/employee/sandbox.scss";
 @import "./pages/employee/searchaction.scss";
 @import "./pages/employee/customcheckbox.scss";
+@import "./pages/employee/reverseactionbar.scss";
+@import "./pages/employee/projectdetailstable.scss";
+@import "./pages/employee/pmprojectstable.scss";
+@import "./pages/employee/activitydetailstable.scss";
+@import "./pages/employee/qc/facilitytable.scss";
+@import "./pages/employee/amc/visittable.scss";
+@import "./pages/employee/fa/adminfacilitytable.scss";
+@import "pages/employee/formcomposer/reverseactionbarfixed.scss";
+@import "pages/employee/fa/facilitydetailstab.scss";
+@import "pages/employee/fa/facilitydetailstable.scss";
+@import "./pages/employee/org/orguserstable.scss";
+@import "./pages/employee/org/adminorganizationtable.scss";
+@import "./pages/employee/org/userjurisdictionstable.scss";
+
 
 .wbh-header-container {
   display: flex !important;
@@ -687,6 +701,7 @@ input[type="number"] {
 }
 .employee-app-wrapper {
   min-height: calc(100vh - 8em);
+  margin: 0;
 }
 
 .ws-custom-wrapper {
@@ -816,9 +831,6 @@ input[type="number"] {
   justify-content: space-between;
   flex-direction: row-reverse;
 }
-.previous-button{
-  margin-left: 4rem;
-}
 .view-composer-header-section{
   display: flex;
   justify-content: space-between;
@@ -866,4 +878,58 @@ input[type="number"] {
   .digit-popup-children-wrap{
     overflow: visible !important;
   }
+}
+
+.digit-bread-crumb--item{
+  .digit-bread-crumb-seperator{
+    color: #0B0C0C
+  }
+}
+
+.digit-multiselectdropdown-wrap {
+  .digit-multiselectdropodwn-menuitem {
+    .digit-label.selectAll {
+      font-size: 16px;
+      text-decoration: underline;
+    }
+  }
+}
+
+.create-project-wrapper {
+  .employee-select-wrap {
+    .options-card {
+      margin-top: 40px;
+    }
+  }
+}
+
+.digit-toast-success {
+  min-width: fit-content;
+  max-width: 200px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+.admin-form {
+  .digit-toast-success {
+    bottom: 20% !important;
+  }
+}
+
+.org-user-assignment {
+  .employeeCard {
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+  .employee-select-wrap .select input[type="text"] {
+    z-index: 0 !important;
+  }
+}
+
+.toggle-option-container {
+  width: 60px !important;
+}
+
+.digit-toggle-btn-wrap {
+  width: 60px !important;
 }

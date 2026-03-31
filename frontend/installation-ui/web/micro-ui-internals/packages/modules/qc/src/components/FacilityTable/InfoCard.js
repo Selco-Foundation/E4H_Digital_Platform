@@ -3,7 +3,6 @@ import React from "react";
 const InfoCard = ({ t, selectedFieldPlan }) => {
 
   const { startDate, endDate, completionRate, projectFacilityInfo } = selectedFieldPlan;
-  const isMobile = window.Digit.Utils.browser.isMobile();
 
   const PropertyCard = (infoName, infoValue) => (
     <div style={{ width: "100%", display: "flex", alignItems: "center" }}>

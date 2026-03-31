@@ -67,6 +67,17 @@ public class OrganisationFunctionRowMapper implements ResultSetExtractor<List<Or
         String organisationLastModifiedBy = rs.getString("organisation_lastModifiedBy");
         Long organisationCreatedTime = rs.getLong("organisation_createdTime");
         Long organisationLastModifiedTime = rs.getLong("organisation_lastModifiedTime");
+        String organisationType = rs.getString("organisation_type");
+        String organisationSubType = rs.getString("organisation_sub_type");
+        String organisationPocName = rs.getString("organisation_poc_name");
+        String organisationPocPhone = rs.getString("organisation_poc_phone");
+        String organisationPocEmail = rs.getString("organisation_poc_email");
+        String organisationPocUsername = rs.getString("organisation_poc_username");
+        String organisationStatus = rs.getString("organisation_status");
+        ApplicationStatus statusEnum = ApplicationStatus.fromValue(organisationStatus);
+        if (statusEnum == null) {
+            statusEnum = ApplicationStatus.INACTIVE; // ou ACTIVE selon ta logique métier
+        }
 
         AuditDetails organisationAuditDetails = AuditDetails.builder().createdBy(organisationCreatedBy).createdTime(organisationCreatedTime)
                 .lastModifiedBy(organisationLastModifiedBy).lastModifiedTime(organisationLastModifiedTime)
@@ -79,9 +90,15 @@ public class OrganisationFunctionRowMapper implements ResultSetExtractor<List<Or
                 .name(organisationName)
                 .code(organisationCode)
                 .orgNumber(organisationOrgNumber)
+                .orgType(organisationType)
+                .orgSubType(organisationSubType)
+                .orgPocName(organisationPocName)
+                .orgPocPhone(organisationPocPhone)
+                .orgPocEmail(organisationPocEmail)
+                .orgPocUsername(organisationPocUsername)
+                .orgStatus(statusEnum)
                 .externalRefNumber(organisationExternalRefNumber)
                 .dateOfIncorporation(organisationDateOfIncorporation)
-                .applicationStatus(ApplicationStatus.fromValue(organisationApplicationStatus))
                 .isActive(organisationIsActive)
                 .functions(functions)
                 .additionalDetails(organisationAdditionalDetails)
