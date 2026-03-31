@@ -204,7 +204,7 @@ const Login = ({ config: propsConfig, t, isDisabled, loginOTPBased }) => {
       buttonClassName="buttonClassName"
       defaultValues={defaultValues}
     >
-      {propsConfig?.header?.title ? <Header loginHeader={propsConfig?.header} /> : <Header showTenant={false} />}
+      {propsConfig?.header ? <Header loginHeader={propsConfig?.header} /> : <Header showTenant={false} />}
     </FormComposerV2>
   );
   
