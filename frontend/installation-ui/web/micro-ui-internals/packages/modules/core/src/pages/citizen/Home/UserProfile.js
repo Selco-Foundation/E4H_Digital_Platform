@@ -452,7 +452,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
           <BackLink onClick={() => window.history.back()} />
         ) : (
           <BreadCrumb
-            style={{ marginTop: "0rem", marginBottom: "1.5rem" }}
+            spanStyle={{color: "#0B0C0C"}}
             crumbs={[
               {
                 internalLink: isMultiRootTenant ? `/${window?.contextPath}/employee/sandbox/landing` : `/${window?.contextPath}/employee`,
@@ -461,7 +461,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
               },
               {
                 internalLink: `/${window?.contextPath}/employee/user/profile`,
-                content: t("ES_COMMON_PAGE_1"),
+                content: t("ES_COMMON_EDIT_PROFILE"),
                 show: url.includes("/user/profile"),
               },
             ]}
