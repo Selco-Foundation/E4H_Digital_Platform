@@ -162,7 +162,7 @@ const TopBar = ({
               {t(`ULBGRADE_${cityDetails?.city?.ulbGrade.toUpperCase().replace(" ", "_").replace(".", "_")}`).toUpperCase()}
             </>
           ) : (
-            <ImageComponent className="state" src={logoUrlWhite} alt="State Logo" />
+            <ImageComponent className="state" src={logoUrlWhite} alt="Selco Foundation" />
           )
         ) : (
           <>

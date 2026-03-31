@@ -48,7 +48,8 @@ const DigitUIWrapper = ({ stateCode, enabledModules, moduleReducers, defaultLand
               stateCode={stateCode}
               modules={initData?.modules}
               appTenants={initData.tenants}
-              logoUrl={initData?.stateInfo?.logoUrl}
+              logoUrl={initData?.uiHomePage?.platformLogo}
+              logoUrlWhite={initData?.uiHomePage?.organizationLogo}
               defaultLanding={defaultLanding}
               allowedUserTypes={allowedUserTypes}
             />
