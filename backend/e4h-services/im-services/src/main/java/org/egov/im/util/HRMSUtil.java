@@ -87,9 +87,14 @@ public class HRMSUtil {
             builder.append("&boundaryCodes=");
             builder.append(boundaryCodes);
         }
-
-        builder.append("&roles=");
-        builder.append(role);
+        if (role != null) {
+            builder.append("&roles=");
+            builder.append(role);
+        }
+        if ("COMPLAINANT".equals(role)) {
+            builder.append("&searchOnlyInBoundary=");
+            builder.append(true);
+        }
         builder.append("&isActive=");
         builder.append(true);
 
