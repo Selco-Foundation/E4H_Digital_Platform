@@ -2,22 +2,34 @@ import React, { useEffect, useState } from "react";
 import CustomDropdown from "../Custom/CustomDropdown";
 
 const StateSelector = ({ data = {}, setValue, props }) => {
-  const { t, name, boundaryData, disable } = props;
+  const { t, name, countryIdentifier, boundaryData, disable } = props;
+  const [selectedCountry, setSelectedCountry] = useState(data[countryIdentifier]);
   const [stateMenu, setStateMenu] = useState([]);
   const [selectedState, setSelectedState] = useState(data[name]);
 
   useEffect(() => {
-    if (boundaryData?.states) {
-      setStateMenu(
-        boundaryData.states
-          .map((state) => ({
-            ...state,
-            name: t(`Boundary_${state.code}`),
-          }))
-        .sort((a, b) => a?.name?.localeCompare(b?.name))
-      );
+    setSelectedCountry(data[countryIdentifier]);
+  }, [data, countryIdentifier]);
+
+  useEffect(() => {
+    if (boundaryData?.states && selectedCountry?.code) {
+      const newStateMenu = boundaryData.states
+        .filter((state) => state.parentCode === selectedCountry.code)
+        .map((state) => ({
+          ...state,
+          name: t(`Boundary_${state.code}`),
+        }))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
+      setStateMenu(newStateMenu);
+
+      if (selectedState && selectedState.parentCode !== selectedCountry.code) {
+        setSelectedState(null);
+      }
+    } else {
+      setStateMenu([]);
+      setSelectedState(null);
     }
-  }, [t, boundaryData]);
+  }, [t, boundaryData, selectedCountry, selectedState]);
 
   useEffect(() => {
     setValue(name, selectedState);
@@ -30,7 +42,7 @@ const StateSelector = ({ data = {}, setValue, props }) => {
   return (
     <div className={"employee-select-wrap"}>
       <CustomDropdown
-        disable={disable}
+        disable={disable || !selectedCountry}
         t={t}
         option={stateMenu}
         selected={selectedState}

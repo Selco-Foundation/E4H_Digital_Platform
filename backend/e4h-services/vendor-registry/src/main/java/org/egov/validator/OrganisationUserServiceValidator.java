@@ -476,6 +476,12 @@ public class OrganisationUserServiceValidator {
             throw new CustomException("Organization", "This org user id do not exist");
         }
 
+        // Ensure userId is populated on the delete request so that activity assignment lookup works
+        OrgUser existingOrgUser = users.get(0);
+        if (existingOrgUser != null && existingOrgUser.getUserId() != null) {
+            request.setUserId(existingOrgUser.getUserId());
+        }
+
         //Check if user has any activity assignments
         List<ActivityAssignment> activityAssignmentList = organisationUtil.getFieldPlanActivityAssignment(request);
         //user has active assignments exist

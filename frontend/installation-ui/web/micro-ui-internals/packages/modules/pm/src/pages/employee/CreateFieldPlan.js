@@ -3,7 +3,7 @@ import useBoundary from "../../hooks/useBoundary";
 import useMDMS from "../../hooks/useMDMS";
 import useProject from "../../hooks/useProject";
 import { useTranslation } from "react-i18next";
-import { Button, FormComposerV2, Loader, PopUp, Toast } from "@egovernments/digit-ui-react-components";
+import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import { Stepper } from "@egovernments/digit-ui-components";
 import { useDispatch } from "react-redux";
 import { populateResponsePage, populateWorkingFieldPlan, populateWorkingProject } from "../../redux/actions";
@@ -804,12 +804,12 @@ const CreateFieldPlan = () => {
     }
 
     try {
-      const fieldPlanResponse = await FieldPlanService.upsertFieldPlan(fieldPlanUpsertData);
-      const upsertedFieldPlanResponse = fieldPlanResponse.FieldPlans?.[0];
+      const upsertedFieldPlanResponse = await FieldPlanService.upsertFieldPlan(fieldPlanUpsertData);
+      const upsertedFieldPlan = upsertedFieldPlanResponse?.[0];
       await invalidateFieldPlanData();
       history.replace({
         pathname: location.pathname,
-        search: `fieldPlanId=${upsertedFieldPlanResponse.id}&key=${currentKey + 1}`,
+        search: `fieldPlanId=${upsertedFieldPlan.id}&key=${currentKey + 1}`,
       });
       setCurrentKey(prev => prev + 1);
       setBlockUI(false);
@@ -823,7 +823,7 @@ const CreateFieldPlan = () => {
       setBlockUI(false);
       setToast({
         key: "error",
-        label: createdFieldPlan?.id ? t("PM_TOAST_DRAFT_FIELD_PLAN_UPDATION_ERROR") : t("PM_TOAST_DRAFT_FIELD_PLAN_CREATION_ERROR"),
+        label: CommonUtils.getApiErrorMessage(e) || (createdFieldPlan?.id ? t("PM_TOAST_DRAFT_FIELD_PLAN_UPDATION_ERROR") : t("PM_TOAST_DRAFT_FIELD_PLAN_CREATION_ERROR")),
       })
 
     } finally {
@@ -908,7 +908,7 @@ const CreateFieldPlan = () => {
         console.error("Error submitting field plan creation form", error);
         setToast({
           key: "error",
-          label: schedulingFieldPlan ? t("PM_TOAST_FIELD_PLAN_SUBMIT_CREATE_ERROR") : t("PM_TOAST_FIELD_PLAN_SUBMIT_UPDATE_ERROR"),
+          label: CommonUtils.getApiErrorMessage(error) || (schedulingFieldPlan ? t("PM_TOAST_FIELD_PLAN_SUBMIT_CREATE_ERROR") : t("PM_TOAST_FIELD_PLAN_SUBMIT_UPDATE_ERROR")),
         })
 
       } finally {

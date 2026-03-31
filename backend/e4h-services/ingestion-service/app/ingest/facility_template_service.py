@@ -13,6 +13,7 @@ from app.utils.convertor import convert_json_to_boundary, format_facility_data_f
 from app.utils.excel_utils import add_dropdowns_to_excel, lock_excel_columns, add_validations_to_excel, \
     lock_prefilled_rows_in_excel, add_non_blank_validations_to_file, autofit_columns
 from app.utils.file_utils import create_empty_excel_file, create_excel_data_writer, remove_default_empty_sheet
+from app.utils.localization_service_client import LocalizationServiceClient
 
 logger = AppLogger().get_logger()
 from dotenv import load_dotenv
@@ -20,6 +21,7 @@ load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
 boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
 vendor_service_url = os.getenv("VENDOR_SERVICE_URL")
+localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 
 class FacilityTemplateService:
 
@@ -216,10 +218,16 @@ class FacilityTemplateService:
             autofit_columns(
                 file_path=output_path,
                 sheet_name="FacilityMapping",
+                auto_fit=True,
+                max_rows_to_scan=10,
+                enable_wrap_text=False,
             )
             autofit_columns(
                 file_path=output_path,
                 sheet_name="BoundaryCodes",
+                auto_fit=True,
+                max_rows_to_scan=10,
+                enable_wrap_text=False,
             )
             remove_default_empty_sheet(output_path)
             logger.info(f"Successfully created template file at {output_path}")
@@ -240,6 +248,10 @@ class FacilityTemplateService:
             dropdowns_map = {}
             allow_blank_map = {}
             for col in facility_schema:
+                col_name = col.get("name")
+                if col_name and str(col_name).strip().lower() == "include in project":
+                    #remove "Include in Project" from facility ingestion template
+                    continue
                 mandatory_indicator = "(Mandatory)" if col.get("required") else ""
                 header_name = f"{col.get('name')} {mandatory_indicator}".strip()
                 output_list.append(header_name)
@@ -288,16 +300,51 @@ class FacilityTemplateService:
             raise
 
     def _format_boundary_data(self, boundary_data: List[Boundary]) -> List[Dict[str, str]]:
-        """Format boundary data into required structure"""
+        """Format boundary data into required structure, with localized display names."""
         boundary_records = []
+
+        all_raw_codes = set()
+        for boundary in boundary_data:
+            for field in ("country", "state", "district", "block"):
+                val = boundary.get(field, "")
+                if val:
+                    all_raw_codes.add(val)
+
+        loc_codes = [f"Boundary_{code}" for code in all_raw_codes]
+
+        localization_map: Dict[str, str] = {}
+        if localization_service_url and loc_codes:
+            try:
+                loc_client = LocalizationServiceClient(localization_service_url)
+                loc_response = loc_client.search_messages(
+                    tenant_id="in",
+                    locale="en_IN",
+                    module="rainmaker-in",
+                    codes=loc_codes,
+                )
+                for m in loc_response.get("messages", []):
+                    code = (m.get("code") or "").strip()
+                    message = m.get("message", "")
+                    if code and message:
+                        localization_map[code] = message
+            except Exception as e:
+                logger.error(f"Error fetching boundary localizations: {e}", exc_info=True)
+
+        def localized(raw_code: str) -> str:
+            if not raw_code:
+                return ""
+            loc_key = f"Boundary_{raw_code}"
+            return localization_map.get(loc_key, loc_key)
+
         for boundary in boundary_data:
             boundary_records.append({
-                "Country": boundary.get("country", ""),
-                "State": boundary.get("state", ""),
-                "District": boundary.get("district", ""),
-                "Block": boundary.get("block", ""),
+                "Country": localized(boundary.get("country", "")),
+                "State": localized(boundary.get("state", "")),
+                "District": localized(boundary.get("district", "")),
+                "Block": localized(boundary.get("block", "")),
                 "BoundaryCode": boundary.get("code", "")
             })
+
         if not boundary_records:
             boundary_records.append({
                 "Country": "",

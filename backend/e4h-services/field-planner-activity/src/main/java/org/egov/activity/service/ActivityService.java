@@ -16,6 +16,7 @@ import org.egov.activity.repository.ActivityFacilityRepository;
 import org.egov.activity.service.enrichment.ActivityEnrichment;
 import org.egov.activity.validator.ActivityValidator;
 import org.egov.activity.web.models.*;
+import org.egov.common.models.core.SearchResponse;
 import org.egov.tracer.model.CustomException;
 import org.egov.tracer.model.ServiceCallException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -423,6 +424,8 @@ public class ActivityService {
                 triggerInstallationCompletionSideEffects(existingActivityFacitlity, request.getRequestInfo(), activityFacilityId);
                 // Step 9: Mark facility as ONM ready
                 markFacilityOnmReady(existingActivityFacitlity, request.getRequestInfo());
+                // Step 10: Add facility to jurisdiction of COMPLAINT_RESOLVER in the same organisation
+                addFacilityToComplaintResolverJurisdiction(existingActivityFacitlity, request.getRequestInfo());
             }
         }
 
@@ -881,6 +884,372 @@ public class ActivityService {
             Map<String, Object> map = new HashMap<>();
             map.put(key, value);
             return map;
+        }
+    }
+
+    /**
+     * After installation approval, find the COMPLAINT_RESOLVER user within the organisation
+     * for a linked user on the installation (see {@link ActivityFacility#getLinkedUsers()}) and add this
+     * facility to their jurisdiction (first COMPLAINT_RESOLVER only).
+     */
+    private void addFacilityToComplaintResolverJurisdiction(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        try {
+            if (activityFacility == null || activityFacility.getTenantId() == null) {
+                log.warn("Cannot update complaint resolver jurisdiction: activityFacility or tenantId is null");
+                return;
+            }
+            log.info("Complaint-resolver jurisdiction flow started for activityFacilityId={}, facilityId={}, tenantId={}",
+                    activityFacility.getId(), activityFacility.getFacilityId(), activityFacility.getTenantId());
+            log.info("Reference-user inputs for activityFacilityId={}: linkedUsers={}, assignedUser={}",
+                    activityFacility.getId(),
+                    activityFacility.getLinkedUsers(),
+                    activityFacility.getAssignedUser());
+
+            // Reference user: linkedUsers (search aggregate) -> activity_facility_users rows -> assignedUser
+            String referenceUserId = resolveReferenceUserIdForComplaintResolver(activityFacility, requestInfo);
+
+            if (referenceUserId == null) {
+                log.info("No reference user (linkedUsers / activity_facility_users / assignedUser) found for activityFacility {}, skipping complaint resolver jurisdiction update", activityFacility.getId());
+                return;
+            }
+            log.info("Reference user resolved for activityFacilityId={}: userId={}", activityFacility.getId(), referenceUserId);
+
+            // Fetch organisation of the reference user from vendor-registry via org-user search
+            String organisationId = fetchOrganisationIdForUser(referenceUserId, activityFacility, requestInfo);
+            if (organisationId == null) {
+                log.info("No organisation found for user {} and activityFacility {}, skipping complaint resolver jurisdiction update", referenceUserId, activityFacility.getId());
+                return;
+            }
+            log.info("Resolved organisationId={} for referenceUserId={} and activityFacilityId={}",
+                    organisationId, referenceUserId, activityFacility.getId());
+
+            // From that organisation, find the first COMPLAINT_RESOLVER user
+            Map<String, Object> complaintResolverOrgUser = fetchFirstComplaintResolverForOrganisation(organisationId, activityFacility, requestInfo);
+            if (complaintResolverOrgUser == null) {
+                log.info("No COMPLAINT_RESOLVER found in organisation {} for activityFacility {}, skipping jurisdiction update", organisationId, activityFacility.getId());
+                return;
+            }
+            log.info("Found COMPLAINT_RESOLVER org-user for organisationId={} and activityFacilityId={}",
+                    organisationId, activityFacility.getId());
+
+            // Add facility to resolver's jurisdiction and call organisation user update
+            updateComplaintResolverJurisdictionsWithFacility(complaintResolverOrgUser, activityFacility, requestInfo);
+            log.info("Complaint-resolver jurisdiction flow finished for activityFacilityId={}", activityFacility.getId());
+
+        } catch (Exception e) {
+            log.error("Error while updating complaint resolver jurisdiction for activityFacility {}", activityFacility != null ? activityFacility.getId() : "null", e);
+        }
+    }
+
+    /**
+     * Resolve org reference from linked users (same as _search {@code linkedUsers}), then DB rows, then assigned user.
+     */
+    private String resolveReferenceUserIdForComplaintResolver(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        String fromLinkedUsersArray = pickReferenceUserIdFromLinkedUsersField(activityFacility, requestInfo);
+        if (fromLinkedUsersArray != null) {
+            log.info("Reference user resolved from activityFacility.linkedUsers: userId={}, totalLinkedUsers={}",
+                    fromLinkedUsersArray,
+                    activityFacility.getLinkedUsers() != null ? activityFacility.getLinkedUsers().size() : 0);
+            return fromLinkedUsersArray;
+        }
+        List<ActivityFacilityUser> linked = fetchActivityFacilityUsers(activityFacility.getId(), activityFacility.getTenantId(), requestInfo);
+        String fromRows = pickFirstActiveLinkedUserId(linked);
+        if (fromRows != null) {
+            log.info("Reference user resolved from activity_facility_users: userId={}, linkedUserCount={}",
+                    fromRows, linked.size());
+            return fromRows;
+        }
+        if (activityFacility.getAssignedUser() != null && !activityFacility.getAssignedUser().isBlank()) {
+            log.info("Reference user resolved from assignedUser fallback: userId={}", activityFacility.getAssignedUser());
+            return activityFacility.getAssignedUser();
+        }
+        return null;
+    }
+
+    /**
+     * Uses {@link ActivityFacility#getLinkedUsers()} populated from SQL aggregate on facility search
+     * (same as _search response). Prefers a user other than the current approver when possible.
+     */
+    private String pickReferenceUserIdFromLinkedUsersField(ActivityFacility activityFacility, RequestInfo requestInfo) {
+        List<String> linkedUsers = activityFacility.getLinkedUsers();
+        if (linkedUsers == null || linkedUsers.isEmpty()) {
+            return null;
+        }
+        String currentApproverUuid = null;
+        if (requestInfo != null && requestInfo.getUserInfo() != null) {
+            currentApproverUuid = requestInfo.getUserInfo().getUuid();
+        }
+        for (String uid : linkedUsers) {
+            if (uid == null || uid.isBlank()) {
+                continue;
+            }
+            if (currentApproverUuid != null && currentApproverUuid.equalsIgnoreCase(uid)) {
+                continue;
+            }
+            return uid;
+        }
+        for (String uid : linkedUsers) {
+            if (uid != null && !uid.isBlank()) {
+                return uid;
+            }
+        }
+        return null;
+    }
+
+    private List<ActivityFacilityUser> fetchActivityFacilityUsers(String activityFacilityId, String tenantId, RequestInfo requestInfo) {
+        try {
+            ActivityFacilityUserSearchCriteria criteria = ActivityFacilityUserSearchCriteria.builder()
+                    .activityFacilityId(new ArrayList<>(List.of(activityFacilityId)))
+                    .tenantId(tenantId)
+                    .build();
+            ActivityFacilityUserSearchRequest searchRequest = ActivityFacilityUserSearchRequest.builder()
+                    .criteria(criteria)
+                    .requestInfo(requestInfo)
+                    .build();
+            SearchResponse<ActivityFacilityUser> response = facilityUsersService.search(
+                    searchRequest,
+                    activityConfiguration.getMaxLimit(),
+                    0,
+                    tenantId,
+                    null,
+                    false);
+            if (response == null || response.getResponse() == null) {
+                return Collections.emptyList();
+            }
+            return response.getResponse();
+        } catch (Exception e) {
+            log.error("Error while fetching activity facility users for activityFacility {}", activityFacilityId, e);
+            return Collections.emptyList();
+        }
+    }
+
+    private String pickFirstActiveLinkedUserId(List<ActivityFacilityUser> linked) {
+        if (linked == null || linked.isEmpty()) {
+            return null;
+        }
+        for (ActivityFacilityUser u : linked) {
+            if (Boolean.TRUE.equals(u.getIsDeleted())) {
+                continue;
+            }
+            if (u.getUserId() != null && !u.getUserId().isBlank()) {
+                return u.getUserId();
+            }
+        }
+        return null;
+    }
+
+    private String fetchOrganisationIdForUser(String userId, ActivityFacility activityFacility, RequestInfo requestInfo) {
+        try {
+            log.info("Searching organisation for reference userId={} and tenantId={}", userId, activityFacility.getTenantId());
+            OrgUserSearchCriteria criteria = OrgUserSearchCriteria.builder()
+                    .userId(List.of(userId))
+                    .tenantId(activityFacility.getTenantId())
+                    .build();
+
+            OrgUserSearchRequest searchRequest = OrgUserSearchRequest.builder()
+                    .requestInfo(requestInfo)
+                    .criteria(criteria)
+                    .build();
+
+            List<?> orgUsers = searchOrgUsers(searchRequest, activityFacility.getTenantId(), 0, 10);
+            if (orgUsers.isEmpty()) {
+                log.info("Organisation search returned 0 records for userId={} and tenantId={}", userId, activityFacility.getTenantId());
+                return null;
+            }
+            log.info("Organisation search returned {} records for userId={}", orgUsers.size(), userId);
+
+            Object first = orgUsers.get(0);
+            if (!(first instanceof Map)) {
+                log.warn("First org-user search result is not a map for userId={}", userId);
+                return null;
+            }
+
+            Map<String, Object> firstOrgUser = (Map<String, Object>) first;
+            Object orgIdObj = firstOrgUser.get("organizationId");
+            return orgIdObj != null ? orgIdObj.toString() : null;
+        } catch (Exception e) {
+            log.error("Error while fetching organisation for user {} and activityFacility {}", userId, activityFacility.getId(), e);
+            return null;
+        }
+    }
+
+    private Map<String, Object> fetchFirstComplaintResolverForOrganisation(String organisationId, ActivityFacility activityFacility, RequestInfo requestInfo) {
+        try {
+            log.info("Searching COMPLAINT_RESOLVER users for organisationId={} and tenantId={}",
+                    organisationId, activityFacility.getTenantId());
+            OrgUserSearchCriteria criteria = OrgUserSearchCriteria.builder()
+                    .organizationId(List.of(organisationId))
+                    .tenantId(activityFacility.getTenantId())
+                    .build();
+
+            OrgUserSearchRequest searchRequest = OrgUserSearchRequest.builder()
+                    .requestInfo(requestInfo)
+                    .criteria(criteria)
+                    .build();
+
+            int offset = 0;
+
+            while (true) {
+                List<?> orgUsers = searchOrgUsers(searchRequest, activityFacility.getTenantId(), offset, 100);
+                if (orgUsers.isEmpty()) {
+                    log.info("No org-users found for organisationId={} at offset={}", organisationId, offset);
+                    return null;
+                }
+                log.info("Fetched {} org-users for organisationId={} at offset={}", orgUsers.size(), organisationId, offset);
+
+                for (Object obj : orgUsers) {
+                    if (obj instanceof Map && isComplaintResolverOrgUser((Map<String, Object>) obj)) {
+                        log.info("Matched COMPLAINT_RESOLVER for organisationId={} at offset={}", organisationId, offset);
+                        return (Map<String, Object>) obj;
+                    }
+                }
+
+                if (orgUsers.size() < 100) {
+                    // No more pages
+                    return null;
+                }
+
+                offset += 100;
+            }
+        } catch (Exception e) {
+            log.error("Error while fetching COMPLAINT_RESOLVER for organisation {} and activityFacility {}", organisationId, activityFacility.getId(), e);
+            return null;
+        }
+    }
+
+    private boolean isComplaintResolverOrgUser(Map<String, Object> orgUser) {
+        Object userObj = orgUser.get("user");
+        if (!(userObj instanceof Map)) {
+            return false;
+        }
+
+        Map<String, Object> user = (Map<String, Object>) userObj;
+        Object rolesObj = user.get("roles");
+        if (!(rolesObj instanceof List)) {
+            return false;
+        }
+
+        List<?> roles = (List<?>) rolesObj;
+        return roles.stream().anyMatch(roleObj -> {
+            if (!(roleObj instanceof Map)) {
+                return false;
+            }
+            Object codeObj = ((Map<String, Object>) roleObj).get("code");
+            return codeObj != null && "COMPLAINT_RESOLVER".equalsIgnoreCase(codeObj.toString());
+        });
+    }
+
+    /**
+     * Common helper to call org-user search and return the OrgUsers list (or empty list).
+     */
+    private List<?> searchOrgUsers(OrgUserSearchRequest searchRequest, String tenantId, int offset, int limit) {
+        StringBuilder url = new StringBuilder(activityConfiguration.getOrgUserHost())
+                .append(activityConfiguration.getOrgUserSearchUrl())
+                .append("?tenantId=").append(tenantId)
+                .append("&offset=").append(offset)
+                .append("&limit=").append(limit);
+        log.info("Calling org-user search API url={} tenantId={} offset={} limit={}", url, tenantId, offset, limit);
+
+        Map<String, Object> response = serviceRequest.fetchResult(
+                url,
+                searchRequest,
+                new TypeReference<Map<String, Object>>() {
+                });
+
+        if (response == null) {
+            return Collections.emptyList();
+        }
+
+        Object orgUsersObj = response.get("OrgUsers");
+        if (!(orgUsersObj instanceof List)) {
+            return Collections.emptyList();
+        }
+
+        return (List<?>) orgUsersObj;
+    }
+
+    private void updateComplaintResolverJurisdictionsWithFacility(Map<String, Object> orgUser,
+                                                                  ActivityFacility activityFacility,
+                                                                  RequestInfo requestInfo) {
+        if (orgUser == null) {
+            return;
+        }
+
+        try {
+            Object userObj = orgUser.get("user");
+            if (!(userObj instanceof Map)) {
+                log.warn("OrgUser user field is not a map, skipping jurisdiction update");
+                return;
+            }
+
+            Map<String, Object> user = (Map<String, Object>) userObj;
+            Object userUuidObj = user.get("uuid");
+            Object userIdObj = user.get("id");
+            log.info("Preparing jurisdiction update for resolver userUuid={} userId={} activityFacilityId={}",
+                    userUuidObj, userIdObj, activityFacility.getId());
+
+            // Jurisdiction list is under key "jurisdiction" as per vendor-registry User model
+            Object jurisdictionsObj = user.get("jurisdiction");
+            List<Map<String, Object>> jurisdictions;
+            if (jurisdictionsObj instanceof List) {
+                jurisdictions = (List<Map<String, Object>>) jurisdictionsObj;
+            } else {
+                jurisdictions = new ArrayList<>();
+            }
+
+            // Use facility boundary code as jurisdiction boundary
+            String boundaryCode = activityFacility.getFacility() != null
+                    ? activityFacility.getFacility().getBoundaryCode()
+                    : null;
+
+            if (boundaryCode == null) {
+                log.warn("Boundary code is null for activityFacility {}, skipping jurisdiction update", activityFacility.getId());
+                return;
+            }
+            log.info("Jurisdiction boundary candidate for resolver update: boundaryCode={} tenantId={}",
+                    boundaryCode, activityFacility.getTenantId());
+
+            boolean alreadyPresent = jurisdictions.stream().anyMatch(j -> {
+                Object boundary = j.get("boundary");
+                return boundary != null && boundaryCode.equals(boundary.toString());
+            });
+
+            if (alreadyPresent) {
+                log.info("Boundary {} already present in complaint resolver jurisdiction, skipping update", boundaryCode);
+                return;
+            }
+
+            Map<String, Object> newJurisdiction = new HashMap<>();
+            newJurisdiction.put("hierarchy", "ADMIN");
+            newJurisdiction.put("boundary", boundaryCode);
+            newJurisdiction.put("boundaryType", "Facility");
+            newJurisdiction.put("tenantId", activityFacility.getTenantId());
+            newJurisdiction.put("isActive", Boolean.TRUE);
+
+            jurisdictions.add(newJurisdiction);
+            user.put("jurisdiction", jurisdictions);
+
+            // Build update request payload for organisation user update API
+            Map<String, Object> updateBody = new HashMap<>();
+            Object orgUserOrgId = orgUser.get("organizationId");
+            Object orgUserUser = orgUser.get("user");
+            if (orgUserOrgId == null || orgUserUser == null) {
+                log.warn("Skipping complaint resolver jurisdiction update due to missing OrgUser fields: organizationId={}, userPresent={}", orgUserOrgId, orgUserUser != null);
+                return;
+            }
+
+            updateBody.putAll(orgUser);
+            updateBody.put("RequestInfo", requestInfo);
+
+            StringBuilder url = new StringBuilder(activityConfiguration.getOrgUserHost())
+                    .append(activityConfiguration.getOrgUserUpdateUrl());
+            log.info("Calling org-user update API url={} for resolver userUuid={} with new boundary={}",
+                    url, userUuidObj, boundaryCode);
+
+            serviceRequest.fetchResult(url, updateBody);
+            log.info("Successfully updated complaint resolver jurisdiction for boundary {}", boundaryCode);
+        } catch (Exception e) {
+            log.error("Error while updating complaint resolver jurisdiction for facility {}", activityFacility.getFacilityId(), e);
         }
     }
 

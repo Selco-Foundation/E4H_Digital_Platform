@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState, useMemo, useCallback} from "react";
+import React, {useEffect, useRef, useState, useMemo} from "react";
 import {useTranslation} from "react-i18next";
 import {Loader, TextInput, Table, SubmitBar} from "@egovernments/digit-ui-react-components";
 import {ArrowUpward, ArrowDownward, ImportExport} from "@egovernments/digit-ui-svg-components";

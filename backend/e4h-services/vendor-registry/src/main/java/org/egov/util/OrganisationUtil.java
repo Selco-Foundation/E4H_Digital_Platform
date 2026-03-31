@@ -1,12 +1,11 @@
 package org.egov.util;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.models.AuditDetails;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.config.Configuration;
 import org.egov.repository.ServiceRequestRepository;
-import org.egov.tracer.model.CustomException;
 import org.egov.web.models.*;
 import org.springframework.stereotype.Component;
 
@@ -142,7 +141,13 @@ public class OrganisationUtil {
         String userId = request.getUserId();
         String tenantId = config.getGlobalTenantId();
         ActivityAssignmentSearchCriteria criteria = ActivityAssignmentSearchCriteria.builder().assignedTo(userId).isActive(true).tenantId(tenantId).build();
-        ActivityAssignmentSearchRequest assignmentSearchRequest = ActivityAssignmentSearchRequest.builder().criteria(criteria).requestInfo(request.getRequestInfo()).build();
+        RequestInfo requestInfoForAssignmentSearch = mapper.convertValue(request.getRequestInfo(), RequestInfo.class);
+        if (requestInfoForAssignmentSearch != null && requestInfoForAssignmentSearch.getUserInfo() != null) {
+            // field-planner-activity adds implicit "assigned_to = RequestInfo.userInfo.uuid" for non-PM users
+            // so align caller uuid with the target user to fetch that user's assignments.
+            requestInfoForAssignmentSearch.getUserInfo().setUuid(userId);
+        }
+        ActivityAssignmentSearchRequest assignmentSearchRequest = ActivityAssignmentSearchRequest.builder().criteria(criteria).requestInfo(requestInfoForAssignmentSearch).build();
         String url = config.getFieldPlanActivityServiceHost() + config.getFieldPlanActivitySearchUrl()+ "?tenantId="+tenantId+"&offset=0&limit=100";
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), assignmentSearchRequest);
         ActivityAssignmentResponse activityAssignmentList = mapper.convertValue(response, ActivityAssignmentResponse.class);
