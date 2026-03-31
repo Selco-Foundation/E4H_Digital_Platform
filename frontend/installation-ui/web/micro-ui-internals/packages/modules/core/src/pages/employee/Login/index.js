@@ -65,9 +65,9 @@ const EmployeeLogin = ({ stateCode }) => {
           texts[key] = t(step.texts[key]);
         }
         return { ...step, texts };
-      },
+      }
+    ),
       [loginConfig]
-    )
   );
 
   const loginOtpParams = useMemo(() =>
