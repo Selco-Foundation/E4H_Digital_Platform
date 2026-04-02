@@ -223,6 +223,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   };
 
   const setUserCurrentPassword = (value) => {
+    setCurrentPassword(value);
     if (!validationConfig?.password.test(value)) {
       setErrors({
         ...errors,
@@ -314,16 +315,16 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
           message: t("CORE_COMMON_PROFILE_EMAIL_INVALID"),
         });
       }
-      const trimmedCurrentPassword = currentPassword.trim();
-      const trimmedNewPassword = newPassword.trim();
-      const trimmedConfirmPassword = confirmPassword.trim();
+      const trimmedCurrentPassword = currentPassword?.trim();
+      const trimmedNewPassword = newPassword?.trim();
+      const trimmedConfirmPassword = confirmPassword?.trim();
 
-      // Updating state with trimmed values
-      setCurrentPassword(trimmedCurrentPassword);
-      setNewPassword(trimmedNewPassword);
-      setConfirmPassword(trimmedConfirmPassword);
-      
-
+      if (changepassword && !(trimmedCurrentPassword && trimmedNewPassword && trimmedConfirmPassword)) {
+        throw JSON.stringify({
+          type: "error",
+          message: t("CORE_COMMON_PROFILE_PASSWORD_MANDATORY"),
+        });
+      }
       if (changepassword && (trimmedCurrentPassword && trimmedNewPassword && trimmedConfirmPassword)) {
         if (trimmedNewPassword !== trimmedConfirmPassword) {
           throw JSON.stringify({
@@ -366,17 +367,17 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
         }
       }
 
-      if (currentPassword.length && newPassword.length && confirmPassword.length) {
+      if (trimmedCurrentPassword?.length && trimmedNewPassword?.length && trimmedConfirmPassword?.length) {
         const requestData = {
-          existingPassword: currentPassword,
-          newPassword: newPassword,
+          existingPassword: trimmedCurrentPassword,
+          newPassword: trimmedNewPassword,
           tenantId: tenant,
           type: "EMPLOYEE",
           username: userInfo?.userName,
-          confirmPassword: confirmPassword,
+          confirmPassword: trimmedConfirmPassword,
         };
 
-        if (newPassword === confirmPassword) {
+        if (trimmedNewPassword === trimmedConfirmPassword) {
           try {
             const res = await Digit.UserService.changePassword(requestData, tenant);
 
@@ -810,7 +811,8 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                             t={t}
                             type={"password"}
                             isMandatory={false}
-                            name="name"
+                            name="currentPassword"
+                            value={currentPassword}
                             pattern={
                               mdmsValidationData?.UserProfileValidationConfig?.[0]?.password ||
                               defaultValidationConfig?.UserProfileValidationConfig?.[0]?.password
@@ -841,7 +843,8 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                             t={t}
                             type={"password"}
                             isMandatory={false}
-                            name="name"
+                            name="newPassword"
+                            value={newPassword}
                             pattern={
                               mdmsValidationData?.UserProfileValidationConfig?.[0]?.password ||
                               defaultValidationConfig?.UserProfileValidationConfig?.[0]?.password
@@ -872,7 +875,8 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                             t={t}
                             type={"password"}
                             isMandatory={false}
-                            name="name"
+                            name="confirmPassword"
+                            value={confirmPassword}
                             pattern={
                               mdmsValidationData?.UserProfileValidationConfig?.[0]?.password ||
                               defaultValidationConfig?.UserProfileValidationConfig?.[0]?.password
