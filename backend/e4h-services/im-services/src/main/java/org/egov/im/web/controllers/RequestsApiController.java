@@ -5,14 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.im.service.IMService;
+import org.egov.im.service.TheftNotificationService;
 import org.egov.im.util.IMConstants;
 import org.egov.im.util.ResponseInfoFactory;
-import org.egov.im.web.models.CountResponse;
-import org.egov.im.web.models.IncidentRequest;
-import org.egov.im.web.models.IncidentResponse;
-import org.egov.im.web.models.IncidentWrapper;
-import org.egov.im.web.models.RequestInfoWrapper;
-import org.egov.im.web.models.RequestSearchCriteria;
+import org.egov.im.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,21 +33,27 @@ public class RequestsApiController{
 
     private ResponseInfoFactory responseInfoFactory;
 
+    private TheftNotificationService theftNotificationService;
 
     @Autowired
-    public RequestsApiController(ObjectMapper objectMapper, IMService imService, ResponseInfoFactory responseInfoFactory) {
+    public RequestsApiController(ObjectMapper objectMapper, IMService imService, ResponseInfoFactory responseInfoFactory,
+                                 TheftNotificationService theftNotificationService) {
         this.objectMapper = objectMapper;
         this.imService = imService;
         this.responseInfoFactory = responseInfoFactory;
+        this.theftNotificationService = theftNotificationService;
     }
 
 
     @RequestMapping(value="/request/_create", method = RequestMethod.POST)
     public ResponseEntity<IncidentResponse> requestsCreatePost(@Valid @RequestBody IncidentRequest request) throws IOException {
+        log.trace("RequestsApiController::requestsCreatePost method invoked");
+        log.info("Received create request for tenantId={}", request.getIncident().getTenantId());
         IncidentRequest enrichedReq = imService.create(request);
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
         IncidentWrapper incidentWrapper = IncidentWrapper.builder().incident(enrichedReq.getIncident()).workflow(enrichedReq.getWorkflow()).build();
         IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.singletonList(incidentWrapper)).build();
+        log.info("Create request completed successfully for incidentId={}", enrichedReq.getIncident().getIncidentId());
         return new ResponseEntity<>(response, HttpStatus.OK);
 
     }
@@ -59,7 +61,8 @@ public class RequestsApiController{
     @RequestMapping(value="/request/_search", method = RequestMethod.POST)
     public ResponseEntity<IncidentResponse> requestsSearchPost(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
                                                               @Valid @ModelAttribute RequestSearchCriteria criteria) {
-    	
+        log.trace("RequestsApiController::requestsSearchPost method invoked");
+        log.info("Received search request for tenantId={}", criteria.getTenantId());
     	String tenantId = criteria.getTenantId();
         List<IncidentWrapper> incidentWrappers = imService.search(requestInfoWrapper.getRequestInfo(), criteria);
         //Map<String,Integer> dynamicData = imService.getDynamicData(tenantId);
@@ -76,16 +79,31 @@ public class RequestsApiController{
 
     @RequestMapping(value = "request/_plainsearch", method = RequestMethod.POST)
     public ResponseEntity<IncidentResponse> requestsPlainSearchPost(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper, @Valid @ModelAttribute RequestSearchCriteria requestSearchCriteria) {
+        log.trace("RequestsApiController::requestsPlainSearchPost method invoked");
+        log.info("Received plain search request for tenantId={}", requestSearchCriteria.getTenantId());
         List<IncidentWrapper> incidentWrappers = imService.plainSearch(requestInfoWrapper.getRequestInfo(), requestSearchCriteria);
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(requestInfoWrapper.getRequestInfo(), true);
         IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(incidentWrappers).build();
+        log.info("Plain search request completed successfully, returning {} incidents", incidentWrappers.size());
         return new ResponseEntity<>(response, HttpStatus.OK);
 
     }
 
     @RequestMapping(value="/request/_update", method = RequestMethod.POST)
     public ResponseEntity<IncidentResponse> requestsUpdatePost(@Valid @RequestBody IncidentRequest request) throws IOException {
+        log.trace("RequestsApiController::requestsUpdatePost method invoked");
+        log.info("Received update request for tenantId={}, incidentId={}", request.getIncident().getTenantId(), request.getIncident().getIncidentId());
         IncidentRequest enrichedReq = imService.update(request);
+        IncidentWrapper incidentWrapper = IncidentWrapper.builder().incident(enrichedReq.getIncident()).workflow(enrichedReq.getWorkflow()).build();
+        ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
+        IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.singletonList(incidentWrapper)).build();
+        log.info("Update request completed successfully for incidentId={}", enrichedReq.getIncident().getIncidentId());
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @RequestMapping(value="/request/migration/_update", method = RequestMethod.POST)
+    public ResponseEntity<IncidentResponse> requestsUpdatePostMigration(@Valid @RequestBody IncidentRequest request) throws IOException {
+        IncidentRequest enrichedReq = imService.migrationUpdate(request);
         IncidentWrapper incidentWrapper = IncidentWrapper.builder().incident(enrichedReq.getIncident()).workflow(enrichedReq.getWorkflow()).build();
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(request.getRequestInfo(), true);
         IncidentResponse response = IncidentResponse.builder().responseInfo(responseInfo).IncidentWrappers(Collections.singletonList(incidentWrapper)).build();
@@ -95,11 +113,30 @@ public class RequestsApiController{
     @RequestMapping(value="/request/_count", method = RequestMethod.POST)
     public ResponseEntity<CountResponse> requestsCountPost(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
                                                            @Valid @ModelAttribute RequestSearchCriteria criteria) {
+        log.trace("RequestsApiController::requestsCountPost method invoked");
+        log.info("Received count request for tenantId={}", criteria.getTenantId());
         Integer count = imService.count(requestInfoWrapper.getRequestInfo(), criteria);
         ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(requestInfoWrapper.getRequestInfo(), true);
         CountResponse response = CountResponse.builder().responseInfo(responseInfo).count(count).build();
+        log.info("Count request completed successfully, count={}", count);
         return new ResponseEntity<>(response, HttpStatus.OK);
 
+    }
+
+    /**
+     * Triggers theft notification: scans for tickets in state PENDINGFORASSIGNMENT_THEFT
+     * that have exceeded the threshold (from MDMS common-masters TheftNotificationThreshold)
+     * since filed date, and sends SMS to CRM: "Theft ticket [Ticket No.] requires action".
+     * Can be called by cron or manually.
+     */
+    @RequestMapping(value = "/theft-notification", method = { RequestMethod.POST })
+    public ResponseEntity<Map<String, Object>> theftNotification(@Valid @RequestBody TheftNotificationRequest request) {
+        log.trace("RequestsApiController::theftNotification method invoked");
+        int sent = theftNotificationService.runTheftNotification(request);
+        Map<String, Object> response = new HashMap<>();
+        response.put("notificationsSent", sent);
+        log.info("Theft notification completed, notificationsSent={}", sent);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
 }

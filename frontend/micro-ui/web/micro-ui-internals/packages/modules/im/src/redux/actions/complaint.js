@@ -1,14 +1,11 @@
 import { CREATE_COMPLAINT } from "./types";
 
 const createComplaint = ({
-  cityCode,
   complaintType,
  comments,
  healthcentre,
  subType,
  systemFunctionality,
- healthCareType,
- reporterName,
  district,
  block,
  uploadImages,
@@ -18,15 +15,13 @@ const createComplaint = ({
   const response = await Digit.Complaint.create({
     comments,
     complaintType,
+    district,
     block,
-    healthCareType,
     uploadedFile,
     healthcentre,
     subType,
     systemFunctionality,
     uploadImages,
-    district,
-    reporterName,
     tenantId
 
     
@@ -38,4 +33,14 @@ const createComplaint = ({
   });
 };
 
-export default createComplaint;
+const populateCreateResponse = (response) => (dispatch) => {
+  dispatch({
+    type: CREATE_COMPLAINT,
+    payload: response,
+  });
+}
+
+export {
+  createComplaint,
+  populateCreateResponse,
+};

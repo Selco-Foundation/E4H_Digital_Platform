@@ -30,31 +30,38 @@ public class VideoConsumer {
 
     @KafkaListener(topics = { "${im.kafka.process.video.topic}"})
     public void listen(final HashMap<String, Object> record, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
-
+        log.trace("Method invoked: listen, topic: {}", topic);
+        
         try {
-            log.info("Received video processing request " + record);
+            log.info("Received video processing request from topic: {}", topic);
+            log.debug("Processing Kafka message, record size: {}", record != null ? record.size() : 0);
             
             // Update tracking variables
             messageCount.incrementAndGet();
             lastMessageTime = LocalDateTime.now();
             
+            log.trace("Converting record to StorageProcessingContext");
             StorageProcessingContext storageProcessingContext = mapper.convertValue(record, StorageProcessingContext.class);
+            
+            log.info("Starting file processing and storage");
             storageService.processAndStoreFiles(storageProcessingContext);
             
-            log.info("Successfully processed video processing request. Total messages processed: {}", messageCount.get());
+            log.info("Successfully processed video processing request from topic: {}. Total messages processed: {}", topic, messageCount.get());
         }
         catch (Exception e){
-            log.error("Error occured while processing the record from topic : " + topic, e);
+            log.error("Error occurred while processing the record from topic: {}", topic, e);
             // Don't rethrow - let Kafka handle retries based on configuration
         }
     }
 
     // Health monitoring methods
     public long getMessageCount() {
+        log.trace("Method invoked: getMessageCount");
         return messageCount.get();
     }
 
     public LocalDateTime getLastMessageTime() {
+        log.trace("Method invoked: getLastMessageTime");
         return lastMessageTime;
     }
 }

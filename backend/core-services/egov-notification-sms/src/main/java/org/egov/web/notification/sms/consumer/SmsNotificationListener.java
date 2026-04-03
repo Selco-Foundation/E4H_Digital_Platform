@@ -62,43 +62,62 @@ public class SmsNotificationListener {
             topics = "${kafka.topics.notification.sms.name}"
     )
     public void process(HashMap<String, Object> consumerRecord) {
-        RequestContext.setId(UUID.randomUUID().toString());
+        log.trace("process method invoked - processing SMS notification from Kafka");
+        String requestId = UUID.randomUUID().toString();
+        RequestContext.setId(requestId);
+        log.info("Processing SMS notification request with ID: {}", requestId);
+        
         SMSRequest request = null;
         try {
             if(!smsEnable){
-                log.info("Sms service is disable to enable the notification service set the value of sms.enable flag as true");
+                log.warn("SMS service is disabled - to enable set sms.enabled flag to true");
+                return;
             }
-            else{
-                request = objectMapper.convertValue(consumerRecord, SMSRequest.class);
-                if (request.getExpiryTime() != null && request.getCategory() == Category.OTP) {
-                    Long expiryTime = request.getExpiryTime();
-                    Long currentTime = System.currentTimeMillis();
-                    if (expiryTime < currentTime) {
-                        log.info("OTP Expired");
-                        if (!StringUtils.isEmpty(expiredSmsTopic))
-                            kafkaTemplate.send(expiredSmsTopic, request);
-                    } else {
-                        smsService.sendSMS(request.toDomain());
+            
+            log.debug("Converting consumer record to SMSRequest");
+            request = objectMapper.convertValue(consumerRecord, SMSRequest.class);
+            log.debug("SMSRequest converted successfully, category: {}", request.getCategory());
+            
+            if (request.getExpiryTime() != null && request.getCategory() == Category.OTP) {
+                Long expiryTime = request.getExpiryTime();
+                Long currentTime = System.currentTimeMillis();
+                log.debug("OTP request detected - expiry time: {}, current time: {}", expiryTime, currentTime);
+                
+                if (expiryTime < currentTime) {
+                    log.warn("OTP expired - expiry time {} is before current time {}", expiryTime, currentTime);
+                    if (!StringUtils.isEmpty(expiredSmsTopic)) {
+                        log.info("Sending expired OTP request to expired topic: {}", expiredSmsTopic);
+                        kafkaTemplate.send(expiredSmsTopic, request);
                     }
                 } else {
+                    log.info("OTP request is valid, proceeding to send SMS");
                     smsService.sendSMS(request.toDomain());
                 }
+            } else {
+                log.info("Processing non-OTP SMS request");
+                smsService.sendSMS(request.toDomain());
             }
+            log.info("SMS notification request processed successfully");
 
         } catch (RestClientException rx) {
-            log.info("Going to backup SMS Service", rx);
-            if (!StringUtils.isEmpty(backupSmsTopic))
+            log.warn("RestClientException occurred while processing SMS - attempting backup service", rx);
+            if (!StringUtils.isEmpty(backupSmsTopic)) {
+                log.info("Sending request to backup SMS topic: {}", backupSmsTopic);
                 kafkaTemplate.send(backupSmsTopic, request);
-            else if (!StringUtils.isEmpty(errorSmsTopic)) {
+            } else if (!StringUtils.isEmpty(errorSmsTopic)) {
+                log.info("Backup topic not configured, sending to error topic: {}", errorSmsTopic);
                 kafkaTemplate.send(errorSmsTopic, request);
             } else {
+                log.error("No backup or error topic configured, rethrowing exception");
                 throw rx;
             }
         } catch (Exception ex) {
-            log.error("Sms service failed", ex);
+            log.error("Exception occurred while processing SMS notification", ex);
             if (!StringUtils.isEmpty(errorSmsTopic)) {
+                log.info("Sending failed request to error topic: {}", errorSmsTopic);
                 kafkaTemplate.send(errorSmsTopic, request);
             } else {
+                log.error("No error topic configured, rethrowing exception");
                 throw ex;
             }
         }

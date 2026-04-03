@@ -34,15 +34,22 @@ public class MDMSUtils {
     private final ProjectConfiguration config;
 
     public Object mDMSCall(ProjectRequest request, String tenantId) {
+        log.trace("Entering mDMSCall for tenantId: {}", tenantId);
+        log.info("Calling MDMS service for tenantId: {}", tenantId);
         RequestInfo requestInfo = request.getRequestInfo();
+        log.debug("Building MDMS request criteria");
         MdmsCriteriaReq mdmsCriteriaReq = getMDMSRequest(requestInfo, tenantId, request);
         Object result = null;
         try {
+            log.debug("Fetching MDMS data from URL: {}", getMdmsSearchUrl());
             result = serviceRequestRepository.fetchResult(getMdmsSearchUrl(), mdmsCriteriaReq, LinkedHashMap.class);
+            log.debug("Successfully received MDMS response");
+            log.info("MDMS call completed successfully for tenantId: {}", tenantId);
         } catch (Exception e) {
-            log.error("error while calling mdms", ExceptionUtils.getStackTrace(e));
+            log.error("Error while calling MDMS for tenantId: {}", tenantId, e);
             throw new CustomException("MDMS_ERROR", "error while calling mdms");
         }
+        log.trace("Exiting mDMSCall");
         return result;
     }
 
@@ -50,12 +57,16 @@ public class MDMSUtils {
 
         ModuleDetail projectMDMSModuleDetail = getMDMSModuleRequestData(request);
         ModuleDetail projectDepartmentModuleDetail = getDepartmentModuleRequestData(request);
+        ModuleDetail projectTypeModuleDetail = getProjectTypeModuleRequestData(request);
+        ModuleDetail stateInfoModuleDetail = getStateInfoModuleRequestData(request);
         ModuleDetail projectTenantModuleDetail = getTenantModuleRequestData(request);
         ModuleDetail attendanceModuleDetail = getAttendanceModuleRequestData(request);
 
         List<ModuleDetail> moduleDetails = new LinkedList<>();
         moduleDetails.add(projectMDMSModuleDetail);
         moduleDetails.add(projectDepartmentModuleDetail);
+        moduleDetails.add(projectTypeModuleDetail);
+        moduleDetails.add(stateInfoModuleDetail);
         moduleDetails.add(projectTenantModuleDetail);
         moduleDetails.add(attendanceModuleDetail);
 
@@ -131,6 +142,34 @@ public class MDMSUtils {
                 .moduleName(MDMS_HCM_ATTENDANCE_MODULE_NAME).build();
 
         return attendanceModuleDetail;
+    }
+
+    private ModuleDetail getProjectTypeModuleRequestData(ProjectRequest request) {
+        List<Project> projects = request.getProjects();
+        List<MasterDetail> projectDepartmentMasterDetails = new ArrayList<>();
+
+        MasterDetail departmentMasterDetails = MasterDetail.builder().name(MASTER_PROJECTTYPE)
+                .filter(FILTER_ACTIVE_TRUE).build();
+        projectDepartmentMasterDetails.add(departmentMasterDetails);
+
+        ModuleDetail projectDepartmentModuleDetail = ModuleDetail.builder().masterDetails(projectDepartmentMasterDetails)
+                .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
+
+        return projectDepartmentModuleDetail;
+    }
+
+    private ModuleDetail getStateInfoModuleRequestData(ProjectRequest request) {
+        List<Project> projects = request.getProjects();
+        List<MasterDetail> projectDepartmentMasterDetails = new ArrayList<>();
+
+        MasterDetail departmentMasterDetails = MasterDetail.builder().name(MASTER_STATEINFO)
+                .filter(FILTER_ACTIVE_TRUE).build();
+        projectDepartmentMasterDetails.add(departmentMasterDetails);
+
+        ModuleDetail projectDepartmentModuleDetail = ModuleDetail.builder().masterDetails(projectDepartmentMasterDetails)
+                .moduleName(MDMS_COMMON_MASTERS_MODULE_NAME).build();
+
+        return projectDepartmentModuleDetail;
     }
 
 }

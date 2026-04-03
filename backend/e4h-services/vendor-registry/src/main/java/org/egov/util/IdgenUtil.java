@@ -38,6 +38,9 @@ public class IdgenUtil {
 
 	public List<String> getIdList(RequestInfo requestInfo, String tenantId, String idName, String idformat,
 			Integer count) {
+		log.trace("IdgenUtil::getIdList entry");
+		log.info("Requesting {} IDs from idgen service for tenant: {}, idName: {}", count, tenantId, idName);
+		
 		List<IdRequest> reqList = new ArrayList<>();
 		for (int i = 0; i < count; i++) {
 			reqList.add(IdRequest.builder().idName(idName).format(idformat).tenantId(tenantId).build());
@@ -51,9 +54,12 @@ public class IdgenUtil {
 
 		List<IdResponse> idResponses = response.getIdResponses();
 
-		if (CollectionUtils.isEmpty(idResponses))
+		if (CollectionUtils.isEmpty(idResponses)) {
+			log.error("Idgen service returned empty response for tenant: {}, idName: {}", tenantId, idName);
 			throw new CustomException("IDGEN ERROR", "No ids returned from idgen Service");
+		}
 
+		log.debug("Successfully received {} IDs from idgen service", idResponses.size());
 		return idResponses.stream().map(IdResponse::getId).collect(Collectors.toList());
 	}
 }

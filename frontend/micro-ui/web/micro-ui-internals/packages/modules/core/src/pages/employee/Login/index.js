@@ -20,9 +20,8 @@ const EmployeeLogin = () => {
 
   //let loginConfig = mdmsData?.config ? mdmsData?.config : defaultLoginConfig;
   useEffect(() => {
-    if(isLoading == false && mdmsData?.config)
-    {  
-      setloginConfig(mdmsData?.config)
+    if(!isLoading && mdmsData?.config) {
+      // setloginConfig(mdmsData?.config)
     }
   },[mdmsData, isLoading])
 

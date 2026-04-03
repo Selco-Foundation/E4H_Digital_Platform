@@ -71,4 +71,4 @@ jobs:
           -H "Accept: application/vnd.github.v3+json" \
           -H "Authorization: token ${{ secrets.GHUB_TOKEN }}" \
           https://api.github.com/repos/Selco-Foundation/DIGIT-DevOps/actions/workflows/Dev.yaml/dispatches \
-          -d '{"ref":"Selco-Dev-Workflow"}'
+          -d '{"ref":"Selco-Dev"}'

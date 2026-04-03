@@ -36,17 +36,21 @@ public class MdmsUtil {
 
     public Map<String, Map<String, JSONArray>> fetchMdmsData(RequestInfo requestInfo, String tenantId, String moduleName,
                                                              List<String> masterNameList) {
+        log.trace("Fetching MDMS data for tenant: {}, module: {}, masters: {}", tenantId, moduleName, masterNameList);
         StringBuilder uri = new StringBuilder();
         uri.append(mdmsHost).append(mdmsEndPoint);
+        log.debug("MDMS request URI: {}", uri);
         MdmsCriteriaReq mdmsCriteriaReq = getMdmsRequest(requestInfo, tenantId, moduleName, masterNameList);
         Object response = new HashMap<>();
 
         MdmsResponse mdmsResponse = new MdmsResponse();
         try {
+            log.debug("Sending MDMS request for {} masters", masterNameList.size());
             response = restTemplate.postForObject(uri.toString(), mdmsCriteriaReq, Map.class);
             mdmsResponse = mapper.convertValue(response, MdmsResponse.class);
+            log.info("Successfully fetched MDMS data for module: {}, tenant: {}", moduleName, tenantId);
         } catch (Exception e) {
-            log.error(ERROR_WHILE_FETCHING_FROM_MDMS, e);
+            log.error("Exception occurred while fetching MDMS data, module: {}, tenant: {}", moduleName, tenantId, e);
         }
 
         return mdmsResponse.getMdmsRes();

@@ -29,16 +29,20 @@ public class StorageUtil {
     }
 
     public RequestInfo getRequestInfo(String requestInfoBase64) {
+        log.trace("Entering getRequestInfo method");
         RequestInfo requestInfo = null;
         try {
             //String decoded = new String(Base64.getDecoder().decode(requestInfoBase64));
-            if (requestInfoBase64 != null)
+            if (requestInfoBase64 != null) {
+                log.debug("Deserializing requestInfo from base64 string");
                 requestInfo = objectMapper.readValue(requestInfoBase64, RequestInfo.class);
-            else
+                log.debug("RequestInfo deserialized successfully");
+            } else {
+                log.debug("RequestInfo is null, returning empty RequestInfo");
                 return new RequestInfo();
+            }
         } catch (IOException e) {
-
-            log.error(e.getMessage());
+            log.error("Failed to deserialize requestInfo object", e);
             throw new CustomException("INVALID_REQ_INFO", "Failed to deserialization the requestinfo object");
         }
         return requestInfo;
@@ -55,35 +59,44 @@ public class StorageUtil {
 
     // file extension
     public String getFileExtension(Resource resource) {
+        log.trace("Entering getFileExtension method");
         String originalFilename = resource.getFilename();
-        return (originalFilename != null && originalFilename.contains("."))
+        String extension = (originalFilename != null && originalFilename.contains("."))
                 ? originalFilename.substring(originalFilename.lastIndexOf("."))
                 : ".tmp";
+        log.debug("Extracted file extension: {} from filename: {}", extension, originalFilename);
+        return extension;
     }
 
     // file extension
     public File createTempFile(File tempDir, Resource resource) {
+        log.trace("Entering createTempFile method");
         try {
             String extension = getFileExtension(resource);
+            log.debug("File extension: {}", extension);
             // Create custom temp file using the pre-initialized temp directory
             String uniqueFileName = String.format("%s_%s%s", "video", UUID.randomUUID(), extension);
             File newFile = new File(tempDir, uniqueFileName);
+            log.debug("Creating temp file: {}", newFile.getAbsolutePath());
             boolean fileCreated = newFile.createNewFile();
             if (!fileCreated) {
                 // If the file cannot be created, throw a custom exception
-                log.error("Failed to create the file {}", newFile.getAbsolutePath());
+                log.error("Failed to create the temp file: {}", newFile.getAbsolutePath());
                 throw new CustomException("Failed to create the file: ", newFile.getAbsolutePath());
             }
-            log.info("File created: {}", newFile.getAbsolutePath());
+            log.info("Temp file created: {}", newFile.getAbsolutePath());
             writeFileToTempFile(resource, newFile.toPath());
+            log.debug("Content written to temp file successfully");
             return newFile;
         } catch (IOException e) {
+            log.error("Error creating temp file", e);
             throw new CustomException("ERROR_CREATING_TEMP_FILE", e.getMessage());
         }
 
     }
 
     private void writeFileToTempFile(Resource resource, Path tempFile) throws IOException {
+        log.trace("Entering writeFileToTempFile method for path: {}", tempFile);
         try {
             File newFile = tempFile.toFile();
 

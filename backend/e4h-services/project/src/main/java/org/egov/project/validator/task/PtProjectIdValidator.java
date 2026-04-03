@@ -35,26 +35,35 @@ public class PtProjectIdValidator implements Validator<TaskBulkRequest, Task> {
 
     @Override
     public Map<Task, List<Error>> validate(TaskBulkRequest request) {
-        log.info("validating for project id");
+        log.trace("Entering validate (PtProjectIdValidator)");
+        log.info("Validating project ID for tasks");
+        log.debug("Validating {} tasks", request.getTasks() != null ? request.getTasks().size() : 0);
         Map<Task, List<Error>> errorDetailsMap = new HashMap<>();
         List<Task> entities = request.getTasks();
         Class<?> objClass = getObjClass(entities);
         Method idMethod = getMethod("getProjectId", objClass);
         Map<String, Task> eMap = getIdToObjMap(entities
                 .stream().filter(notHavingErrors()).toList(), idMethod);
+        log.debug("Found {} valid tasks to validate", eMap.size());
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
+            log.debug("Validating {} project IDs against repository", entityIds.size());
             List<String> existingProjectIds = projectRepository.validateIds(entityIds,
                     getIdFieldName(idMethod));
+            log.debug("Found {} existing project IDs", existingProjectIds.size());
             List<Task> invalidEntities = entities.stream().filter(notHavingErrors()).filter(entity ->
                             !existingProjectIds.contains(entity.getProjectId()))
                     .toList();
+            if (!invalidEntities.isEmpty()) {
+                log.warn("Found {} tasks with invalid project IDs", invalidEntities.size());
+            }
             invalidEntities.forEach(task -> {
                 Error error = getErrorForNonExistentRelatedEntity(task.getProjectId());
                 populateErrorDetails(task, error, errorDetailsMap);
             });
         }
-
+        log.debug("Validation completed - {} errors found", errorDetailsMap.size());
+        log.trace("Exiting validate (PtProjectIdValidator)");
         return errorDetailsMap;
     }
 }

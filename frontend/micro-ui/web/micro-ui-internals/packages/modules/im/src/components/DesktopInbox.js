@@ -68,7 +68,25 @@ const DesktopInbox = ({
                   {row.original["incidentId"]}
                 </Link>
               </span>
-             
+              {row.original["potentialDuplicate"] && (
+                <div style={{ marginTop: "5px" }}>
+                  <span
+                    style={{
+                      border: "1px solid #B91900",
+                      borderRadius: "6px",
+                      backgroundColor: "#FFF5F4",
+                      color: "#B91900",
+                      width: "fit-content",
+                      padding: "2px 6px",
+                      display: "inline-block",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {t("CS_INFO_POTENTIAL_DUPLICATE")}
+                  </span>
+                </div>
+              )}
             </div>
           );
         },
@@ -94,7 +112,7 @@ const DesktopInbox = ({
       {
         Header: t("CS_COMPLAINT_PHC_TYPE"),
         Cell: ({ row }) => {
-          return GetCell(t(`TENANT_TENANTS_${row.original["tenantId"].toUpperCase().replace(".","_")}`));
+          return GetCell(t(row.original["facility"]));
         },
       },
       {

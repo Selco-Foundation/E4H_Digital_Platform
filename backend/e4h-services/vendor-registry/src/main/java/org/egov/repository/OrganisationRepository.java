@@ -3,8 +3,8 @@ package org.egov.repository;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.repository.querybuilder.*;
 import org.egov.repository.rowmapper.*;
-import org.egov.service.EncryptionService;
 import lombok.extern.slf4j.Slf4j;
+import org.egov.util.OrganisationUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
@@ -12,8 +12,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static org.egov.util.OrganisationConstant.ORGANISATION_ENCRYPT_KEY;
 
 @Repository
 @Slf4j
@@ -35,12 +33,12 @@ public class OrganisationRepository {
     private final TaxIdentifierOrgIdsRowMapper taxIdentifierOrgIdsRowMapper;
 
     private final ContactDetailsOrgIdsRowMapper contactDetailsOrgIdsRowMapper;
-
-    private final EncryptionService encryptionService;
     private final JdbcTemplate jdbcTemplate;
 
+    private final OrganisationUtil organisationUtil;
+
     @Autowired
-    public OrganisationRepository(AddressQueryBuilder addressQueryBuilder, OrganisationFunctionQueryBuilder organisationFunctionQueryBuilder, OrganisationFunctionRowMapper organisationFunctionRowMapper, AddressOrgIdsRowMapper addressOrgIdsRowMapper, AddressRowMapper addressRowMapper, DocumentQueryBuilder documentQueryBuilder, DocumentRowMapper documentRowMapper, ContactDetailsQueryBuilder contactDetailsQueryBuilder, TaxIdentifierRowMapper taxIdentifierRowMapper, ContactDetailsRowMapper contactDetailsRowMapper, ContactDetailsOrgIdsRowMapper contactDetailsOrgIdsRowMapper, JdbcTemplate jdbcTemplate, JurisdictionQueryBuilder jurisdictionQueryBuilder, TaxIdentifierOrgIdsRowMapper taxIdentifierOrgIdsRowMapper, JurisdictionRowMapper jurisdictionRowMapper, TaxIdentifierQueryBuilder taxIdentifierQueryBuilder, EncryptionService encryptionService) {
+    public OrganisationRepository(AddressQueryBuilder addressQueryBuilder, OrganisationFunctionQueryBuilder organisationFunctionQueryBuilder, OrganisationFunctionRowMapper organisationFunctionRowMapper, AddressOrgIdsRowMapper addressOrgIdsRowMapper, AddressRowMapper addressRowMapper, DocumentQueryBuilder documentQueryBuilder, DocumentRowMapper documentRowMapper, ContactDetailsQueryBuilder contactDetailsQueryBuilder, TaxIdentifierRowMapper taxIdentifierRowMapper, ContactDetailsRowMapper contactDetailsRowMapper, ContactDetailsOrgIdsRowMapper contactDetailsOrgIdsRowMapper, JdbcTemplate jdbcTemplate, JurisdictionQueryBuilder jurisdictionQueryBuilder, TaxIdentifierOrgIdsRowMapper taxIdentifierOrgIdsRowMapper, JurisdictionRowMapper jurisdictionRowMapper, TaxIdentifierQueryBuilder taxIdentifierQueryBuilder, OrganisationUtil organisationUtil) {
         this.addressQueryBuilder = addressQueryBuilder;
         this.organisationFunctionQueryBuilder = organisationFunctionQueryBuilder;
         this.organisationFunctionRowMapper = organisationFunctionRowMapper;
@@ -57,69 +55,88 @@ public class OrganisationRepository {
         this.taxIdentifierOrgIdsRowMapper = taxIdentifierOrgIdsRowMapper;
         this.jurisdictionRowMapper = jurisdictionRowMapper;
         this.taxIdentifierQueryBuilder = taxIdentifierQueryBuilder;
-        this.encryptionService = encryptionService;
+        this.organisationUtil = organisationUtil;
     }
 
     public List<Organisation> getOrganisations(OrgSearchRequest orgSearchRequest) {
+        log.trace("OrganisationRepository::getOrganisations entry");
+        String tenantId = orgSearchRequest.getSearchCriteria() != null
+                ? orgSearchRequest.getSearchCriteria().getTenantId() : "unknown";
+        log.info("Starting organisation search for tenant: {}", tenantId);
+
         // Encrypt search criteria
-        encryptionService.encryptDetails(orgSearchRequest, ORGANISATION_ENCRYPT_KEY);
+//        encryptionService.encryptDetails(orgSearchRequest, ORGANISATION_ENCRYPT_KEY);
         //Fetch organisation ids based on identifierType and identifierValue search criteria
         Set<String> orgIdsFromIdentifierSearch = getOrgIdsForIdentifiersBasedOnSearchCriteria(orgSearchRequest);
+        log.debug("Found {} organisation IDs from identifier search", orgIdsFromIdentifierSearch.size());
+
         //Fetch organisation ids based on boundaryCode in  search criteria
         Set<String> orgIdsFromBoundarySearch = getOrgIdsForAddressesBasedOnSearchCriteria(orgSearchRequest);
+        log.debug("Found {} organisation IDs from boundary search", orgIdsFromBoundarySearch.size());
+
         //Fetch organisation ids based on contactMobileNumber in  search criteria
         Set<String> orgIdsFromContactMobileNumberSearch = getOrgIdsForContactNumberBasedOnSearchCriteria(orgSearchRequest);
+        log.debug("Found {} organisation IDs from contact mobile number search", orgIdsFromContactMobileNumberSearch.size());
 
         Set<String> orgIds = new HashSet<>();
         getOrgIdsForSearch(orgSearchRequest, orgIdsFromIdentifierSearch, orgIdsFromBoundarySearch, orgIdsFromContactMobileNumberSearch, orgIds);
+        log.debug("Total unique organisation IDs after combining search results: {}", orgIds.size());
 
         // If OrgIds are empty and request is present in search criteria
         if (orgIds.isEmpty() &&
                 (StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierType())
                 || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue())
                 || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode())
-                || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getContactMobileNumber())
-                || !orgSearchRequest.getSearchCriteria().getId().isEmpty())) {
+                || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone())
+                || !orgSearchRequest.getSearchCriteria().getIds().isEmpty())) {
+            log.debug("No organisation IDs found matching search criteria");
             return Collections.emptyList();
         }
 
         //Fetch Organisations based on search criteria
         List<Organisation> organisations = getOrganisationsBasedOnSearchCriteria(orgSearchRequest, orgIds);
+        log.debug("Fetched {} organisations from database", organisations.size());
 
         Set<String> organisationIds = organisations.stream().map(Organisation :: getId).collect(Collectors.toSet());
 
         //Fetch addresses based on organisation Ids
         List<Address> addresses = getAddressBasedOnOrganisationIds(organisationIds);
+        log.debug("Fetched {} addresses", addresses.size());
 
         //Fetch contactDetails based on organisation Ids
         List<ContactDetails> contactDetails = getContactDetailsBasedOnOrganisationIds(organisationIds);
+        log.debug("Fetched {} contact details", contactDetails.size());
 
         Set<String> functionIds = organisations.stream()
                 .flatMap(org -> org.getFunctions().stream())
                 .map(Function::getId)
                 .collect(Collectors.toSet());
-        //Fetch addresses based on organisation Ids
+        //Fetch documents based on organisation Ids
         List<Document> documents = getDocumentsBasedOnOrganisationIds(organisationIds, functionIds);
+        log.debug("Fetched {} documents", documents.size());
 
         //Fetch jurisdictions based on organisation Ids
         List<Jurisdiction> jurisdictions = getJurisdictionsBasedOnOrganisationIds(organisationIds);
+        log.debug("Fetched {} jurisdictions", jurisdictions.size());
 
         //Fetch identifiers based on organisation Ids
         List<Identifier> identifiers = getIdentifiersBasedOnOrganisationIds(organisationIds);
+        log.debug("Fetched {} identifiers", identifiers.size());
 
-        log.info("Fetched organisation details for search request");
+        log.info("Organisation search completed, returning {} organisations", organisations.size());
         //Construct Organisation Objects with fetched organisations, addresses, contactDetails, jurisdictions, identifiers and documents using Organisation id
-        return encryptionService
-                .decrypt(buildOrganisationSearchResult(organisations, addresses, contactDetails, documents, jurisdictions, identifiers),
-                        ORGANISATION_ENCRYPT_KEY,orgSearchRequest);
+        return buildOrganisationSearchResult(organisations, addresses, contactDetails, documents, jurisdictions, identifiers);
+//        return encryptionService
+//                .decrypt(buildOrganisationSearchResult(organisations, addresses, contactDetails, documents, jurisdictions, identifiers),
+//                        ORGANISATION_ENCRYPT_KEY,orgSearchRequest);
     }
 
     private Set<String> getOrgIdsForContactNumberBasedOnSearchCriteria(OrgSearchRequest orgSearchRequest) {
-        if (StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getContactMobileNumber())) {
+        if (StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone())) {
             List<Object> preparedStmtListTarget = new ArrayList<>();
-            String queryAddress = contactDetailsQueryBuilder.getContactDetailsSearchQueryBasedOnCriteria(orgSearchRequest.getSearchCriteria().getContactMobileNumber(), preparedStmtListTarget);
+            String queryAddress = contactDetailsQueryBuilder.getContactDetailsSearchQueryBasedOnCriteria(orgSearchRequest.getSearchCriteria().getOrgPocPhone(), preparedStmtListTarget);
             Set<String> orgIds = jdbcTemplate.query(queryAddress, contactDetailsOrgIdsRowMapper, preparedStmtListTarget.toArray());
-            log.info("Fetched Org Ids for contact details based on Contact Mobile Number search");
+            log.trace("Fetched {} Org Ids for contact details based on Contact Mobile Number search", orgIds.size());
             return orgIds;
         }
         return Collections.emptySet();
@@ -131,7 +148,7 @@ public class OrganisationRepository {
             List<Object> preparedStmtListTarget = new ArrayList<>();
             String queryIdentifier = taxIdentifierQueryBuilder.getTaxIdentifierSearchQueryBasedOnCriteria(orgSearchRequest.getSearchCriteria().getIdentifierType(), orgSearchRequest.getSearchCriteria().getIdentifierValue(), preparedStmtListTarget);
             Set<String> orgIds = jdbcTemplate.query(queryIdentifier, taxIdentifierOrgIdsRowMapper, preparedStmtListTarget.toArray());
-            log.info("Fetched Org Ids for identifiers based on Search criteria");
+            log.trace("Fetched {} Org Ids for identifiers based on Search criteria", orgIds.size());
             return orgIds;
         }
         return Collections.emptySet();
@@ -143,7 +160,7 @@ public class OrganisationRepository {
             List<Object> preparedStmtListTarget = new ArrayList<>();
             String queryAddress = addressQueryBuilder.getAddressSearchQueryBasedOnCriteria(orgSearchRequest.getSearchCriteria().getBoundaryCode(), orgSearchRequest.getSearchCriteria().getTenantId(), preparedStmtListTarget);
             Set<String> orgIds = jdbcTemplate.query(queryAddress, addressOrgIdsRowMapper, preparedStmtListTarget.toArray());
-            log.info("Fetched Org Ids for addresses based on Boundary Code search");
+            log.trace("Fetched {} Org Ids for addresses based on Boundary Code search", orgIds.size());
             return orgIds;
         }
         return Collections.emptySet();
@@ -155,7 +172,7 @@ public class OrganisationRepository {
         String query = organisationFunctionQueryBuilder.getOrganisationSearchQuery(orgSearchRequest, orgIds, preparedStmtList, false);
         List<Organisation> organisations = jdbcTemplate.query(query, organisationFunctionRowMapper, preparedStmtList.toArray());
 
-        log.info("Fetched organisations list based on given search criteria");
+        log.trace("Fetched organisations list based on given search criteria");
         return organisations;
     }
 
@@ -164,10 +181,10 @@ public class OrganisationRepository {
         boolean isIdentifierSearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierType())
                 || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue());
         boolean isBoundarySearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode());
-        boolean isOrgIdsSearchCriteriaPresent = orgSearchRequest.getSearchCriteria().getId() != null && !orgSearchRequest.getSearchCriteria().getId().isEmpty();
-        boolean isContactMobileNumberSearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getContactMobileNumber());
-        if (orgSearchRequest.getSearchCriteria().getId() == null) {
-            orgSearchRequest.getSearchCriteria().setId(new ArrayList<>());
+        boolean isOrgIdsSearchCriteriaPresent = orgSearchRequest.getSearchCriteria().getIds() != null && !orgSearchRequest.getSearchCriteria().getIds().isEmpty();
+        boolean isContactMobileNumberSearchCriteriaPresent = StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone());
+        if (orgSearchRequest.getSearchCriteria().getIds() == null) {
+            orgSearchRequest.getSearchCriteria().setIds(new ArrayList<>());
         }
 
         // If identifierType or identifierValue present in request, but the search result is empty, then return empty list
@@ -196,7 +213,7 @@ public class OrganisationRepository {
             }
             //Get common orgIds of identifier search result and orgIds in search request
             if (isOrgIdsSearchCriteriaPresent) {
-                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
+                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getIds());
             }
         } else if (isIdentifierSearchCriteriaPresent) {
             orgIds.addAll(orgIdsFromIdentifierSearch);
@@ -206,16 +223,16 @@ public class OrganisationRepository {
             }
             //Get common orgIds of identifier search result and orgIds in search request
             if (isOrgIdsSearchCriteriaPresent) {
-                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
+                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getIds());
             }
         } else if (isBoundarySearchCriteriaPresent) {
             orgIds.addAll(orgIdsFromBoundarySearch);
             //Get common orgIds of boundary search result and orgIds in search request
             if (isOrgIdsSearchCriteriaPresent) {
-                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getId());
+                orgIds.retainAll(orgSearchRequest.getSearchCriteria().getIds());
             }
         } else {
-            orgIds.addAll(orgSearchRequest.getSearchCriteria().getId());
+            orgIds.addAll(orgSearchRequest.getSearchCriteria().getIds());
         }
 
     }
@@ -225,7 +242,7 @@ public class OrganisationRepository {
         List<Object> preparedStmtListTarget = new ArrayList<>();
         String queryAddress = addressQueryBuilder.getAddressSearchQuery(organisationIds, preparedStmtListTarget);
         List<Address> addresses = jdbcTemplate.query(queryAddress, addressRowMapper, preparedStmtListTarget.toArray());
-        log.info("Fetched addresses based on organisation Ids");
+        log.trace("Fetched addresses based on organisation Ids");
         return addresses;
     }
 
@@ -234,7 +251,7 @@ public class OrganisationRepository {
         List<Object> preparedStmtListTarget = new ArrayList<>();
         String queryDocument = documentQueryBuilder.getDocumentsSearchQuery(organisationIds, functionIds, preparedStmtListTarget);
         List<Document> documents = jdbcTemplate.query(queryDocument, documentRowMapper, preparedStmtListTarget.toArray());
-        log.info("Fetched documents based on organisation Ids");
+        log.trace("Fetched documents based on organisation Ids");
         return documents;
     }
 
@@ -243,7 +260,7 @@ public class OrganisationRepository {
         List<Object> preparedStmtListTarget = new ArrayList<>();
         String queryContactDetails = contactDetailsQueryBuilder.getContactDetailsSearchQuery(organisationIds, preparedStmtListTarget);
         List<ContactDetails> contactDetails = jdbcTemplate.query(queryContactDetails, contactDetailsRowMapper, preparedStmtListTarget.toArray());
-        log.info("Fetched contactDetails based on organisation Ids");
+        log.trace("Fetched contactDetails based on organisation Ids");
         return contactDetails;
     }
 
@@ -252,7 +269,7 @@ public class OrganisationRepository {
         List<Object> preparedStmtListTarget = new ArrayList<>();
         String queryIdentifier = taxIdentifierQueryBuilder.getTaxIdentifierSearchQuery(organisationIds, preparedStmtListTarget);
         List<Identifier> identifiers = jdbcTemplate.query(queryIdentifier, taxIdentifierRowMapper, preparedStmtListTarget.toArray());
-        log.info("Fetched identifiers based on organisation Ids");
+        log.trace("Fetched identifiers based on organisation Ids");
         return identifiers;
     }
 
@@ -261,39 +278,47 @@ public class OrganisationRepository {
         List<Object> preparedStmtListTarget = new ArrayList<>();
         String queryJurisdictions = jurisdictionQueryBuilder.getJurisdictionSearchQuery(organisationIds, preparedStmtListTarget);
         List<Jurisdiction> jurisdictions = jdbcTemplate.query(queryJurisdictions, jurisdictionRowMapper, preparedStmtListTarget.toArray());
-        log.info("Fetched jurisdictions based on organisation Ids");
+        log.trace("Fetched jurisdictions based on organisation Ids");
         return jurisdictions;
     }
 
     /* Construct organisation search results based on organisations, addresses, contact details, documents, jurisdictions and identifiers*/
     private List<Organisation> buildOrganisationSearchResult(List<Organisation> organisations, List<Address> addresses, List<ContactDetails> contactDetails, List<Document> documents, List<Jurisdiction> jurisdictions, List<Identifier> identifiers) {
+        log.trace("OrganisationRepository::buildOrganisationSearchResult entry");
         for (Organisation organisation: organisations) {
             log.info("Constructing organisation object for organisation " + organisation.getId());
+            // Decrypt poc mobile number
+            String decryptedMobileNumber = organisationUtil.decryptMobileNumber(organisation.getOrgPocPhone());
+            if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                organisation.setOrgPocPhone(decryptedMobileNumber);
+            }
+            log.trace("Constructing organisation object for organisation ID: {}", organisation.getId());
             constructOrganizationObject(organisation, addresses, contactDetails, documents, jurisdictions, identifiers);
-            log.info("Constructed organisation object for organisation " + organisation.getId());
         }
+        log.debug("Constructed {} organisation objects", organisations.size());
         return organisations;
     }
     private void constructOrganizationObject(Organisation organisation, List<Address> addresses, List<ContactDetails> contactDetails, List<Document> documents, List<Jurisdiction> jurisdictions, List<Identifier> identifiers){
+        log.trace("OrganisationRepository::constructOrganizationObject entry for organisation ID: {}", organisation.getId());
         if (addresses != null && !addresses.isEmpty()) {
-            log.info("Adding Addresses to organisation " + organisation.getId());
             addAddressToOrganisation(organisation, addresses);
+            log.trace("Added {} addresses to organisation {}", addresses.stream().filter(a -> a.getOrgId().equals(organisation.getId())).count(), organisation.getId());
         }
         if (documents != null && !documents.isEmpty()) {
-            log.info("Adding Documents to organisation " + organisation.getId());
             addDocumentToOrganisation(organisation, documents);
+            log.trace("Added documents to organisation {}", organisation.getId());
         }
         if (contactDetails != null && !contactDetails.isEmpty()) {
-            log.info("Adding contactDetails to organisation " + organisation.getId());
             addContactDetailsToOrganisation(organisation, contactDetails);
+            log.trace("Added {} contact details to organisation {}", contactDetails.stream().filter(c -> c.getOrgId().equals(organisation.getId())).count(), organisation.getId());
         }
         if (jurisdictions != null && !jurisdictions.isEmpty()) {
-            log.info("Adding jurisdictions to organisation " + organisation.getId());
             addJurisdictionsToOrganisation(organisation, jurisdictions);
+            log.trace("Added {} jurisdictions to organisation {}", jurisdictions.stream().filter(j -> j.getOrgId().equals(organisation.getId())).count(), organisation.getId());
         }
         if (identifiers != null && !identifiers.isEmpty()) {
-            log.info("Adding identifiers to organisation " + organisation.getId());
             addIdentifiersToOrganisation(organisation, identifiers);
+            log.trace("Added {} identifiers to organisation {}", identifiers.stream().filter(i -> i.getOrgId().equals(organisation.getId())).count(), organisation.getId());
         }
     }
 
@@ -372,8 +397,8 @@ public class OrganisationRepository {
                 (StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierType())
                         || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getIdentifierValue())
                         || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getBoundaryCode())
-                        || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getContactMobileNumber())
-                        || !orgSearchRequest.getSearchCriteria().getId().isEmpty())) {
+                        || StringUtils.isNotBlank(orgSearchRequest.getSearchCriteria().getOrgPocPhone())
+                        || !orgSearchRequest.getSearchCriteria().getIds().isEmpty())) {
             return 0;
         }
         
@@ -383,7 +408,7 @@ public class OrganisationRepository {
             return 0;
 
         Integer count = jdbcTemplate.queryForObject(query, preparedStatement.toArray(), Integer.class);
-        log.info("Total organisation count is : " + count);
+        log.debug("Total organisation count: {}", count);
         return count;
     }
 }

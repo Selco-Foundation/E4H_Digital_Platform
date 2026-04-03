@@ -21,6 +21,12 @@ public class IndexView {
     @JsonProperty("applicationStatus_localized")
     private String applicationStatusLocalized;
 
+    @JsonProperty("warrantyStatus")
+    private String warrantyStatus;
+
+    @JsonProperty("warrantyStatus_localized")
+    private String warrantyStatusLocalized;
+
     @JsonProperty("phcSubType_localized")
     private String phcSubTypeLocalized;
 
@@ -63,6 +69,12 @@ public class IndexView {
     @JsonProperty("definedTotalSla")
     private Long definedTotalSla;
 
+    @JsonProperty("resolvedTimestamp")
+    private Long resolvedTimestamp;
+
+    @JsonProperty("declinedTimestamp")
+    private Long declinedTimestamp;
+
     @JsonProperty("comments")
     private String comments;
 
@@ -72,4 +84,9 @@ public class IndexView {
     @JsonProperty("sendBackSubReason")
     private String sendBackSubReason;
 
+    @JsonProperty("latestRejectReason")
+    private String latestRejectReason;
+
+    @JsonProperty("boundary")
+    private Boundary boundary;
 }

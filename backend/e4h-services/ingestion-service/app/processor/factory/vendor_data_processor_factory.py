@@ -1,3 +1,4 @@
+from app.core.logging import AppLogger
 from app.ingest.boundary_code_validator import BoundaryCodeValidator
 from app.ingest.excel_data_loader import ExcelDataLoader
 from app.ingest.excel_data_writer import ExcelDataWriter
@@ -6,6 +7,8 @@ from app.ingest.required_field_validator import RequiredFieldValidator
 from app.processor.vendor_data_processor import VendorDataProcessor
 from app.schemas.request_info import RequestInfo
 from app.utils.mdms_client import MDMSClient
+
+logger = AppLogger().get_logger()
 
 
 class VendorDataProcessorFactory:
@@ -43,7 +46,7 @@ class VendorDataProcessorFactory:
                 validators.append(RequiredFieldValidator(schema.mdms[0].data.columns))
                 validators.append(PatternValidator(schema.mdms[0].data.columns))
             except Exception as e:
-                print(f"Error: Could not set up MDMS validators - {e}")
+                logger.error(f"Could not set up MDMS validators: {e}", exc_info=True)
                 raise Exception("Could not set up MDMS validators")
         validators.append(BoundaryCodeValidator(data_loader.get_boundary_codes()))
         data_writer = ExcelDataWriter(file_path, output_sheet)

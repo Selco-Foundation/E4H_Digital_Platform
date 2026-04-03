@@ -5,11 +5,15 @@ import * as locale from "./locale";
 import * as obps from "./obps";
 import * as pt from "./pt";
 import * as privacy from "./privacy";
+
+import * as analytics from "./Analytics";
+
 import PDFUtil, { downloadReceipt ,downloadPDFFromLink,downloadBill ,getFileUrl} from "./pdf";
 import getFileTypeFromFileStoreURL from "./fileType";
 import preProcessMDMSConfig from "./preProcessMDMSConfig";
 import preProcessMDMSConfigInboxSearch from "./preProcessMDMSConfigInboxSearch";
 import * as parsingUtils from "../services/atoms/Utils/ParsingUtils"
+import { BoundaryUtil } from "./BoundaryUtil";
 const GetParamFromUrl = (key, fallback, search) => {
   if (typeof window !== "undefined") {
     search = search || window.location.search;
@@ -381,5 +385,7 @@ export default {
   ...privacy,
   getDefaultLanguage,
   getLocaleDefault,
-  getLocaleRegion
+  getLocaleRegion,
+  analytics,
+  BoundaryUtil
 };

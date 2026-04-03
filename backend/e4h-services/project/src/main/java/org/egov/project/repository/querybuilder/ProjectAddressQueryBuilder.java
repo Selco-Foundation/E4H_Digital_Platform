@@ -48,6 +48,14 @@ public class ProjectAddressQueryBuilder {
             " result) result_offset " +
             "WHERE offset_ > ? AND offset_ <= ?";
 
+    private static final String STATUS_COUNT_QUERY = "SELECT status, COUNT(*) AS occurrences " +
+            "FROM project prj where prj.status is not null and prj.projecttype = 'Facility' ";
+
+    // Project Name Generation Queries
+    private static final String CHECK_PROJECT_NAME_EXISTS_QUERY = "SELECT COUNT(*) FROM project WHERE name = ? AND tenantid = ?";
+    private static final String CHECK_PROJECT_NAME_EXISTS_EXCLUDING_PROJECT_QUERY = "SELECT COUNT(*) FROM project WHERE name = ? AND tenantid = ? AND id != ?";
+    private static final String FIND_HIGHEST_EXISTING_PROJECT_NAME_QUERY = "SELECT name FROM project WHERE name LIKE ? AND tenantid = ? ORDER BY name ASC";
+
     private final ProjectConfiguration config;
 
     /* Add WHERE clause before first condition, ADD and for subsequent conditions. Do not add AND before any condition and after "(" */
@@ -205,6 +213,17 @@ public class ProjectAddressQueryBuilder {
         return addPaginationWrapper(queryBuilder.toString(), criteria.getPreparedStmtList(), criteria.getLimit(), criteria.getOffset());
     }
 
+    public String getStatusProjectOccurence(String parentProjectId, List<Object> preparedStmtList) {
+        StringBuilder queryBuilder = new StringBuilder(STATUS_COUNT_QUERY);
+        if (parentProjectId != null && !parentProjectId.isEmpty()) {
+            queryBuilder.append(" AND prj.parent =? ");
+            preparedStmtList.add(parentProjectId);
+        }
+        queryBuilder.append("GROUP BY status ORDER BY occurrences DESC;");
+
+        return queryBuilder.toString();
+    }
+
     /**
      * Constructs the SQL query string for searching projects based on the given parameters.
      *
@@ -246,8 +265,13 @@ public class ProjectAddressQueryBuilder {
         // Check if boundary code is provided
         if (projectSearch.getBoundaryCode() != null && StringUtils.isNotBlank(projectSearch.getBoundaryCode())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" addr.boundary=? ");
-            preparedStmtList.add(projectSearch.getBoundaryCode());
+            List<String> boundaryCodes = Arrays.stream(projectSearch.getBoundaryCode().split(","))
+                    .map(String::trim)
+                    .filter(StringUtils::isNotBlank)
+                    .distinct()
+                    .collect(Collectors.toList());
+            queryBuilder.append(" addr.boundary IN (").append(createQuery(boundaryCodes)).append(")");
+            addToPreparedStatement(preparedStmtList, boundaryCodes);
         }
 
         // Check if sub-project type ID is provided
@@ -341,8 +365,8 @@ public class ProjectAddressQueryBuilder {
         // Check if project name is provided
         if (StringUtils.isNotBlank(projectSearch.getName())) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
-            queryBuilder.append(" prj.name LIKE ? ");
-            preparedStmtList.add('%' + projectSearch.getName() + '%');
+            queryBuilder.append(" LOWER(prj.name) LIKE ? ");
+            preparedStmtList.add("%" + projectSearch.getName().toLowerCase() + "%");
         }
 
         // Check if project type ID is provided
@@ -476,11 +500,51 @@ public class ProjectAddressQueryBuilder {
         // Default sorting field
         String defaultSortField = "project_lastModifiedTime";
         String defaultSortOrder = ProjectSortCriteria.SortDirection.DESC.name();
+        if(projectSearchRequest.getProject() !=null && projectSearchRequest.getProject().getProjectTypeId() !=null
+                && projectSearchRequest.getProject().getProjectTypeId().equals("Facility"))
+            sortField = "project_name";
+
         if (sortField != null) {
             query += " ORDER BY " + sortField + " " + sortDirection;
         } else {
             query += " ORDER BY " + defaultSortField + " " + defaultSortOrder;
         }
         return query;
+    }
+
+    /**
+     * Builds the query to check if a project name exists
+     * @return The SQL query string
+     */
+    public String getCheckProjectNameExistsQuery() {
+        return CHECK_PROJECT_NAME_EXISTS_QUERY;
+    }
+
+    /**
+     * Builds the query to check if a project name exists, excluding a specific project
+     * @return The SQL query string
+     */
+    public String getCheckProjectNameExistsExcludingProjectQuery() {
+        return CHECK_PROJECT_NAME_EXISTS_EXCLUDING_PROJECT_QUERY;
+    }
+
+    /**
+     * Builds the query to find the highest existing project name with pattern matching
+     * @return The SQL query string
+     */
+    public String getFindHighestExistingProjectNameQuery() {
+        return FIND_HIGHEST_EXISTING_PROJECT_NAME_QUERY;
+    }
+
+    /**
+     * Escapes LIKE wildcards in the base name to prevent SQL injection and incorrect matching
+     * @param baseName The base name to escape
+     * @return The escaped base name
+     */
+    public String escapeLikeWildcards(String baseName) {
+        if (baseName == null) {
+            return null;
+        }
+        return baseName.replace("%", "\\%").replace("_", "\\_");
     }
 }

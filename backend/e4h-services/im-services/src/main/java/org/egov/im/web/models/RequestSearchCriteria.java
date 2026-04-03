@@ -33,9 +33,20 @@ public class RequestSearchCriteria {
     @JsonProperty("phcType")
     private Set<String> phcType;
 
+    @JsonProperty("phcSubType")
+    private Set<String> phcSubType;
+
     @SafeHtml
     @JsonProperty("mobileNumber")
     private String mobileNumber;
+
+    @SafeHtml
+    @JsonProperty("boundaryCode")
+    private String boundaryCode;
+
+    @SafeHtml
+    @JsonProperty("systemFunctional")
+    private String systemFunctional;
 
     @SafeHtml
     @JsonProperty("incidentId")
@@ -43,6 +54,15 @@ public class RequestSearchCriteria {
 
     @JsonProperty("incidentType")
     private Set<String> incidentType;
+
+    @JsonProperty("incidentSubType")
+    private Set<String> incidentSubType;
+
+    @JsonProperty("district")
+    private String district;
+
+    @JsonProperty("block")
+    private String block;
     
     @JsonProperty("sortBy")
     private SortBy sortBy;
@@ -67,6 +87,13 @@ public class RequestSearchCriteria {
 
     @JsonProperty("slaDeltaMinLimit")
     private Long slaDeltaMinLimit;
+
+    /**
+     * When set, only incidents where (currentTime - COALESCE(filedDate, createdTime)) >= this value (ms) are returned.
+     * Used e.g. for theft notification threshold.
+     */
+    @JsonProperty("filedDateThresholdMs")
+    private Long filedDateThresholdMs;
 
     @JsonProperty("limit")
     private Integer limit;

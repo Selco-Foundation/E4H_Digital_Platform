@@ -41,7 +41,6 @@ public class BoundaryRelationshipSearchCriteria {
     @JsonProperty("parent")
     private String parent = null;
 
-
     @JsonProperty("includeChildren")
     @Builder.Default
     private Boolean includeChildren = Boolean.FALSE;
@@ -50,6 +49,12 @@ public class BoundaryRelationshipSearchCriteria {
     @Builder.Default
     private Boolean includeParents = Boolean.FALSE;
 
+    @JsonProperty("maxChildLevel")
+    private Integer maxChildLevel = null;
+
+    @JsonProperty("maxAncestorLevel")
+    private Integer maxAncestorLevel = null;
+
     @JsonIgnore
     @Builder.Default
     private Boolean isSearchForRootNode = Boolean.FALSE;
@@ -57,5 +62,14 @@ public class BoundaryRelationshipSearchCriteria {
     @JsonIgnore
     @Builder.Default
     private List<String> currentBoundaryCodes = new ArrayList<>();
+
+    @JsonProperty("parentCodes")
+    private List<String> parentCodes = null;
+
+    @JsonProperty("offset")
+    private int offset;
+
+    @JsonProperty("limit")
+    private int limit;
 
 }

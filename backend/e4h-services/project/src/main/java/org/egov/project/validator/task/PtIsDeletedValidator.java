@@ -22,13 +22,17 @@ public class PtIsDeletedValidator implements Validator<TaskBulkRequest, Task> {
 
     @Override
     public Map<Task, List<Error>> validate(TaskBulkRequest request) {
-        log.info("validating isDeleted field");
+        log.trace("Entering validate (PtIsDeletedValidator)");
+        log.info("Validating isDeleted field");
+        log.debug("Validating {} tasks for isDeleted field", request.getTasks() != null ? request.getTasks().size() : 0);
         HashMap<Task, List<Error>> errorDetailsMap = new HashMap<>();
         List<Task> validIndividuals = request.getTasks();
         validIndividuals.stream().filter(Task::getIsDeleted).forEach(individual -> {
             Error error = getErrorForIsDelete();
             populateErrorDetails(individual, error, errorDetailsMap);
         });
+        log.debug("IsDeleted validation completed - found {} errors", errorDetailsMap.size());
+        log.trace("Exiting validate (PtIsDeletedValidator)");
         return errorDetailsMap;
     }
 }

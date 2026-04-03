@@ -51,5 +51,7 @@ public class EmployeeQueries {
 
 	public static final String HRMS_GET_ASSIGNMENT = "select distinct(employeeid)  from {schema}.eg_hrms_assignment assignment where assignment.tenantid notnull  ";
 
+	public static final String HRMS_GET_JURISDICTION = "select distinct(employeeid) from {schema}.eg_hrms_jurisdiction jurisdiction where jurisdiction.tenantid notnull ";
+
 	public static final String HRMS_COUNT_EMP_QUERY = "SELECT active, count(*) FROM {schema}.eg_hrms_employee WHERE tenantid ";
 }

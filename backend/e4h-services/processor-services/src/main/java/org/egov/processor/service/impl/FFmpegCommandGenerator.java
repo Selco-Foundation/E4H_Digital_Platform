@@ -25,6 +25,7 @@ public class FFmpegCommandGenerator {
      * @return The formatted FFmpeg command string.
      */
     public String getBaseCommand(String inputFilePath, String outputFilePath) {
+        log.trace("Method invoked: getBaseCommand, inputFilePath: {}, outputFilePath: {}", inputFilePath, outputFilePath);
         return String.format(BASE_COMMAND, inputFilePath, outputFilePath);
     }
 
@@ -44,6 +45,7 @@ public class FFmpegCommandGenerator {
                                       String resolution,
                                       String audioBitRate,
                                       String outputFilePath) {
+        log.trace("Method invoked: getOptimizedCommand, inputFilePath: {}, preset: {}, crf: {}, resolution: {}", inputFilePath, preset, crf, resolution);
         return String.format(OPTIMIZED_COMMAND, inputFilePath, preset, crf, resolution, audioBitRate, outputFilePath);
     }
 }

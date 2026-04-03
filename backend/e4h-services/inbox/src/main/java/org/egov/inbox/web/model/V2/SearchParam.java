@@ -32,15 +32,19 @@ public class SearchParam {
 
         EQUAL("EQUAL"),
 
-        GTE("GTE"),
+        GTE("gte"),
 
-        LTE("LTE"), 
+        LTE("lte"),
         
         WILDCARD("WILDCARD"),
 
         SLA_COMPARE("SLA_COMPARE"),
 
-        MULTI_MATCH("MULTI_MATCH");
+        MULTI_MATCH("MULTI_MATCH"),
+
+        MUST_NOT("MUST_NOT"),
+
+        SHOULD("SHOULD");
 
 
         private String value;

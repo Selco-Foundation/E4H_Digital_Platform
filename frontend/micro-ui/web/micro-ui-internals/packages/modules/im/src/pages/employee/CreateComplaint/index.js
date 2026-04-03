@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
-import {
-  Dropdown,
-  MultiUploadWrapper,
-} from "@selco/digit-ui-react-components";
+import { Button, Dropdown, Loader, MultiUploadWrapper, PopUp, Toast } from "@selco/digit-ui-react-components";
 import { useRouteMatch, useHistory } from "react-router-dom";
 import { useQueryClient } from "react-query";
 import { FormComposer } from "../../../components/FormComposer";
-import { createComplaint } from "../../../redux/actions/index";
+import { populateCreateResponse } from "../../../redux/actions/index";
 import { Link } from "react-router-dom";
 
 export const CreateComplaint = ({ parentUrl }) => {
   const { t } = useTranslation();
-  const stateTenantId = Digit.ULBService.getStateId();
-  const [healthCareType, setHealthCareType] = useState();
   const [healthcentre, setHealthCentre] = useState();
-  const [blockMenu, setBlockMenu] = useState([]);
-  const [blockMenuNew, setBlockMenuNew] = useState([]);
   const [districtMenu, setDistrictMenu] = useState([]);
+  const [sortedDistrictMenu, setSortedDistrictMenu] = useState([]);
+  const [blockOptions, setBlockOptions] = useState([]);
+  const [blockMenu, setBlockMenu] = useState([]);
+  const [sortedBlockMenu, setSortedBlockMenu] = useState([]);
+  const [facilityOptions, setFacilityOptions] = useState([]);
+  const [facilityMenu, setFacilityMenu] = useState([]);
+  const [sortedFacilityMenu, setSortedFacilityMenu] = useState([]);
   const [file, setFile] = useState(null);
   const [showToast, setShowToast] = useState(null);
   const [uploadedFile, setUploadedFile] = useState([]);
@@ -26,39 +26,144 @@ export const CreateComplaint = ({ parentUrl }) => {
   const [isUploading, setIsUploading] = useState(false);
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [isVideoUploading, setIsVideoUploading] = useState(false);
+  const [isFirUploading, setIsFirUploading] = useState(false);
   const [imageState, setImageState] = useState({ newArr: [], mappedArray: [] });
   const [videoState, setVideoState] = useState({ newArr: [], mappedArray: [] });
+  const [firState, setFirState] = useState({ newArr: [], mappedArray: [] });
   const specificFileConstraint = [
     { type: "video", maxSize: 50, maxFiles: 2 },
     { type: "image", maxSize: 10, maxFiles: 5 },
+    { type: "fir", maxSize: 5, maxFiles: 5 },
   ];
   const [district, setDistrict] = useState(null);
   const [block, setBlock] = useState(null);
   const [error, setError] = useState(null);
-  let reporterName = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.name;
+  const [creationError, setCreationError] = useState(null);
   const [canSubmit, setSubmitValve] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const tenantId = window.Digit.SessionStorage.get("Employee.tenantId");
-  const [tenant, setTenant] = useState(window.Digit.SessionStorage.get("Employee.tenantId"));
-  const [complaintType, setComplaintType] = useState(JSON?.parse(sessionStorage.getItem("complaintType")) || {});
+  const [complaintType, setComplaintType] = useState({});
   const [subTypeMenu, setSubTypeMenu] = useState([]);
-  const [phcSubTypeMenu, setPhcSubTypeMenu] = useState([]);
   const [disbaled, setDisable] = useState(true);
   const [disbaledUpload, setDisableUpload] = useState(true);
   const [phcMenuNew, setPhcMenu] = useState([]);
-  const [subType, setSubType] = useState(JSON?.parse(sessionStorage.getItem("subType")) || {});
-  const [systemFunctionality, setSystemFunctionality] = useState();
+  const [subType, setSubType] = useState({});
+  const [systemFunctionality, setSystemFunctionality] = useState({});
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
   const [dataState, setDataState] = useState({ newArr: [], mappedArray: [] });
+  const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
+  const [blockUI, setBlockUI] = useState(false);
+  const [selectBoundaryCode, setSelectBoundaryCode] = useState("");
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
+    country: ["-"],
+  };
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+  const [stateBoundaryCode, setStateBoundaryCode] = useState("");
+  const [facilityBoundaries, setFacilityBoundaries] = useState([]);
+  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
+  const [isInstallationTicket, setIsInstallationTicket] = useState(false);
+  const [isUninstalledFacility, setIsUninstalledFacility] = useState(false);
+  const isTheftIssue = complaintType?.key?.toUpperCase() === "THEFT";
+
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+
+  useEffect(() => {
+    setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
+    if (boundaryData) {
+      setStateBoundaryCode(boundaryData.states?.map((state) => state?.code)?.join(","));
+      setDistrictMenu(boundaryData.districts);
+      setBlockOptions(boundaryData.blocks);
+      setFacilityBoundaries(boundaryData.facilities);
+      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
+    }
+  }, [boundaryData, t]);
+
+  useEffect(() => {
+    if (facilityBoundaries?.length && facilityData?.facilities?.length) {
+      const facilityBoundaryCodeToParentMap = new Map();
+      for (let facilityBoundary of facilityBoundaries) {
+        facilityBoundaryCodeToParentMap.set(facilityBoundary.code, facilityBoundary.parentCode);
+      }
+      setFacilityOptions(facilityData?.facilities?.map((facility) => ({
+        code: facility.boundaryCode,
+        id: facility.facilityId,
+        status: facility.facilityStatus,
+        parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
+      })));
+    }
+  }, [facilityBoundaries, facilityData]);
+
+  useEffect(() => {
+    if (district?.code && blockOptions?.length) {
+      const newBlocksMenu = blockOptions?.filter((blockOption) => blockOption?.parentCode === district.code);
+      setBlockMenu(newBlocksMenu);
+    } else {
+      setBlockMenu([]);
+    }
+  }, [district, blockOptions]);
+
+  useEffect(() => {
+    if (block?.code && facilityOptions?.length) {
+      const newFacilityMenu = facilityOptions.filter((facility) => facility?.parentCode === block.code);
+      setFacilityMenu(newFacilityMenu);
+    } else {
+      setFacilityMenu([]);
+    }
+  }, [block, facilityOptions]);
+
+  useEffect(() => {
+    setSortedDistrictMenu(
+      districtMenu
+        .map((district) => ({
+          ...district,
+          name: t(`Boundary_${district.code}`),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    )
+  }, [t, districtMenu]);
+
+  useEffect(() => {
+    setSortedBlockMenu(
+      blockMenu
+        .map((block) => ({
+          ...block,
+          name: t(`Boundary_${block.code}`),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    )
+  }, [t, blockMenu]);
+
+  useEffect(() => {
+    setSortedFacilityMenu(
+      facilityMenu
+        .map((facility) => ({
+          ...facility,
+          name: t(`Boundary_${facility.code}`),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    )
+  }, [t, facilityMenu]);
+
+  useEffect(() => {
+    if (!isTheftIssue) {
+      setFirState({ newArr: [], mappedArray: [] });
+    }
+  }, [isTheftIssue]);
+
+  useEffect(() => {
+    if (creationError) {
+      const timeOut = setTimeout(() => {
+        setCreationError("");
+      }, 2500);
+      return () => clearTimeout(timeOut);
+    }
+  }, [creationError]);
+
   let sortedSubMenu = [];
   if (subTypeMenu !== null) {
     sortedSubMenu = subTypeMenu.sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  let sortedphcSubMenu = [];
-  if (phcSubTypeMenu !== null) {
-    sortedphcSubMenu = phcSubTypeMenu.sort((a, b) => a.name.localeCompare(b.name));
-  }
   const menu = Digit.Hooks.pgr.useComplaintTypes({ stateCode: tenantId });
   let sortedMenu = [];
   if (menu !== null) {
@@ -81,32 +186,9 @@ export const CreateComplaint = ({ parentUrl }) => {
     sortedSubMenu = otherItems;
   }
   const state = Digit.ULBService.getStateId();
-  const [selectTenant, setSelectTenant] = useState(Digit.SessionStorage.get("Employee.tenantId") || null);
-  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block", "SystemFunctionality"]);
-  const { data: phcMenu } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
-  let blockNew = mdmsData?.Incident?.Block;
-  
+  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["SystemFunctionality"]);
+
   useEffect(() => {
-    const fetchDistrictMenu = async () => {
-      const response = phcMenu?.Incident?.District;
-      if (response) {
-        const uniqueDistricts = {};
-        const districts = response.filter((def) => {
-          if (!uniqueDistricts[def.code]) {
-            uniqueDistricts[def.code] = true;
-            return true;
-          }
-          return false;
-        });
-        districts.sort((a, b) => a.name.localeCompare(b.name));
-        setDistrictMenu(
-          districts.map((def) => ({
-            key: def.code,
-            name: t(def.name),
-          }))
-        );
-      }
-    };
     const fetchSystemFunctionalMenu = async () => {
       const response = mdmsData?.Incident?.SystemFunctionality;
       if (response) {
@@ -120,14 +202,16 @@ export const CreateComplaint = ({ parentUrl }) => {
         );
       }
     }
-    fetchDistrictMenu();
+
     fetchSystemFunctionalMenu();
   }, [state, mdmsData, t]);
 
   useEffect(() => {
-    let tenants = Digit.SessionStorage.get("Employee.tenantId");
-    setSelectTenant(tenants);
-    if (selectTenant !== stateTenantId) {
+    Digit.Utils.analytics.trackPageView("new_ticket_page", {
+      page_path: window.location?.pathname || "/new-ticket",
+      page_title: "New Ticket",
+    });
+    if (selectBoundaryCode !== stateBoundaryCode) {
       ticketTypeRef?.current?.validate();
       ticketSubTypeRef?.current?.validate();
     } else {
@@ -136,30 +220,78 @@ export const CreateComplaint = ({ parentUrl }) => {
   }, []);
 
   useEffect(async () => {
-    if (selectTenant && selectTenant !== stateTenantId) {
-      let tenant = Digit.SessionStorage.get("IM_TENANTS");
-      const selectedTenantData = tenant.find((item) => item.code === selectTenant);
-      const selectedDistrict = {
-        key: t(selectedTenantData.city.districtCode),
-        codeNew: selectedTenantData.city.districtCode,
-        name: t(selectedTenantData.city.districtName),
-      };
-      const selectedTenantBlock = blockNew !== undefined ? blockNew.find((item) => item.code === selectedTenantData.city.blockCode) : "";
-      let selectedBlock = "";
-      if (selectedTenantBlock !== undefined && selectedTenantBlock.length !== 0) {
-        selectedBlock = {
-          key: t(selectedTenantBlock.code.split(".")[1].toUpperCase()),
-          name: t(selectedTenantBlock.name),
-          codeNew: selectedTenantBlock.code,
-          codeKey: selectedTenantBlock.code.split(".")[1].toUpperCase(),
-        };
-      }
-      handleDistrictChange(selectedDistrict);
-      handleBlockChange(selectedBlock);
+    if (
+      selectBoundaryCode && stateBoundaryCode && selectBoundaryCode !== stateBoundaryCode
+      && districtMenu?.length && blockOptions?.length && facilityOptions?.length
+    ) {
+      const selectedHealthCentre = facilityOptions.find((facility) => facility?.code === selectBoundaryCode)
+      if (selectedHealthCentre) {
+        setHealthCentre({
+          ...selectedHealthCentre,
+          name: t(`Boundary_${selectedHealthCentre.code}`),
+        })
 
-      // setBlock(selectedBlock);
+        const selectedBlock = blockOptions.find((block) => block?.code === selectedHealthCentre.parentCode);
+        if (selectedBlock) {
+          setBlock({
+            ...selectedBlock,
+            name: t(`Boundary_${selectedBlock.code}`),
+          })
+
+          const selectedDistrict = districtMenu.find((district) => district?.code === selectedBlock.parentCode);
+          if (selectedDistrict) {
+            setDistrict({
+              ...selectedDistrict,
+              name: t(`Boundary_${selectedDistrict.code}`),
+            })
+          }
+        }
+      }
     }
-  }, [selectTenant, mdmsData, state]);
+  }, [t, districtMenu, blockOptions, facilityOptions, selectBoundaryCode, stateBoundaryCode]);
+
+  useEffect(() => {
+    if (complaintType?.key?.toUpperCase() === "UNINSTALL") {
+      setIsInstallationTicket(true);
+      setSystemFunctionality({
+        key: "FUNCTIONAL",
+        name: t("Yes"),
+      });
+      setSubType({
+        key: "UninstallSolarSystem",
+        name: t("SERVICEDEFS.UNINSTALLSOLARSYSTEM"),
+      });
+
+    } else if (complaintType?.key?.toUpperCase() === "REINSTALL") {
+      setIsInstallationTicket(true);
+      setSystemFunctionality({
+        key: "NON_FUNCTIONAL",
+        name: t("No"),
+      });
+      setSubType({
+        key: "ReinstallSolarSystem",
+        name: t("SERVICEDEFS.REINSTALLSOLARSYSTEM"),
+      });
+
+    } else {
+      setIsInstallationTicket(false);
+      setSystemFunctionality({});
+      setSubType({});
+    }
+  }, [complaintType, t]);
+
+  useEffect(() => {
+    if (healthcentre?.status === "UNINSTALLED") {
+      setIsUninstalledFacility(true);
+      setComplaintType({
+        key: "Reinstall",
+        name: t("SERVICEDEFS.REINSTALL"),
+      });
+    } else {
+      setIsUninstalledFacility(false);
+      setComplaintType({});
+    }
+  }, [healthcentre, t]);
 
   useEffect(() => {
     (async () => {
@@ -191,26 +323,85 @@ export const CreateComplaint = ({ parentUrl }) => {
   const client = useQueryClient();
 
   useEffect(() => {
-    const isAnyUploading = isImageUploading || isVideoUploading;
-    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthCareType?.code && healthcentre?.code && district?.key && block.key && !isAnyUploading) {
+    const isAnyUploading = isImageUploading || isVideoUploading || isFirUploading;
+    const hasMandatoryTheftUpload = !isTheftIssue || uploadedFile?.some((doc) => doc?.documentType === "FIR_DOCUMENT");
+    if (complaintType?.key && subType?.key && systemFunctionality?.key && healthcentre?.code && district?.code && block?.code && !isAnyUploading && hasMandatoryTheftUpload) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [complaintType, subType, systemFunctionality, healthcentre, healthCareType, district, block, isImageUploading, isVideoUploading]);
+  }, [complaintType, subType, systemFunctionality, healthcentre, district, block, isImageUploading, isVideoUploading, isFirUploading, isTheftIssue, uploadedFile]);
+
+  useEffect(() => {
+    const handleDuplicateCheck = async () => {
+      if (healthcentre?.code && complaintType?.key && subType?.key) {
+        setBlockUI(true);
+        try {
+          const data = await Digit.InboxGeneral.Search({
+            inbox: {
+              tenantId,
+              processSearchCriteria: {
+                businessService: ["Incident"],
+                moduleName: "Incident",
+                status: [
+                  "PENDINGFORASSIGNMENT",
+                  "PENDINGFORASSIGNMENT_RMS_DEVICE",
+                  "PENDINGFORASSIGNMENT_THEFT",
+                  "RMS_DEVICE_PENDING_TECH_POC",
+                  "PENDINGRESOLUTION",
+                  "OUT_OF_SCOPE",
+                  "OUT_OF_WARRANTY_PENDING_TECH_POC",
+                  "PENDING_REVISION",
+                  "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2",
+                  "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
+                  "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
+                  "PENDING_RESOLUTION_OUT_OF_SCOPE",
+                  "PENDING_RESOLUTION_SPARE_PART_NEEDED",
+                  "PENDING_RESOLUTION_OUT_OF_WARRANTY",
+                ],
+                tenantId,
+              },
+              jurisdictionSearchCriteria: jurisdictionCurrentBoundary,
+              moduleSearchCriteria: {
+                facility: [healthcentre.code],
+                incidentType: [complaintType.key],
+                incidentSubType: [subType?.key],
+                tenantId,
+                sortOrder: "DESC",
+              },
+              limit: 100,
+              offset: 0,
+            },
+          });
+
+          if (data?.items?.length) {
+            setDuplicateTicketIds(data?.items?.map(item => ({
+              ticketId: item?.businessObject?.incident?.incidentId,
+              ticketTenantId: item?.businessObject?.incident?.tenantId,
+            })));
+          }
+        } catch (error) {
+          console.error("Error fetching duplicate tickets:", error);
+        } finally {
+          setBlockUI(false);
+        }
+      }
+    }
+
+    handleDuplicateCheck();
+  }, [healthcentre, complaintType, subType]);
+
   async function selectedType(value) {
     setDisableUpload(false);
     if (value.key !== complaintType.key) {
       if (value.key === "Others") {
         setSubType({ name: "" });
         setComplaintType(value);
-        sessionStorage.setItem("complaintType", JSON.stringify(value));
         setSubTypeMenu([{ key: "Others", name: t("SERVICEDEFS.OTHERS") }]);
         ticketSubTypeRef?.current?.validate();
       } else {
         setSubType({ name: "" });
         setComplaintType(value);
-        sessionStorage.setItem("complaintType", JSON.stringify(value));
         setSubTypeMenu(await serviceDefinitions.getSubMenu(tenantId, value, t));
         ticketSubTypeRef?.current?.validate();
       }
@@ -220,26 +411,9 @@ export const CreateComplaint = ({ parentUrl }) => {
     setDistrict(selectedDistrict);
     setBlock({});
     setHealthCentre({});
-    setHealthCareType({});
-    setPhcMenu([]);
-    setPhcSubTypeMenu([]);
-    const response = mdmsData?.Incident?.Block;
-    if (response) {
-      const blocks = response.filter((def) => def.districtCode === selectedDistrict.key);
-
-      blocks.sort((a, b) => a.name.localeCompare(b.name));
-      setBlockMenuNew(blocks);
-      setBlockMenu(
-        blocks.map((block) => ({
-          key: block.name,
-          name: t(block.name),
-        }))
-      );
-    }
   };
 
   function selectedSubType(value) {
-    sessionStorage.setItem("subType", JSON.stringify(value));
     setSubType(value);
   }
 
@@ -248,89 +422,59 @@ export const CreateComplaint = ({ parentUrl }) => {
   }
   async function selectedHealthCentre(value) {
     setHealthCentre(value);
-    setPhcSubTypeMenu([value]);
-    setHealthCareType(value);
     setDisableUpload(false);
     setDisable(false);
-    setTenant(value?.city?.districtTenantCode);
-    centerTypeRef?.current?.clearError();
     setShowToast(null);
   }
   const handleBlockChange = (selectedBlock) => {
-    //sessionStorage.setItem("block",JSON.stringify(value))
     setHealthCentre({});
-    setHealthCareType({});
-    setPhcSubTypeMenu([]);
-    if (selectTenant && selectTenant !== stateTenantId) {
-      const phcMenuType = phcMenu?.tenant?.tenants.filter((centre) => centre?.city?.blockCode === selectedBlock?.codeNew);
-      const translatedPhcMenu = phcMenuType?.map((item) => ({
-        ...item,
-        key: item?.name,
-        name: t(item?.name),
-        code: item?.code,
-        centreTypeKey: item?.centreType,
-        centreType: t(item?.centreType),
-      }));
-      setPhcMenu(translatedPhcMenu);
-      setBlock(selectedBlock);
-
-      let tenant = Digit.SessionStorage.get("Employee.tenantId");
-
-      const filtereddata = phcMenuType?.filter((codeNew) => codeNew.code == tenant);
-
-      if (filtereddata) {
-        selectedHealthCentre(filtereddata?.[0]);
-      }
-    } else {
-      const block = blockMenuNew.find((item) => item?.name.toUpperCase() === selectedBlock?.key.toUpperCase());
-      const phcMenuType = phcMenu?.tenant?.tenants.filter((centre) => centre?.city?.blockCode === block?.code);
-      const translatedPhcMenu = phcMenuType?.map((item) => ({
-        ...item,
-        key: item?.name,
-        name: t(item?.name),
-        centreTypeKey: item?.centreType,
-        centreType: t(item?.centreType),
-      }));
-      setPhcMenu(translatedPhcMenu);
-
-      setBlock(selectedBlock);
-    }
-  };
-
-  const handlePhcSubType = async (value) => {
-    setHealthCareType(value);
+    setBlock(selectedBlock);
   };
 
   const wrapperSubmit = (data) => {
     const abc = handleButtonClick();
     if (!canSubmit) return;
-    setSubmitted(true);
-    !submitted && !abc && onSubmit(data);
+    !abc && onSubmit(data);
   };
   const onSubmit = async (data) => {
+    Digit.Utils.analytics.trackSubmitTicket({ page_name: "new_ticket_page" });
     if (!canSubmit) return;
-
     const formData = {
       ...data,
       complaintType,
       subType,
       systemFunctionality,
-      district,
-      block,
-      healthCareType,
+      district : {
+        ...district,
+        name: t(`Boundary_${district.code}`, { lng: "en_IN" })
+      },
+      block : {
+        ...block,
+        name: t(`Boundary_${block.code}`, { lng: "en_IN" })
+      },
       healthcentre,
-      reporterName,
       uploadedFile,
-      tenantId: healthcentre?.code,
+      tenantId,
     };
-    await dispatch(createComplaint(formData));
+
+    setBlockUI(true);
+    const response = await Digit.Complaint.create(formData);
+
+    if (!response?.IncidentWrappers) {
+      setBlockUI(false);
+      const assignErrorMessage = Array.isArray(response) ? response?.[0]?.message : response?.message || response;
+      setCreationError(assignErrorMessage || t("CS_COMMON_SOMETHING_WENT_WRONG"));
+      return;
+    }
+
+    setBlockUI(false);
+    dispatch(populateCreateResponse(response));
     await client.refetchQueries(["fetchInboxData"]);
     history.push(parentUrl + "/incident/response");
   };
   const districtRef = useRef(null);
   const blockRef = useRef(null);
   const healthCareRef = useRef(null);
-  const centerTypeRef = useRef(null);
   const ticketTypeRef = useRef(null);
   const ticketSubTypeRef = useRef(null);
   const systemFunctionalityRef = useRef(null);
@@ -338,7 +482,6 @@ export const CreateComplaint = ({ parentUrl }) => {
     { field: district, ref: districtRef },
     { field: block, ref: blockRef },
     { field: healthcentre, ref: healthCareRef },
-    { field: healthCareType, ref: centerTypeRef },
     { field: complaintType, ref: ticketTypeRef },
     { field: subType, ref: ticketSubTypeRef },
     { field: systemFunctionality, ref: systemFunctionalityRef },
@@ -372,6 +515,15 @@ export const CreateComplaint = ({ parentUrl }) => {
 
     setVideoState({ newArr, mappedArray });
   };
+  const getFirData = (state) => {
+    let data = Object.fromEntries(state);
+    const mappedArray = state.map((item) => {
+      return item[1];
+    });
+    let newArr = Object.values(data);
+
+    setFirState({ newArr, mappedArray });
+  };
   const handleButtonClick = () => {
     const hasEmptyFields = fieldsToValidate.some(({ field }) => field === null || Object.keys(field).length === 0);
 
@@ -387,11 +539,11 @@ export const CreateComplaint = ({ parentUrl }) => {
       return false; // None of the fields are empty
     }
   };
-  function selectfile(imageArr, imageMappedArr, videoArr, videoMappedArr) {
+  function selectfile(imageArr, imageMappedArr, videoArr, videoMappedArr, firArr, firMappedArr) {
     let file = [];
     let videoCount = 0;
 
-    console.log("Processing files - Images:", imageMappedArr.length, "Videos:", videoMappedArr.length);
+    console.log("Processing files - Images:", imageMappedArr.length, "Videos:", videoMappedArr.length, "FIR:", firMappedArr.length);
 
     // Process image files
     if (imageArr && imageMappedArr.length > 0) {
@@ -436,6 +588,16 @@ export const CreateComplaint = ({ parentUrl }) => {
       console.log("Added", videoFiles.length, "video file entries to payload");
     }
 
+    // Process FIR file
+    if (firArr && firMappedArr.length > 0) {
+      const firFiles = firMappedArr.flatMap((e) => {
+        if (!e?.fileStoreId) return [];
+        const { fileStoreId } = e;
+        return [{ fileStoreId: fileStoreId.fileStoreId, documentUid: "", documentType: "FIR_DOCUMENT", additionalDetails: {} }];
+      });
+      file = [...file, ...firFiles];
+    }
+
     // Remove Duplicates Efficiently Using Set()
     const seen = new Set();
     file = file.filter((doc) => {
@@ -449,8 +611,8 @@ export const CreateComplaint = ({ parentUrl }) => {
   }
 
   useEffect(() => {
-    selectfile(imageState.newArr, imageState.mappedArray, videoState.newArr, videoState.mappedArray);
-  }, [imageState, videoState]);
+    selectfile(imageState.newArr, imageState.mappedArray, videoState.newArr, videoState.mappedArray, firState.newArr, firState.mappedArray);
+  }, [imageState, videoState, firState]);
   const config = [
     {
       head: t("TICKET_LOCATION"),
@@ -462,17 +624,16 @@ export const CreateComplaint = ({ parentUrl }) => {
           populators: (
             <Dropdown
               ref={districtRef}
-              option={districtMenu}
+              option={sortedDistrictMenu}
               optionKey="name"
               id="name"
               selected={district}
               select={handleDistrictChange}
-              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
+              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
               required={true}
             />
           ),
         },
-
         {
           label: t("INCIDENT_BLOCK"),
           isMandatory: true,
@@ -481,12 +642,12 @@ export const CreateComplaint = ({ parentUrl }) => {
           populators: (
             <Dropdown
               ref={blockRef}
-              option={blockMenu}
+              option={sortedBlockMenu}
               optionKey="name"
               id="name"
               selected={block}
               select={handleBlockChange}
-              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
+              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
               required={true}
             />
           ),
@@ -499,30 +660,12 @@ export const CreateComplaint = ({ parentUrl }) => {
             <Dropdown
               ref={healthCareRef}
               t={t}
-              option={phcMenuNew}
+              option={sortedFacilityMenu}
               optionKey="name"
               id="healthCentre"
               selected={healthcentre}
               select={selectedHealthCentre}
-              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
-              required={true}
-            />
-          ),
-        },
-        {
-          label: t("HEALTH_CENTRE_TYPE"),
-          isMandatory: true,
-          type: "dropdown",
-          populators: (
-            <Dropdown
-              ref={centerTypeRef}
-              t={t}
-              option={sortedphcSubMenu}
-              optionKey="centreType"
-              id="healthcaretype"
-              selected={healthCareType}
-              select={handlePhcSubType}
-              disable={selectTenant && selectTenant !== stateTenantId ? true : false}
+              disable={!!(selectBoundaryCode && selectBoundaryCode !== stateBoundaryCode)}
               required={true}
             />
           ),
@@ -545,6 +688,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               selected={complaintType}
               select={selectedType}
               required={true}
+              disable={isUninstalledFacility}
             />
           ),
         },
@@ -562,6 +706,7 @@ export const CreateComplaint = ({ parentUrl }) => {
               selected={subType}
               select={selectedSubType}
               required={true}
+              disable={isUninstalledFacility || isInstallationTicket}
             />
           ),
         },
@@ -579,6 +724,7 @@ export const CreateComplaint = ({ parentUrl }) => {
                 selected={systemFunctionality}
                 select={selectedSystemFunctionality}
                 required={true}
+                disable={isUninstalledFacility || isInstallationTicket}
               />
             </div>
           ),
@@ -616,12 +762,12 @@ export const CreateComplaint = ({ parentUrl }) => {
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={5}
                 disabled={disbaledUpload}
-                ulb={
-                  Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
-                }
+                ulb={Digit.SessionStorage.get("Employee.tenantId")}
                 acceptFiles={".png, .jpg, .jpeg, image/*"}
                 multiple={true}
                 specificFileConstraint={specificFileConstraint[1]}
+                analyticsPage="new_ticket_page"
+                mediaIntent="image"
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
               <div style={{ marginTop: "10px", marginBottom: "20px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_IMAGES")}</div>
@@ -642,18 +788,50 @@ export const CreateComplaint = ({ parentUrl }) => {
                 allowedMaxSizeInMB={50}
                 maxFilesAllowed={2}
                 disabled={disbaledUpload}
-                ulb={
-                  Digit.SessionStorage.get("Employee.tenantId") !== stateTenantId ? Digit.SessionStorage.get("Employee.tenantId") : healthcentre?.code
-                }
+                ulb={Digit.SessionStorage.get("Employee.tenantId")}
                 acceptFiles={".mp4, .avi, .mov, .wmv, video/*"}
                 multiple={false}
                 specificFileConstraint={specificFileConstraint[0]}
+                analyticsPage="new_ticket_page"
+                mediaIntent="video"
               />
               {/* <ImageUploadHandler tenantId={tenant} uploadedImages={uploadedImages} onPhotoChange={handleUpload} disabled={disbaled}/> */}
-              <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_VIDEOS")}</div>
+              <div style={{ marginTop: "10px", marginBottom: "20px", fontSize: "12px", color: "#b5b4b4" }}>{t("CS_MAXIMUM_VIDEOS")}</div>
             </div>
           ),
         },
+        ...(isTheftIssue
+          ? [
+              {
+                label: t("INCIDENT_UPLOAD_FIR_POLICE_LETTER"),
+                isMandatory: true,
+                populators: (
+                  <div>
+                    <MultiUploadWrapper
+                      t={t}
+                      module="Incident"
+                      tenantId={tenantId}
+                      getFormState={(state) => getFirData(state)}
+                      onUploadStatusChange={setIsFirUploading}
+                      allowedFileTypesRegex={/(pdf|jpg|jpeg|png|image)$/i}
+                      allowedMaxSizeInMB={5}
+                      maxFilesAllowed={5}
+                      disabled={disbaledUpload}
+                      ulb={Digit.SessionStorage.get("Employee.tenantId")}
+                      acceptFiles={".pdf, .jpg, .jpeg, .png, image/*"}
+                      multiple={false}
+                      specificFileConstraint={specificFileConstraint[2]}
+                      analyticsPage="new_ticket_page"
+                      mediaIntent="fir"
+                    />
+                    <div style={{ marginTop: "10px", fontSize: "12px", color: "#b5b4b4" }}>
+                      {t("INCIDENT_PLEASE_UPLOAD_FIR_POLICE_LETTER")}
+                    </div>
+                  </div>
+                ),
+              },
+            ]
+          : []),
       ],
     },
   ];
@@ -668,17 +846,126 @@ export const CreateComplaint = ({ parentUrl }) => {
           }
         `}
       </style>
+      {blockUI && (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "100%",
+            width: "100%",
+            zIndex: 10000005,
+            backgroundColor: "rgba(128, 128, 128, 0.5)",
+            position: "fixed",
+            top: 0,
+            left: 0,
+          }}
+        >
+          <Loader />
+        </div>
+      )}
       <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right", marginRight: "0px" }}>
         <div style={{ marginRight: "15px" }}>
           <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
         </div>
       </div>
-      <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit && !submitted} label={t("FILE_INCIDENT")} />
+      <FormComposer heading={t("")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit} label={t("FILE_INCIDENT")} />
+      {creationError && <Toast error={creationError} isDleteBtn={true} label={creationError} onClose={() => setCreationError(null)} />}
 
       {/* <button onClick={(!selectedOption || Object.keys(selectedOption).length == 0)}>Check Errors</button>  
       {errors.map((error, index) => (
         <div key={index}>{error}</div>
       ))} */}
+      {duplicateTicketIds?.length > 0 && (
+        <PopUp>
+          <div
+            style={{
+              backgroundColor: "white",
+              position: "fixed",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: "400px",
+              maxWidth: "95%",
+              padding: "24px",
+              borderRadius: "5px",
+            }}
+          >
+            <h2
+              style={{
+                margin: "0 0 16px 0",
+                fontSize: "20px",
+                fontWeight: "600",
+                color: "#333",
+                textAlign: "center",
+              }}
+            >
+              {t("IM_ALERT_POTENTIAL_DUPLICATES")}
+            </h2>
+
+            <div style={{ marginBottom: "24px" }}>
+              <p
+                style={{
+                  fontSize: "16px",
+                  textAlign: "center",
+                  marginBottom: "5px",
+                }}
+              >
+                {t("IM_ALERT_POTENTIAL_DUPLICATES_DESC")}
+              </p>
+              <p
+                style={{
+                  fontSize: "16px",
+                  textAlign: "center",
+                  marginBottom: "5px",
+                  maxHeight: "250px",
+                  overflow: "auto",
+                }}
+              >
+                <span>
+                  {t("IM_ALERT_POTENTIAL_DUPLICATES_EXISTING")}
+                  {": "}
+                </span>
+                {duplicateTicketIds.map(({ ticketId, ticketTenantId }, index, array) => (
+                  <span key={index}>
+                    <Link
+                      to={`/${window.contextPath}/employee/im/complaint/details/${ticketId}/${ticketTenantId}`}
+                      target={"_blank"}
+                      style={{ color: "#7a2829", textDecoration: "underline" }}
+                    >
+                      {ticketId}
+                    </Link>
+                    {index < array.length - 1 ? ", " : ""}
+                  </span>
+                ))}
+              </p>
+              <p
+                style={{
+                  fontSize: "16px",
+                  textAlign: "center",
+                }}
+              >
+                {t("IM_ALERT_POTENTIAL_DUPLICATES_ACTION_DESC")}
+              </p>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-around" }}>
+              <Button
+                variation={"secondary"}
+                style={{ width: "150px" }}
+                label={t("TL_COMMON_YES")}
+                onButtonClick={() => setDuplicateTicketIds([])}
+              />
+              <Button
+                variation={"primary"}
+                style={{ width: "150px" }}
+                label={t("TL_COMMON_NO")}
+                onButtonClick={() => history.push(`/${window.contextPath}/employee/im/inbox`)}
+              />
+            </div>
+          </div>
+        </PopUp>
+      )}
     </div>
   );
 };

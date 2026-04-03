@@ -5,6 +5,8 @@ import org.egov.tracer.config.TracerConfiguration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Import;
 
+import java.util.List;
+
 @org.springframework.context.annotation.Configuration
 @Data
 @Import({TracerConfiguration.class})
@@ -30,6 +32,9 @@ public class Configuration {
 
     @Value("${egov.user.update.path}")
     private String userUpdateEndpoint;
+
+    @Value("${user.default.password}")
+    private String defaultUserPassword;
 
 
     //Idgen Config
@@ -67,7 +72,22 @@ public class Configuration {
     private String hrmsHost;
 
     @Value("${egov.hrms.search.endpoint}")
-    private String hrmsEndPoint;
+    private String hrmsSearchEndPoint;
+
+    @Value("${egov.hrms.update.endpoint}")
+    private String hrmsUpdateEndPoint;
+
+    @Value("${egov.hrms.create.endpoint}")
+    private String hrmsCreateEndPoint;
+
+//    @Value("${egov.hrms.create.endpoint}")
+//    private String hrmsCreateEndpoint;
+
+    @Value("${egov.hrms.default.department.code}")
+    private String hrmsDefaultDepartmentCode;
+
+    @Value("${egov.hrms.default.designation.code}")
+    private String hrmsDefaultDesignationCode;
 
 
     //URLShortening
@@ -81,4 +101,23 @@ public class Configuration {
     //SMSNotification
     @Value("${egov.sms.notification.topic}")
     private String smsNotificationTopic;
+
+    //Enc Service TenantId
+    @Value("${enc.service.tenant.id}")
+    private String encServiceTenantId;
+
+
+    //Facility Search
+    @Value("${onm-non-ready.allowed.roles}")
+    private List<String> onmNonReadyAllowedRoles;
+
+    //Localization
+    @Value("${egov.localization.host}")
+    private String localizationHost;
+
+    @Value("${egov.localization.context.path}")
+    private String localizationContextPath;
+
+    @Value("${egov.localization.upsert.path}")
+    private String localizationUpsertPath;
 }

@@ -35,7 +35,9 @@ public class PsRowVersionValidator implements Validator<ProjectStaffBulkRequest,
 
     @Override
     public Map<ProjectStaff, List<Error>> validate(ProjectStaffBulkRequest request) {
-        log.info("validating row version");
+        log.trace("Entering validate (PsRowVersionValidator)");
+        log.info("Validating row version");
+        log.debug("Validating {} staff for row version", request.getProjectStaff() != null ? request.getProjectStaff().size() : 0);
         Map<ProjectStaff, List<Error>> errorDetailsMap = new HashMap<>();
         Method idMethod = getIdMethod(request.getProjectStaff());
         Map<String, ProjectStaff> eMap = getIdToObjMap(request.getProjectStaff().stream()
@@ -43,15 +45,22 @@ public class PsRowVersionValidator implements Validator<ProjectStaffBulkRequest,
                 .toList(), idMethod);
         if (!eMap.isEmpty()) {
             List<String> entityIds = new ArrayList<>(eMap.keySet());
+            log.debug("Checking row version for {} staff IDs", entityIds.size());
             List<ProjectStaff> existingEntities = repository.findById(entityIds, false,
                     getIdFieldName(idMethod));
+            log.debug("Found {} existing staff entities", existingEntities != null ? existingEntities.size() : 0);
             List<ProjectStaff> entitiesWithMismatchedRowVersion =
                     getEntitiesWithMismatchedRowVersion(eMap, existingEntities, idMethod);
+            if (!entitiesWithMismatchedRowVersion.isEmpty()) {
+                log.warn("Found {} staff with mismatched row version", entitiesWithMismatchedRowVersion.size());
+            }
             entitiesWithMismatchedRowVersion.forEach(individual -> {
                 Error error = getErrorForRowVersionMismatch();
                 populateErrorDetails(individual, error, errorDetailsMap);
             });
         }
+        log.debug("Row version validation completed - found {} errors", errorDetailsMap.size());
+        log.trace("Exiting validate (PsRowVersionValidator)");
         return errorDetailsMap;
     }
 }

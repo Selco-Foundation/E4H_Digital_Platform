@@ -37,24 +37,34 @@ public class VideoServiceImpl implements VideoService {
     private static final String OUTPUT_DIR = "output";
 
     public void processVideoAsync(File inputFile, ProcessingContext context) {
-        log.info("Starting async processing for videoId: {}", context.getVideoId());
+        log.trace("Method invoked: processVideoAsync, videoId: {}", context.getVideoId());
+        log.info("Starting async video processing for videoId: {}", context.getVideoId());
 
+        log.trace("Preparing output directory");
         Path outputPath = prepareOutputDirectory();
+        log.debug("Output directory prepared: {}", outputPath);
+        
+        log.trace("Retrieving video dimensions");
         String[] dimensions = getVideoDimensions(inputFile);
+        log.debug("Video dimensions retrieved: {}x{}", dimensions.length > 0 ? dimensions[0] : "unknown", dimensions.length > 1 ? dimensions[1] : "unknown");
 
+        log.trace("Determining quality levels");
         List<VideoQualitySettings> qualities = videoUtil.determineQualityLevels(dimensions);
+        log.debug("Quality levels determined: {}", qualities.size());
 
         try {
             for (VideoQualitySettings qualitySettings : qualities) {
+                log.info("Processing quality level: {} for videoId: {}", qualitySettings.getLabel(), context.getVideoId());
                 List<MultipartFile> multipartFiles =
                         videoQualityProcessor.processQuality(context, inputFile, outputPath, qualitySettings);
 
-                log.info("Finished processing qualities for videoId: {}", context.getVideoId());
+                log.info("Finished processing quality: {} for videoId: {}", qualitySettings.getLabel(), context.getVideoId());
 
+                log.trace("Uploading processed files");
                 uploaderService.uploadProcessedFile(context, multipartFiles);
-
-                log.info("Processed all chunk qualities for videoId: {}", context.getVideoId());
+                log.debug("Uploaded {} files for quality: {}", multipartFiles.size(), qualitySettings.getLabel());
             }
+            log.info("Completed processing all quality levels for videoId: {}", context.getVideoId());
             // Cleanup after processing
             cleanup(context, inputFile, outputPath);
         } catch (Exception ex) {
@@ -64,11 +74,13 @@ public class VideoServiceImpl implements VideoService {
     }
 
     private void cleanup(ProcessingContext context, File inputFile, Path outputPath) {
-        log.info("start cleaning...");
+        log.trace("Method invoked: cleanup, videoId: {}", context.getVideoId());
+        log.info("Starting cleanup for videoId: {}", context.getVideoId());
         storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
     }
 
     private void handleProcessingError(ProcessingContext context, File inputFile, Path outputPath, Throwable ex) {
+        log.trace("Method invoked: handleProcessingError, videoId: {}", context.getVideoId());
         log.error("Error processing video asynchronously for videoId: {}", context.getVideoId(), ex);
         storageUtil.cleanupTemporaryFiles(context.getVideoId(), inputFile, outputPath);
     }
@@ -77,6 +89,7 @@ public class VideoServiceImpl implements VideoService {
      * Prepares the output directory.
      */
     private Path prepareOutputDirectory() {
+        log.trace("Method invoked: prepareOutputDirectory");
         Path outputPath = Paths.get(System.getProperty("user.dir"), OUTPUT_DIR);
         return directoryUtil.createDirectory(outputPath.toAbsolutePath().toString());
     }
@@ -85,8 +98,10 @@ public class VideoServiceImpl implements VideoService {
      * Retrieves video dimensions.
      */
     private String[] getVideoDimensions(File inputFile) {
+        log.trace("Method invoked: getVideoDimensions, inputFile: {}", inputFile.getName());
         String[] dimensions = videoUtil.getVideoDimensions(inputFile.getAbsolutePath());
         if (dimensions.length < 2) {
+            log.error("Invalid video dimensions retrieved, length: {}", dimensions.length);
             throw new CustomException("INVALID_DIMENSIONS", "Unable to retrieve video dimensions");
         }
         return dimensions;

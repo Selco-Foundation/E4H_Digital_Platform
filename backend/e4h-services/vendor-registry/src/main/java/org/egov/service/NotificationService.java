@@ -67,19 +67,19 @@ public class NotificationService {
     private void pushNotificationForCreate(OrgRequest request) {
         List<Organisation> organisations = request.getOrganisations();
 
-        log.info("get message template for create action");
+        log.trace("NotificationService::pushNotificationForCreate entry");
+        log.info("Preparing notification for organisation creation");
         String message = getMessage(request, true);
 
         if (StringUtils.isEmpty(message)) {
-            log.info("SMS content has not been configured for this case");
+            log.warn("SMS content has not been configured for organisation creation");
             return;
         }
 
         for (Organisation organisation : organisations) {
-
             //get orgName, ID, contactPerson, mobileNumber, cbo-url
-            log.info("get orgName, ID, contactPerson, mobileNumber, cbo-url");
             Map<String, List<String>> orgDetails = getDetailsForSMS(organisation);
+            log.debug("Preparing SMS for organisation: {}", organisation.getName());
 
             for (int i = 0; i < orgDetails.get(PERSON_NAMES).size(); i++) {
 
@@ -90,23 +90,24 @@ public class NotificationService {
                 smsDetails.put("mobileNumber", orgDetails.get("mobileNumbers").get(i));
                 smsDetails.put("orgId", organisation.getOrgNumber());
 
-
-                log.info("build Message For create Action for " + smsDetails.get(ORG_NAME));
+                log.debug("Building SMS message for organisation: {}", smsDetails.get(ORG_NAME));
                 String customizedMessage = buildMessageForCreateAction(smsDetails, message);
                 SMSRequest smsRequest = SMSRequest.builder().mobileNumber(smsDetails.get("mobileNumber")).message(customizedMessage).build();
 
-                log.info("push message for create Action");
                 organizationProducer.push(config.getSmsNotifTopic(), smsRequest);
+                log.debug("SMS notification pushed for mobile number: {}", smsDetails.get("mobileNumber"));
             }
         }
+        log.info("Organisation creation notification process completed");
     }
 
     private void pushNotificationForUpdate(OrgRequest request) {
-        log.info("get message template for update action");
+        log.trace("NotificationService::pushNotificationForUpdate entry");
+        log.info("Preparing notification for organisation update");
         String message = getMessage(request, false);
 
         if (StringUtils.isEmpty(message)) {
-            log.info("SMS content has not been configured for this case");
+            log.warn("SMS content has not been configured for organisation update");
             return;
         }
 
@@ -121,17 +122,19 @@ public class NotificationService {
             smsDetails.put("oldMobileNumber",oldContactDetails.getContactMobileNumber());
             smsDetails.put("newMobileNumber", organisation.getContactDetails().get(0).getContactMobileNumber());
             smsDetails.put(ORG_NAME,organisation.getName());
-            log.info("build Message For update Action for " + smsDetails.get(ORG_NAME));
+            log.debug("Building SMS message for organisation update: {}", smsDetails.get(ORG_NAME));
             String customizedMessage = buildMessageForUpdateAction(smsDetails, message);
             SMSRequest smsRequestForOldMobileNumber = SMSRequest.builder().mobileNumber(smsDetails.get("oldMobileNumber")).message(customizedMessage).build();
 
-            log.info("push message for update Action");
             organizationProducer.push(config.getSmsNotifTopic(), smsRequestForOldMobileNumber);
+            log.debug("SMS notification pushed to old mobile number: {}", smsDetails.get("oldMobileNumber"));
             if(!organisation.getContactDetails().get(0).getContactMobileNumber().equalsIgnoreCase(oldContactDetails.getContactMobileNumber())){
                 SMSRequest smsRequestForNewMobileNumber = SMSRequest.builder().mobileNumber(smsDetails.get("newMobileNumber")).message(customizedMessage).build();
                 organizationProducer.push(config.getSmsNotifTopic(), smsRequestForNewMobileNumber);
+                log.debug("SMS notification pushed to new mobile number: {}", smsDetails.get("newMobileNumber"));
             }
         }
+        log.info("Organisation update notification process completed");
     }
 
     private Map<String, List<String>> getDetailsForSMS(Organisation organisation) {
@@ -225,7 +228,7 @@ public class NotificationService {
             codes = JsonPath.read(result, OrganisationConstant.ORGANISATION_LOCALIZATION_CODES_JSONPATH);
             messages = JsonPath.read(result, OrganisationConstant.ORGANISATION_LOCALIZATION_MSGS_JSONPATH);
         } catch (Exception e) {
-            log.error("Exception while fetching from localization: " + e);
+            log.error("Exception while fetching from localization service", e);
         }
         if (null != result) {
             for (int i = 0; i < codes.size(); i++) {
@@ -250,10 +253,11 @@ public class NotificationService {
         String res = restTemplate.postForObject(builder.toString(), body, String.class);
 
         if(StringUtils.isEmpty(res)){
-            log.error("URL_SHORTENING_ERROR","Unable to shorten url: "+actualURL);
+            log.warn("Unable to shorten URL, returning original URL: {}", actualURL);
             return actualURL;
         }
-        else return res;
+        log.debug("URL shortened successfully");
+        return res;
     }
 
 }

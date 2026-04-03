@@ -8,14 +8,18 @@ let pgrQuery = {};
 let wfQuery = {};
 
 const Filter = (props) => {
-  let { uuid } = Digit.UserService.getUser().info;
-  const stateTenantId = Digit.ULBService.getStateId();
+  const { userName, roles } = Digit.UserService.getUser().info;
   const { searchParams } = props;
   const { t } = useTranslation();
+  const [stateMenu, setStateMenu] = useState([]);
   const [districtMenu, setDistrictMenu] = useState([]);
   const [blockMenu, setBlockMenu] = useState([]);
-  const [phcMenu, setPhcMenu] = useState([]);
+  const [facilityMenu, setFacilityMenu] = useState([]);
+  const [facilityOptions, setFacilityOptions] = useState([]);
+  const [facilityBoundaries, setFacilityBoundaries] = useState([]);
+  const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
+  const isTechPocUser = roles?.every((role) => role.code === "COMPLAINT_FACILITATOR_2" || role.code === "EMPLOYEE");
 
   const assignedToOptions = useMemo(
     () => [
@@ -25,11 +29,36 @@ const Filter = (props) => {
     [t]
   );
   const loggedInUser = Digit.UserService.getUser();
-  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === uuid;
+  const isAssignedToMe = searchParams?.filters?.wfFilters?.assignee?.[0]?.code === userName;
+
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {};
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
+  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+
+  useEffect(() => {
+    if (boundaryData) {
+      setFacilityBoundaries(boundaryData.facilities);
+      setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
+    }
+  }, [boundaryData]);
+
+  useEffect(() => {
+    if (facilityBoundaries?.length && facilityData?.facilities?.length) {
+      const facilityBoundaryCodeToParentMap = new Map();
+      for (let facilityBoundary of facilityBoundaries) {
+        facilityBoundaryCodeToParentMap.set(facilityBoundary.code, facilityBoundary.parentCode);
+      }
+      setFacilityOptions(facilityData?.facilities?.map((facility) => ({
+        code: facility.boundaryCode,
+        id: facility.facilityId,
+        parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
+      })));
+    }
+  }, [facilityBoundaries, facilityData]);
 
   const state = Digit.ULBService.getStateId();
-  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["District", "Block", "SystemFunctionality"]);
-  const { data: phcData } = Digit.Hooks.pgr.useMDMS(state, "tenant", ["tenants"]);
+  const { data: mdmsData } = Digit.Hooks.pgr.useMDMS(state, "Incident", ["SystemFunctionality"]);
   const isNonHcrUser = Digit.UserService.getUser()?.info.roles.some(role => (role.code !== "EMPLOYEE" && role.code !== "COMPLAINANT"));
 
 const isCodePresent = (array, codeToCheck) =>{
@@ -37,16 +66,14 @@ const isCodePresent = (array, codeToCheck) =>{
 }
 
   const [selectAssigned, setSelectedAssigned] = useState(
-    (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
+    isAssignedToMe ? assignedToOptions[0] : assignedToOptions[1]
   );
 
-  const [selectedComplaintType, setSelectedComplaintType] = useState(null);
-  const [selectedHealthCare, setSelectedHealthCare] = useState(null);
-  
   const [pgrfilters, setPgrFilters] = useState(
     searchParams?.filters?.pgrfilters || {
       incidentType: [],
-      phcType: [],
+      facility: [],
+      state: [],
       district: [],
       block: [],
       isSystemFunctional: [],
@@ -56,38 +83,50 @@ const isCodePresent = (array, codeToCheck) =>{
 
   const [wfFilters, setWfFilters] = useState(
     searchParams?.filters?.wfFilters ||
-    (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER") ?
-      { assignee: [{ code: uuid }] } :
-      { assignee: [{ code: "" }] })
+      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")
+        ? { assignee: [{ code: userName }] }
+        : isTechPocUser
+        ? {
+            assignee: [{ code: userName }],
+            wfStatus: [
+              { code: "RMS_DEVICE_PENDING_TECH_POC" },
+              { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
+              { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
+            ],
+          }
+        : { assignee: [{ code: "" }] })
   );
 
   useEffect(() => {
-    const refactorDistrictMenu = () => {
-      const response = mdmsData?.Incident?.District;
+    const refactorStateMenu = () => {
+      const response = boundaryData?.states;
       if (response) {
-        const uniqueDistricts = {};
-        const newDistrictMenu = response
-          .filter((district) => {
-            if (!uniqueDistricts[district.code]) {
-              uniqueDistricts[district.code] = true;
+        const uniqueStates = {};
+        const newStateMenu = response
+          .filter((state) => {
+            if (!uniqueStates[state.code]) {
+              uniqueStates[state.code] = true;
               return true;
             }
             return false;
           })
-          .sort((a, b) => a.name.localeCompare(b.name))
-          .map((district) => ({
-            districtCode: district.code,
-            code: district.name,
-            nonLocalizedName: district.name,
-            name: t(district.name),
-          }));
+          .map((state) => ({
+            code: state.code,
+            name: t(`Boundary_${state.code}`),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
 
-        setDistrictMenu(newDistrictMenu);
+        setStateMenu(newStateMenu);
+        setDistrictMenu([]);
         setBlockMenu([]);
-        setPhcMenu([]);
+        setFacilityMenu([]);
       }
-    };
+    }
 
+    refactorStateMenu();
+  }, [boundaryData, t]);
+
+  useEffect(() => {
     const refactorSystemFunctionalMenu = () => {
       const response = mdmsData?.Incident?.SystemFunctionality;
       if (response) {
@@ -104,15 +143,12 @@ const isCodePresent = (array, codeToCheck) =>{
       }
     }
 
-    refactorDistrictMenu();
     refactorSystemFunctionalMenu();
-  }, [state, mdmsData, t]);
+  }, [mdmsData, t]);
 
   useEffect(() => {
 
-    setSelectedAssigned(
-      (isAssignedToMe || isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) ? assignedToOptions[0] : assignedToOptions[1]
-    )
+    setSelectedAssigned(isAssignedToMe ? assignedToOptions[0] : assignedToOptions[1]);
 
     setPgrFilters((prevFilters) => ({
       ...prevFilters,
@@ -120,9 +156,9 @@ const isCodePresent = (array, codeToCheck) =>{
         ...type,
         name: t(`SERVICEDEFS.${type.code === "" ? "OTHER" : type.code.toUpperCase()}`),
       })),
-      district: prevFilters.district.map((district) => ({ ...district, name: t(district.nonLocalizedName) })),
-      block: prevFilters.block.map((block) => ({ ...block, name: t(block.nonLocalizedName) })),
-      phcType: prevFilters.phcType.map((type) => ({ ...type, name: t(type.nonLocalizedName) })),
+      district: prevFilters.district.map((district) => ({ ...district, name: t(`Boundary_${district.code}`), })),
+      block: prevFilters.block.map((block) => ({ ...block, name: t(`Boundary_${block.code}`), })),
+      facility: prevFilters.facility.map((facility) => ({ ...facility, name: t(`Boundary_${facility.code}`), })),
       isSystemFunctional: prevFilters.isSystemFunctional.map((systemFunctionality) => ({
         ...systemFunctionality,
         name: t(systemFunctionality.nonLocalizedName)
@@ -131,38 +167,68 @@ const isCodePresent = (array, codeToCheck) =>{
   }, [t]);
 
   useEffect(() => {
+    const selectedState = pgrfilters.state?.[0];
+    if (selectedState && boundaryData) {
+      const newDistrictMenu = boundaryData.districts
+        .filter((district) => district?.parentCode === selectedState.code)
+        .map((district) => ({
+          code: district?.code,
+          name: t(`Boundary_${district?.code}`),
+          stateCode: district?.parentCode,
+        }))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
+
+      setDistrictMenu(newDistrictMenu);
+    }
+
     const selectedDistrict = pgrfilters.district?.[0];
-    if (selectedDistrict) {
-      const newBlockMenu = mdmsData?.Incident?.Block
-        .filter((block) => block?.districtCode === selectedDistrict.districtCode)
-        .sort((a, b) => a.name.localeCompare(b.name))
+    if (selectedDistrict && boundaryData) {
+      const newBlockMenu = boundaryData.blocks
+        .filter((block) => block?.parentCode === selectedDistrict.code)
         .map((block) => ({
-          blockCode: block.code,
-          code: block.name,
-          nonLocalizedName: block.name,
-          name: t(block.name),
-        }));
+          code: block?.code,
+          name: t(`Boundary_${block?.code}`),
+          districtCode: block?.parentCode,
+        }))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
 
       setBlockMenu(newBlockMenu);
     }
 
     const selectedBlock = pgrfilters.block?.[0];
-    if (selectedBlock) {
-      const newPhcMenu = phcData?.tenant?.tenants
-        .filter((centre) => centre?.city?.blockCode === selectedBlock.blockCode)
-        .sort((a, b) => a.name.localeCompare(b.name))
-        .map((centre) => ({
-          ...centre,
-          nonLocalizedName: centre?.name,
-          name: t(centre?.name),
-          centreType: t(centre?.centreType),
-        }));
+    if (selectedBlock && boundaryData) {
+      const newFacilityMenu = facilityOptions
+        .filter((facility) => facility?.parentCode === selectedBlock.code)
+        .map((facility) => ({
+          code: facility?.code,
+          name: t(`Boundary_${facility?.code}`),
+          blockCode: facility?.parentCode,
+        }))
+        .sort((a, b) => a?.name?.localeCompare(b?.name));
 
-      setPhcMenu(newPhcMenu);
+      setFacilityMenu(newFacilityMenu);
     }
 
-  }, [pgrfilters, mdmsData, phcData, t]);
-  
+  }, [pgrfilters, boundaryData, facilityOptions, t]);
+
+  useEffect(() => {
+    const code = selectAssigned.code === "ASSIGNED_TO_ME" ? userName : "";
+    setWfFilters((prevFilters) => ({
+      ...prevFilters,
+      assignee: [{ code: code }],
+      ...(isTechPocUser &&
+        (code
+          ? {
+              wfStatus: [
+                { code: "RMS_DEVICE_PENDING_TECH_POC" },
+                { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
+                { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
+              ],
+            }
+          : { wfStatus: [] })),
+    }));
+  }, [selectAssigned]);
+
   const tenantId = Digit.ULBService.getCurrentTenantId();
   // let localities = Digit.Hooks.pgr.useLocalities({ city: tenantId });
   const { data: localities } = Digit.Hooks.useBoundaryLocalities(tenantId, "admin", {}, t);
@@ -182,8 +248,6 @@ const isCodePresent = (array, codeToCheck) =>{
 
   const onRadioChange = (value) => {
     setSelectedAssigned(value);
-    uuid = value.code === "ASSIGNED_TO_ME" ? uuid : "";
-    setWfFilters({ ...wfFilters, assignee: [{ code: uuid }] });
   };
 
   useEffect(() => {
@@ -202,11 +266,11 @@ const isCodePresent = (array, codeToCheck) =>{
     }
     for (const property in wfFilters) {
       if (Array.isArray(wfFilters[property])) {
-        let params = wfFilters[property].map((prop) => prop.name).join();
+        let params = wfFilters[property].map((prop) => prop.code).join();
         if (params) {
           wfQuery[property] = params;
         } else {
-          wfQuery = {};
+          delete wfQuery?.[property];
         }
       }
     }
@@ -234,53 +298,49 @@ const isCodePresent = (array, codeToCheck) =>{
     }
   }
 
-  function onSelectHealthCare(value, type) {
+  function onSelectHealthCare(value, key) {
     if(!value) return
-    if (!ifExists(pgrfilters.phcType, value)) {
-      setPgrFilters({ ...pgrfilters, phcType: [...pgrfilters.phcType, value] });
+    if (!ifExists(pgrfilters[key], value)) {
+      setPgrFilters({ ...pgrfilters, [key]: [...pgrfilters[key], value] });
     }
   }
-
-  useEffect(() => {
-    if (pgrfilters.incidentType.length > 1) {
-      setSelectedComplaintType({ i18nKey: `${pgrfilters.incidentType.length} selected` });
-    } else {
-      setSelectedComplaintType(pgrfilters.incidentType[0]);
-    }
-  }, [pgrfilters.incidentType]);
-
-  useEffect(() => {
-    if (pgrfilters.phcType.length > 1) {
-      setSelectedHealthCare({ name: `${pgrfilters.phcType.length} selected` });     
-    } else {
-      setSelectedHealthCare(pgrfilters.phcType[0]);
-    }
-  }, [pgrfilters.locality]);
 
   const onRemove = (index, key) => {
     let afterRemove = pgrfilters[key].filter((value, i) => {
       return i !== index;
     });
-
-    if (key === "district") {
+    if (key === "state") {
+      setDistrictMenu([]);
       setBlockMenu([]);
-      setPhcMenu([]);
-      setPgrFilters({ ...pgrfilters, district: [], block: [], phcType: [] });
+      setFacilityMenu([]);
+      setPgrFilters({ ...pgrfilters, state: [], district: [], block: [], facility: [] });
+    } else if (key === "district") {
+      setBlockMenu([]);
+      setFacilityMenu([]);
+      setPgrFilters({ ...pgrfilters, district: [], block: [], facility: [] });
     } else if (key === "block") {
-      setPhcMenu([]);
-      setPgrFilters({ ...pgrfilters, block: [], phcType: [] });
+      setFacilityMenu([]);
+      setPgrFilters({ ...pgrfilters, block: [], facility: [] });
     } else {
       setPgrFilters({ ...pgrfilters, [key]: afterRemove });
     }
   };
   const handleAssignmentChange = (e, type) => {
     if (e.target.checked) {
-      setPgrFilters({ ...pgrfilters, applicationStatus: [...pgrfilters.applicationStatus, { code: type.code }] });
+      setPgrFilters({ ...pgrfilters, applicationStatus: [...pgrfilters.applicationStatus, ...type.statuses.map((status) => ({ code: status }))] });
     } else {
       const filteredStatus = pgrfilters.applicationStatus.filter((value) => {
-        return value.code !== type.code;
+        return !type.statuses.includes(value.code);
       });
       setPgrFilters({ ...pgrfilters, applicationStatus: filteredStatus });
+    }
+  };
+
+  const handleStateChange = (selectedState) => {
+    const previouslySelectedState = pgrfilters.state[0];
+
+    if (previouslySelectedState?.code !== selectedState.code) {
+      setPgrFilters({ ...pgrfilters, state: [selectedState], district: [], block: [], facility: [] });
     }
   };
 
@@ -288,7 +348,7 @@ const isCodePresent = (array, codeToCheck) =>{
     const previouslySelectedDistrict = pgrfilters.district[0];
 
     if (previouslySelectedDistrict?.code !== selectedDistrict.code) {
-      setPgrFilters({ ...pgrfilters, district: [selectedDistrict], block: [], phcType: [] });
+      setPgrFilters({ ...pgrfilters, district: [selectedDistrict], block: [], facility: [] });
     }
   };
 
@@ -296,33 +356,50 @@ const isCodePresent = (array, codeToCheck) =>{
     const previouslySelectedBlock = pgrfilters.block[0];
 
     if (previouslySelectedBlock?.code !== selectedBlock.code) {
-      setPgrFilters({ ...pgrfilters, block: [selectedBlock], phcType: [] });
+      setPgrFilters({ ...pgrfilters, block: [selectedBlock], facility: [] });
     }
   };
 
   const handleSystemFunctionalityChange = (selectedSystemFunctionality) => {
-    setPgrFilters({...pgrfilters, isSystemFunctional: [selectedSystemFunctionality]});
+    const previouslySelectedSystemFunctionality = pgrfilters.isSystemFunctional[0];
+
+    if (previouslySelectedSystemFunctionality?.code !== selectedSystemFunctionality.code) {
+      setPgrFilters({...pgrfilters, isSystemFunctional: [selectedSystemFunctionality]});
+    }
   }
 
   function clearAll() {
     let pgrReset = {
       incidentType: [],
-      phcType: [],
+      facility: [],
+      state: [],
       district: [],
       block: [],
       isSystemFunctional: [],
       applicationStatus: []
     };
-    let wfRest = { assigned: [{ code: [] }] };
+    let wfRest = isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")
+      ? { assignee: [{ code: userName }] }
+      : isTechPocUser
+      ? {
+          assignee: [{ code: userName }],
+          wfStatus: [
+            { code: "RMS_DEVICE_PENDING_TECH_POC" },
+            { code: "OUT_OF_WARRANTY_PENDING_TECH_POC" },
+            { code: "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2" },
+          ],
+        }
+      : { assignee: [{ code: "" }] };
+    setDistrictMenu([]);
     setBlockMenu([]);
-    setPhcMenu([]);
+    setFacilityMenu([]);
     setPgrFilters(pgrReset);
     setWfFilters(wfRest);
     pgrQuery = {};
     wfQuery = {};
-    setSelectedAssigned("");
-    setSelectedComplaintType(null);
-    setSelectedHealthCare(null);
+    setSelectedAssigned(
+      (isCodePresent(loggedInUser?.info?.roles, "COMPLAINT_RESOLVER")) || isTechPocUser ? assignedToOptions[0] : assignedToOptions[1]
+    );
   }
 
   const handleFilterSubmit = () => {
@@ -331,21 +408,73 @@ const isCodePresent = (array, codeToCheck) =>{
 
   const GetSelectOptions = (lable, options, selected = null, select, optionKey, onRemove, key) => {
     selected = selected || { [optionKey]: "", code: "" };
+
+    const disableSelection = (!options || options.length === 1)
+    if (disableSelection && options?.length) {
+      select(options[0], key);
+    }
    
     return (
       <div>
         <div className="filter-label">{lable}</div>
-        {<Dropdown option={options} selected={selected} select={(value) => select(value, key)} optionKey={optionKey} />}
+        {<Dropdown disable={disableSelection} option={options} selected={selected} select={(value) => select(value, key)} optionKey={optionKey} />}
 
         <div className="tag-container">
           {pgrfilters[key].length > 0 &&
             pgrfilters[key].map((value, index) => {
-              return <RemoveableTag key={index} text={`${value[optionKey]} ...`} onClick={() => onRemove(index, key)} />;
+              return <RemoveableTag disabled={disableSelection} key={index} text={`${value[optionKey]} ...`} onClick={() => onRemove(index, key)} />;
             })}
         </div>
       </div>
     );
   };
+
+  const orderedStatuses = [
+    {
+      code: "PENDINGFORASSIGNMENT",
+      statuses: ["PENDINGFORASSIGNMENT", "PENDINGFORASSIGNMENT_THEFT", "PENDINGFORASSIGNMENT_RMS_DEVICE"],
+    },
+    {
+      code: "PENDINGRESOLUTION",
+      statuses: ["PENDINGRESOLUTION", "PENDING_REVISION", "RMS_DEVICE_PENDINGRESOLUTION"],
+    },
+    {
+      code: "RESOLVED",
+      statuses: ["RESOLVED"],
+    },
+    {
+      code: "CLOSEDAFTERRESOLUTION",
+      statuses: ["CLOSEDAFTERRESOLUTION"],
+    },
+    {
+      code: "REJECTED",
+      statuses: ["REJECTED"],
+    },
+    {
+      code: "CLOSEDAFTERREJECTION",
+      statuses: ["CLOSEDAFTERREJECTION"],
+    },
+    {
+      code: "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
+      statuses: ["PENDING_ASSIGNMENT_SPARE_PART_NEEDED"],
+    },
+    {
+      code: "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
+      statuses: ["PENDING_ASSIGNMENT_OUT_OF_WARRANTY"],
+    },
+    {
+      code: "PENDING_RESOLUTION_SPARE_PART_NEEDED",
+      statuses: ["PENDING_RESOLUTION_SPARE_PART_NEEDED"],
+    },
+    {
+      code: "PENDING_RESOLUTION_OUT_OF_WARRANTY",
+      statuses: ["PENDING_RESOLUTION_OUT_OF_WARRANTY"],
+    },
+    {
+      code: "OUT_OF_WARRANTY_PENDING_TECH_POC",
+      statuses: ["OUT_OF_WARRANTY_PENDING_TECH_POC", "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2"],
+    },
+  ];
 
   return (
     <React.Fragment>
@@ -357,7 +486,7 @@ const isCodePresent = (array, codeToCheck) =>{
               {t("ES_COMMON_CLEAR_ALL")}
             </div>
             {props.type === "desktop" && (
-              <span className="clear-search" style={{color:"#7a2829"}} onClick={clearAll}>
+              <span className="clear-search" style={{ color: "#7a2829" }} onClick={clearAll}>
                 {t("ES_COMMON_CLEAR_ALL")}
               </span>
             )}
@@ -382,6 +511,19 @@ const isCodePresent = (array, codeToCheck) =>{
             </div>
             {isNonHcrUser && (
               <div>
+                <div>
+                  {
+                    GetSelectOptions(
+                      t("CS_STATE"),
+                      stateMenu,
+                      null,
+                      handleStateChange,
+                      "name",
+                      onRemove,
+                      "state"
+                    )
+                  }
+                </div>
                 <div>
                   {
                     GetSelectOptions(
@@ -412,12 +554,12 @@ const isCodePresent = (array, codeToCheck) =>{
                   {
                     GetSelectOptions(
                       t("CS_HEALTH_CARE"),
-                      phcMenu,
+                      facilityMenu,
                       null,
                       onSelectHealthCare,
                       "name",
                       onRemove,
-                      "phcType"
+                      "facility"
                     )
                   }
                 </div>
@@ -436,7 +578,14 @@ const isCodePresent = (array, codeToCheck) =>{
                 )
               }
             </div>
-            {<Status complaints={props.complaints} onAssignmentChange={handleAssignmentChange} pgrfilters={pgrfilters} />}
+            {
+              <Status
+                complaints={props.complaints}
+                onAssignmentChange={handleAssignmentChange}
+                pgrfilters={pgrfilters}
+                orderedStatuses={orderedStatuses}
+              />
+            }
           </div>
         </div>
       </div>

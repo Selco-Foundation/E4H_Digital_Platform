@@ -1,46 +1,33 @@
 export const Complaint = {
-  create: async ({
-    cityCode,
-    comments,
-    district,
-    uploadedFile,
-    block,
-    reporterName,
-    complaintType,
-    subType,
-    systemFunctionality,
-    healthcentre,
-    healthCareType,
-    tenantId,
-  }) => {
-    const tenantIdNew = tenantId;
-    let mobileNumber = JSON.parse(sessionStorage.getItem("Digit.User"))?.value?.info?.mobileNumber;
-    var serviceDefs = await Digit.MDMSService.getServiceDefs(tenantIdNew, "Incident");
-    let phcSubType = [];
-    if (healthCareType?.centreType !== null) {
-      phcSubType = healthCareType?.centreType.replace(/\s+/g, "").toUpperCase();
-    }
+  create: async ({ cityCode, comments, district, block, uploadedFile, complaintType, subType, systemFunctionality, healthcentre, tenantId }) => {
+    const normalizedType = (complaintType?.key || "").trim().toUpperCase();
+    const workflowAction =
+      normalizedType === "THEFT"
+        ? "APPLY_THEFT"
+        : normalizedType === "RMS DEVICE"
+          ? "APPLY_RMS_DEVICE"
+          : "APPLY";
+
     const defaultData = {
       incident: {
-        district: district?.codeNew || district?.key,
-        tenantId: tenantIdNew,
+        tenantId: tenantId,
+        district: district?.name,
+        block: block?.name,
         incidentType: complaintType?.key,
         incidentSubtype: subType?.key,
         systemFunctional: systemFunctionality?.key,
-        phcType: healthcentre?.code || healthcentre?.key || healthcentre?.name,
-        phcSubType: healthCareType?.centreTypeKey || healthCareType?.centreType,
+        boundaryCode: healthcentre?.code,
         comments: comments,
-        block: block?.codeKey || block?.key,
         additionalDetail: {
           fileStoreId: uploadedFile,
           reopenreason: [],
           rejectReason: [],
-          sendBackReason: []
+          sendBackReason: [],
         },
         source: Digit.Utils.browser.isWebview() ? "mobile" : "web",
       },
       workflow: {
-        action: "APPLY",
+        action: workflowAction,
         //: uploadedImages
       },
     };
@@ -76,7 +63,12 @@ export const Complaint = {
         // ],
       };
     }
-    const response = await Digit.PGRService.create(defaultData, cityCode);
+    let response;
+    try {
+      response = await Digit.PGRService.create(defaultData, cityCode);
+    } catch (error) {
+      response = error?.response?.data?.Errors;
+    }
     return response;
   },
 
@@ -89,7 +81,10 @@ export const Complaint = {
     tenantId,
     selectedReopenReason,
     selectedRejectReason,
-    selectedSendBackReason
+    selectedSendBackReason,
+    oowResponses,
+    selectedOutOfScopeReason,
+    spcResponses
   ) => {
     complaintDetails.workflow.action = action;
     complaintDetails.workflow.assignes = employeeData ? [employeeData.uuid] : null;
@@ -99,9 +94,12 @@ export const Complaint = {
       rejectReason: selectedRejectReason && { value: selectedRejectReason?.localizedCode },
       sendBackReason: selectedSendBackReason && {
         value: {
-          reason: selectedSendBackReason?.localizedCode
+          reason: selectedSendBackReason?.localizedCode,
         },
       },
+      oowResponses: oowResponses && { value: oowResponses },
+      outOfScopeReason: selectedOutOfScopeReason && { value: selectedOutOfScopeReason?.localizedCode },
+      spcResponses: spcResponses && { value: spcResponses },
     };
 
     Object.entries(reasonMap).forEach(([key, data]) => {

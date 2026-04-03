@@ -31,11 +31,19 @@ public class ProjectFacilityConsumer {
     @KafkaListener(topics = "${project.facility.consumer.bulk.create.topic}")
     public List<ProjectFacility> bulkCreate(Map<String, Object> consumerRecord,
                                             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        log.trace("Entering bulkCreate consumer for topic: {}", topic);
+        log.info("Received bulk create request for project facilities from topic: {}", topic);
         try {
+            log.debug("Converting consumer record to ProjectFacilityBulkRequest");
             ProjectFacilityBulkRequest request = objectMapper.convertValue(consumerRecord, ProjectFacilityBulkRequest.class);
-            return service.create(request, true);
+            log.debug("Processing {} facilities for bulk create", request.getProjectFacilities() != null ? request.getProjectFacilities().size() : 0);
+            List<ProjectFacility> result = service.create(request, true);
+            log.info("Successfully processed bulk create for {} facilities", result != null ? result.size() : 0);
+            log.trace("Exiting bulkCreate consumer");
+            return result;
         } catch (Exception exception) {
-            log.error("error in project facility consumer bulk create", ExceptionUtils.getStackTrace(exception));
+            log.error("Error in project facility consumer bulk create for topic: {}", topic, exception);
+            log.trace("Exiting bulkCreate consumer with error");
             return Collections.emptyList();
         }
     }
@@ -43,11 +51,19 @@ public class ProjectFacilityConsumer {
     @KafkaListener(topics = "${project.facility.consumer.bulk.update.topic}")
     public List<ProjectFacility> bulkUpdate(Map<String, Object> consumerRecord,
                                             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        log.trace("Entering bulkUpdate consumer for topic: {}", topic);
+        log.info("Received bulk update request for project facilities from topic: {}", topic);
         try {
+            log.debug("Converting consumer record to ProjectFacilityBulkRequest");
             ProjectFacilityBulkRequest request = objectMapper.convertValue(consumerRecord, ProjectFacilityBulkRequest.class);
-            return service.update(request, true);
+            log.debug("Processing {} facilities for bulk update", request.getProjectFacilities() != null ? request.getProjectFacilities().size() : 0);
+            List<ProjectFacility> result = service.update(request, true);
+            log.info("Successfully processed bulk update for {} facilities", result != null ? result.size() : 0);
+            log.trace("Exiting bulkUpdate consumer");
+            return result;
         } catch (Exception exception) {
-            log.error("error in project facility consumer bulk update", ExceptionUtils.getStackTrace(exception));
+            log.error("Error in project facility consumer bulk update for topic: {}", topic, exception);
+            log.trace("Exiting bulkUpdate consumer with error");
             return Collections.emptyList();
         }
     }
@@ -55,11 +71,19 @@ public class ProjectFacilityConsumer {
     @KafkaListener(topics = "${project.facility.consumer.bulk.delete.topic}")
     public List<ProjectFacility> bulkDelete(Map<String, Object> consumerRecord,
                                             @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+        log.trace("Entering bulkDelete consumer for topic: {}", topic);
+        log.info("Received bulk delete request for project facilities from topic: {}", topic);
         try {
+            log.debug("Converting consumer record to ProjectFacilityBulkRequest");
             ProjectFacilityBulkRequest request = objectMapper.convertValue(consumerRecord, ProjectFacilityBulkRequest.class);
-            return service.delete(request, true);
+            log.debug("Processing {} facilities for bulk delete", request.getProjectFacilities() != null ? request.getProjectFacilities().size() : 0);
+            List<ProjectFacility> result = service.delete(request, true);
+            log.info("Successfully processed bulk delete for {} facilities", result != null ? result.size() : 0);
+            log.trace("Exiting bulkDelete consumer");
+            return result;
         } catch (Exception exception) {
-            log.error("error in project facility consumer bulk delete", ExceptionUtils.getStackTrace(exception));
+            log.error("Error in project facility consumer bulk delete for topic: {}", topic, exception);
+            log.trace("Exiting bulkDelete consumer with error");
             return Collections.emptyList();
         }
     }

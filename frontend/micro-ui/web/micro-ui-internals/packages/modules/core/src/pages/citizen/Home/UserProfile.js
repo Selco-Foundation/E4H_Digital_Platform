@@ -14,7 +14,7 @@ import {
 } from "@selco/digit-ui-react-components";
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useHistory } from "react-router-dom";
+import { Redirect, useHistory } from "react-router-dom";
 import UploadDrawer from "./ImageUpload/UploadDrawer";
 
 const defaultImage =
@@ -51,7 +51,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   const [name, setName] = useState(userInfo?.name ? userInfo.name : "");
   const [email, setEmail] = useState(userInfo?.emailId ? userInfo.emailId : "");
   const [gender, setGender] = useState(userDetails?.gender);
-  const [city, setCity] = useState(userInfo?.permanentCity ? userInfo.permanentCity : cityDetails.name);
+  const [city, setCity] = useState(cityDetails.name);
   if(city==="State"){
     setCity("All")
   }
@@ -68,6 +68,15 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   const [windowWidth, setWindowWidth] = React.useState(window.innerWidth);
   const [errors, setErrors] = React.useState({});
   const isMobile = window.Digit.Utils.browser.isMobile();
+  const analyticsOnceRef = React.useRef(false);
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
+  const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
+  const jurisdictionCurrentBoundaryTypes = Digit.Utils.BoundaryUtil.aggregateBoundaryTypes(jurisdictionCurrentBoundary);
+  const isOnlyFacilityType = jurisdictionCurrentBoundaryTypes.length === 1 && jurisdictionCurrentBoundaryTypes[0] === "facility";
+
+  useEffect(() => {
+    setCity((jurisdictionCurrentBoundaryCodes?.length === 1 &&  isOnlyFacilityType) ? t(`Boundary_${jurisdictionCurrentBoundaryCodes?.[0]}`) : t("CORE_COMMON_ALL"))
+  }, []);
 
   const getUserInfo = async () => {
     const uuid = userInfo?.uuid;
@@ -86,7 +95,6 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
 
   useEffect(() => {
     setLoading(true);
-
     getUserInfo();
 
     setGender({
@@ -100,6 +108,20 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
 
     setLoading(false);
   }, [userDetails !== null]);
+
+  React.useEffect(() => {
+    if (!analyticsOnceRef.current) {
+      try {
+        Digit?.Utils?.analytics?.trackPageView("profile_page", {
+          page_path: window.location?.pathname || "/profile",
+          page_title: "Profile",
+        });
+      } catch (e) {
+        console.warn("analytics: page_view profile failed", e);
+      }
+      analyticsOnceRef.current = true;
+    }
+  }, []);
 
   let validation = {};
   const editScreen = false; // To-do: Deubug and make me dynamic or remove if not needed

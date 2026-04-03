@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.egov.common.contract.models.AuditDetails;
 import org.springframework.validation.annotation.Validated;
 
 import java.util.Map;
@@ -61,4 +62,38 @@ public class Facility {
 
     @JsonProperty("boundaryCode")
     private String boundaryCode = null;
+
+    @JsonProperty("boundary")
+    private Boundary boundary = null;
+
+    @JsonProperty("isOnmReady")
+    private Boolean isOnmReady = false;
+
+    @JsonProperty("facility_poc_name")
+    private String facilityPocName = null;
+
+    @JsonProperty("facility_poc_phone")
+    private String facilityPocPhone = null;
+
+    @JsonProperty("facility_poc_email")
+    private String facilityPocEmail = null;
+
+    @JsonProperty("facility_status")
+    private String facilityStatus = null;
+
+    @JsonProperty("hfr_id")
+    private String hfrId = null;
+
+    @JsonProperty("nin_id")
+    private String ninId = null;
+
+    /** True when the facility has any row in facility_rms_inactive_incident (open RMS/Theft incidents). */
+    @JsonProperty("rms_inactive")
+    private Boolean rmsInactive = null;
+
+    @JsonProperty("user_id")
+    private String userId = null;
+
+    @JsonProperty("auditDetails")
+    private AuditDetails auditDetails = null;
 }

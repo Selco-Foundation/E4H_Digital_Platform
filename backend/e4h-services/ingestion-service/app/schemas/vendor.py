@@ -6,7 +6,6 @@ from typing import Optional, Dict, Any
 class Vendor:
     country_boundary_code: str
     vendor_name: str
-    vendor_code: str
     vendor_type: str
     vendor_subtype: Optional[str]
     identifier_type: str
@@ -17,13 +16,12 @@ class Vendor:
     poc_name: str
 
     def __str__(self):
-        return f"Vendor(name={self.vendor_name}, code={self.vendor_code}, country={self.country_boundary_code})"
+        return f"Vendor(name={self.vendor_name}, country={self.country_boundary_code})"
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "country_boundary_code": self.country_boundary_code,
             "vendor_name": self.vendor_name,
-            "vendor_code": self.vendor_code,
             "vendor_type": self.vendor_type,
             "vendor_subtype": self.vendor_subtype,
             "identifier_type": self.identifier_type,

@@ -134,7 +134,7 @@ public class UserUtils {
 
     public String getStateLevelTenant(String tenantId){
        /* return tenantId.split("\\.")[0];*/
-        log.info("tenantId"+ tenantId);
+        log.debug("Getting state level tenant for tenantId: {}", tenantId);
         return centralInstanceUtil.getStateLevelTenant(tenantId);
     }
 

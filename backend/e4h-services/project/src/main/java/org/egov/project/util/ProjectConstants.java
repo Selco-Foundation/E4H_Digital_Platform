@@ -9,10 +9,16 @@ public class ProjectConstants {
     public static final String MDMS_HCM_ATTENDANCE_MODULE_NAME = "HCM-ATTENDANCE";
     public static final String MASTER_DEPARTMENT = "Department";
     public static final String MASTER_PROJECTTYPE = "ProjectType";
+    public static final String MASTER_STATEINFO = "StateInfo";
     //location
     public static final String MASTER_NATUREOFWORK = "NatureOfWork";
     public static final String MASTER_ATTENDANCE_SESSION = "AttendanceSessions";
     public static final String CODE = "code";
+    public static final String PROJECT_TYPE_FIELDPLAN = "FieldPlan";
+    public static final String PROJECT_TYPE_FACILITY = "Facility";
+    public static final String PROJECT_SUB_TYPE = "PROJECT";
+    public static final String HIERARCHY_TYPE = "SELCO";
+    public static final String TENANTID = "in";
     //General
     public static final String SEMICOLON = ":";
     public static final String DOT = ".";
@@ -23,6 +29,7 @@ public class ProjectConstants {
     public static final String NUMBER_OF_SESSIONS = "numberOfSessions";
     public static final String OR = " OR ";
     public static final String PROJECT_MANAGER = "PROJECT_MANAGER";
+    public static final String SUBMITTED_BY_SUPERVISOR = "SUBMITTED_BY_SUPERVISOR";
 
 
 }

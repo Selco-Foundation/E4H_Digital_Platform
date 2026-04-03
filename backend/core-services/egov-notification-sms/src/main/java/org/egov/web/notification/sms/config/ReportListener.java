@@ -23,8 +23,14 @@ public class ReportListener {
 
     @KafkaListener(topics = "${kafka.topics.sms.bounce}")
     public void listen(final HashMap<String, Object> record) {
+        log.trace("listen method invoked - received SMS bounce report from Kafka");
+        log.info("Processing SMS bounce report");
+        log.debug("Received record with {} entries", record != null ? record.size() : 0);
+        
         Report report = objectMapper.convertValue(record, Report.class);
-        log.info(report.toString());
+        log.debug("Report object converted successfully, job number: {}", report.getJobno());
+        log.info("SMS bounce report processed - job number: {}, status: {}, done time: {}", 
+                report.getJobno(), report.getMessagestatus(), report.getDoneTime());
     }
 
 }

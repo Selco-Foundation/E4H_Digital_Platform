@@ -7,14 +7,8 @@ export const PrivateRoute = ({ component: Component, roles, ...rest }) => {
       {...rest}
       render={(props) => {
         const user = Digit.UserService.getUser();
-        const userType = Digit.UserService.getType();
         function getLoginRedirectionLink (){
-          if(userType === "employee"){
-            return `/${window?.contextPath}/employee/user/language-selection`
-          }
-          else{
-            return `/${window?.contextPath}/citizen/login`
-          }
+          return `/${window?.contextPath}/employee/user/login`
         }
         if (!user || !user.access_token) {
           // not logged in so redirect to login page with the return url

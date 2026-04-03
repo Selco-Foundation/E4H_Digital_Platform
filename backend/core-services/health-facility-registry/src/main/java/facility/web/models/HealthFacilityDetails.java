@@ -1,5 +1,6 @@
 package facility.web.models;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.annotation.Generated;
 import jakarta.validation.constraints.NotNull;
@@ -22,13 +23,14 @@ import jakarta.validation.constraints.Size;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class HealthFacilityDetails {
 
-    @Size(min = 12, max = 12)
+    @Size(min = 10, max = 10)
     @JsonProperty("hfr_id")
     private String hfrId;
 
-    @Size(min = 10, max = 10)
+    @Size(min = 12, max = 12)
     @JsonProperty("nin_id")
     private String ninId;
 
@@ -50,9 +52,12 @@ public class HealthFacilityDetails {
     )
     private String pocName;
 
+    @JsonProperty("pocEmail")
+    private String pocEmail;
+
     @JsonProperty("pocDesignation")
     @Pattern(
-            regexp = "^[a-zA-Z\\s]+$",
+            regexp = "^[a-zA-Z0-9_]+$",
             message = "POC Designation pattern is incorrect"
     )
     private String pocDesignation;

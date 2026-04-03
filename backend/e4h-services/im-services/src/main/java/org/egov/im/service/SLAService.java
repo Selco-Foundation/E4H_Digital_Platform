@@ -1,27 +1,44 @@
 package org.egov.im.service;
 
+import org.apache.kafka.common.protocol.types.Field;
+import org.egov.im.repository.IMPriorityRepository;
+import org.egov.im.web.models.IMPrioritySearchCriteria;
+import org.egov.im.web.models.Incident;
 import org.egov.im.web.models.IncidentRequest;
 import org.egov.im.web.models.Priority;
+import org.egov.im.web.models.workflow.ProcessInstance;
 import org.egov.im.web.models.workflow.State;
 import org.egov.tracer.model.CustomException;
 import com.jayway.jsonpath.JsonPath;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.egov.im.util.IMConstants.*;
 
 @Slf4j
 @Service
 public class SLAService {
-
-    public long computeTotalSla(String currentState, List<State> states) {
+    
+    private  final IMPriorityRepository imPriorityRepository;
+    
+    @Autowired
+    public SLAService(IMPriorityRepository imPriorityRepository){
+        this.imPriorityRepository = imPriorityRepository;
+    }
+    
+    public long computeTotalSla(String currentState, List<State> states, List<ProcessInstance> processInstances) {
+        log.trace("SLAService::computeTotalSla method invoked");
+        log.info("Computing total SLA for currentState={}", currentState);
         Map<String, Long> stateToSlaMap = new HashMap<>();
         for (State state : states) {
             String key = state.getApplicationStatus();
@@ -30,26 +47,61 @@ public class SLAService {
             }
         }
         long totalSla = 0;
-        if (PENDINGFORASSIGNMENT.equals(currentState) || PENDINGATVENDOR.equals(currentState)) {
-            totalSla += stateToSlaMap.getOrDefault(PENDINGFORASSIGNMENT, 0L);
+        //calculating sla for all states till current state
+        List<String> previousStates = processInstances
+                .stream()
+                .map(p -> p.getState().getApplicationStatus())
+                .collect(Collectors.toList());
+
+        if(previousStates.isEmpty() || !previousStates.get(previousStates.size() - 1).equals(currentState)){
+            previousStates.add(currentState);
+        }
+        for (String state : previousStates) {
+            if (PENDINGFORASSIGNMENT.equals(state) || PENDINGATVENDOR.equals(state)
+                    || state.startsWith(PENDING_ASSIGNMENT_PREFIX) || state.startsWith(PENDINGFORASSIGNMENT_PREFIX)
+                    || state.startsWith(PENDING_RESOLUTION_PREFIX)
+                    || RMS_DEVICE_PENDING_TECH_POC.equals(state) || RMS_DEVICE_PENDINGRESOLUTION.equals(state)
+                    || OUT_OF_SCOPE.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC.equals(state)
+                    || PENDING_REVISION.equals(state) || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(state)) {
+                totalSla += stateToSlaMap.getOrDefault(state, 0L);
+            }
+        }
+
+        //add positive follow-up state
+        if (PENDINGFORASSIGNMENT.equals(currentState) || PENDINGFORASSIGNMENT_THEFT.equals(currentState)) {
             totalSla += stateToSlaMap.getOrDefault(PENDINGATVENDOR, 0L);
+            log.debug("Computed SLA for combined state={} totalSla={}", currentState, totalSla);
+        } else if (PENDINGFORASSIGNMENT_RMS_DEVICE.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(RMS_DEVICE_PENDING_TECH_POC, 0L);
+            log.debug("Computed SLA for RMS device assignment | currentState={} totalSla={}", currentState, totalSla);
+        } else if (RMS_DEVICE_PENDING_TECH_POC.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(RMS_DEVICE_PENDINGRESOLUTION, 0L);
+            log.debug("Computed SLA for RMS device tech POC | currentState={} totalSla={}", currentState, totalSla);
+        } else if (OUT_OF_WARRANTY_PENDING_TECH_POC.equals(currentState)
+                || OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(PENDING_ASSIGNMENT_OUT_OF_WARRANTY, 0L);
+            log.debug("Computed SLA for out-of-warranty tech POC | currentState={} totalSla={}", currentState, totalSla);
+        } else if (OUT_OF_SCOPE.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(PENDING_RESOLUTION_OUT_OF_SCOPE, 0L);
+            log.debug("Computed SLA for out-of-scope | currentState={} totalSla={}", currentState, totalSla);
+        } else if (PENDING_REVISION.equals(currentState)) {
+            totalSla += stateToSlaMap.getOrDefault(OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2, 0L);
+            log.debug("Computed SLA for pending revision | currentState={} totalSla={}", currentState, totalSla);
         } else if (currentState.startsWith(PENDING_ASSIGNMENT_PREFIX)) {
             String suffix = currentState.replace(PENDING_ASSIGNMENT_PREFIX, "");
             String resolutionState = PENDING_RESOLUTION_PREFIX + suffix;
-            totalSla += stateToSlaMap.getOrDefault(currentState, 0L);
             totalSla += stateToSlaMap.getOrDefault(resolutionState, 0L);
-        } else if (currentState.startsWith(PENDING_RESOLUTION_PREFIX)) {
-            String suffix = currentState.replace(PENDING_RESOLUTION_PREFIX, "");
-            String assignmentState = PENDING_ASSIGNMENT_PREFIX + suffix;
-            totalSla += stateToSlaMap.getOrDefault(currentState, 0L);
-            totalSla += stateToSlaMap.getOrDefault(assignmentState, 0L);
+            log.debug("Computed SLA for assignment workflow | currentState={} resolutionState={} totalSla={}",
+                    currentState, resolutionState, totalSla);
         }
         return totalSla;
     }
 
     public Priority getPriorityFromMDMS(IncidentRequest request, Object mdmsData) {
+        log.trace("SLAService::getPriorityFromMDMS method invoked");
         String serviceCode = request.getIncident().getIncidentSubType();
         String assetType = request.getIncident().getIncidentType();
+        log.info("Fetching priority from MDMS for assetType={} serviceCode={}", assetType, serviceCode);
         String jsonPath = MDMS_SERVICEDEF_SEARCH.replace("{SERVICEDEF}", serviceCode);
         List<Object> res;
         try {
@@ -92,7 +144,22 @@ public class SLAService {
     }
 
     private String getStringValue(Map<String, Object> map, String key) {
+        log.trace("SLAService::getStringValue method invoked");
         Object value = map.get(key);
         return value != null ? String.valueOf(value) : null;
+    }
+
+    public Priority getPriorityFromIMPriorityTable(Incident incident) {
+        log.trace("SLAService::getPriorityFromIMPriorityTable method invoked");
+        String stateTenantId = incident.getTenantId().split("\\.")[0];
+        log.debug("Fetching priority from IM priority table for tenantId={}, incidentType={}, incidentSubType={}", 
+                stateTenantId, incident.getIncidentType(), incident.getIncidentSubType());
+        IMPrioritySearchCriteria criteria = IMPrioritySearchCriteria.builder()
+                .tenantId(stateTenantId)
+                .incidentType(incident.getIncidentType())
+                .incidentSubType(incident.getIncidentSubType())
+                .systemFunctional(incident.getSystemFunctional())
+                .build();
+        return imPriorityRepository.getPriority(criteria);
     }
 } 

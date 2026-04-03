@@ -48,6 +48,10 @@ public class BusinessServiceRepository {
 
 
     public List<BusinessService> getBusinessServices(BusinessServiceSearchCriteria criteria){
+        log.trace("Entering getBusinessServices method");
+        String tenantId = criteria.getTenantId();
+        log.info("Fetching business services for tenantId: {}", tenantId);
+        
         String query;
 
         List<String> stateLevelBusinessServices = new LinkedList<>();
@@ -84,6 +88,8 @@ public class BusinessServiceRepository {
             searchResults.addAll(jdbcTemplate.query(query, tenantLevelPreparedStmtList.toArray(), rowMapper));
         }
 
+        log.info("Retrieved {} business service(s) from database", searchResults != null ? searchResults.size() : 0);
+        log.trace("Exiting getBusinessServices method");
         return searchResults;
     }
 
@@ -94,11 +100,13 @@ public class BusinessServiceRepository {
      */
     @Cacheable(value = "roleTenantAndStatusesMapping")
     public Map<String,Map<String,List<String>>> getRoleTenantAndStatusMapping(){
-
+        log.trace("Entering getRoleTenantAndStatusMapping method");
+        log.info("Building role tenant and status mapping from all business services");
 
         Map<String, Map<String,List<String>>> roleTenantAndStatusMapping = new HashMap();
 
         List<BusinessService> businessServices = getAllBusinessService();
+        log.debug("Retrieved {} business service(s) for mapping", businessServices != null ? businessServices.size() : 0);
 
         for(BusinessService businessService : businessServices){
 
@@ -143,6 +151,8 @@ public class BusinessServiceRepository {
 
         }
 
+        log.info("Successfully built role tenant and status mapping with {} role(s)", roleTenantAndStatusMapping.size());
+        log.trace("Exiting getRoleTenantAndStatusMapping method");
         return roleTenantAndStatusMapping;
 
     }
@@ -152,13 +162,18 @@ public class BusinessServiceRepository {
      * @return
      */
     private List<BusinessService> getAllBusinessService(){
+        log.trace("Entering getAllBusinessService method");
 
         List<Object> preparedStmtList = new ArrayList<>();
         String query = queryBuilder.getBusinessServices(new BusinessServiceSearchCriteria(), preparedStmtList);
+        log.debug("Query for all business services: {} with params: {}", query, preparedStmtList);
 
         List<BusinessService> businessServices = jdbcTemplate.query(query, preparedStmtList.toArray(), rowMapper);
+        log.debug("Retrieved {} business service(s) before filtering", businessServices != null ? businessServices.size() : 0);
+        
         List<BusinessService> filterBusinessServices = filterBusinessServices((businessServices));
-
+        log.debug("Filtered to {} business service(s)", filterBusinessServices != null ? filterBusinessServices.size() : 0);
+        log.trace("Exiting getAllBusinessService method");
         return filterBusinessServices;
     }
 
@@ -169,6 +184,9 @@ public class BusinessServiceRepository {
      * @return
      */
     private List<BusinessService> filterBusinessServices(List<BusinessService> businessServices){
+        log.trace("Entering filterBusinessServices method");
+        int inputSize = businessServices != null ? businessServices.size() : 0;
+        log.debug("Filtering {} business service(s) based on MDMS state level mapping", inputSize);
 
         Map<String, Boolean> stateLevelMapping = mdmsService.getStateLevelMapping();
         List<BusinessService> filteredBusinessService = new LinkedList<>();
@@ -195,7 +213,12 @@ public class BusinessServiceRepository {
                 }
             }
         }
-
+        
+        int filteredSize = filteredBusinessService.size();
+        if(inputSize != filteredSize) {
+            log.debug("Filtered {} business service(s) out, {} remaining", inputSize - filteredSize, filteredSize);
+        }
+        log.trace("Exiting filterBusinessServices method");
         return filteredBusinessService;
     }
 

@@ -92,33 +92,38 @@ public class LocationCaptureService {
      * @return A list of valid location capture tasks.
      */
     public List<UserAction> create(UserActionBulkRequest request, boolean isBulk) {
+        log.trace("Entering create (bulk location capture)");
         log.info("Received request to create bulk location capture tasks");
 
         // Validate the request and separate valid tasks from error details.
         Tuple<List<UserAction>, Map<UserAction, ErrorDetails>> tuple = validate(validators, isApplicableForCreate, request, isBulk);
         Map<UserAction, ErrorDetails> errorDetailsMap = tuple.getY();
         List<UserAction> validLocationCaptures = tuple.getX();
+        log.debug("Validation completed - {} valid location captures, {} errors", validLocationCaptures.size(), errorDetailsMap.size());
 
         try {
             if (!validLocationCaptures.isEmpty()) {
                 log.info("Processing {} valid entities", validLocationCaptures.size());
-
+                log.debug("Enriching location captures before save");
                 // Enrich valid location capture tasks.
                 userActionEnrichmentService.create(validLocationCaptures, request);
 
                 // Save valid location capture tasks and send them to the Kafka topic.
+                log.debug("Saving location captures to repository");
                 locationCaptureRepository.save(validLocationCaptures, projectConfiguration.getCreateLocationCaptureTopic());
-                log.info("Successfully created location capture tasks");
+                log.info("Successfully created {} location capture tasks", validLocationCaptures.size());
+            } else {
+                log.warn("No valid location captures to create after validation");
             }
         } catch (Exception exception) {
             // Log and handle exceptions that occur during task creation.
-            log.error("Error occurred while creating location capture tasks: {}", ExceptionUtils.getStackTrace(exception));
+            log.error("Error occurred while creating location capture tasks", exception);
             populateErrorDetails(request, errorDetailsMap, validLocationCaptures, exception, SET_USER_ACTION);
         }
 
         // Handle errors based on the validation results.
         handleErrors(errorDetailsMap, isBulk, VALIDATION_ERROR);
-
+        log.trace("Exiting create (bulk location capture)");
         return validLocationCaptures;
     }
 
@@ -136,14 +141,15 @@ public class LocationCaptureService {
             List<Validator<UserActionBulkRequest, UserAction>> validators,
             Predicate<Validator<UserActionBulkRequest, UserAction>> applicableValidators,
             UserActionBulkRequest request, boolean isBulk) {
-
-        log.info("Validating request");
+        log.trace("Entering validate for {} location captures", request.getUserActions() != null ? request.getUserActions().size() : 0);
+        log.debug("Validating request with {} validators", validators.size());
 
         // Perform validation and collect error details.
         Map<UserAction, ErrorDetails> errorDetailsMap = new HashMap<>();
 
         // Throw an exception if there are validation errors and it's not a bulk operation.
         if (!errorDetailsMap.isEmpty() && !isBulk) {
+            log.error("Validation error occurred. Error details: {}", errorDetailsMap.values());
             throw new CustomException(VALIDATION_ERROR, errorDetailsMap.values().toString());
         }
 
@@ -151,7 +157,8 @@ public class LocationCaptureService {
         List<UserAction> validLocationCaptures = request.getUserActions().stream()
                 .filter(notHavingErrors())
                 .toList();
-
+        log.debug("Validation completed - {} valid location captures out of {}", validLocationCaptures.size(), request.getUserActions().size());
+        log.trace("Exiting validate");
         return new Tuple<>(validLocationCaptures, errorDetailsMap);
     }
 
@@ -164,22 +171,24 @@ public class LocationCaptureService {
      * @return A SearchResponse containing the search results and total count.
      */
     public SearchResponse<UserAction> search(UserActionSearchRequest locationCaptureSearchRequest, URLParams urlParams) {
-        log.info("Received request to search project task");
+        log.trace("Entering search");
+        log.info("Received request to search location capture tasks");
 
         UserActionSearch locationCaptureSearch = locationCaptureSearchRequest.getUserAction();
         String idFieldName = getIdFieldName(locationCaptureSearch);
 
         if (isSearchByIdOnly(locationCaptureSearch, idFieldName)) {
-            log.info("Searching location capture by id");
+            log.info("Searching location captures by ID");
             List<String> ids = (List<String>) ReflectionUtils.invokeMethod(
                     getIdMethod(Collections.singletonList(locationCaptureSearch)),
                     locationCaptureSearch
             );
-            log.info("Fetching location capture tasks with ids: {}", ids);
+            log.debug("Fetching location captures with {} IDs", ids != null ? ids.size() : 0);
 
             // Perform search by IDs and filter results based on last changed date and tenant ID.
             SearchResponse<UserAction> searchResponse = locationCaptureRepository.findById(ids, idFieldName);
-            return SearchResponse.<UserAction>builder()
+            log.debug("Found {} location captures before filtering", searchResponse.getResponse() != null ? searchResponse.getResponse().size() : 0);
+            SearchResponse<UserAction> result = SearchResponse.<UserAction>builder()
                     .response(searchResponse.getResponse().stream()
                             .filter(lastChangedSince(urlParams.getLastChangedSince()))
                             .filter(havingTenantId(urlParams.getTenantId()))
@@ -187,9 +196,13 @@ public class LocationCaptureService {
                     )
                     .totalCount(searchResponse.getTotalCount())
                     .build();
+            log.info("Search by ID completed - found {} location captures", result.getResponse() != null ? result.getResponse().size() : 0);
+            log.trace("Exiting search");
+            return result;
         }
 
-        log.info("Searching project beneficiaries using criteria");
+        log.info("Searching location captures using criteria");
+        log.debug("Search parameters - tenantId: {}, includeDeleted: {}", urlParams.getTenantId(), urlParams.getIncludeDeleted());
         // Perform search based on other criteria.
         return locationCaptureRepository.find(locationCaptureSearch, urlParams);
     }
@@ -200,8 +213,10 @@ public class LocationCaptureService {
      * @param locationCaptures The list of location capture tasks to cache.
      */
     public void putInCache(List<UserAction> locationCaptures) {
-        log.info("Putting {} location tracking tasks in cache", locationCaptures.size());
+        log.trace("Entering putInCache for {} location captures", locationCaptures != null ? locationCaptures.size() : 0);
+        log.info("Putting {} location tracking tasks in cache", locationCaptures != null ? locationCaptures.size() : 0);
         locationCaptureRepository.putInCache(locationCaptures);
         log.info("Successfully put location tracking tasks in cache");
+        log.trace("Exiting putInCache");
     }
 }

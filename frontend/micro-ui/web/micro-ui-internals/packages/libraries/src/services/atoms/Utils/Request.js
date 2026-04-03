@@ -10,26 +10,25 @@ import Axios from "axios";
 Axios.interceptors.response.use(
   (res) => res,
   (err) => {
-    const isEmployee = window.location.pathname.split("/").includes("employee");
     if (err?.response?.data?.Errors) {
       for (const error of err.response.data.Errors) {
         if (error.message.includes("InvalidAccessTokenException")) {
           localStorage.clear();
           sessionStorage.clear();
           window.location.href =
-          (isEmployee ? `/${window?.contextPath}/employee/user/login` : `/${window?.contextPath}/employee`) +
+            `/${window?.contextPath}/employee/user/login` +
             `?from=${encodeURIComponent(window.location.pathname + window.location.search)}`;
         } else if (
           error?.message?.toLowerCase()?.includes("internal server error") ||
           error?.message?.toLowerCase()?.includes("some error occured")
         ) {
           window.location.href =
-          (isEmployee ? `/${window?.contextPath}/employee/user/error` : `/${window?.contextPath}/citizen/error`) +
-                      `?type=maintenance&from=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            `/${window?.contextPath}/employee/user/login` +
+            `?from=${encodeURIComponent(window.location.pathname + window.location.search)}`;
         } else if (error.message.includes("ZuulRuntimeException")) {
           window.location.href =
-          (isEmployee ? `/${window?.contextPath}/employee/user/error` : `/${window?.contextPath}/citizen/error`) +
-                      `?type=notfound&from=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            `/${window?.contextPath}/employee/user/login` +
+            `?from=${encodeURIComponent(window.location.pathname + window.location.search)}`;
         }
       }
     }

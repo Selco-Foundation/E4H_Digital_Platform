@@ -49,4 +49,21 @@ public class ServiceRequestRepository {
         return Objects.requireNonNull(response,
                 () -> "External service returned empty response for URI: " + uri);
     }
+
+    public Object fetchEncServiceResult(StringBuilder uri, Object request) {
+        mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
+        Object response = null;
+        try {
+            response = restTemplate.postForObject(uri.toString(), request, Object.class);
+        } catch (HttpClientErrorException e) {
+            log.error(EXTERNAL_SERVICE_EXCEPTION, e);
+            throw new ServiceCallException(e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error(SEARCHER_SERVICE_EXCEPTION, e);
+            throw new ServiceCallException();
+        }
+
+        return Objects.requireNonNull(response,
+                () -> "External service returned empty response for URI: " + uri);
+    }
 }

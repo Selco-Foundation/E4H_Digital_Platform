@@ -2,6 +2,7 @@ package facility.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Generated;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -31,7 +32,8 @@ public class FacilityCreateRequest {
     @JsonProperty("facilities")
     @NotNull
     @Size(min = 1, message = "At least one facility must be provided")
-    private List<Facility> facilities = null;
+    @Valid
+    private List<FacilityCreate> facilities = null;
 
 
 }

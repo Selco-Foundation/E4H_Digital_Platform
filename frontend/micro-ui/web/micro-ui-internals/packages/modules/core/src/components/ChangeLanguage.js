@@ -1,18 +1,27 @@
 import { CustomButton, Dropdown } from "@selco/digit-ui-react-components";
 import React, { useState } from "react";
+import {useSelector} from "react-redux";
 
 const ChangeLanguage = (prop) => {
   const isDropdown = prop.dropdown || false;
-  const { data: storeData, isLoading } = Digit.Hooks.useStore.getInitData();
-  const { languages, stateInfo } = storeData || {};
+  const languages = useSelector((state) => state.common.languages) || [];
   const selectedLanguage = Digit.StoreData.getCurrentLanguage();
   const [selected, setselected] = useState(selectedLanguage);
-  const handleChangeLanguage = (language) => {
-    setselected(language.value);
-    Digit.LocalizationService.changeLanguage(language.value, stateInfo.code);
-  };
+  const stateCode = window.globalConfigs?.getConfig("STATE_LEVEL_TENANT_ID")
 
-  if (isLoading) return null;
+  const handleChangeLanguage = (language) => {
+    try {
+      Digit.Utils.analytics?.trackButtonClick("language_change_after_login", {
+        page_path: window.location?.pathname || "/employee",
+        page_title: "Post-Login Page",
+        selected_language: language.value,
+      });
+    } catch (e) {
+      console.warn("analytics: language change after login failed", e);
+    }
+    setselected(language.value);
+    Digit.LocalizationService.changeLanguage(language.value, stateCode);
+  };
 
   if (isDropdown) {
     return (
@@ -23,7 +32,7 @@ const ChangeLanguage = (prop) => {
           optionKey={"label"}
           select={handleChangeLanguage}
           freeze={true}
-          customSelector={<label className="cp">{languages.find((language) => language.value === selected).label}</label>}
+          customSelector={<label className="cp">{languages.find((language) => language.value === selected)?.label}</label>}
         />
       </div>
     );

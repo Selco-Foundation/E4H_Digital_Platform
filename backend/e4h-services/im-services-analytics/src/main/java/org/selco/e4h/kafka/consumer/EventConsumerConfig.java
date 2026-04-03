@@ -47,10 +47,11 @@ public class EventConsumerConfig implements ApplicationRunner {
 	private EventListener indexerMessageListener;
 
 	public static boolean pauseContainer() {
+		log.trace("Attempting to pause Kafka listener container");
 		try {
 			kafkContainer.stop();
 		} catch (Exception e) {
-			log.error("Container couldn't be stopped: ", e);
+			log.error("Failed to pause Kafka listener container", e);
 			return false;
 		}
 		log.info("Custom KakfaListenerContainer STOPPED...");
@@ -59,10 +60,11 @@ public class EventConsumerConfig implements ApplicationRunner {
 	}
 
 	public static boolean resumeContainer() {
+		log.trace("Attempting to resume Kafka listener container");
 		try {
 			kafkContainer.start();
 		} catch (Exception e) {
-			log.error("Container couldn't be started: ", e);
+			log.error("Failed to resume Kafka listener container", e);
 			return false;
 		}
 		log.info("Custom KakfaListenerContainer STARTED...");
@@ -72,21 +74,25 @@ public class EventConsumerConfig implements ApplicationRunner {
 
 	@Override
 	public void run(final ApplicationArguments arg0) throws Exception {
+		log.trace("ApplicationRunner run method invoked");
 		try {
 			log.info("Starting kafka listener container......");
 			initializeContainer();
 		} catch (Exception e) {
-			log.error("Exception while Starting kafka listener container: ", e);
+			log.error("Exception while initializing Kafka listener container", e);
 		}
 	}
 
 	public String setTopics() {
+		log.trace("Setting Kafka consumer topics");
 		this.topics = config.getConsumerTopics().split(",");
-		log.info("Core: Topics intialized..");
+		log.debug("Initialized {} topics: {}", topics.length, Arrays.toString(topics));
+		log.info("Kafka consumer topics initialized");
 		return Arrays.toString(topics);
 	}
 
 	public ConsumerFactory<String, String> consumerFactory() {
+		log.trace("Creating Kafka consumer factory");
 		Map<String, Object> props = new HashMap<>();
 		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, this.config.getBrokerAddress());
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, config.getConsumerGroup());
@@ -99,38 +105,43 @@ public class EventConsumerConfig implements ApplicationRunner {
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 
+		log.debug("Consumer factory configured with broker: {}, group: {}", 
+			this.config.getBrokerAddress(), config.getConsumerGroup());
+		log.info("Kafka consumer factory created");
 		return new DefaultKafkaConsumerFactory<>(props);
 	}
 
 	public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<String, String>> kafkaListenerContainerFactory() {
+		log.trace("Creating Kafka listener container factory");
 		ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
 		factory.setConsumerFactory(consumerFactory());
 		factory.setCommonErrorHandler(kafkaConsumerErrorHandler);
 		factory.setConcurrency(3);
 		factory.getContainerProperties().setPollTimeout(30000);
-
-		log.info("Custom KafkaListenerContainerFactory built...");
+		log.debug("Container factory configured with concurrency: 3, poll timeout: 30000ms");
+		log.info("Kafka listener container factory created");
 		return factory;
-
 	}
 
 	public KafkaMessageListenerContainer<String, String> container() throws Exception {
+		log.trace("Creating Kafka message listener container");
 		setTopics();
-		ContainerProperties properties = new ContainerProperties(this.topics); // set more properties
+		ContainerProperties properties = new ContainerProperties(this.topics);
 		properties.setMessageListener(indexerMessageListener);
-
-		log.info("Custom KafkaListenerContainer built...");
-
+		log.debug("Container properties configured with {} topics", this.topics.length);
+		log.info("Kafka message listener container created");
 		return new KafkaMessageListenerContainer<>(consumerFactory(), properties);
 	}
 
 	public boolean initializeContainer() {
+		log.trace("Initializing Kafka container");
 		KafkaMessageListenerContainer<String, String> container = null;
 		try {
 			container = container();
 			kafkContainer = container;
+			log.debug("Container instance created and assigned");
 		} catch (Exception e) {
-			log.error("Container couldn't be started: ", e);
+			log.error("Failed to create Kafka container", e);
 			return false;
 		}
 		kafkContainer.start();

@@ -1,19 +1,26 @@
 package org.selco.e4h;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.egov.tracer.config.TracerConfiguration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.web.client.RestTemplate;
 
 import javax.net.ssl.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.TimeZone;
 
 @Import({TracerConfiguration.class})
+@EnableKafka
 @SpringBootApplication
 @PropertySource("classpath:application.properties")
 @Configuration
@@ -61,6 +68,15 @@ public class Main {
 	public RestTemplate restTemplate() {
 		trustSelfSignedSSL();
 		return new RestTemplate();
+	}
+
+	@Bean
+	@Qualifier("objectMapper")
+	public ObjectMapper objectMapper() {
+		ObjectMapper objectMapper = new ObjectMapper();
+		objectMapper.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES).setTimeZone(TimeZone.getTimeZone("UTC"));
+		objectMapper.registerModule(new JavaTimeModule());
+		return objectMapper;
 	}
 
 }

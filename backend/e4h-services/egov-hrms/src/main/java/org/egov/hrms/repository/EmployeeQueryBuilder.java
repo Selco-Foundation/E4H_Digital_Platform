@@ -1,17 +1,23 @@
 package org.egov.hrms.repository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.egov.common.contract.request.RequestInfo;
 import org.egov.hrms.config.PropertiesManager;
+import org.egov.hrms.service.BoundaryService;
 import org.egov.hrms.web.contract.EmployeeSearchCriteria;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class EmployeeQueryBuilder {
 	
 	@Value("${egov.hrms.default.pagination.limit}")
@@ -20,6 +26,9 @@ public class EmployeeQueryBuilder {
 	@Autowired
 	private PropertiesManager properties;
 	
+	@Autowired
+	private BoundaryService boundaryService;
+	
 	/**
 	 * Returns query for searching employees
 	 * 
@@ -27,12 +36,14 @@ public class EmployeeQueryBuilder {
 	 * @return
 	 */
 	public String getEmployeeSearchQuery(EmployeeSearchCriteria criteria,List <Object> preparedStmtList ) {
+		log.trace("EmployeeQueryBuilder.getEmployeeSearchQuery invoked");
 		StringBuilder builder = new StringBuilder(EmployeeQueries.HRMS_GET_EMPLOYEES);
 		addWhereClause(criteria, builder, preparedStmtList);
 		return paginationClause(criteria, builder);
 	}
 
 	public String getEmployeeCountQuery(String tenantId, List <Object> preparedStmtList ) {
+		log.trace("EmployeeQueryBuilder.getEmployeeCountQuery invoked for tenant: {}", tenantId);
 		StringBuilder builder = new StringBuilder(EmployeeQueries.HRMS_COUNT_EMP_QUERY);
 		if(tenantId.equalsIgnoreCase(properties.stateLevelTenantId)){
 			builder.append("LIKE ? ");
@@ -43,10 +54,12 @@ public class EmployeeQueryBuilder {
 			preparedStmtList.add(tenantId);
 		}
 		builder.append("GROUP BY active");
+		log.debug("Employee count query built successfully for tenant: {}", tenantId);
 		return builder.toString();
 	}
 	
 	public String getPositionSeqQuery() {
+		log.trace("EmployeeQueryBuilder.getPositionSeqQuery invoked");
 		return EmployeeQueries.HRMS_POSITION_SEQ;
 	}
 	
@@ -57,7 +70,7 @@ public class EmployeeQueryBuilder {
 	 * @param preparedStmtList
 	 */
 	public void addWhereClause(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList) {
-		
+		log.trace("EmployeeQueryBuilder.addWhereClause invoked");
 		if(!StringUtils.isEmpty(criteria.getTenantId())) {
 			builder.append(" employee.tenantid = ?");
 			preparedStmtList.add(criteria.getTenantId());
@@ -93,6 +106,7 @@ public class EmployeeQueryBuilder {
 	}
 	
 	public String paginationClause(EmployeeSearchCriteria criteria, StringBuilder builder) {
+		log.trace("EmployeeQueryBuilder.paginationClause invoked");
 		String pagination = EmployeeQueries.HRMS_PAGINATION_WRAPPER;
 		pagination = pagination.replace("{}", builder.toString());
 		if(null != criteria.getOffset())
@@ -111,12 +125,15 @@ public class EmployeeQueryBuilder {
 	}
 
 	public String getAssignmentSearchQuery(EmployeeSearchCriteria criteria, List<Object> preparedStmtList) {
+		log.trace("EmployeeQueryBuilder.getAssignmentSearchQuery invoked");
 		StringBuilder builder = new StringBuilder(EmployeeQueries.HRMS_GET_ASSIGNMENT);
 		addWhereClauseAssignment(criteria, builder, preparedStmtList);
+		log.debug("Assignment search query built successfully");
 		return builder.toString();
 	}
 
 	private void addWhereClauseAssignment(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList) {
+		log.trace("EmployeeQueryBuilder.addWhereClauseAssignment invoked");
 		if(!CollectionUtils.isEmpty(criteria.getDepartments())){
 			builder.append(" and assignment.department IN (").append(createQuery(criteria.getDepartments())).append(")");
 			addToPreparedStatement(preparedStmtList, criteria.getDepartments());
@@ -138,6 +155,51 @@ public class EmployeeQueryBuilder {
 
 
 	}
+
+	public String getJurisdictionSearchQuery(EmployeeSearchCriteria criteria, List<Object> preparedStmtList, RequestInfo requestInfo, String tenantId) {
+		log.trace("EmployeeQueryBuilder.getJurisdictionSearchQuery invoked for tenant: {}", tenantId);
+		StringBuilder builder = new StringBuilder(EmployeeQueries.HRMS_GET_JURISDICTION);
+		addWhereClauseJurisdiction(criteria, builder, preparedStmtList, requestInfo, tenantId);
+		log.debug("Jurisdiction search query built successfully");
+		return builder.toString();
+	}
+
+	private void addWhereClauseJurisdiction(EmployeeSearchCriteria criteria, StringBuilder builder, List<Object> preparedStmtList, RequestInfo requestInfo, String tenantId) {
+		log.trace("EmployeeQueryBuilder.addWhereClauseJurisdiction invoked");
+		if(!CollectionUtils.isEmpty(criteria.getBoundaryCodes())){
+			List<String> boundariesToSearch;
+			
+			// If searchOnlyInBoundary is true, use only the specified boundary codes
+			// Otherwise, fetch all ancestor boundaries (default behavior)
+			if(Boolean.TRUE.equals(criteria.getSearchOnlyInBoundary())) {
+				// Search only in the specified boundary codes, exclude ancestor boundaries
+				boundariesToSearch = criteria.getBoundaryCodes();
+			} else {
+				// Fetch hierarchical boundary codes from boundary service (all ancestor boundaries)
+				List<String> hierarchicalBoundaries = boundaryService.getAncestorBoundaries(
+						requestInfo, 
+						tenantId,
+						criteria.getBoundaryCodes(),
+						null  // hierarchyType - defaults to ADMIN if null
+				);
+
+				boundariesToSearch = new ArrayList<>(hierarchicalBoundaries);
+				// Ensure original boundary codes are included
+				for(String boundaryCode : criteria.getBoundaryCodes()) {
+					if(!boundariesToSearch.contains(boundaryCode)) {
+						boundariesToSearch.add(boundaryCode);
+					}
+				}
+			}
+			
+			builder.append(" and jurisdiction.boundary IN (").append(createQuery(boundariesToSearch)).append(")");
+			addToPreparedStatement(preparedStmtList, boundariesToSearch);
+		}
+		// Only consider active jurisdictions
+		builder.append(" and jurisdiction.isactive = ?");
+		preparedStmtList.add(true);
+	}
+
 
 
 	private String createQuery(List<?> ids) {

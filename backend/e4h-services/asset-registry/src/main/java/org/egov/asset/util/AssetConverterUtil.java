@@ -1,5 +1,6 @@
 package org.egov.asset.util;
 
+import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.web.models.BatteryDetails;
 import org.egov.asset.web.models.InverterDetails;
 import org.egov.asset.web.models.PanelDetails;
@@ -9,12 +10,16 @@ import java.math.BigDecimal;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class AssetConverterUtil {
 
     public static InverterDetails convertMapToInverterDetails(Map<String, Object> map) {
+        log.trace("AssetConverterUtil::convertMapToInverterDetails called");
         if (map == null) {
+            log.debug("Map is null, returning null");
             return null;
         }
+        log.debug("Converting map to inverter details | keysCount={}", map.keySet().size());
         InverterDetails inverterDetails = new InverterDetails();
 
         inverterDetails.setCurrentUnit((String) map.get("currentUnit"));
@@ -32,14 +37,18 @@ public class AssetConverterUtil {
         inverterDetails.setChargeControllerCurrent(getDoubleValue(map.get("chargeControllerCurrent")));
         inverterDetails.setChargeControllerVoltage(getDoubleValue(map.get("chargeControllerVoltage")));
         inverterDetails.setTotalCapacity(getDoubleValue(map.get("totalCapacity")));
-
+        log.debug("Inverter details converted | inverterCapacity={} capacityUOM={}",
+                inverterDetails.getInverterCapacity(), inverterDetails.getTotalCapacityUOM());
         return inverterDetails;
     }
 
     public static BatteryDetails convertMapToBatteryDetails(Map<String, Object> map) {
+        log.trace("AssetConverterUtil::convertMapToBatteryDetails called");
         if (map == null) {
+            log.debug("Map is null, returning null");
             return null;
         }
+        log.debug("Converting map to battery details | keysCount={}", map.keySet().size());
 
         BatteryDetails batteryDetails = new BatteryDetails();
 
@@ -51,14 +60,18 @@ public class AssetConverterUtil {
         batteryDetails.setVoltageUnit((String) map.get("voltageUnit"));
         batteryDetails.setCapacityUnit((String) map.get("capacityUnit"));
         batteryDetails.setBatteryType((String) map.get("batteryType"));
-
+        log.debug("Battery details converted | totalCapacity={} capacityUnit={}",
+                batteryDetails.getTotalCapacity(), batteryDetails.getCapacityUnit());
         return batteryDetails;
     }
 
     public static PanelDetails convertMapToPanelDetails(Map<String, Object> map) {
+        log.trace("AssetConverterUtil::convertMapToPanelDetails called");
         if (map == null) {
+            log.debug("Map is null, returning null");
             return null;
         }
+        log.debug("Converting map to panel details | keysCount={}", map.keySet().size());
 
         PanelDetails panelDetails = new PanelDetails();
         panelDetails.setTotalCapacity(getDoubleValue(map.get("totalCapacity")));
@@ -66,11 +79,13 @@ public class AssetConverterUtil {
 
         panelDetails.setTotalCapacityUnit((String) map.get("totalCapacityUnit"));
         panelDetails.setCapacityUnit((String) map.get("capacityUnit"));
-
+        log.debug("Panel details converted | totalCapacity={} panelCapacity={}",
+                panelDetails.getTotalCapacity(), panelDetails.getPanelCapacity());
         return panelDetails;
     }
 
     private static Double getDoubleValue(Object value) {
+        log.trace("AssetConverterUtil::getDoubleValue called");
         if (value == null) {
             return null;
         }
@@ -87,6 +102,7 @@ public class AssetConverterUtil {
             try {
                 return Double.parseDouble((String) value);
             } catch (NumberFormatException e) {
+                log.debug("Failed to parse string to double | value={}", value);
                 return null;
             }
         }

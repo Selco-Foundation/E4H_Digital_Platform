@@ -24,7 +24,9 @@ import java.util.Map;
 
 import static org.egov.inbox.util.InboxConstants.*;
 
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 public class MDMSUtil {
     @Autowired
@@ -44,24 +46,34 @@ public class MDMSUtil {
 
     @Cacheable(value="inboxConfiguration")
     public InboxQueryConfiguration getConfigFromMDMS(String tenantId, String moduleName) {
+        log.trace("Method invoked: getConfigFromMDMS - tenantId: {}, module: {}", tenantId, moduleName);
+        log.info("Fetching inbox query configuration from MDMS - tenantId: {}, module: {}", tenantId, moduleName);
 
         StringBuilder uri = new StringBuilder();
         uri.append(mdmsHost).append(mdmsUrl);
+        log.debug("Building MDMS request for inbox query configuration");
         MdmsCriteriaReq mdmsCriteriaReq = getMdmsRequestForInboxQueryConfiguration(tenantId);
         Object response = new HashMap<>();
         List<Map> configs;
         try {
+            log.debug("Calling MDMS service - URI: {}", uri.toString());
             response = restTemplate.postForObject(uri.toString(), mdmsCriteriaReq, Map.class);
             String jsonpath = MDMS_RESPONSE_JSONPATH.replace(MODULE_PLACEHOLDER, moduleName);
             configs = JsonPath.read(response, jsonpath);
+            log.debug("MDMS response parsed - configCount: {}", configs != null ? configs.size() : 0);
         }catch(Exception e) {
+            log.error("Error in fetching inbox query configuration from MDMS - tenantId: {}, module: {}", tenantId, moduleName, e);
             throw new CustomException("CONFIG_ERROR","Error in fetching inbox query configuration from MDMS for: " + moduleName);
         }
 
-        if (CollectionUtils.isEmpty(configs))
+        if (CollectionUtils.isEmpty(configs)) {
+            log.error("Inbox Query Configuration not found in MDMS response - tenantId: {}, module: {}", tenantId, moduleName);
             throw new CustomException("CONFIG_ERROR","Inbox Query Configuration not found in MDMS response for: " + moduleName);
+        }
 
+        log.debug("Converting MDMS response to InboxQueryConfiguration");
         InboxQueryConfiguration configuration = objectMapper.convertValue(configs.get(0), InboxQueryConfiguration.class);
+        log.info("Inbox query configuration retrieved successfully - tenantId: {}, module: {}", tenantId, moduleName);
 
         return configuration;
     }

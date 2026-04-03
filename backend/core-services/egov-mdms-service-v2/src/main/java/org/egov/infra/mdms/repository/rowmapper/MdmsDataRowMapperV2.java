@@ -39,10 +39,12 @@ public class MdmsDataRowMapperV2 implements ResultSetExtractor<List<Mdms>> {
      */
     @Override
     public List<Mdms> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
-
+        log.trace("MdmsDataRowMapperV2.extractData: method invoked");
         List<Mdms> mdmsList = new ArrayList<>();
+        int rowCount = 0;
 
         while (resultSet.next()) {
+            rowCount++;
             AuditDetails auditDetails = AuditDetails.builder().createdBy(resultSet.getString("createdby")).
                     createdTime(resultSet.getLong("createdtime")).
                     lastModifiedBy(resultSet.getString("lastmodifiedby")).
@@ -54,6 +56,7 @@ public class MdmsDataRowMapperV2 implements ResultSetExtractor<List<Mdms>> {
                 try {
                     data = objectMapper.readTree(dataStr);
                 } catch (IOException e) {
+                    log.error("Error parsing JSON data from result set at row: {}", rowCount, e);
                     throw new CustomException(INVALID_JSON, INVALID_JSON_MSG);
                 }
             }
@@ -70,6 +73,7 @@ public class MdmsDataRowMapperV2 implements ResultSetExtractor<List<Mdms>> {
             mdmsList.add(mdms);
         }
 
+        log.debug("Extracted {} rows from result set", rowCount);
         return mdmsList;
     }
 }

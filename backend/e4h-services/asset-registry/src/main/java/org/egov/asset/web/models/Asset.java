@@ -39,6 +39,10 @@ public class Asset {
     @NotNull
     private String facilityID = null;
 
+    @JsonProperty("activityFacilityID")
+    @NotNull
+    private String activityFacilityID = null;
+
     @JsonProperty("assetTypeID")
     @NotNull
     private String assetTypeID = null;
@@ -85,5 +89,9 @@ public class Asset {
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails = null;
 
+    @JsonProperty("serialNumberSearch")
+    private List<String> serialNumberSearch = null; // Used as asset search criteria
 
+    @JsonProperty("assetTypeSearch")
+    private List<String> assetTypeSearch = null; // Used as asset search criteria
 }

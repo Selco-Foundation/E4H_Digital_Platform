@@ -22,13 +22,17 @@ public class PsIsDeletedValidator implements Validator<ProjectStaffBulkRequest, 
 
     @Override
     public Map<ProjectStaff, List<Error>> validate(ProjectStaffBulkRequest request) {
-        log.info("validating isDeleted field");
+        log.trace("Entering validate (PsIsDeletedValidator)");
+        log.info("Validating isDeleted field");
+        log.debug("Validating {} staff for isDeleted field", request.getProjectStaff() != null ? request.getProjectStaff().size() : 0);
         HashMap<ProjectStaff, List<Error>> errorDetailsMap = new HashMap<>();
         List<ProjectStaff> validIndividuals = request.getProjectStaff();
         validIndividuals.stream().filter(ProjectStaff::getIsDeleted).forEach(individual -> {
             Error error = getErrorForIsDelete();
             populateErrorDetails(individual, error, errorDetailsMap);
         });
+        log.debug("IsDeleted validation completed - found {} errors", errorDetailsMap.size());
+        log.trace("Exiting validate (PsIsDeletedValidator)");
         return errorDetailsMap;
     }
 }

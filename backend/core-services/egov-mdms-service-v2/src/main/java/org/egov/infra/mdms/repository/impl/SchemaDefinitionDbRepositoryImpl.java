@@ -46,7 +46,18 @@ public class SchemaDefinitionDbRepositoryImpl implements SchemaDefinitionReposit
      */
     @Override
     public void create(SchemaDefinitionRequest schemaDefinitionRequest) {
-        producer.push(applicationConfig.getSaveSchemaDefinitionTopicName(), schemaDefinitionRequest);
+        log.trace("SchemaDefinitionDbRepositoryImpl.create: method invoked");
+        String tenantId = schemaDefinitionRequest.getSchemaDefinition() != null ? schemaDefinitionRequest.getSchemaDefinition().getTenantId() : "null";
+        String code = schemaDefinitionRequest.getSchemaDefinition() != null ? schemaDefinitionRequest.getSchemaDefinition().getCode() : "null";
+        log.info("Publishing schema definition create request to Kafka for tenant: {}, code: {}", tenantId, code);
+        
+        try {
+            producer.push(applicationConfig.getSaveSchemaDefinitionTopicName(), schemaDefinitionRequest);
+            log.debug("Schema definition create request published successfully to topic: {}", applicationConfig.getSaveSchemaDefinitionTopicName());
+        } catch (Exception e) {
+            log.error("Error publishing schema definition create request to Kafka for tenant: {}, code: {}", tenantId, code, e);
+            throw e;
+        }
     }
 
     /**
@@ -56,14 +67,25 @@ public class SchemaDefinitionDbRepositoryImpl implements SchemaDefinitionReposit
      */
     @Override
     public List<SchemaDefinition> search(SchemaDefCriteria schemaDefCriteria) {
+        log.trace("SchemaDefinitionDbRepositoryImpl.search: method invoked");
+        String tenantId = schemaDefCriteria != null ? schemaDefCriteria.getTenantId() : "null";
+        log.info("Searching schema definitions from database for tenant: {}", tenantId);
+        
         List<Object> preparedStatementList = new ArrayList<>();
 
         // Invoke query builder to generate query based on the provided criteria
         String query = schemaDefinitionQueryBuilder.getSchemaSearchQuery(schemaDefCriteria, preparedStatementList);
-        log.info("Schema definition search query: " + query);
+        log.debug("Generated schema definition search query with {} parameters", preparedStatementList.size());
 
         // Query the database to fetch schema definitions
-        return jdbcTemplate.query(query, preparedStatementList.toArray(), rowMapper);
+        try {
+            List<SchemaDefinition> result = jdbcTemplate.query(query, preparedStatementList.toArray(), rowMapper);
+            log.debug("Schema definition search completed, records found: {}", result != null ? result.size() : 0);
+            return result;
+        } catch (Exception e) {
+            log.error("Error searching schema definitions from database for tenant: {}", tenantId, e);
+            throw e;
+        }
     }
 
     /**

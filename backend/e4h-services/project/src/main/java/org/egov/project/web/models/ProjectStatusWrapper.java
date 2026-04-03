@@ -19,5 +19,5 @@ public class ProjectStatusWrapper {
     private List<Transaction> transactions;
 
     @JsonProperty("workflow")
-    private ProcessInstance processInstance;
+    private List<ProcessInstance> processInstances;
 }

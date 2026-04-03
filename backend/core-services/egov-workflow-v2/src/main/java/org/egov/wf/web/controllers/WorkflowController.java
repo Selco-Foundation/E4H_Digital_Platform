@@ -6,6 +6,8 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 
+import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.response.ResponseInfo;
 import org.egov.wf.service.WorkflowService;
 import org.egov.wf.util.ResponseInfoFactory;
 import org.egov.wf.web.models.ProcessInstance;
@@ -22,12 +24,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import lombok.extern.slf4j.Slf4j;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 
 @RestController
 @RequestMapping("/egov-wf")
+@Slf4j
 public class WorkflowController {
 
 
@@ -53,11 +57,19 @@ public class WorkflowController {
 
         @RequestMapping(value="/process/_transition", method = RequestMethod.POST)
         public ResponseEntity<ProcessInstanceResponse> processTransition(@Valid @RequestBody ProcessInstanceRequest processInstanceRequest) {
-                List<ProcessInstance> processInstances =  workflowService.transition(processInstanceRequest);
-                ProcessInstanceResponse response = ProcessInstanceResponse.builder().processInstances(processInstances)
-                        .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(processInstanceRequest.getRequestInfo(), true))
-                        .build();
-                return new ResponseEntity<>(response,HttpStatus.OK);
+                log.info("Received workflow transition request for {} process instance(s)", 
+                        processInstanceRequest.getProcessInstances() != null ? processInstanceRequest.getProcessInstances().size() : 0);
+                try {
+                    List<ProcessInstance> processInstances =  workflowService.transition(processInstanceRequest);
+                    ProcessInstanceResponse response = ProcessInstanceResponse.builder().processInstances(processInstances)
+                            .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(processInstanceRequest.getRequestInfo(), true))
+                            .build();
+                    log.info("Successfully processed workflow transition request");
+                    return new ResponseEntity<>(response,HttpStatus.OK);
+                } catch (Exception e) {
+                    log.error("Error processing workflow transition request", e);
+                    throw e;
+                }
         }
 
 
@@ -66,10 +78,19 @@ public class WorkflowController {
         @RequestMapping(value="/process/_search", method = RequestMethod.POST)
         public ResponseEntity<ProcessInstanceResponse> search(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
                                                               @Valid @ModelAttribute ProcessInstanceSearchCriteria criteria) {
-        List<ProcessInstance> processInstances = workflowService.search(requestInfoWrapper.getRequestInfo(),criteria);
-        Integer count = workflowService.getUserBasedProcessInstancesCount(requestInfoWrapper.getRequestInfo(),criteria);
+        log.info("Received process instance search request - businessService: {}, tenantId: {}", 
+                criteria.getBusinessService(), criteria.getTenantId());
+        try {
+            List<ProcessInstance> processInstances = workflowService.search(requestInfoWrapper.getRequestInfo(),criteria);
+            Integer count = workflowService.getUserBasedProcessInstancesCount(requestInfoWrapper.getRequestInfo(),criteria);
             ProcessInstanceResponse response  = ProcessInstanceResponse.builder().processInstances(processInstances).totalCount(count).build();
-                return new ResponseEntity<>(response,HttpStatus.OK);
+            log.info("Process instance search completed successfully, returning {} result(s)", 
+                    processInstances != null ? processInstances.size() : 0);
+            return new ResponseEntity<>(response,HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error processing process instance search request", e);
+            throw e;
+        }
         }
 
     /**
@@ -81,19 +102,36 @@ public class WorkflowController {
     @RequestMapping(value="/process/_count", method = RequestMethod.POST)
         public ResponseEntity<Integer> count(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
                                                               @Valid @ModelAttribute ProcessInstanceSearchCriteria criteria) {
-    		criteria.setIsNearingSlaCount(Boolean.FALSE);
-            Integer count = workflowService.count(requestInfoWrapper.getRequestInfo(),criteria);
-            return new ResponseEntity<>(count,HttpStatus.OK);
+    		log.info("Received process instance count request - businessService: {}, tenantId: {}", 
+                    criteria.getBusinessService(), criteria.getTenantId());
+            criteria.setIsNearingSlaCount(Boolean.FALSE);
+            try {
+                Integer count = workflowService.count(requestInfoWrapper.getRequestInfo(),criteria);
+                log.info("Process instance count request completed, count: {}", count);
+                return new ResponseEntity<>(count,HttpStatus.OK);
+            } catch (Exception e) {
+                log.error("Error processing process instance count request", e);
+                throw e;
+            }
         }
 
     @RequestMapping(value="/escalate/_search", method = RequestMethod.POST)
     public ResponseEntity<ProcessInstanceResponse> searchEscalatedApplications(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
                                                           @Valid @ModelAttribute ProcessInstanceSearchCriteria criteria) {
-        List<ProcessInstance> processInstances = workflowService.escalatedApplicationsSearch(requestInfoWrapper.getRequestInfo(),criteria);
-        Integer count = workflowService.countEscalatedApplications(requestInfoWrapper.getRequestInfo(),criteria);
-        ProcessInstanceResponse response  = ProcessInstanceResponse.builder().processInstances(processInstances).totalCount(count)
-                .build();
-        return new ResponseEntity<>(response,HttpStatus.OK);
+        log.info("Received escalated applications search request - businessService: {}, tenantId: {}", 
+                criteria.getBusinessService(), criteria.getTenantId());
+        try {
+            List<ProcessInstance> processInstances = workflowService.escalatedApplicationsSearch(requestInfoWrapper.getRequestInfo(),criteria);
+            Integer count = workflowService.countEscalatedApplications(requestInfoWrapper.getRequestInfo(),criteria);
+            ProcessInstanceResponse response  = ProcessInstanceResponse.builder().processInstances(processInstances).totalCount(count)
+                    .build();
+            log.info("Escalated applications search completed successfully, returning {} result(s)", 
+                    processInstances != null ? processInstances.size() : 0);
+            return new ResponseEntity<>(response,HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error processing escalated applications search request", e);
+            throw e;
+        }
     }
 
     /**
@@ -105,20 +143,68 @@ public class WorkflowController {
     @RequestMapping(value = "/process/_statuscount", method = RequestMethod.POST)
     public ResponseEntity<List> StatusCount(@Valid @RequestBody StatusCountRequest statusCountRequest,
             @Valid @ModelAttribute ProcessInstanceSearchCriteria criteria) {
-        ProcessInstanceSearchCriteria statusCriteria = statusCountRequest.getProcessInstanceSearchCriteria();
-        if (statusCriteria == null) {
-            statusCriteria = criteria;
+        log.info("Received status count request - businessService: {}", criteria.getBusinessService());
+        try {
+            ProcessInstanceSearchCriteria statusCriteria = statusCountRequest.getProcessInstanceSearchCriteria();
+            if (statusCriteria == null) {
+                statusCriteria = criteria;
+            }
+            List result = workflowService.statusCount(statusCountRequest.getRequestInfo(), statusCriteria);
+            log.info("Status count request completed successfully, returning {} status count(s)", 
+                    result != null ? result.size() : 0);
+            return new ResponseEntity<>(result, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error processing status count request", e);
+            throw e;
         }
-        List result = workflowService.statusCount(statusCountRequest.getRequestInfo(), statusCriteria);
-        return new ResponseEntity<>(result, HttpStatus.OK);
     }
     
     @RequestMapping(value="/process/_nearingslacount", method = RequestMethod.POST)
     public ResponseEntity<Integer> nearingSlaCount(@Valid @RequestBody RequestInfoWrapper requestInfoWrapper,
                                          @Valid @ModelAttribute ProcessInstanceSearchCriteria criteria) {
+        log.info("Received nearing SLA count request - businessService: {}", criteria.getBusinessService());
         criteria.setIsNearingSlaCount(Boolean.TRUE);
-        Integer count = workflowService.count(requestInfoWrapper.getRequestInfo(),criteria);
-        return new ResponseEntity<>(count,HttpStatus.OK);
+        try {
+            Integer count = workflowService.count(requestInfoWrapper.getRequestInfo(),criteria);
+            log.info("Nearing SLA count request completed, count: {}", count);
+            return new ResponseEntity<>(count,HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error processing nearing SLA count request", e);
+            throw e;
+        }
     }
+
+    // Used to update process instance v1 for old ticket Incident Business to new Business Service(Incident_Low, Incident_Medium, Incident_High) this ticket number #1979
+    @RequestMapping(value="/migration/_update", method = RequestMethod.POST)
+    public ResponseEntity<ProcessInstanceResponse> processInstanceUpdate(@Valid @RequestBody ProcessInstanceRequest processInstanceRequest) {
+        List<ProcessInstance> processInstances =  workflowService.proceedUpdateProcessInstance(processInstanceRequest.getRequestInfo(), processInstanceRequest.getProcessInstances());
+        ProcessInstanceResponse response = ProcessInstanceResponse.builder().processInstances(processInstances)
+                .responseInfo(responseInfoFactory.createResponseInfoFromRequestInfo(processInstanceRequest.getRequestInfo(), true))
+                .build();
+        return new ResponseEntity<>(response,HttpStatus.OK);
+    }
+
+    //  Used to update process instance v3 for this ticket number #1979
+    @RequestMapping(value = "v2/migration/_update", method = RequestMethod.POST)
+    public ResponseEntity<ProcessInstanceResponse> processInstanceUpdate(
+            @RequestBody RequestInfoWrapper requestInfoWrapper) {
+
+        log.info("Migration request received for workflow v2");
+        workflowService.updateBusinessServiceV2(requestInfoWrapper.getRequestInfo());
+        log.info("Workflow migration completed successfully");
+        ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(requestInfoWrapper.getRequestInfo(), true);
+
+        // Message de confirmation explicite
+        responseInfo.setStatus("Migration completed successfully");
+
+        ProcessInstanceResponse response =
+                ProcessInstanceResponse.builder()
+                        .processInstances(null)
+                        .responseInfo(responseInfo)
+                        .build();
+
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
 
 }

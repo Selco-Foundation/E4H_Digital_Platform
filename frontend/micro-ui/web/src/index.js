@@ -61,7 +61,7 @@ ReactDOM.render(
 );
 
 
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && process.env.PUBLIC_PATH) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register(`${process.env.PUBLIC_PATH}service-worker.js`)

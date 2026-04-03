@@ -27,7 +27,7 @@ const ImageOrPDFIcon = ({ source, index, last = false, onClick, activeVideoRef }
 
   let fileType = Digit.Utils.getFileTypeFromFileStoreURL(source);
 
-  if (fileType === "pdf") {
+  if (fileType === "pdf" || fileType === "doc" || fileType === "excel") {
     return (
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "flex-start", alignContent: "center" }}>
         <a
@@ -54,9 +54,7 @@ const ImageOrPDFIcon = ({ source, index, last = false, onClick, activeVideoRef }
     <img
       key={index}
       src={
-        source.includes(".xlsx") || source.includes(".docx") || source.includes(".doc")
-          ? dataUrl
-          : source.includes(".mp3")
+      source.includes(".mp3")
           ? mp3Icon
           : source.includes(".mp4")
           ? videoIcon

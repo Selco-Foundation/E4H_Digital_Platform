@@ -74,6 +74,30 @@ public class IMConstants {
 
     public static final String PENDINGFORASSIGNMENT = "PENDINGFORASSIGNMENT";
 
+    public static final String PENDINGFORASSIGNMENT_THEFT = "PENDINGFORASSIGNMENT_THEFT";
+
+    public static final String PENDINGFORASSIGNMENT_RMS_DEVICE = "PENDINGFORASSIGNMENT_RMS_DEVICE";
+
+    public static final String RMS_DEVICE_PENDING_TECH_POC = "RMS_DEVICE_PENDING_TECH_POC";
+
+    public static final String RMS_DEVICE_PENDINGRESOLUTION = "RMS_DEVICE_PENDINGRESOLUTION";
+
+    /** Ticket types that sync to facility_rms_inactive_incident (create/re-open = insert, resolve/decline/close = delete). */
+    public static final String TICKET_TYPE_RMS = "RMS Device";
+    public static final String TICKET_TYPE_THEFT = "Theft";
+
+    public static final String OUT_OF_SCOPE = "OUT_OF_SCOPE";
+
+    public static final String OUT_OF_WARRANTY_PENDING_TECH_POC = "OUT_OF_WARRANTY_PENDING_TECH_POC";
+
+    public static final String PENDING_REVISION = "PENDING_REVISION";
+
+    public static final String OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2 = "OUT_OF_WARRANTY_PENDING_TECH_POC_ROUND_2";
+
+    public static final String PENDING_ASSIGNMENT_OUT_OF_WARRANTY = "PENDING_ASSIGNMENT_OUT_OF_WARRANTY";
+
+    public static final String PENDING_RESOLUTION_OUT_OF_SCOPE = "PENDING_RESOLUTION_OUT_OF_SCOPE";
+
     public static final String RESOLVED = "RESOLVED";
 
     public static final String CLOSED_AFTER_RESOLUTION = "CLOSEDAFTERRESOLUTION";
@@ -178,4 +202,8 @@ public class IMConstants {
     public static final String PENDING_ASSIGNMENT_PREFIX = "PENDING_ASSIGNMENT_";
 
     public static final String PENDING_RESOLUTION_PREFIX = "PENDING_RESOLUTION_";
+
+    public static final String ASIA_KOLKATA = "Asia/Kolkata";
+
+    public static final String PENDINGFORASSIGNMENT_PREFIX = "PENDINGFORASSIGNMENT_";
 }

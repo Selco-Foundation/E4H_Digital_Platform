@@ -1,9 +1,8 @@
 package org.egov.asset.mapper;
 
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-//import digit.models.coremodels.Document;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.asset.web.models.Document;
 import org.egov.asset.web.models.GeoLocation;
 import org.springframework.jdbc.core.RowMapper;
@@ -14,14 +13,17 @@ import java.sql.SQLException;
 import java.util.Map;
 
 @Component
+@Slf4j
 public class DocumentRowMapper {
     private final ObjectMapper mapper = new ObjectMapper();
 
     public final RowMapper<Document> rowMapper = (rs, rowNum) -> {
+        log.trace("DocumentRowMapper::rowMapper called | rowNum={}", rowNum);
         return mapDocument(rs);
     };
 
     public Document mapDocument(ResultSet rs) throws SQLException {
+        log.trace("DocumentRowMapper::mapDocument called");
         Document document = new Document();
         document.setId(rs.getString("id"));
         document.setDocumentType(rs.getString("document_type"));
@@ -35,9 +37,10 @@ public class DocumentRowMapper {
                 );
             }
         } catch (IOException e) {
+            log.error("Error parsing JSONB fields for document | documentId={} error={}", 
+                    document.getId(), e.getMessage(), e);
             throw new RuntimeException("Error parsing JSONB fields", e);
         }
-        // Map latitude and longitude to geoLocation
         double latitude = rs.getDouble("latitude");
         double longitude = rs.getDouble("longitude");
         if (!rs.wasNull()) {
@@ -46,7 +49,10 @@ public class DocumentRowMapper {
                     .longitude(longitude)
                     .build();
             document.setGeoLocation(geoLocation);
+            log.debug("GeoLocation set for document | documentId={} latitude={} longitude={}", 
+                    document.getId(), latitude, longitude);
         }
+        log.debug("Document mapped successfully | documentId={}", document.getId());
         return document;
     }
 }

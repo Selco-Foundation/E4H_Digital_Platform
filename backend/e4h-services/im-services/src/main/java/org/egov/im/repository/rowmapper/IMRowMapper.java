@@ -2,7 +2,10 @@ package org.egov.im.repository.rowmapper;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.egov.im.web.models.*;
+import org.egov.im.web.models.AuditDetails;
+import org.egov.im.web.models.Incident;
+import org.egov.im.web.models.User;
+import org.egov.im.web.models.WarrantyStatus;
 import org.egov.tracer.model.CustomException;
 import org.postgresql.util.PGobject;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,6 +63,10 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                 String migrationId = rs.getString("migrationid");
                 String legacyId = rs.getString("legacyid");
                 Long filedDate = rs.getLong("fileddate");
+                String facilityId = rs.getString("facilityid");
+                String boundaryCode = rs.getString("boundarycode");
+                String warrantyStatusStr = rs.getString("warranty_status");
+                WarrantyStatus warrantyStatus = WarrantyStatus.fromValue(warrantyStatusStr);
                 User u=new User();
                 u.setTenantId(reporterTenant);
                 u.setUuid(accountId);
@@ -76,7 +83,7 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                         .district(District)
                         .block(Block)
                         .phcType(PhcType)
-                        .phcsubtype(PhcSubType)
+                        .phcSubType(PhcSubType)
                         .applicationStatus(applicationStatus)
                         .tenantId(tenantId)
                         .accountId(accountId)
@@ -88,6 +95,9 @@ public class IMRowMapper implements ResultSetExtractor<List<Incident>> {
                         .migrationId(migrationId)
                         .legacyId(legacyId)
                         .filedDate(filedDate)
+                        .facilityId(facilityId)
+                        .boundaryCode(boundaryCode)
+                        .warrantyStatus(warrantyStatus)
                         .build();
 
                 JsonNode additionalDetails = getAdditionalDetail("ser_additionaldetails",rs);

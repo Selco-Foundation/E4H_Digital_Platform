@@ -83,6 +83,12 @@ public class PropertiesManager {
 	@Value("${egov.idgen.path}")
 	public String idGenEndpoint;
 	
+	@Value("${egov.boundary.host}")
+	public String boundaryServiceHost;
+	
+	@Value("${egov.boundary.search.endpoint}")
+	public String boundarySearchEndpoint;
+	
 	
 	//Kafka Topics
 	@Value("${kafka.topics.save.service}")

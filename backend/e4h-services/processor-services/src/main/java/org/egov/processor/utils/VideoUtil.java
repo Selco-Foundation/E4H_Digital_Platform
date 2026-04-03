@@ -31,11 +31,13 @@ public class VideoUtil {
     private final ProcessorConfiguration config;
 
     public List<MultipartFile> convertToMultipartFiles(ProcessingContext context, Path outputPath, String outputFilePath){
+        log.trace("Method invoked: convertToMultipartFiles, videoId: {}, outputFilePath: {}", context.getVideoId(), outputFilePath);
 
         Path directoryPath = outputPath.resolve(String.format("%s%s", outputPath, outputFilePath));
         List<Path> files;
         try (Stream<Path> fileStream = Files.list(directoryPath)) {
             files = fileStream.toList();
+            log.debug("Found {} files in directory: {}", files.size(), directoryPath);
 
             // Convert files to MultipartFile and upload
             return files.stream()
@@ -47,13 +49,15 @@ public class VideoUtil {
                     .toList();
 
         } catch (IOException e) {
+            log.error("Error converting files to multipart file for videoId: {}", context.getVideoId(), e);
             throw new CustomException("Error converting files to multipart file", e.getMessage());
         }
     }
 
     public List<VideoQualitySettings> determineQualityLevels(String[] dimensions) {
+        log.trace("Method invoked: determineQualityLevels");
         if (dimensions == null || dimensions.length < 2) {
-            log.error("Could not determine input video dimensions");
+            log.error("Could not determine input video dimensions, dimensions array is null or invalid");
             return List.of();
         }
 
@@ -63,6 +67,7 @@ public class VideoUtil {
         try {
             width = Integer.parseInt(dimensions[0]);
             height = Integer.parseInt(dimensions[1]);
+            log.debug("Parsed video dimensions: {}x{}", width, height);
         } catch (NumberFormatException e) {
             log.error("Invalid video dimensions format: {}", Arrays.toString(dimensions), e);
             return List.of();
@@ -80,11 +85,13 @@ public class VideoUtil {
         qualityLevels.add(VideoQualitySettings.of(String.format("%sx%s", width, height),
                 "original", 0, "192k", true));
 
-        log.info("Determined quality levels for input video ({}x{}): {}", width, height, qualityLevels);
+        log.info("Determined {} quality levels for input video ({}x{})", qualityLevels.size(), width, height);
+        log.debug("Quality levels: {}", qualityLevels.stream().map(VideoQualitySettings::getLabel).toList());
         return qualityLevels;
     }
 
     public String[] getVideoDimensions(String videoPath) {
+        log.trace("Method invoked: getVideoDimensions, videoPath: {}", videoPath);
         final String FFPROBE_PATH = config.getFfprobePath();
 
         List<String> command = List.of(
@@ -97,17 +104,19 @@ public class VideoUtil {
         processBuilder.redirectErrorStream(true);
 
         try {
+            log.debug("Executing ffprobe command to get video dimensions");
             Process process = processBuilder.start();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String dimensions = reader.readLine();
                 int exitCode = process.waitFor();
 
                 if (exitCode != 0) {
-                    log.error("ffprobe failed for video: {}. Exit code: {}", videoPath, exitCode);
+                    log.error("ffprobe failed for video: {}, exit code: {}", videoPath, exitCode);
                     throw new CustomException("FFprobe execution failed", "Exit code: " + exitCode);
                 }
 
                 if (dimensions != null && !dimensions.isEmpty()) {
+                    log.debug("Retrieved video dimensions: {}", dimensions);
                     return dimensions.split("x");
                 }
             }
@@ -120,13 +129,15 @@ public class VideoUtil {
             throw new CustomException("Error executing ffprobe", e.getMessage());
         }
 
-        log.warn("No video dimensions found for {}", videoPath);
+        log.warn("No video dimensions found for video: {}", videoPath);
         return new String[]{"0", "0"}; // Default return value
     }
 
     public MultipartFile convertFileToMultipartFile(File file, String path) {
+        log.trace("Method invoked: convertFileToMultipartFile, filename: {}", file.getName());
         byte[] fileContent;
         try {
+            log.debug("Reading file content, file size: {} bytes", file.length());
             fileContent = Files.readAllBytes(file.toPath());
 
             // Set MIME type manually if it's a .ts file
@@ -134,6 +145,7 @@ public class VideoUtil {
             if (file.getName().endsWith(".ts")) {
                 contentType = "video/mp2t"; // Correct MIME type for HLS .ts files
             }
+            log.debug("Content type determined: {}", contentType);
 
             return ByteArrayMultipartFile.builder()
                     .content(fileContent)
@@ -142,17 +154,22 @@ public class VideoUtil {
                     .contentType(contentType)
                     .build();
         } catch (IOException e) {
+            log.error("Error converting file to multipart file: {}", file.getName(), e);
             throw new CustomException("ERROR_CONVERTING_TO_MULTIPARTFILE", e.getMessage());
         }
     }
 
     public String pathExtractor(String fullPath, String indexPath) {
+        log.trace("Method invoked: pathExtractor, fullPath: {}, indexPath: {}", fullPath, indexPath);
         Path path = Paths.get(fullPath);
         int outputIndex = path.toString().indexOf(indexPath);
 
         if (outputIndex != -1) {
-            return String.format("%s",path.subpath(path.getNameCount() - 3, path.getNameCount() - 1));
+            String extractedPath = String.format("%s",path.subpath(path.getNameCount() - 3, path.getNameCount() - 1));
+            log.debug("Extracted path: {}", extractedPath);
+            return extractedPath;
         }
+        log.error("Invalid path, index '{}' not found in: {}", indexPath, fullPath);
         throw new IllegalArgumentException("Invalid path: 'output/' not found");
     }
 

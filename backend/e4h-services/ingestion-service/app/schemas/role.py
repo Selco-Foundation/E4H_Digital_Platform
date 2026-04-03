@@ -6,3 +6,6 @@ class Role(BaseModel):
     name: Optional[str] = Field(default=None, max_length=128)
     code: Optional[str] = Field(default=None, max_length=50)
     tenant_id: Optional[str] = Field(default=None, max_length=256, alias="tenantId")
+    
+    class Config:
+        extra = "allow"  # Allow extra fields in the model

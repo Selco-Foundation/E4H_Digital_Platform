@@ -50,6 +50,10 @@ public class PtInboxFilterService {
     private ServiceRequestRepository serviceRequestRepository;
 
     public List<String> fetchAcknowledgementIdsFromSearcher(InboxSearchCriteria criteria, HashMap<String, String> StatusIdNameMap, RequestInfo requestInfo){
+        log.trace("Method invoked: fetchAcknowledgementIdsFromSearcher");
+        String tenantId = criteria.getTenantId();
+        log.info("Fetching acknowledgement IDs from searcher - tenantId: {}", tenantId);
+        
         List<String> acknowledgementNumbers = new ArrayList<>();
         HashMap moduleSearchCriteria = criteria.getModuleSearchCriteria();
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
@@ -58,19 +62,23 @@ public class PtInboxFilterService {
         List<String> userUUIDs = new ArrayList<>();
         if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){
             isMobileNumberPresent = true;
+            log.debug("Mobile number parameter found in search criteria");
         }
         if(isMobileNumberPresent) {
-            String tenantId = criteria.getTenantId();
             String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
+            log.debug("Fetching user UUIDs for mobile number");
             userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
             Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
             isSearchResultEmpty = !isMobileNumberPresent || !isUserPresentForGivenMobileNumber;
             if(isSearchResultEmpty){
+                log.warn("Search result empty - no user found for mobile number");
                 return new ArrayList<>();
             }
+            log.debug("User UUIDs retrieved - count: {}", userUUIDs.size());
         }
 
         if(!isSearchResultEmpty){
+            log.debug("Building searcher request");
             Object result = null;
 
             Map<String, Object> searcherRequest = new HashMap<>();
@@ -118,19 +126,27 @@ public class PtInboxFilterService {
             StringBuilder uri = new StringBuilder();
             if(moduleSearchCriteria.containsKey(SORT_ORDER_PARAM) && moduleSearchCriteria.get(SORT_ORDER_PARAM).equals(DESC_PARAM)){
                 uri.append(searcherHost).append(ptInboxSearcherDescEndpoint);
+                log.debug("Using descending sort order endpoint");
             }else {
                 uri.append(searcherHost).append(ptInboxSearcherEndpoint);
             }
 
+            log.debug("Calling searcher service - URI: {}", uri.toString());
             result = restTemplate.postForObject(uri.toString(), searcherRequest, Map.class);
 
+            log.debug("Parsing acknowledgement numbers from searcher response");
             acknowledgementNumbers = JsonPath.read(result, "$.Properties.*.acknowldgementnumber");
+            log.info("Acknowledgement IDs retrieved from searcher - count: {}", acknowledgementNumbers.size());
 
         }
         return  acknowledgementNumbers;
     }
 
     public Integer fetchAcknowledgementIdsCountFromSearcher(InboxSearchCriteria criteria, HashMap<String, String> StatusIdNameMap, RequestInfo requestInfo){
+        log.trace("Method invoked: fetchAcknowledgementIdsCountFromSearcher");
+        String tenantId = criteria.getTenantId();
+        log.info("Fetching acknowledgement IDs count from searcher - tenantId: {}", tenantId);
+        
         Integer totalCount = 0;
         HashMap moduleSearchCriteria = criteria.getModuleSearchCriteria();
         ProcessInstanceSearchCriteria processCriteria = criteria.getProcessSearchCriteria();
@@ -139,16 +155,19 @@ public class PtInboxFilterService {
         List<String> userUUIDs = new ArrayList<>();
         if(moduleSearchCriteria.containsKey(MOBILE_NUMBER_PARAM)){
             isMobileNumberPresent = true;
+            log.debug("Mobile number parameter found in search criteria");
         }
         if(isMobileNumberPresent) {
-            String tenantId = criteria.getTenantId();
             String mobileNumber = String.valueOf(moduleSearchCriteria.get(MOBILE_NUMBER_PARAM));
+            log.debug("Fetching user UUIDs for mobile number");
             userUUIDs = fetchUserUUID(mobileNumber, requestInfo, tenantId);
             Boolean isUserPresentForGivenMobileNumber = CollectionUtils.isEmpty(userUUIDs) ? false : true;
             isSearchResultEmpty = !isMobileNumberPresent || !isUserPresentForGivenMobileNumber;
             if(isSearchResultEmpty){
+                log.warn("Search result empty - no user found for mobile number, returning count 0");
                 return 0;
             }
+            log.debug("User UUIDs retrieved - count: {}", userUUIDs.size());
         }
 
         if(!isSearchResultEmpty){
@@ -195,10 +214,13 @@ public class PtInboxFilterService {
             StringBuilder uri = new StringBuilder();
             uri.append(searcherHost).append(ptInboxSearcherCountEndpoint);
 
+            log.debug("Calling searcher count service - URI: {}", uri.toString());
             result = restTemplate.postForObject(uri.toString(), searcherRequest, Map.class);
 
+            log.debug("Parsing count from searcher response");
             double count = JsonPath.read(result, "$.TotalCount[0].count");
             totalCount = new Integer((int) count);
+            log.info("Acknowledgement IDs count retrieved from searcher - count: {}", totalCount);
 
         }
         return  totalCount;
@@ -206,6 +228,8 @@ public class PtInboxFilterService {
 
 
     private List<String> fetchUserUUID(String mobileNumber, RequestInfo requestInfo, String tenantId) {
+        log.trace("Method invoked: fetchUserUUID - tenantId: {}", tenantId);
+        log.debug("Fetching user UUID for mobile number - tenantId: {}", tenantId);
         StringBuilder uri = new StringBuilder();
         uri.append(userHost).append(userSearchEndpoint);
         Map<String, Object> userSearchRequest = new HashMap<>();
@@ -215,16 +239,17 @@ public class PtInboxFilterService {
         userSearchRequest.put("mobileNumber", mobileNumber);
         List<String> userUuids = new ArrayList<>();
         try {
+            log.debug("Calling user service - URI: {}", uri.toString());
             Object user = serviceRequestRepository.fetchResult(uri, userSearchRequest);
             if(null != user) {
-                //log.info(user.toString());
+                log.debug("User service response received");
                 userUuids = JsonPath.read(user, "$.user.*.uuid");
+                log.debug("User UUIDs extracted - count: {}", userUuids.size());
             }else {
-                log.error("Service returned null while fetching user for mobile number - " + mobileNumber);
+                log.warn("User service returned null response for mobile number - tenantId: {}", tenantId);
             }
         }catch(Exception e) {
-            log.error("Exception while fetching user for mobile number - " + mobileNumber);
-            log.error("Exception trace: ", e);
+            log.error("Exception while fetching user for mobile number - tenantId: {}", tenantId, e);
         }
         return userUuids;
     }

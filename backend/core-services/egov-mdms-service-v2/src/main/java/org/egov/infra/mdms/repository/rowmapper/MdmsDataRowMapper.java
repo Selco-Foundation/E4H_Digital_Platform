@@ -39,9 +39,12 @@ public class MdmsDataRowMapper implements ResultSetExtractor<Map<String, Map<Str
      */
     @Override
     public Map<String, Map<String, JSONArray>> extractData(ResultSet resultSet) throws SQLException, DataAccessException {
+        log.trace("MdmsDataRowMapper.extractData: method invoked");
         Map<String, Map<String, JSONArray>> tenantMasterMap = new HashMap<>();
+        int rowCount = 0;
 
         while(resultSet.next()){
+            rowCount++;
             JSONArray jsonArray = null;
             Map<String, JSONArray> masterMap = new HashMap<>();
             LinkedHashMap<String, Object> data = null;
@@ -50,6 +53,7 @@ public class MdmsDataRowMapper implements ResultSetExtractor<Map<String, Map<Str
                 try {
                     data = objectMapper.readValue(dataStr, LinkedHashMap.class);
                 } catch (IOException e) {
+                    log.error("Error parsing JSON data from result set at row: {}", rowCount, e);
                     throw new CustomException(INVALID_JSON, INVALID_JSON_MSG);
                 }
             }
@@ -65,6 +69,7 @@ public class MdmsDataRowMapper implements ResultSetExtractor<Map<String, Map<Str
             }
         }
 
+        log.debug("Extracted {} rows from result set, tenant count: {}", rowCount, tenantMasterMap.size());
         return tenantMasterMap;
     }
 }

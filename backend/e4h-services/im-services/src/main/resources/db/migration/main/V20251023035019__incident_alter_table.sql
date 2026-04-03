@@ -1,0 +1,1 @@
+ALTER TABLE public.eg_incident_v2 ADD ispotentialduplicate boolean NULL;

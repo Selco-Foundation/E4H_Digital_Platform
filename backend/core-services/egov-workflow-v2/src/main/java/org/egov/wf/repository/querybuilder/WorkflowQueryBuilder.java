@@ -42,10 +42,10 @@ public class WorkflowQueryBuilder {
             + "       eg_wf_assignee_v2 asg ON asg.processinstanceid = pi.id " + LEFT_OUTER_JOIN
             + "      eg_wf_document_v2 doc  ON doc.processinstanceid = pi.id " + INNER_JOIN
             + "       eg_wf_state_v2 st ON st.uuid = pi.status" + LEFT_OUTER_JOIN
-            + "       eg_wf_action_v2 ac ON ac.currentState = st.uuid AND ac.active=TRUE " + "       WHERE ";
+            + "       eg_wf_action_v2 ac ON ac.currentState = st.uuid AND ac.active=TRUE " + "       WHERE pi.isActive = true AND ";
 
 
-    private static final String WITH_CLAUSE = " select id from eg_wf_processinstance_v2 pi_outer WHERE " ;
+    private static final String WITH_CLAUSE = " select id from eg_wf_processinstance_v2 pi_outer WHERE pi_outer.isActive = true AND " ;
 
     private static final String STATUS_COUNT_WRAPPER = "select  count(DISTINCT wf_id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from ({INTERNAL_QUERY}) as cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS";
 
@@ -56,7 +56,7 @@ public class WorkflowQueryBuilder {
 
     private final String ORDERBY_CREATEDTIME = " ORDER BY result_offset.wf_createdTime DESC ";
 
-    private final String LATEST_RECORD = " pi.lastmodifiedTime  IN  (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 GROUP BY businessid) ";
+    private final String LATEST_RECORD = " pi.lastmodifiedTime  IN  (SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 WHERE isActive = true GROUP BY businessid) ";
 
     private static final String COUNT_WRAPPER = "select count(DISTINCT wf_id) from ({INTERNAL_QUERY}) as count";
     private static final String COUNT_WRAPPER_ESCALATED = "select count(DISTINCT businessid) from ({INTERNAL_QUERY}) as count";
@@ -67,9 +67,35 @@ public class WorkflowQueryBuilder {
 
     private static final String RANK_WRAPPER = "SELECT wf.* , assg.assignee AS asg, " +
             " DENSE_RANK() OVER(PARTITION BY wf.businessid ORDER BY wf.createdtime DESC) outer_rank " +
-            " FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid WHERE wf.businessid IN ({BASE_QUERY})";
+            " FROM eg_wf_processinstance_v2 wf LEFT OUTER JOIN eg_wf_assignee_v2 assg ON wf.id = assg.processinstanceid WHERE wf.isActive = true AND wf.businessid IN ({BASE_QUERY})";
 
     private static final String FINAL_ESCALATED_QUERY ="SELECT businessid from ( {RANKED_QUERY} ) final WHERE outer_rank = 2 ";
+
+    private static final String SQL_QUERY_MIGRATION_BUSINESS_SERVICE =
+            "SELECT bs.businessservice as businessservice, bs.business as module_name, bs.tenantid as tenantid, " +
+                    "bs.uuid as businessservice_uuid, bs.businessservicesla as businessservicesla, " +
+                    "st.uuid as state_uuid, st.state as state, st.tenantid as state_tenantid, " +
+                    "st.applicationstatus as applicationstatus, st.sla as sla " +
+                    "FROM eg_wf_businessService_v2 bs " +
+                    "INNER JOIN eg_wf_state_v2 st ON st.businessServiceId = bs.uuid " +
+                    "WHERE businessservice IN ('Incident_Low','Incident_Medium','Incident_High','Incident') " +
+                    "ORDER BY state_tenantid";
+
+    private static final String SQL_QUERY_MIGRATION_BUSINESS_SERVICE_V2 =
+            "SELECT bs.businessservice as businessservice, bs.business as module_name, bs.tenantid as tenantid, " +
+                    "bs.uuid as businessservice_uuid, bs.businessservicesla as businessservicesla, " +
+                    "st.uuid as state_uuid, st.state as state, st.tenantid as state_tenantid, st.applicationstatus as applicationstatus, st.sla as sla, " +
+                    "st.businessserviceid as st_businessserviceid, " +
+                    "st.docuploadrequired as st_docuploadrequired, st.isstartstate as st_isstartstate, st.isterminatestate as st_isterminatestate, st.isstateupdatable as st_isstateupdatable, " +
+                    "st.createdby as st_createdby, st.createdtime as st_createdtime, st.lastmodifiedby as st_lastmodifiedby, st.lastmodifiedtime as st_lastmodifiedtime, " +
+                    "act.uuid as act_uuid, act.tenantid as act_tenantid, act.currentstate as act_currentstate, " +
+                    "act.action as act_action, act.nextstate as act_nextstate, act.roles as act_roles, act.active as act_active " +
+                    "FROM eg_wf_businessService_v2 bs " +
+                    "INNER JOIN eg_wf_state_v2 st ON st.businessServiceId = bs.uuid " +
+                    "LEFT OUTER JOIN eg_wf_action_v2 act ON act.currentState = st.uuid AND act.active = TRUE " +
+                    "WHERE businessservice IN ('Incident_Low','Incident_Medium','Incident_High') and bs.tenantid = 'in' " +
+                    "ORDER BY state_tenantid";
+
 
     private String getProcessInstanceSearchQueryWithoutPagination(ProcessInstanceSearchCriteria criteria, List<Object> preparedStmtList){
 
@@ -142,7 +168,7 @@ public class WorkflowQueryBuilder {
         if(criteria.getIsStateLevelCall()!=null && criteria.getIsStateLevelCall()) {
         if (!criteria.getHistory()) {
             with_query_builder.append(" pi_outer.lastmodifiedTime = (" +
-                    "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid " +
+                    "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid " +
                     ") ");
         }
         else 
@@ -165,7 +191,7 @@ public class WorkflowQueryBuilder {
         		  if(!criteria.getTenantId().contains(","))
         		  {
                   with_query_builder.append(" pi_outer.lastmodifiedTime = (" +
-                          "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid = ? " +
+                          "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid = ? " +
                           ") ");
                   preparedStmtList.add(criteria.getTenantId());
         		  }
@@ -174,7 +200,7 @@ public class WorkflowQueryBuilder {
                       List<String> tenantIds=Arrays.asList(criteria.getTenantId().split(","));	
 
         			  with_query_builder.append(" pi_outer.lastmodifiedTime = (" +
-                              "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid IN (")
+                              "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid IN (")
         			  		  .append(createQuery(tenantIds)).append(") )");
                               addToPreparedStatement(preparedStmtList, tenantIds);
         		  }
@@ -257,6 +283,26 @@ public class WorkflowQueryBuilder {
         return builder.toString();
     }
 
+    public String getBusinessServicesAndStates(){
+
+        StringBuilder builder = new StringBuilder(SQL_QUERY_MIGRATION_BUSINESS_SERVICE);
+
+        return builder.toString();
+    }
+
+    public String getBusinessServicesAndStatesV2(){
+
+        StringBuilder builder = new StringBuilder(SQL_QUERY_MIGRATION_BUSINESS_SERVICE_V2);
+
+        return builder.toString();
+    }
+
+    public String getProcessInstanceMigration(ProcessInstanceSearchCriteria criteria, List<Object> preparedStmtList){
+
+        String finalQuery = getProcessInstanceSearchQueryWithoutPagination(criteria,preparedStmtList);
+
+        return finalQuery;
+    }
 
     /**
      * Creates preparedStatement
@@ -337,7 +383,7 @@ public class WorkflowQueryBuilder {
     public String getInboxIdQuery(ProcessInstanceSearchCriteria criteria, List<Object> preparedStmtList, Boolean isPaginationRequired){
 
         String with_query = WITH_CLAUSE + " pi_outer.lastmodifiedTime = (" +
-                "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.businessid = pi_outer.businessid and tenantid = ? " +
+                "SELECT max(lastmodifiedTime) from eg_wf_processinstance_v2 as pi_inner where pi_inner.isActive = true AND pi_inner.businessid = pi_outer.businessid and tenantid = ? " +
                 ") ";
 
         preparedStmtList.add(criteria.getTenantId());
@@ -476,7 +522,7 @@ public class WorkflowQueryBuilder {
         String countQuery = null;
 
         if(statuCount) {
-        	countQuery = "select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from  ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.id IN ({INTERNAL_QUERY}) ) cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS";
+        	countQuery = "select  count(DISTINCT cq.id),cq.applicationStatus,cq.businessservice,cq.PI_STATUS as statusId from  ( select ppi.id,ppi.businessservice,ppst.applicationstatus,ppi.status as PI_STATUS FROM eg_wf_processinstance_v2 ppi  JOIN eg_wf_state_v2 ppst ON ( ppst.uuid =ppi.status ) WHERE ppi.isActive = true AND ppi.id IN ({INTERNAL_QUERY}) ) cq GROUP BY cq.applicationStatus,cq.businessservice,cq.PI_STATUS";
 
             countQuery = countQuery.replace("{INTERNAL_QUERY}", query);
         }else {
@@ -513,22 +559,22 @@ public class WorkflowQueryBuilder {
 
 
     public String getInboxApplicationsBusinessIdsQuery(ProcessInstanceSearchCriteria criteria, ArrayList<Object> preparedStmtList) {
-        StringBuilder query = new StringBuilder("SELECT DISTINCT businessid FROM eg_wf_processinstance_v2 ");
+        StringBuilder query = new StringBuilder("SELECT DISTINCT businessid FROM eg_wf_processinstance_v2  WHERE isActive = true ");
 
         if(!isNull(criteria.getTenantId())){
-            addClauseIfRequired(query, preparedStmtList);
+            addAndClauseIfRequired(query);
             query.append(" tenantid = ? ");
             preparedStmtList.add(criteria.getTenantId());
         }
 
         if(!isNull(criteria.getAssignee())){
-            addClauseIfRequired(query, preparedStmtList);
+            addAndClauseIfRequired(query);
             query.append(" createdby = ? ");
             preparedStmtList.add(criteria.getAssignee());
         }
 
         if(!isNull(criteria.getBusinessService())){
-            addClauseIfRequired(query, preparedStmtList);
+            addAndClauseIfRequired(query);
             query.append(" businessservice = ? ");
             preparedStmtList.add(criteria.getBusinessService());
         }
@@ -613,7 +659,7 @@ public class WorkflowQueryBuilder {
             preparedStmtList.add(criteria.getBusinessService());
         }
 
-        query.append( ") wf  WHERE rank_number = 1 AND wf.escalated = true ");
+        query.append( ") wf  WHERE rank_number = 1 AND wf.escalated = true AND wf.isActive = true ");
         return query.toString();
     }
 
@@ -632,5 +678,9 @@ public class WorkflowQueryBuilder {
     private String addStatusCountWrapper(String query){
         String countQuery = STATUS_COUNT_WRAPPER.replace("{INTERNAL_QUERY}", query);
         return countQuery;
+    }
+
+    private void addAndClauseIfRequired(StringBuilder query){
+            query.append(" AND ");
     }
 }

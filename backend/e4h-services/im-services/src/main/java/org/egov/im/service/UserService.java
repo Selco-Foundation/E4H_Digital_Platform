@@ -57,19 +57,26 @@ public class UserService {
      * @param request
      */
     public void callUserService(IncidentRequest request){
-
-        if(!StringUtils.isEmpty(request.getIncident().getReporter().getUuid()))
-        		enrichUser(request);
-        else
+        log.trace("UserService::callUserService method invoked");
+        log.debug("Processing user service call for incidentId: {}", request.getIncident().getId());
+        if(!StringUtils.isEmpty(request.getIncident().getReporter().getUuid())){
+            log.info("Enriching user for existing uuid: {}", request.getIncident().getReporter().getUuid());
+            enrichUser(request);
+        }
+        else{
+            log.info("Upserting user for mobileNumber: {}", request.getIncident().getReporter().getMobileNumber());
             upsertUser(request);
+        }
 
     }
 
     /**
-     * Calls user search to fetch the list of user and enriches it in serviceWrappers
-     * @param serviceWrappers
+     * Calls user search to fetch the list of user and enriches it in incidentWrappers
+     * @param incidentWrappers
      */
     public void enrichUsers(List<IncidentWrapper> incidentWrappers){
+        log.trace("UserService::enrichUsers method invoked");
+        log.debug("Enriching users for {} incident wrappers", incidentWrappers.size());
 
         Set<String> uuids = new HashSet<>();
 
@@ -77,11 +84,13 @@ public class UserService {
             uuids.add(incidentWrapper.getIncident().getAccountId());
         });
 
+        log.trace("Searching bulk users for {} UUIDs", uuids.size());
         Map<String, User> idToUserMap = searchBulkUser(new LinkedList<>(uuids));
 
         incidentWrappers.forEach(incidentWrapper -> {
         	incidentWrapper.getIncident().setReporter(idToUserMap.get(incidentWrapper.getIncident().getAccountId()));
         });
+        log.debug("Users enriched successfully");
 
     }
 
@@ -92,26 +101,34 @@ public class UserService {
      * @param request
      */
     private void upsertUser(IncidentRequest request){
-
+        log.trace("UserService::upsertUser method invoked");
         User user = request.getIncident().getReporter();
         String tenantId = request.getIncident().getTenantId();
         User userServiceResponse = null;
 
         // Search on mobile number as user name
+        log.trace("Searching user by mobile number");
         UserDetailResponse userDetailResponse = searchUser(tenantId,null, user.getMobileNumber());
         if (!userDetailResponse.getUser().isEmpty()) {
             User userFromSearch = userDetailResponse.getUser().get(0);
+            log.info("User exists with mobile: {}", user.getMobileNumber());
             if(!user.getName().equalsIgnoreCase(userFromSearch.getName())){
+                log.debug("User name differs, updating user");
                 userServiceResponse = updateUser(request.getRequestInfo(),user,userFromSearch);
             }
-            else userServiceResponse = userDetailResponse.getUser().get(0);
+            else {
+                log.debug("User name matches, using existing user");
+                userServiceResponse = userDetailResponse.getUser().get(0);
+            }
         }
         else {
+            log.info("Creating new user with mobile: {}", user.getMobileNumber());
             userServiceResponse = createUser(request.getRequestInfo(),tenantId,user);
         }
 
         // Enrich the accountId
         request.getIncident().setAccountId(userServiceResponse.getUuid());
+        log.debug("User upsert completed, accountId={}", userServiceResponse.getUuid());
     }
 
 
@@ -120,18 +137,21 @@ public class UserService {
      * @param request
      */
     private void enrichUser(IncidentRequest request){
-
+        log.trace("UserService::enrichUser method invoked");
         RequestInfo requestInfo = request.getRequestInfo();
         String accountId = request.getIncident().getReporter().getUuid();
         String tenantId = request.getIncident().getReporter().getTenantId();
 
+        log.trace("Searching user by accountId");
         UserDetailResponse userDetailResponse = searchUser(tenantId,accountId,null);
 
-        if(userDetailResponse.getUser().isEmpty())
+        if(userDetailResponse.getUser().isEmpty()) {
+            log.error("No user found for accountId: {}", accountId);
             throw new CustomException("INVALID_ACCOUNTID","No user exist for the given accountId");
+        }
 
-        else request.getIncident().setReporter(userDetailResponse.getUser().get(0));
-
+        request.getIncident().setReporter(userDetailResponse.getUser().get(0));
+        log.debug("User enriched successfully for accountId: {}", accountId);
     }
 
     /**
@@ -142,7 +162,7 @@ public class UserService {
      * @return
      */
     private User createUser(RequestInfo requestInfo,String tenantId, User userInfo) {
-
+        log.debug("Creating user in tenantId: {} with mobile: {}", tenantId, userInfo.getMobileNumber());
         userUtils.addUserDefaultFields(userInfo.getMobileNumber(),tenantId, userInfo);
         StringBuilder uri = new StringBuilder(config.getUserHost())
                 .append(config.getUserContextPath())
@@ -163,7 +183,7 @@ public class UserService {
      * @return
      */
     private User updateUser(RequestInfo requestInfo,User user,User userFromSearch) {
-
+        log.debug("Updating user uuid: {} with new name: {}", userFromSearch.getUuid(), user.getName());
         userFromSearch.setName(user.getName());
         userFromSearch.setActive(true);
 
@@ -201,7 +221,7 @@ public class UserService {
         if(!StringUtils.isEmpty(userName))
             userSearchRequest.setUserName(userName);
 
-        log.info(stateLevelTenant+","+accountId);        
+        log.debug("Searching user with stateLevelTenant={}, accountId={}, userName={}", stateLevelTenant, accountId, userName);
         StringBuilder uri = new StringBuilder(config.getUserHost()).append(config.getUserSearchEndpoint());
         return userUtils.userCall(userSearchRequest,uri);
 
@@ -212,8 +232,8 @@ public class UserService {
      * @param uuids
      * @return
      */
-    private Map<String,User> searchBulkUser(List<String> uuids){
-
+    public Map<String,User> searchBulkUser(List<String> uuids){
+        log.debug("Searching bulk users for uuids: {}", uuids);
         UserSearchRequest userSearchRequest =new UserSearchRequest();
         userSearchRequest.setActive(true);
         userSearchRequest.setUserType(USERTYPE_EMPLOYEE);
@@ -241,8 +261,9 @@ public class UserService {
      * @param criteria
      */
     public void enrichUserIds(String tenantId, RequestSearchCriteria criteria){
-
+        log.trace("UserService::enrichUserIds method invoked");
         String mobileNumber = criteria.getMobileNumber();
+        log.debug("Enriching user IDs for mobileNumber: {}, tenantId: {}", mobileNumber, tenantId);
 
         UserSearchRequest userSearchRequest =new UserSearchRequest();
         userSearchRequest.setActive(true);
@@ -256,15 +277,18 @@ public class UserService {
 
         Set<String> userIds = users.stream().map(User::getUuid).collect(Collectors.toSet());
         criteria.setUserIds(userIds);
+        log.debug("Enriched {} user IDs for mobileNumber", userIds.size());
     }
 
 
 
     public void loginReport(UserRequest userRequest) {
+        log.trace("UserService::loginReport method invoked");
         try {
+            log.debug("Processing login report for user: {}", userRequest.getUser().getUserName());
             User userInfo = userRequest.getUser();
             if (userInfo.getRoles() == null || userInfo.getRoles().isEmpty()) {
-                log.info("No roles found for user");
+                log.info("No roles found for user, skipping login report");
                 return;
             }
             String roleCode = userInfo.getRoles().get(0).getCode();
@@ -287,6 +311,7 @@ public class UserService {
                     if (hasComplaintAssessorRole) {
                         return;
                     }
+                    log.debug("Fetching tenant details from MDMS for tenant: {}", userInfo.getTenantId());
                     String tenantId = userInfo.getTenantId();
                     String stateLevelTenantId = tenantId.split("\\.")[0];
 
@@ -313,6 +338,7 @@ public class UserService {
                     setBlockAndDistrictFromMdms(result, tenantId, userLoginReport);
 
                 } else {
+                    log.debug("User is COMPLAINT_RESOLVER. Setting default empty values for location.");
                     userLoginReport.setHealthFacilityName("");
                     userLoginReport.setBlock("");
                     userLoginReport.setDistrict("");

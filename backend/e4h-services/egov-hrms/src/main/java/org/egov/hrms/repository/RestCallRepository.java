@@ -30,19 +30,22 @@ public class RestCallRepository {
 	 * @author vishal
 	 */
 	public Object fetchResult(StringBuilder uri, Object request) {
+		log.trace("RestCallRepository.fetchResult invoked for URI: {}", uri.toString());
 		ObjectMapper mapper = new ObjectMapper();
 		mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 		Object response = null;
 		try {
+			log.debug("Calling external service endpoint: {}", uri.toString());
 			response = restTemplate.postForObject(uri.toString(), request, Map.class);
+			log.debug("External service call completed successfully for endpoint: {}", uri.toString());
 		} catch (HttpClientErrorException e) {
-			log.error("External Service threw an Exception: ", e);
+			log.error("External service returned HTTP error for endpoint: {}, status: {}", 
+					uri.toString(), e.getStatusCode(), e);
 			if (!StringUtils.isEmpty(e.getResponseBodyAsString())) {
 				throw new CustomException("EXTERNAL_SERVICE_EXCEPTION", e.getResponseBodyAsString());
 			}
 		} catch (Exception e) {
-			log.error("Exception while fetching from searcher: ", e);
-			log.info("req: " + (request));
+			log.error("Exception while calling external service endpoint: {}", uri.toString(), e);
 		}
 
 		return response;

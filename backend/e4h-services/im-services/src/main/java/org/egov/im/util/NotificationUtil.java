@@ -65,7 +65,7 @@ public class NotificationUtil {
         /*if (config.getIsLocalizationStateLevel())
             tenantId= centralInstanceUtil.getStateLevelTenant(tenantId);*/
         tenantId= centralInstanceUtil.getStateLevelTenant(tenantId);
-        log.info("tenantId after calling central instance method :"+ tenantId);
+        log.debug("TenantId after calling central instance method: {}", tenantId);
         String locale = NOTIFICATION_LOCALE;
 //        if (!StringUtils.isEmpty(requestInfo.getMsgId()) && requestInfo.getMsgId().split("|").length >= 2)
 //            locale = requestInfo.getMsgId().split("\\|")[1];
@@ -170,7 +170,7 @@ public class NotificationUtil {
             }
             for (SMSRequest smsRequest : smsRequestList) {
                 producer.push(tenantId,config.getSmsNotifTopic(), smsRequest);
-                log.info("Messages: " + smsRequest.getMessage());
+                log.debug("Sending SMS message to mobile: {}", smsRequest.getMobileNumber());
             }
         }
     }
@@ -197,7 +197,7 @@ public class NotificationUtil {
         String res = restTemplate.postForObject(builder.toString(), body, String.class);
 
         if(StringUtils.isEmpty(res)){
-            log.error("URL_SHORTENING_ERROR","Unable to shorten url: "+actualURL); ;
+            log.error("URL_SHORTENING_ERROR: Unable to shorten url: {}", actualURL);
             return actualURL;
         }
         else return res;

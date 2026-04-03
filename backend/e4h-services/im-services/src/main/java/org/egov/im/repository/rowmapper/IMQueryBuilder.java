@@ -99,6 +99,14 @@ public class IMQueryBuilder {
             builder.append(" ser.incidenttype IN (").append(createQuery(incidentType)).append(")");
             addToPreparedStatement(preparedStmtList, incidentType);
         }
+
+        Set<String> incidentSubType = criteria.getIncidentSubType();
+        if (!CollectionUtils.isEmpty(incidentSubType)){
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.incidentsubtype IN (").append(createQuery(incidentSubType)).append(")");
+            addToPreparedStatement(preparedStmtList, incidentSubType);
+        }
+
         Set<String> phcType = criteria.getPhcType();
          if (!CollectionUtils.isEmpty(phcType)){
             addClauseIfRequired(preparedStmtList, builder);
@@ -106,10 +114,41 @@ public class IMQueryBuilder {
             addToPreparedStatement(preparedStmtList, phcType);
         }
 
+        Set<String> phcSubType = criteria.getPhcSubType();
+        if (!CollectionUtils.isEmpty(phcSubType)){
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.phcsubtype IN (").append(createQuery(phcSubType)).append(")");
+            addToPreparedStatement(preparedStmtList, phcSubType);
+        }
+
         if (criteria.getIncidentId() != null) {
             addClauseIfRequired(preparedStmtList, builder);
             builder.append(" ser.incidentid=? ");
             preparedStmtList.add(criteria.getIncidentId());
+        }
+
+        if (criteria.getDistrict() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" LOWER(ser.district) = ? ");
+            preparedStmtList.add(criteria.getDistrict().toLowerCase());
+        }
+
+        if (criteria.getBoundaryCode() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" LOWER(ser.boundarycode) = ? ");
+            preparedStmtList.add(criteria.getBoundaryCode().toLowerCase());
+        }
+
+        if (criteria.getBlock() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" LOWER(ser.block) = ? ");
+            preparedStmtList.add(criteria.getBlock().toLowerCase());
+        }
+
+        if (criteria.getSystemFunctional() != null) {
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ser.systemfunctional=? ");
+            preparedStmtList.add(criteria.getSystemFunctional());
         }
 
         Set<String> ids = criteria.getIds();
@@ -133,6 +172,17 @@ public class IMQueryBuilder {
             addClauseIfRequired(preparedStmtList, builder);
             builder.append(" ((extract(epoch FROM NOW())*1000) - ser.createdtime) < ? ");
             preparedStmtList.add(criteria.getSlaDeltaMaxLimit());
+        }
+
+        // Threshold on time elapsed since filed/created (e.g. for theft notification).
+        Long filedDateThresholdMs = criteria.getFiledDateThresholdMs();
+        if (filedDateThresholdMs != null) {
+            if (filedDateThresholdMs < 0) {
+              throw new CustomException("INVALID_SEARCH", "filedDateThresholdMs cannot be negative");
+            }
+            addClauseIfRequired(preparedStmtList, builder);
+            builder.append(" ((extract(epoch FROM NOW())*1000) - COALESCE(ser.fileddate, ser.createdtime)) >= ? ");
+            preparedStmtList.add(filedDateThresholdMs);
         }
 
         Set<String> userIds = criteria.getUserIds();

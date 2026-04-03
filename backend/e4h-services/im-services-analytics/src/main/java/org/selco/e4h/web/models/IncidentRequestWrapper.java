@@ -1,0 +1,30 @@
+package org.selco.e4h.web.models;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.annotations.ApiModel;
+import jakarta.validation.Valid;
+import lombok.*;
+import org.springframework.validation.annotation.Validated;
+
+/**
+ * Request object to fetch the report data
+ */
+@ApiModel(description = "Request object to fetch the report data")
+@Validated
+@jakarta.annotation.Generated(value = "org.egov.codegen.SpringBootCodegen")
+
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class IncidentRequestWrapper {
+
+        @Valid
+        @JsonProperty("incidentRequest")
+        private IncidentRequest incidentRequest = null;
+
+        @Valid
+        @JsonProperty("indexView")
+        private IndexView indexView;
+}

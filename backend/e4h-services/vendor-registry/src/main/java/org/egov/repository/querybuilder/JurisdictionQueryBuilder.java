@@ -15,6 +15,9 @@ public class JurisdictionQueryBuilder {
             "FROM eg_org_jurisdiction j";
 
     public String getJurisdictionSearchQuery(Set<String> organisationIds, List<Object> preparedStmtList) {
+        log.trace("JurisdictionQueryBuilder::getJurisdictionSearchQuery entry");
+        log.debug("Building jurisdiction search query for {} organisation IDs", organisationIds != null ? organisationIds.size() : 0);
+        
         StringBuilder queryBuilder = null;
         queryBuilder = new StringBuilder(FETCH_JURISDICTION_QUERY);
 

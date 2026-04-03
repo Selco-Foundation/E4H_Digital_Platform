@@ -78,6 +78,7 @@ public class InboxApplication {
 	public CacheManager cacheManager(){
 		return new SpringCache2kCacheManager().addCaches(b->b.name("businessServices").expireAfterWrite(cacheExpiry, TimeUnit.MINUTES)
 				.entryCapacity(10)).addCaches(b->b.name("inboxConfiguration").expireAfterWrite(cacheExpiry, TimeUnit.MINUTES)
+				.entryCapacity(10)).addCaches(b->b.name("boundaryConfiguration").expireAfterWrite(cacheExpiry, TimeUnit.MINUTES)
 				.entryCapacity(10));
 	}
 	@Bean

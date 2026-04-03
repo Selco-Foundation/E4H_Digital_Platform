@@ -7,29 +7,38 @@ export const filterFunctions = {
   Incident: (filtersArg) => {
     let { uuid } = Digit.UserService.getUser()?.info || {};
 
-    const searchFilters = {};
+    let searchFilters = {};
     const workflowFilters = {};
 
     const {
       applicationNumber, mobileNumber, limit,
       offset, sortBy, sortOrder, total,
       applicationStatus, services, incidentType,
-      phcType, assignee, nearingSLA, district, block, isSystemFunctional
+      facility, assignee, nearingSLA, state, district, block, isSystemFunctional, wfStatus
     } = filtersArg || {};
 
     if (filtersArg?.IncidentWrappers) {
       searchFilters.applicationNumber = filtersArg?.incidentId;
     }
-    
-    if (applicationStatus) {
+
+    if (wfStatus) {
+      let convertStatus = [wfStatus];
+      if (wfStatus.includes(",")) {
+        convertStatus = wfStatus.split(",");
+      }
+      if (applicationStatus) {
+        const applicationStatuses = applicationStatus.split(",");
+        const intersectionStatuses = convertStatus.filter((status) => applicationStatuses.includes(status));
+        convertStatus = intersectionStatuses.length ? intersectionStatuses : [""];
+      }
+      workflowFilters.status = convertStatus;
+
+    } else if (applicationStatus) {
       let convertStatus=[applicationStatus];
       if(applicationStatus.includes(",")){
         convertStatus=applicationStatus.split(',')
       }
       workflowFilters.status = convertStatus;
-      // if (applicationStatus?.some((e) => e.nonActionableRole)) {
-      //   searchFilters.fetchNonActionableRecords = true;
-      // }
     }
 
     if(incidentType){
@@ -40,20 +49,34 @@ export const filterFunctions = {
       searchFilters.incidentType=convertIncidentType;
     }
 
-    if (district) {
-      let convertDistrict = [district];
-      if (district.includes(",")) {
-        convertDistrict = district.split(",");
-      }
-      searchFilters.district = convertDistrict;
-    }
 
-    if (block) {
+    if (facility) {
+      let convertFacility = [facility];
+      if(facility.includes(",")){
+        convertFacility = facility.split(',');
+      }
+      searchFilters.facility = convertFacility;
+
+    } else if (block) {
       let convertBlock = [block];
       if (block.includes(",")) {
         convertBlock = block.split(",");
       }
       searchFilters.block = convertBlock;
+
+    } else if (district) {
+      let convertDistrict = [district];
+      if (district.includes(",")) {
+        convertDistrict = district.split(",");
+      }
+      searchFilters.district = convertDistrict;
+
+    } else if (state) {
+      let convertState = [state];
+      if (state.includes(",")) {
+        convertState = state.split(",");
+      }
+      searchFilters.state = convertState;
     }
 
     if (isSystemFunctional) {
@@ -64,14 +87,10 @@ export const filterFunctions = {
       searchFilters.systemFunctional = convertIsSystemFunctional;
     }
 
-    if(phcType){
-      let convertPhcType=[phcType];
-      if(phcType.includes(",")){
-        convertPhcType=phcType.split(',');
-      }
-      searchFilters.phcType=convertPhcType;
+    if (assignee && !wfStatus) {
+      searchFilters.assignee = assignee;
     }
-    
+
     if (filtersArg?.uuid && filtersArg?.uuid.code === "ASSIGNED_TO_ME") {
       workflowFilters.assignee = uuid;
     }
@@ -99,6 +118,6 @@ export const filterFunctions = {
 
     // workflowFilters.businessService = "PT.CREATE";
     // searchFilters.mobileNumber = "9898568989";
-    return { searchFilters, workflowFilters, limit, offset, sortBy, sortOrder, applicationNumber, assignee};
+    return { searchFilters, workflowFilters, limit, offset, sortBy, sortOrder, applicationNumber };
   },
 };

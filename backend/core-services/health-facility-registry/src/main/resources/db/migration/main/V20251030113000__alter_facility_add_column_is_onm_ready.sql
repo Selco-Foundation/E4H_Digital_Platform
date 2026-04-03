@@ -1,0 +1,1 @@
+ALTER TABLE facility ADD COLUMN is_onm_ready BOOLEAN DEFAULT FALSE;

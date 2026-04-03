@@ -19,9 +19,9 @@ public class Producer {
     private MultiStateInstanceUtil centralInstanceUtil;
 
     public void push(String tenantId, String topic, Object value) {
-
+        log.trace("Producer::push method invoked");
         String updatedTopic = centralInstanceUtil.getStateSpecificTopicName(tenantId, topic);
-        log.info("The Kafka topic for the tenantId : " + tenantId + " is : " + updatedTopic);
+        log.debug("Pushing message to Kafka topic: {} for tenantId: {}", updatedTopic, tenantId);
         kafkaTemplate.send(updatedTopic, value);
     }
 }

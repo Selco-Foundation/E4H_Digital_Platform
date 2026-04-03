@@ -126,6 +126,10 @@ const Dropdown = React.forwardRef((props, ref) => {
     }
   };
 
+  useEffect(() => {
+    validate();
+  }, [selectedOption]);
+
   const clearError = () => {
     return setError("");
   };
@@ -208,11 +212,8 @@ const Dropdown = React.forwardRef((props, ref) => {
       )}
       {!hasCustomSelector && (
         <div
-          className={`${props?.selectClassName ? props.selectClassName : dropdownStatus ? "select-active" : "select"} ${props.disable && "disabled"}`}
-          style={{
-            ...props?.selectStyle,
-            ...(props.errorStyle ? { border: "1px solid red" } : {})
-          }}
+          className={`${dropdownStatus ? "select-active" : "select"} ${props.disable && "disabled"}`}
+          style={props.errorStyle ? { border: "1px solid red" } : {}}
         >
           <TextField
             autoComplete={props.autoComplete}
@@ -251,7 +252,6 @@ const Dropdown = React.forwardRef((props, ref) => {
               }
             }}
             inputRef={props.ref}
-            style={props?.textStyle}
           />
           <ArrowDown onClick={dropdownSwitch} className="cp" disable={props.disable} />
         </div>

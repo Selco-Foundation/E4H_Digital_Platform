@@ -84,8 +84,12 @@ public class MigrationService {
 
     @PostConstruct
     private void setStatusToUUIDMap(){
+        log.trace("MigrationService::setStatusToUUIDMap method invoked");
+        log.info("Initializing status to UUID map and service code to SLA map for tenant: {}", statelevelTenantIdForMigration);
         this.statusToUUIDMap = migrationUtils.getStatusToUUIDMap(statelevelTenantIdForMigration);
         this.serviceCodeToSLA = migrationUtils.getServiceCodeToSLAMap(statelevelTenantIdForMigration);
+        log.debug("Initialized {} status mappings and {} service code to SLA mappings", 
+                statusToUUIDMap.size(), serviceCodeToSLA.size());
     }
 
 
@@ -127,7 +131,9 @@ public class MigrationService {
      *
      * */
     public Map<String, Object> migrate(ServiceResponse serviceResponse) {
-
+        log.trace("MigrationService::migrate method invoked");
+        log.info("Starting migration for {} services", 
+                serviceResponse.getServices() != null ? serviceResponse.getServices().size() : 0);
 
         List<Service> servicesV1 = serviceResponse.getServices();
         List<ActionHistory> actionHistories = serviceResponse.getActionHistory();
@@ -150,6 +156,7 @@ public class MigrationService {
             });
         });
 
+        log.trace("Fetching ID to UUID mapping for {} IDs", ids.size());
         Map<Long, String> idToUuidMap = migrationUtils.getIdtoUUIDMap(new LinkedList<>(ids));
 
         /*############### FOR LOCAL TESTING ONLY ###########################################
@@ -160,7 +167,9 @@ public class MigrationService {
         }
         //##################################################################################*/
 
+        log.trace("Transforming services and action histories");
         Map<String, Object> response = transform(servicesV1, actionHistories, idToUuidMap);
+        log.info("Migration transformation completed successfully");
 
         return response;
 
@@ -173,15 +182,18 @@ public class MigrationService {
      * @return
      */
     private Map<String, Object> transform(List<Service> servicesV1, List<ActionHistory> actionHistories, Map<Long, String> idToUuidMap) {
-
+        log.trace("MigrationService::transform method invoked");
+        log.debug("Transforming {} services and {} action histories", servicesV1.size(),actionHistories.size());
 
         Map<String, List<ActionInfo>> idToActionMap = new HashMap<>();
 
         for (ActionHistory actionHistory : actionHistories) {
             List<ActionInfo> actions = actionHistory.getActions();
 
-            if (CollectionUtils.isEmpty(actions))
-                log.error("Skiping record with empty actionHistory");
+            if (CollectionUtils.isEmpty(actions)) {
+                log.warn("Skipping record with empty actionHistory");
+                continue;
+            }
 
             String id = actions.get(0).getBusinessKey();
             idToActionMap.put(id, actions);
@@ -212,7 +224,7 @@ public class MigrationService {
             incident.setApplicationStatus(oldToNewStatus.get(serviceV1.getStatus().toString()));
             ProcessInstanceRequest processInstanceRequest = ProcessInstanceRequest.builder().processInstances(workflows).build();
             IncidentRequest incidentRequest = IncidentRequest.builder().incident(incident).build();
-            //log.info("Pushing service request: " + serviceRequest);
+            log.trace("Pushing migrated incident and workflow to Kafka topics");
             /*#################### TEMPORARY FOR TESTING, REMOVE THE COMMENTS*/
                producer.push(tenantId,config.getBatchCreateTopic(),incidentRequest);
                producer.push(tenantId,config.getBatchWorkflowSaveTopic(),processInstanceRequest);
@@ -234,7 +246,8 @@ public class MigrationService {
 
 
     private org.egov.im.web.models.Incident transformService(Service serviceV1, Map<Long, String> idToUuidMap) {
-
+        log.trace("MigrationService::transformService method invoked");
+        log.debug("Transforming service with incidentId: {}", serviceV1.getIncidentId());
         String tenantId = serviceV1.getTenantId();
         String incidentType = serviceV1.getIssueType();
         String incidentId = serviceV1.getIncidentId();
@@ -336,7 +349,8 @@ public class MigrationService {
 
 
     private ProcessInstance transformAction(ActionInfo actionInfo, Map<Long, String> idToUuidMap, Map<String, Long> actionUuidToSlaMap) {
-
+        log.trace("MigrationService::transformAction method invoked");
+        log.debug("Transforming action with uuid: {}", actionInfo.getUuid());
         String uuid = actionInfo.getUuid();
 
         // FIXME Should the role be stored
@@ -411,11 +425,15 @@ public class MigrationService {
     }
 
     private Map<String, Long> getActionUUidToSLAMap(List<ActionInfo> actionInfos, String serviceCode){
-
+        log.trace("MigrationService::getActionUUidToSLAMap method invoked");
+        log.debug("Calculating SLA map for {} actions with serviceCode: {}", 
+                actionInfos != null ? actionInfos.size() : 0, serviceCode);
         Map<String, Long> uuidTOSLAMap = new HashMap<>();
 
-        if(CollectionUtils.isEmpty(actionInfos))
+        if(CollectionUtils.isEmpty(actionInfos)) {
+            log.debug("No action infos provided, returning empty SLA map");
             return uuidTOSLAMap;
+        }
 
         actionInfos.sort(Comparator.comparing(ActionInfo::getWhen));
         int totalCount = actionInfos.size();
@@ -430,6 +448,7 @@ public class MigrationService {
             Long slaLeft = uuidTOSLAMap.get(previousActionInfo.getUuid()) - timeSpent;
             uuidTOSLAMap.put(actionInfo.getUuid(), slaLeft);
         }
+        log.debug("Calculated SLA map for {} actions", uuidTOSLAMap.size());
         return uuidTOSLAMap;
     }
 

@@ -25,8 +25,11 @@ public class VideoQualityProcessorImpl implements VideoQualityProcessor {
 
     public List<MultipartFile> processQuality(
             ProcessingContext context, File inputFile, Path outputPath, VideoQualitySettings quality) {
-        log.info("Processing videoId: {} and quality: {}", context.getVideoId(), quality);
+        log.trace("Method invoked: processQuality, videoId: {}, quality: {}", context.getVideoId(), quality.getLabel());
+        log.info("Processing quality level: {} for videoId: {}", quality.getLabel(), context.getVideoId());
         String outputFilePath = fFmpegService.processQuality(context, inputFile.getAbsolutePath(), outputPath, quality);
+        log.debug("FFmpeg processing completed, output path: {}", outputFilePath);
+        log.trace("Converting output files to multipart files");
         return videoUtil.convertToMultipartFiles(context, outputPath, outputFilePath);
     }
 }
