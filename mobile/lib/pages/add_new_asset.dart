@@ -7,7 +7,6 @@ import 'package:digit_ui_components/enum/app_enums.dart';
 import 'package:digit_ui_components/models/DropdownModels.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/TextTheme/digit_text_theme.dart';
-import 'package:digit_ui_components/theme/colors.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
@@ -107,6 +106,46 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   StreamSubscription<LocationState>? _locSub;
   final Map<int, Future<File?>> _cachedImageFutures = {};
   final Map<int, String> _lastProcessedPickerPaths = {};
+
+  int _requiredAssetCountFromState(CacheAssetCountState state) {
+    return state.maybeWhen(
+      loaded: (entries) => entries
+              .firstWhereOrNull((e) => e.assetType == currentAssetType)
+              ?.count ??
+          0,
+      orElse: () => 0,
+    );
+  }
+
+  int _requiredAssetCount() {
+    return _requiredAssetCountFromState(context.read<CacheAssetCountBloc>().state);
+  }
+
+  AssetModel _buildBlankAsset() {
+    final asset = AssetModel(serialNumber: '');
+
+    if (_assets.isNotEmpty &&
+        (currentAssetType == 'battery' || currentAssetType == 'panel')) {
+      asset.batteryType = _assets.first.batteryType;
+      asset.batteryVoltage = _assets.first.batteryVoltage;
+      asset.batteryCapacity = _assets.first.batteryCapacity;
+      asset.panelCapacity = _assets.first.panelCapacity;
+    }
+
+    _applyPrefilledCapacityToAsset(asset);
+    return asset;
+  }
+
+  void _ensureRequiredAssetSlots(int requiredCount) {
+    if (requiredCount <= 0) {
+      _assets.clear();
+      return;
+    }
+
+    while (_assets.length < requiredCount) {
+      _assets.add(_buildBlankAsset());
+    }
+  }
 
   @override
   void initState() {
@@ -254,31 +293,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     locBloc.add(const LocationEvent.requestService());
   }
 
-  void _addNewAsset(int maxAssets) {
-    if (_assets.length < maxAssets) {
-      setState(() {
-        final newAsset = AssetModel(serialNumber: '');
-
-        if (_assets.isNotEmpty &&
-            (currentAssetType == 'battery' || currentAssetType == 'panel')) {
-          newAsset.batteryType = _assets.first.batteryType;
-          newAsset.batteryVoltage = _assets.first.batteryVoltage;
-          newAsset.batteryCapacity = _assets.first.batteryCapacity;
-          newAsset.panelCapacity = _assets.first.panelCapacity;
-        }
-
-        _assets.add(newAsset);
-      });
-    } else {
-      context.showSnackBar(
-        SnackBar(
-          content: Text('Maximum of $maxAssets assets reached'),
-          backgroundColor: const Light().alertError,
-        ),
-      );
-    }
-  }
-
   void _updateAsset(int index, String serial) {
     setState(() => _assets[index].serialNumber = serial);
   }
@@ -402,6 +416,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     _applyPrefilledCapacityToAsset(assetModel);
                     _assets.add(assetModel);
                   }
+
+                  _ensureRequiredAssetSlots(_requiredAssetCount());
                 });
 
                 _cachedImageFutures.clear();
@@ -416,15 +432,21 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
             );
           },
         ),
+        BlocListener<CacheAssetCountBloc, CacheAssetCountState>(
+          listener: (context, state) {
+            final requiredCount = _requiredAssetCountFromState(state);
+            if (_assets.length == requiredCount) {
+              return;
+            }
+
+            setState(() {
+              _ensureRequiredAssetSlots(requiredCount);
+            });
+          },
+        ),
       ],
       child: BlocBuilder<AssetTypeBloc, AssetTypeState>(
         builder: (ctx, assetTypeState) {
-          if (_currentActivityFacilityId != null &&
-              currentAssetType.isNotEmpty) {
-            context.read<CacheAssetCountBloc>().add(CacheAssetCountEvent.get(
-                _currentActivityFacilityId!, currentAssetType));
-          }
-
           return BlocSelector<CacheAssetCountBloc, CacheAssetCountState, int>(
             selector: (st) => st.maybeWhen(
               loaded: (entries) =>
@@ -435,7 +457,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               orElse: () => 0,
             ),
             builder: (ctx, maxAssets) {
-              final isDisabled = (_assets.length != maxAssets ||
+              final isDisabled = maxAssets == 0 ||
+                  (_assets.length != maxAssets ||
                       _assets.any(
                           (a) => !_isAssetComplete(a, currentAssetType))) ||
                   _isSaving;
@@ -479,7 +502,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                             batteryCapacity: asset.batteryCapacity,
                             batteryVoltage: asset.batteryVoltage,
                             batteryType: asset.batteryType,
-                            voltageUnit: voltageUom ?? asset.voltageUnit,
+                            voltageUnit: asset.voltageUnit ?? voltageUom,
                             inverterCapacity: asset.inverterCapacity,
                             inverterCapacityUnit:
                                 asset.inverterCapacityUnit ?? assetCapacityUom,
@@ -573,19 +596,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                               ),
                             );
                           }),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              GestureDetector(
-                                onTap: () => _addNewAsset(maxAssets),
-                                child: Text(
-                                  'Add New Asset',
-                                  style: textTheme.headingM.copyWith(
-                                      color: theme.colorTheme.primary.primary1),
-                                ),
-                              ),
-                            ],
-                          ),
                         ],
                       ),
                     ),
