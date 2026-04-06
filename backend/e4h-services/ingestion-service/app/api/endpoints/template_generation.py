@@ -950,9 +950,9 @@ async def get_amc_configuration_template(
             return ""
 
         for idx, facility in enumerate(all_facilities):
-            facility_details = facility.get("facility_details", {}) or {}
-            nin_id = facility_details.get("nin_id", "")
-            hfr_id = facility_details.get("hfr_id", "")
+            # facility_details = facility.get("facility_details", {}) or {}
+            nin_id = facility.get("nin_id", "")
+            hfr_id = facility.get("hfr_id", "")
             # Use NIN ID if available, otherwise HFR ID, otherwise empty
             nin_hfr_id = nin_id if nin_id else (hfr_id if hfr_id else "")
             facility_name = facility.get("facility_name", "")
