@@ -16,7 +16,7 @@ import {
   ErrorMessage,
 } from "@egovernments/digit-ui-components";
 import { CameraIcon } from "@egovernments/digit-ui-react-components";
-import React, { useEffect, useState } from "react";
+import React, {useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import UploadDrawer from "./ImageUpload/UploadDrawer";
@@ -280,7 +280,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
     }, duration);
   };
 
-  const updateProfile = async () => {
+  const updateProfile = useCallback(async () => {
     setLoading(true);
     try {
       const requestData = {
@@ -409,7 +409,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
     }
 
     setLoading(false);
-  };
+  }, [name, email, gender, profilePic, changepassword, currentPassword, newPassword, confirmPassword]);
 
   let menu = [];
   const { data: Menu } = Digit.Hooks.useGenderMDMS(stateId, "common-masters", "GenderType");
@@ -791,7 +791,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
 
               <LabelFieldPair>
                 <div style={{ width: "100%" }}>
-                  {changepassword == false && !Digit.Utils.getOTPBasedLogin() ? (
+                  {changepassword === false && !Digit.Utils.getOTPBasedLogin() ? (
                     <Button
                       label={t("CORE_COMMON_CHANGE_PASSWORD")}
                       variation={"teritiary"}
