@@ -88,6 +88,8 @@ DB_CONFIG = {
     "password": os.getenv("DB_PASSWORD")
 }
 
+FACILITY_VENDOR_CODE_COLUMN = "Vendor Code (Mandatory)"
+
 @router.post('/vendors',
              summary='Upload and process vendor Excel file with multiple sheets',
              response_description="Returns processed Excel file with validation results")
@@ -268,6 +270,13 @@ async def validate_facilities_excel_sheet(
         if 'Facility Id' not in df.columns:
             raise HTTPException(status_code=400, detail=f"Facility Column in '{facility_sheet_name}' not found")
 
+        if FACILITY_VENDOR_CODE_COLUMN not in df.columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing mandatory column '{FACILITY_VENDOR_CODE_COLUMN}'. "
+                "Facilities cannot be validated without vendor mapping.",
+            )
+
         # Ensure status/error columns exist
         if 'status' not in df.columns:
             df['status'] = ''
@@ -327,6 +336,25 @@ async def validate_facilities_excel_sheet(
             boundary_data_df,
             'data-ingestion.FacilityIngestionSchema'
         )
+
+        org_client = OrganizationServiceClient(org_service_url)
+        registered_vendor_codes = org_client.fetch_registered_vendor_codes(request_info_obj)
+        for i in range(len(df)):
+            row = df.iloc[i]
+            fid = row.get("Facility Id")
+            is_new = pd.isna(fid) or str(fid).strip() == ""
+            if not is_new:
+                continue
+            vendor_code = org_client.normalize_facility_vendor_code(row.get(FACILITY_VENDOR_CODE_COLUMN))
+            if not vendor_code:
+                validation_errors[i].append(
+                    f"{FACILITY_VENDOR_CODE_COLUMN} is required; facilities cannot be created without a vendor mapping."
+                )
+            elif registered_vendor_codes is not None and vendor_code not in registered_vendor_codes:
+                validation_errors[i].append(
+                    f"Vendor code '{vendor_code}' is not registered in the vendor service; "
+                    "register the vendor before facility ingestion."
+                )
 
         # Mark rows based on validation results, preserving earlier boundary errors
         error_count = 0

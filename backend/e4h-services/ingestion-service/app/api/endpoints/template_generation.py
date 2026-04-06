@@ -868,7 +868,6 @@ async def get_amc_configuration_template(
         "NIN/HFR ID",
         "BoundaryCode",
         "Health Facility Name",
-        "Vendor",
         "AMC-Frequency",
         "AMC-Duration"
     ]
@@ -916,11 +915,6 @@ async def get_amc_configuration_template(
 
         logger.info(f"Total facilities in AMC template: {len(all_facilities)} (project_id: {project_id}, boundaries: {len(boundary_list)})")
 
-        # Fetch approved vendors for dropdown
-        facility_service = FacilityTemplateService()
-        vendor_data = facility_service.get_all_vendor_codes(request_info)
-        vendor_names = [v.get("Vendor Name", "") for v in vendor_data if v.get("Vendor Name")]
-
         # Initialize AMC scheduler client to check for existing configurations
         amc_client = None
         if amc_scheduler_service_url and project_id:
@@ -960,7 +954,6 @@ async def get_amc_configuration_template(
             facility_id = facility.get("facility_id", "")
 
             # Initialize row with empty values
-            vendor_value = ""
             frequency_value = ""
             duration_value = ""
 
@@ -977,15 +970,13 @@ async def get_amc_configuration_template(
                     if configs:
                         # Use the first configuration found
                         existing_config = configs[0]
-                        vendor_value = existing_config.get("vendor", "")
                         frequency_months = existing_config.get("frequency")
                         duration_months = existing_config.get("duration")
 
-                        if vendor_value:
-                            frequency_value = convert_frequency_to_display(frequency_months)
-                            duration_value = convert_duration_to_display(duration_months)
-                            rows_with_existing_amc.append(idx)
-                            logger.info(f"Found existing AMC config for facility {facility_id}: vendor={vendor_value}, frequency={frequency_value}, duration={duration_value}")
+                        frequency_value = convert_frequency_to_display(frequency_months)
+                        duration_value = convert_duration_to_display(duration_months)
+                        rows_with_existing_amc.append(idx)
+                        logger.info(f"Found existing AMC config for facility {facility_id}: frequency={frequency_value}, duration={duration_value}")
                 except Exception as e:
                     logger.warning(f"Error checking existing AMC config for facility {facility_id}: {e}")
                     # Continue without existing config data
@@ -996,7 +987,6 @@ async def get_amc_configuration_template(
                 "NIN/HFR ID": nin_hfr_id,
                 "BoundaryCode": boundary_code,
                 "Health Facility Name": facility_name,
-                "Vendor": vendor_value,
                 "AMC-Frequency": frequency_value,
                 "AMC-Duration": duration_value
             })
@@ -1035,21 +1025,13 @@ async def get_amc_configuration_template(
             column_headers_to_unlock=[]
         )
 
-        # Add dropdowns for vendor, amc-frequency, and amc-duration
-        dropdowns_map = {}
-
-        # Vendor dropdown with approved vendor names
-        if vendor_names:
-            dropdowns_map["Vendor"] = vendor_names
-
-        # AMC Frequency dropdown
-        dropdowns_map["AMC-Frequency"] = ["Every 6 Months", "Every 1 Year"]
-
-        # AMC Duration dropdown
-        dropdowns_map["AMC-Duration"] = ["1 Year", "3 Years", "5 Years"]
+        # Add dropdowns for amc-frequency and amc-duration
+        dropdowns_map = {
+            "AMC-Frequency": ["Every 6 Months", "Every 1 Year"],
+            "AMC-Duration": ["1 Year", "3 Years", "5 Years"],
+        }
 
         allow_blank_map = {
-            "Vendor": True,
             "AMC-Frequency": True,
             "AMC-Duration": True
         }
@@ -1067,29 +1049,25 @@ async def get_amc_configuration_template(
         lock_prefilled_rows_in_excel(
             file_path=output_file_path,
             sheet_name=sheet_name,
-            editable_columns=["Vendor", "AMC-Frequency", "AMC-Duration"],
+            editable_columns=["AMC-Frequency", "AMC-Duration"],
             total_rows=len(rows),
             total_columns=len(columns),
             always_locked_columns=["BoundaryCode"],
             extra_append_rows=500
         )
 
-        # Lock Vendor, AMC-Frequency, and AMC-Duration for rows with existing AMC configurations
+        # Lock AMC-Frequency and AMC-Duration for rows with existing AMC configurations
         if rows_with_existing_amc:
             wb = load_workbook(output_file_path)
             ws = wb[sheet_name]
             grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
 
-            # Find column indices for Vendor, AMC-Frequency, and AMC-Duration
             header_row = [cell.value for cell in ws[1]]
-            vendor_col_idx = None
             frequency_col_idx = None
             duration_col_idx = None
 
             for idx, header in enumerate(header_row, start=1):
-                if header == "Vendor":
-                    vendor_col_idx = idx
-                elif header == "AMC-Frequency":
+                if header == "AMC-Frequency":
                     frequency_col_idx = idx
                 elif header == "AMC-Duration":
                     duration_col_idx = idx
@@ -1099,11 +1077,6 @@ async def get_amc_configuration_template(
             # Header is row 1, so data starts at row 2
             for row_idx_0based in rows_with_existing_amc:
                 excel_row = row_idx_0based + 2  # +2 because header is row 1, and 0-based to 1-based
-
-                if vendor_col_idx:
-                    cell = ws.cell(row=excel_row, column=vendor_col_idx)
-                    cell.protection = Protection(locked=True)
-                    cell.fill = grey_fill
 
                 if frequency_col_idx:
                     cell = ws.cell(row=excel_row, column=frequency_col_idx)
