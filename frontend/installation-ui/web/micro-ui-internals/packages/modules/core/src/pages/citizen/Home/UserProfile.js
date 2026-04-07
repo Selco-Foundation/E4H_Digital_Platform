@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { useHistory } from "react-router-dom";
 import UploadDrawer from "./ImageUpload/UploadDrawer";
 import ImageComponent from "../../../components/ImageComponent";
+import CustomTextInput from "../../../components/CustomTextInput";
 
 const defaultImage =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAO4AAADUCAMAAACs0e/bAAAAM1BMVEXK0eL" +
@@ -807,7 +808,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                           style={editScreen ? { color: "#B1B4B6", width: "300px" } : { width: "300px" }}
                         >{`${t("CORE_COMMON_PROFILE_CURRENT_PASSWORD")}`}</CardLabel>
                         <div style={{ width: "100%" }}>
-                          <TextInput
+                          <CustomTextInput
                             t={t}
                             type={"password"}
                             isMandatory={false}
@@ -839,7 +840,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                           style={editScreen ? { color: "#B1B4B6", width: "300px" } : { width: "300px" }}
                         >{`${t("CORE_COMMON_PROFILE_NEW_PASSWORD")}`}</CardLabel>
                         <div style={{ width: "100%" }}>
-                          <TextInput
+                          <CustomTextInput
                             t={t}
                             type={"password"}
                             isMandatory={false}
@@ -871,7 +872,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                           style={editScreen ? { color: "#B1B4B6", width: "300px" } : { width: "300px" }}
                         >{`${t("CORE_COMMON_PROFILE_CONFIRM_PASSWORD")}`}</CardLabel>
                         <div style={{ width: "100%" }}>
-                          <TextInput
+                          <CustomTextInput
                             t={t}
                             type={"password"}
                             isMandatory={false}
