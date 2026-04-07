@@ -101,7 +101,7 @@ async def get_facility_ingestion_template_with_data(
             boundary_codes = [b.code for b in unique_boundary_list if b.code]
             try:
                 if boundary_codes:
-                    bulk_result = facility_client.bulk_search_facility(
+                    bulk_result = facility_client.bulk_search_facility_with_boundary(
                         request_info=request_info,
                         tenant_ids=["in"],
                         boundary_codes=boundary_codes,
