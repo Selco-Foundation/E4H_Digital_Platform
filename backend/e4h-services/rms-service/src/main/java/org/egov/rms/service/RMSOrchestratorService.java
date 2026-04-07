@@ -27,6 +27,7 @@ public class RMSOrchestratorService {
     private final SauraEmitraConnector sauraEmitraConnector;
     private final RMSConfiguration config;
     private final AlertRepository alertRepository;
+    private final TicketCreationGuardService ticketCreationGuardService;
 
     /**
      * Executes the complete RMS workflow: collect data, apply rules, deduplicate, generate tickets
@@ -229,6 +230,11 @@ public class RMSOrchestratorService {
         
         for (Alert alert : alertsToProcess) {
             try {
+                if (ticketCreationGuardService.shouldBlockTicketCreation(alert)) {
+                    skippedCount++;
+                    continue;
+                }
+
                 // Check if there's an open ticket in eg_incident_v2
                 // If ticket is closed or doesn't exist, we allow creating a new ticket
                 // Note: We don't skip alerts with ticket_id set because they might have closed tickets
