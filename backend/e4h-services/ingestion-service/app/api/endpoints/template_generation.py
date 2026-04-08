@@ -892,6 +892,26 @@ async def get_amc_configuration_template(
         # Fetch facilities by boundary codes and project (if project_id provided)
         facility_client = FacilityServiceClient(facility_service_url)
         all_facilities = []
+        seen_facility_keys = set()
+
+        def get_facility_dedup_key(facility):
+            facility_id = facility.get("facility_id")
+            if facility_id:
+                return facility_id
+            return (
+                facility.get("nin_id"),
+                facility.get("hfr_id"),
+                facility.get("facility_name"),
+                facility.get("boundary_code") or facility.get("boundaryCode")
+            )
+
+        def add_unique_facilities(facilities):
+            for facility in facilities:
+                dedup_key = get_facility_dedup_key(facility)
+                if dedup_key in seen_facility_keys:
+                    continue
+                seen_facility_keys.add(dedup_key)
+                all_facilities.append(facility)
 
         if project_id and project_linked_facility_ids:
             # Filter facilities by both project and boundary
@@ -900,7 +920,7 @@ async def get_amc_configuration_template(
                     try:
                         results = facility_client.search_facility(facility_id=facilityId, tenant_id='in', boundary_code=boundary.code)
                         facilities = results.get('facilities', [])
-                        all_facilities.extend(facilities)
+                        add_unique_facilities(facilities)
                     except Exception as e:
                         logger.error(f"Error fetching boundary facilities for {boundary.code} and facility {facilityId}: {e}")
         else:
@@ -909,11 +929,14 @@ async def get_amc_configuration_template(
                 try:
                     results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
                     facilities = results.get('facilities', [])
-                    all_facilities.extend(facilities)
+                    add_unique_facilities(facilities)
                 except Exception as e:
                     logger.error(f"Error fetching boundary facilities for {boundary.code}: {e}")
 
-        logger.info(f"Total facilities in AMC template: {len(all_facilities)} (project_id: {project_id}, boundaries: {len(boundary_list)})")
+        logger.info(
+            f"Total facilities in AMC template: {len(all_facilities)} "
+            f"(raw: {len(all_facilities)}, project_id: {project_id}, boundaries: {len(boundary_list)})"
+        )
 
         # Initialize AMC scheduler client to check for existing configurations
         amc_client = None
