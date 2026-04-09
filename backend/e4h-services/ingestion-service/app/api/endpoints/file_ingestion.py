@@ -2840,7 +2840,6 @@ async def bulk_ingest_amc_configurations(
         # Create vendor to users mapping (supports multiple users per vendor)
         vendor_to_users = {}  # Key: vendor name (from Excel), Value: {vendorId, users}
         vendor_id_to_name = {}  # Reverse mapping: vendorId -> vendor name (if available)
-        assignment_users = []
         for vendor_mapping in user_info_data:
             # Primary key: vendorId (UUID)
             vendor_id = vendor_mapping.get("vendorId", "").strip()
@@ -2886,15 +2885,6 @@ async def bulk_ingest_amc_configurations(
 
                 # Store full user object for reference, with extracted fields
                 processed_users.append({
-                    "id": str(user_id),  # Convert to string for consistency
-                    "userId": str(user_id),  # Keep for backward compatibility
-                    "userName": user_name,
-                    "name": user_name,
-                    "tenantId": user_tenant_id,
-                    "fullUser": user  # Store full user object for reference
-                })
-
-                assignment_users.append({
                     "id": str(user_id),  # Convert to string for consistency
                     "userId": str(user_id),  # Keep for backward compatibility
                     "userName": user_name,
@@ -2963,71 +2953,94 @@ async def bulk_ingest_amc_configurations(
         # Track configurations to detect duplicates (vendor-facility-project combination)
         seen_configs = set()
 
-        # Process each row
+        # Resolve all facility ids in one bulk call instead of per-row search
+        facility_ids_from_file = []
+        for _, row in df.iterrows():
+            if pd.isna(row.get("Facility Id")) and pd.isna(row.get("Health Facility Name")):
+                continue
+            facility_id = str(row.get("Facility Id", "")).strip()
+            if facility_id:
+                facility_ids_from_file.append(facility_id)
+
+        facility_map = {}
+        if facility_ids_from_file:
+            try:
+                bulk_facility_result = facility_client.bulk_search_facility(
+                    request_info=request_info_obj,
+                    tenant_ids=["in"],
+                    facility_ids=list(set(facility_ids_from_file)),
+                    limit=max(len(set(facility_ids_from_file)), 50),
+                    send_non_paginated_response=True,
+                )
+                for facility in (bulk_facility_result.get("facilities", []) or []):
+                    f_id = facility.get("facility_id")
+                    if f_id:
+                        facility_map[f_id] = facility
+            except Exception as e:
+                logger.error(f"Error bulk searching facilities for AMC ingest: {e}", exc_info=True)
+                raise HTTPException(status_code=502, detail=f"Facility lookup failed: {str(e)}")
+
+        asset_types_formatted = []
+        asset_type_names = {
+            "INVERTER": "Inverter",
+            "PANEL": "Panel",
+            "BATTERY": "Battery"
+        }
+        for asset_type in DEFAULT_AMC_ASSET_TYPES:
+            asset_types_formatted.append({
+                "code": asset_type,
+                "name": asset_type_names.get(asset_type, asset_type.title())
+            })
+
+        now = datetime.now()
+        configuration_start_date = int(now.timestamp() * 1000)
+
+        configs_to_create = []
+        row_indexes_for_configs = []
+
+        # Prepare rows + payloads
         for index, row in df.iterrows():
             try:
-                # Skip empty rows
                 if pd.isna(row.get("Facility Id")) and pd.isna(row.get("Health Facility Name")):
                     df.at[index, 'status'] = 'skipped'
                     df.at[index, 'error'] = 'Empty row'
                     continue
 
-                # Get facility by Facility ID
                 facility_id = str(row.get("Facility Id", "")).strip()
                 if not facility_id:
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = 'Facility Id is required'
                     continue
 
-                facility = None
-                try:
-                    facility_response = facility_client.search_facility(tenant_id='in', facility_id=facility_id)
-                    facilities = facility_response.get('facilities', [])
-                    if facilities:
-                        facility = facilities[0]
-                except Exception as e:
-                    logger.error(f"Error searching facility for {facility_id}: {e}")
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f'Error searching facility: {str(e)}'
-                    continue
-
-                if not facility:
+                if facility_id not in facility_map:
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = f'Facility not found for Facility Id: {facility_id}'
                     continue
 
-                # Get vendor and vendor mapping (data retrieval, not validation)
                 vendor_col = "Vendor" if "Vendor" in df.columns else "vendor"
                 vendor_name = str(row.get(vendor_col, "")).strip()
-
-                # Get vendor mapping (by vendor name from Excel)
                 vendor_mapping = vendor_to_users.get(vendor_name)
                 if not vendor_mapping:
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = f'No vendor mapping found for vendor: {vendor_name}'
                     continue
 
-                # Extract vendorId and users from mapping
                 vendor_id = vendor_mapping.get("vendorId")
                 vendor_users = vendor_mapping.get("users", [])
-
-                if not vendor_users or len(vendor_users) == 0:
+                if not vendor_users:
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = f'No users found for vendor: {vendor_name}'
                     continue
-
                 if not vendor_id:
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = f'No vendorId found for vendor: {vendor_name}'
                     continue
 
-                # Get AMC frequency and duration (already validated, just convert to months)
                 frequency_col = "AMC-Frequency" if "AMC-Frequency" in df.columns else "amc-frequency"
                 duration_col = "AMC-Duration" if "AMC-Duration" in df.columns else "amc-duration"
                 amc_frequency = str(row.get(frequency_col, "")).strip()
                 amc_duration = str(row.get(duration_col, "")).strip()
 
-                # Convert frequency to months (format already validated in validation endpoint)
                 if amc_frequency == "Every 6 Months":
                     frequency_months = 6
                 elif amc_frequency == "Every 1 Year":
@@ -3037,7 +3050,6 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Unexpected AMC frequency value: {amc_frequency}'
                     continue
 
-                # Convert duration to months (format already validated in validation endpoint)
                 if amc_duration == "1 Year":
                     duration_months = 12
                 elif amc_duration == "3 Years":
@@ -3049,54 +3061,28 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Unexpected AMC duration value: {amc_duration}'
                     continue
 
-                # Check for duplicate configuration (vendor-facility-project combination)
                 config_key = (vendor_name, facility_id, project_id)
                 if config_key in seen_configs:
                     df.at[index, 'status'] = 'failed'
-                    df.at[
-                        index, 'error'] = 'Duplicate configuration: vendor-facility-project combination already exists'
+                    df.at[index, 'error'] = 'Duplicate configuration: vendor-facility-project combination already exists'
                     continue
                 seen_configs.add(config_key)
 
-                # Create assignments array from vendor users
                 assignments = []
-                # for user in vendor_users:
-                for user in assignment_users:
-                    # Use user's id (from full user object) or userId (backward compatibility)
+                for user in vendor_users:
                     assigned_user_id = user.get("id") or user.get("userId")
-                    # Prefer user's tenantId if available, otherwise use default tenant_id
                     assignment_tenant_id = user.get("tenantId") or tenant_id
-
-                    assignment = {
+                    assignments.append({
                         "assignedUser": str(assigned_user_id),
                         "tenantId": assignment_tenant_id
-                    }
-                    assignments.append(assignment)
-
-                # Convert asset types to API format (objects with code and name)
-                asset_types_formatted = []
-                asset_type_names = {
-                    "INVERTER": "Inverter",
-                    "PANEL": "Panel",
-                    "BATTERY": "Battery"
-                }
-                for asset_type in DEFAULT_AMC_ASSET_TYPES:
-                    asset_types_formatted.append({
-                        "code": asset_type,
-                        "name": asset_type_names.get(asset_type, asset_type.title())
                     })
 
-                # Calculate configuration dates (start date = now, end date = start + duration)
-                now = datetime.now()
-                configuration_start_date = int(now.timestamp() * 1000)  # Convert to milliseconds
-                end_date = now + timedelta(days=duration_months * 30)  # Approximate: 30 days per month
+                end_date = now + timedelta(days=duration_months * 30)
                 configuration_end_date = int(end_date.timestamp() * 1000)
 
-                # Create AMC configuration payload matching API format
-                # vendor_id is already extracted from vendor_mapping above
-                amc_config = {
+                configs_to_create.append({
                     "tenantId": tenant_id,
-                    "vendorId": vendor_id,  # Use vendorId (UUID) from mapping
+                    "vendorId": vendor_id,
                     "facilityId": facility_id,
                     "projectId": project_id,
                     "durationMonths": duration_months,
@@ -3106,24 +3092,30 @@ async def bulk_ingest_amc_configurations(
                     "configurationEndDate": configuration_end_date,
                     "assetTypes": asset_types_formatted,
                     "assignments": assignments
-                }
-
-                # Create AMC configuration via scheduler service
-                try:
-                    result = amc_client.create_amc_configuration(request_info_obj, amc_config)
-                    df.at[index, 'status'] = 'success'
-                    df.at[index, 'error'] = ''
-                    logger.info(
-                        f"Successfully created AMC configuration for facility {facility_id}, vendor {vendor_name}")
-                except Exception as e:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = str(e)
-                    logger.error(f"Failed to create AMC configuration: {e}")
-
+                })
+                row_indexes_for_configs.append(index)
             except Exception as e:
                 df.at[index, 'status'] = 'failed'
                 df.at[index, 'error'] = f'Unexpected error: {str(e)}'
                 logger.error(f"Error processing row {index}: {e}")
+
+        # Bulk create AMC configurations in chunks
+        if configs_to_create:
+            chunk_size = 100
+            for start in range(0, len(configs_to_create), chunk_size):
+                end = start + chunk_size
+                chunk_configs = configs_to_create[start:end]
+                chunk_indexes = row_indexes_for_configs[start:end]
+                try:
+                    amc_client.create_amc_configurations_bulk(request_info_obj, chunk_configs)
+                    for row_idx in chunk_indexes:
+                        df.at[row_idx, 'status'] = 'success'
+                        df.at[row_idx, 'error'] = ''
+                except Exception as e:
+                    logger.error(f"Failed to bulk create AMC configurations for rows {chunk_indexes}: {e}", exc_info=True)
+                    for row_idx in chunk_indexes:
+                        df.at[row_idx, 'status'] = 'failed'
+                        df.at[row_idx, 'error'] = str(e)
 
         # Write results to Excel
         with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:

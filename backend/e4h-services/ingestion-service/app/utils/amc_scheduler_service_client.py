@@ -58,6 +58,46 @@ class AMCSchedulerServiceClient:
             logger.error(f"Request error creating AMC configuration: {req_err}", exc_info=True)
             raise Exception(f"Request error: {str(req_err)}")
 
+    def create_amc_configurations_bulk(self, request_info: RequestInfo, configuration_payloads: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        Create multiple AMC configurations in one request.
+        """
+        logger.trace(f"Creating AMC configurations in bulk: count={len(configuration_payloads)}")
+        url = f"{self.amc_scheduler_service_url}/asset-amc/v1/configuration/_create"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "AmcConfigurations": configuration_payloads,
+            "apiOperation": "CREATE"
+        }
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+            logger.info(f"AMC bulk configuration create succeeded: count={len(configuration_payloads)}")
+            logger.debug(f"Bulk create response status: {response.status_code}")
+            return response.json()
+        except requests.exceptions.HTTPError as http_err:
+            error_detail = ""
+            if hasattr(http_err.response, 'text'):
+                try:
+                    error_json = http_err.response.json()
+                    error_detail = error_json.get("Errors", [{}])[0].get("message", str(http_err))
+                except Exception:
+                    error_detail = http_err.response.text
+            logger.error(f"HTTP error bulk creating AMC configurations: {http_err.response.status_code} - {error_detail}", exc_info=True)
+            raise Exception(f"HTTP error {http_err.response.status_code}: {error_detail or str(http_err)}")
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error bulk creating AMC configurations: {conn_err}", exc_info=True)
+            raise Exception(f"Connection error: {str(conn_err)}")
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error bulk creating AMC configurations: {timeout_err}", exc_info=True)
+            raise Exception(f"Timeout error: {str(timeout_err)}")
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error bulk creating AMC configurations: {req_err}", exc_info=True)
+            raise Exception(f"Request error: {str(req_err)}")
+
     def search_amc_configurations(self, request_info: RequestInfo, facility_id: str = None, project_id: str = None, vendor: str = None) -> Dict[str, Any]:
         """
         Search for existing AMC configurations
