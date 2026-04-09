@@ -868,25 +868,25 @@ async def get_amc_configuration_template(
                 seen_facility_keys.add(dedup_key)
                 all_facilities.append(facility)
 
-        if project_id and project_linked_facility_ids:
-            # Filter facilities by both project and boundary
-            for boundary in boundary_list:
-                for facilityId in project_linked_facility_ids:
-                    try:
-                        results = facility_client.search_facility(facility_id=facilityId, tenant_id='in', boundary_code=boundary.code)
-                        facilities = results.get('facilities', [])
-                        add_unique_facilities(facilities)
-                    except Exception as e:
-                        logger.error(f"Error fetching boundary facilities for {boundary.code} and facility {facilityId}: {e}")
-        else:
-            # If no project_id provided, fetch all facilities by boundary codes
-            for boundary in boundary_list:
-                try:
-                    results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                    facilities = results.get('facilities', [])
-                    add_unique_facilities(facilities)
-                except Exception as e:
-                    logger.error(f"Error fetching boundary facilities for {boundary.code}: {e}")
+        boundary_codes = [b.code for b in boundary_list if b.code]
+        if boundary_codes:
+            try:
+                bulk_result = facility_client.bulk_search_facility_with_boundary(
+                    request_info=request_info,
+                    tenant_ids=["in"],
+                    boundary_codes=boundary_codes,
+                    limit=max(len(boundary_codes) * 50, 50),
+                    send_non_paginated_response=True,
+                )
+                facilities = bulk_result.get("facilities", []) or []
+                if project_id and project_linked_facility_ids:
+                    facilities = [
+                        f for f in facilities
+                        if f.get("facility_id") in project_linked_facility_ids
+                    ]
+                add_unique_facilities(facilities)
+            except Exception as e:
+                logger.error(f"Error fetching boundary facilities in bulk for AMC template: {e}", exc_info=True)
 
         logger.info(
             f"Total facilities in AMC template: {len(all_facilities)} "

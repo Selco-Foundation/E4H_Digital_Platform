@@ -3,6 +3,7 @@ import json
 import os
 import tempfile
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import uuid
 from typing import Optional, Dict, List, Set
 
@@ -2998,44 +2999,13 @@ async def bulk_ingest_amc_configurations(
         required_columns = ["Facility Id", "Health Facility Name", "Vendor", "AMC-Frequency", "AMC-Duration"]
 
         # Initialize clients
-        facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
         amc_client = AMCSchedulerServiceClient(amc_scheduler_service_url) if amc_scheduler_service_url else None
 
         if not amc_client:
             raise HTTPException(status_code=500, detail="AMC Scheduler Service is not configured")
 
-        if not facility_client:
-            raise HTTPException(status_code=500, detail="Facility Service is not configured")
-
         # Track configurations to detect duplicates (vendor-facility-project combination)
         seen_configs = set()
-
-        # Resolve all facility ids in one bulk call instead of per-row search
-        facility_ids_from_file = []
-        for _, row in df.iterrows():
-            if pd.isna(row.get("Facility Id")) and pd.isna(row.get("Health Facility Name")):
-                continue
-            facility_id = str(row.get("Facility Id", "")).strip()
-            if facility_id:
-                facility_ids_from_file.append(facility_id)
-
-        facility_map = {}
-        if facility_ids_from_file:
-            try:
-                bulk_facility_result = facility_client.bulk_search_facility(
-                    request_info=request_info_obj,
-                    tenant_ids=["in"],
-                    facility_ids=list(set(facility_ids_from_file)),
-                    limit=max(len(set(facility_ids_from_file)), 50),
-                    send_non_paginated_response=True,
-                )
-                for facility in (bulk_facility_result.get("facilities", []) or []):
-                    f_id = facility.get("facility_id")
-                    if f_id:
-                        facility_map[f_id] = facility
-            except Exception as e:
-                logger.error(f"Error bulk searching facilities for AMC ingest: {e}", exc_info=True)
-                raise HTTPException(status_code=502, detail=f"Facility lookup failed: {str(e)}")
 
         asset_types_formatted = []
         asset_type_names = {
@@ -3067,11 +3037,6 @@ async def bulk_ingest_amc_configurations(
                 if not facility_id:
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = 'Facility Id is required'
-                    continue
-
-                if facility_id not in facility_map:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f'Facility not found for Facility Id: {facility_id}'
                     continue
 
                 # Get AMC frequency and duration (already validated, just convert to months)
@@ -3144,23 +3109,33 @@ async def bulk_ingest_amc_configurations(
                 df.at[index, 'error'] = f'Unexpected error: {str(e)}'
                 logger.error(f"Error processing row {index}: {e}")
 
-        # Bulk create AMC configurations in chunks
+        # Bulk create AMC configurations in chunks (parallelized to reduce total request time)
         if configs_to_create:
-            chunk_size = 100
+            chunk_size = 25
+            chunk_payloads = []
             for start in range(0, len(configs_to_create), chunk_size):
                 end = start + chunk_size
-                chunk_configs = configs_to_create[start:end]
-                chunk_indexes = row_indexes_for_configs[start:end]
-                try:
-                    amc_client.create_amc_configurations_bulk(request_info_obj, chunk_configs)
-                    for row_idx in chunk_indexes:
-                        df.at[row_idx, 'status'] = 'success'
-                        df.at[row_idx, 'error'] = ''
-                except Exception as e:
-                    logger.error(f"Failed to bulk create AMC configurations for rows {chunk_indexes}: {e}", exc_info=True)
-                    for row_idx in chunk_indexes:
-                        df.at[row_idx, 'status'] = 'failed'
-                        df.at[row_idx, 'error'] = str(e)
+                chunk_payloads.append((configs_to_create[start:end], row_indexes_for_configs[start:end]))
+
+            max_workers = min(4, max(1, len(chunk_payloads)))
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_map = {
+                    executor.submit(amc_client.create_amc_configurations_bulk, request_info_obj, chunk_configs): chunk_indexes
+                    for chunk_configs, chunk_indexes in chunk_payloads
+                }
+
+                for future in as_completed(future_map):
+                    chunk_indexes = future_map[future]
+                    try:
+                        future.result()
+                        for row_idx in chunk_indexes:
+                            df.at[row_idx, 'status'] = 'success'
+                            df.at[row_idx, 'error'] = ''
+                    except Exception as e:
+                        logger.error(f"Failed to bulk create AMC configurations for rows {chunk_indexes}: {e}", exc_info=True)
+                        for row_idx in chunk_indexes:
+                            df.at[row_idx, 'status'] = 'failed'
+                            df.at[row_idx, 'error'] = str(e)
 
         # Write results to Excel
         with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
