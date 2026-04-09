@@ -26,6 +26,7 @@ import '../pages/home.dart';
 import '../pages/image_viewer.dart';
 import '../pages/inbox.dart';
 import '../pages/inbox_asset_summary.dart';
+import '../pages/installation_images.dart';
 import '../pages/installation_report_home.dart';
 import '../pages/login.dart';
 import '../pages/media_upload.dart';
@@ -124,6 +125,9 @@ class AppRouter extends _$AppRouter {
           AutoRoute(
               page: AmcRejctionReasonsRoute.page,
               path: Routes.amcRejectionReasons),
+          AutoRoute(
+              page: InstallationImagesRoute.page,
+              path: Routes.installationCompletionImages),
         ])
       ];
 }

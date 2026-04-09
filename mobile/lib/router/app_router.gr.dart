@@ -197,6 +197,16 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const InboxPage(),
       );
     },
+    InstallationImagesRoute.name: (routeData) {
+      final args = routeData.argsAs<InstallationImagesRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: InstallationImagesPage(
+          key: args.key,
+          origin: args.origin,
+        ),
+      );
+    },
     InstallationReportRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -846,6 +856,45 @@ class InboxRoute extends PageRouteInfo<void> {
   static const String name = 'InboxRoute';
 
   static const PageInfo<void> page = PageInfo<void>(name);
+}
+
+/// generated route for
+/// [InstallationImagesPage]
+class InstallationImagesRoute
+    extends PageRouteInfo<InstallationImagesRouteArgs> {
+  InstallationImagesRoute({
+    Key? key,
+    required FormOrigin origin,
+    List<PageRouteInfo>? children,
+  }) : super(
+          InstallationImagesRoute.name,
+          args: InstallationImagesRouteArgs(
+            key: key,
+            origin: origin,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'InstallationImagesRoute';
+
+  static const PageInfo<InstallationImagesRouteArgs> page =
+      PageInfo<InstallationImagesRouteArgs>(name);
+}
+
+class InstallationImagesRouteArgs {
+  const InstallationImagesRouteArgs({
+    this.key,
+    required this.origin,
+  });
+
+  final Key? key;
+
+  final FormOrigin origin;
+
+  @override
+  String toString() {
+    return 'InstallationImagesRouteArgs{key: $key, origin: $origin}';
+  }
 }
 
 /// generated route for

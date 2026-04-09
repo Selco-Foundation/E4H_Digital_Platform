@@ -190,6 +190,18 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
           ),
           const SizedBox(height: spacer4),
         ],
+        if (visible.isNotEmpty)
+          DigitButton(
+            label: "Installation Images",
+            onPressed: () => context.router.push(
+              InstallationImagesRoute(origin: widget.origin),
+            ),
+            capitalizeLetters: false,
+            mainAxisSize: MainAxisSize.max,
+            type: DigitButtonType.secondary,
+            size: DigitButtonSize.large,
+          ),
+        const SizedBox(height: spacer4),
         if (_loading && visible.isNotEmpty) const SizedBox.shrink(),
       ],
     );

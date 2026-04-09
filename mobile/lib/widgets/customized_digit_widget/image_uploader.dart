@@ -21,6 +21,7 @@ enum _PickerSessionPhase { idle, launching, awaitingResult, recovering }
 class ImageUploader extends StatefulWidget {
   final Function(List<File>) onImagesSelected;
   final bool allowMultiples;
+  final bool isDisabled;
   final String? errorMessage;
   final List<File>? initialImages;
   final String? label;
@@ -42,6 +43,7 @@ class ImageUploader extends StatefulWidget {
     super.key,
     required this.onImagesSelected,
     this.allowMultiples = false,
+    this.isDisabled = false,
     this.initialImages,
     this.errorMessage,
     this.label,
@@ -498,6 +500,12 @@ class _ImageUploaderState extends State<ImageUploader>
       highlightColor: const DigitColors().transparent,
       splashColor: const DigitColors().transparent,
       onTap: () {
+        if (widget.isDisabled) {
+          setState(() {
+            fileError = '';
+          });
+          return;
+        }
         if (_hasActivePickerSession) {
           setState(() {
             fileError = 'Camera is still opening, please wait';
@@ -633,6 +641,7 @@ class _ImageUploaderState extends State<ImageUploader>
       mainAxisSize: MainAxisSize.min,
       children: [
         if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
+          if (!widget.isDisabled)
           Container(
             width: MediaQuery.of(context).size.width,
             height: 120,
@@ -711,6 +720,7 @@ class _ImageUploaderState extends State<ImageUploader>
             ),
           ),
         if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
+          if (!widget.isDisabled)
           const SizedBox(height: spacer2),
         Wrap(
           spacing: spacer2,
@@ -760,31 +770,34 @@ class _ImageUploaderState extends State<ImageUploader>
                                     cacheWidth: thumb,
                                     cacheHeight: thumb,
                                   ),
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: InkWell(
-                                hoverColor: const DigitColors().transparent,
-                                highlightColor: const DigitColors().transparent,
-                                splashColor: const DigitColors().transparent,
-                                onTap: () {
-                                  _removeImage(index);
-                                },
-                                child: Container(
-                                  width: spacer6,
-                                  height: spacer6,
-                                  decoration: BoxDecoration(
-                                    color: const DigitColors().light.primary2,
-                                  ),
-                                  child: Icon(
-                                    Icons.close,
-                                    size: spacer4,
-                                    color:
-                                        const DigitColors().light.paperPrimary,
+                            if (!widget.isDisabled)
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: InkWell(
+                                  hoverColor: const DigitColors().transparent,
+                                  highlightColor:
+                                      const DigitColors().transparent,
+                                  splashColor:
+                                      const DigitColors().transparent,
+                                  onTap: () {
+                                    _removeImage(index);
+                                  },
+                                  child: Container(
+                                    width: spacer6,
+                                    height: spacer6,
+                                    decoration: BoxDecoration(
+                                      color: const DigitColors().light.primary2,
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      size: spacer4,
+                                      color:
+                                          const DigitColors().light.paperPrimary,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -807,31 +820,34 @@ class _ImageUploaderState extends State<ImageUploader>
                                     cacheWidth: (thumb *
                                         2), // slightly larger for wide preview
                                   ),
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: InkWell(
-                                hoverColor: const DigitColors().transparent,
-                                highlightColor: const DigitColors().transparent,
-                                splashColor: const DigitColors().transparent,
-                                onTap: () {
-                                  _removeImage(index);
-                                },
-                                child: Container(
-                                  width: spacer6,
-                                  height: spacer6,
-                                  decoration: BoxDecoration(
-                                    color: const DigitColors().light.primary2,
-                                  ),
-                                  child: Icon(
-                                    Icons.close,
-                                    size: spacer4,
-                                    color:
-                                        const DigitColors().light.paperPrimary,
+                            if (!widget.isDisabled)
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: InkWell(
+                                  hoverColor: const DigitColors().transparent,
+                                  highlightColor:
+                                      const DigitColors().transparent,
+                                  splashColor:
+                                      const DigitColors().transparent,
+                                  onTap: () {
+                                    _removeImage(index);
+                                  },
+                                  child: Container(
+                                    width: spacer6,
+                                    height: spacer6,
+                                    decoration: BoxDecoration(
+                                      color: const DigitColors().light.primary2,
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      size: spacer4,
+                                      color:
+                                          const DigitColors().light.paperPrimary,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -842,6 +858,7 @@ class _ImageUploaderState extends State<ImageUploader>
   }
 
   void _removeImage(int index) {
+    if (widget.isDisabled) return;
     setState(() {
       _imageFiles.removeAt(index);
     });

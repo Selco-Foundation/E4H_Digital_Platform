@@ -8,6 +8,7 @@ import 'package:mime/mime.dart';
 import '../data/nosql/cache_add_new_asset.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
+import '../data/nosql/cache_installation_image.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_specification.dart';
 import '../data/remote_client.dart';
@@ -343,8 +344,29 @@ class AssetRepository {
           }
         }
 
+        final oldInstallationImages = await isar.cacheInstallationImages
+            .where()
+            .activityFacilityIdEqualTo(activityFacilityId)
+            .findAll();
+        for (var document in oldInstallationImages) {
+          await isar.cacheInstallationImages.delete(document.id);
+        }
+
         for (var doc in activityFacility.workflow?.documents ?? []) {
-          if (doc.documentType != 'ASSET' &&
+          if (doc.documentType.contains('INSTALLATION_IMAGE')) {
+            final parts = doc.documentType?.split('-') ?? [];
+            if (parts.length != 2) continue;
+
+            final codeFromDoc = parts[1];
+            await isar.cacheInstallationImages.put(CacheInstallationImage(
+              activityFacilityId: activityFacilityId,
+              userType: userType,
+              code: codeFromDoc,
+              photoPath: doc.fileStore ?? '',
+              latitude: doc.geoLocation?.latitude?.toString() ?? '',
+              longitude: doc.geoLocation?.longitude?.toString() ?? '',
+            ));
+          } else if (doc.documentType != 'ASSET' &&
               !doc.documentType.contains('INSTALLATION_REPORT')) {
             final parts = doc.documentType?.split('-') ?? [];
             if (parts.length != 2) continue;

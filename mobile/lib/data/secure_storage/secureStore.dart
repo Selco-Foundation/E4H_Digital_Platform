@@ -6,6 +6,7 @@ import '../../model/appconfig/mdmsResponse.dart';
 import '../../model/asset_count/asset_count.dart';
 import '../../model/asset_type/asset_type.dart';
 import '../../model/brand/brand.dart';
+import '../../model/installation_images/installation_images.dart';
 import '../../model/localization/localizationModel.dart';
 import '../../model/mdms/mdms.dart';
 import '../../model/response/responsemodel.dart';
@@ -134,6 +135,21 @@ class SecureStore {
 
   Future<String?> getAMCFormConfigsRaw() async {
     return await storage.read(key: 'amcFormConfigsRaw');
+  }
+
+  Future<void> setInstallationImages(
+      List<Mdms<InstallationImagesData>> list) async {
+    final List<Map<String, dynamic>> jsonList = list
+        .map((mdms) => mdms.toJson((data) => data.toJson()))
+        .toList();
+    await storage.write(
+      key: 'installationImages',
+      value: json.encode(jsonList),
+    );
+  }
+
+  Future<String?> getInstallationImages() async {
+    return await storage.read(key: 'installationImages');
   }
 
   Future<void> setFormSchemas(Map<String, dynamic> schemas) async {
