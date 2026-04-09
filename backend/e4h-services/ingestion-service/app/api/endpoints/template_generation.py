@@ -822,7 +822,6 @@ async def get_amc_configuration_template(
         "NIN/HFR ID",
         "BoundaryCode",
         "Health Facility Name",
-        "Vendor",
         "AMC-Frequency",
         "AMC-Duration"
     ]
@@ -848,37 +847,51 @@ async def get_amc_configuration_template(
         # This avoids an expensive boundary x facility nested API call pattern.
         facility_client = FacilityServiceClient(facility_service_url)
         all_facilities = []
-        for boundary in boundary_list:
-            try:
-                results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                facilities = results.get('facilities', [])
-                all_facilities.extend(facilities)
-            except Exception as e:
-                logger.error(f"Error fetching boundary facilities for {boundary.code}: {e}")
+        seen_facility_keys = set()
+
+        def get_facility_dedup_key(facility):
+            facility_id = facility.get("facility_id")
+            if facility_id:
+                return facility_id
+            return (
+                facility.get("nin_id"),
+                facility.get("hfr_id"),
+                facility.get("facility_name"),
+                facility.get("boundary_code") or facility.get("boundaryCode")
+            )
+
+        def add_unique_facilities(facilities):
+            for facility in facilities:
+                dedup_key = get_facility_dedup_key(facility)
+                if dedup_key in seen_facility_keys:
+                    continue
+                seen_facility_keys.add(dedup_key)
+                all_facilities.append(facility)
 
         if project_id and project_linked_facility_ids:
-            all_facilities = [
-                facility for facility in all_facilities
-                if facility.get("facility_id") in project_linked_facility_ids
-            ]
+            # Filter facilities by both project and boundary
+            for boundary in boundary_list:
+                for facilityId in project_linked_facility_ids:
+                    try:
+                        results = facility_client.search_facility(facility_id=facilityId, tenant_id='in', boundary_code=boundary.code)
+                        facilities = results.get('facilities', [])
+                        add_unique_facilities(facilities)
+                    except Exception as e:
+                        logger.error(f"Error fetching boundary facilities for {boundary.code} and facility {facilityId}: {e}")
+        else:
+            # If no project_id provided, fetch all facilities by boundary codes
+            for boundary in boundary_list:
+                try:
+                    results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
+                    facilities = results.get('facilities', [])
+                    add_unique_facilities(facilities)
+                except Exception as e:
+                    logger.error(f"Error fetching boundary facilities for {boundary.code}: {e}")
 
-        # De-duplicate facilities by id to keep output rows and downstream API lookups bounded.
-        deduped_facilities = []
-        seen_facility_ids = set()
-        for facility in all_facilities:
-            facility_id = facility.get("facility_id")
-            if not facility_id or facility_id in seen_facility_ids:
-                continue
-            seen_facility_ids.add(facility_id)
-            deduped_facilities.append(facility)
-        all_facilities = deduped_facilities
-
-        logger.info(f"Total facilities in AMC template: {len(all_facilities)} (project_id: {project_id}, boundaries: {len(boundary_list)})")
-
-        # Fetch approved vendors for dropdown
-        facility_service = FacilityTemplateService()
-        vendor_data = facility_service.get_all_vendor_codes(request_info)
-        vendor_names = [v.get("Vendor Name", "") for v in vendor_data if v.get("Vendor Name")]
+        logger.info(
+            f"Total facilities in AMC template: {len(all_facilities)} "
+            f"(raw: {len(all_facilities)}, project_id: {project_id}, boundaries: {len(boundary_list)})"
+        )
 
         # Initialize AMC scheduler client and prefetch existing configs for this project once
         amc_client = None
@@ -925,9 +938,9 @@ async def get_amc_configuration_template(
             return ""
 
         for idx, facility in enumerate(all_facilities):
-            facility_details = facility.get("facility_details", {}) or {}
-            nin_id = facility_details.get("nin_id", "")
-            hfr_id = facility_details.get("hfr_id", "")
+            # facility_details = facility.get("facility_details", {}) or {}
+            nin_id = facility.get("nin_id", "")
+            hfr_id = facility.get("hfr_id", "")
             # Use NIN ID if available, otherwise HFR ID, otherwise empty
             nin_hfr_id = nin_id if nin_id else (hfr_id if hfr_id else "")
             facility_name = facility.get("facility_name", "")
@@ -935,22 +948,32 @@ async def get_amc_configuration_template(
             facility_id = facility.get("facility_id", "")
 
             # Initialize row with empty values
-            vendor_value = ""
             frequency_value = ""
             duration_value = ""
 
             # Read existing AMC configuration from prefetched map
             if amc_client and project_id and facility_id:
-                existing_config = existing_amc_by_facility.get(facility_id)
-                if existing_config:
-                    vendor_value = existing_config.get("vendor", "")
-                    frequency_months = existing_config.get("frequency")
-                    duration_months = existing_config.get("duration")
+                try:
+                    existing_configs = amc_client.search_amc_configurations(
+                        request_info,
+                        facility_id=facility_id,
+                        project_id=project_id
+                    )
+                    # Check if any configurations exist
+                    configs = existing_configs.get("AmcConfigurations", [])
+                    if configs:
+                        # Use the first configuration found
+                        existing_config = configs[0]
+                        frequency_months = existing_config.get("frequency")
+                        duration_months = existing_config.get("duration")
 
-                    if vendor_value:
                         frequency_value = convert_frequency_to_display(frequency_months)
                         duration_value = convert_duration_to_display(duration_months)
                         rows_with_existing_amc.append(idx)
+                        logger.info(f"Found existing AMC config for facility {facility_id}: frequency={frequency_value}, duration={duration_value}")
+                except Exception as e:
+                    logger.warning(f"Error checking existing AMC config for facility {facility_id}: {e}")
+                    # Continue without existing config data
 
             # Create one row per facility (asset types are handled internally during processing)
             rows.append({
@@ -958,7 +981,6 @@ async def get_amc_configuration_template(
                 "NIN/HFR ID": nin_hfr_id,
                 "BoundaryCode": boundary_code,
                 "Health Facility Name": facility_name,
-                "Vendor": vendor_value,
                 "AMC-Frequency": frequency_value,
                 "AMC-Duration": duration_value
             })
@@ -997,21 +1019,13 @@ async def get_amc_configuration_template(
             column_headers_to_unlock=[]
         )
 
-        # Add dropdowns for vendor, amc-frequency, and amc-duration
-        dropdowns_map = {}
-
-        # Vendor dropdown with approved vendor names
-        if vendor_names:
-            dropdowns_map["Vendor"] = vendor_names
-
-        # AMC Frequency dropdown
-        dropdowns_map["AMC-Frequency"] = ["Every 6 Months", "Every 1 Year"]
-
-        # AMC Duration dropdown
-        dropdowns_map["AMC-Duration"] = ["1 Year", "3 Years", "5 Years"]
+        # Add dropdowns for amc-frequency and amc-duration
+        dropdowns_map = {
+            "AMC-Frequency": ["Every 6 Months", "Every 1 Year"],
+            "AMC-Duration": ["1 Year", "3 Years", "5 Years"],
+        }
 
         allow_blank_map = {
-            "Vendor": True,
             "AMC-Frequency": True,
             "AMC-Duration": True
         }
@@ -1029,29 +1043,25 @@ async def get_amc_configuration_template(
         lock_prefilled_rows_in_excel(
             file_path=output_file_path,
             sheet_name=sheet_name,
-            editable_columns=["Vendor", "AMC-Frequency", "AMC-Duration"],
+            editable_columns=["AMC-Frequency", "AMC-Duration"],
             total_rows=len(rows),
             total_columns=len(columns),
             always_locked_columns=["BoundaryCode"],
             extra_append_rows=500
         )
 
-        # Lock Vendor, AMC-Frequency, and AMC-Duration for rows with existing AMC configurations
+        # Lock AMC-Frequency and AMC-Duration for rows with existing AMC configurations
         if rows_with_existing_amc:
             wb = load_workbook(output_file_path)
             ws = wb[sheet_name]
             grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
 
-            # Find column indices for Vendor, AMC-Frequency, and AMC-Duration
             header_row = [cell.value for cell in ws[1]]
-            vendor_col_idx = None
             frequency_col_idx = None
             duration_col_idx = None
 
             for idx, header in enumerate(header_row, start=1):
-                if header == "Vendor":
-                    vendor_col_idx = idx
-                elif header == "AMC-Frequency":
+                if header == "AMC-Frequency":
                     frequency_col_idx = idx
                 elif header == "AMC-Duration":
                     duration_col_idx = idx
@@ -1061,11 +1071,6 @@ async def get_amc_configuration_template(
             # Header is row 1, so data starts at row 2
             for row_idx_0based in rows_with_existing_amc:
                 excel_row = row_idx_0based + 2  # +2 because header is row 1, and 0-based to 1-based
-
-                if vendor_col_idx:
-                    cell = ws.cell(row=excel_row, column=vendor_col_idx)
-                    cell.protection = Protection(locked=True)
-                    cell.fill = grey_fill
 
                 if frequency_col_idx:
                     cell = ws.cell(row=excel_row, column=frequency_col_idx)

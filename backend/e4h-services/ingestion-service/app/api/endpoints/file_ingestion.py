@@ -4,7 +4,7 @@ import os
 import tempfile
 from datetime import datetime, timedelta
 import uuid
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Set
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -106,6 +106,8 @@ DB_CONFIG = {
     "user": os.getenv("DB_USER"),
     "password": os.getenv("DB_PASSWORD")
 }
+
+FACILITY_VENDOR_CODE_COLUMN = "Vendor Code (Mandatory)"
 
 @router.post('/vendors',
              summary='Upload and process vendor Excel file with multiple sheets',
@@ -301,6 +303,13 @@ async def validate_facilities_excel_sheet(
         if 'Facility Id' not in df.columns:
             raise HTTPException(status_code=400, detail=f"Facility Column in '{facility_sheet_name}' not found")
 
+        if FACILITY_VENDOR_CODE_COLUMN not in df.columns:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing mandatory column '{FACILITY_VENDOR_CODE_COLUMN}'. "
+                "Facilities cannot be validated without vendor mapping.",
+            )
+
         # Ensure status/error columns exist
         if 'status' not in df.columns:
             df['status'] = ''
@@ -360,6 +369,25 @@ async def validate_facilities_excel_sheet(
             boundary_data_df,
             'data-ingestion.FacilityIngestionSchema'
         )
+
+        org_client = OrganizationServiceClient(org_service_url)
+        registered_vendor_codes = org_client.fetch_registered_vendor_codes(request_info_obj)
+        for i in range(len(df)):
+            row = df.iloc[i]
+            fid = row.get("Facility Id")
+            is_new = pd.isna(fid) or str(fid).strip() == ""
+            if not is_new:
+                continue
+            vendor_code = org_client.normalize_facility_vendor_code(row.get(FACILITY_VENDOR_CODE_COLUMN))
+            if not vendor_code:
+                validation_errors[i].append(
+                    f"{FACILITY_VENDOR_CODE_COLUMN} is required; facilities cannot be created without a vendor mapping."
+                )
+            elif registered_vendor_codes is not None and vendor_code not in registered_vendor_codes:
+                validation_errors[i].append(
+                    f"Vendor code '{vendor_code}' is not registered in the vendor service; "
+                    "register the vendor before facility ingestion."
+                )
 
         # Mark rows based on validation results, preserving earlier boundary errors
         error_count = 0
@@ -2702,13 +2730,13 @@ async def validate_amc_configurations_excel_sheet(
         required_columns = [
             "Facility Id",
             "Health Facility Name",
-            "Vendor",
+            # "Vendor",
             "AMC-Frequency",
             "AMC-Duration"
         ]
 
         # Column names
-        vendor_col = "Vendor" if required_columns else "vendor"
+        # vendor_col = "Vendor" if required_columns else "vendor"
         frequency_col = "AMC-Frequency" if required_columns else "amc-frequency"
         duration_col = "AMC-Duration" if required_columns else "amc-duration"
 
@@ -2719,14 +2747,14 @@ async def validate_amc_configurations_excel_sheet(
 
             try:
                 # Validate vendor, AMC frequency, and AMC duration
-                vendor_name = str(row.get(vendor_col, "")).strip() if not pd.isna(row.get(vendor_col)) else ""
+                # vendor_name = str(row.get(vendor_col, "")).strip() if not pd.isna(row.get(vendor_col)) else ""
                 amc_frequency = str(row.get(frequency_col, "")).strip() if not pd.isna(row.get(frequency_col)) else ""
                 amc_duration = str(row.get(duration_col, "")).strip() if not pd.isna(row.get(duration_col)) else ""
 
                 # Check if fields are filled
-                if not vendor_name or not amc_frequency or not amc_duration:
+                if not amc_frequency or not amc_duration:
                     validation_errors.append(
-                        "Please ensure vendor, AMC frequency, and duration are selected for all listed assets before upload."
+                        "Please ensure AMC frequency, and duration are selected for all listed assets before upload."
                     )
 
                 # Set status and error
@@ -2810,6 +2838,47 @@ async def validate_amc_configurations_excel_sheet(
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
 
 
+def get_vendor_id_for_amc_field_staff(user_info_data: List[dict]) -> str:
+    """
+    Returns vendorId (or vendor name fallback when vendorId is absent) for the vendor
+    that has at least one user with role AMC_FIELD_STAFF.
+    """
+    role_code = "AMC_FIELD_STAFF"
+    candidates: Set[str] = set()
+
+    for vendor_mapping in user_info_data:
+        vendor_id = (vendor_mapping.get("vendorId") or "").strip()
+        vendor_name = (vendor_mapping.get("vendor") or "").strip()
+        if not vendor_id:
+            if not vendor_name:
+                continue
+            vendor_id = vendor_name
+
+        users = vendor_mapping.get("users", [])
+        if not users and "userId" in vendor_mapping:
+            users = [{"userId": vendor_mapping.get("userId"), "userName": vendor_mapping.get("userName")}]
+        if not isinstance(users, list):
+            raise HTTPException(status_code=400, detail=f"users must be a list for vendorId: {vendor_id}")
+
+        for user in users:
+            for role in user.get("roles") or []:
+                if role.get("code") == role_code:
+                    candidates.add(vendor_id)
+                    break
+
+    if not candidates:
+        raise HTTPException(
+            status_code=400,
+            detail="No vendor with a user having the AMC_FIELD_STAFF role was found in user_info_list",
+        )
+    if len(candidates) > 1:
+        raise HTTPException(
+            status_code=400,
+            detail="Multiple vendors have the AMC_FIELD_STAFF role; user_info_list must identify a single vendor",
+        )
+    return next(iter(candidates))
+
+
 @router.post('/amcConfigurationBulkIngest',
              summary='Bulk ingest AMC configuration template data',
              response_description="Returns processed Excel file with AMC configuration creation results")
@@ -2837,9 +2906,10 @@ async def bulk_ingest_amc_configurations(
         except json.JSONDecodeError as e:
             raise HTTPException(status_code=400, detail=f"Invalid JSON in user_info_list: {str(e)}")
 
-        # Create vendor to users mapping (supports multiple users per vendor)
-        vendor_to_users = {}  # Key: vendor name (from Excel), Value: {vendorId, users}
-        vendor_id_to_name = {}  # Reverse mapping: vendorId -> vendor name (if available)
+        amc_vendor_id = get_vendor_id_for_amc_field_staff(user_info_data)
+
+        assignment_users = []
+        vendor_mappings = []  # One entry per payload item with valid users
         for vendor_mapping in user_info_data:
             # Primary key: vendorId (UUID)
             vendor_id = vendor_mapping.get("vendorId", "").strip()
@@ -2868,7 +2938,6 @@ async def bulk_ingest_amc_configurations(
                 raise HTTPException(status_code=400, detail=f"users must be a list for vendorId: {vendor_id}")
 
             # Process users
-            processed_users = []
             for user in users:
                 # Extract user ID - prefer 'id' (from full user object), then 'userId', then 'uuid'
                 user_id = user.get("uuid") or user.get("userId") or user.get("id")
@@ -2883,8 +2952,7 @@ async def bulk_ingest_amc_configurations(
                 # Extract tenant ID from user object if available
                 user_tenant_id = user.get("tenantId")
 
-                # Store full user object for reference, with extracted fields
-                processed_users.append({
+                assignment_users.append({
                     "id": str(user_id),  # Convert to string for consistency
                     "userId": str(user_id),  # Keep for backward compatibility
                     "userName": user_name,
@@ -2893,26 +2961,15 @@ async def bulk_ingest_amc_configurations(
                     "fullUser": user  # Store full user object for reference
                 })
 
-            if not processed_users:
+            if not assignment_users:
                 logger.warning(f"No valid users found for vendorId: {vendor_id}")
                 continue
 
-            # Store mapping by vendor name (for Excel lookup) and vendorId
-            if vendor_name:
-                vendor_to_users[vendor_name] = {
-                    "vendorId": vendor_id,
-                    "vendorName": vendor_name,
-                    "users": processed_users
-                }
-                vendor_id_to_name[vendor_id] = vendor_name
-
-            # Also store by vendorId for direct lookup
-            if vendor_id not in vendor_to_users or not vendor_to_users[vendor_id].get("vendorId"):
-                vendor_to_users[vendor_id] = {
-                    "vendorId": vendor_id,
-                    "vendorName": vendor_name,
-                    "users": processed_users
-                }
+            vendor_mappings.append({
+                "vendorId": vendor_id,
+                "vendorName": vendor_name,
+                "users": assignment_users
+            })
 
         # Save uploaded file
         input_temp_file, _ = await _save_upload_to_temp_file(amc_file, suffix=".xlsx")
@@ -3017,30 +3074,13 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Facility not found for Facility Id: {facility_id}'
                     continue
 
-                vendor_col = "Vendor" if "Vendor" in df.columns else "vendor"
-                vendor_name = str(row.get(vendor_col, "")).strip()
-                vendor_mapping = vendor_to_users.get(vendor_name)
-                if not vendor_mapping:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f'No vendor mapping found for vendor: {vendor_name}'
-                    continue
-
-                vendor_id = vendor_mapping.get("vendorId")
-                vendor_users = vendor_mapping.get("users", [])
-                if not vendor_users:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f'No users found for vendor: {vendor_name}'
-                    continue
-                if not vendor_id:
-                    df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f'No vendorId found for vendor: {vendor_name}'
-                    continue
-
+                # Get AMC frequency and duration (already validated, just convert to months)
                 frequency_col = "AMC-Frequency" if "AMC-Frequency" in df.columns else "amc-frequency"
                 duration_col = "AMC-Duration" if "AMC-Duration" in df.columns else "amc-duration"
                 amc_frequency = str(row.get(frequency_col, "")).strip()
                 amc_duration = str(row.get(duration_col, "")).strip()
 
+                # Convert frequency to months (format already validated in validation endpoint)
                 if amc_frequency == "Every 6 Months":
                     frequency_months = 6
                 elif amc_frequency == "Every 1 Year":
@@ -3050,6 +3090,7 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Unexpected AMC frequency value: {amc_frequency}'
                     continue
 
+                # Convert duration to months (format already validated in validation endpoint)
                 if amc_duration == "1 Year":
                     duration_months = 12
                 elif amc_duration == "3 Years":
@@ -3061,16 +3102,20 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Unexpected AMC duration value: {amc_duration}'
                     continue
 
-                config_key = (vendor_name, facility_id, project_id)
+                # Check for duplicate configuration (vendor-facility-project combination)
+                config_key = (facility_id, project_id)
                 if config_key in seen_configs:
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = 'Duplicate configuration: vendor-facility-project combination already exists'
                     continue
                 seen_configs.add(config_key)
 
+                # Create assignments array from vendor users
                 assignments = []
-                for user in vendor_users:
+                for user in assignment_users:
+                    # Use user's id (from full user object) or userId (backward compatibility)
                     assigned_user_id = user.get("id") or user.get("userId")
+                    # Prefer user's tenantId if available, otherwise use default tenant_id
                     assignment_tenant_id = user.get("tenantId") or tenant_id
                     assignments.append({
                         "assignedUser": str(assigned_user_id),
@@ -3082,7 +3127,7 @@ async def bulk_ingest_amc_configurations(
 
                 configs_to_create.append({
                     "tenantId": tenant_id,
-                    "vendorId": vendor_id,
+                    "vendorId": amc_vendor_id,
                     "facilityId": facility_id,
                     "projectId": project_id,
                     "durationMonths": duration_months,

@@ -471,7 +471,7 @@ public class ProjectService {
                 // Search for ProjectFacility entities linked to this project
                 SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
                         projectFacilitySearchRequest,
-                        1000,
+                        10000,
                         0,
                         project.getTenantId(),
                         null,
