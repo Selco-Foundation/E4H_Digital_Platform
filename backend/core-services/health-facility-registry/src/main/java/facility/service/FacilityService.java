@@ -844,7 +844,8 @@ public class FacilityService {
             facility.setAddress(facilityDB.getAddress());
             facility.setAdditionalDetails(facilityDB.getAdditionalDetails());
             facility.setBoundaryCode(facilityDB.getBoundaryCode());
-            if (facilityDB.getFacilityDetails() != null) {
+            HealthFacilityDetails details = facilityDB.getFacilityDetails();
+            if (details != null) {
                 if (facilityDB.getFacilityDetails().getPocName() != null
                         && !facilityDB.getFacilityDetails().getPocName().isBlank()) {
                     facility.setPocName(facilityDB.getFacilityDetails().getPocName());
@@ -874,13 +875,14 @@ public class FacilityService {
                 }
             }
 
-            HealthFacilityDetails details = facilityDB.getFacilityDetails();
-            details.setPocName(null);
-            details.setPocContact(null);
-            details.setPocEmail(null);
-            details.setNinId(null);
-            details.setHfrId(null);
-            facility.setFacilityDetails(details);
+            if (details != null) {
+                details.setPocName(null);
+                details.setPocContact(null);
+                details.setPocEmail(null);
+                details.setNinId(null);
+                details.setHfrId(null);
+                facility.setFacilityDetails(details);
+            }
 
             FacilityUpdateRequest request = FacilityUpdateRequest.builder()
                     .facilityUpdate(facility)
