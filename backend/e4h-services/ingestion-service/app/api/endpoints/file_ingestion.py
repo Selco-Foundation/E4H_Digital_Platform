@@ -2513,7 +2513,8 @@ async def create_fielplan_facilities(
                         if code:
                             role_to_ids[code].append(item.get("assignedTo"))
 
-                # iterate all rows — handle existing facility ids (linking) and new rows (create -> link)
+                pending_bulk_fieldplan_links = []
+                # iterate all rows — handle existing facility ids (linking/unlinking)
                 for index, row in df.iterrows():
                     try:
                         # normalize facility id and include flag
@@ -2563,28 +2564,7 @@ async def create_fielplan_facilities(
                                         df.at[index, 'Field Plan Linking Status'] = f"Exception during unlink: {str(e)}"
                             else:
                                 if should_link:
-                                    try:
-                                        fieldplan_resp = fieldplan_client.create_fieldPlan_facility(
-                                            request_info=request_info,
-                                            fieldPlan_id=fieldplan_id,
-                                            facility_id=facility_id
-                                        )
-
-                                        if fieldplan_data:
-                                            fieldplan = fieldplan_data[0]
-                                            if(fieldplan.get("status")=='SCHEDULED'):
-                                                facility_activity_resp = fieldplan_activity_client.create_facility_activity(request_info=request_info,
-                                                                                                                fieldPlan=fieldplan, roleToIds= role_to_ids, facility_id=facility_id)
-                                                logger.info(f"Facility activity created successfully for facility {facility_id}")
-                                                logger.debug(f"Facility activity response: {facility_activity_resp}")
-                                        if fieldplan_resp.status_code in (200, 201, 202):
-                                            df.at[index, 'Field Plan Linking Status'] = "Linked"
-                                        else:
-                                            df.at[
-                                                index, 'Field Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
-                                    except Exception as e:
-                                        logger.error(f"Error linking facility {facility_id} to field plan at row {index + 2}: {e}", exc_info=True)
-                                        df.at[index, 'Field Plan Linking Status'] = f"Exception: {str(e)}"
+                                    pending_bulk_fieldplan_links.append((index, facility_id))
                                 else:
                                     df.at[index, 'Field Plan Linking Status'] = "Skipped (Include in Field Plan != Yes)"
 
@@ -2595,6 +2575,44 @@ async def create_fielplan_facilities(
                         # any unexpected error per row
                         df.at[index, 'Field Plan Linking Status'] = "Not Attempted"
                         continue
+
+                if pending_bulk_fieldplan_links:
+                    chunk_size = 200
+                    for i in range(0, len(pending_bulk_fieldplan_links), chunk_size):
+                        chunk = pending_bulk_fieldplan_links[i:i + chunk_size]
+                        facility_ids_chunk = [facility_id for _, facility_id in chunk]
+                        try:
+                            fieldplan_resp = fieldplan_client.create_fieldPlan_facility_bulk(
+                                request_info=request_info,
+                                fieldPlan_id=fieldplan_id,
+                                facility_ids=facility_ids_chunk
+                            )
+
+                            if fieldplan_resp.status_code in (200, 201, 202):
+                                for row_idx, facility_id in chunk:
+                                    df.at[row_idx, 'Field Plan Linking Status'] = "Linked"
+                                    fieldplan_linked_facility_ids.add(facility_id)
+
+                                    if fieldplan_data:
+                                        fieldplan = fieldplan_data[0]
+                                        if fieldplan.get("status") == 'SCHEDULED':
+                                            try:
+                                                facility_activity_resp = fieldplan_activity_client.create_facility_activity(
+                                                    request_info=request_info,
+                                                    fieldPlan=fieldplan,
+                                                    roleToIds=role_to_ids,
+                                                    facility_id=facility_id
+                                                )
+                                                logger.info(f"Facility activity created successfully for facility {facility_id}")
+                                                logger.debug(f"Facility activity response: {facility_activity_resp}")
+                                            except Exception as activity_exc:
+                                                logger.error(f"Error creating facility activity for {facility_id}: {activity_exc}", exc_info=True)
+                            else:
+                                for row_idx, _ in chunk:
+                                    df.at[row_idx, 'Field Plan Linking Status'] = f"Failed: {fieldplan_resp.status_code} {fieldplan_resp.text}"
+                        except Exception as bulk_exc:
+                            for row_idx, _ in chunk:
+                                df.at[row_idx, 'Field Plan Linking Status'] = f"Exception: {str(bulk_exc)}"
 
             except Exception as e:
                 logger.error(f"Error fetching fieldplan facilities: {e}")

@@ -321,17 +321,24 @@ async def get_facility_ingestion_template_with_data(
         logger.info(f"Found {len(project_linked_facility_ids)} facilities currently linked to project {project_id}")
 
         all_facilities = []
-        # fieldplan_client = None
-        if facility_service_url and project_linked_facility_ids:
-            facility_client = FacilityServiceClient(facility_service_url)
-            for boundary in boundary_list:
-                for facilityId in project_linked_facility_ids:
-                    try:
-                        results = facility_client.search_facility(facility_id=facilityId, tenant_id='in', boundary_code=boundary.code)
-                        facilities = results.get('facilities', [])
-                        all_facilities.extend(facilities)
-                    except Exception as e:
-                        logger.error(f"Error fetching boundary facilities for boundary {boundary.code} and facility {facilityId}: {e}", exc_info=True)
+        facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
+        if facility_client and project_linked_facility_ids and boundary_list:
+            boundary_codes = [b.code for b in boundary_list if b.code]
+            try:
+                boundary_bulk_result = facility_client.bulk_search_facility_with_boundary(
+                    request_info=request_info,
+                    tenant_ids=["in"],
+                    boundary_codes=boundary_codes,
+                    limit=max(len(boundary_codes) * 50, 50),
+                    send_non_paginated_response=True,
+                )
+                boundary_facilities = boundary_bulk_result.get("facilities", []) or []
+                all_facilities = [
+                    f for f in boundary_facilities
+                    if f.get("facility_id") in project_linked_facility_ids
+                ]
+            except Exception as e:
+                logger.error(f"Error fetching boundary facilities in bulk: {e}", exc_info=True)
 
         # Fetch fieldplan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
@@ -346,17 +353,20 @@ async def get_facility_ingestion_template_with_data(
                 logger.info(
                     f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
 
-                # Fetch full facility data for fieldplan-linked facilities
-                for pf in fieldplan_facilities:
-                    facility_id = pf.get("facilityId")
-                    if facility_id:
-                        try:
-                            facility_data = facility_client.search_facility(tenant_id='in',
-                                                                            facility_id=facility_id)
-                            if facility_data and facility_data.get('facilities'):
-                                fieldplan_facilities_data.extend(facility_data.get('facilities', []))
-                        except Exception as e:
-                            logger.error(f"Error fetching facility {facility_id}: {e}")
+                # Fetch all fieldplan-linked facility details in one bulk call
+                if facility_client and fieldplan_linked_facility_ids:
+                    facility_ids = list(fieldplan_linked_facility_ids)
+                    try:
+                        facilities_bulk_result = facility_client.bulk_search_facility(
+                            request_info=request_info,
+                            tenant_ids=["in"],
+                            facility_ids=facility_ids,
+                            limit=max(len(facility_ids), 50),
+                            send_non_paginated_response=True,
+                        )
+                        fieldplan_facilities_data.extend(facilities_bulk_result.get("facilities", []) or [])
+                    except Exception as e:
+                        logger.error(f"Error bulk fetching fieldplan facilities: {e}")
 
             except Exception as e:
                 logger.error(f"Error fetching fieldplan facilities: {e}")
@@ -425,7 +435,8 @@ async def get_facility_ingestion_template_with_data(
                 boundary_list=boundary_list,
                 facility_data=all_facilities,
                 type="fieldplan",
-                extra_append_rows=0
+                extra_append_rows=0,
+                optimize_for_performance=True
             )
             logger.info(f"Successfully created facility ingestion template at {output_file_path}")
         except Exception as e:
