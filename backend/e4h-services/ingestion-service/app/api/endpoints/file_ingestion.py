@@ -56,6 +56,26 @@ logger = AppLogger().get_logger()
 from dotenv import load_dotenv
 from collections import defaultdict
 
+
+async def _save_upload_to_temp_file(upload_file: UploadFile, suffix: str = ".xlsx", chunk_size: int = 1024 * 1024):
+    """
+    Persist an UploadFile to disk in chunks to avoid loading
+    large uploads entirely into memory.
+    """
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    total_bytes = 0
+    try:
+        while True:
+            chunk = await upload_file.read(chunk_size)
+            if not chunk:
+                break
+            temp_file.write(chunk)
+            total_bytes += len(chunk)
+    finally:
+        temp_file.close()
+    return temp_file, total_bytes
+
+
 load_dotenv()
 mdms_url = os.getenv("MDMS_URL")
 org_service_url = os.getenv("VENDOR_SERVICE_URL")
@@ -106,12 +126,9 @@ async def upload_vendors_excel_sheet(
 
     try:
         logger.debug("Creating temporary files for vendor processing")
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await vendor_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, uploaded_size = await _save_upload_to_temp_file(vendor_file, suffix=".xlsx")
         vendor_file_path = input_temp_file.name
-        logger.debug(f"Saved uploaded file to: {vendor_file_path}, size: {len(content)} bytes")
+        logger.debug(f"Saved uploaded file to: {vendor_file_path}, size: {uploaded_size} bytes")
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"vendor_validation_results_{timestamp}.xlsx"
@@ -196,12 +213,9 @@ async def upload_boundaries_excel_sheet(
 
     try:
         logger.debug("Creating temporary files for boundary processing")
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await boundary_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, uploaded_size = await _save_upload_to_temp_file(boundary_file, suffix=".xlsx")
         boundary_file_path = input_temp_file.name
-        logger.debug(f"Saved uploaded file to: {boundary_file_path}, size: {len(content)} bytes")
+        logger.debug(f"Saved uploaded file to: {boundary_file_path}, size: {uploaded_size} bytes")
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_filename = f"boundary_validation_results_{timestamp}.xlsx"
@@ -264,10 +278,7 @@ async def validate_facilities_excel_sheet(
 
     try:
         # Save uploaded Excel to a temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_input_file:
-            content = await facility_file.read()
-            temp_input_file.write(content)
-            temp_input_file.flush()
+        temp_input_file, _ = await _save_upload_to_temp_file(facility_file, suffix=".xlsx")
 
         # Load workbook to preserve everything
         wb = load_workbook(temp_input_file.name)
@@ -435,10 +446,7 @@ async def upload_facilities_excel_sheet(
     mdms_client = MDMSClient(mdms_url)
 
     try:
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await facility_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, _ = await _save_upload_to_temp_file(facility_file, suffix=".xlsx")
         facility_file_path = input_temp_file.name
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -593,10 +601,7 @@ async def upload_facility_with_staff_excel_sheet(
 
     try:
         # Create input temporary file
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await facility_with_staff.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, _ = await _save_upload_to_temp_file(facility_with_staff, suffix=".xlsx")
         facility_with_staff_file_path = input_temp_file.name
 
         # Create output file with timestamp
@@ -735,10 +740,7 @@ async def upload_facility_with_supervisors_excel_sheet(
 
     try:
         # Create input temporary file
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await facility_with_supervisors.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, _ = await _save_upload_to_temp_file(facility_with_supervisors, suffix=".xlsx")
         facility_with_supervisors_file_path = input_temp_file.name
 
         # Create output file with timestamp
@@ -886,10 +888,7 @@ async def upload_facility_with_supervisors_workflow_state_excel_sheet(
 
     try:
         # Create input temporary file
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await facility_with_supervisors.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, _ = await _save_upload_to_temp_file(facility_with_supervisors, suffix=".xlsx")
         facility_with_supervisors_file_path = input_temp_file.name
 
         # Create output file with timestamp
@@ -1073,10 +1072,7 @@ async def upload_projects_excel_sheet(
     #get_authorized_request_info(request_info)
 
     try:
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await project_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, _ = await _save_upload_to_temp_file(project_file, suffix=".xlsx")
         project_file_path = input_temp_file.name
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1238,10 +1234,7 @@ async def upload_facility_selection_excel_sheet(
     #get_authorized_request_info(request_info)
 
     try:
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await facility_selection_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, _ = await _save_upload_to_temp_file(facility_selection_file, suffix=".xlsx")
         project_file_path = input_temp_file.name
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1440,9 +1433,8 @@ async def upload_legacy_ticket_excel_sheet(
     subtype_mapping = create_mapping_dicts(mapping_type_subtype_file, mapping_type_subtype_sheet_name)
     tenant_creator_mapping = TENANT_CREATOR_MAPPING
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as input_temp_file:
-        input_temp_file.write(await legacy_ticket_file.read())
-        excel_file_path = input_temp_file.name
+    input_temp_file, _ = await _save_upload_to_temp_file(legacy_ticket_file, suffix=".xlsx")
+    excel_file_path = input_temp_file.name
 
     df = pd.read_excel(excel_file_path, sheet_name=legacy_ticket_sheet_name)
     df.columns = df.columns.str.strip()
@@ -1616,10 +1608,7 @@ async def check_duplicate_tickets(
     input_temp_file = None
     try:
         # Save uploaded file temporarily
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await legacy_ticket_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, _ = await _save_upload_to_temp_file(legacy_ticket_file, suffix=".xlsx")
         excel_path = input_temp_file.name
 
         # Read Excel file
@@ -1724,10 +1713,7 @@ async def flag_for_qc(
     input_temp_file = None
     try:
         # Save uploaded file temporarily
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await facility_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, _ = await _save_upload_to_temp_file(facility_file, suffix=".xlsx")
         excel_path = input_temp_file.name
 
         # Read Excel file
@@ -1795,9 +1781,7 @@ async def update_incidents_data_from_excel(
     #get_authorized_request_info(request_info)
 
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
-            content = await incidents_file.read()
-            temp_file.write(content)
+        temp_file, _ = await _save_upload_to_temp_file(incidents_file, suffix=".xlsx")
 
         df = pd.read_excel(temp_file.name, sheet_name=incidents_sheet_name)
         df.columns = df.columns.str.strip()
@@ -1905,10 +1889,7 @@ async def validate_facilities_excel_sheet(
 
     try:
         # Save uploaded Excel to a temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_input_file:
-            content = await facility_file.read()
-            temp_input_file.write(content)
-            temp_input_file.flush()
+        temp_input_file, _ = await _save_upload_to_temp_file(facility_file, suffix=".xlsx")
 
         # Load workbook to preserve everything
         wb = load_workbook(temp_input_file.name)
@@ -2062,10 +2043,7 @@ async def validate_facilities_excel_sheet(
 
     try:
         # Save uploaded Excel to a temp file
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_input_file:
-            content = await facility_file.read()
-            temp_input_file.write(content)
-            temp_input_file.flush()
+        temp_input_file, _ = await _save_upload_to_temp_file(facility_file, suffix=".xlsx")
 
         # Load workbook to preserve everything
         wb = load_workbook(temp_input_file.name)
@@ -2193,11 +2171,9 @@ async def create_facilities_and_update_project(
 
     try:
         # ---------- save uploaded file ----------
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await facility_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, uploaded_size = await _save_upload_to_temp_file(facility_file, suffix=".xlsx")
         facility_file_path = input_temp_file.name
+        logger.info(f"Received createFacilityAndUpdateProject file of size {uploaded_size} bytes")
 
         # ---------- prepare output path & load workbook ----------
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2444,11 +2420,9 @@ async def create_fielplan_facilities(
 
     try:
         # ---------- save uploaded file ----------
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await facility_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, uploaded_size = await _save_upload_to_temp_file(facility_file, suffix=".xlsx")
         facility_file_path = input_temp_file.name
+        logger.info(f"Received createFieldPlanFacility file of size {uploaded_size} bytes")
 
         # ---------- prepare output path & load workbook ----------
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2668,10 +2642,7 @@ async def validate_amc_configurations_excel_sheet(
     request_info_obj = request_info_from_json(request_info)
 
     try:
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await amc_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, _ = await _save_upload_to_temp_file(amc_file, suffix=".xlsx")
 
         # Prepare output file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -2920,10 +2891,7 @@ async def bulk_ingest_amc_configurations(
                 }
 
         # Save uploaded file
-        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
-        content = await amc_file.read()
-        input_temp_file.write(content)
-        input_temp_file.close()
+        input_temp_file, _ = await _save_upload_to_temp_file(amc_file, suffix=".xlsx")
 
         # Prepare output file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

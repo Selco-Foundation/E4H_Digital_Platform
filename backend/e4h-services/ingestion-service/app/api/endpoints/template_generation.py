@@ -833,29 +833,34 @@ async def get_amc_configuration_template(
                 logger.error(f"Error fetching project facilities: {e}")
                 # Continue without project facility filtering if there's an error
 
-        # Fetch facilities by boundary codes and project (if project_id provided)
+        # Fetch facilities by boundary codes, then optionally filter by project-linked facility ids.
+        # This avoids an expensive boundary x facility nested API call pattern.
         facility_client = FacilityServiceClient(facility_service_url)
         all_facilities = []
+        for boundary in boundary_list:
+            try:
+                results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
+                facilities = results.get('facilities', [])
+                all_facilities.extend(facilities)
+            except Exception as e:
+                logger.error(f"Error fetching boundary facilities for {boundary.code}: {e}")
 
         if project_id and project_linked_facility_ids:
-            # Filter facilities by both project and boundary
-            for boundary in boundary_list:
-                for facilityId in project_linked_facility_ids:
-                    try:
-                        results = facility_client.search_facility(facility_id=facilityId, tenant_id='in', boundary_code=boundary.code)
-                        facilities = results.get('facilities', [])
-                        all_facilities.extend(facilities)
-                    except Exception as e:
-                        logger.error(f"Error fetching boundary facilities for {boundary.code} and facility {facilityId}: {e}")
-        else:
-            # If no project_id provided, fetch all facilities by boundary codes
-            for boundary in boundary_list:
-                try:
-                    results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                    facilities = results.get('facilities', [])
-                    all_facilities.extend(facilities)
-                except Exception as e:
-                    logger.error(f"Error fetching boundary facilities for {boundary.code}: {e}")
+            all_facilities = [
+                facility for facility in all_facilities
+                if facility.get("facility_id") in project_linked_facility_ids
+            ]
+
+        # De-duplicate facilities by id to keep output rows and downstream API lookups bounded.
+        deduped_facilities = []
+        seen_facility_ids = set()
+        for facility in all_facilities:
+            facility_id = facility.get("facility_id")
+            if not facility_id or facility_id in seen_facility_ids:
+                continue
+            seen_facility_ids.add(facility_id)
+            deduped_facilities.append(facility)
+        all_facilities = deduped_facilities
 
         logger.info(f"Total facilities in AMC template: {len(all_facilities)} (project_id: {project_id}, boundaries: {len(boundary_list)})")
 
@@ -864,10 +869,26 @@ async def get_amc_configuration_template(
         vendor_data = facility_service.get_all_vendor_codes(request_info)
         vendor_names = [v.get("Vendor Name", "") for v in vendor_data if v.get("Vendor Name")]
 
-        # Initialize AMC scheduler client to check for existing configurations
+        # Initialize AMC scheduler client and prefetch existing configs for this project once
         amc_client = None
+        existing_amc_by_facility = {}
         if amc_scheduler_service_url and project_id:
             amc_client = AMCSchedulerServiceClient(amc_scheduler_service_url)
+            try:
+                all_existing_configs_resp = amc_client.search_amc_configurations(
+                    request_info,
+                    project_id=project_id
+                )
+                all_existing_configs = all_existing_configs_resp.get("AmcConfigurations", [])
+                for config in all_existing_configs:
+                    facility_id = config.get("facilityId")
+                    if facility_id and facility_id not in existing_amc_by_facility:
+                        existing_amc_by_facility[facility_id] = config
+                logger.info(
+                    f"Fetched {len(existing_amc_by_facility)} existing AMC configurations for project {project_id}"
+                )
+            except Exception as e:
+                logger.warning(f"Error fetching existing AMC configurations for project {project_id}: {e}")
 
         # Create rows for AMC configuration template - one row per facility
         # Asset types ["INVERTER","PANEL","BATTERY"] will be used as default for each configuration during processing
@@ -907,31 +928,18 @@ async def get_amc_configuration_template(
             frequency_value = ""
             duration_value = ""
 
-            # Check for existing AMC configuration if project_id and facility_id are available
+            # Read existing AMC configuration from prefetched map
             if amc_client and project_id and facility_id:
-                try:
-                    existing_configs = amc_client.search_amc_configurations(
-                        request_info,
-                        facility_id=facility_id,
-                        project_id=project_id
-                    )
-                    # Check if any configurations exist
-                    configs = existing_configs.get("AmcConfigurations", [])
-                    if configs:
-                        # Use the first configuration found
-                        existing_config = configs[0]
-                        vendor_value = existing_config.get("vendor", "")
-                        frequency_months = existing_config.get("frequency")
-                        duration_months = existing_config.get("duration")
+                existing_config = existing_amc_by_facility.get(facility_id)
+                if existing_config:
+                    vendor_value = existing_config.get("vendor", "")
+                    frequency_months = existing_config.get("frequency")
+                    duration_months = existing_config.get("duration")
 
-                        if vendor_value:
-                            frequency_value = convert_frequency_to_display(frequency_months)
-                            duration_value = convert_duration_to_display(duration_months)
-                            rows_with_existing_amc.append(idx)
-                            logger.info(f"Found existing AMC config for facility {facility_id}: vendor={vendor_value}, frequency={frequency_value}, duration={duration_value}")
-                except Exception as e:
-                    logger.warning(f"Error checking existing AMC config for facility {facility_id}: {e}")
-                    # Continue without existing config data
+                    if vendor_value:
+                        frequency_value = convert_frequency_to_display(frequency_months)
+                        duration_value = convert_duration_to_display(duration_months)
+                        rows_with_existing_amc.append(idx)
 
             # Create one row per facility (asset types are handled internally during processing)
             rows.append({
