@@ -825,7 +825,12 @@ public class FacilityService {
         return result;
     }
     public void migrateFacilityData() {
-        StringBuilder query = new StringBuilder("SELECT * FROM facility");
+        StringBuilder query = new StringBuilder(
+                "SELECT fac.*, " +
+                        "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r " +
+                        "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive " +
+                        "FROM facility fac"
+        );
         List<Object> allParams = new ArrayList<>();
         List<Facility> facilities = jdbcTemplate.query(query.toString(), allParams.toArray(), facilityRowMapper.rowMapper);
         for (Facility facilityDB : facilities){
@@ -839,10 +844,24 @@ public class FacilityService {
             facility.setAddress(facilityDB.getAddress());
             facility.setAdditionalDetails(facilityDB.getAdditionalDetails());
             facility.setBoundaryCode(facilityDB.getBoundaryCode());
-            facility.setPocName(facilityDB.getFacilityDetails().getPocName());
-            facility.setPocEmail(facilityDB.getFacilityDetails().getPocEmail());
-            facility.setHfrId(facilityDB.getFacilityDetails().getHfrId());
-            facility.setNinId(facilityDB.getFacilityDetails().getNinId());
+            if (facilityDB.getFacilityDetails() != null) {
+                if (facilityDB.getFacilityDetails().getPocName() != null
+                        && !facilityDB.getFacilityDetails().getPocName().isBlank()) {
+                    facility.setPocName(facilityDB.getFacilityDetails().getPocName());
+                }
+                if (facilityDB.getFacilityDetails().getPocEmail() != null
+                        && !facilityDB.getFacilityDetails().getPocEmail().isBlank()) {
+                    facility.setPocEmail(facilityDB.getFacilityDetails().getPocEmail());
+                }
+                if (facilityDB.getFacilityDetails().getHfrId() != null
+                        && !facilityDB.getFacilityDetails().getHfrId().isBlank()) {
+                    facility.setHfrId(facilityDB.getFacilityDetails().getHfrId());
+                }
+                if (facilityDB.getFacilityDetails().getNinId() != null
+                        && !facilityDB.getFacilityDetails().getNinId().isBlank()) {
+                    facility.setNinId(facilityDB.getFacilityDetails().getNinId());
+                }
+            }
             facility.setStatus("ACTIVE");
             facility.setUserId(facilityDB.getUserId());
             facility.setIsOnmReady(facilityDB.getIsOnmReady());
