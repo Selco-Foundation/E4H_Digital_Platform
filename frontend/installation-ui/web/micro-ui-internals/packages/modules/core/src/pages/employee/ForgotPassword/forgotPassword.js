@@ -38,21 +38,17 @@ const ForgotPassword = ({ config: propsConfig, t, stateCode }) => {
   };
 
   const onForgotPassword = async (data) => {
-    if (!data.city) {
-      alert("Please Select City!");
-      return;
-    }
     const requestData = {
       otp: {
         mobileNumber: data.mobileNumber,
         userType: getUserType().toUpperCase(),
         type: "passwordreset",
-        tenantId: data.city.code,
+        tenantId: "in",
       },
     };
     try {
-      await Digit.UserService.sendOtp(requestData, data.city.code);
-      history.push(`/${window?.contextPath}/employee/user/change-password?mobile_number=${data.mobileNumber}&tenantId=${data.city.code}`);
+      await Digit.UserService.sendOtp(requestData, "in");
+      history.push(`/${window?.contextPath}/employee/user/change-password?mobile_number=${data.mobileNumber}&tenantId=in`);
     } catch (err) {
       setShowToast(err?.response?.data?.error?.fields?.[0]?.message || "Invalid login credentials!");
       setTimeout(closeToast, 5000);
@@ -72,17 +68,6 @@ const ForgotPassword = ({ config: propsConfig, t, stateCode }) => {
           type: userId.type,
           populators: {
             name: userId.name,
-          },
-          isMandatory: true,
-        },
-        {
-          label: t(city.label),
-          type: city.type,
-          populators: {
-            name: city.name,
-            optionsKey: "name",
-            required: true,
-            options: cities,
           },
           isMandatory: true,
         },

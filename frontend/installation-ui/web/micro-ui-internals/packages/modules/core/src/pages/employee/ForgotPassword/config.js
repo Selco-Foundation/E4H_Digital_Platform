@@ -12,12 +12,6 @@ export const loginConfig = [
         name: "mobileNumber",
         error: "ERR_HRMS_INVALID_MOBILE_NUMBER",
       },
-      {
-        label: "CORE_COMMON_CITY",
-        type: "dropdown",
-        name: "city",
-        error: "ERR_HRMS_INVALID_CITY",
-      },
     ]
   },
 ];
