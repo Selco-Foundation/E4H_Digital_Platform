@@ -180,7 +180,8 @@ public class OrganisationUserServiceValidator {
             List<String> uuids = employee.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
             OrgUserSearchCriteria searchUserCriteria = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
             OrgUserSearchRequest orgUserSearchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria).build();
-            URLParams urlParams = URLParams.builder().limit(100).offset(0).build();
+            // Include soft-deleted org-user rows so re-create by same mobile reuses the link, updates HRMS, and uses the update topic
+            URLParams urlParams = URLParams.builder().limit(100).offset(0).includeDeleted(true).build();
             List<OrgUser> users = userRepository.getOrgUsers(orgUserSearchRequest, urlParams);
             if(users != null && !users.isEmpty()){
                 OrgUser sameOrgUser = users.stream()
@@ -245,6 +246,7 @@ public class OrganisationUserServiceValidator {
                     request.setUser(updated.getUser());
                     request.setUserId(updated.getUser().getUuid());
                     request.setId(sameOrgUser.getId());
+                    request.setIsDeleted(false);
                     log.info("Successfully updated existing HRMS user {} in org {}",
                             updated.getUser().getUuid(), request.getOrganizationId());
                 } else {
