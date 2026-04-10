@@ -2,6 +2,8 @@ import io
 import json
 import os
 import tempfile
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 import uuid
 from typing import Optional, Dict, List, Set
@@ -3132,18 +3134,22 @@ async def bulk_ingest_amc_configurations(
                 df.at[index, 'error'] = f'Unexpected error: {str(e)}'
                 logger.error(f"Error processing row {index}: {e}")
 
-        # Bulk create AMC configurations in chunks (sequential, same pattern as other bulk flows)
+        # Bulk create AMC configurations in chunks; optional parallel chunks + larger default chunk cut wall time
         if configs_to_create:
-            chunk_size = int(os.getenv("AMC_INGEST_CHUNK_SIZE", "25"))
+            chunk_size = int(os.getenv("AMC_INGEST_CHUNK_SIZE", "50"))
             chunk_size = max(1, chunk_size)
+            parallel = int(os.getenv("AMC_INGEST_PARALLEL_CHUNKS", "4"))
+            parallel = max(1, min(parallel, 16))
             n_cfgs = len(configs_to_create)
+            df_lock = threading.Lock()
 
             def _process_amc_chunk(chunk_cfgs: List[dict], chunk_row_indexes: List) -> None:
                 try:
                     amc_client.create_amc_configurations_bulk(request_info_obj, chunk_cfgs)
-                    for row_idx in chunk_row_indexes:
-                        df.at[row_idx, 'status'] = 'success'
-                        df.at[row_idx, 'error'] = ''
+                    with df_lock:
+                        for row_idx in chunk_row_indexes:
+                            df.at[row_idx, 'status'] = 'success'
+                            df.at[row_idx, 'error'] = ''
                 except Exception as exc:
                     logger.warning(
                         "Bulk AMC create failed (%s rows), retrying one configuration per request: %s",
@@ -3153,18 +3159,35 @@ async def bulk_ingest_amc_configurations(
                     for cfg, row_idx in zip(chunk_cfgs, chunk_row_indexes):
                         try:
                             amc_client.create_amc_configuration(request_info_obj, cfg)
-                            df.at[row_idx, 'status'] = 'success'
-                            df.at[row_idx, 'error'] = ''
+                            with df_lock:
+                                df.at[row_idx, 'status'] = 'success'
+                                df.at[row_idx, 'error'] = ''
                         except Exception as row_exc:
                             logger.error(f"AMC create failed for row {row_idx}: {row_exc}")
-                            df.at[row_idx, 'status'] = 'failed'
-                            df.at[row_idx, 'error'] = str(row_exc)
+                            with df_lock:
+                                df.at[row_idx, 'status'] = 'failed'
+                                df.at[row_idx, 'error'] = str(row_exc)
 
-            for start in range(0, n_cfgs, chunk_size):
-                _process_amc_chunk(
-                    configs_to_create[start:start + chunk_size],
-                    row_indexes_for_configs[start:start + chunk_size],
-                )
+            chunk_starts = list(range(0, n_cfgs, chunk_size))
+            if parallel <= 1 or len(chunk_starts) == 1:
+                for start in chunk_starts:
+                    _process_amc_chunk(
+                        configs_to_create[start:start + chunk_size],
+                        row_indexes_for_configs[start:start + chunk_size],
+                    )
+            else:
+                workers = min(parallel, len(chunk_starts))
+                with ThreadPoolExecutor(max_workers=workers) as executor:
+                    futures = [
+                        executor.submit(
+                            _process_amc_chunk,
+                            configs_to_create[s:s + chunk_size],
+                            row_indexes_for_configs[s:s + chunk_size],
+                        )
+                        for s in chunk_starts
+                    ]
+                    for fut in as_completed(futures):
+                        fut.result()
 
         # Write results to Excel
         with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
