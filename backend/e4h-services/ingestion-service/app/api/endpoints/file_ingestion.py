@@ -2721,14 +2721,13 @@ async def validate_amc_configurations_excel_sheet(
         df = pd.read_excel(input_temp_file.name, sheet_name=amc_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
 
-        # Add status and error columns if not present
-        if 'status' not in df.columns:
-            df['status'] = ''
-        if 'error' not in df.columns:
-            df['error'] = ''
-        # Avoid pandas dtype warnings when writing string status/error values.
-        df['status'] = df['status'].astype('object')
-        df['error'] = df['error'].astype('object')
+        # Status/error must be object dtype (Excel may load as float); avoids FutureWarning on df.loc writes.
+        for _col in ("status", "error"):
+            if _col not in df.columns:
+                df[_col] = ""
+            else:
+                df[_col] = df[_col].map(lambda x: "" if pd.isna(x) else str(x))
+            df[_col] = df[_col].astype("object")
 
         required_columns = [
             "Facility Id",
@@ -2976,11 +2975,13 @@ async def bulk_ingest_amc_configurations(
         df = pd.read_excel(input_temp_file.name, sheet_name=amc_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
 
-        # Add status and error columns if not present
-        if 'status' not in df.columns:
-            df['status'] = ''
-        if 'error' not in df.columns:
-            df['error'] = ''
+        # Status/error must be object dtype (template may load them as float); avoids FutureWarning on df.loc writes.
+        for _col in ("status", "error"):
+            if _col not in df.columns:
+                df[_col] = ""
+            else:
+                df[_col] = df[_col].map(lambda x: "" if pd.isna(x) else str(x))
+            df[_col] = df[_col].astype("object")
 
         required_columns = ["Facility Id", "Health Facility Name", "Vendor", "AMC-Frequency", "AMC-Duration"]
 
@@ -3038,6 +3039,15 @@ async def bulk_ingest_amc_configurations(
             asset_types_formatted.append({
                 "code": asset_type,
                 "name": asset_type_names.get(asset_type, asset_type.title())
+            })
+
+        assignments_template = []
+        for user in assignment_users:
+            assigned_user_id = user.get("id") or user.get("userId")
+            assignment_tenant_id = user.get("tenantId") or tenant_id
+            assignments_template.append({
+                "assignedUser": str(assigned_user_id),
+                "tenantId": assignment_tenant_id,
             })
 
         now = datetime.now()
@@ -3101,17 +3111,7 @@ async def bulk_ingest_amc_configurations(
                     continue
                 seen_configs.add(config_key)
 
-                # Create assignments array from vendor users
-                assignments = []
-                for user in assignment_users:
-                    # Use user's id (from full user object) or userId (backward compatibility)
-                    assigned_user_id = user.get("id") or user.get("userId")
-                    # Prefer user's tenantId if available, otherwise use default tenant_id
-                    assignment_tenant_id = user.get("tenantId") or tenant_id
-                    assignments.append({
-                        "assignedUser": str(assigned_user_id),
-                        "tenantId": assignment_tenant_id
-                    })
+                assignments = [a.copy() for a in assignments_template]
 
                 end_date = now + timedelta(days=duration_months * 30)
                 configuration_end_date = int(end_date.timestamp() * 1000)
@@ -3144,7 +3144,8 @@ async def bulk_ingest_amc_configurations(
             def _process_amc_chunk(chunk_cfgs: List[dict], chunk_row_indexes: List) -> None:
                 try:
                     amc_client.create_amc_configurations_bulk(request_info_obj, chunk_cfgs)
-                    df.loc[chunk_row_indexes, ['status', 'error']] = ['success', '']
+                    df.loc[chunk_row_indexes, "status"] = "success"
+                    df.loc[chunk_row_indexes, "error"] = ""
                 except Exception as exc:
                     logger.error(
                         "Bulk AMC create failed for %s rows: %s",
@@ -3153,7 +3154,8 @@ async def bulk_ingest_amc_configurations(
                         exc_info=True,
                     )
                     err = str(exc)
-                    df.loc[chunk_row_indexes, ['status', 'error']] = ['failed', err]
+                    df.loc[chunk_row_indexes, "status"] = "failed"
+                    df.loc[chunk_row_indexes, "error"] = err
 
             for start in range(0, n_cfgs, chunk_size):
                 _process_amc_chunk(
@@ -3165,7 +3167,8 @@ async def bulk_ingest_amc_configurations(
         with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name=amc_sheet_name)
 
-        autofit_columns(output_file_path, amc_sheet_name, auto_fit=True)
+        if os.getenv("AMC_INGEST_SKIP_AUTOFIT", "").lower() not in ("1", "true", "yes"):
+            autofit_columns(output_file_path, amc_sheet_name, auto_fit=True)
 
         background_tasks.add_task(cleanup_temp_file, output_file_path)
         background_tasks.add_task(cleanup_temp_file, input_temp_file.name)
