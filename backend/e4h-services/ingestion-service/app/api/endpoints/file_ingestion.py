@@ -89,6 +89,8 @@ amc_scheduler_service_url = os.getenv("AMC_SCHEDULER_SERVICE_URL")
 localization_service_url = os.getenv("LOCALIZATION_SERVICE_URL")
 boundary_service_url = os.getenv("BOUNDARY_SERVICE_URL")
 DEFAULT_AMC_ASSET_TYPES = ["INVERTER", "PANEL", "BATTERY"]
+BULK_INGEST_CHUNK_SIZE = 200
+AMC_CONFIGURATION_BULK_CHUNK_SIZE = 400
 ENVIRONMENT = os.getenv("ENVIRONMENT", "uat").lower()
 base_path = os.path.dirname(os.path.abspath(__file__))
 config_path = os.path.abspath(os.path.join(base_path, "..", "..", "config"))
@@ -2381,7 +2383,7 @@ async def create_facilities_and_update_project(
 
         # Bulk-link facilities to project (for include=yes rows not already linked)
         if pending_bulk_links:
-            chunk_size = 200
+            chunk_size = BULK_INGEST_CHUNK_SIZE
             for i in range(0, len(pending_bulk_links), chunk_size):
                 chunk = pending_bulk_links[i:i + chunk_size]
                 chunk_facility_ids = [facility_id for _, facility_id in chunk]
@@ -2605,7 +2607,7 @@ async def create_fielplan_facilities(
                         continue
 
                 if pending_bulk_fieldplan_links:
-                    chunk_size = 200
+                    chunk_size = BULK_INGEST_CHUNK_SIZE
                     for i in range(0, len(pending_bulk_fieldplan_links), chunk_size):
                         chunk = pending_bulk_fieldplan_links[i:i + chunk_size]
                         facility_ids_chunk = [facility_id for _, facility_id in chunk]
@@ -2957,7 +2959,6 @@ async def bulk_ingest_amc_configurations(
                 "(each user needs uuid, userId, or id). AMC configurations require at least one assignment.",
             )
 
-        # Save uploaded file
         input_temp_file, _ = await _save_upload_to_temp_file(amc_file, suffix=".xlsx")
 
         # Prepare output file
@@ -2975,7 +2976,6 @@ async def bulk_ingest_amc_configurations(
         df = pd.read_excel(input_temp_file.name, sheet_name=amc_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
 
-        # Status/error must be object dtype (template may load them as float); avoids FutureWarning on df.loc writes.
         for _col in ("status", "error"):
             if _col not in df.columns:
                 df[_col] = ""
@@ -2985,7 +2985,6 @@ async def bulk_ingest_amc_configurations(
 
         required_columns = ["Facility Id", "Health Facility Name", "Vendor", "AMC-Frequency", "AMC-Duration"]
 
-        # Initialize clients
         facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
         amc_client = AMCSchedulerServiceClient(amc_scheduler_service_url) if amc_scheduler_service_url else None
 
@@ -2995,10 +2994,8 @@ async def bulk_ingest_amc_configurations(
         if not facility_client:
             raise HTTPException(status_code=500, detail="Facility Service is not configured")
 
-        # Track configurations to detect duplicates (vendor-facility-project combination)
         seen_configs = set()
 
-        # Resolve all facility ids in one bulk call instead of per-row search
         facility_ids_from_file = []
         for _, row in df.iterrows():
             if pd.isna(row.get("Facility Id")) and pd.isna(row.get("Health Facility Name")):
@@ -3056,7 +3053,6 @@ async def bulk_ingest_amc_configurations(
         configs_to_create = []
         row_indexes_for_configs = []
 
-        # Prepare rows + payloads
         for index, row in df.iterrows():
             try:
                 if pd.isna(row.get("Facility Id")) and pd.isna(row.get("Health Facility Name")):
@@ -3075,13 +3071,11 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Facility not found for Facility Id: {facility_id}'
                     continue
 
-                # Get AMC frequency and duration (already validated, just convert to months)
                 frequency_col = "AMC-Frequency" if "AMC-Frequency" in df.columns else "amc-frequency"
                 duration_col = "AMC-Duration" if "AMC-Duration" in df.columns else "amc-duration"
                 amc_frequency = str(row.get(frequency_col, "")).strip()
                 amc_duration = str(row.get(duration_col, "")).strip()
 
-                # Convert frequency to months (format already validated in validation endpoint)
                 if amc_frequency == "Every 6 Months":
                     frequency_months = 6
                 elif amc_frequency == "Every 1 Year":
@@ -3091,7 +3085,6 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Unexpected AMC frequency value: {amc_frequency}'
                     continue
 
-                # Convert duration to months (format already validated in validation endpoint)
                 if amc_duration == "1 Year":
                     duration_months = 12
                 elif amc_duration == "3 Years":
@@ -3103,7 +3096,6 @@ async def bulk_ingest_amc_configurations(
                     df.at[index, 'error'] = f'Unexpected AMC duration value: {amc_duration}'
                     continue
 
-                # Check for duplicate configuration (vendor-facility-project combination)
                 config_key = (facility_id, project_id)
                 if config_key in seen_configs:
                     df.at[index, 'status'] = 'failed'
@@ -3135,10 +3127,8 @@ async def bulk_ingest_amc_configurations(
                 df.at[index, 'error'] = f'Unexpected error: {str(e)}'
                 logger.error(f"Error processing row {index}: {e}")
 
-        # Bulk create AMC configurations in chunks
         if configs_to_create:
-            chunk_size = int(os.getenv("AMC_INGEST_CHUNK_SIZE", "200"))
-            chunk_size = max(1, chunk_size)
+            chunk_size = AMC_CONFIGURATION_BULK_CHUNK_SIZE
             n_cfgs = len(configs_to_create)
 
             def _process_amc_chunk(chunk_cfgs: List[dict], chunk_row_indexes: List) -> None:
@@ -3163,12 +3153,10 @@ async def bulk_ingest_amc_configurations(
                     row_indexes_for_configs[start:start + chunk_size],
                 )
 
-        # Write results to Excel
         with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name=amc_sheet_name)
 
-        if os.getenv("AMC_INGEST_SKIP_AUTOFIT", "").lower() not in ("1", "true", "yes"):
-            autofit_columns(output_file_path, amc_sheet_name, auto_fit=True)
+        autofit_columns(output_file_path, amc_sheet_name, auto_fit=True)
 
         background_tasks.add_task(cleanup_temp_file, output_file_path)
         background_tasks.add_task(cleanup_temp_file, input_temp_file.name)
