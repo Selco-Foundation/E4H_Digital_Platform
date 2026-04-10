@@ -2843,10 +2843,7 @@ async def validate_amc_configurations_excel_sheet(
 
 
 def get_vendor_id_for_amc_field_staff(user_info_data: List[dict]) -> str:
-    """
-    Returns vendorId (or vendor name fallback when vendorId is absent) for the vendor
-    that has at least one user with role AMC_FIELD_STAFF.
-    """
+    # Vendor id (or name fallback) for the vendor that has a user with role AMC_FIELD_STAFF.
     role_code = "AMC_FIELD_STAFF"
     candidates: Set[str] = set()
 
@@ -2884,10 +2881,7 @@ def get_vendor_id_for_amc_field_staff(user_info_data: List[dict]) -> str:
 
 
 def collect_amc_assignment_users_for_vendor(user_info_data: List[dict], amc_vendor_id: str) -> List[dict]:
-    """
-    Assignment users only from the vendor block matching amc_vendor_id (same key rules as
-    get_vendor_id_for_amc_field_staff). AMC service rejects configs with empty assignments.
-    """
+    # Users from the vendor block matching amc_vendor_id (same id rules as get_vendor_id_for_amc_field_staff).
     assignment_users: List[dict] = []
     for vendor_mapping in user_info_data:
         vendor_id = (vendor_mapping.get("vendorId") or "").strip()
