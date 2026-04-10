@@ -192,7 +192,11 @@ public class OrganisationUserServiceValidator {
                 if (sameOrgUser != null) {
                     log.info("User with phone {} already exists in org {}, updating existing user",
                             orgUser.getMobileNumber(), request.getOrganizationId());
-                    Employee existingEmployee = employee.get(0);
+                    Employee existingEmployee = employee.stream()
+                            .filter(e -> e.getUser() != null
+                                    && Objects.equals(sameOrgUser.getUserId(), e.getUser().getUuid()))
+                            .findFirst()
+                            .orElse(employee.get(0));
                     Organisation organisation = organisations.get(0);
                     String orgType = organisation.getOrgType();
 
@@ -207,14 +211,9 @@ public class OrganisationUserServiceValidator {
                         }
                     }
 
-                    if (Boolean.TRUE.equals(sameOrgUser.getIsDeleted())) {
-                        existingEmployee.getUser().setActive(true);
-                        request.setIsDeleted(false);
-                    }
-
-                    existingEmployee.getUser().setName(orgUser.getName());
-                    existingEmployee.getUser().setEmailId(orgUser.getEmailId());
-                    existingEmployee.getUser().setRoles(orgUser.getRoles());
+                    mergeCreateUserPayloadOntoExistingEmployee(
+                            orgUser, existingEmployee,
+                            Boolean.TRUE.equals(sameOrgUser.getIsDeleted()), request);
 
                     long now = System.currentTimeMillis();
                     List<Assignment> previousAssignments = existingEmployee.getAssignments();
@@ -662,6 +661,116 @@ public class OrganisationUserServiceValidator {
     private boolean isDefaultAssignment(Assignment assignment) {
         return "DESIG_01".equals(assignment.getDesignation())
                 && "DEPT_1".equals(assignment.getDepartment());
+    }
+
+    /**
+     * /user/_create when HRMS already has this mobile for the same org: sync request → HRMS employee.
+     * Login {@code userName} (and employee {@code code}) stay as on the existing record.
+     * If {@code reactivatingDeleted}, HRMS + request flags mark the employee active again; otherwise {@code request.isDeleted}
+     * is cleared so {@link org.egov.service.OrganisationUserService} does not treat it as a DB reactivation.
+     */
+    private void mergeCreateUserPayloadOntoExistingEmployee(
+            User orgUser,
+            Employee employee,
+            boolean reactivatingDeleted,
+            OrgUserRequest request) {
+        User existing = employee.getUser();
+        final String preservedUserName = existing.getUserName();
+
+        if (reactivatingDeleted) {
+            existing.setActive(true);
+            employee.setIsActive(true);
+            employee.setReActivateEmployee(true);
+            request.setIsDeleted(false);
+        } else {
+            request.setIsDeleted(null);
+            if (orgUser.getActive() != null) {
+                existing.setActive(orgUser.getActive());
+            }
+        }
+
+        existing.setName(orgUser.getName());
+        if (orgUser.getGender() != null) {
+            existing.setGender(orgUser.getGender());
+        }
+        existing.setMobileNumber(orgUser.getMobileNumber());
+        existing.setEmailId(orgUser.getEmailId());
+        existing.setRoles(orgUser.getRoles());
+        existing.setDob(orgUser.getDob());
+        if (orgUser.getLocale() != null) {
+            existing.setLocale(orgUser.getLocale());
+        }
+        if (orgUser.getType() != null) {
+            existing.setType(orgUser.getType());
+        }
+        if (orgUser.getSalutation() != null) {
+            existing.setSalutation(orgUser.getSalutation());
+        }
+        if (orgUser.getAltContactNumber() != null) {
+            existing.setAltContactNumber(orgUser.getAltContactNumber());
+        }
+        if (orgUser.getPan() != null) {
+            existing.setPan(orgUser.getPan());
+        }
+        if (orgUser.getAadhaarNumber() != null) {
+            existing.setAadhaarNumber(orgUser.getAadhaarNumber());
+        }
+        if (orgUser.getPermanentAddress() != null) {
+            existing.setPermanentAddress(orgUser.getPermanentAddress());
+        }
+        if (orgUser.getPermanentCity() != null) {
+            existing.setPermanentCity(orgUser.getPermanentCity());
+        }
+        if (orgUser.getPermanentPincode() != null) {
+            existing.setPermanentPincode(orgUser.getPermanentPincode());
+        }
+        if (orgUser.getCorrespondenceCity() != null) {
+            existing.setCorrespondenceCity(orgUser.getCorrespondenceCity());
+        }
+        if (orgUser.getCorrespondencePincode() != null) {
+            existing.setCorrespondencePincode(orgUser.getCorrespondencePincode());
+        }
+        if (orgUser.getCorrespondenceAddress() != null) {
+            existing.setCorrespondenceAddress(orgUser.getCorrespondenceAddress());
+        }
+        if (orgUser.getPwdExpiryDate() != null) {
+            existing.setPwdExpiryDate(orgUser.getPwdExpiryDate());
+        }
+        if (orgUser.getSignature() != null) {
+            existing.setSignature(orgUser.getSignature());
+        }
+        if (orgUser.getAccountLocked() != null) {
+            existing.setAccountLocked(orgUser.getAccountLocked());
+        }
+        if (orgUser.getFatherOrHusbandName() != null) {
+            existing.setFatherOrHusbandName(orgUser.getFatherOrHusbandName());
+        }
+        if (orgUser.getRelationship() != null) {
+            existing.setRelationship(orgUser.getRelationship());
+        }
+        if (orgUser.getBloodGroup() != null) {
+            existing.setBloodGroup(orgUser.getBloodGroup());
+        }
+        if (orgUser.getIdentificationMark() != null) {
+            existing.setIdentificationMark(orgUser.getIdentificationMark());
+        }
+        if (orgUser.getPhoto() != null) {
+            existing.setPhoto(orgUser.getPhoto());
+        }
+        if (orgUser.getTenantId() != null) {
+            existing.setTenantId(orgUser.getTenantId());
+        }
+        if (orgUser.getOtpReference() != null) {
+            existing.setOtpReference(orgUser.getOtpReference());
+        }
+        if (!CollectionUtils.isEmpty(orgUser.getJurisdictions())) {
+            existing.setJurisdictions(orgUser.getJurisdictions());
+        }
+
+        employee.setJurisdictions(hrmsUtils.buildJurisdictions(orgUser.getJurisdictions()));
+
+        existing.setUserName(preservedUserName);
+        employee.setCode(preservedUserName);
     }
 
 }
