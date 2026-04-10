@@ -4,6 +4,7 @@ package org.egov.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.egov.common.contract.models.AuditDetails;
 import org.egov.common.models.core.URLParams;
 import org.egov.config.Configuration;
 import org.egov.kafka.OrganizationProducer;
@@ -55,6 +56,12 @@ public class OrganisationUserService {
             log.info("User with same phone already exists in org {}, HRMS employee updated, pushing to update topic",
                     request.getOrganizationId());
             organisationEnrichmentService.enrichOrgUserRequestOnUpdate(request);
+            if (Boolean.FALSE.equals(request.getIsDeleted())) {
+                AuditDetails ad = request.getAuditDetails();
+                if (ad != null && ad.getLastModifiedBy() != null) {
+                    userRepository.reactivateOrgUser(request.getId(), ad.getLastModifiedBy(), ad.getLastModifiedTime());
+                }
+            }
             organizationProducer.push(configuration.getUpdateOrgUserTopic(), request);
             return request;
         }

@@ -207,6 +207,11 @@ public class OrganisationUserServiceValidator {
                         }
                     }
 
+                    if (Boolean.TRUE.equals(sameOrgUser.getIsDeleted())) {
+                        existingEmployee.getUser().setActive(true);
+                        request.setIsDeleted(false);
+                    }
+
                     existingEmployee.getUser().setName(orgUser.getName());
                     existingEmployee.getUser().setEmailId(orgUser.getEmailId());
                     existingEmployee.getUser().setRoles(orgUser.getRoles());
@@ -246,7 +251,6 @@ public class OrganisationUserServiceValidator {
                     request.setUser(updated.getUser());
                     request.setUserId(updated.getUser().getUuid());
                     request.setId(sameOrgUser.getId());
-                    request.setIsDeleted(false);
                     log.info("Successfully updated existing HRMS user {} in org {}",
                             updated.getUser().getUuid(), request.getOrganizationId());
                 } else {

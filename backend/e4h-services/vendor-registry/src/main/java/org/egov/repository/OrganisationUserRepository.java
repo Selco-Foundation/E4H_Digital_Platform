@@ -75,5 +75,13 @@ public class OrganisationUserRepository {
         return count;
     }
 
+    /**
+     * Soft-deleted org-user rows are not flipped by the update Kafka consumer; persist reactivation here
+     * when /user/_create reuses an existing (deleted) link after HRMS update.
+     */
+    public int reactivateOrgUser(String id, String lastModifiedBy, long lastModifiedTime) {
+        String sql = "UPDATE eg_org_user SET isdeleted = false, lastmodifiedby = ?, lastmodifiedtime = ? WHERE id = ?";
+        return jdbcTemplate.update(sql, lastModifiedBy, lastModifiedTime, id);
+    }
 
 }
