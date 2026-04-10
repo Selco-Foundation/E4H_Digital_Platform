@@ -3,7 +3,6 @@ import json
 import os
 import tempfile
 from datetime import datetime, timedelta
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import uuid
 from typing import Optional, Dict, List, Set
 
@@ -2880,6 +2879,45 @@ def get_vendor_id_for_amc_field_staff(user_info_data: List[dict]) -> str:
     return next(iter(candidates))
 
 
+def collect_amc_assignment_users_for_vendor(user_info_data: List[dict], amc_vendor_id: str) -> List[dict]:
+    """
+    Assignment users only from the vendor block matching amc_vendor_id (same key rules as
+    get_vendor_id_for_amc_field_staff). AMC service rejects configs with empty assignments.
+    """
+    assignment_users: List[dict] = []
+    for vendor_mapping in user_info_data:
+        vendor_id = (vendor_mapping.get("vendorId") or "").strip()
+        vendor_name = (vendor_mapping.get("vendor") or "").strip()
+        if not vendor_id:
+            if not vendor_name:
+                continue
+            vendor_id = vendor_name
+        if vendor_id != amc_vendor_id:
+            continue
+
+        users = vendor_mapping.get("users", [])
+        if not users and "userId" in vendor_mapping:
+            users = [{"userId": vendor_mapping.get("userId"), "userName": vendor_mapping.get("userName")}]
+        if not isinstance(users, list):
+            continue
+
+        for user in users:
+            user_id = user.get("uuid") or user.get("userId") or user.get("id")
+            if not user_id:
+                continue
+            user_name = user.get("name") or user.get("userName", "")
+            user_tenant_id = user.get("tenantId")
+            assignment_users.append({
+                "id": str(user_id),
+                "userId": str(user_id),
+                "userName": user_name,
+                "name": user_name,
+                "tenantId": user_tenant_id,
+                "fullUser": user,
+            })
+    return assignment_users
+
+
 @router.post('/amcConfigurationBulkIngest',
              summary='Bulk ingest AMC configuration template data',
              response_description="Returns processed Excel file with AMC configuration creation results")
@@ -2909,68 +2947,13 @@ async def bulk_ingest_amc_configurations(
 
         amc_vendor_id = get_vendor_id_for_amc_field_staff(user_info_data)
 
-        assignment_users = []
-        vendor_mappings = []  # One entry per payload item with valid users
-        for vendor_mapping in user_info_data:
-            # Primary key: vendorId (UUID)
-            vendor_id = vendor_mapping.get("vendorId", "").strip()
-            # Secondary: vendor name (for backward compatibility and Excel lookup)
-            vendor_name = vendor_mapping.get("vendor", "").strip()
-
-            if not vendor_id:
-                # Fallback: if no vendorId, use vendor name as key
-                if not vendor_name:
-                    logger.warning(f"Vendor mapping missing both vendorId and vendor name: {vendor_mapping}")
-                    continue
-                vendor_id = vendor_name  # Use name as fallback key
-
-            # Support both old format (single user) and new format (list of users)
-            users = vendor_mapping.get("users", [])
-            if not users:
-                # Backward compatibility: if "users" not found, check for single user fields
-                if "userId" in vendor_mapping:
-                    users = [{"userId": vendor_mapping.get("userId"), "userName": vendor_mapping.get("userName")}]
-                else:
-                    logger.warning(f"No users found for vendorId: {vendor_id}")
-                    continue
-
-            # Validate users list
-            if not isinstance(users, list):
-                raise HTTPException(status_code=400, detail=f"users must be a list for vendorId: {vendor_id}")
-
-            # Process users
-            for user in users:
-                # Extract user ID - prefer 'id' (from full user object), then 'userId', then 'uuid'
-                user_id = user.get("uuid") or user.get("userId") or user.get("id")
-
-                if not user_id:
-                    logger.warning(f"User object missing ID field: {user}")
-                    continue
-
-                # Extract user name - prefer 'name', then 'userName'
-                user_name = user.get("name") or user.get("userName", "")
-
-                # Extract tenant ID from user object if available
-                user_tenant_id = user.get("tenantId")
-
-                assignment_users.append({
-                    "id": str(user_id),  # Convert to string for consistency
-                    "userId": str(user_id),  # Keep for backward compatibility
-                    "userName": user_name,
-                    "name": user_name,
-                    "tenantId": user_tenant_id,
-                    "fullUser": user  # Store full user object for reference
-                })
-
-            if not assignment_users:
-                logger.warning(f"No valid users found for vendorId: {vendor_id}")
-                continue
-
-            vendor_mappings.append({
-                "vendorId": vendor_id,
-                "vendorName": vendor_name,
-                "users": assignment_users
-            })
+        assignment_users = collect_amc_assignment_users_for_vendor(user_info_data, amc_vendor_id)
+        if not assignment_users:
+            raise HTTPException(
+                status_code=400,
+                detail="No valid assignment users for the selected AMC vendor in user_info_list "
+                "(each user needs uuid, userId, or id). AMC configurations require at least one assignment.",
+            )
 
         # Save uploaded file
         input_temp_file, _ = await _save_upload_to_temp_file(amc_file, suffix=".xlsx")
@@ -2999,13 +2982,48 @@ async def bulk_ingest_amc_configurations(
         required_columns = ["Facility Id", "Health Facility Name", "Vendor", "AMC-Frequency", "AMC-Duration"]
 
         # Initialize clients
+        facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
         amc_client = AMCSchedulerServiceClient(amc_scheduler_service_url) if amc_scheduler_service_url else None
 
         if not amc_client:
             raise HTTPException(status_code=500, detail="AMC Scheduler Service is not configured")
 
+        if not facility_client:
+            raise HTTPException(status_code=500, detail="Facility Service is not configured")
+
         # Track configurations to detect duplicates (vendor-facility-project combination)
         seen_configs = set()
+
+        # Resolve all facility ids in one bulk call instead of per-row search
+        facility_ids_from_file = []
+        for _, row in df.iterrows():
+            if pd.isna(row.get("Facility Id")) and pd.isna(row.get("Health Facility Name")):
+                continue
+            facility_id = str(row.get("Facility Id", "")).strip()
+            if facility_id:
+                facility_ids_from_file.append(facility_id)
+
+        facility_map = {}
+        if facility_ids_from_file:
+            unique_facility_ids = list(dict.fromkeys(facility_ids_from_file))
+            facility_batch_size = int(os.getenv("AMC_INGEST_FACILITY_ID_BATCH_SIZE", "500"))
+            try:
+                for batch_start in range(0, len(unique_facility_ids), facility_batch_size):
+                    batch_ids = unique_facility_ids[batch_start:batch_start + facility_batch_size]
+                    bulk_facility_result = facility_client.bulk_search_facility(
+                        request_info=request_info_obj,
+                        tenant_ids=["in"],
+                        facility_ids=batch_ids,
+                        limit=max(len(batch_ids), 50),
+                        send_non_paginated_response=True,
+                    )
+                    for facility in (bulk_facility_result.get("facilities", []) or []):
+                        f_id = facility.get("facility_id")
+                        if f_id:
+                            facility_map[f_id] = facility
+            except Exception as e:
+                logger.error(f"Error bulk searching facilities for AMC ingest: {e}", exc_info=True)
+                raise HTTPException(status_code=502, detail=f"Facility lookup failed: {str(e)}")
 
         asset_types_formatted = []
         asset_type_names = {
@@ -3037,6 +3055,11 @@ async def bulk_ingest_amc_configurations(
                 if not facility_id:
                     df.at[index, 'status'] = 'failed'
                     df.at[index, 'error'] = 'Facility Id is required'
+                    continue
+
+                if facility_id not in facility_map:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = f'Facility not found for Facility Id: {facility_id}'
                     continue
 
                 # Get AMC frequency and duration (already validated, just convert to months)
@@ -3109,33 +3132,39 @@ async def bulk_ingest_amc_configurations(
                 df.at[index, 'error'] = f'Unexpected error: {str(e)}'
                 logger.error(f"Error processing row {index}: {e}")
 
-        # Bulk create AMC configurations in chunks (parallelized to reduce total request time)
+        # Bulk create AMC configurations in chunks (sequential, same pattern as other bulk flows)
         if configs_to_create:
-            chunk_size = 25
-            chunk_payloads = []
-            for start in range(0, len(configs_to_create), chunk_size):
-                end = start + chunk_size
-                chunk_payloads.append((configs_to_create[start:end], row_indexes_for_configs[start:end]))
+            chunk_size = int(os.getenv("AMC_INGEST_CHUNK_SIZE", "25"))
+            chunk_size = max(1, chunk_size)
+            n_cfgs = len(configs_to_create)
 
-            max_workers = min(4, max(1, len(chunk_payloads)))
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                future_map = {
-                    executor.submit(amc_client.create_amc_configurations_bulk, request_info_obj, chunk_configs): chunk_indexes
-                    for chunk_configs, chunk_indexes in chunk_payloads
-                }
-
-                for future in as_completed(future_map):
-                    chunk_indexes = future_map[future]
-                    try:
-                        future.result()
-                        for row_idx in chunk_indexes:
+            def _process_amc_chunk(chunk_cfgs: List[dict], chunk_row_indexes: List) -> None:
+                try:
+                    amc_client.create_amc_configurations_bulk(request_info_obj, chunk_cfgs)
+                    for row_idx in chunk_row_indexes:
+                        df.at[row_idx, 'status'] = 'success'
+                        df.at[row_idx, 'error'] = ''
+                except Exception as exc:
+                    logger.warning(
+                        "Bulk AMC create failed (%s rows), retrying one configuration per request: %s",
+                        len(chunk_cfgs),
+                        exc,
+                    )
+                    for cfg, row_idx in zip(chunk_cfgs, chunk_row_indexes):
+                        try:
+                            amc_client.create_amc_configuration(request_info_obj, cfg)
                             df.at[row_idx, 'status'] = 'success'
                             df.at[row_idx, 'error'] = ''
-                    except Exception as e:
-                        logger.error(f"Failed to bulk create AMC configurations for rows {chunk_indexes}: {e}", exc_info=True)
-                        for row_idx in chunk_indexes:
+                        except Exception as row_exc:
+                            logger.error(f"AMC create failed for row {row_idx}: {row_exc}")
                             df.at[row_idx, 'status'] = 'failed'
-                            df.at[row_idx, 'error'] = str(e)
+                            df.at[row_idx, 'error'] = str(row_exc)
+
+            for start in range(0, n_cfgs, chunk_size):
+                _process_amc_chunk(
+                    configs_to_create[start:start + chunk_size],
+                    row_indexes_for_configs[start:start + chunk_size],
+                )
 
         # Write results to Excel
         with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:

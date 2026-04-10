@@ -1,4 +1,3 @@
-import json
 from typing import Dict, Any, List
 
 import requests
@@ -33,20 +32,23 @@ class AMCSchedulerServiceClient:
         }
         
         try:
-            response = requests.post(url, headers=headers, json=payload)
+            response = requests.post(url, headers=headers, json=payload, timeout=(30, 180))
             response.raise_for_status()
             logger.info(f"AMC configuration created successfully: facility_id={facility_id}, project_id={project_id}")
             logger.debug(f"Create response status: {response.status_code}")
             return response.json()
         except requests.exceptions.HTTPError as http_err:
             error_detail = ""
-            if hasattr(http_err.response, 'text'):
+            if http_err.response is not None and hasattr(http_err.response, "text"):
                 try:
                     error_json = http_err.response.json()
                     error_detail = error_json.get("Errors", [{}])[0].get("message", str(http_err))
-                except:
+                except Exception:
                     error_detail = http_err.response.text
-            logger.error(f"HTTP error creating AMC configuration: {http_err.response.status_code} - {error_detail}", exc_info=True)
+            logger.error(
+                f"HTTP error creating AMC configuration: {http_err.response.status_code} - {error_detail}",
+                exc_info=True,
+            )
             raise Exception(f"HTTP error {http_err.response.status_code}: {error_detail or str(http_err)}")
         except requests.exceptions.ConnectionError as conn_err:
             logger.error(f"Connection error creating AMC configuration: {conn_err}", exc_info=True)
@@ -73,20 +75,23 @@ class AMCSchedulerServiceClient:
             "apiOperation": "CREATE"
         }
         try:
-            response = requests.post(url, headers=headers, json=payload)
+            response = requests.post(url, headers=headers, json=payload, timeout=(30, 180))
             response.raise_for_status()
             logger.info(f"AMC bulk configuration create succeeded: count={len(configuration_payloads)}")
             logger.debug(f"Bulk create response status: {response.status_code}")
             return response.json()
         except requests.exceptions.HTTPError as http_err:
             error_detail = ""
-            if hasattr(http_err.response, 'text'):
+            if http_err.response is not None and hasattr(http_err.response, "text"):
                 try:
                     error_json = http_err.response.json()
                     error_detail = error_json.get("Errors", [{}])[0].get("message", str(http_err))
                 except Exception:
                     error_detail = http_err.response.text
-            logger.error(f"HTTP error bulk creating AMC configurations: {http_err.response.status_code} - {error_detail}", exc_info=True)
+            logger.error(
+                f"HTTP error bulk creating AMC configurations: {http_err.response.status_code} - {error_detail}",
+                exc_info=True,
+            )
             raise Exception(f"HTTP error {http_err.response.status_code}: {error_detail or str(http_err)}")
         except requests.exceptions.ConnectionError as conn_err:
             logger.error(f"Connection error bulk creating AMC configurations: {conn_err}", exc_info=True)
@@ -123,7 +128,7 @@ class AMCSchedulerServiceClient:
         }
         
         try:
-            response = requests.post(url, headers=headers, json=payload)
+            response = requests.post(url, headers=headers, json=payload, timeout=(30, 180))
             response.raise_for_status()
             result = response.json()
             config_count = len(result.get("AmcConfigurations", []))
@@ -132,13 +137,16 @@ class AMCSchedulerServiceClient:
             return result
         except requests.exceptions.HTTPError as http_err:
             error_detail = ""
-            if hasattr(http_err.response, 'text'):
+            if http_err.response is not None and hasattr(http_err.response, "text"):
                 try:
                     error_json = http_err.response.json()
                     error_detail = error_json.get("Errors", [{}])[0].get("message", str(http_err))
-                except:
+                except Exception:
                     error_detail = http_err.response.text
-            logger.error(f"HTTP error searching AMC configurations: {http_err.response.status_code} - {error_detail}", exc_info=True)
+            logger.error(
+                f"HTTP error searching AMC configurations: {http_err.response.status_code} - {error_detail}",
+                exc_info=True,
+            )
             raise Exception(f"HTTP error {http_err.response.status_code}: {error_detail or str(http_err)}")
         except requests.exceptions.ConnectionError as conn_err:
             logger.error(f"Connection error searching AMC configurations: {conn_err}", exc_info=True)
