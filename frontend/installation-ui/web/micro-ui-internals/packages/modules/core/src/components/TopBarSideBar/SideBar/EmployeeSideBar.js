@@ -13,6 +13,7 @@ const EmployeeSideBar = () => {
   const { t } = useTranslation();
   const history = useHistory();
   const tenantId = Digit.ULBService.getStateId();
+  const contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH") || "installation-qc";
 
   function extractLeftIcon(data = {}) {
     for (const key in data) {
@@ -50,6 +51,7 @@ const EmployeeSideBar = () => {
   const configEmployeeSideBar = {};
   data?.actions
     .filter((e) => e.url === "url")
+    .filter((action) => !contextPath || action.navigationURL?.includes(contextPath))
     .forEach((item) => {
       let index = item?.path?.split(".")?.[0] || "";
       if (item?.path !== "") {
