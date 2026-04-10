@@ -1,4 +1,3 @@
-import threading
 from typing import Dict, Any, List
 
 import requests
@@ -12,14 +11,6 @@ logger = AppLogger().get_logger()
 class AMCSchedulerServiceClient:
     def __init__(self, amc_scheduler_service_url: str):
         self.amc_scheduler_service_url = amc_scheduler_service_url
-        self._tls = threading.local()
-
-    def _http(self) -> requests.Session:
-        s = getattr(self._tls, "session", None)
-        if s is None:
-            s = requests.Session()
-            self._tls.session = s
-        return s
 
     def create_amc_configuration(self, request_info: RequestInfo, configuration_payload: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -40,7 +31,7 @@ class AMCSchedulerServiceClient:
         }
 
         try:
-            response = self._http().post(url, headers=headers, json=payload, timeout=(30, 180))
+            response = requests.post(url, headers=headers, json=payload, timeout=(30, 180))
             response.raise_for_status()
             logger.info(f"AMC configuration created successfully: facility_id={facility_id}, project_id={project_id}")
             logger.debug(f"Create response status: {response.status_code}")
@@ -82,7 +73,7 @@ class AMCSchedulerServiceClient:
             "AmcConfigurations": configuration_payloads,
         }
         try:
-            response = self._http().post(url, headers=headers, json=payload, timeout=(30, 180))
+            response = requests.post(url, headers=headers, json=payload, timeout=(30, 180))
             response.raise_for_status()
             logger.info(f"AMC bulk configuration create succeeded: count={len(configuration_payloads)}")
             logger.debug(f"Bulk create response status: {response.status_code}")
@@ -135,7 +126,7 @@ class AMCSchedulerServiceClient:
         }
         
         try:
-            response = self._http().post(url, headers=headers, json=payload, timeout=(30, 180))
+            response = requests.post(url, headers=headers, json=payload, timeout=(30, 180))
             response.raise_for_status()
             result = response.json()
             config_count = len(result.get("AmcConfigurations", []))
