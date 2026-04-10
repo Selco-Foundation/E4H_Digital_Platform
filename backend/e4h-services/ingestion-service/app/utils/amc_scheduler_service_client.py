@@ -1,4 +1,4 @@
-from typing import Dict, Any, List
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -7,12 +7,33 @@ from app.schemas.request_info import RequestInfo
 
 logger = AppLogger().get_logger()
 
+_AMC_HTTP_TIMEOUT = (30, 180)
+
 
 class AMCSchedulerServiceClient:
     def __init__(self, amc_scheduler_service_url: str):
         self.amc_scheduler_service_url = amc_scheduler_service_url
 
-    def create_amc_configuration(self, request_info: RequestInfo, configuration_payload: Dict[str, Any]) -> Dict[str, Any]:
+    @staticmethod
+    def _post(
+        session: Optional[requests.Session],
+        url: str,
+        *,
+        headers: Dict[str, str],
+        json: Any,
+        timeout: tuple,
+    ):
+        """Use caller-provided Session for connection reuse, or one-off requests.post."""
+        if session is not None:
+            return session.post(url, headers=headers, json=json, timeout=timeout)
+        return requests.post(url, headers=headers, json=json, timeout=timeout)
+
+    def create_amc_configuration(
+        self,
+        request_info: RequestInfo,
+        configuration_payload: Dict[str, Any],
+        session: Optional[requests.Session] = None,
+    ) -> Dict[str, Any]:
         """
         Create AMC configuration via AMC Scheduler Service
         """
@@ -31,7 +52,9 @@ class AMCSchedulerServiceClient:
         }
 
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=(30, 180))
+            response = self._post(
+                session, url, headers=headers, json=payload, timeout=_AMC_HTTP_TIMEOUT
+            )
             response.raise_for_status()
             logger.info(f"AMC configuration created successfully: facility_id={facility_id}, project_id={project_id}")
             logger.debug(f"Create response status: {response.status_code}")
@@ -59,7 +82,12 @@ class AMCSchedulerServiceClient:
             logger.error(f"Request error creating AMC configuration: {req_err}", exc_info=True)
             raise Exception(f"Request error: {str(req_err)}")
 
-    def create_amc_configurations_bulk(self, request_info: RequestInfo, configuration_payloads: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def create_amc_configurations_bulk(
+        self,
+        request_info: RequestInfo,
+        configuration_payloads: List[Dict[str, Any]],
+        session: Optional[requests.Session] = None,
+    ) -> Dict[str, Any]:
         """
         Create multiple AMC configurations in one request.
         """
@@ -73,7 +101,9 @@ class AMCSchedulerServiceClient:
             "AmcConfigurations": configuration_payloads,
         }
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=(30, 180))
+            response = self._post(
+                session, url, headers=headers, json=payload, timeout=_AMC_HTTP_TIMEOUT
+            )
             response.raise_for_status()
             logger.info(f"AMC bulk configuration create succeeded: count={len(configuration_payloads)}")
             logger.debug(f"Bulk create response status: {response.status_code}")
@@ -101,7 +131,14 @@ class AMCSchedulerServiceClient:
             logger.error(f"Request error bulk creating AMC configurations: {req_err}", exc_info=True)
             raise Exception(f"Request error: {str(req_err)}")
 
-    def search_amc_configurations(self, request_info: RequestInfo, facility_id: str = None, project_id: str = None, vendor: str = None) -> Dict[str, Any]:
+    def search_amc_configurations(
+        self,
+        request_info: RequestInfo,
+        facility_id: str = None,
+        project_id: str = None,
+        vendor: str = None,
+        session: Optional[requests.Session] = None,
+    ) -> Dict[str, Any]:
         """
         Search for existing AMC configurations
         """
@@ -126,7 +163,9 @@ class AMCSchedulerServiceClient:
         }
         
         try:
-            response = requests.post(url, headers=headers, json=payload, timeout=(30, 180))
+            response = self._post(
+                session, url, headers=headers, json=payload, timeout=_AMC_HTTP_TIMEOUT
+            )
             response.raise_for_status()
             result = response.json()
             config_count = len(result.get("AmcConfigurations", []))

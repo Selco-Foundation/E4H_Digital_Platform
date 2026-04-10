@@ -3131,9 +3131,17 @@ async def bulk_ingest_amc_configurations(
             chunk_size = AMC_CONFIGURATION_BULK_CHUNK_SIZE
             n_cfgs = len(configs_to_create)
 
-            def _process_amc_chunk(chunk_cfgs: List[dict], chunk_row_indexes: List) -> None:
+            def _process_amc_chunk(
+                chunk_cfgs: List[dict],
+                chunk_row_indexes: List,
+                http_session: requests.Session,
+            ) -> None:
                 try:
-                    amc_client.create_amc_configurations_bulk(request_info_obj, chunk_cfgs)
+                    amc_client.create_amc_configurations_bulk(
+                        request_info_obj,
+                        chunk_cfgs,
+                        session=http_session,
+                    )
                     df.loc[chunk_row_indexes, "status"] = "success"
                     df.loc[chunk_row_indexes, "error"] = ""
                 except Exception as exc:
@@ -3147,11 +3155,13 @@ async def bulk_ingest_amc_configurations(
                     df.loc[chunk_row_indexes, "status"] = "failed"
                     df.loc[chunk_row_indexes, "error"] = err
 
-            for start in range(0, n_cfgs, chunk_size):
-                _process_amc_chunk(
-                    configs_to_create[start:start + chunk_size],
-                    row_indexes_for_configs[start:start + chunk_size],
-                )
+            with requests.Session() as http_session:
+                for start in range(0, n_cfgs, chunk_size):
+                    _process_amc_chunk(
+                        configs_to_create[start:start + chunk_size],
+                        row_indexes_for_configs[start:start + chunk_size],
+                        http_session,
+                    )
 
         with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
             df.to_excel(writer, index=False, sheet_name=amc_sheet_name)
