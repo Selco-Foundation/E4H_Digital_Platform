@@ -2726,6 +2726,9 @@ async def validate_amc_configurations_excel_sheet(
             df['status'] = ''
         if 'error' not in df.columns:
             df['error'] = ''
+        # Avoid pandas dtype warnings when writing string status/error values.
+        df['status'] = df['status'].astype('object')
+        df['error'] = df['error'].astype('object')
 
         required_columns = [
             "Facility Id",
@@ -3132,18 +3135,16 @@ async def bulk_ingest_amc_configurations(
                 df.at[index, 'error'] = f'Unexpected error: {str(e)}'
                 logger.error(f"Error processing row {index}: {e}")
 
-        # Bulk create AMC configurations in chunks (same pattern as other bulk ingests)
+        # Bulk create AMC configurations in chunks
         if configs_to_create:
-            chunk_size = int(os.getenv("AMC_INGEST_CHUNK_SIZE", "50"))
+            chunk_size = int(os.getenv("AMC_INGEST_CHUNK_SIZE", "200"))
             chunk_size = max(1, chunk_size)
             n_cfgs = len(configs_to_create)
 
             def _process_amc_chunk(chunk_cfgs: List[dict], chunk_row_indexes: List) -> None:
                 try:
                     amc_client.create_amc_configurations_bulk(request_info_obj, chunk_cfgs)
-                    for row_idx in chunk_row_indexes:
-                        df.at[row_idx, 'status'] = 'success'
-                        df.at[row_idx, 'error'] = ''
+                    df.loc[chunk_row_indexes, ['status', 'error']] = ['success', '']
                 except Exception as exc:
                     logger.error(
                         "Bulk AMC create failed for %s rows: %s",
@@ -3152,9 +3153,7 @@ async def bulk_ingest_amc_configurations(
                         exc_info=True,
                     )
                     err = str(exc)
-                    for row_idx in chunk_row_indexes:
-                        df.at[row_idx, 'status'] = 'failed'
-                        df.at[row_idx, 'error'] = err
+                    df.loc[chunk_row_indexes, ['status', 'error']] = ['failed', err]
 
             for start in range(0, n_cfgs, chunk_size):
                 _process_amc_chunk(
