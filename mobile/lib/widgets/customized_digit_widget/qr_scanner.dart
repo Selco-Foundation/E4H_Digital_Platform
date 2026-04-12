@@ -6,7 +6,6 @@ import 'package:camera/camera.dart';
 import 'package:digit_scanner/blocs/scanner.dart';
 import 'package:digit_scanner/utils/extensions/extensions.dart';
 import 'package:digit_scanner/utils/i18_key_constants.dart' as i18;
-import 'package:digit_scanner/utils/scanner_utils.dart';
 import 'package:digit_scanner/widgets/localized.dart';
 import 'package:digit_scanner/widgets/vision_detector_views/detector_view.dart';
 import 'package:digit_ui_components/digit_components.dart';
@@ -24,6 +23,7 @@ import 'package:reactive_forms/reactive_forms.dart';
 
 import '../../utils/extensions.dart';
 import '../../utils/i18_key_constants.dart' as app_i18;
+import './scanner_utils.dart';
 
 @RoutePage()
 class DigitScannerPage extends LocalizedStatefulWidget {
@@ -484,8 +484,16 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
                             ),
                           );
 
-                          setState(() => manualCode = false);
-                          initializeCameras();
+                          DigitScannerUtils().buildDialog(
+                            context,
+                            localizations,
+                            _scanLimit,
+                            () {
+                              if (!mounted) return;
+                              setState(() => manualCode = false);
+                              initializeCameras();
+                            },
+                          );
                         },
                         type: DigitButtonType.primary,
                         size: DigitButtonSize.large,
@@ -644,8 +652,16 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
                             ),
                           );
 
-                          setState(() => manualCode = false);
-                          initializeCameras();
+                          DigitScannerUtils().buildDialog(
+                            context,
+                            localizations,
+                            _scanLimit,
+                            () {
+                              if (!mounted) return;
+                              setState(() => manualCode = false);
+                              initializeCameras();
+                            },
+                          );
                         },
                         type: DigitButtonType.primary,
                         size: DigitButtonSize.large,
