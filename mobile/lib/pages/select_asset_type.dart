@@ -8,20 +8,16 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/app_init/app_init.dart';
 import '../blocs/asset_type/asset_type.dart';
 import '../blocs/cache_asset_count/cache_asset_count.dart';
-import '../blocs/cache_specification/cache_specification.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
-import '../blocs/specification/specification.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
-import '../data/nosql/cache_specification.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_type/asset_type.dart';
 import '../model/mdms/mdms.dart';
-import '../model/solution_design_type/solution_design_type.dart';
-import '../model/system/system.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/stepper.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -53,78 +49,6 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
     });
   }
 
-  void _saveCacheSpecification() {
-    final initState = context.read<AppInitialization>().state;
-
-    final systemList = initState.maybeWhen<List<Mdms<SystemData>>>(
-      initialized: (_, __, ___, system, ____, _____, solutionDesign, ______) =>
-          system,
-      orElse: () => [],
-    );
-    final mdmsAssetTypes = initState.maybeWhen<List<Mdms<AssetTypeData>>>(
-      initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
-          ___,
-      orElse: () => [],
-    );
-
-    final solutionDesignList =
-        initState.maybeWhen<List<Mdms<SolutionDesignType>>>(
-      initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
-          solutionDesign,
-      orElse: () => const [],
-    );
-
-    final selectedSolutionDesignCode = project?.activityFacility.facility
-        ?.facilityDetails?.solar_solution_design_type;
-
-    final matchedSystemCode = solutionDesignList
-        .map((m) => m.data)
-        .firstWhereOrNull((sd) => sd.code == selectedSolutionDesignCode)
-        ?.systemCode;
-
-    final systemCode =
-        matchedSystemCode ?? systemList.first.data.system.lastOrNull?.code;
-    final systemName = systemList.first.data.system
-        .map((m) => m)
-        .firstWhereOrNull((sd) => sd.code == systemCode)
-        ?.name;
-
-    final assetTypeModel = mdmsAssetTypes.first.data.assetType
-        .map((m) => m)
-        .firstWhereOrNull(
-            (t) => t.code.toLowerCase() == selectedAssetType.toLowerCase());
-
-    final capField = assetTypeModel?.formFields.firstWhereOrNull(
-      (f) => f.key == 'total_capacity' && f.system == systemCode,
-    );
-    final uomField = assetTypeModel?.formFields.firstWhereOrNull(
-      (f) => f.key == 'total_capacity_uom' && f.system == systemCode,
-    );
-
-    final rawCapacity = capField?.options?.firstOrNull ?? '0';
-    final rawCapacityUom = uomField?.options?.firstOrNull ?? '';
-
-    final parsedCapacity = double.tryParse(rawCapacity) ?? 0.0;
-
-    final newSpec = CacheSpecification(
-      activityFacilityId: _currentActivityFacilityId!,
-      assetType: selectedAssetType.toLowerCase(),
-      system: systemCode!,
-      totalCapacity: parsedCapacity,
-      totalCapacityUnit: rawCapacityUom,
-    );
-
-    context
-        .read<CacheSpecificationBloc>()
-        .add(CacheSpecificationEvent.add(newSpec));
-
-    context.read<SpecificationBloc>().add(SpecificationEvent.save(
-          systemName: systemName!,
-          totalCapacity: parsedCapacity,
-          totalCapacityUom: rawCapacityUom,
-        ));
-  }
-
   CacheAssetCount? currentCacheEntryFor(
     BuildContext context, {
     required String activityFacilityId,
@@ -142,7 +66,12 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
   }
 
   void _handleNavigation(BuildContext context) {
-    _saveCacheSpecification();
+    saveCacheSpecification(
+      context,
+      activityFacilityId: _currentActivityFacilityId!,
+      project: project,
+      selectedAssetType: selectedAssetType,
+    );
     final isSupervisor = context.read<UserTypeBloc>().state.maybeWhen(
           supervisor: () => true,
           orElse: () => false,

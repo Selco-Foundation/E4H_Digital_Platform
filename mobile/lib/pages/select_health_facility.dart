@@ -24,8 +24,8 @@ import '../model/solution_design_type/solution_design_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
-import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/cards/report_detail_row.dart';
+import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
 class SelectHealthFacilityPage extends StatefulWidget {
@@ -102,7 +102,9 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
     context
         .read<SelectedActivityFacilityBloc>()
         .add(SelectedActivityFacilityEvent.select(project));
-    context.router.push(const AssetCountRoute());
+    // context.router.push(const AssetCountRoute());
+    context.router.push(OverallAssetSummaryRoute(
+        refresh: DateTime.now().millisecondsSinceEpoch));
   }
 
   double _fractionForProject(String projectId) {
@@ -484,8 +486,7 @@ class InstallationReportCard extends StatelessWidget {
                           onTap: () {
                             if (solutionDocsUrl.isNotEmpty) {
                               context.router.push(PdfViewerRoute(
-                                  path:
-                                      "$fileStoreFileUrl$solutionDocsUrl"));
+                                  path: "$fileStoreFileUrl$solutionDocsUrl"));
                             }
                           },
                           child: Text(
@@ -508,8 +509,7 @@ class InstallationReportCard extends StatelessWidget {
                 ),
                 ReportDetailRow(
                   label: 'District',
-                  value:
-                      _detailText(_displayValue(district), textTheme, theme),
+                  value: _detailText(_displayValue(district), textTheme, theme),
                 ),
                 ReportDetailRow(
                   label: 'Block',

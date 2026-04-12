@@ -8,7 +8,6 @@ import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
-import 'package:selco/utils/app_logger.dart';
 
 import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/activity_facility_bom/activity_facility_bom.dart';
@@ -32,6 +31,7 @@ import '../utils/sync_popup_guard.dart';
 import '../utils/utils.dart';
 import '../widgets/button/bom_buttons.dart';
 import '../widgets/button/footer_button.dart';
+import '../widgets/cards/dynamic_element_asset_summary.dart';
 import '../widgets/cards/element_asset_summary.dart';
 import '../widgets/customized_digit_widget/file_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -229,6 +229,28 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
 
     if (!mounted) return;
     setState(() => _system = sys);
+  }
+
+  void _handleAddDetailPress(String assetTypeCode) {
+    context
+        .read<AssetTypeBloc>()
+        .add(AssetTypeEvent.typeSelected(assetTypeCode));
+
+    saveCacheSpecification(
+      context,
+      activityFacilityId: _currentProjectId!,
+      project: projectWorkflow,
+      selectedAssetType: assetTypeCode,
+    );
+
+    final isSupervisor = context.read<UserTypeBloc>().state.maybeWhen(
+          supervisor: () => true,
+          orElse: () => false,
+        );
+
+    isSupervisor
+        ? context.router.push(const SpecificationRoute())
+        : context.router.push(const AssetTypeDetailRoute());
   }
 
   @override
@@ -632,11 +654,19 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                           loaded: (int batteryCount,
                                               int inverterCount,
                                               int panelCount) {
+                                            final fromNewOrReport =
+                                                isNewReport || isInboxReport;
                                             return DigitCard(
                                               children: [
-                                                ElementAssetSummary(
+                                                DynamicElementAssetSummary(
+                                                  isInitial: fromNewOrReport,
+                                                  assetTypeCode: 'battery',
                                                   count: batteryCount,
                                                   text: 'Batteries',
+                                                  onAddDetailPress: () {
+                                                    _handleAddDetailPress(
+                                                        "BATTERY");
+                                                  },
                                                   onPress: () {
                                                     context
                                                         .read<AssetTypeBloc>()
@@ -648,9 +678,15 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                         const AssetSummaryRoute());
                                                   },
                                                 ),
-                                                ElementAssetSummary(
+                                                DynamicElementAssetSummary(
+                                                  isInitial: fromNewOrReport,
+                                                  assetTypeCode: 'inverter',
                                                   count: inverterCount,
                                                   text: 'Inverters',
+                                                  onAddDetailPress: () {
+                                                    _handleAddDetailPress(
+                                                        "INVERTER");
+                                                  },
                                                   onPress: () {
                                                     context
                                                         .read<AssetTypeBloc>()
@@ -664,10 +700,16 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 ),
                                                 reportState.maybeWhen(
                                                   submitted: () =>
-                                                      ElementAssetSummary(
+                                                      DynamicElementAssetSummary(
+                                                    isInitial: fromNewOrReport,
+                                                    assetTypeCode: 'panel',
                                                     lastCard: true,
                                                     count: panelCount,
                                                     text: 'Panels',
+                                                    onAddDetailPress: () {
+                                                      _handleAddDetailPress(
+                                                          "PANEL");
+                                                    },
                                                     onPress: () {
                                                       context
                                                           .read<AssetTypeBloc>()
@@ -681,9 +723,18 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                   ),
                                                   orElse: () => Column(
                                                     children: [
-                                                      ElementAssetSummary(
+                                                      DynamicElementAssetSummary(
+                                                        assetTypeCode: 'panel',
+                                                        lastCard:
+                                                            fromNewOrReport,
+                                                        isInitial:
+                                                            fromNewOrReport,
                                                         count: panelCount,
                                                         text: 'Panels',
+                                                        onAddDetailPress: () {
+                                                          _handleAddDetailPress(
+                                                              "PANEL");
+                                                        },
                                                         onPress: () {
                                                           context
                                                               .read<
@@ -695,22 +746,23 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                               const AssetSummaryRoute());
                                                         },
                                                       ),
-                                                      DigitButton(
-                                                        mainAxisSize:
-                                                            MainAxisSize.max,
-                                                        label:
-                                                            'Add More Assets',
-                                                        prefixIcon:
-                                                            Icons.add_box,
-                                                        onPressed: () {
-                                                          context.router.push(
-                                                              const SelectAssetTypeRoute());
-                                                        },
-                                                        type: DigitButtonType
-                                                            .primary,
-                                                        size: DigitButtonSize
-                                                            .medium,
-                                                      )
+                                                      if (!fromNewOrReport)
+                                                        DigitButton(
+                                                          mainAxisSize:
+                                                              MainAxisSize.max,
+                                                          label:
+                                                              'Add More Assets',
+                                                          prefixIcon:
+                                                              Icons.add_box,
+                                                          onPressed: () {
+                                                            context.router.push(
+                                                                const SelectAssetTypeRoute());
+                                                          },
+                                                          type: DigitButtonType
+                                                              .primary,
+                                                          size: DigitButtonSize
+                                                              .medium,
+                                                        )
                                                     ],
                                                   ),
                                                 ),

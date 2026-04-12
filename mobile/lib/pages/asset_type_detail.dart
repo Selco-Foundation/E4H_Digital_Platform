@@ -13,6 +13,7 @@ import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_type/asset_type.dart';
 import '../model/mdms/mdms.dart';
 import '../model/warranty/warranty.dart';
@@ -34,6 +35,7 @@ class AssetTypeDetailPage extends StatefulWidget {
 
 class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
   String? _currentProjectId;
+  ActivityFacilityWorkflow? projectWorkflow;
   String assetTypeTitle = "";
   late List<Warranty> assetWarranties = [];
   final List<Mdms<AssetType>> assetTypeList = [];
@@ -68,6 +70,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
 
     final selState = context.read<SelectedActivityFacilityBloc>().state;
     selState.whenOrNull(selected: (project) {
+      projectWorkflow = project;
       _currentProjectId = project.activityFacility.id;
 
       final ad = project.activityFacility.additionalDetails;
@@ -190,6 +193,12 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                           context
                               .read<CacheAssetDetailBloc>()
                               .add(CacheAssetDetailEvent.add(newDetail));
+                          saveCacheSpecification(
+                            context,
+                            activityFacilityId: _currentProjectId!,
+                            project: projectWorkflow,
+                            selectedAssetType: assetTypeTitle,
+                          );
                           context.router.push(const AddNewAssetRoute());
                         },
                       ),
