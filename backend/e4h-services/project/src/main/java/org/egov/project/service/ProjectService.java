@@ -73,9 +73,6 @@ public class ProjectService {
     BoundaryV2Util boundaryV2Util;
 
     @Autowired
-    BoundaryV2Util boundaryV2Util;
-
-    @Autowired
     public ProjectService(
             ProjectRepository projectRepository,
             ProjectValidator projectValidator, ProjectEnrichment projectEnrichment, ProjectConfiguration projectConfiguration, Producer producer, ProjectServiceUtil projectServiceUtil, ProjectWorkflowService workflowService, @Lazy ProjectFacilityService projectFacilityService, JdbcTemplate jdbcTemplate, ServiceRequestRepository serviceRequestRepository, @Qualifier("objectMapper") ObjectMapper mapper, ProjectNameGenerationService projectNameGenerationService) {
@@ -418,7 +415,7 @@ public class ProjectService {
                 // Search for ProjectFacility entities linked to this project
                 SearchResponse<ProjectFacility> searchResponse = projectFacilityService.search(
                         projectFacilitySearchRequest,
-                        1000,
+                        10000,
                         0,
                         project.getTenantId(),
                         null,
