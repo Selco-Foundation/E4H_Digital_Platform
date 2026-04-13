@@ -126,6 +126,27 @@ public class FacilityV2ApiController {
         return ResponseEntity.ok(new FacilitySearchResponse(facilities, totalCount));
     }
 
+    /**
+     * Same request/response as {@code POST /_bulk-search}, but resolves boundary hierarchy only for
+     * {@code boundary_code} values on returned rows (batched boundary v2 calls) instead of loading the full tree.
+     */
+    @PostMapping("/_bulk-search-with-boundary")
+    public ResponseEntity<FacilitySearchResponse> bulkSearchFacilitiesWithAddressAndBoundary(
+            @RequestBody FacilityBulkSearchRequest searchRequest
+    ) {
+        log.trace("Entering bulkSearchFacilitiesWithAddressAndBoundary endpoint");
+        FacilityBulkSearchCriteria criteria = searchRequest.getFacilityBulkSearchCriteria();
+        int criteriaCount = criteria != null
+                ? (criteria.getTenantIds() != null ? criteria.getTenantIds().size() : 0)
+                : 0;
+        log.info("Received bulk facility search (with boundary batch) request with {} tenant criteria", criteriaCount);
+        List<Facility> facilities = facilityService.bulkSearchFacilitiesWithAddressAndBoundary(searchRequest);
+        int totalCount = facilityService.countFacilitiesForBulkSearch(searchRequest);
+        log.info("Bulk search (with boundary batch) completed: found {} facilities out of {} total", facilities.size(), totalCount);
+        log.trace("Exiting bulkSearchFacilitiesWithAddressAndBoundary endpoint");
+        return ResponseEntity.ok(new FacilitySearchResponse(facilities, totalCount));
+    }
+
     @GetMapping("/migrate_data")
     public ResponseEntity<String> migrateFacilityDB() {
         facilityService.migrateFacilityData();
