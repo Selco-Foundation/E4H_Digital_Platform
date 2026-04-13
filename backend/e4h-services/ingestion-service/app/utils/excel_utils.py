@@ -340,8 +340,9 @@ def autofit_columns(
     else:
         max_row = ws.max_row
 
-    # Iterate directly over worksheet cells to avoid the overhead of
-    # re-reading the file with pandas for each autofit call.
+    # One pass per column: width + wrap together (faster on large sheets than two full scans).
+    wrap_alignment = Alignment(wrap_text=True) if enable_wrap_text else None
+
     for i, col in enumerate(ws.iter_cols(min_row=1, max_row=max_row), start=1):
         col_letter = get_column_letter(i)
 
@@ -353,6 +354,8 @@ def autofit_columns(
                     text = str(value)
                     if len(text) > max_length:
                         max_length = len(text)
+                if wrap_alignment is not None:
+                    cell.alignment = wrap_alignment
 
             if max_length == 0:
                 max_length = default_width
@@ -360,10 +363,9 @@ def autofit_columns(
             ws.column_dimensions[col_letter].width = min(max_length + 2, max_width)
         else:
             ws.column_dimensions[col_letter].width = default_width
-
-        if enable_wrap_text:
-            for cell in col:
-                cell.alignment = Alignment(wrap_text=True)
+            if wrap_alignment is not None:
+                for cell in col:
+                    cell.alignment = wrap_alignment
 
     wb.save(file_path)
 
