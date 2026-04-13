@@ -30,17 +30,7 @@ class InstallationImagesBloc
     emit(const InstallationImagesState.loading());
 
     try {
-      final remoteItems = await _repository.fetchMdms();
-      final activeItems = remoteItems.where((item) => item.active).toList();
-      if (activeItems.isNotEmpty) {
-        emit(InstallationImagesState.loaded(activeItems));
-        return;
-      }
-    } catch (_) {}
-
-    try {
-      final cachedItems = await _repository.fetchMdms(cacheOnly: true);
-      final activeItems = cachedItems.where((item) => item.active).toList();
+      final activeItems = await _repository.fetchMdms();
       if (activeItems.isNotEmpty) {
         emit(InstallationImagesState.loaded(activeItems));
         return;

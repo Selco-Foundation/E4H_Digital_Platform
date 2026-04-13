@@ -183,6 +183,16 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         ),
         cacheOnly: cacheOnly,
       ),
+      appInitRepo.searchInstallationImages(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "common-masters.InstallationImages",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      ),
     ]);
   }
 

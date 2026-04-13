@@ -20,17 +20,50 @@ class InstallationImagesRepository {
 
   Future<List<InstallationImageItem>> fetchMdms(
       {bool cacheOnly = false}) async {
-    final docs = await _appInitRepo.searchInstallationImages(
-      MdmsRequestModel(
-        mdmsCriteria: MdmsCriteriaModel(
-          tenantId: envConfig.variables.tenantId,
-          schemaCode: schemaCode,
-          moduleDetails: [],
-        ),
-      ),
-      cacheOnly: cacheOnly,
-    );
+    List<Mdms<InstallationImagesData>> docs;
 
+    if (cacheOnly) {
+      docs = await _appInitRepo.searchInstallationImages(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: envConfig.variables.tenantId,
+            schemaCode: schemaCode,
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: true,
+      );
+    } else {
+      try {
+        docs = await _appInitRepo.searchInstallationImages(
+          MdmsRequestModel(
+            mdmsCriteria: MdmsCriteriaModel(
+              tenantId: envConfig.variables.tenantId,
+              schemaCode: schemaCode,
+              moduleDetails: [],
+            ),
+          ),
+          useCacheRead: true,
+        );
+      } catch (_) {
+        docs = await _appInitRepo.searchInstallationImages(
+          MdmsRequestModel(
+            mdmsCriteria: MdmsCriteriaModel(
+              tenantId: envConfig.variables.tenantId,
+              schemaCode: schemaCode,
+              moduleDetails: [],
+            ),
+          ),
+        );
+      }
+    }
+
+    return _mapActiveDocItems(docs);
+  }
+
+  List<InstallationImageItem> _mapActiveDocItems(
+    List<Mdms<InstallationImagesData>> docs,
+  ) {
     Mdms<InstallationImagesData>? activeDoc;
     for (final doc in docs) {
       if (doc.isActive) {
