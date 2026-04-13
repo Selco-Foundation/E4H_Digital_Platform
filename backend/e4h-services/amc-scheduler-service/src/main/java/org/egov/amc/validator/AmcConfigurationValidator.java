@@ -27,6 +27,8 @@ import java.util.*;
 @Slf4j
 public class AmcConfigurationValidator {
 
+    private static final int FACILITY_BULK_VALIDATE_CHUNK_SIZE = 500;
+
     @Autowired
     private final ServiceRequestClient serviceRequestRepository;
 
@@ -80,9 +82,8 @@ public class AmcConfigurationValidator {
         }
 
         log.debug("Validating {} AMC configuration(s)", request.getAmcConfigurations().size());
-        // One project/facility lookup per distinct id per request (bulk ingest reused the same project many times).
         Map<String, Project> projectByTenantAndId = new HashMap<>();
-        Map<String, Facility> facilityById = new HashMap<>();
+        Map<String, Facility> prefetchedFacilities = prefetchFacilitiesForValidate(request.getRequestInfo(), request.getAmcConfigurations());
 
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             if (amcConfiguration == null) {
@@ -113,7 +114,7 @@ public class AmcConfigurationValidator {
                 throw new CustomException("AMC Configuration", "Facility ID is mandatory");
             }
             log.debug("Validating facility ID: {}", amcConfiguration.getFacilityId());
-            Facility existingFacility = facilityById.computeIfAbsent(amcConfiguration.getFacilityId(), this::getFacilityById);
+            Facility existingFacility = prefetchedFacilities.get(amcConfiguration.getFacilityId());
             if (existingFacility == null) {
                 log.error("Facility ID {} does not exist", amcConfiguration.getFacilityId());
                 throw new CustomException("AMC Configuration", "Facility ID do not exist");
@@ -237,6 +238,64 @@ public class AmcConfigurationValidator {
         }
         log.debug("Facility not found for facilityId: {}", facilityId);
         return null;
+    }
+
+    // Facility validation: chunked POST _bulk-search (not per-row GET).
+    private Map<String, Facility> prefetchFacilitiesForValidate(RequestInfo requestInfo, List<AmcConfiguration> configurations) {
+        LinkedHashSet<String> facilityIds = new LinkedHashSet<>();
+        LinkedHashSet<String> tenantIds = new LinkedHashSet<>();
+        for (AmcConfiguration ac : configurations) {
+            if (ac == null) {
+                continue;
+            }
+            if (StringUtils.isNotBlank(ac.getFacilityId())) {
+                facilityIds.add(ac.getFacilityId().trim());
+            }
+            if (StringUtils.isNotBlank(ac.getTenantId())) {
+                tenantIds.add(ac.getTenantId().trim());
+            }
+        }
+        if (facilityIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        List<String> tenantList = new ArrayList<>(tenantIds);
+        if (tenantList.isEmpty()) {
+            tenantList = List.of("in");
+        }
+        Map<String, Facility> byFacilityId = new HashMap<>();
+        List<String> idList = new ArrayList<>(facilityIds);
+        for (int i = 0; i < idList.size(); i += FACILITY_BULK_VALIDATE_CHUNK_SIZE) {
+            int end = Math.min(i + FACILITY_BULK_VALIDATE_CHUNK_SIZE, idList.size());
+            List<String> chunk = new ArrayList<>(idList.subList(i, end));
+            mergeFacilitiesFromBulkSearch(byFacilityId, requestInfo, tenantList, chunk);
+        }
+        log.debug("Prefetched {} facility record(s) for {} distinct facility id(s)", byFacilityId.size(), facilityIds.size());
+        return byFacilityId;
+    }
+
+    private void mergeFacilitiesFromBulkSearch(
+            Map<String, Facility> sink,
+            RequestInfo requestInfo,
+            List<String> tenantIds,
+            List<String> facilityIdsChunk) {
+        String url = config.getFacilityServiceHost() + config.getFacilityBulkSearchPath();
+        FacilityBulkSearchCriteria facilityCriteria =
+                FacilityBulkSearchCriteria.forTenantAndFacilityIds(tenantIds, facilityIdsChunk);
+        FacilityBulkSearchApiRequest body = FacilityBulkSearchApiRequest.builder()
+                .requestInfo(requestInfo)
+                .facility(facilityCriteria)
+                .build();
+        log.debug("Calling facility bulk search at URL: {}, facility id count: {}", url, facilityIdsChunk.size());
+        Object response = requestRepository.fetchResult(new StringBuilder(url), body);
+        FacilitySearchResponse parsed = mapper.convertValue(response, FacilitySearchResponse.class);
+        if (parsed == null || parsed.getFacilities() == null) {
+            return;
+        }
+        for (Facility f : parsed.getFacilities()) {
+            if (f.getFacilityId() != null) {
+                sink.put(f.getFacilityId(), f);
+            }
+        }
     }
 
     public void isAmcConfigurationWithinProject(Project project, AmcConfiguration amcConfiguration, Map<String, String> errorMap) {
