@@ -21,7 +21,6 @@ import java.util.Base64;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -74,11 +73,13 @@ public class FacilityKibanaMapper {
         FacilityKibanaIndex.FacilityKibanaIndexBuilder builder = FacilityKibanaIndex.builder()
                 .facilityId(facility.getFacilityId())
                 .name(facility.getFacilityName())
-                .phcName(new HashMap<>()) // Empty map to satisfy ES object type requirement
+                // Match existing index docs: null when unknown (not an empty object)
+                .phcName(null)
                 .phcType(facility.getFacilityType())
                 .tenantId(facility.getTenantId())
-                .tenantIdLocalized(facility.getTenantId())
-                .code(facility.getBoundaryCode())
+                // Used downstream as the health facility display name (see im-services-analytics)
+                .tenantIdLocalized(resolveTenantIdLocalized(facility))
+                .code(resolveFacilityCodeForIndex(facility))
                 .type(facility.getFacilityType())
                 .isLive(facility.getIsActive())
                 .synced(false)
@@ -95,25 +96,17 @@ public class FacilityKibanaMapper {
             builder.geoPoint(geoPoint);
         }
 
-        // Set solar panel status from additionalDetails if available
+        // Keep index behavior deterministic: default to FUNCTIONAL unless explicitly provided.
+        String solarPanelStatus = "FUNCTIONAL";
         if (facility.getAdditionalDetails() != null) {
             Object solarStatus = facility.getAdditionalDetails().get("solarPanelStatus");
-            if (solarStatus != null) {
-                builder.solarPanelStatus(solarStatus.toString());
+            if (solarStatus != null && !solarStatus.toString().isBlank()) {
+                solarPanelStatus = solarStatus.toString();
             }
         }
+        builder.solarPanelStatus(solarPanelStatus);
 
-        // Set vendor information from additionalDetails if available
-        if (facility.getAdditionalDetails() != null) {
-            Object vendorUserName = facility.getAdditionalDetails().get("mappedVendorUserName");
-            Object vendorName = facility.getAdditionalDetails().get("mappedVendorName");
-            if (vendorUserName != null) {
-                builder.mappedVendorUserName(vendorUserName.toString());
-            }
-            if (vendorName != null) {
-                builder.mappedVendorName(vendorName.toString());
-            }
-        }
+        applyMappedVendorFields(facility, builder);
 
         // Fetch boundary hierarchy and extract codes
         BoundaryCodes boundaryCodes = fetchBoundaryHierarchy(facility, requestInfo);
@@ -128,9 +121,10 @@ public class FacilityKibanaMapper {
             districtCode = boundaryCodes.getDistrictCode();
             stateCode = boundaryCodes.getStateCode();
             countryCode = boundaryCodes.getCountryCode();
-            builder.block(blockCode)
-                   .district(districtCode)
-                   .state(stateCode);
+            // Top-level state/district/block are human-readable labels (not full hierarchy codes)
+            builder.block(boundaryHierarchyCodeToDisplayLabel(blockCode))
+                   .district(boundaryHierarchyCodeToDisplayLabel(districtCode))
+                   .state(boundaryHierarchyCodeToDisplayLabel(stateCode));
         }
         
         // Build boundary info from fetched hierarchy (use extracted values)
@@ -154,6 +148,93 @@ public class FacilityKibanaMapper {
             log.warn("Boundary is null in FacilityKibanaIndex for facility {}", facility.getFacilityId());
         }
         return result;
+    }
+
+    /**
+     * Prefer HFR / official facility code for the index {@code code} field; fall back to boundary code.
+     */
+    private static String resolveTenantIdLocalized(Facility facility) {
+        String name = facility.getFacilityName();
+        if (name != null && !name.isBlank()) {
+            return name;
+        }
+        return facility.getTenantId();
+    }
+
+    private static String resolveFacilityCodeForIndex(Facility facility) {
+//        HealthFacilityDetails details = facility.getFacilityDetails();
+        String hfr = facility != null ? facility.getHfrId() : null;
+        if (hfr == null || hfr.isBlank()) {
+            hfr = facility.getHfrId();
+        }
+        if (hfr != null && !hfr.isBlank()) {
+            return hfr;
+        }
+        return facility.getBoundaryCode();
+    }
+
+    /**
+     * The boundary relationship API returns hierarchical codes (e.g. {@code India_Nagaland_Zunheboto}).
+     * Indexed documents expect the display fragment (e.g. Nagaland, Zunheboto) like legacy rows.
+     */
+    private static String boundaryHierarchyCodeToDisplayLabel(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return null;
+        }
+        int i = boundaryCode.lastIndexOf('_');
+        if (i < 0) {
+            return boundaryCode;
+        }
+        return boundaryCode.substring(i + 1);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void applyMappedVendorFields(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+        Map<String, Object> ad = facility.getAdditionalDetails();
+        if (ad == null || ad.isEmpty()) {
+            return;
+        }
+        String user = firstNonBlankString(
+                ad.get("mappedVendorUserName"),
+                ad.get("mapped_vendor_user_name"),
+                ad.get("mappedVendorUsername"));
+        String name = firstNonBlankString(
+                ad.get("mappedVendorName"),
+                ad.get("mapped_vendor_name"));
+        if (user == null || name == null) {
+            Object nested = ad.get("vendor");
+            if (nested instanceof Map) {
+                Map<String, Object> v = (Map<String, Object>) nested;
+                if (user == null) {
+                    user = firstNonBlankString(v.get("userName"), v.get("mappedVendorUserName"), v.get("username"));
+                }
+                if (name == null) {
+                    name = firstNonBlankString(v.get("name"), v.get("vendorName"));
+                }
+            }
+        }
+        if (user != null) {
+            builder.mappedVendorUserName(user);
+        }
+        if (name != null) {
+            builder.mappedVendorName(name);
+        }
+    }
+
+    private static String firstNonBlankString(Object... values) {
+        if (values == null) {
+            return null;
+        }
+        for (Object o : values) {
+            if (o == null) {
+                continue;
+            }
+            String s = o.toString();
+            if (!s.isBlank()) {
+                return s;
+            }
+        }
+        return null;
     }
 
     /**
