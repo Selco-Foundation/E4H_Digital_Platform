@@ -207,23 +207,30 @@ public class OrganisationUserServiceValidator {
             log.debug("validateUserOrgCreation: eg_org_user search by userId uuids={}, tenantId={}", uuids, orgUser.getTenantId());
             OrgUserSearchCriteria searchUserCriteria = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
             OrgUserSearchRequest orgUserSearchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria).build();
-            URLParams urlParams = URLParams.builder().limit(100).offset(0).build();
+            URLParams urlParams = URLParams.builder().limit(100).offset(0).includeDeleted(true).build();
             List<OrgUser> users = userRepository.getOrgUsers(orgUserSearchRequest, urlParams);
             int orgUserRowCount = users == null ? 0 : users.size();
             log.info("validateUserOrgCreation: eg_org_user rows for these userIds count={}", orgUserRowCount);
             if (orgUserRowCount > 0 && users != null) {
-                users.forEach(u -> log.debug("validateUserOrgCreation: eg_org_user row id={}, organizationId={}", u.getId(), u.getOrganizationId()));
+                users.forEach(u -> log.debug("validateUserOrgCreation: eg_org_user row id={}, organizationId={}, isDeleted={}",
+                        u.getId(), u.getOrganizationId(), u.getIsDeleted()));
             }
-            if(users != null && !users.isEmpty()){
+            boolean linkOnlyExistingHrmsUser = false;
+            if (users != null && !users.isEmpty()) {
                 OrgUser sameOrgUser = users.stream()
                         .filter(u -> request.getOrganizationId().equals(u.getOrganizationId()))
                         .findFirst()
                         .orElse(null);
 
                 if (sameOrgUser != null) {
+                    boolean reactivatingSoftDeleted = Boolean.TRUE.equals(sameOrgUser.getIsDeleted());
                     log.info("User with phone {} already exists in org {}, updating existing user",
                             orgUser.getMobileNumber(), request.getOrganizationId());
-                    log.info("validateUserOrgCreation: branch SAME_ORG_UPDATE eg_org_user id={}", sameOrgUser.getId());
+                    log.info("validateUserOrgCreation: branch SAME_ORG_UPDATE eg_org_user id={}, isDeleted={}",
+                            sameOrgUser.getId(), sameOrgUser.getIsDeleted());
+                    if (reactivatingSoftDeleted) {
+                        log.info("validateUserOrgCreation: reactivating soft-deleted org user link; applying full HRMS update and isDeleted=false on persist");
+                    }
                     Employee existingEmployee = employee.get(0);
                     Organisation organisation = organisations.get(0);
                     String orgType = organisation.getOrgType();
@@ -242,6 +249,11 @@ public class OrganisationUserServiceValidator {
                     existingEmployee.getUser().setName(orgUser.getName());
                     existingEmployee.getUser().setEmailId(orgUser.getEmailId());
                     existingEmployee.getUser().setRoles(orgUser.getRoles());
+                    if (orgUser.getActive() != null) {
+                        existingEmployee.getUser().setActive(orgUser.getActive());
+                    } else if (reactivatingSoftDeleted) {
+                        existingEmployee.getUser().setActive(true);
+                    }
 
                     long now = System.currentTimeMillis();
                     List<Assignment> previousAssignments = existingEmployee.getAssignments();
@@ -278,16 +290,26 @@ public class OrganisationUserServiceValidator {
                     request.setUser(updated.getUser());
                     request.setUserId(updated.getUser().getUuid());
                     request.setId(sameOrgUser.getId());
+                    request.setIsDeleted(false);
                     log.info("Successfully updated existing HRMS user {} in org {}",
                             updated.getUser().getUuid(), request.getOrganizationId());
                 } else {
-                    log.error("validateUserOrgCreation: branch OTHER_ORG — user linked to different organization than request organizationId={}",
-                            request.getOrganizationId());
-                    log.error("This user already belong to another org");
-                    throw new CustomException("Organization", "This user already belong to another org");
+                    boolean hasActiveOtherOrgLink = users.stream()
+                            .filter(u -> !request.getOrganizationId().equals(u.getOrganizationId()))
+                            .anyMatch(u -> !Boolean.TRUE.equals(u.getIsDeleted()));
+                    if (hasActiveOtherOrgLink) {
+                        log.error("validateUserOrgCreation: branch OTHER_ORG — user has active eg_org_user link to a different organization than request organizationId={}",
+                                request.getOrganizationId());
+                        log.error("This user already belong to another org");
+                        throw new CustomException("Organization", "This user already belong to another org");
+                    }
+                    log.info("validateUserOrgCreation: no same-org row (or only soft-deleted other-org links); using LINK_ONLY HRMS copy");
+                    linkOnlyExistingHrmsUser = true;
                 }
+            } else {
+                linkOnlyExistingHrmsUser = true;
             }
-            else{
+            if (linkOnlyExistingHrmsUser) {
                 log.info("validateUserOrgCreation: branch LINK_ONLY — HRMS user exists but no eg_org_user rows; setting userId from HRMS without update");
                 request.setUser(employee.get(0).getUser());
                 request.setUserId(employee.get(0).getUser().getUuid());
