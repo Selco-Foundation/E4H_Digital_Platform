@@ -240,6 +240,44 @@ class ProjectServiceClient:
             print(f"An error occurred: {req_err}")
             raise req_err
 
+    def create_project_facility_bulk(self, request_info: RequestInfo, project_id: str, facility_ids: list[str]):
+        url = f"{self.project_service_url}/project/facility/v1/bulk/_create"
+        headers = {
+            "Content-Type": "application/json"
+        }
+
+        payload = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "ProjectFacilities": [
+                {
+                    "facilityId": facility_id,
+                    "projectId": project_id,
+                    "isDeleted": False,
+                    "tenantId": "in"
+                }
+                for facility_id in facility_ids
+            ]
+        }
+        logger.trace(f"Bulk creating project facilities: project_id={project_id}, count={len(facility_ids)}")
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            logger.info(f"Project facilities bulk create accepted: project_id={project_id}, count={len(facility_ids)}")
+            logger.debug(f"Bulk create response status: {response.status_code}")
+            return response
+
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error bulk creating project facilities: {http_err}", exc_info=True)
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error bulk creating project facilities: {conn_err}", exc_info=True)
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error bulk creating project facilities: {timeout_err}", exc_info=True)
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error bulk creating project facilities: {req_err}", exc_info=True)
+            raise req_err
+
     def search_project(self, request_info: RequestInfo, project_id: str):
         url = f"{self.project_service_url}/project/v2/_search"
         headers = {

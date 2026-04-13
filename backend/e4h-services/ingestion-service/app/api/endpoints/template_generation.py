@@ -103,7 +103,7 @@ async def get_facility_ingestion_template_with_data(
             boundary_codes = [b.code for b in unique_boundary_list if b.code]
             try:
                 if boundary_codes:
-                    bulk_result = facility_client.bulk_search_facility(
+                    bulk_result = facility_client.bulk_search_facility_with_boundary(
                         request_info=request_info,
                         tenant_ids=["in"],
                         boundary_codes=boundary_codes,
@@ -323,33 +323,24 @@ async def get_facility_ingestion_template_with_data(
         logger.info(f"Found {len(project_linked_facility_ids)} facilities currently linked to project {project_id}")
 
         all_facilities = []
-        valid_boundary_codes = {boundary.code for boundary in boundary_list}
-        facility_client = None
-
-        # OPTIMIZATION: Reduce calls while keeping original logic
-        # Original code did: for each boundary, for each facilityId -> search(facilityId, boundaryCode)
-        # New approach: for each boundary, fetch all facilities by boundaryCode once,
-        # then intersect in memory with project_linked_facility_ids.
-        if facility_service_url and boundary_list:
-            facility_client = FacilityServiceClient(facility_service_url)
-            seen_facility_ids = set()
-
-            logger.info(f"Fetching facilities by boundary and intersecting with {len(project_linked_facility_ids)} project-linked facilities")
-            for boundary in boundary_list:
-                try:
-                    results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                    facilities = results.get('facilities', []) or []
-                    logger.debug(f"Found {len(facilities)} facilities for boundary {boundary.code}")
-
-                    for facility in facilities:
-                        facility_id = facility.get('facility_id')
-                        if facility_id and facility_id in project_linked_facility_ids and facility_id not in seen_facility_ids:
-                            all_facilities.append(facility)
-                            seen_facility_ids.add(facility_id)
-                except Exception as e:
-                    logger.error(f"Error fetching facilities for boundary {boundary.code}: {e}", exc_info=True)
-
-            logger.info(f"Total facilities after boundary + project intersection: {len(all_facilities)}")
+        facility_client = FacilityServiceClient(facility_service_url) if facility_service_url else None
+        if facility_client and project_linked_facility_ids and boundary_list:
+            boundary_codes = [b.code for b in boundary_list if b.code]
+            try:
+                boundary_bulk_result = facility_client.bulk_search_facility_with_boundary(
+                    request_info=request_info,
+                    tenant_ids=["in"],
+                    boundary_codes=boundary_codes,
+                    limit=max(len(boundary_codes) * 50, 50),
+                    send_non_paginated_response=True,
+                )
+                boundary_facilities = boundary_bulk_result.get("facilities", []) or []
+                all_facilities = [
+                    f for f in boundary_facilities
+                    if f.get("facility_id") in project_linked_facility_ids
+                ]
+            except Exception as e:
+                logger.error(f"Error fetching boundary facilities in bulk: {e}", exc_info=True)
 
         # Fetch fieldplan-linked facilities if fieldplan_id is provided
         fieldplan_linked_facility_ids = set()
@@ -364,38 +355,20 @@ async def get_facility_ingestion_template_with_data(
                 logger.info(
                     f"Found {len(fieldplan_linked_facility_ids)} facilities linked to fieldplan {fieldplan_id}")
 
-                # OPTIMIZATION: Fetch fieldplan facility data concurrently instead of sequentially
-                if not facility_client and facility_service_url:
-                    facility_client = FacilityServiceClient(facility_service_url)
+                # Fetch all fieldplan-linked facility details in one bulk call
                 if facility_client and fieldplan_linked_facility_ids:
-                    fieldplan_facility_id_list = list(fieldplan_linked_facility_ids)
-                    
-                    def fetch_fieldplan_facility(facility_id):
-                        """Fetch a single fieldplan facility"""
-                        try:
-                            facility_data = facility_client.search_facility(tenant_id='in', facility_id=facility_id)
-                            if facility_data and facility_data.get('facilities'):
-                                return facility_data.get('facilities', [])
-                        except Exception as e:
-                            logger.error(f"Error fetching fieldplan facility {facility_id}: {e}")
-                        return []
-                    
-                    # Fetch fieldplan facilities concurrently
-                    logger.info(f"Fetching {len(fieldplan_facility_id_list)} fieldplan facilities concurrently")
-                    with ThreadPoolExecutor(max_workers=10) as executor:
-                        future_to_facility_id = {
-                            executor.submit(fetch_fieldplan_facility, facility_id): facility_id
-                            for facility_id in fieldplan_facility_id_list
-                        }
-                        for future in as_completed(future_to_facility_id):
-                            facility_id = future_to_facility_id[future]
-                            try:
-                                facilities = future.result(timeout=30)
-                                fieldplan_facilities_data.extend(facilities)
-                            except Exception as e:
-                                logger.error(f"Error processing fieldplan facility {facility_id}: {e}", exc_info=True)
-                    
-                    logger.info(f"Fetched {len(fieldplan_facilities_data)} fieldplan facility records")
+                    facility_ids = list(fieldplan_linked_facility_ids)
+                    try:
+                        facilities_bulk_result = facility_client.bulk_search_facility(
+                            request_info=request_info,
+                            tenant_ids=["in"],
+                            facility_ids=facility_ids,
+                            limit=max(len(facility_ids), 50),
+                            send_non_paginated_response=True,
+                        )
+                        fieldplan_facilities_data.extend(facilities_bulk_result.get("facilities", []) or [])
+                    except Exception as e:
+                        logger.error(f"Error bulk fetching fieldplan facilities: {e}")
 
             except Exception as e:
                 logger.error(f"Error fetching fieldplan facilities: {e}")
@@ -404,76 +377,58 @@ async def get_facility_ingestion_template_with_data(
         # Combine boundary facilities with fieldplan facilities (avoid duplicates)
         # Only include fieldplan facilities that belong to the current boundary codes
         existing_facility_ids = {f.get('facility_id') for f in all_facilities}
-        
-        # OPTIMIZATION: Create a lookup map for fieldplan facilities to avoid repeated searches
-        fieldplan_facility_map = {pf.get("facilityId"): pf for pf in fieldplan_facilities if pf.get("facilityId")}
-        
-        facilities_to_unlink = []
-        added_count = 0
-        skipped_count = 0
+        valid_boundary_codes = {boundary.code for boundary in boundary_list}
 
         for pf_facility in fieldplan_facilities_data:
             facility_id = pf_facility.get('facility_id')
             facility_boundary_code = pf_facility.get('boundary_code') or pf_facility.get('boundaryCode')
 
             # Only add if not already present and belongs to current boundary codes
-            if (facility_id not in existing_facility_ids and 
-                facility_id in project_linked_facility_ids and 
-                facility_boundary_code in valid_boundary_codes):
+            if (facility_id not in existing_facility_ids and facility_id in project_linked_facility_ids and facility_boundary_code in valid_boundary_codes):
                 all_facilities.append(pf_facility)
-                existing_facility_ids.add(facility_id)  # Update set for next iteration
-                added_count += 1
-            elif facility_id not in project_linked_facility_ids:
-                # In case the facility is no longer mapped to project, mark for unlinking
-                facilities_to_unlink.append(facility_id)
+                logger.info(
+                    f"Added fieldplan facility {facility_id} to template (boundary: {facility_boundary_code})")
+            elif (facility_id not in project_linked_facility_ids): # In case the facility is no longer mapped to project, so unlink the facility
+                fieldPlan_facility_data = next(
+                    (pf for pf in fieldplan_facilities if pf.get("facilityId") == facility_id),
+                    None)
+                fieldplan_client.unlink_fieldplan_facility(
+                    request_info=request_info,
+                    fieldplan_id=fieldplan_id,
+                    facility_id=facility_id,
+                    fieldplan_facility_data=fieldPlan_facility_data
+                )
+
+                facilities_activity_response = fieldplan_activity_client.search_facility_activity(
+                    request_info, fieldplan_id, facility_id)
+                facilities_activity = facilities_activity_response.get("FacilityActivities", [])
+                facility_activity_ids = list({fa.get("activityFacility").get("id") for fa in facilities_activity if
+                                              fa.get("activityFacility").get("id")})
+                fieldplan_activity_client.delete_facility_activity(request_info=request_info,
+                                                                   facility_activity_id=facility_activity_ids)
             elif facility_boundary_code not in valid_boundary_codes:
-                skipped_count += 1
-
-        # Unlink facilities that are no longer in the project (batch process)
-        if facilities_to_unlink and fieldplan_id:
-            logger.info(f"Unlinking {len(facilities_to_unlink)} facilities that are no longer in project")
-            for facility_id in facilities_to_unlink:
-                try:
-                    fieldPlan_facility_data = fieldplan_facility_map.get(facility_id)
-                    if fieldPlan_facility_data:
-                        fieldplan_client.unlink_fieldplan_facility(
-                            request_info=request_info,
-                            fieldplan_id=fieldplan_id,
-                            facility_id=facility_id,
-                            fieldplan_facility_data=fieldPlan_facility_data
-                        )
-
-                        facilities_activity_response = fieldplan_activity_client.search_facility_activity(
-                            request_info, fieldplan_id, facility_id)
-                        facilities_activity = facilities_activity_response.get("FacilityActivities", [])
-                        facility_activity_ids = list({fa.get("activityFacility").get("id") for fa in facilities_activity if
-                                                      fa.get("activityFacility").get("id")})
-                        if facility_activity_ids:
-                            fieldplan_activity_client.delete_facility_activity(request_info=request_info,
-                                                                               facility_activity_id=facility_activity_ids)
-                except Exception as e:
-                    logger.error(f"Error unlinking facility {facility_id}: {e}", exc_info=True)
+                logger.info(
+                    f"Skipped fieldplan facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")
 
         logger.info(
             f"Total facilities in template: {len(all_facilities)} (added from fieldplan: {added_count}, skipped: {skipped_count}, to unlink: {len(facilities_to_unlink)})")
 
         # Mark facilities as included in fieldplan if they are already linked
-        # OPTIMIZATION: Reduced logging overhead - only log summary instead of per-facility
-        linked_count = 0
         if fieldplan_id:
             for facility in all_facilities:
                 facility_id = facility.get("facility_id")
                 if facility_id in fieldplan_linked_facility_ids:
                     facility["include_in_fieldplan"] = "Yes"
-                    linked_count += 1
+                    logger.info(f"Facility {facility_id} is linked to fieldplan - marking as Yes")
                 else:
+
                     facility["include_in_fieldplan"] = "No"
-            logger.info(f"Marked {linked_count} facilities as linked to fieldplan, {len(all_facilities) - linked_count} as not linked")
+                    logger.info(f"Facility {facility_id} is NOT linked to fieldplan - marking as No")
         else:
             # If no fieldplan_id provided, set all facilities to "No"
             for facility in all_facilities:
                 facility["include_in_fieldplan"] = "No"
-            logger.info(f"No fieldplan_id provided - marked all {len(all_facilities)} facilities as No")
+                logger.info(f"No fieldplan_id provided - marking facility {facility.get('facility_id')} as No")
 
         try:
             facility_service.generate_template_file_with_data(
@@ -482,7 +437,8 @@ async def get_facility_ingestion_template_with_data(
                 boundary_list=boundary_list,
                 facility_data=all_facilities,
                 type="fieldplan",
-                extra_append_rows=0
+                extra_append_rows=0,
+                optimize_for_performance=True
             )
             logger.info(f"Successfully created facility ingestion template at {output_file_path}")
         except Exception as e:
@@ -889,7 +845,8 @@ async def get_amc_configuration_template(
                 logger.error(f"Error fetching project facilities: {e}")
                 # Continue without project facility filtering if there's an error
 
-        # Fetch facilities by boundary codes and project (if project_id provided)
+        # Fetch facilities by boundary codes, then optionally filter by project-linked facility ids.
+        # This avoids an expensive boundary x facility nested API call pattern.
         facility_client = FacilityServiceClient(facility_service_url)
         all_facilities = []
         seen_facility_keys = set()
@@ -913,35 +870,51 @@ async def get_amc_configuration_template(
                 seen_facility_keys.add(dedup_key)
                 all_facilities.append(facility)
 
-        if project_id and project_linked_facility_ids:
-            # Filter facilities by both project and boundary
-            for boundary in boundary_list:
-                for facilityId in project_linked_facility_ids:
-                    try:
-                        results = facility_client.search_facility(facility_id=facilityId, tenant_id='in', boundary_code=boundary.code)
-                        facilities = results.get('facilities', [])
-                        add_unique_facilities(facilities)
-                    except Exception as e:
-                        logger.error(f"Error fetching boundary facilities for {boundary.code} and facility {facilityId}: {e}")
-        else:
-            # If no project_id provided, fetch all facilities by boundary codes
-            for boundary in boundary_list:
-                try:
-                    results = facility_client.search_facility(tenant_id='in', boundary_code=boundary.code)
-                    facilities = results.get('facilities', [])
-                    add_unique_facilities(facilities)
-                except Exception as e:
-                    logger.error(f"Error fetching boundary facilities for {boundary.code}: {e}")
+        boundary_codes = [b.code for b in boundary_list if b.code]
+        if boundary_codes:
+            try:
+                bulk_result = facility_client.bulk_search_facility_with_boundary(
+                    request_info=request_info,
+                    tenant_ids=["in"],
+                    boundary_codes=boundary_codes,
+                    limit=max(len(boundary_codes) * 50, 50),
+                    send_non_paginated_response=True,
+                )
+                facilities = bulk_result.get("facilities", []) or []
+                if project_id and project_linked_facility_ids:
+                    facilities = [
+                        f for f in facilities
+                        if f.get("facility_id") in project_linked_facility_ids
+                    ]
+                add_unique_facilities(facilities)
+            except Exception as e:
+                logger.error(f"Error fetching boundary facilities in bulk for AMC template: {e}", exc_info=True)
 
         logger.info(
             f"Total facilities in AMC template: {len(all_facilities)} "
             f"(raw: {len(all_facilities)}, project_id: {project_id}, boundaries: {len(boundary_list)})"
         )
 
-        # Initialize AMC scheduler client to check for existing configurations
+        # Initialize AMC scheduler client and prefetch existing configs for this project once
         amc_client = None
+        existing_amc_by_facility = {}
         if amc_scheduler_service_url and project_id:
             amc_client = AMCSchedulerServiceClient(amc_scheduler_service_url)
+            try:
+                all_existing_configs_resp = amc_client.search_amc_configurations(
+                    request_info,
+                    project_id=project_id
+                )
+                all_existing_configs = all_existing_configs_resp.get("AmcConfigurations", [])
+                for config in all_existing_configs:
+                    facility_id = config.get("facilityId")
+                    if facility_id and facility_id not in existing_amc_by_facility:
+                        existing_amc_by_facility[facility_id] = config
+                logger.info(
+                    f"Fetched {len(existing_amc_by_facility)} existing AMC configurations for project {project_id}"
+                )
+            except Exception as e:
+                logger.warning(f"Error fetching existing AMC configurations for project {project_id}: {e}")
 
         # Create rows for AMC configuration template - one row per facility
         # Asset types ["INVERTER","PANEL","BATTERY"] will be used as default for each configuration during processing
@@ -980,7 +953,7 @@ async def get_amc_configuration_template(
             frequency_value = ""
             duration_value = ""
 
-            # Check for existing AMC configuration if project_id and facility_id are available
+            # Read existing AMC configuration from prefetched map
             if amc_client and project_id and facility_id:
                 try:
                     existing_configs = amc_client.search_amc_configurations(
