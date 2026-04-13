@@ -12,6 +12,7 @@ import CommonUtils from "../../../utilities/CommonUtils";
 
 const OrganizationUserTable = ({ t, organizationId, organizationType, organizationSubType }) => {
 
+  const tenantId = Digit.ULBService.getCurrentTenantId();
   const [fetchedData, setFetchedData] = useState([]);
   const [pageSize, setPageSize] = useState(10);
   const [pageOffset, setPageOffset] = useState(0);
@@ -48,6 +49,24 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
 
   const { isLoading: organizationUserDataLoading, data: organizationUserData } = useOrganizationUser(
     {organizationIds: [organizationId]}, pageSize, pageOffset
+  );
+
+  const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
+    tenantId,
+    "Organisation",
+    [
+      {
+        name: "OrgRoleGroups",
+      },
+    ],
+    {
+      select: (data) => data,
+      enabled: !!tenantId,
+    }
+  );
+
+  const roleGroups = (mdmsResponse?.Organisation?.OrgRoleGroups || []).filter(
+    (role) => role.orgType === organizationType && ((!role.orgSubType && !organizationSubType) || role.orgSubType === organizationSubType)
   );
 
   useEffect(() => {
@@ -134,7 +153,13 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
     {
       Header: t("ORG_USER_ROLES"),
       Cell: ({ row }) => {
-        return GetCell(row.original["roles"]?.length ? GetRoleList(row.original["roles"].map((role) => role.name)) : "-");
+        return GetCell(
+          row.original["roles"]?.length
+            ? GetRoleList(
+              roleGroups.filter((roleGroup) => roleGroup?.roleCodes?.every((roleCode) => row.original["roles"].map((role) => role.code).includes(roleCode)))
+                ?.map((role) => role.name)
+            ) : "-"
+        );
       },
     },
     {
@@ -187,7 +212,7 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
   };
 
   const renderOrganizationUsers = () => {
-    if (organizationUserDataLoading) {
+    if (organizationUserDataLoading || mdmsLoading) {
       return <Loader />;
     }
 

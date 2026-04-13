@@ -37,6 +37,9 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
       {
         name: "OrgRoles",
       },
+      {
+        name: "OrgRoleGroups",
+      },
     ],
     {
       select: (data) => data,
@@ -47,6 +50,9 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
   const roles = (mdmsResponse?.Organisation?.OrgRoles || [])
     .filter((role) => (role.orgType === organizationType && ((!role.orgSubType && !organizationSubType) || role.orgSubType === organizationSubType)));
 
+  const roleGroups = (mdmsResponse?.Organisation?.OrgRoleGroups || [])
+    .filter((role) => (role.orgType === organizationType && ((!role.orgSubType && !organizationSubType) || role.orgSubType === organizationSubType)));
+
   useEffect(() => {
     if (createdUser?.orgUserId && mdmsResponse) {
       const roleCodes = createdUser.roles.map(role => role.code);
@@ -55,7 +61,7 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         userName: createdUser.userName,
         contact: createdUser.mobileNumber,
         email: createdUser.emailId,
-        roles: roles.filter(role => roleCodes.includes(role.code))
+        roles: roleGroups.filter((roleGroup) => roleGroup.roleCodes.every((roleCode) => roleCodes.includes(roleCode))),
       });
     }
   }, [mdmsResponse]);
@@ -75,7 +81,6 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
 
   useEffect(() => {
     const filteredSavedAssignments = savedAssignments
-      // .filter((savedAssignment) => !savedAssignment.isDeleted)
       .filter((savedAssignment) => {
         if(!debouncedJurisdictionSearch) return true;
         const name = t(`Boundary_${savedAssignment.boundary}`)?.toUpperCase();
@@ -150,13 +155,13 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
               error: t("CORE_COMMON_REQUIRED"),
               optionsKey: "name",
               required: true,
-              options: roles,
+              options: roleGroups,
             },
           },
         ],
       },
     ],
-    [t, mdmsResponse, createdUser, roles]
+    [t, mdmsResponse, createdUser]
   );
 
   const assignmentsConfig = useCallback((disable) => [
@@ -263,6 +268,13 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
 
   const handleFormSubmit = useCallback((formData) => {
     if (formData?.roles?.length) {
+
+      const userRoles = roles.filter((role) => formData.roles.some((roleGroup) => roleGroup.roleCodes.includes(role.code)));
+      const formattedFormData = {
+        ...formData,
+        roles: userRoles,
+      }
+
       const jurisdictions = (savedAssignments || [])
         .map((savedAssignment) => ({...savedAssignment, isActive: !savedAssignment.isDeleted}));
 
@@ -312,11 +324,11 @@ const UserForm = ({ t, createdUser = {}, onFormSubmit, wrapperStyle = {}, organi
         if (jurisdiction) jurisdictions.push(jurisdiction);
       })
 
-      onFormSubmit(formData, jurisdictions);
+      onFormSubmit(formattedFormData, jurisdictions);
     } else {
       setFormToast({ key: "error", label: t("USER_CREATION_SELECT_ROLE_ERROR") });
     }
-  }, [assignments, savedAssignments]);
+  }, [assignments, mdmsResponse, savedAssignments]);
 
   const handleAssignmentFormChange = useCallback((index, _, formData) => {
     if (CommonUtils.isNotEqual(assignments[index].country, formData.country) ||
