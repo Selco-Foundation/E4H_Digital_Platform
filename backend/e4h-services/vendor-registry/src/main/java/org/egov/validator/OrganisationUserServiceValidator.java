@@ -111,7 +111,6 @@ public class OrganisationUserServiceValidator {
             log.error("Organization is mandatory in org user request body");
             throw new CustomException("Organization", "Organization ID do not exist");
         }
-
         // Validate user object fields
         validateUserRequest(orgUser);
 
@@ -177,15 +176,22 @@ public class OrganisationUserServiceValidator {
 
         }
         else { // If user found, Check if user belong to another organisation record
+            // Delete here is only eg_org_user.isdeleted=true; HRMS employee stays active, so phone search still finds them.
+            // Undelete the org link in DB first, then use the same active-only org-user search + same-org HRMS path as usual.
+            String hrmsUserUuid = employee.get(0).getUser().getUuid();
+            userRepository.ensureActiveOrgUserLinkOrReactivateDeleted(hrmsUserUuid, request.getOrganizationId());
+
             List<String> uuids = employee.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
             OrgUserSearchCriteria searchUserCriteria = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
             OrgUserSearchRequest orgUserSearchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria).build();
             URLParams urlParams = URLParams.builder().limit(100).offset(0).build();
             List<OrgUser> users = userRepository.getOrgUsers(orgUserSearchRequest, urlParams);
-            if(users != null && !users.isEmpty()){
+            boolean linkOnlyExistingHrmsUser = false;
+            if (users != null && !users.isEmpty()) {
                 OrgUser sameOrgUser = users.stream()
                         .filter(u -> request.getOrganizationId().equals(u.getOrganizationId()))
-                        .findFirst()
+                        .max(Comparator.comparingLong(OrganisationUserServiceValidator::orgUserRowLastModifiedTime)
+                                .thenComparing(OrgUser::getId, Comparator.nullsLast(Comparator.naturalOrder())))
                         .orElse(null);
 
                 if (sameOrgUser != null) {
@@ -209,6 +215,9 @@ public class OrganisationUserServiceValidator {
                     existingEmployee.getUser().setName(orgUser.getName());
                     existingEmployee.getUser().setEmailId(orgUser.getEmailId());
                     existingEmployee.getUser().setRoles(orgUser.getRoles());
+                    if (orgUser.getActive() != null) {
+                        existingEmployee.getUser().setActive(orgUser.getActive());
+                    }
 
                     long now = System.currentTimeMillis();
                     List<Assignment> previousAssignments = existingEmployee.getAssignments();
@@ -245,14 +254,23 @@ public class OrganisationUserServiceValidator {
                     request.setUser(updated.getUser());
                     request.setUserId(updated.getUser().getUuid());
                     request.setId(sameOrgUser.getId());
+                    request.setIsDeleted(false);
                     log.info("Successfully updated existing HRMS user {} in org {}",
                             updated.getUser().getUuid(), request.getOrganizationId());
                 } else {
-                    log.error("This user already belong to another org");
-                    throw new CustomException("Organization", "This user already belong to another org");
+                    boolean hasActiveOtherOrgLink = users.stream()
+                            .filter(u -> !request.getOrganizationId().equals(u.getOrganizationId()))
+                            .anyMatch(u -> !Boolean.TRUE.equals(u.getIsDeleted()));
+                    if (hasActiveOtherOrgLink) {
+                        log.error("This user already belong to another org");
+                        throw new CustomException("Organization", "This user already belong to another org");
+                    }
+                    linkOnlyExistingHrmsUser = true;
                 }
+            } else {
+                linkOnlyExistingHrmsUser = true;
             }
-            else{
+            if (linkOnlyExistingHrmsUser) {
                 request.setUser(employee.get(0).getUser());
                 request.setUserId(employee.get(0).getUser().getUuid());
             }
@@ -260,6 +278,13 @@ public class OrganisationUserServiceValidator {
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
+    }
+
+    private static long orgUserRowLastModifiedTime(OrgUser u) {
+        if (u == null || u.getAuditDetails() == null || u.getAuditDetails().getLastModifiedTime() == null) {
+            return 0L;
+        }
+        return u.getAuditDetails().getLastModifiedTime();
     }
 
     private void validateUserRequest(User user) {
