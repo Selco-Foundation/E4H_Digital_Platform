@@ -20,7 +20,7 @@ var Digit = window.Digit || {};
 
 // Lazy load DigitUI
 const DigitUI = React.lazy(() =>
-  import("@egovernments/digit-ui-module-core").then((mod) => ({
+  import("@selco/digit-ui-module-core").then((mod) => ({
     default: mod.DigitUI,
   }))
 );
