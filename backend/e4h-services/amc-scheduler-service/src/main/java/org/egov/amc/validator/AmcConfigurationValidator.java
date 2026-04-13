@@ -80,6 +80,10 @@ public class AmcConfigurationValidator {
         }
 
         log.debug("Validating {} AMC configuration(s)", request.getAmcConfigurations().size());
+        // One project/facility lookup per distinct id per request (bulk ingest reused the same project many times).
+        Map<String, Project> projectByTenantAndId = new HashMap<>();
+        Map<String, Facility> facilityById = new HashMap<>();
+
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             if (amcConfiguration == null) {
                 log.error("AmcConfiguration is mandatory in AmcConfiguration");
@@ -90,9 +94,10 @@ public class AmcConfigurationValidator {
                 log.error("Project ID is mandatory in AmcConfiguration");
                 throw new CustomException("AmcConfiguration", "Project ID is mandatory");
             }
-            // Get existing amcConfiguration with projectID from amcConfiguration service
             log.debug("Validating project ID: {} for tenantId: {}", amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
-            Project existingProject = getProjectById(request.getRequestInfo(), amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
+            String projectKey = amcConfiguration.getTenantId() + "|" + amcConfiguration.getProjectId();
+            Project existingProject = projectByTenantAndId.computeIfAbsent(projectKey, k ->
+                    getProjectById(request.getRequestInfo(), amcConfiguration.getProjectId(), amcConfiguration.getTenantId()));
             if (existingProject == null) {
                 log.error("Project ID {} does not exist for tenantId: {}", amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
                 throw new CustomException("AmcConfiguration", "Project ID do not exist");
@@ -107,9 +112,8 @@ public class AmcConfigurationValidator {
                 log.error("Facility ID is mandatory in Amc Configuration");
                 throw new CustomException("AMC Configuration", "Facility ID is mandatory");
             }
-            // Get existing facility with facilityID from facility service
             log.debug("Validating facility ID: {}", amcConfiguration.getFacilityId());
-            Facility existingFacility = getFacilityById(amcConfiguration.getFacilityId());
+            Facility existingFacility = facilityById.computeIfAbsent(amcConfiguration.getFacilityId(), this::getFacilityById);
             if (existingFacility == null) {
                 log.error("Facility ID {} does not exist", amcConfiguration.getFacilityId());
                 throw new CustomException("AMC Configuration", "Facility ID do not exist");
