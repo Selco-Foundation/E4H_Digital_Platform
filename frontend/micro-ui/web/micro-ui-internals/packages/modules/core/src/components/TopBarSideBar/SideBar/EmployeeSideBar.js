@@ -10,6 +10,7 @@ const EmployeeSideBar = () => {
   const sidebarRef = useRef(null);
   const { isLoading, data } = Digit.Hooks.useAccessControl();
   const [search, setSearch] = useState("");
+  const contextPath = window?.globalConfigs?.getConfig("CONTEXT_PATH") || "digit-ui";
   
   const [showDialog, setShowDialog] = useState(false);
   const { t } = useTranslation();
@@ -54,6 +55,7 @@ const EmployeeSideBar = () => {
   const configEmployeeSideBar = {};
   data?.actions
     .filter((e) => e.url === "url")
+    .filter((action) => !contextPath || action.navigationURL?.includes(contextPath))
     .forEach((item) => {
       let index = item?.path?.split(".")?.[0] || "";
       if (search == "" && item.path !== "") {
