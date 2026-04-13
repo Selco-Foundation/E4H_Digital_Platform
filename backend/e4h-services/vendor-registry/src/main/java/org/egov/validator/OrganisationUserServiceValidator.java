@@ -203,11 +203,16 @@ public class OrganisationUserServiceValidator {
         }
         else { // If user found, Check if user belong to another organisation record
             log.info("validateUserOrgCreation: branch EXISTING_HRMS_USER — {} HRMS row(s), checking eg_org_user links", hrmsMatchCount);
+            // Delete here is only eg_org_user.isdeleted=true; HRMS employee stays active, so phone search still finds them.
+            // Undelete the org link in DB first, then use the same active-only org-user search + same-org HRMS path as usual.
+            String hrmsUserUuid = employee.get(0).getUser().getUuid();
+            userRepository.ensureActiveOrgUserLinkOrReactivateDeleted(hrmsUserUuid, request.getOrganizationId());
+
             List<String> uuids = employee.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
             log.debug("validateUserOrgCreation: eg_org_user search by userId uuids={}, tenantId={}", uuids, orgUser.getTenantId());
             OrgUserSearchCriteria searchUserCriteria = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
             OrgUserSearchRequest orgUserSearchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria).build();
-            URLParams urlParams = URLParams.builder().limit(100).offset(0).includeDeleted(true).build();
+            URLParams urlParams = URLParams.builder().limit(100).offset(0).build();
             List<OrgUser> users = userRepository.getOrgUsers(orgUserSearchRequest, urlParams);
             int orgUserRowCount = users == null ? 0 : users.size();
             log.info("validateUserOrgCreation: eg_org_user rows for these userIds count={}", orgUserRowCount);
@@ -219,18 +224,14 @@ public class OrganisationUserServiceValidator {
             if (users != null && !users.isEmpty()) {
                 OrgUser sameOrgUser = users.stream()
                         .filter(u -> request.getOrganizationId().equals(u.getOrganizationId()))
-                        .findFirst()
+                        .max(Comparator.comparingLong(OrganisationUserServiceValidator::orgUserRowLastModifiedTime)
+                                .thenComparing(OrgUser::getId, Comparator.nullsLast(Comparator.naturalOrder())))
                         .orElse(null);
 
                 if (sameOrgUser != null) {
-                    boolean reactivatingSoftDeleted = Boolean.TRUE.equals(sameOrgUser.getIsDeleted());
                     log.info("User with phone {} already exists in org {}, updating existing user",
                             orgUser.getMobileNumber(), request.getOrganizationId());
-                    log.info("validateUserOrgCreation: branch SAME_ORG_UPDATE eg_org_user id={}, isDeleted={}",
-                            sameOrgUser.getId(), sameOrgUser.getIsDeleted());
-                    if (reactivatingSoftDeleted) {
-                        log.info("validateUserOrgCreation: reactivating soft-deleted org user link; applying full HRMS update and isDeleted=false on persist");
-                    }
+                    log.info("validateUserOrgCreation: branch SAME_ORG_UPDATE eg_org_user id={}", sameOrgUser.getId());
                     Employee existingEmployee = employee.get(0);
                     Organisation organisation = organisations.get(0);
                     String orgType = organisation.getOrgType();
@@ -251,8 +252,6 @@ public class OrganisationUserServiceValidator {
                     existingEmployee.getUser().setRoles(orgUser.getRoles());
                     if (orgUser.getActive() != null) {
                         existingEmployee.getUser().setActive(orgUser.getActive());
-                    } else if (reactivatingSoftDeleted) {
-                        existingEmployee.getUser().setActive(true);
                     }
 
                     long now = System.currentTimeMillis();
@@ -320,6 +319,13 @@ public class OrganisationUserServiceValidator {
             throw new CustomException(errorMap);
         log.info("validateUserOrgCreation: completed organizationId={}, request.userId={}, request.id={}",
                 request.getOrganizationId(), request.getUserId(), request.getId());
+    }
+
+    private static long orgUserRowLastModifiedTime(OrgUser u) {
+        if (u == null || u.getAuditDetails() == null || u.getAuditDetails().getLastModifiedTime() == null) {
+            return 0L;
+        }
+        return u.getAuditDetails().getLastModifiedTime();
     }
 
     private void validateUserRequest(User user) {
