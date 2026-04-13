@@ -44,6 +44,42 @@ class FieldPlanServiceClient:
             print(f"An error occurred: {req_err}")
             raise req_err
 
+    def create_fieldPlan_facility_bulk(self, request_info: RequestInfo, fieldPlan_id: str, facility_ids: list[str]):
+        url = f"{self.fieldPlan_service_url}/field-planner/v1/field-plans/facility/bulk/_create"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "RequestInfo": request_info.model_dump(by_alias=True, exclude_none=True),
+            "FieldPlanFacilities": [
+                {
+                    "facilityId": facility_id,
+                    "fieldPlanId": fieldPlan_id,
+                    "isdeleted": False,
+                    "tenantId": "in"
+                }
+                for facility_id in facility_ids
+            ]
+        }
+        logger.trace(f"Bulk creating field plan facilities: fieldplan_id={fieldPlan_id}, count={len(facility_ids)}")
+        try:
+            response = requests.post(url, headers=headers, json=payload)
+            logger.info(f"Field plan bulk create accepted: fieldplan_id={fieldPlan_id}, count={len(facility_ids)}")
+            logger.debug(f"Bulk create response status: {response.status_code}")
+            return response
+        except requests.exceptions.HTTPError as http_err:
+            logger.error(f"HTTP error bulk creating field plan facilities: {http_err}", exc_info=True)
+            raise http_err
+        except requests.exceptions.ConnectionError as conn_err:
+            logger.error(f"Connection error bulk creating field plan facilities: {conn_err}", exc_info=True)
+            raise conn_err
+        except requests.exceptions.Timeout as timeout_err:
+            logger.error(f"Timeout error bulk creating field plan facilities: {timeout_err}", exc_info=True)
+            raise timeout_err
+        except requests.exceptions.RequestException as req_err:
+            logger.error(f"Request error bulk creating field plan facilities: {req_err}", exc_info=True)
+            raise req_err
+
     def search_fieldPlan(self, request_info: RequestInfo, fieldplan_id: str) -> Dict[str, Any]:
         tenant_id = "in"
         limit = 1000

@@ -136,7 +136,62 @@ class FacilityServiceClient:
           }
         }
         """
-        url = f"{self.facility_service_url}/facility-service/v2/facility/_bulk-search"
+        return self._bulk_search_facility_by_path(
+            endpoint_path="/facility-service/v2/facility/_bulk-search",
+            request_info=request_info,
+            tenant_ids=tenant_ids,
+            facility_ids=facility_ids,
+            boundary_codes=boundary_codes,
+            hfr_ids=hfr_ids,
+            nin_ids=nin_ids,
+            limit=limit,
+            offset=offset,
+            send_non_paginated_response=send_non_paginated_response,
+        )
+
+    def bulk_search_facility_with_boundary(
+        self,
+        request_info: Union[Dict[str, Any], Any],
+        tenant_ids: Sequence[str],
+        facility_ids: Optional[Sequence[str]] = None,
+        boundary_codes: Optional[Sequence[str]] = None,
+        hfr_ids: Optional[Sequence[str]] = None,
+        nin_ids: Optional[Sequence[str]] = None,
+        limit: int = 10000,
+        offset: int = 0,
+        send_non_paginated_response: bool = True,
+    ) -> Dict[str, Any]:
+        """
+        Bulk search using facility-service endpoint that returns facility + address
+        and resolves boundary details using boundary codes present on result rows.
+        """
+        return self._bulk_search_facility_by_path(
+            endpoint_path="/facility-service/v2/facility/_bulk-search-with-boundary",
+            request_info=request_info,
+            tenant_ids=tenant_ids,
+            facility_ids=facility_ids,
+            boundary_codes=boundary_codes,
+            hfr_ids=hfr_ids,
+            nin_ids=nin_ids,
+            limit=limit,
+            offset=offset,
+            send_non_paginated_response=send_non_paginated_response,
+        )
+
+    def _bulk_search_facility_by_path(
+        self,
+        endpoint_path: str,
+        request_info: Union[Dict[str, Any], Any],
+        tenant_ids: Sequence[str],
+        facility_ids: Optional[Sequence[str]] = None,
+        boundary_codes: Optional[Sequence[str]] = None,
+        hfr_ids: Optional[Sequence[str]] = None,
+        nin_ids: Optional[Sequence[str]] = None,
+        limit: int = 10000,
+        offset: int = 0,
+        send_non_paginated_response: bool = True,
+    ) -> Dict[str, Any]:
+        url = f"{self.facility_service_url}{endpoint_path}"
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
         # Support both Pydantic RequestInfo and plain dict

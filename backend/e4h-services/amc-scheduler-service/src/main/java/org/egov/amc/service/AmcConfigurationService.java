@@ -27,6 +27,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class AmcConfigurationService {
 
+    // Max project-staff rows per project-service bulk call (was one HTTP call per AMC configuration).
+    private static final int PROJECT_STAFF_LINK_CHUNK_SIZE = 500;
+
     private final AmcConfigurationValidator amcConfigurationValidator;
     private final AmcConfigurationRepository amcConfigurationRepository;
     private final Producer producer;
@@ -69,18 +72,6 @@ public class AmcConfigurationService {
             amcConfiguration.setAssignments(assignments);
             amcConfigurationEnrichment.enrichAmcConfigurationOnCreate(amcConfiguration, request.getRequestInfo());
 
-            // Link the AMC_REVIEWER and AMC_STAFF to project
-            if (amcConfiguration.getAssignments() != null && !amcConfiguration.getAssignments().isEmpty()) {
-                List<ProjectStaff> staffs = amcConfiguration.getAssignments().stream()
-                        .map(assignment -> ProjectStaff.builder()
-                                .tenantId(amcConfiguration.getTenantId())
-                                .projectId(amcConfiguration.getProjectId())
-                                .userId(assignment.getAssignedUser())
-                                .build())
-                        .collect(Collectors.toList());
-                amcConfigurationServiceUtil.createProjectStaff(request.getRequestInfo(), staffs);
-                log.debug("Created {} project staff assignment(s) for configuration", staffs.size());
-            }
             log.trace("Enriching AMC configuration on create for projectId: {}, facilityId: {}",
                     amcConfiguration.getProjectId(), amcConfiguration.getFacilityId());
             log.info("AMC configuration enriched with project ID: {}, facility ID: {}",
@@ -88,9 +79,54 @@ public class AmcConfigurationService {
             log.debug("Enriched AMC configuration details - duration: {} months, visitFrequency: {} months",
                     amcConfiguration.getDurationMonths(), amcConfiguration.getVisitFrequencyMonths());
         }
+
+        // Bulk-link project staff: same semantics as per-config createProjectStaff; dedupe (tenant, project, user).
+        List<ProjectStaff> distinctStaffToLink = collectDistinctProjectStaffForCreate(request.getAmcConfigurations());
+        if (!distinctStaffToLink.isEmpty()) {
+            log.info(
+                    "Linking {} distinct project staff row(s) for {} AMC configuration(s) (chunk size {})",
+                    distinctStaffToLink.size(),
+                    request.getAmcConfigurations().size(),
+                    PROJECT_STAFF_LINK_CHUNK_SIZE);
+            for (int i = 0; i < distinctStaffToLink.size(); i += PROJECT_STAFF_LINK_CHUNK_SIZE) {
+                int end = Math.min(i + PROJECT_STAFF_LINK_CHUNK_SIZE, distinctStaffToLink.size());
+                List<ProjectStaff> chunk = new ArrayList<>(distinctStaffToLink.subList(i, end));
+                amcConfigurationServiceUtil.createProjectStaff(request.getRequestInfo(), chunk);
+                log.debug("Project staff bulk link: sent {} row(s)", chunk.size());
+            }
+        }
+
         log.info("Pushing {} AMC configuration(s) to kafka", request.getAmcConfigurations().size());
         producer.push(amcServiceConfiguration.getSaveAmcConfigurationTopic(), request);
         return request;
+    }
+
+    // One ProjectStaff row per distinct (tenantId, projectId, userId) across all configs in the request.
+    private List<ProjectStaff> collectDistinctProjectStaffForCreate(List<AmcConfiguration> configurations) {
+        Map<String, ProjectStaff> byKey = new LinkedHashMap<>();
+        for (AmcConfiguration amcConfiguration : configurations) {
+            if (amcConfiguration.getAssignments() == null || amcConfiguration.getAssignments().isEmpty()) {
+                continue;
+            }
+            String tenantId = amcConfiguration.getTenantId();
+            String projectId = amcConfiguration.getProjectId();
+            if (tenantId == null || projectId == null) {
+                continue;
+            }
+            for (AmcConfigurationAssignment assignment : amcConfiguration.getAssignments()) {
+                String userId = assignment.getAssignedUser();
+                if (userId == null) {
+                    continue;
+                }
+                String key = tenantId + "|" + projectId + "|" + userId;
+                byKey.putIfAbsent(key, ProjectStaff.builder()
+                        .tenantId(tenantId)
+                        .projectId(projectId)
+                        .userId(userId)
+                        .build());
+            }
+        }
+        return new ArrayList<>(byKey.values());
     }
 
     public AmcConfigurationRequest updateAmcConfiguration(AmcConfigurationRequest request) {
