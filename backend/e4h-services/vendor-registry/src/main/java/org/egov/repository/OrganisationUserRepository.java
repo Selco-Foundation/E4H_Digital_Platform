@@ -98,13 +98,9 @@ public class OrganisationUserRepository {
         Optional<OrgUserLinkRow> active = rows.stream().filter(r -> !r.deleted()).findFirst();
         if (active.isPresent()) {
             String keepId = active.get().id();
-            int removed = jdbcTemplate.update(
+            jdbcTemplate.update(
                     "DELETE FROM eg_org_user WHERE userid = ? AND organizationid = ? AND id <> ? AND isdeleted = true",
                     userId, organizationId, keepId);
-            if (removed > 0) {
-                log.info("ensureActiveOrgUserLinkOrReactivateDeleted: removed {} soft-deleted duplicate(s); active id={}",
-                        removed, keepId);
-            }
             return Optional.of(keepId);
         }
         OrgUserLinkRow keep = rows.stream()
@@ -116,11 +112,9 @@ public class OrganisationUserRepository {
                 jdbcTemplate.update("DELETE FROM eg_org_user WHERE id = ? AND isdeleted = true", r.id());
             }
         }
-        int updated = jdbcTemplate.update(
+        jdbcTemplate.update(
                 "UPDATE eg_org_user SET isdeleted = false, lastmodifiedtime = ? WHERE id = ?",
                 now, keep.id());
-        log.info("ensureActiveOrgUserLinkOrReactivateDeleted: set isdeleted=false on org_user id={}, rowsUpdated={}",
-                keep.id(), updated);
         return Optional.of(keep.id());
     }
 

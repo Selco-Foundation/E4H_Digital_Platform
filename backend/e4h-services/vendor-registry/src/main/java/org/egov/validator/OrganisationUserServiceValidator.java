@@ -91,10 +91,6 @@ public class OrganisationUserServiceValidator {
     }
 
     private void validateUserOrgCreation(OrgUserRequest request) {
-        log.info("validateUserOrgCreation: start organizationId={}, tenantId={}, userName={}",
-                request.getOrganizationId(),
-                request.getUser() != null ? request.getUser().getTenantId() : null,
-                request.getUser() != null ? request.getUser().getUserName() : null);
         Map<String, String> errorMap = new HashMap<>();
         User orgUser = request.getUser();
         if (orgUser == null) {
@@ -115,34 +111,16 @@ public class OrganisationUserServiceValidator {
             log.error("Organization is mandatory in org user request body");
             throw new CustomException("Organization", "Organization ID do not exist");
         }
-        String resolvedOrgType = organisations.get(0).getOrgType();
-        log.info("validateUserOrgCreation: organisation found id={}, orgType={}", request.getOrganizationId(), resolvedOrgType);
-
         // Validate user object fields
         validateUserRequest(orgUser);
 
         // Get existing user with mobile number from hrms service
-        log.debug("validateUserOrgCreation: HRMS search by phone, mobileLength={}",
-                orgUser.getMobileNumber() != null ? orgUser.getMobileNumber().length() : 0);
         List<Employee> employee = hrmsUtils.getUserByPhoneNumber(request, orgUser.getMobileNumber());
-        int hrmsMatchCount = employee == null ? 0 : employee.size();
-        log.info("validateUserOrgCreation: HRMS phone lookup returned {} employee(s)", hrmsMatchCount);
-        if (hrmsMatchCount > 0 && employee.get(0).getUser() != null) {
-            log.debug("validateUserOrgCreation: first HRMS match userUuid={}", employee.get(0).getUser().getUuid());
-        }
         if (employee == null || employee.isEmpty()) { //If user doesn't exist
             Organisation organisation = organisations.get(0);
             String orgType = organisation.getOrgType();
             Map<String, List<Role>> rolesMap =  getOrgRoles(request.getRequestInfo());
-            boolean canCreateInHrms = rolesMap != null && !rolesMap.isEmpty() && orgType != null && !orgType.isBlank();
-            if (!canCreateInHrms) {
-                log.warn("validateUserOrgCreation: no HRMS user for phone — skipping create branch because rolesMap empty={}, orgTypeBlank={} (orgType={}). Request will finish without HRMS create.",
-                        rolesMap == null || rolesMap.isEmpty(),
-                        orgType == null || orgType.isBlank(),
-                        orgType);
-            }
             if (rolesMap !=null && !rolesMap.isEmpty() && orgType !=null && !orgType.isBlank()){
-                log.info("validateUserOrgCreation: branch NEW_HRMS_USER — validating roles and creating employee for orgType={}", orgType);
                 List<Role> roles = rolesMap.get(orgType);
                 List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
                 List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
@@ -155,9 +133,6 @@ public class OrganisationUserServiceValidator {
                 String encryptedPocMobileNumber = organisationUtil.encryptMobileNumber(orgUser.getMobileNumber());
                 if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
                     orgUser.setMobileNumber(encryptedPocMobileNumber);
-                    log.debug("validateUserOrgCreation: orgUser.mobileNumber replaced with encrypted value for persistence on request user object");
-                } else {
-                    log.debug("validateUserOrgCreation: mobile encryption skipped (null or blank result)");
                 }
                 // Call HRMS service to create user
                 User user = User.builder()
@@ -191,8 +166,7 @@ public class OrganisationUserServiceValidator {
                             .user(userRequest)
                             .build();
                     UserDetailResponse response = userUtil.updateUserPassword(createUserRequest, new StringBuilder(url));
-                    log.info("validateUserOrgCreation: NEW_HRMS_USER done userId={}, userServicePasswordUpdateOk={}",
-                            request.getUserId(), response != null);
+                    log.info("New user created and updated");
                 }
                 else{
                     log.error("Error occured while creating the new user");
@@ -202,24 +176,16 @@ public class OrganisationUserServiceValidator {
 
         }
         else { // If user found, Check if user belong to another organisation record
-            log.info("validateUserOrgCreation: branch EXISTING_HRMS_USER — {} HRMS row(s), checking eg_org_user links", hrmsMatchCount);
             // Delete here is only eg_org_user.isdeleted=true; HRMS employee stays active, so phone search still finds them.
             // Undelete the org link in DB first, then use the same active-only org-user search + same-org HRMS path as usual.
             String hrmsUserUuid = employee.get(0).getUser().getUuid();
             userRepository.ensureActiveOrgUserLinkOrReactivateDeleted(hrmsUserUuid, request.getOrganizationId());
 
             List<String> uuids = employee.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
-            log.debug("validateUserOrgCreation: eg_org_user search by userId uuids={}, tenantId={}", uuids, orgUser.getTenantId());
             OrgUserSearchCriteria searchUserCriteria = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
             OrgUserSearchRequest orgUserSearchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria).build();
             URLParams urlParams = URLParams.builder().limit(100).offset(0).build();
             List<OrgUser> users = userRepository.getOrgUsers(orgUserSearchRequest, urlParams);
-            int orgUserRowCount = users == null ? 0 : users.size();
-            log.info("validateUserOrgCreation: eg_org_user rows for these userIds count={}", orgUserRowCount);
-            if (orgUserRowCount > 0 && users != null) {
-                users.forEach(u -> log.debug("validateUserOrgCreation: eg_org_user row id={}, organizationId={}, isDeleted={}",
-                        u.getId(), u.getOrganizationId(), u.getIsDeleted()));
-            }
             boolean linkOnlyExistingHrmsUser = false;
             if (users != null && !users.isEmpty()) {
                 OrgUser sameOrgUser = users.stream()
@@ -231,7 +197,6 @@ public class OrganisationUserServiceValidator {
                 if (sameOrgUser != null) {
                     log.info("User with phone {} already exists in org {}, updating existing user",
                             orgUser.getMobileNumber(), request.getOrganizationId());
-                    log.info("validateUserOrgCreation: branch SAME_ORG_UPDATE eg_org_user id={}", sameOrgUser.getId());
                     Employee existingEmployee = employee.get(0);
                     Organisation organisation = organisations.get(0);
                     String orgType = organisation.getOrgType();
@@ -297,19 +262,15 @@ public class OrganisationUserServiceValidator {
                             .filter(u -> !request.getOrganizationId().equals(u.getOrganizationId()))
                             .anyMatch(u -> !Boolean.TRUE.equals(u.getIsDeleted()));
                     if (hasActiveOtherOrgLink) {
-                        log.error("validateUserOrgCreation: branch OTHER_ORG — user has active eg_org_user link to a different organization than request organizationId={}",
-                                request.getOrganizationId());
                         log.error("This user already belong to another org");
                         throw new CustomException("Organization", "This user already belong to another org");
                     }
-                    log.info("validateUserOrgCreation: no same-org row (or only soft-deleted other-org links); using LINK_ONLY HRMS copy");
                     linkOnlyExistingHrmsUser = true;
                 }
             } else {
                 linkOnlyExistingHrmsUser = true;
             }
             if (linkOnlyExistingHrmsUser) {
-                log.info("validateUserOrgCreation: branch LINK_ONLY — HRMS user exists but no eg_org_user rows; setting userId from HRMS without update");
                 request.setUser(employee.get(0).getUser());
                 request.setUserId(employee.get(0).getUser().getUuid());
             }
@@ -317,8 +278,6 @@ public class OrganisationUserServiceValidator {
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
-        log.info("validateUserOrgCreation: completed organizationId={}, request.userId={}, request.id={}",
-                request.getOrganizationId(), request.getUserId(), request.getId());
     }
 
     private static long orgUserRowLastModifiedTime(OrgUser u) {
