@@ -19,6 +19,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class OrganisationUserRepository {
 
+    private record OrgUserLinkRow(String id, boolean deleted, long lastModifiedTime) {}
+
     private final OrganisationUserQueryBuilder queryBuilder;
     private final OrgUserRowMapper orgUserRowMapper;
     private final JdbcTemplate jdbcTemplate;
@@ -75,5 +77,45 @@ public class OrganisationUserRepository {
         return count;
     }
 
+    /**
+     * Org-user "delete" is soft-delete on {@code eg_org_user} only; HRMS employee typically stays active, so HRMS
+     * search by phone still returns the user. This method sets {@code isdeleted = false} on the canonical row for
+     * the given HRMS user + organization (and removes duplicate soft-deleted rows) so the usual active-only org-user
+     * query used next can see the link — same flow as a never-deleted link.
+     */
+    public Optional<String> ensureActiveOrgUserLinkOrReactivateDeleted(String userId, String organizationId) {
+        if (StringUtils.isBlank(userId) || StringUtils.isBlank(organizationId)) {
+            return Optional.empty();
+        }
+        String select = "SELECT id, isdeleted, lastmodifiedtime FROM eg_org_user WHERE userid = ? AND organizationid = ?";
+        List<OrgUserLinkRow> rows = jdbcTemplate.query(select, (rs, i) -> new OrgUserLinkRow(
+                rs.getString("id"),
+                rs.getBoolean("isdeleted"),
+                rs.getLong("lastmodifiedtime")), userId, organizationId);
+        if (rows.isEmpty()) {
+            return Optional.empty();
+        }
+        Optional<OrgUserLinkRow> active = rows.stream().filter(r -> !r.deleted()).findFirst();
+        if (active.isPresent()) {
+            String keepId = active.get().id();
+            jdbcTemplate.update(
+                    "DELETE FROM eg_org_user WHERE userid = ? AND organizationid = ? AND id <> ? AND isdeleted = true",
+                    userId, organizationId, keepId);
+            return Optional.of(keepId);
+        }
+        OrgUserLinkRow keep = rows.stream()
+                .max(Comparator.comparingLong(OrgUserLinkRow::lastModifiedTime).thenComparing(OrgUserLinkRow::id))
+                .orElseThrow();
+        long now = System.currentTimeMillis();
+        for (OrgUserLinkRow r : rows) {
+            if (!r.id().equals(keep.id())) {
+                jdbcTemplate.update("DELETE FROM eg_org_user WHERE id = ? AND isdeleted = true", r.id());
+            }
+        }
+        jdbcTemplate.update(
+                "UPDATE eg_org_user SET isdeleted = false, lastmodifiedtime = ? WHERE id = ?",
+                now, keep.id());
+        return Optional.of(keep.id());
+    }
 
 }
