@@ -441,8 +441,8 @@ class _InitialElementAssetSummaryState
               label: 'Add Details',
               type: DigitButtonType.secondary,
               size: DigitButtonSize.medium,
-              onPressed:
-                  _count > 0 ? (widget.onAddDetailPress ?? () {}) : () {},
+              isDisabled: _count <= 0,
+              onPressed: widget.onAddDetailPress ?? () {},
             ),
             const SizedBox(height: spacer2),
           ],
