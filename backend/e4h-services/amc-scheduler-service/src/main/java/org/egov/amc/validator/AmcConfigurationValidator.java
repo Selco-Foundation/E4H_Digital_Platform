@@ -27,6 +27,8 @@ import java.util.*;
 @Slf4j
 public class AmcConfigurationValidator {
 
+    private static final int FACILITY_BULK_VALIDATE_CHUNK_SIZE = 500;
+
     @Autowired
     private final ServiceRequestClient serviceRequestRepository;
 
@@ -80,6 +82,9 @@ public class AmcConfigurationValidator {
         }
 
         log.debug("Validating {} AMC configuration(s)", request.getAmcConfigurations().size());
+        Map<String, Project> projectByTenantAndId = new HashMap<>();
+        Map<String, Facility> prefetchedFacilities = prefetchFacilitiesForValidate(request.getRequestInfo(), request.getAmcConfigurations());
+
         for (AmcConfiguration amcConfiguration : request.getAmcConfigurations()) {
             if (amcConfiguration == null) {
                 log.error("AmcConfiguration is mandatory in AmcConfiguration");
@@ -90,9 +95,10 @@ public class AmcConfigurationValidator {
                 log.error("Project ID is mandatory in AmcConfiguration");
                 throw new CustomException("AmcConfiguration", "Project ID is mandatory");
             }
-            // Get existing amcConfiguration with projectID from amcConfiguration service
             log.debug("Validating project ID: {} for tenantId: {}", amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
-            Project existingProject = getProjectById(request.getRequestInfo(), amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
+            String projectKey = amcConfiguration.getTenantId() + "|" + amcConfiguration.getProjectId();
+            Project existingProject = projectByTenantAndId.computeIfAbsent(projectKey, k ->
+                    getProjectById(request.getRequestInfo(), amcConfiguration.getProjectId(), amcConfiguration.getTenantId()));
             if (existingProject == null) {
                 log.error("Project ID {} does not exist for tenantId: {}", amcConfiguration.getProjectId(), amcConfiguration.getTenantId());
                 throw new CustomException("AmcConfiguration", "Project ID do not exist");
@@ -107,9 +113,8 @@ public class AmcConfigurationValidator {
                 log.error("Facility ID is mandatory in Amc Configuration");
                 throw new CustomException("AMC Configuration", "Facility ID is mandatory");
             }
-            // Get existing facility with facilityID from facility service
             log.debug("Validating facility ID: {}", amcConfiguration.getFacilityId());
-            Facility existingFacility = getFacilityById(amcConfiguration.getFacilityId());
+            Facility existingFacility = prefetchedFacilities.get(amcConfiguration.getFacilityId());
             if (existingFacility == null) {
                 log.error("Facility ID {} does not exist", amcConfiguration.getFacilityId());
                 throw new CustomException("AMC Configuration", "Facility ID do not exist");
@@ -233,6 +238,64 @@ public class AmcConfigurationValidator {
         }
         log.debug("Facility not found for facilityId: {}", facilityId);
         return null;
+    }
+
+    // Facility validation: chunked POST _bulk-search (not per-row GET).
+    private Map<String, Facility> prefetchFacilitiesForValidate(RequestInfo requestInfo, List<AmcConfiguration> configurations) {
+        LinkedHashSet<String> facilityIds = new LinkedHashSet<>();
+        LinkedHashSet<String> tenantIds = new LinkedHashSet<>();
+        for (AmcConfiguration ac : configurations) {
+            if (ac == null) {
+                continue;
+            }
+            if (StringUtils.isNotBlank(ac.getFacilityId())) {
+                facilityIds.add(ac.getFacilityId().trim());
+            }
+            if (StringUtils.isNotBlank(ac.getTenantId())) {
+                tenantIds.add(ac.getTenantId().trim());
+            }
+        }
+        if (facilityIds.isEmpty()) {
+            return new HashMap<>();
+        }
+        List<String> tenantList = new ArrayList<>(tenantIds);
+        if (tenantList.isEmpty()) {
+            tenantList = List.of("in");
+        }
+        Map<String, Facility> byFacilityId = new HashMap<>();
+        List<String> idList = new ArrayList<>(facilityIds);
+        for (int i = 0; i < idList.size(); i += FACILITY_BULK_VALIDATE_CHUNK_SIZE) {
+            int end = Math.min(i + FACILITY_BULK_VALIDATE_CHUNK_SIZE, idList.size());
+            List<String> chunk = new ArrayList<>(idList.subList(i, end));
+            mergeFacilitiesFromBulkSearch(byFacilityId, requestInfo, tenantList, chunk);
+        }
+        log.debug("Prefetched {} facility record(s) for {} distinct facility id(s)", byFacilityId.size(), facilityIds.size());
+        return byFacilityId;
+    }
+
+    private void mergeFacilitiesFromBulkSearch(
+            Map<String, Facility> sink,
+            RequestInfo requestInfo,
+            List<String> tenantIds,
+            List<String> facilityIdsChunk) {
+        String url = config.getFacilityServiceHost() + config.getFacilityBulkSearchPath();
+        FacilityBulkSearchCriteria facilityCriteria =
+                FacilityBulkSearchCriteria.forTenantAndFacilityIds(tenantIds, facilityIdsChunk);
+        FacilityBulkSearchApiRequest body = FacilityBulkSearchApiRequest.builder()
+                .requestInfo(requestInfo)
+                .facility(facilityCriteria)
+                .build();
+        log.debug("Calling facility bulk search at URL: {}, facility id count: {}", url, facilityIdsChunk.size());
+        Object response = requestRepository.fetchResult(new StringBuilder(url), body);
+        FacilitySearchResponse parsed = mapper.convertValue(response, FacilitySearchResponse.class);
+        if (parsed == null || parsed.getFacilities() == null) {
+            return;
+        }
+        for (Facility f : parsed.getFacilities()) {
+            if (f.getFacilityId() != null) {
+                sink.put(f.getFacilityId(), f);
+            }
+        }
     }
 
     public void isAmcConfigurationWithinProject(Project project, AmcConfiguration amcConfiguration, Map<String, String> errorMap) {
