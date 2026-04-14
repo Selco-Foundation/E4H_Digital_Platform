@@ -448,7 +448,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   if (loading || isValidationConfigLoading) return <Loader></Loader>;
 
   return (
-    <div className={`user-profile ${userType === "citizen" ? "citizen" : "employee"}`}>
+    <div className={`user-profile ${userType === "citizen" ? "citizen" : "employee"}`} style={{overflow: "auto"}}>
       <section style={{ margin: userType === "citizen" || isMobile ? "8px" : "0px" }}>
         {userType === "citizen" || isMobile ? (
           <BackLink onClick={() => window.history.back()} />
@@ -481,6 +481,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
           background: userType === "citizen" ? "white" : "",
           borderRadius: userType === "citizen" ? "4px" : "",
           maxWidth: userType === "citizen" ? "960px" : "",
+          marginBottom: "100px",
         }}
       >
         <section
