@@ -346,7 +346,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   if (loading) return <Loader></Loader>;
 
   return (
-    <div className="user-profile">
+    <div className="user-profile" style={{overflow: "auto"}}>
         <style>{
           `
         @media (min-width: 780px) {
@@ -370,7 +370,8 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
           background: userType === "citizen" ? "white" : "",
           borderRadius: userType === "citizen" ? "4px" : "",
           maxWidth: userType === "citizen" ? "960px" : "",
-          paddingBottom:"50px"
+          paddingBottom:"50px",
+          marginBottom: "100px",
         }}
       >
         <section
