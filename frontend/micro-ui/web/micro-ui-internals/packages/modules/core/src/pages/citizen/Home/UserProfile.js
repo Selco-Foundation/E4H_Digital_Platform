@@ -378,17 +378,17 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
         }
       }
 
-      if (currentPassword.length && newPassword.length && confirmPassword.length) {
+      if (trimmedCurrentPassword?.length && trimmedNewPassword?.length && trimmedConfirmPassword?.length) {
         const requestData = {
-          existingPassword: currentPassword,
-          newPassword: newPassword,
+          existingPassword: trimmedCurrentPassword,
+          newPassword: trimmedNewPassword,
           tenantId: tenant,
           type: "EMPLOYEE",
           username: userInfo?.userName,
-          confirmPassword: confirmPassword,
+          confirmPassword: trimmedConfirmPassword,
         };
 
-        if (newPassword === confirmPassword) {
+        if (trimmedNewPassword === trimmedConfirmPassword) {
           try {
             const res = await Digit.UserService.changePassword(requestData, tenant);
 
@@ -767,9 +767,9 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                       </LabelFieldPair>
                     </div>
                   ) : (
-                    <a style={{ color: "#7a2829", marginBottom: "5", cursor: "pointer" }} onClick={TogleforPassword}>
+                    <button type={"button"} style={{ color: "#7a2829", marginBottom: "5", cursor: "pointer", outline: "none" }} onClick={TogleforPassword}>
                       {t("CORE_COMMON_CHANGE_PASSWORD")}
-                    </a>
+                    </button>
                   )}
                 </div>
               </React.Fragment>
