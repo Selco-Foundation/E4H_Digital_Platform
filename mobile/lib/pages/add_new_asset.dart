@@ -109,16 +109,20 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
   int _requiredAssetCountFromState(CacheAssetCountState state) {
     return state.maybeWhen(
-      loaded: (entries) => entries
+      loaded: (entries) =>
+          entries
               .firstWhereOrNull((e) => e.assetType == currentAssetType)
               ?.count ??
           0,
+      added: (entry) => entry.assetType == currentAssetType ? entry.count : 0,
+      updated: (entry) => entry.assetType == currentAssetType ? entry.count : 0,
       orElse: () => 0,
     );
   }
 
   int _requiredAssetCount() {
-    return _requiredAssetCountFromState(context.read<CacheAssetCountBloc>().state);
+    return _requiredAssetCountFromState(
+        context.read<CacheAssetCountBloc>().state);
   }
 
   AssetModel _buildBlankAsset() {
@@ -454,6 +458,10 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       .firstWhereOrNull((e) => e.assetType == currentAssetType)
                       ?.count ??
                   0,
+              added: (entry) =>
+                  entry.assetType == currentAssetType ? entry.count : 0,
+              updated: (entry) =>
+                  entry.assetType == currentAssetType ? entry.count : 0,
               orElse: () => 0,
             ),
             builder: (ctx, maxAssets) {
@@ -746,7 +754,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                         );
                         return;
                       }
-                      final copiedPath = await copyFileToLocalDir(imageFile.first);
+                      final copiedPath =
+                          await copyFileToLocalDir(imageFile.first);
                       setState(() {
                         asset.photoPath = copiedPath;
                         asset.latitude = _latitude.toString();

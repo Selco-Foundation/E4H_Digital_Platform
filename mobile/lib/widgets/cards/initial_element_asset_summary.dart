@@ -8,10 +8,12 @@ import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:isar/isar.dart';
 
 import '../../blocs/app_init/app_init.dart';
 import '../../blocs/cache_asset_count/cache_asset_count.dart';
 import '../../blocs/selected_activity_facility/selected_activity_facility.dart';
+import '../../data/nosql/cache_add_new_asset.dart';
 import '../../data/nosql/cache_asset_count.dart';
 import '../../model/asset_count/asset_count.dart';
 import '../../model/mdms/mdms.dart';
@@ -80,11 +82,16 @@ class InitialElementAssetSummary extends StatefulWidget {
       _InitialElementAssetSummaryState();
 }
 
-class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary> {
+class _InitialElementAssetSummaryState
+    extends State<InitialElementAssetSummary> {
   String? _currentActivityFacilityId;
   int _count = 0;
   int _minCount = 0;
   int _maxCount = 0;
+  bool _hasObservedCachedCount = false;
+  bool _hasAddNewAssetCache = false;
+  int _loadGeneration = 0;
+  int _assetCacheLoadGeneration = 0;
 
   StreamSubscription<CacheAssetCountState>? _countSub;
   StreamSubscription<SelectedActivityFacilityState>? _facilitySub;
@@ -97,7 +104,8 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
     super.initState();
     _syncSelectedFacilityFromState();
     _syncLimitsFromAppInit();
-    _countSub = context.read<CacheAssetCountBloc>().stream.listen(_onCountState);
+    _countSub =
+        context.read<CacheAssetCountBloc>().stream.listen(_onCountState);
     _facilitySub = context
         .read<SelectedActivityFacilityBloc>()
         .stream
@@ -113,7 +121,8 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
           orElse: () {},
         );
 
-    _loadCount();
+    _loadOrSeedCount();
+    _loadHasAddNewAssetCache();
   }
 
   @override
@@ -125,10 +134,8 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
   }
 
   void _syncSelectedFacilityFromState() {
-    context
-        .read<SelectedActivityFacilityBloc>()
-        .state
-        .whenOrNull(selected: (project) {
+    context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
+        selected: (project) {
       _currentActivityFacilityId = project.activityFacility.id;
     });
   }
@@ -141,9 +148,11 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
       setState(() {
         _currentActivityFacilityId = nextId;
         _count = 0;
+        _hasObservedCachedCount = false;
+        _hasAddNewAssetCache = false;
       });
-
-      _loadCount();
+      _loadOrSeedCount();
+      _loadHasAddNewAssetCache();
     });
   }
 
@@ -168,10 +177,7 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
       orElse: () => const [],
     );
 
-    final nextLimit = assetCountList
-        .firstOrNull
-        ?.data
-        .assetCount
+    final nextLimit = assetCountList.firstOrNull?.data.assetCount
         .firstWhereOrNull((entry) =>
             entry.assetTypeCode.toUpperCase() ==
             widget.assetTypeCode.toUpperCase());
@@ -198,6 +204,7 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
       _maxCount = nextMax;
       _count = clampedCount;
     });
+    _loadOrSeedCount();
   }
 
   int _compareEntries(CacheAssetCount a, CacheAssetCount b) {
@@ -215,6 +222,17 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
     return value.clamp(resolvedMin, resolvedMax);
   }
 
+  int _clampInitialCount(int value, {int? max}) {
+    final resolvedMax = max ?? _maxCount;
+    if (resolvedMax <= 0) return 0;
+    return value.clamp(0, resolvedMax);
+  }
+
+  int get _activationCount => _minCount > 0 ? _minCount : 1;
+
+  int get _effectiveLowerBound =>
+      _count == 0 && !_hasObservedCachedCount ? 0 : _activationCount;
+
   void _applyEntries(List<CacheAssetCount> entries) {
     final projectId = _currentActivityFacilityId;
     if (projectId == null) return;
@@ -226,7 +244,10 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
         .sorted(_compareEntries)
         .lastOrNull;
 
-    if (latest == null || !mounted) return;
+    if (latest == null) return;
+
+    _hasObservedCachedCount = true;
+    if (!mounted) return;
 
     final clampedCount = _clampToBounds(latest.count);
     if (_count == clampedCount) return;
@@ -234,6 +255,7 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
     setState(() {
       _count = clampedCount;
     });
+    _loadHasAddNewAssetCache();
   }
 
   void _applySingleEntry(CacheAssetCount entry) {
@@ -241,30 +263,95 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
     if (entry.activityFacilityId != _currentActivityFacilityId) return;
     if (entry.assetType.trim().toLowerCase() != _normalizedAssetType) return;
 
+    _hasObservedCachedCount = true;
     final clampedCount = _clampToBounds(entry.count);
     if (_count == clampedCount) return;
 
     setState(() {
       _count = clampedCount;
     });
+    _loadHasAddNewAssetCache();
   }
 
-  void _loadCount() {
+  Future<void> _loadOrSeedCount() async {
     final projectId = _currentActivityFacilityId;
     if (projectId == null) return;
 
-    context
-        .read<CacheAssetCountBloc>()
-        .add(CacheAssetCountEvent.get(projectId, _normalizedAssetType));
+    final generation = ++_loadGeneration;
+    final bloc = context.read<CacheAssetCountBloc>();
+    final entries = await bloc.isar.cacheAssetCounts
+        .where()
+        .activityFacilityIdEqualTo(projectId)
+        .findAll();
+
+    if (!mounted || generation != _loadGeneration) return;
+
+    final latest = entries
+        .where((entry) =>
+            entry.assetType.trim().toLowerCase() == _normalizedAssetType)
+        .sorted(_compareEntries)
+        .lastOrNull;
+
+    if (latest != null) {
+      _hasObservedCachedCount = true;
+      final clampedCount = _clampToBounds(latest.count);
+      if (_count != clampedCount) {
+        setState(() {
+          _count = clampedCount;
+        });
+      }
+      _loadHasAddNewAssetCache();
+      return;
+    }
+
+    _hasObservedCachedCount = false;
+    if (_count != 0) {
+      setState(() {
+        _count = 0;
+      });
+    }
+    _loadHasAddNewAssetCache();
+  }
+
+  Future<void> _loadHasAddNewAssetCache() async {
+    final projectId = _currentActivityFacilityId;
+    if (projectId == null) return;
+
+    final generation = ++_assetCacheLoadGeneration;
+    final isar = context.read<CacheAssetCountBloc>().isar;
+    final count = await isar.cacheAddNewAssets
+        .where()
+        .activityFacilityIdEqualTo(projectId)
+        .filter()
+        .assetTypeEqualTo(_normalizedAssetType)
+        .count();
+
+    if (!mounted || generation != _assetCacheLoadGeneration) return;
+
+    final hasCache = count > 0;
+    if (_hasAddNewAssetCache == hasCache) return;
+
+    setState(() {
+      _hasAddNewAssetCache = hasCache;
+    });
   }
 
   void _updateCount(int nextCount) {
     final projectId = _currentActivityFacilityId;
     if (projectId == null) return;
 
-    final normalizedCount = _clampToBounds(nextCount);
+    final normalizedCount = nextCount <= 0
+        ? _clampInitialCount(nextCount, max: _maxCount)
+        : _clampToBounds(
+            nextCount,
+            min: _activationCount,
+            max: _maxCount,
+          );
     setState(() {
       _count = normalizedCount;
+      if (normalizedCount > 0) {
+        _hasObservedCachedCount = true;
+      }
     });
 
     context.read<CacheAssetCountBloc>().add(
@@ -303,7 +390,7 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
                 children: [
                   AssetCounter(
                     symbol: '-',
-                    enabled: _count > _minCount,
+                    enabled: _count > _effectiveLowerBound,
                     onTap: () => _updateCount(_count - 1),
                   ),
                   Container(
@@ -324,23 +411,26 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
                   AssetCounter(
                     symbol: '+',
                     enabled: _count < _maxCount,
-                    onTap: () => _updateCount(_count + 1),
+                    onTap: () => _updateCount(
+                      _count == 0 ? _activationCount : _count + 1,
+                    ),
                   )
                 ],
               ),
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: widget.onPress ?? () {},
-                child: Text(
-                  "Summary",
-                  style: textTheme.bodyS.copyWith(
-                    color: theme.colorTheme.primary.primary1,
+            if (_count > 0 && _hasAddNewAssetCache)
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: widget.onPress ?? () {},
+                  child: Text(
+                    "Summary",
+                    style: textTheme.bodyS.copyWith(
+                      color: theme.colorTheme.primary.primary1,
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
         const SizedBox(height: spacer2),
@@ -351,7 +441,8 @@ class _InitialElementAssetSummaryState extends State<InitialElementAssetSummary>
               label: 'Add Details',
               type: DigitButtonType.secondary,
               size: DigitButtonSize.medium,
-              onPressed: widget.onAddDetailPress ?? () {},
+              onPressed:
+                  _count > 0 ? (widget.onAddDetailPress ?? () {}) : () {},
             ),
             const SizedBox(height: spacer2),
           ],
