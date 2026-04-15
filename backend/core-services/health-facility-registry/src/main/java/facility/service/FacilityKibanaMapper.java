@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Mapper service to transform Facility objects to Kibana index format
@@ -618,6 +619,19 @@ public class FacilityKibanaMapper {
             }
 
             FacilityKibanaIndex existingDoc = mapper.convertValue(dataObj, FacilityKibanaIndex.class);
+            String tenantIdLocalized = (String)((Map<String, Object>) dataObj).get("tenantId_localized");
+            List<Integer> geoPoint = (List<Integer>)((Map<String, Object>) dataObj).get("geo-point");
+            Integer total_tickets = (Integer)((Map<String, Object>) dataObj).get("total_tickets");
+            Integer open_tickets = (Integer)((Map<String, Object>) dataObj).get("open_tickets");
+            Integer closed_tickets = (Integer)((Map<String, Object>) dataObj).get("closed_tickets");
+            String solar_panel_status = (String)((Map<String, Object>) dataObj).get("solar_panel_status");
+            existingDoc.setTenantIdLocalized(tenantIdLocalized);
+            String result = geoPoint!= null ? geoPoint.stream().map(String::valueOf).collect(Collectors.joining(", ")) : null;
+            existingDoc.setGeoPoint(result);
+            existingDoc.setTotalTickets(total_tickets);
+            existingDoc.setOpenTickets(open_tickets);
+            existingDoc.setClosedTickets(closed_tickets);
+            existingDoc.setSolarPanelStatus(solar_panel_status);
             log.info("Successfully fetched existing Kibana document for facilityId={} tenantId={}", facilityId, tenantId);
             return existingDoc;
         } catch (Exception e) {

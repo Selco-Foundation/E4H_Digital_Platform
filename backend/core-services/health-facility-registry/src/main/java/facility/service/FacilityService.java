@@ -583,22 +583,38 @@ public class FacilityService {
             );
 
             // Check if facility already exists in Kibana, if not then push
-            boolean existsInKibana = facilityKibanaMapper.existsInKibana(
-                    update.getFacilityId(),
-                    update.getTenantId(),
-                    request.getRequestInfo()
-            );
+//            boolean existsInKibana = facilityKibanaMapper.existsInKibana(
+//                    update.getFacilityId(),
+//                    update.getTenantId(),
+//                    request.getRequestInfo()
+//            );
 
-            if (existsInKibana) {
-                log.info("Facility {} already exists in Kibana, skipping push", sanitizeForLog(update.getFacilityId()));
-                return facility;
-            }
+//            if (existsInKibana) {
+//                log.info("Facility {} already exists in Kibana, skipping push", sanitizeForLog(update.getFacilityId()));
+//                return facility;
+//            }
 
             // Only update mutable Kibana display fields during facility update.
             Facility facilityForKibanaUpdate = Facility.builder()
                     .facilityId(facility.getFacilityId())
                     .tenantId(facility.getTenantId())
+                    .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
+                    .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
                     .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
+                    .facilityCategory(existingFacility.getFacilityCategory()) // Not in update request, use existing
+                    .facilityOwnership(existingFacility.getFacilityOwnership()) // Not in update request, use existing
+                    .facilityRegion(existingFacility.getFacilityRegion()) // Not in update request, use existing
+                    .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
+                    .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
+                    .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
+                    .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
+                    .isOnmReady(true) // Set from update request
+                    .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
+                    .facilityPocPhone(facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank() ? facility.getFacilityPocPhone(): existingFacility.getFacilityPocPhone())
+                    .facilityPocEmail(facility.getFacilityPocEmail()!=null && !facility.getFacilityPocEmail().isBlank() ? facility.getFacilityPocEmail(): existingFacility.getFacilityPocEmail())
+                    .hfrId(facility.getHfrId()!=null && !facility.getHfrId().isBlank() ? facility.getHfrId(): existingFacility.getHfrId())
+                    .ninId(facility.getNinId()!=null && !facility.getNinId().isBlank() ? facility.getNinId(): existingFacility.getNinId())
+                    .userId(facility.getUserId()!=null && !facility.getUserId().isBlank() ? facility.getUserId(): existingFacility.getUserId())
                     .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
                     .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())
                     .build();
