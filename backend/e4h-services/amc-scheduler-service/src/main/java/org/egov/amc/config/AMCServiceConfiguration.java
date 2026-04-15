@@ -60,6 +60,9 @@ public class AMCServiceConfiguration {
     @Value("${egov.v2.search.facility.url}")
     private String facilityServiceSearchUrlV2;
 
+    @Value("${egov.v2.bulk.search.facility.url}")
+    private String facilityBulkSearchUrl;
+
     @Value("${search.api.limit:100}")
     private String searchApiLimit;
 
@@ -149,4 +152,8 @@ public class AMCServiceConfiguration {
 
     @Value("${email.activity.assignment.default.password}")
     private String defaultUserPassword;
+
+    public String getFacilityBulkSearchPath() {
+        return facilityBulkSearchUrl;
+    }
 }
