@@ -51,6 +51,8 @@ public class OrganisationUserServiceValidator {
     private static final String NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     private static final String VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO = "Valid From in search parameters should be less than Valid To";
     private static final String INVALID_ORG_SEARCH_DATE ="INVALID_ORG_SEARCH_DATE";
+    /** Default country jurisdiction when none are supplied; must match {@link HRMSUtils#buildJurisdictions(List)}. */
+    private static final String DEFAULT_HRMS_JURISDICTION_BOUNDARY = "India";
     @Autowired
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
                                             OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil, OrganisationUserRepository userRepository, ObjectMapper mapper) {
@@ -219,26 +221,11 @@ public class OrganisationUserServiceValidator {
                         existingEmployee.getUser().setActive(orgUser.getActive());
                     }
 
-                    long now = System.currentTimeMillis();
-                    List<Assignment> previousAssignments = existingEmployee.getAssignments();
-                    if (previousAssignments != null) {
-                        for (Assignment assignment : previousAssignments) {
-                            if (isDefaultAssignment(assignment)) {
-                                assignment.setIsCurrentAssignment(true);
-                                assignment.setToDate(null);
-                                assignment.setFromDate(now);
-                            } else if (Boolean.TRUE.equals(assignment.getIsCurrentAssignment())) {
-                                assignment.setIsCurrentAssignment(false);
-                                assignment.setToDate(now);
-                            }
-                        }
-                    }
-                    List<Assignment> updatedAssignments = new ArrayList<>(
-                            previousAssignments != null ? previousAssignments : Collections.emptyList());
-                    if (request.getAssignments() != null && !request.getAssignments().isEmpty()) {
-                        updatedAssignments.addAll(request.getAssignments());
-                    }
-                    existingEmployee.setAssignments(updatedAssignments);
+                    // Do not modify HRMS assignments when re-linking/updating an existing user for this org.
+                    existingEmployee.setJurisdictions(
+                            mergeJurisdictionsForRecreateUser(
+                                    existingEmployee.getJurisdictions(),
+                                    orgUser.getJurisdictions()));
 
                     EmployeeRequest employeeRequest = EmployeeRequest.builder()
                             .requestInfo(request.getRequestInfo())
@@ -678,9 +665,76 @@ public class OrganisationUserServiceValidator {
                 .collect(Collectors.toSet());
     }
 
-    private boolean isDefaultAssignment(Assignment assignment) {
-        return "DESIG_01".equals(assignment.getDesignation())
-                && "DEPT_1".equals(assignment.getDepartment());
+    /**
+     * When create finds an existing HRMS user for the same org: deactivate all prior jurisdictions
+     * except the default country boundary used on create ({@link HRMSUtils#buildJurisdictions(List)}),
+     * then merge in jurisdictions from the request (including default India when the list is empty).
+     */
+    private List<Jurisdiction> mergeJurisdictionsForRecreateUser(
+            List<Jurisdiction> existingFromEmployee,
+            List<Jurisdiction> requestedOnUser) {
+
+        List<Jurisdiction> merged = new ArrayList<>();
+        if (existingFromEmployee != null) {
+            for (Jurisdiction j : existingFromEmployee) {
+                if (j == null) {
+                    continue;
+                }
+                if (isDefaultIndiaJurisdictionBoundary(j.getBoundary())) {
+                    j.setIsActive(true);
+                } else {
+                    j.setIsActive(false);
+                }
+                merged.add(j);
+            }
+        }
+
+        List<Jurisdiction> incoming = hrmsUtils.buildJurisdictions(requestedOnUser);
+        for (Jurisdiction j : incoming) {
+            if (j == null) {
+                continue;
+            }
+            int idx = indexOfJurisdictionByBoundaryIgnoreCase(merged, j.getBoundary());
+            if (idx >= 0) {
+                Jurisdiction target = merged.get(idx);
+                if (j.getHierarchy() != null) {
+                    target.setHierarchy(j.getHierarchy());
+                }
+                if (j.getBoundaryType() != null) {
+                    target.setBoundaryType(j.getBoundaryType());
+                }
+                if (j.getTenantId() != null) {
+                    target.setTenantId(j.getTenantId());
+                }
+                if (j.getId() != null) {
+                    target.setId(j.getId());
+                }
+                target.setIsActive(j.getIsActive() != null ? j.getIsActive() : Boolean.TRUE);
+            } else {
+                if (j.getIsActive() == null) {
+                    j.setIsActive(true);
+                }
+                merged.add(j);
+            }
+        }
+        return merged;
+    }
+
+    private static int indexOfJurisdictionByBoundaryIgnoreCase(List<Jurisdiction> list, String boundary) {
+        if (boundary == null) {
+            return -1;
+        }
+        for (int i = 0; i < list.size(); i++) {
+            Jurisdiction x = list.get(i);
+            if (x != null && x.getBoundary() != null && boundary.equalsIgnoreCase(x.getBoundary())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean isDefaultIndiaJurisdictionBoundary(String boundary) {
+        return boundary != null && DEFAULT_HRMS_JURISDICTION_BOUNDARY.equalsIgnoreCase(boundary.trim());
     }
 
 }
