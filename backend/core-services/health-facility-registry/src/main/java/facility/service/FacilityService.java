@@ -583,16 +583,16 @@ public class FacilityService {
             );
 
             // Check if facility already exists in Kibana, if not then push
-//            boolean existsInKibana = facilityKibanaMapper.existsInKibana(
-//                    update.getFacilityId(),
-//                    update.getTenantId(),
-//                    request.getRequestInfo()
-//            );
-//
-//            if (existsInKibana) {
-//                log.info("Facility {} already exists in Kibana, skipping push", sanitizeForLog(update.getFacilityId()));
-//                return facility;
-//            }
+            boolean existsInKibana = facilityKibanaMapper.existsInKibana(
+                    update.getFacilityId(),
+                    update.getTenantId(),
+                    request.getRequestInfo()
+            );
+
+            if (existsInKibana) {
+                log.info("Facility {} already exists in Kibana, skipping push", sanitizeForLog(update.getFacilityId()));
+                return facility;
+            }
 
             // Only update mutable Kibana display fields during facility update.
             Facility facilityForKibanaUpdate = Facility.builder()
