@@ -502,6 +502,7 @@ public class FacilityService {
         facility.setHfrId(update.getHfrId());
         facility.setNinId(update.getNinId());
         facility.setFacilityStatus(update.getStatus());
+        facility.setIsActive(update.getIsActive());
         facility.setUserId(update.getUserId());
 
         // Validate with MDMS and boundary APIs
@@ -516,7 +517,7 @@ public class FacilityService {
         }
 
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
-        if (facility.getIsActive() == null) facility.setIsActive(true);
+        if (facility.getIsActive() == null) facility.setIsActive(existingFacility.getIsActive());
 
         // If POC details are updated AND facility is isOnmReady=true
         boolean isPocDetailsUpdated = checkPOCDetailsUpdated(existingFacility, facility);
@@ -593,33 +594,17 @@ public class FacilityService {
                 return facility;
             }
 
-            // Fetch full facility from DB only to get missing fields not in update request (like facilityCategory, facilityOwnership, etc.)
-
-            // Merge update request data with existing facility data (prioritize update values)
-            Facility facilityForKibana = Facility.builder()
+            // Only update mutable Kibana display fields during facility update.
+            Facility facilityForKibanaUpdate = Facility.builder()
                     .facilityId(facility.getFacilityId())
                     .tenantId(facility.getTenantId())
-                    .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
-                    .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
                     .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
-                    .facilityCategory(existingFacility.getFacilityCategory()) // Not in update request, use existing
-                    .facilityOwnership(existingFacility.getFacilityOwnership()) // Not in update request, use existing
-                    .facilityRegion(existingFacility.getFacilityRegion()) // Not in update request, use existing
-                    .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
-                    .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
-                    .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
-                    .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
-                    .isOnmReady(true) // Set from update request
-                    .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
-                    .facilityPocPhone(facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank() ? facility.getFacilityPocPhone(): existingFacility.getFacilityPocPhone())
-                    .facilityPocEmail(facility.getFacilityPocEmail()!=null && !facility.getFacilityPocEmail().isBlank() ? facility.getFacilityPocEmail(): existingFacility.getFacilityPocEmail())
-                    .hfrId(facility.getHfrId()!=null && !facility.getHfrId().isBlank() ? facility.getHfrId(): existingFacility.getHfrId())
-                    .ninId(facility.getNinId()!=null && !facility.getNinId().isBlank() ? facility.getNinId(): existingFacility.getNinId())
-                    .userId(facility.getUserId()!=null && !facility.getUserId().isBlank() ? facility.getUserId(): existingFacility.getUserId())
+                    .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
+                    .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())
                     .build();
-            
-            // Transform to Kibana index format and push
-            FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facilityForKibana, request.getRequestInfo());
+
+            FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
+                    facilityForKibanaUpdate, request.getRequestInfo());
             facilityRepository.pushToKibana(kibanaIndex);
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
         }

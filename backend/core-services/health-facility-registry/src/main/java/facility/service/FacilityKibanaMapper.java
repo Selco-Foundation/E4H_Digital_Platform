@@ -151,6 +151,35 @@ public class FacilityKibanaMapper {
     }
 
     /**
+     * Updates only mutable "display" fields for an existing Kibana index document.
+     * Falls back to full mapping when no existing document can be found.
+     */
+    public FacilityKibanaIndex toKibanaIndexForFacilityUpdate(Facility facility, RequestInfo requestInfo) {
+        if (facility == null) {
+            return null;
+        }
+
+        FacilityKibanaIndex existingDoc = fetchExistingKibanaIndex(facility.getFacilityId(), facility.getTenantId());
+        if (existingDoc == null) {
+            return toKibanaIndex(facility, requestInfo);
+        }
+
+        if (facility.getFacilityName() != null && !facility.getFacilityName().isBlank()) {
+            existingDoc.setName(facility.getFacilityName());
+        }
+        if (facility.getFacilityType() != null && !facility.getFacilityType().isBlank()) {
+            existingDoc.setType(facility.getFacilityType());
+            existingDoc.setPhcType(facility.getFacilityType());
+        }
+        if (facility.getIsActive() != null) {
+            existingDoc.setIsLive(facility.getIsActive());
+        }
+        existingDoc.setLastModifiedTime(System.currentTimeMillis());
+
+        return existingDoc;
+    }
+
+    /**
      * Prefer HFR / official facility code for the index {@code code} field; fall back to boundary code.
      */
     private static String resolveTenantIdLocalized(Facility facility) {
@@ -511,6 +540,65 @@ public class FacilityKibanaMapper {
         } catch (Exception e) {
             log.error("Error parsing search response: {}", e.getMessage(), e);
             return false;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private FacilityKibanaIndex fetchExistingKibanaIndex(String facilityId, String tenantId) {
+        if (facilityId == null || tenantId == null) {
+            return null;
+        }
+
+        try {
+            Map<String, Object> searchQuery = Map.of(
+                    "query", Map.of(
+                            "bool", Map.of(
+                                    "must", List.of(
+                                            Map.of("term", Map.of("Data.facilityId.keyword", facilityId)),
+                                            Map.of("term", Map.of("Data.tenantId.keyword", tenantId))
+                                    )
+                            )
+                    ),
+                    "size", 1
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/" + SEARCH_PATH;
+            HttpEntity<Object> entity = new HttpEntity<>(searchQuery, buildHeaders());
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            if (response == null) {
+                return null;
+            }
+
+            Object hitsObj = response.get("hits");
+            if (!(hitsObj instanceof Map)) {
+                return null;
+            }
+
+            Object hitListObj = ((Map<String, Object>) hitsObj).get("hits");
+            if (!(hitListObj instanceof List) || ((List<?>) hitListObj).isEmpty()) {
+                return null;
+            }
+
+            Object firstHitObj = ((List<?>) hitListObj).get(0);
+            if (!(firstHitObj instanceof Map)) {
+                return null;
+            }
+
+            Object sourceObj = ((Map<String, Object>) firstHitObj).get("_source");
+            if (!(sourceObj instanceof Map)) {
+                return null;
+            }
+
+            Object dataObj = ((Map<String, Object>) sourceObj).get("Data");
+            if (!(dataObj instanceof Map)) {
+                return null;
+            }
+
+            return mapper.convertValue(dataObj, FacilityKibanaIndex.class);
+        } catch (Exception e) {
+            log.warn("Unable to fetch existing Kibana document for facility {} and tenant {}: {}",
+                    facilityId, tenantId, e.getMessage());
+            return null;
         }
     }
 }
