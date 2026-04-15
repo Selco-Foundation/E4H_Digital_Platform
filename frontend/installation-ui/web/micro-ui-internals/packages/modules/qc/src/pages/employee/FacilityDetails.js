@@ -104,10 +104,10 @@ const FacilityDetails = ({t}) => {
     return <Loader />;
   }
 
-  const revalidateData = () => {
-    revalidateFieldPlans();
-    revalidateFacilities();
-    revalidateFacilityDetails();
+  const revalidateData = async () => {
+    await revalidateFieldPlans();
+    await revalidateFacilities();
+    await revalidateFacilityDetails();
   }
 
   return (

@@ -30,7 +30,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
         workflowDocuments
       );
 
-      revalidateData();
+      await revalidateData();
       dispatch(clearRejectionReasons());
       setUpdatingWorkflow(false);
       setToast({
@@ -86,7 +86,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
         workflowDocuments
       );
 
-      revalidateData();
+      await revalidateData();
       dispatch(clearRejectionReasons());
       setUpdatingWorkflow(false);
       setToast({
@@ -118,7 +118,7 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }
         workflowDocuments
       );
 
-      revalidateData();
+      await revalidateData();
       dispatch(clearRejectionReasons());
       setUpdatingWorkflow(false);
       setToast({
