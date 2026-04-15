@@ -51,6 +51,8 @@ public class OrganisationUserServiceValidator {
     private static final String NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     private static final String VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO = "Valid From in search parameters should be less than Valid To";
     private static final String INVALID_ORG_SEARCH_DATE ="INVALID_ORG_SEARCH_DATE";
+    /** Default country jurisdiction when none are supplied; must match {@link HRMSUtils#buildJurisdictions(List)}. */
+    private static final String DEFAULT_HRMS_JURISDICTION_BOUNDARY = "India";
     @Autowired
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
                                             OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil, OrganisationUserRepository userRepository, ObjectMapper mapper) {
@@ -111,7 +113,6 @@ public class OrganisationUserServiceValidator {
             log.error("Organization is mandatory in org user request body");
             throw new CustomException("Organization", "Organization ID do not exist");
         }
-
         // Validate user object fields
         validateUserRequest(orgUser);
 
@@ -177,17 +178,86 @@ public class OrganisationUserServiceValidator {
 
         }
         else { // If user found, Check if user belong to another organisation record
+            // Delete here is only eg_org_user.isdeleted=true; HRMS employee stays active, so phone search still finds them.
+            // Undelete the org link in DB first, then use the same active-only org-user search + same-org HRMS path as usual.
+            String hrmsUserUuid = employee.get(0).getUser().getUuid();
+            userRepository.ensureActiveOrgUserLinkOrReactivateDeleted(hrmsUserUuid, request.getOrganizationId());
+
             List<String> uuids = employee.stream().map(e -> e.getUser().getUuid()).filter(Objects::nonNull).toList();
             OrgUserSearchCriteria searchUserCriteria = OrgUserSearchCriteria.builder().userId(uuids).tenantId(orgUser.getTenantId()).build();
             OrgUserSearchRequest orgUserSearchRequest = OrgUserSearchRequest.builder().requestInfo(request.getRequestInfo()).criteria(searchUserCriteria).build();
-            URLParams urlParams = URLParams.builder().limit(1).offset(0).build();
+            URLParams urlParams = URLParams.builder().limit(100).offset(0).build();
             List<OrgUser> users = userRepository.getOrgUsers(orgUserSearchRequest, urlParams);
-            if(users != null && !users.isEmpty()){
-                log.error("This user already belong to another org");
-                throw new CustomException("Organization", "This user already belong to another org");
+            boolean linkOnlyExistingHrmsUser = false;
+            if (users != null && !users.isEmpty()) {
+                OrgUser sameOrgUser = users.stream()
+                        .filter(u -> request.getOrganizationId().equals(u.getOrganizationId()))
+                        .max(Comparator.comparingLong(OrganisationUserServiceValidator::orgUserRowLastModifiedTime)
+                                .thenComparing(OrgUser::getId, Comparator.nullsLast(Comparator.naturalOrder())))
+                        .orElse(null);
+
+                if (sameOrgUser != null) {
+                    log.info("User with phone {} already exists in org {}, updating existing user",
+                            orgUser.getMobileNumber(), request.getOrganizationId());
+                    Employee existingEmployee = employee.get(0);
+                    Organisation organisation = organisations.get(0);
+                    String orgType = organisation.getOrgType();
+
+                    Map<String, List<Role>> rolesMap = getOrgRoles(request.getRequestInfo());
+                    if (rolesMap != null && !rolesMap.isEmpty() && orgType != null && !orgType.isBlank()) {
+                        List<Role> roles = rolesMap.get(orgType);
+                        if (roles != null) {
+                            List<String> roleCodesMDMS = roles.stream().map(Role::getCode).filter(Objects::nonNull).toList();
+                            List<String> requestRoleCodes = orgUser.getRoles().stream().map(Role::getCode).filter(Objects::nonNull).toList();
+                            Set<String> orgRolesReqSet = new HashSet<>(requestRoleCodes);
+                            validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
+                        }
+                    }
+
+                    existingEmployee.getUser().setName(orgUser.getName());
+                    existingEmployee.getUser().setEmailId(orgUser.getEmailId());
+                    existingEmployee.getUser().setRoles(orgUser.getRoles());
+                    if (orgUser.getActive() != null) {
+                        existingEmployee.getUser().setActive(orgUser.getActive());
+                    }
+
+                    // Do not modify HRMS assignments when re-linking/updating an existing user for this org.
+                    existingEmployee.setJurisdictions(
+                            mergeJurisdictionsForRecreateUser(
+                                    existingEmployee.getJurisdictions(),
+                                    orgUser.getJurisdictions()));
+
+                    EmployeeRequest employeeRequest = EmployeeRequest.builder()
+                            .requestInfo(request.getRequestInfo())
+                            .employees(List.of(existingEmployee))
+                            .build();
+                    List<Employee> updatedEmployees = hrmsUtils.updateHRMSUser(employeeRequest);
+
+                    if (updatedEmployees == null || updatedEmployees.isEmpty()) {
+                        throw new CustomException("HRMS_UPDATE", "Error occurred while updating the existing user");
+                    }
+
+                    Employee updated = updatedEmployees.get(0);
+                    request.setUser(updated.getUser());
+                    request.setUserId(updated.getUser().getUuid());
+                    request.setId(sameOrgUser.getId());
+                    request.setIsDeleted(false);
+                    log.info("Successfully updated existing HRMS user {} in org {}",
+                            updated.getUser().getUuid(), request.getOrganizationId());
+                } else {
+                    boolean hasActiveOtherOrgLink = users.stream()
+                            .filter(u -> !request.getOrganizationId().equals(u.getOrganizationId()))
+                            .anyMatch(u -> !Boolean.TRUE.equals(u.getIsDeleted()));
+                    if (hasActiveOtherOrgLink) {
+                        log.error("This user already belong to another org");
+                        throw new CustomException("Organization", "This user already belong to another org");
+                    }
+                    linkOnlyExistingHrmsUser = true;
+                }
+            } else {
+                linkOnlyExistingHrmsUser = true;
             }
-            else{
-//                request.getUser().setUuid(employee.get(0).getUser().getUuid());
+            if (linkOnlyExistingHrmsUser) {
                 request.setUser(employee.get(0).getUser());
                 request.setUserId(employee.get(0).getUser().getUuid());
             }
@@ -195,6 +265,13 @@ public class OrganisationUserServiceValidator {
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
+    }
+
+    private static long orgUserRowLastModifiedTime(OrgUser u) {
+        if (u == null || u.getAuditDetails() == null || u.getAuditDetails().getLastModifiedTime() == null) {
+            return 0L;
+        }
+        return u.getAuditDetails().getLastModifiedTime();
     }
 
     private void validateUserRequest(User user) {
@@ -588,5 +665,76 @@ public class OrganisationUserServiceValidator {
                 .collect(Collectors.toSet());
     }
 
+    /**
+     * When create finds an existing HRMS user for the same org: deactivate all prior jurisdictions
+     * except the default country boundary used on create ({@link HRMSUtils#buildJurisdictions(List)}),
+     * then merge in jurisdictions from the request (including default India when the list is empty).
+     */
+    private List<Jurisdiction> mergeJurisdictionsForRecreateUser(
+            List<Jurisdiction> existingFromEmployee,
+            List<Jurisdiction> requestedOnUser) {
+
+        List<Jurisdiction> merged = new ArrayList<>();
+        if (existingFromEmployee != null) {
+            for (Jurisdiction j : existingFromEmployee) {
+                if (j == null) {
+                    continue;
+                }
+                if (isDefaultIndiaJurisdictionBoundary(j.getBoundary())) {
+                    j.setIsActive(true);
+                } else {
+                    j.setIsActive(false);
+                }
+                merged.add(j);
+            }
+        }
+
+        List<Jurisdiction> incoming = hrmsUtils.buildJurisdictions(requestedOnUser);
+        for (Jurisdiction j : incoming) {
+            if (j == null) {
+                continue;
+            }
+            int idx = indexOfJurisdictionByBoundaryIgnoreCase(merged, j.getBoundary());
+            if (idx >= 0) {
+                Jurisdiction target = merged.get(idx);
+                if (j.getHierarchy() != null) {
+                    target.setHierarchy(j.getHierarchy());
+                }
+                if (j.getBoundaryType() != null) {
+                    target.setBoundaryType(j.getBoundaryType());
+                }
+                if (j.getTenantId() != null) {
+                    target.setTenantId(j.getTenantId());
+                }
+                if (j.getId() != null) {
+                    target.setId(j.getId());
+                }
+                target.setIsActive(j.getIsActive() != null ? j.getIsActive() : Boolean.TRUE);
+            } else {
+                if (j.getIsActive() == null) {
+                    j.setIsActive(true);
+                }
+                merged.add(j);
+            }
+        }
+        return merged;
+    }
+
+    private static int indexOfJurisdictionByBoundaryIgnoreCase(List<Jurisdiction> list, String boundary) {
+        if (boundary == null) {
+            return -1;
+        }
+        for (int i = 0; i < list.size(); i++) {
+            Jurisdiction x = list.get(i);
+            if (x != null && x.getBoundary() != null && boundary.equalsIgnoreCase(x.getBoundary())) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean isDefaultIndiaJurisdictionBoundary(String boundary) {
+        return boundary != null && DEFAULT_HRMS_JURISDICTION_BOUNDARY.equalsIgnoreCase(boundary.trim());
+    }
 
 }

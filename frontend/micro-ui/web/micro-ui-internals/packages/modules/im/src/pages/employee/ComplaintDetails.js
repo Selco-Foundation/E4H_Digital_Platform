@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, Fragment, useMemo } from "react";
+import React, { useState, useEffect, useCallback, Fragment, useMemo, useRef } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import {
   BreakLine,
@@ -135,6 +135,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
   const isTechPocRmsResolution = selectedAction === "RESOLVE" && currentState === "RMS_DEVICE_PENDING_TECH_POC";
   const isRejectOutOfScope = selectedAction === "REJECT" && currentState === "OUT_OF_SCOPE";
   const isAssignOutOfScope = selectedAction === "ASSIGN" && currentState === "OUT_OF_SCOPE";
+  const oowTotalCostOfSolutionRef = useRef(null);
 
   useEffect(() => {
     if (selectedAction === "REJECT") {
@@ -155,6 +156,21 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
       setOowTimeToResolve(prevOowResponses.oowTimeToResolve);
     }
   },[selectedAction, complaintDetails]);
+
+  useEffect(() => {
+    const oowTotalCostOfSolutionInput = oowTotalCostOfSolutionRef.current;
+    if (!oowTotalCostOfSolutionInput) return;
+
+    const handleWheel = (e) => {
+      e.target.blur();
+    };
+
+    oowTotalCostOfSolutionInput.addEventListener("wheel", handleWheel);
+
+    return () => {
+      oowTotalCostOfSolutionInput.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
 
   function onSelectEmployee(employee) {
     setSelectedEmployee(employee);
@@ -547,7 +563,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
             <CardLabel>{t("OOW_ACTION_ISSUE_RESOLUTION_TIME")}*</CardLabel>
             <TextInput t={t} type={"text"} onChange={(e) => addUserResponses(e, setOowTimeToResolve)} value={oowTimeToResolve} />
             <CardLabel>{t("OOW_ACTION_ISSUE_SOLUTION_COST")}*</CardLabel>
-            <TextInput t={t} type={"number"} onChange={(e) => addUserResponses(e, setOowTotalCostOfSolution)} value={oowTotalCostOfSolution} />
+            <TextInput t={t} type={"number"} inputRef={oowTotalCostOfSolutionRef} onChange={(e) => addUserResponses(e, setOowTotalCostOfSolution)} value={oowTotalCostOfSolution} />
           </React.Fragment>
         )}
         {selectedAction === "SPARE_PART_NEEDED" && (

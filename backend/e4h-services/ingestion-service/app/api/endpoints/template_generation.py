@@ -1,8 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
 import psycopg2
-import concurrent.futures
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 from PIL import ImageDraw, Image, ImageFont
@@ -411,7 +409,7 @@ async def get_facility_ingestion_template_with_data(
                     f"Skipped fieldplan facility {facility_id} - boundary code {facility_boundary_code} not in current boundary list")
 
         logger.info(
-            f"Total facilities in template: {len(all_facilities)} (added from fieldplan: {added_count}, skipped: {skipped_count}, to unlink: {len(facilities_to_unlink)})")
+            f"Total facilities in template: {len(all_facilities)} (boundary: {len(existing_facility_ids)}, fieldplan: {len(fieldplan_facilities_data)})")
 
         # Mark facilities as included in fieldplan if they are already linked
         if fieldplan_id:

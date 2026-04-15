@@ -3,8 +3,11 @@ from typing import Dict, Any
 
 import requests
 
+from app.core.logging import AppLogger
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor_ingestion_shema_response import ResponseInfo
+
+logger = AppLogger().get_logger()
 
 
 class FieldPlanServiceClient:
