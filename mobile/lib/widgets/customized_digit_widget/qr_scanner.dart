@@ -275,9 +275,11 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
   }
 
   Future<void> _pickAndScanFromGallery() async {
-    if (_isPickingImage || _isBusy) return;
+    if (_isPickingImage) return;
 
     setState(() {
+      _canProcess = false;
+      _isBusy = false;
       _isPickingImage = true;
     });
 
@@ -388,6 +390,8 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
     } finally {
       if (mounted) {
         setState(() {
+          _canProcess = true;
+          _isBusy = false;
           _isPickingImage = false;
         });
       }
@@ -836,7 +840,7 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
             ),
             if (widget.enableGalleryScan) const SizedBox(height: spacer4),
             if (widget.enableGalleryScan)
-              GestureDetector(
+              InkWell(
                 onTap: _pickAndScanFromGallery,
                 child: Text(
                   _appLocalized(
