@@ -21,6 +21,7 @@ class DigitScannerUtils {
     ScannerLocalization localizations,
     int quantity, [
     VoidCallback? onKeepScanning,
+    VoidCallback? onConfirmSelection,
   ]
   ) async {
     var contentLocalization = localizations
@@ -46,13 +47,16 @@ class DigitScannerUtils {
             ),
             onPressed: () {
               Navigator.of(
-                context,
+                popupContext,
                 rootNavigator: true,
               ).pop(true);
 
-              Navigator.of(
-                context,
-              ).pop();
+              if (onConfirmSelection != null) {
+                onConfirmSelection();
+                return;
+              }
+
+              Navigator.of(context).pop();
             },
             type: DigitButtonType.primary,
             size: DigitButtonSize.large,

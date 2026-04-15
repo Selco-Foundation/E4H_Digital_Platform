@@ -146,6 +146,14 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
   bool get _isGS1 => _valBool('isGS1') ?? widget.isGS1code ?? false;
   int get _scanLimit => _valInt('scanLimit') ?? widget.quantity ?? 1;
   String? get _pattern => _valString('pattern') ?? widget.regex;
+  bool get _isSingleValue => widget.singleValue ?? true;
+
+  void _completeSelection(DigitScannerState state) {
+    final result = _isGS1
+        ? state.barCodes
+        : (state.qrCodes.isEmpty ? null : state.qrCodes.last);
+    Navigator.of(context).pop(result);
+  }
 
   @override
   void initState() {
@@ -656,6 +664,32 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
                             ),
                           );
 
+                          if (_isSingleValue) {
+                            DigitScannerUtils().buildDialog(
+                              context,
+                              localizations,
+                              1,
+                              () {
+                                if (!mounted) return;
+                                setState(() => manualCode = false);
+                                initializeCameras();
+                              },
+                              () {
+                                if (!mounted) return;
+                                _completeSelection(
+                                  DigitScannerState(
+                                    qrCodes: [value],
+                                    isGS1: _isGS1,
+                                    quantity: _scanLimit,
+                                    regex: _pattern,
+                                    messages: _messagesFromValidations(),
+                                  ),
+                                );
+                              },
+                            );
+                            return;
+                          }
+
                           DigitScannerUtils().buildDialog(
                             context,
                             localizations,
@@ -882,11 +916,12 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
                 onPressed: () async {
                   final scannedCount =
                       _isGS1 ? state.barCodes.length : state.qrCodes.length;
-                  if (scannedCount < _scanLimit) {
+                  final requiredCount = _isSingleValue ? 1 : _scanLimit;
+                  if (scannedCount < requiredCount) {
                     DigitScannerUtils().buildDialog(
                       context,
                       localizations,
-                      _scanLimit,
+                      requiredCount,
                     );
                     return;
                   }
@@ -902,7 +937,18 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
                       messages: _messagesFromValidations(),
                     ),
                   );
-                  Navigator.of(context).pop();
+                  if (_isSingleValue) {
+                    DigitScannerUtils().buildDialog(
+                      context,
+                      localizations,
+                      requiredCount,
+                      null,
+                      () => _completeSelection(state),
+                    );
+                    return;
+                  }
+
+                  _completeSelection(state);
                 },
               ),
             ],

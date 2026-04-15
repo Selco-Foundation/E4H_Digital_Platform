@@ -99,7 +99,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   late List<AssetType> assetTypeList = [];
   late List<String> typesField = [];
   late AssetType? selectedAssetType;
-  int? _scanningIndex;
 
   double? _latitude;
   double? _longitude;
@@ -301,6 +300,33 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     setState(() => _assets[index].serialNumber = serial);
   }
 
+  Future<void> _openScannerForAsset(int index) async {
+    final scannerBloc = context.read<DigitScannerBloc>();
+    scannerBloc.add(const DigitScannerEvent.handleScanner(qrCode: []));
+
+    final selectedCode = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => BlocProvider.value(
+          value: scannerBloc,
+          child: const DigitScannerPage(
+            quantity: 10,
+            isGS1code: false,
+            singleValue: true,
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    scannerBloc.add(const DigitScannerEvent.handleScanner(qrCode: []));
+
+    if (selectedCode != null && selectedCode.trim().isNotEmpty) {
+      _updateAsset(index, selectedCode.trim());
+    }
+  }
+
   String _prefilledCapacityFor(String assetType) {
     final wf = activityFacilityWorkflow ??
         context.read<SelectedActivityFacilityBloc>().state.maybeWhen(
@@ -375,21 +401,6 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
     return MultiBlocListener(
       listeners: [
-        BlocListener<DigitScannerBloc, DigitScannerState>(
-          listenWhen: (previous, current) =>
-              _scanningIndex != null &&
-              previous.qrCodes.isEmpty &&
-              current.qrCodes.isNotEmpty,
-          listener: (ctx, scanState) {
-            if (scanState.qrCodes.isNotEmpty && _scanningIndex != null) {
-              _updateAsset(_scanningIndex!, scanState.qrCodes.last);
-              ctx
-                  .read<DigitScannerBloc>()
-                  .add(const DigitScannerEvent.handleScanner(qrCode: []));
-              _scanningIndex = null;
-            }
-          },
-        ),
         BlocListener<CacheAddNewAssetBloc, CacheAddNewAssetState>(
           listener: (context, state) {
             state.maybeWhen(
@@ -653,22 +664,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 flex: 6,
                 child: GestureDetector(
                   onTap: () {
-                    setState(() => _scanningIndex = index);
-                    context
-                        .read<DigitScannerBloc>()
-                        .add(const DigitScannerEvent.handleScanner(qrCode: []));
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => BlocProvider.value(
-                          value: context.read<DigitScannerBloc>(),
-                          child: const DigitScannerPage(
-                            quantity: 10,
-                            isGS1code: false,
-                          ),
-                        ),
-                      ),
-                    );
+                    _openScannerForAsset(index);
                   },
                   child: DigitTextFormInput(
                     initialValue: asset.serialNumber,
@@ -687,22 +683,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                   label: 'Scan',
                   type: DigitButtonType.secondary,
                   onPressed: () {
-                    setState(() => _scanningIndex = index);
-                    context
-                        .read<DigitScannerBloc>()
-                        .add(const DigitScannerEvent.handleScanner(qrCode: []));
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (ctx) => BlocProvider.value(
-                          value: context.read<DigitScannerBloc>(),
-                          child: const DigitScannerPage(
-                            quantity: 10,
-                            isGS1code: false,
-                          ),
-                        ),
-                      ),
-                    );
+                    _openScannerForAsset(index);
                   },
                   size: DigitButtonSize.large,
                   mainAxisSize: MainAxisSize.max,
