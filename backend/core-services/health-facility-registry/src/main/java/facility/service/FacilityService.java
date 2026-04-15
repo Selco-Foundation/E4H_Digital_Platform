@@ -524,6 +524,9 @@ public class FacilityService {
             updatedHRMSUser(request, existingFacility, facility);
         }
 
+        // Create localization messages for each facility boundary (code: Boundary_{facilityBoundaryCode})
+        upsertFacilityBoundaryLocalizations(List.of(facility), request.getRequestInfo());
+
         try {
             String encryptedPocMobileNumber = encryptMobileNumber(request.getFacilityUpdate().getPocContact());
             if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
