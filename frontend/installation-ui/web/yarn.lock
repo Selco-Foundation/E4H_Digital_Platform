@@ -1814,10 +1814,10 @@
   resolved "https://registry.yarnpkg.com/@rtsao/scc/-/scc-1.1.0.tgz#927dd2fae9bc3361403ac2c7a00c32ddce9ad7e8"
   integrity sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==
 
-"@selco/installation-ui-css@1.0.22":
-  version "1.0.22"
-  resolved "https://registry.yarnpkg.com/@selco/installation-ui-css/-/installation-ui-css-1.0.22.tgz#97785f1890c63edf4f35954a0e604ed85b84755c"
-  integrity sha512-VH3vtdiHBsVfLpUqUP2hefpfojNFuKhgLKYq5C8OC6ujlXVhAhHl0gVLn8WLi3+CIxZuXKXazWVUrf8+e5607g==
+"@selco/installation-ui-css@1.0.23":
+  version "1.0.23"
+  resolved "https://registry.yarnpkg.com/@selco/installation-ui-css/-/installation-ui-css-1.0.23.tgz#7d5de46858042092ce2515d9b3b5c9d63d4fd6d0"
+  integrity sha512-mUn4/8ByZr1D7PGxl3vEuMIWUR8i87+wUVnygSCDlg8pzS3EboqaOxopLVW+8ilOSf5XVBMB26hlGERw3PtzbA==
   dependencies:
     node-sass "4.14.1"
     normalize.css "8.0.1"
