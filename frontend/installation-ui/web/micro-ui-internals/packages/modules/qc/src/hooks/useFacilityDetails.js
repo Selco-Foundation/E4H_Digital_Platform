@@ -58,12 +58,13 @@ const generateAuditTrail = (workflow, transactions) => {
 }
 
 const getAssetAggregation = async (workflow) => {
-  const assetAggregation = {
+  const documentAggregation = {
     images: {},
     videos: {},
-    installationReportDocuments: []
+    installationReportDocuments: [],
   };
-  const documentAggregation = [];
+  const installationImages = [];
+  const workflowDocuments = [];
 
   if (
     ["SUBMIT_REPORT_A", "SUBMIT_REPORT_B", "APPROVE", "REJECT_AND_ASSIGN_FOR_FIELD_QC", "FLAG_FOR_QC"].includes(workflow?.[0]?.action)
@@ -84,33 +85,40 @@ const getAssetAggregation = async (workflow) => {
       const documentType = document.documentType;
       let documentRequired = false;
 
-      if (documentType.toUpperCase().includes("IMAGE")) {
+      if (documentType.toUpperCase().includes("INSTALLATION_IMAGE")) {
+        documentRequired = true;
+        installationImages.push({
+          imageCode: documentType.split("-")[1],
+          fileUrl,
+          ...fileDetails
+        });
+      } else if (documentType.toUpperCase().includes("IMAGE")) {
         documentRequired = true;
         const assetType = documentType.split("-")[0].toUpperCase();
-        if (assetAggregation.images[assetType]) {
-          assetAggregation.images[assetType].push(fileUrl);
+        if (documentAggregation.images[assetType]) {
+          documentAggregation.images[assetType].push(fileUrl);
         } else {
-          assetAggregation.images[assetType] = [fileUrl];
+          documentAggregation.images[assetType] = [fileUrl];
         }
       } else if (documentType.toUpperCase().includes("VIDEO")) {
         documentRequired = true;
         const assetType = documentType.split("-")[0].toUpperCase();
 
-        if (assetAggregation.videos[assetType]) {
-          assetAggregation.videos[assetType].push({
+        if (documentAggregation.videos[assetType]) {
+          documentAggregation.videos[assetType].push({
             fileUrl,
             size: fileDetails.size,
           });
         } else {
-          assetAggregation.videos[assetType] = [{
+          documentAggregation.videos[assetType] = [{
             fileUrl,
             size: fileDetails.size
           }];
         }
       } else if (workflow[0].action !== "SUBMIT_REPORT_A" && documentType.toUpperCase() === "INSTALLATION_REPORT") {
         documentRequired = true;
-        assetAggregation.installationReportDocuments = [
-          ...assetAggregation.installationReportDocuments,
+        documentAggregation.installationReportDocuments = [
+          ...documentAggregation.installationReportDocuments,
           {
             fileUrl,
             ...fileDetails
@@ -118,19 +126,20 @@ const getAssetAggregation = async (workflow) => {
         ];
       } else if (workflow[0].action !== "SUBMIT_REPORT_A" && documentType.toUpperCase() === "INSTALLATION_REPORT_BOM") {
         documentRequired = true;
-        assetAggregation.bomCompletionReport = {
+        documentAggregation.bomCompletionReport = {
           fileUrl,
           ...fileDetails
         };
       }
 
-      if (documentRequired) documentAggregation.push(document);
+      if (documentRequired) workflowDocuments.push(document);
     }
   }
 
   return {
-    assetAggregation,
     documentAggregation,
+    installationImages,
+    workflowDocuments,
   };
 }
 
@@ -142,7 +151,7 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
   const facility = activityFacilityData?.activityFacility?.facility || {};
   const assigneeDetails = activityFacilityData?.activityFacility?.assignedEmployeeUser || {};
   const auditTrail = generateAuditTrail(activityFacilityData.workflow, activityFacilityData.transactions);
-  const { assetAggregation, documentAggregation } = await getAssetAggregation(activityFacilityData.workflow);
+  const { documentAggregation, installationImages, workflowDocuments } = await getAssetAggregation(activityFacilityData.workflow);
 
   return {
     facilityDetails: {
@@ -156,8 +165,9 @@ const fetchFacilityDetails = async (filter, limit, offset) => {
       assigned: assigneeDetails.name,
     },
     auditTrail,
-    assetAggregation,
     documentAggregation,
+    installationImages,
+    workflowDocuments,
   }
 }
 

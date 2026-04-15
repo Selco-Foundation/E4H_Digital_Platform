@@ -1,8 +1,12 @@
-import React from "react";
+import React, {useState} from "react";
 import { PdfIcon } from "@egovernments/digit-ui-svg-components";
+import { ImageViewer } from "@egovernments/digit-ui-react-components";
 import CustomFileIcon from "../Custom/CustomFileIcon";
 
-const SystemParameterReport = ({ file, supportingDocuments }) => {
+const SystemParameterReport = ({ t, file, supportingDocuments, installationImages }) => {
+
+  const [imageToView, setImageToView] = useState(null);
+  console.debug("installationImages", installationImages);
 
   return (
     <div style={{ padding: "20px" }}>
@@ -47,9 +51,18 @@ const SystemParameterReport = ({ file, supportingDocuments }) => {
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: "20px"
+          gap: "20px",
+          paddingBottom: installationImages.length ? "20px" : "0",
+          marginBottom: installationImages.length ? "20px" : "0",
+          borderBottom: installationImages.length ? "1px solid #D6D5D4" : "0",
         }}
       >
+        <div style={{
+          color: "#0B3954",
+          fontSize: "20px",
+        }}>
+          {t("SUPPORTING_DOCUMENTS")}
+        </div>
         {supportingDocuments?.map((supportingDocument) => (
           <div
             style={{
@@ -82,6 +95,35 @@ const SystemParameterReport = ({ file, supportingDocuments }) => {
           </div>
         ))}
       </div>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "20px"
+        }}
+      >
+        <div style={{
+          color: "#0B3954",
+          fontSize: "20px",
+        }}>
+          {t("INSTALLATION_IMAGES")}
+        </div>
+        {installationImages?.map((installationImage) => (
+          <div>
+            <div style={{fontWeight: "bold"}}>
+              {installationImage.description}
+            </div>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              {installationImage.images.map((image, idx) => (
+                <div key={idx} style={{ cursor: "pointer" }} onClick={() => setImageToView(image.fileUrl)}>
+                  <img src={image.fileUrl} alt={`Installation Image - ${idx}`} style={{ width: "100px", marginTop: "8px" }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      {imageToView && <ImageViewer imageSrc={imageToView} onClose={() => setImageToView(null)} />}
     </div>
   );
 };
