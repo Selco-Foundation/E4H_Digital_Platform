@@ -156,25 +156,38 @@ public class FacilityKibanaMapper {
      */
     public FacilityKibanaIndex toKibanaIndexForFacilityUpdate(Facility facility, RequestInfo requestInfo) {
         if (facility == null) {
+            log.info("Skipping Kibana index update mapping: facility is null");
             return null;
         }
 
+        log.info("Preparing Kibana index update mapping for facilityId={} tenantId={}",
+                facility.getFacilityId(), facility.getTenantId());
         FacilityKibanaIndex existingDoc = fetchExistingKibanaIndex(facility.getFacilityId(), facility.getTenantId());
+        log.info("Existing Kibana document found for facilityId={} existingDoc={}",
+                facility.getFacilityId(), existingDoc);
         if (existingDoc == null) {
+            log.info("No existing Kibana document found for facilityId={} tenantId={}; falling back to full mapping",
+                    facility.getFacilityId(), facility.getTenantId());
             return toKibanaIndex(facility, requestInfo);
         }
 
         if (facility.getFacilityName() != null && !facility.getFacilityName().isBlank()) {
             existingDoc.setName(facility.getFacilityName());
+            log.info("Updated Kibana field name for facilityId={}", facility.getFacilityId());
         }
         if (facility.getFacilityType() != null && !facility.getFacilityType().isBlank()) {
             existingDoc.setType(facility.getFacilityType());
             existingDoc.setPhcType(facility.getFacilityType());
+            log.info("Updated Kibana fields type/phcType for facilityId={}", facility.getFacilityId());
         }
         if (facility.getIsActive() != null) {
             existingDoc.setIsLive(facility.getIsActive());
+            log.info("Updated Kibana field isLive={} for facilityId={}",
+                    facility.getIsActive(), facility.getFacilityId());
         }
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
+        log.info("Completed Kibana index update mapping for facilityId={} tenantId={}",
+                facility.getFacilityId(), facility.getTenantId());
 
         return existingDoc;
     }
@@ -546,9 +559,12 @@ public class FacilityKibanaMapper {
     @SuppressWarnings("unchecked")
     private FacilityKibanaIndex fetchExistingKibanaIndex(String facilityId, String tenantId) {
         if (facilityId == null || tenantId == null) {
+            log.info("Skipping Kibana lookup: facilityId or tenantId is null (facilityId={}, tenantId={})",
+                    facilityId, tenantId);
             return null;
         }
 
+        log.info("Fetching existing Kibana document for facilityId={} tenantId={}", facilityId, tenantId);
         try {
             Map<String, Object> searchQuery = Map.of(
                     "query", Map.of(
@@ -564,37 +580,46 @@ public class FacilityKibanaMapper {
 
             String uri = getBaseUrl() + "/" + INDEX_NAME + "/" + SEARCH_PATH;
             HttpEntity<Object> entity = new HttpEntity<>(searchQuery, buildHeaders());
+            log.info("Executing Kibana lookup query for facilityId={} tenantId={}", facilityId, tenantId);
             Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
             if (response == null) {
+                log.info("No Kibana response received for facilityId={} tenantId={}", facilityId, tenantId);
                 return null;
             }
 
             Object hitsObj = response.get("hits");
             if (!(hitsObj instanceof Map)) {
+                log.info("Kibana response missing hits object for facilityId={} tenantId={}", facilityId, tenantId);
                 return null;
             }
 
             Object hitListObj = ((Map<String, Object>) hitsObj).get("hits");
             if (!(hitListObj instanceof List) || ((List<?>) hitListObj).isEmpty()) {
+                log.info("No existing Kibana document found for facilityId={} tenantId={}", facilityId, tenantId);
                 return null;
             }
 
             Object firstHitObj = ((List<?>) hitListObj).get(0);
             if (!(firstHitObj instanceof Map)) {
+                log.info("Kibana first hit has unexpected format for facilityId={} tenantId={}", facilityId, tenantId);
                 return null;
             }
 
             Object sourceObj = ((Map<String, Object>) firstHitObj).get("_source");
             if (!(sourceObj instanceof Map)) {
+                log.info("Kibana hit missing _source for facilityId={} tenantId={}", facilityId, tenantId);
                 return null;
             }
 
             Object dataObj = ((Map<String, Object>) sourceObj).get("Data");
             if (!(dataObj instanceof Map)) {
+                log.info("Kibana _source missing Data payload for facilityId={} tenantId={}", facilityId, tenantId);
                 return null;
             }
 
-            return mapper.convertValue(dataObj, FacilityKibanaIndex.class);
+            FacilityKibanaIndex existingDoc = mapper.convertValue(dataObj, FacilityKibanaIndex.class);
+            log.info("Successfully fetched existing Kibana document for facilityId={} tenantId={}", facilityId, tenantId);
+            return existingDoc;
         } catch (Exception e) {
             log.warn("Unable to fetch existing Kibana document for facility {} and tenant {}: {}",
                     facilityId, tenantId, e.getMessage());
