@@ -74,7 +74,7 @@ public class OrganisationUserQueryBuilder {
     }
 
     private void addIsDeletedCondition(List<Object> preparedStmtList, StringBuilder queryBuilder, Boolean includeDeleted) {
-        if (!includeDeleted) {
+        if (!Boolean.TRUE.equals(includeDeleted)) {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" ou.isdeleted = false ");
         }

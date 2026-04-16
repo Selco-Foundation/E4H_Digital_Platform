@@ -760,3 +760,13 @@ input[type="number"] {
   max-height: 120px;
   margin-top: 90px;
 }
+
+.input-container {
+  display: flex;
+  max-width: 540px;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #464646;
+  margin-bottom: 24px;
+  padding: 0 5px;
+}

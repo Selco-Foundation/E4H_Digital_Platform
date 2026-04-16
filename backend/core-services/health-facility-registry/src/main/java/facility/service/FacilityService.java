@@ -683,6 +683,38 @@ public class FacilityService {
      */
     public List<Facility> bulkSearchFacilities(FacilityBulkSearchRequest request) {
         log.trace("Entering bulkSearchFacilities method");
+        List<Facility> facilityList = loadBulkFacilitiesWithAddressJoin(request);
+        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
+        enrichFacilitiesWithBoundaries(facilityList, listBlock);
+        log.trace("Exiting bulkSearchFacilities method");
+        return facilityList;
+    }
+
+    /**
+     * Same bulk search as {@link #bulkSearchFacilities(FacilityBulkSearchRequest)} (SQL joins facility + address),
+     * but resolves boundary hierarchy only for {@code boundary_code} values present on the result rows
+     * via the boundary v2 API in batches — avoids loading the full boundary tree for large clients.
+     * Request/response models are unchanged from bulk search.
+     */
+    public List<Facility> bulkSearchFacilitiesWithAddressAndBoundary(FacilityBulkSearchRequest request) {
+        log.trace("Entering bulkSearchFacilitiesWithAddressAndBoundary method");
+        List<Facility> facilityList = loadBulkFacilitiesWithAddressJoin(request);
+        Set<String> boundaryCodesOnRows = facilityList.stream()
+                .map(Facility::getBoundaryCode)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toSet());
+        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryMapForFacilityCodes(boundaryCodesOnRows);
+        enrichFacilitiesWithBoundaries(facilityList, listBlock);
+        log.trace("Exiting bulkSearchFacilitiesWithAddressAndBoundary method");
+        return facilityList;
+    }
+
+    /**
+     * Shared bulk SQL: facility rows with address fields from {@code facility_address}, POC phone decrypted.
+     */
+    private List<Facility> loadBulkFacilitiesWithAddressJoin(FacilityBulkSearchRequest request) {
         FacilityBulkSearchCriteria criteria = request.getFacilityBulkSearchCriteria();
         List<String> listFacilityCodes = boundaryUtil.getFacilityCodesFromBoundary(criteria);
         // When searching by state, district, or block with no facilities in that boundary, return empty list
@@ -731,17 +763,23 @@ public class FacilityService {
         log.info("Bulk Search Query: {}", query);
         log.info("Bulk Search Params count: {}", allParams.size());
         List<Facility> facilityList = jdbcTemplate.query(query.toString(), facilityRowMapperV2, allParams.toArray());
-        Map<String, Boundary> listBlock = boundaryUtil.getBoundaryByCode();
-        for (Facility facility: facilityList){
-            if (facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isEmpty()){
+        for (Facility facility : facilityList) {
+            if (facility.getFacilityPocPhone() != null && !facility.getFacilityPocPhone().isEmpty()) {
                 try {
                     String decryptedMobileNumber = decryptMobileNumber(facility.getFacilityPocPhone());
-                    if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                    if (decryptedMobileNumber != null && !decryptedMobileNumber.isBlank()) {
                         facility.setFacilityPocPhone(decryptedMobileNumber);
                     }
+                } catch (Exception e) {
+                    log.trace("Decrypt POC phone skipped for facility {}", facility.getFacilityId());
                 }
-                catch (Exception e){}
             }
+        }
+        return facilityList;
+    }
+
+    private void enrichFacilitiesWithBoundaries(List<Facility> facilityList, Map<String, Boundary> listBlock) {
+        for (Facility facility : facilityList) {
             String boundaryCode = facility.getBoundaryCode();
             if (boundaryCode != null && listBlock != null) {
                 Boundary boundary = listBlock.get(boundaryCode);
@@ -754,7 +792,6 @@ public class FacilityService {
                 }
             }
         }
-        return facilityList;
     }
 
 
