@@ -153,7 +153,6 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_WARRANTY_START_DATE`), details.warrantyStartDate)}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_WARRANTY_DURATION`), details.warrantyDuration)}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_BRAND`), t(`QC_INSTALLATION_BRAND_${details.brand}`))}
-              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_MODEL_NUMBER`), details.modelNumber)}
             </Section>
 
             {section === "BATTERY" && (
