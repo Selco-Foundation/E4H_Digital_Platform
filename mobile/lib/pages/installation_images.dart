@@ -394,9 +394,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
                     ImageUploader(
                       label: 'Upload Images',
                       allowMultiples: requirement.allowMultiples,
-                      isDisabled: _isViewOnly ||
-                          _selectedCountFor(requirement) >=
-                              requirement.requiredCount,
+                      isDisabled: _isViewOnly,
                       errorMessage:
                           _isViewOnly ? null : _validationErrorFor(requirement),
                       initialImages:
