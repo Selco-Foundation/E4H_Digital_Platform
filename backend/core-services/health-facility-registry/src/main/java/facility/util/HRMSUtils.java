@@ -41,6 +41,17 @@ public class HRMSUtils {
         return employeeResponse.getEmployees().get(0);
     }
 
+    public Employee getUserByUsername(Object request, String codes) {
+        String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()+ "?tenantId=in&codes="+codes;
+        Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with username: " + codes);
+        }
+        return employeeResponse.getEmployees().get(0);
+    }
+
     public List<Employee> getUserByPhoneNumber(Object request, String phoneNumber) {
         String url = config.getHrmsHost() + config.getHrmsSearchEndPoint()+ "?tenantId=in&phone="+phoneNumber;
         Object response = serviceRequestRepository.fetchResult(new StringBuilder(url), request);

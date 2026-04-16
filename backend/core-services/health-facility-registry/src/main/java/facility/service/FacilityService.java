@@ -993,8 +993,9 @@ public class FacilityService {
     }
 
     public void updatedHRMSUser(FacilityUpdateRequest request, Facility existingFacilityDetails, Facility requestFacilityDetails){
-        if(existingFacilityDetails.getUserId()!=null && !existingFacilityDetails.getUserId().isEmpty()){
-            Employee employee = hrmsUtils.getUserById(request, existingFacilityDetails.getUserId());
+        String username = existingFacilityDetails.getHfrId() != null && !existingFacilityDetails.getHfrId().trim().isBlank() ? existingFacilityDetails.getHfrId(): existingFacilityDetails.getNinId();
+        if(username!=null && !username.isEmpty()){
+            Employee employee = hrmsUtils.getUserByUsername(request, username);
             if (employee != null) {
                 User existingUser = employee.getUser();
                 existingUser.setName(requestFacilityDetails.getFacilityPocName());

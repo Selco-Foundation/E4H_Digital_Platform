@@ -17,12 +17,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.Base64;
+import java.util.*;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -620,14 +617,24 @@ public class FacilityKibanaMapper {
 
             FacilityKibanaIndex existingDoc = mapper.convertValue(dataObj, FacilityKibanaIndex.class);
             String tenantIdLocalized = (String)((Map<String, Object>) dataObj).get("tenantId_localized");
-            List<Integer> geoPoint = (List<Integer>)((Map<String, Object>) dataObj).get("geo-point");
+//            List<Integer> geoPoint = (List<Integer>)((Map<String, Object>) dataObj).get("geo-point");
+            Object geoPointObj = ((Map<String, Object>) dataObj).get("geo-point");
             Integer total_tickets = (Integer)((Map<String, Object>) dataObj).get("total_tickets");
             Integer open_tickets = (Integer)((Map<String, Object>) dataObj).get("open_tickets");
             Integer closed_tickets = (Integer)((Map<String, Object>) dataObj).get("closed_tickets");
             String solar_panel_status = (String)((Map<String, Object>) dataObj).get("solar_panel_status");
             existingDoc.setTenantIdLocalized(tenantIdLocalized);
-            String result = geoPoint!= null ? geoPoint.stream().map(String::valueOf).collect(Collectors.joining(", ")) : null;
-            existingDoc.setGeoPoint(result);
+//            String result = geoPoint!= null ? geoPoint.stream().map(String::valueOf).collect(Collectors.joining(", ")) : null;
+//            existingDoc.setGeoPoint(result);
+            String geoPointStr = null;
+            if (geoPointObj instanceof List) {
+                geoPointStr = ((List<?>) geoPointObj).stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(", "));
+            } else if (geoPointObj != null) {
+                geoPointStr = geoPointObj.toString();
+            }
+            existingDoc.setGeoPoint(geoPointStr);
             existingDoc.setTotalTickets(total_tickets);
             existingDoc.setOpenTickets(open_tickets);
             existingDoc.setClosedTickets(closed_tickets);
