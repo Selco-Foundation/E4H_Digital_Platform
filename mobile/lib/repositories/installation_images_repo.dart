@@ -92,6 +92,18 @@ class InstallationImagesRepository {
         .findAll();
   }
 
+  Future<bool> hasCachedImages({
+    required String activityFacilityId,
+    required String userType,
+  }) async {
+    final entries = await getCachedImages(
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
+
+    return entries.isNotEmpty;
+  }
+
   Future<void> deleteAllCachedImages({
     required String activityFacilityId,
     required String userType,

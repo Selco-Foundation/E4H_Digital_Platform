@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
+import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_divider.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
+import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -26,6 +28,7 @@ import '../model/comment/comment.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
+import '../repositories/installation_images_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
@@ -267,6 +270,44 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
     setState(() => _system = sys);
   }
 
+  Future<bool> _hasInstallationImages() async {
+    if (activityFacilityId.isEmpty) return false;
+
+    final repo =
+        InstallationImagesRepository(context.read<CacheAssetBloc>().isar);
+    return repo.hasCachedImages(
+      activityFacilityId: activityFacilityId,
+      userType: userType,
+    );
+  }
+
+  void _showInstallationImagesRequiredPopup() {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title: "Required Installation Images",
+        actionAlignment: MainAxisAlignment.center,
+        actions: const [],
+        additionalWidgets: [
+          Text(
+            "Enter required installation images",
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -373,18 +414,13 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                         return const SizedBox.shrink();
                       }
 
-                      final requireCompletion = isSupervisor;
-                      final hasCompletion = _existingReports.isNotEmpty ||
-                          _pickedFiles.isNotEmpty;
-
                       final notAllRejectionsChecked =
                           (_rejectionReasons.isNotEmpty &&
                               _selectedRejectionReasons.length !=
                                   _rejectionReasons.length);
 
                       final isDisabled = notAllRejectionsChecked ||
-                          submitting ||
-                          (requireCompletion && !hasCompletion);
+                          submitting;
 
                       return FooterButton(
                           showSuffixIcon: false,
@@ -394,6 +430,11 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                               : "Re-Submit for Approval",
                           onPress: () async {
                             if (isDisabled) return;
+                            if (isSupervisor &&
+                                !await _hasInstallationImages()) {
+                              _showInstallationImagesRequiredPopup();
+                              return;
+                            }
                             await _ensureLocationLoaded();
 
                             final lat = _latitude?.toString() ?? '';
