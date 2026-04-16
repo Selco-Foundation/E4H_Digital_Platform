@@ -105,6 +105,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   StreamSubscription<LocationState>? _locSub;
   final Map<int, Future<File?>> _cachedImageFutures = {};
   final Map<int, String> _lastProcessedPickerPaths = {};
+  int _visibleAssetCount = 0;
+
+  List<AssetModel> get _visibleAssets {
+    final count = _visibleAssetCount.clamp(0, _assets.length);
+    return _assets.take(count).toList(growable: false);
+  }
 
   int _requiredAssetCountFromState(CacheAssetCountState state) {
     return state.maybeWhen(
@@ -115,7 +121,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
           0,
       added: (entry) => entry.assetType == currentAssetType ? entry.count : 0,
       updated: (entry) => entry.assetType == currentAssetType ? entry.count : 0,
-      orElse: () => 0,
+      orElse: () => _visibleAssetCount,
     );
   }
 
@@ -139,15 +145,16 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
     return asset;
   }
 
-  void _ensureRequiredAssetSlots(int requiredCount) {
-    if (requiredCount <= 0) {
-      _assets.clear();
+  void _syncVisibleAssets(int requiredCount) {
+    if (requiredCount < 0) {
       return;
     }
 
     while (_assets.length < requiredCount) {
       _assets.add(_buildBlankAsset());
     }
+
+    _visibleAssetCount = requiredCount;
   }
 
   @override
@@ -432,7 +439,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     _assets.add(assetModel);
                   }
 
-                  _ensureRequiredAssetSlots(_requiredAssetCount());
+                  _syncVisibleAssets(_requiredAssetCount());
                 });
 
                 _cachedImageFutures.clear();
@@ -449,179 +456,179 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         ),
         BlocListener<CacheAssetCountBloc, CacheAssetCountState>(
           listener: (context, state) {
-            final requiredCount = _requiredAssetCountFromState(state);
-            if (_assets.length == requiredCount) {
-              return;
-            }
-
-            setState(() {
-              _ensureRequiredAssetSlots(requiredCount);
-            });
+            state.maybeWhen(
+              loaded: (_) {
+                final requiredCount = _requiredAssetCountFromState(state);
+                if (_visibleAssetCount == requiredCount) return;
+                setState(() {
+                  _syncVisibleAssets(requiredCount);
+                });
+              },
+              added: (_) {
+                final requiredCount = _requiredAssetCountFromState(state);
+                if (_visibleAssetCount == requiredCount) return;
+                setState(() {
+                  _syncVisibleAssets(requiredCount);
+                });
+              },
+              updated: (_) {
+                final requiredCount = _requiredAssetCountFromState(state);
+                if (_visibleAssetCount == requiredCount) return;
+                setState(() {
+                  _syncVisibleAssets(requiredCount);
+                });
+              },
+              orElse: () {},
+            );
           },
         ),
       ],
       child: BlocBuilder<AssetTypeBloc, AssetTypeState>(
         builder: (ctx, assetTypeState) {
-          return BlocSelector<CacheAssetCountBloc, CacheAssetCountState, int>(
-            selector: (st) => st.maybeWhen(
-              loaded: (entries) =>
-                  entries
-                      .firstWhereOrNull((e) => e.assetType == currentAssetType)
-                      ?.count ??
-                  0,
-              added: (entry) =>
-                  entry.assetType == currentAssetType ? entry.count : 0,
-              updated: (entry) =>
-                  entry.assetType == currentAssetType ? entry.count : 0,
-              orElse: () => 0,
-            ),
-            builder: (ctx, maxAssets) {
-              final isDisabled = maxAssets == 0 ||
-                  (_assets.length != maxAssets ||
-                      _assets.any(
-                          (a) => !_isAssetComplete(a, currentAssetType))) ||
-                  _isSaving;
+          final maxAssets = _visibleAssetCount;
+          final visibleAssets = _visibleAssets;
+          final isDisabled = maxAssets == 0 ||
+              (visibleAssets.length != maxAssets ||
+                  visibleAssets.any(
+                      (a) => !_isAssetComplete(a, currentAssetType))) ||
+              _isSaving;
 
-              return Scaffold(
-                body: ScrollableContent(
-                  header: const BackNavigationHelpHeaderWidget(
-                    showBackNavigation: true,
-                    showHelp: false,
-                  ),
-                  enableFixedDigitButton: true,
-                  backgroundColor: theme.colorTheme.generic.background,
-                  footer: FooterButton(
-                    showSuffixIcon: false,
-                    text: context.translate(i18.common.coreCommonNext),
-                    isDisabled: isDisabled,
-                    onPress: () async {
-                      if (isDisabled) return;
-                      if (_isSaving) return;
+          return Scaffold(
+            body: ScrollableContent(
+              header: const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              enableFixedDigitButton: true,
+              backgroundColor: theme.colorTheme.generic.background,
+              footer: FooterButton(
+                showSuffixIcon: false,
+                text: context.translate(i18.common.coreCommonNext),
+                isDisabled: isDisabled,
+                onPress: () async {
+                  if (isDisabled) return;
+                  if (_isSaving) return;
 
-                      setState(() {
-                        _isSaving = true;
-                      });
+                  setState(() {
+                    _isSaving = true;
+                  });
 
-                      try {
-                        final entries = _assets.map((asset) {
-                          return CacheAddNewAsset(
-                            assetId: asset.assetId,
-                            documentId: asset.documentId,
-                            activityFacilityId: _currentActivityFacilityId!,
-                            assetType: currentAssetType,
-                            itemNumber: asset.capacity,
-                            serialNumber: asset.serialNumber,
-                            documentType: "ASSET",
-                            photoPath: asset.photoPath!,
-                            longitude: asset.longitude!,
-                            latitude: asset.latitude!,
-                            capacityUnit:
-                                asset.capacityUnit ?? assetCapacityUom,
-                            panelCapacity: asset.panelCapacity,
-                            batteryCapacity: asset.batteryCapacity,
-                            batteryVoltage: asset.batteryVoltage,
-                            batteryType: asset.batteryType,
-                            voltageUnit: asset.voltageUnit ?? voltageUom,
-                            inverterCapacity: asset.inverterCapacity,
-                            inverterCapacityUnit:
-                                asset.inverterCapacityUnit ?? assetCapacityUom,
-                            currentUnit: asset.currentUnit,
-                          );
-                        }).toList();
+                  try {
+                    final entries = visibleAssets.map((asset) {
+                      return CacheAddNewAsset(
+                        assetId: asset.assetId,
+                        documentId: asset.documentId,
+                        activityFacilityId: _currentActivityFacilityId!,
+                        assetType: currentAssetType,
+                        itemNumber: asset.capacity,
+                        serialNumber: asset.serialNumber,
+                        documentType: "ASSET",
+                        photoPath: asset.photoPath!,
+                        longitude: asset.longitude!,
+                        latitude: asset.latitude!,
+                        capacityUnit: asset.capacityUnit ?? assetCapacityUom,
+                        panelCapacity: asset.panelCapacity,
+                        batteryCapacity: asset.batteryCapacity,
+                        batteryVoltage: asset.batteryVoltage,
+                        batteryType: asset.batteryType,
+                        voltageUnit: asset.voltageUnit ?? voltageUom,
+                        inverterCapacity: asset.inverterCapacity,
+                        inverterCapacityUnit:
+                            asset.inverterCapacityUnit ?? assetCapacityUom,
+                        currentUnit: asset.currentUnit,
+                      );
+                    }).toList();
 
-                        context.read<CacheAddNewAssetBloc>().add(
-                              CacheAddNewAssetEvent.replaceAll(
-                                _currentActivityFacilityId!,
-                                currentAssetType,
-                                entries,
-                              ),
-                            );
-
-                        final result = await context
-                            .read<CacheAddNewAssetBloc>()
-                            .stream
-                            .firstWhere((state) => state.maybeWhen(
-                                  loaded: (_) => true,
-                                  error: (_) => true,
-                                  orElse: () => false,
-                                ));
-
-                        final errMsg = result.maybeWhen(
-                          error: (m) => m,
-                          orElse: () => null,
+                    context.read<CacheAddNewAssetBloc>().add(
+                          CacheAddNewAssetEvent.replaceAll(
+                            _currentActivityFacilityId!,
+                            currentAssetType,
+                            entries,
+                          ),
                         );
 
-                        if (errMsg != null) {
-                          throw Exception(errMsg);
-                        }
-                      } finally {
-                        if (mounted) {
-                          setState(() {
-                            _isSaving = false;
-                          });
-                        }
-                      }
-                      if (_currentActivityFacilityId != null) {
-                        context.read<CacheAssetCountBloc>().add(
-                              CacheAssetCountEvent.update(
-                                CacheAssetCount(
-                                  activityFacilityId:
-                                      _currentActivityFacilityId!,
-                                  assetType: currentAssetType,
-                                  progress: 5,
-                                ),
-                              ),
-                            );
-                      }
-                      context.router.push(const MediaUploadRoute());
-                    },
-                  ),
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: spacer2, vertical: spacer4),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              AppStepper(context: context, activeIndex: 4),
-                            ],
+                    final result = await context
+                        .read<CacheAddNewAssetBloc>()
+                        .stream
+                        .firstWhere((state) => state.maybeWhen(
+                              loaded: (_) => true,
+                              error: (_) => true,
+                              orElse: () => false,
+                            ));
+
+                    final errMsg = result.maybeWhen(
+                      error: (m) => m,
+                      orElse: () => null,
+                    );
+
+                    if (errMsg != null) {
+                      throw Exception(errMsg);
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isSaving = false;
+                      });
+                    }
+                  }
+                  if (_currentActivityFacilityId != null) {
+                    context.read<CacheAssetCountBloc>().add(
+                          CacheAssetCountEvent.update(
+                            CacheAssetCount(
+                              activityFacilityId: _currentActivityFacilityId!,
+                              assetType: currentAssetType,
+                              progress: 5,
+                            ),
                           ),
-                          const SizedBox(height: spacer4),
-                          assetTypeState.maybeWhen(
-                              battery: () => _batteryCapacity(theme, textTheme,
-                                  _assets, currentAssetType.titleCase),
-                              panel: () => _panelCapacity(
-                                    theme,
-                                    textTheme,
-                                    _assets,
-                                    currentAssetType.titleCase,
-                                  ),
-                              orElse: () => const SizedBox()),
-                          ..._assets.asMap().entries.map((e) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: spacer4),
-                              child: _buildAssetCard(
-                                context: context,
-                                theme: theme,
-                                textTheme: textTheme,
-                                heading: currentAssetType.titleCase,
-                                index: e.key,
-                                asset: e.value,
-                                maxAsset: maxAssets,
-                                assetType: currentAssetType,
-                              ),
-                            );
-                          }),
+                        );
+                  }
+                  context.router.push(const MediaUploadRoute());
+                },
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: spacer2, vertical: spacer4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AppStepper(context: context, activeIndex: 4),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: spacer4),
+                      assetTypeState.maybeWhen(
+                          battery: () => _batteryCapacity(theme, textTheme,
+                              _assets, currentAssetType.titleCase),
+                          panel: () => _panelCapacity(
+                                theme,
+                                textTheme,
+                                _assets,
+                                currentAssetType.titleCase,
+                              ),
+                          orElse: () => const SizedBox()),
+                      ...visibleAssets.asMap().entries.map((e) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: spacer4),
+                          child: _buildAssetCard(
+                            context: context,
+                            theme: theme,
+                            textTheme: textTheme,
+                            heading: currentAssetType.titleCase,
+                            index: e.key,
+                            asset: e.value,
+                            maxAsset: maxAssets,
+                            assetType: currentAssetType,
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
                 ),
-              );
-            },
+              ],
+            ),
           );
         },
       ),
