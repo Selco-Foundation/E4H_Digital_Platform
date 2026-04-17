@@ -171,6 +171,7 @@ public class FacilityKibanaMapper {
 
         if (facility.getFacilityName() != null && !facility.getFacilityName().isBlank()) {
             existingDoc.setName(facility.getFacilityName());
+            existingDoc.setTenantIdLocalized(facility.getFacilityName());
             log.info("Updated Kibana field name for facilityId={}", facility.getFacilityId());
         }
         if (facility.getFacilityType() != null && !facility.getFacilityType().isBlank()) {
