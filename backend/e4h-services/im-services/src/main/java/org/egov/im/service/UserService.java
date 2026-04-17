@@ -348,7 +348,7 @@ public class UserService {
             userLoginReport.setHealthFacilityName("");
             userLoginReport.setDistrict("");
             userLoginReport.setBlock("");
-            userLoginReport.setState(extractStateLevelTenantId(tenantId));
+            userLoginReport.setState("");
             return;
         }
 
@@ -357,7 +357,7 @@ public class UserService {
         userLoginReport.setDistrict(firstNonBlank(facilityDetails.get("district"), districtAndBlock[0]));
         userLoginReport.setBlock(firstNonBlank(facilityDetails.get("block"), districtAndBlock[1]));
         userLoginReport.setHealthFacilityName(firstNonBlank(facilityDetails.get("healthFacilityName"), ""));
-        userLoginReport.setState(extractStateLevelTenantId(tenantId));
+        userLoginReport.setState(firstNonBlank(facilityDetails.get("state"), extractStateFromBoundaryCode(boundaryCode)));
     }
 
     private String fetchBoundaryCodeFromHrms(UserRequest userRequest) {
@@ -433,11 +433,29 @@ public class UserService {
         return new String[]{district, block};
     }
 
+    /**
+     * Second segment of underscore-separated boundary codes (e.g. India_Karnataka_... -> Karnataka).
+     */
+    private String extractStateFromBoundaryCode(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return "";
+        }
+        String normalized = boundaryCode.replace('.', '_');
+        List<String> segments = Arrays.stream(normalized.split("_"))
+                .filter(s -> s != null && !s.isBlank())
+                .toList();
+        if (segments.size() < 2) {
+            return "";
+        }
+        return segments.get(1);
+    }
+
     private Map<String, String> fetchFacilityDetails(String boundaryCode, String tenantId) {
         Map<String, String> details = new HashMap<>();
         details.put("healthFacilityName", "");
         details.put("district", "");
         details.put("block", "");
+        details.put("state", "");
 
         if (boundaryCode == null || boundaryCode.isBlank()) {
             return details;
@@ -484,6 +502,7 @@ public class UserService {
             if (boundaryObj instanceof Map<?, ?> boundaryMap) {
                 details.put("district", normalizeBoundaryName(boundaryMap.get("district")));
                 details.put("block", normalizeBoundaryName(boundaryMap.get("block")));
+                details.put("state", normalizeBoundaryName(boundaryMap.get("state")));
             }
 
             return details;
@@ -520,11 +539,4 @@ public class UserService {
         return fallback == null ? "" : fallback;
     }
 
-    private String extractStateLevelTenantId(String tenantId) {
-        if (tenantId == null || tenantId.isBlank()) {
-            return "";
-        }
-        String[] parts = tenantId.split("\\.");
-        return parts.length > 0 ? parts[0] : "";
-    }
 }
