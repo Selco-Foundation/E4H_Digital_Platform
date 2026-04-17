@@ -1,25 +1,28 @@
 package org.egov.im.service;
 
 
+import com.jayway.jsonpath.JsonPath;
 import org.egov.common.contract.request.RequestInfo;
 
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.producer.Producer;
 import org.egov.im.repository.ServiceRequestRepository;
-import org.egov.im.util.MDMSUtils;
+import org.egov.im.util.HRMSUtil;
 import org.egov.im.util.UserUtils;
 import org.egov.im.web.models.*;
 import org.egov.im.web.models.user.CreateUserRequest;
 import org.egov.im.web.models.user.UserDetailResponse;
 import org.egov.im.web.models.user.UserSearchRequest;
-import org.egov.mdms.model.MasterDetail;
-import org.egov.mdms.model.MdmsCriteria;
-import org.egov.mdms.model.MdmsCriteriaReq;
-import org.egov.mdms.model.ModuleDetail;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,17 +42,21 @@ public class UserService {
 
     private ServiceRequestRepository repository;
 
-    private MDMSUtils mdmsUtils;
-
     private Producer producer;
 
+    private HRMSUtil hrmsUtil;
+
+    private RestTemplate restTemplate;
+
     @Autowired
-    public UserService(UserUtils userUtils, IMConfiguration config, ServiceRequestRepository repository, MDMSUtils mdmsUtils, Producer producer) {
+    public UserService(UserUtils userUtils, IMConfiguration config, ServiceRequestRepository repository, Producer producer,
+                       HRMSUtil hrmsUtil, RestTemplate restTemplate) {
         this.userUtils = userUtils;
         this.config = config;
         this.repository = repository;
-        this.mdmsUtils = mdmsUtils;
         this.producer = producer;
+        this.hrmsUtil = hrmsUtil;
+        this.restTemplate = restTemplate;
     }
 
     /**
@@ -314,31 +321,7 @@ public class UserService {
                     if (hasComplaintAssessorRole) {
                         return;
                     }
-                    log.debug("Fetching tenant details from MDMS for tenant: {}", userInfo.getTenantId());
-                    String tenantId = userInfo.getTenantId();
-                    String stateLevelTenantId = tenantId.split("\\.")[0];
-
-                    MasterDetail masterDetail = MasterDetail.builder().name("tenants").build();
-                    List<MasterDetail> masterDetails = Collections.singletonList(masterDetail);
-
-                    ModuleDetail moduleDetail = ModuleDetail.builder()
-                            .moduleName("tenant")
-                            .masterDetails(masterDetails)
-                            .build();
-                    List<ModuleDetail> moduleDetails = Collections.singletonList(moduleDetail);
-
-                    MdmsCriteria mdmsCriteria = MdmsCriteria.builder()
-                            .tenantId(stateLevelTenantId)
-                            .moduleDetails(moduleDetails)
-                            .build();
-
-                    MdmsCriteriaReq mdmsCriteriaReq = MdmsCriteriaReq.builder()
-                            .requestInfo(userRequest.getRequestInfo())
-                            .mdmsCriteria(mdmsCriteria)
-                            .build();
-
-                    Object result = repository.fetchResult(mdmsUtils.getMdmsSearchUrl(), mdmsCriteriaReq);
-                    setBlockAndDistrictFromMdms(result, tenantId, userLoginReport);
+                    populateComplainantLocationDetails(userRequest, userLoginReport);
 
                 } else {
                     log.debug("User is COMPLAINT_RESOLVER. Setting default empty values for location.");
@@ -355,67 +338,193 @@ public class UserService {
         }
     }
 
-    private void setBlockAndDistrictFromMdms(Object mdmsResult, String tenantId, UserLoginReport userLoginReport) {
-        if (!(mdmsResult instanceof Map)) {
-            log.error("mdmsResult is not a Map. Actual type: {}", mdmsResult != null ? mdmsResult.getClass().getName() : "null");
+    private void populateComplainantLocationDetails(UserRequest userRequest, UserLoginReport userLoginReport) {
+        User userInfo = userRequest.getUser();
+        String tenantId = userInfo.getTenantId();
+        String boundaryCode = fetchBoundaryCodeFromHrms(userRequest);
+
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            log.warn("Boundary code not found in HRMS for user: {}", userInfo.getUserName());
+            userLoginReport.setHealthFacilityName("");
+            userLoginReport.setDistrict("");
+            userLoginReport.setBlock("");
+            userLoginReport.setState(extractStateLevelTenantId(tenantId));
             return;
         }
-        Map<String, Object> resultMap;
+
+        Map<String, String> facilityDetails = fetchFacilityDetails(boundaryCode, tenantId);
+        String[] districtAndBlock = extractDistrictAndBlockFromBoundaryCode(boundaryCode);
+        userLoginReport.setDistrict(firstNonBlank(facilityDetails.get("district"), districtAndBlock[0]));
+        userLoginReport.setBlock(firstNonBlank(facilityDetails.get("block"), districtAndBlock[1]));
+        userLoginReport.setHealthFacilityName(firstNonBlank(facilityDetails.get("healthFacilityName"), ""));
+        userLoginReport.setState(extractStateLevelTenantId(tenantId));
+    }
+
+    private String fetchBoundaryCodeFromHrms(UserRequest userRequest) {
+        User userInfo = userRequest.getUser();
+        if (userInfo == null || userInfo.getUuid() == null || userInfo.getUuid().isBlank() ||
+                userInfo.getTenantId() == null || userInfo.getTenantId().isBlank()) {
+            return null;
+        }
+
+        StringBuilder hrmsSearchUrl = hrmsUtil.getHRMSURI(Collections.singletonList(userInfo.getUuid()),
+                userInfo.getTenantId(), null, null);
+        RequestInfoWrapper requestInfoWrapper = RequestInfoWrapper.builder()
+                .requestInfo(userRequest.getRequestInfo())
+                .build();
+
+        Object hrmsResponse = repository.fetchResult(hrmsSearchUrl, requestInfoWrapper);
+        if (hrmsResponse == null) {
+            return null;
+        }
+
         try {
-            resultMap = (Map<String, Object>) mdmsResult;
-        } catch (ClassCastException e) {
-            log.error("Failed to cast mdmsResult to Map: {}", e.getMessage(), e);
-            return;
+            String boundaryCode = JsonPath.read(hrmsResponse, "$.Employees[0].jurisdictions[0].boundary");
+            if (boundaryCode != null && !boundaryCode.isBlank()) {
+                return boundaryCode;
+            }
+        } catch (Exception ignored) {
+            // HRMS response does not have expected jurisdiction boundary shape.
         }
-        Object mdmsResObj = resultMap.get("MdmsRes");
-        if (!(mdmsResObj instanceof Map)) {
-            log.error("MdmsRes is not a Map. Actual type: {}", mdmsResObj != null ? mdmsResObj.getClass().getName() : "null");
-            return;
+
+        return null;
+    }
+
+    private String[] extractDistrictAndBlockFromBoundaryCode(String boundaryCode) {
+        String district = "";
+        String block = "";
+
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return new String[]{district, block};
         }
-        Map<String, Object> mdmsRes = (Map<String, Object>) mdmsResObj;
-        Object tenantMapObj = mdmsRes.get("tenant");
-        if (!(tenantMapObj instanceof Map)) {
-            log.error("tenant is not a Map. Actual type: {}", tenantMapObj != null ? tenantMapObj.getClass().getName() : "null");
-            return;
+
+        String normalizedBoundaryCode = boundaryCode.replace('.', '_');
+        List<String> segments = Arrays.stream(normalizedBoundaryCode.split("_"))
+                .filter(segment -> segment != null && !segment.isBlank())
+                .toList();
+
+        if (segments.isEmpty()) {
+            return new String[]{district, block};
         }
-        Map<String, Object> tenantMap = (Map<String, Object>) tenantMapObj;
-        Object tenantsObj = tenantMap.get("tenants");
-        if (!(tenantsObj instanceof List)) {
-            log.error("tenants is not a List. Actual type: {}", tenantsObj != null ? tenantsObj.getClass().getName() : "null");
-            return;
+
+        int facilityIndex = -1;
+        for (int i = 0; i < segments.size(); i++) {
+            if (segments.get(i).toUpperCase(Locale.ROOT).contains("FAC/")) {
+                facilityIndex = i;
+                break;
+            }
         }
-        List<Map<String, Object>> tenants;
+
+        if (facilityIndex > 1) {
+            district = segments.get(facilityIndex - 2);
+            block = segments.get(facilityIndex - 1);
+        } else if (segments.size() >= 4) {
+            // Expected fallback shape: Country_State_District_Block
+            district = segments.get(2);
+            block = segments.get(3);
+        } else if (segments.size() >= 3) {
+            district = segments.get(segments.size() - 2);
+            block = segments.get(segments.size() - 1);
+        } else if (segments.size() == 2) {
+            district = segments.get(0);
+            block = segments.get(1);
+        }
+
+        return new String[]{district, block};
+    }
+
+    private Map<String, String> fetchFacilityDetails(String boundaryCode, String tenantId) {
+        Map<String, String> details = new HashMap<>();
+        details.put("healthFacilityName", "");
+        details.put("district", "");
+        details.put("block", "");
+
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return details;
+        }
+
         try {
-            tenants = (List<Map<String, Object>>) tenantsObj;
-        } catch (ClassCastException e) {
-            log.error("Failed to cast tenants to List<Map<String, Object>>: {}", e.getMessage(), e);
-            return;
-        }
-        for (Map<String, Object> tenant : tenants) {
-            String code = (String) tenant.get("code");
-            if (!tenantId.equals(code)) {
-                continue;
+            String url = UriComponentsBuilder.fromHttpUrl(config.getFacilityHost() + config.getFacilitySearchPath())
+                    .queryParam("tenantId", tenantId != null ? tenantId : "")
+                    .queryParam("boundaryCode", boundaryCode)
+                    .toUriString();
+
+            ResponseEntity<Map<String, Object>> responseEntity = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(null),
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+
+            Map<String, Object> responseMap = responseEntity.getBody();
+            if (responseMap == null) {
+                return details;
             }
-            Object cityObj = tenant.get("city");
-            String block = "";
-            String district = "";
-            if (cityObj instanceof Map) {
-                Map<String, Object> city = (Map<String, Object>) cityObj;
-                block = (String) city.get("blockCode");
-                if (block != null && block.contains(".")) {
-                    block = block.substring(block.indexOf('.') + 1);
-                }
-                district = (String) city.get("districtName");
-            } else if (cityObj != null) {
-                log.error("city is not a Map. Actual type: {}", cityObj.getClass().getName());
+
+            Object facilitiesObj = responseMap.get("facilities");
+            if (!(facilitiesObj instanceof List<?> facilities) || facilities.isEmpty()) {
+                return details;
             }
-            userLoginReport.setBlock(block == null ? "" : block);
-            userLoginReport.setDistrict(district == null ? "" : district);
-            String healthCenter = (String) tenant.get("name");
-            String state = (String) tenant.get("address");
-            userLoginReport.setHealthFacilityName(healthCenter == null ? "" : healthCenter);
-            userLoginReport.setState(state == null ? "" : state);
-            break;
+
+            Object firstFacility = facilities.get(0);
+            if (!(firstFacility instanceof Map<?, ?> firstFacilityMap)) {
+                return details;
+            }
+
+            Object facilityName = firstFacilityMap.get("facility_name");
+            if (facilityName == null || facilityName.toString().isBlank()) {
+                facilityName = firstFacilityMap.get("name");
+            }
+            if (facilityName == null || facilityName.toString().isBlank()) {
+                facilityName = firstFacilityMap.get("facilityName");
+            }
+            details.put("healthFacilityName", facilityName == null ? "" : facilityName.toString());
+
+            Object boundaryObj = firstFacilityMap.get("boundary");
+            if (boundaryObj instanceof Map<?, ?> boundaryMap) {
+                details.put("district", normalizeBoundaryName(boundaryMap.get("district")));
+                details.put("block", normalizeBoundaryName(boundaryMap.get("block")));
+            }
+
+            return details;
+        } catch (Exception e) {
+            log.error("Error fetching facility details for boundaryCode: {}", boundaryCode, e);
+            return details;
         }
+    }
+
+    private String normalizeBoundaryName(Object value) {
+        if (value == null) {
+            return "";
+        }
+
+        String text = value.toString().trim();
+        if (text.isBlank()) {
+            return "";
+        }
+
+        String normalized = text.replace('.', '_');
+        String[] parts = normalized.split("_");
+        if (parts.length == 0) {
+            return text;
+        }
+
+        String lastPart = parts[parts.length - 1];
+        return lastPart == null ? "" : lastPart.trim();
+    }
+
+    private String firstNonBlank(String preferred, String fallback) {
+        if (preferred != null && !preferred.isBlank()) {
+            return preferred;
+        }
+        return fallback == null ? "" : fallback;
+    }
+
+    private String extractStateLevelTenantId(String tenantId) {
+        if (tenantId == null || tenantId.isBlank()) {
+            return "";
+        }
+        String[] parts = tenantId.split("\\.");
+        return parts.length > 0 ? parts[0] : "";
     }
 }
