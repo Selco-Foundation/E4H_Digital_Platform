@@ -196,7 +196,11 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
         searchBody.set("query", query);
 
         searchBody.set("_source", mapper.createArrayNode().add("Data").add("tenantId"));
-        searchBody.set("sort", mapper.createArrayNode().add(mapper.createObjectNode().put("_id", "asc")));
+        // Use mapped login-report id keyword as deterministic sort key for search_after pagination.
+        searchBody.set("sort", mapper.createArrayNode().add(
+                mapper.createObjectNode().set("Data.userLoginReport.id.keyword",
+                        mapper.createObjectNode().put("order", "asc").put("missing", "_last"))
+        ));
         if (searchAfter != null && searchAfter.isArray() && !searchAfter.isEmpty()) {
             searchBody.set("search_after", searchAfter);
         }
