@@ -1,5 +1,6 @@
 package org.selco.e4h.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -114,11 +116,11 @@ public class IncidentService {
         log.debug("Processing incident with tenantId: {}, boundaryCode: {}", tenantId, boundaryCode);
         String facilityId = extractAndEncodeFacilityCode(boundaryCode);
         log.debug("Extracted facility ID: {}", facilityId);
-        
+
         List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(boundaryCode);
         List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
         log.debug("Retrieved status aggregations: {}, system functional: {}", statusAgregations.size(), systemFunctional.size());
-        log.info("Processing incident aggregation: statusCount={}, systemFunctionalCount={}", 
+        log.info("Processing incident aggregation: statusCount={}, systemFunctionalCount={}",
             statusAgregations.size(), systemFunctional.size());
 
 
@@ -157,7 +159,7 @@ public class IncidentService {
                         incidentStatusAgregation.setTenantId(tenantId);
                         incidentStatusAgregation.setBoundary(boundary);
                         incidentStatusAgregation.setTenantIdLocalized((String) data.get("tenantId_localized"));
-                        incidentStatusAgregation.setGeoPoint((List<Double>) data.get("geo-point"));
+                        incidentStatusAgregation.setGeoPoint(parseGeoPoint(data.get("geo-point")));
                         incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
                         incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
 
@@ -169,7 +171,7 @@ public class IncidentService {
                             incidentStatusAgregation.setMappedVendorUserName(mappedVendorUserName);
                         }
 
-                        log.debug("Prepared incident status aggregation for Kafka: incidentId={}, totalOccurrences={}", 
+                        log.debug("Prepared incident status aggregation for Kafka: incidentId={}, totalOccurrences={}",
                             incidentStatusAgregation.getCode(), incidentStatusAgregation.getTotalOccurences());
                         log.info("Sending incident status aggregation to Kafka for facility: {}", facilityId);
                         producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
@@ -210,19 +212,31 @@ public class IncidentService {
                 log.info("Processing {} PHC documents for aggregation update", listPHCs != null ? listPHCs.size() : 0);
                 if(listPHCs!=null && !listPHCs.isEmpty()){
                     for (Map<String, Object> phc : listPHCs){
-                        Map<String, Object> data = (Map<String, Object>)phc.get("Data");
-                        Boundary boundary = objectMapper.convertValue(data.get("boundary"), Boundary.class);
-                        String block = (String)data.get("block");
-                        String code = String.valueOf(data.get("code"));
-                        String state = (String)data.get("state");
-                        String district = (String)data.get("district");
-                        boolean isLive = (boolean)data.get("isLive");
-                        String name = (String)data.get("name");
-                        String phcType = (String)data.get("phcType");
-                        String type = (String)data.get("type");
-                        String tenantId = (String)data.get("tenantId");
-                        String tenantIdLocalized = (String)data.get("tenantId_localized");
-                        List<Double> geoPoint = (List<Double>) data.get("geo-point");
+                        processSinglePhcDocument(phc);
+                    }
+                }
+            }
+        }
+        catch (Exception e){
+            log.error("Error while processing script update", e);
+        }
+    }
+
+    private void processSinglePhcDocument(Map<String, Object> phc) {
+        try {
+            Map<String, Object> data = (Map<String, Object>)phc.get("Data");
+            Boundary boundary = objectMapper.convertValue(data.get("boundary"), Boundary.class);
+            String block = (String)data.get("block");
+            String code = String.valueOf(data.get("code"));
+            String state = (String)data.get("state");
+            String district = (String)data.get("district");
+            Boolean isLive = (Boolean) data.get("isLive");
+            String name = (String)data.get("name");
+            String phcType = (String)data.get("phcType");
+            String type = (String)data.get("type");
+            String tenantId = (String)data.get("tenantId");
+            String tenantIdLocalized = (String)data.get("tenantId_localized");
+            List<Double> geoPoint = parseGeoPoint(data.get("geo-point"));
 
                         IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
                         incidentStatusAgregation.setBlock(block);
@@ -266,7 +280,7 @@ public class IncidentService {
                         incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
                         incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
 
-                        log.debug("Prepared PHC aggregation for Kafka: code={}, totalOccurrences={}", 
+                        log.debug("Prepared PHC aggregation for Kafka: code={}, totalOccurrences={}",
                             incidentStatusAgregation.getCode(), incidentStatusAgregation.getTotalOccurences());
                         log.info("Sending PHC aggregation to Kafka for code: {}", incidentStatusAgregation.getCode());
                         producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
@@ -278,5 +292,74 @@ public class IncidentService {
         catch (Exception e){
             log.error("Error while processing PHC aggregation update script", e);
         }
+    }
+
+    private List<Double> parseGeoPoint(Object geoPointValue) {
+        if (geoPointValue == null) {
+            return null;
+        }
+
+        try {
+            if (geoPointValue instanceof List<?> listValue) {
+                return toDoubleList(listValue);
+            }
+
+            if (geoPointValue instanceof String stringValue) {
+                String trimmed = stringValue.trim();
+                if (trimmed.isEmpty()) {
+                    return null;
+                }
+                if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                    trimmed = trimmed.substring(1, trimmed.length() - 1);
+                }
+                if (trimmed.isBlank()) {
+                    return null;
+                }
+
+                String[] tokens = trimmed.split(",");
+                List<Object> rawValues = new ArrayList<>();
+                for (String token : tokens) {
+                    rawValues.add(token.trim());
+                }
+                return toDoubleList(rawValues);
+            }
+
+            return objectMapper.convertValue(geoPointValue, new TypeReference<List<Double>>() {});
+        } catch (Exception e) {
+            log.warn("Unable to parse geo-point value: {}", geoPointValue, e);
+            return null;
+        }
+    }
+
+    private List<Double> toDoubleList(List<?> rawValues) {
+        List<Double> parsedValues = new ArrayList<>();
+        for (Object value : rawValues) {
+            Double parsedValue = toDouble(value);
+            if (parsedValue != null) {
+                parsedValues.add(parsedValue);
+            }
+        }
+        return parsedValues.isEmpty() ? null : parsedValues;
+    }
+
+    private Double toDouble(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number numberValue) {
+            return numberValue.doubleValue();
+        }
+        if (value instanceof String stringValue) {
+            String trimmed = stringValue.trim();
+            if (trimmed.isEmpty()) {
+                return null;
+            }
+            try {
+                return Double.parseDouble(trimmed);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 }
