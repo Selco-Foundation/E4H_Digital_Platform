@@ -79,12 +79,15 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
 
         int scrollSize = Integer.parseInt(getEnvOrDefault("LOGIN_REPORT_MIGRATION_SCROLL_SIZE", "100"));
         int maxDocs = Integer.parseInt(getEnvOrDefault("LOGIN_REPORT_MIGRATION_MAX_DOCS", "0"));
+        int esBulkSize = Integer.parseInt(getEnvOrDefault("LOGIN_REPORT_ES_BULK_SIZE", "200"));
+        int progressLogEvery = Integer.parseInt(getEnvOrDefault("LOGIN_REPORT_PROGRESS_LOG_EVERY", "100"));
         boolean hrmsFilterRoleComplainant = Boolean.parseBoolean(getEnvOrDefault("LOGIN_REPORT_HRMS_FILTER_ROLE_COMPLAINANT", "true"));
 
         try (PrintWriter migrationLogger = initializeMigrationLogger(logFilePath)) {
             migrationLogger.println("Login-report ES migration (HRMS + facility backfill)");
             migrationLogger.println("Index: " + index);
             migrationLogger.println("Started: " + LocalDateTime.now());
+            migrationLogger.println("Config -> pageSize=" + scrollSize + ", bulkSize=" + esBulkSize + ", progressEvery=" + progressLogEvery);
             migrationLogger.flush();
 
             HttpHeaders esHeaders = buildEsHeaders(esUser, esPass);
@@ -93,32 +96,15 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
             int updated = 0;
             int skipped = 0;
             int failed = 0;
+            int cacheHits = 0;
+            int cacheMisses = 0;
 
-            String scrollId = null;
-            String searchUrl = esHost + "/" + encodeIndexForUrl(index) + "/_search?scroll=5m";
-
-            ObjectNode initialSearch = objectMapper.createObjectNode();
-            initialSearch.put("size", scrollSize);
-            ObjectNode query = objectMapper.createObjectNode();
-            ObjectNode term = objectMapper.createObjectNode();
-            ObjectNode roleField = objectMapper.createObjectNode();
-            roleField.put("Data.userLoginReport.userRole.keyword", ROLE_COMPLAINANT);
-            term.set("term", roleField);
-            query.set("bool", objectMapper.createObjectNode().set("filter", objectMapper.createArrayNode().add(term)));
-            initialSearch.set("query", query);
-            initialSearch.set("_source", objectMapper.createArrayNode().add("Data").add("tenantId"));
-
-            HttpEntity<String> searchEntity = new HttpEntity<>(objectMapper.writeValueAsString(initialSearch), esHeaders);
-            ResponseEntity<JsonNode> searchResp = restTemplate.postForEntity(searchUrl, searchEntity, JsonNode.class);
-            JsonNode searchBody = searchResp.getBody();
-            if (searchBody == null) {
-                migrationLogger.println("Empty search response; aborting.");
-                return;
-            }
-            scrollId = searchBody.path("_scroll_id").asText(null);
-            JsonNode hits = searchBody.path("hits").path("hits");
+            String searchUrl = esHost + "/" + encodeIndexForUrl(index) + "/_search";
+            JsonNode searchAfter = null;
+            JsonNode hits = fetchPage(restTemplate, objectMapper, searchUrl, esHeaders, scrollSize, searchAfter);
 
             List<BulkUpdate> pendingBulk = new ArrayList<>();
+            Map<String, EnrichedLocation> locationCacheByUserName = new HashMap<>();
 
             while (hits != null && hits.isArray() && !hits.isEmpty()) {
                 for (JsonNode hit : hits) {
@@ -131,7 +117,15 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
                     processed++;
 
                     try {
-                        ObjectNode mergedUserLoginReport = enrichDocument(restTemplate, objectMapper, source,
+                        JsonNode ulrNode = source.path("Data").path("userLoginReport");
+                        String userName = textOrEmpty(ulrNode.path("userName"));
+                        if (!userName.isEmpty() && locationCacheByUserName.containsKey(userName)) {
+                            cacheHits++;
+                        } else {
+                            cacheMisses++;
+                        }
+
+                        ObjectNode mergedUserLoginReport = enrichDocument(restTemplate, objectMapper, source, locationCacheByUserName,
                                 hrmsHost, hrmsSearchPath, facilityHost, facilitySearchPath, internalUserUuid, migrationLogger,
                                 hrmsFilterRoleComplainant, defaultTenantId);
                         if (mergedUserLoginReport == null) {
@@ -139,15 +133,20 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
                             continue;
                         }
                         pendingBulk.add(new BulkUpdate(docIndex, docId, mergedUserLoginReport));
-                        if (pendingBulk.size() >= 50) {
+                        if (pendingBulk.size() >= esBulkSize) {
                             int u = executeBulk(restTemplate, objectMapper, esHost, esHeaders, pendingBulk, migrationLogger);
                             updated += u;
                             pendingBulk.clear();
+                            logProgress(migrationLogger, processed, updated, skipped, failed, cacheHits, cacheMisses, locationCacheByUserName.size());
                         }
                     } catch (Exception ex) {
                         failed++;
                         migrationLogger.println("[FAIL] id=" + docId + " " + ex.getMessage());
                         log.warn("Document failed: {}", docId, ex);
+                    }
+
+                    if (progressLogEvery > 0 && processed % progressLogEvery == 0) {
+                        logProgress(migrationLogger, processed, updated, skipped, failed, cacheHits, cacheMisses, locationCacheByUserName.size());
                     }
                 }
 
@@ -155,33 +154,21 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
                     break;
                 }
 
-                if (scrollId == null || scrollId.isEmpty()) {
-                    break;
-                }
-
-                ObjectNode scrollBody = objectMapper.createObjectNode();
-                scrollBody.put("scroll", "5m");
-                scrollBody.put("scroll_id", scrollId);
-                HttpEntity<String> scrollEntity = new HttpEntity<>(objectMapper.writeValueAsString(scrollBody), esHeaders);
-                ResponseEntity<JsonNode> scrollResp = restTemplate.postForEntity(esHost + "/_search/scroll", scrollEntity, JsonNode.class);
-                JsonNode scrollJson = scrollResp.getBody();
-                if (scrollJson == null) {
-                    break;
-                }
-                scrollId = scrollJson.path("_scroll_id").asText(null);
-                hits = scrollJson.path("hits").path("hits");
+                JsonNode lastHit = hits.get(hits.size() - 1);
+                searchAfter = lastHit.path("sort");
+                hits = fetchPage(restTemplate, objectMapper, searchUrl, esHeaders, scrollSize, searchAfter);
             }
 
             if (!pendingBulk.isEmpty()) {
                 updated += executeBulk(restTemplate, objectMapper, esHost, esHeaders, pendingBulk, migrationLogger);
             }
 
-            clearScroll(restTemplate, objectMapper, esHost, esHeaders, scrollId);
-
             migrationLogger.println("Processed: " + processed + ", updated: " + updated + ", skipped: " + skipped + ", failed: " + failed);
+            migrationLogger.println("Cache stats -> hit: " + cacheHits + ", miss: " + cacheMisses + ", unique users: " + locationCacheByUserName.size());
             migrationLogger.println("Finished: " + LocalDateTime.now());
             migrationLogger.flush();
-            log.info("Login-report migration done. processed={}, updated={}, skipped={}, failed={}", processed, updated, skipped, failed);
+            log.info("Login-report migration done. processed={}, updated={}, skipped={}, failed={}, cacheHit={}, cacheMiss={}, uniqueUsers={}",
+                    processed, updated, skipped, failed, cacheHits, cacheMisses, locationCacheByUserName.size());
         }
     }
 
@@ -193,18 +180,45 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
         }
     }
 
-    private void clearScroll(RestTemplate restTemplate, ObjectMapper mapper, String esHost, HttpHeaders headers, String scrollId) {
-        if (scrollId == null || scrollId.isEmpty()) {
-            return;
+    private JsonNode fetchPage(RestTemplate restTemplate, ObjectMapper mapper, String searchUrl, HttpHeaders headers,
+                               int size, JsonNode searchAfter) throws IOException {
+        ObjectNode searchBody = mapper.createObjectNode();
+        searchBody.put("size", size);
+
+        ObjectNode roleField = mapper.createObjectNode();
+        roleField.put("Data.userLoginReport.userRole.keyword", ROLE_COMPLAINANT);
+        ObjectNode term = mapper.createObjectNode();
+        term.set("term", roleField);
+        ObjectNode bool = mapper.createObjectNode();
+        bool.set("filter", mapper.createArrayNode().add(term));
+        ObjectNode query = mapper.createObjectNode();
+        query.set("bool", bool);
+        searchBody.set("query", query);
+
+        searchBody.set("_source", mapper.createArrayNode().add("Data").add("tenantId"));
+        searchBody.set("sort", mapper.createArrayNode().add(mapper.createObjectNode().put("_id", "asc")));
+        if (searchAfter != null && searchAfter.isArray() && !searchAfter.isEmpty()) {
+            searchBody.set("search_after", searchAfter);
         }
-        try {
-            ObjectNode body = mapper.createObjectNode();
-            body.put("scroll_id", scrollId);
-            HttpEntity<String> entity = new HttpEntity<>(mapper.writeValueAsString(body), headers);
-            restTemplate.exchange(esHost + "/_search/scroll", HttpMethod.DELETE, entity, JsonNode.class);
-        } catch (Exception e) {
-            log.debug("Clear scroll failed (non-fatal): {}", e.getMessage());
+
+        HttpEntity<String> entity = new HttpEntity<>(mapper.writeValueAsString(searchBody), headers);
+        ResponseEntity<JsonNode> response = restTemplate.postForEntity(searchUrl, entity, JsonNode.class);
+        JsonNode root = response.getBody();
+        if (root == null) {
+            return mapper.createArrayNode();
         }
+        return root.path("hits").path("hits");
+    }
+
+    private void logProgress(PrintWriter migrationLogger, int processed, int updated, int skipped, int failed,
+                             int cacheHits, int cacheMisses, int uniqueUsers) {
+        String message = String.format(
+                "[PROGRESS] processed=%d, updated=%d, skipped=%d, failed=%d, cacheHit=%d, cacheMiss=%d, uniqueUsers=%d",
+                processed, updated, skipped, failed, cacheHits, cacheMisses, uniqueUsers
+        );
+        migrationLogger.println(message);
+        migrationLogger.flush();
+        log.info(message);
     }
 
     private int executeBulk(RestTemplate restTemplate, ObjectMapper mapper, String esHost, HttpHeaders headers,
@@ -250,7 +264,7 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
     /**
      * Returns a deep copy of {@code userLoginReport} with location fields overwritten, or null to skip the document.
      */
-    private ObjectNode enrichDocument(RestTemplate restTemplate, ObjectMapper mapper, JsonNode source,
+    private ObjectNode enrichDocument(RestTemplate restTemplate, ObjectMapper mapper, JsonNode source, Map<String, EnrichedLocation> locationCacheByUserName,
                                     String hrmsHost, String hrmsSearchPath, String facilityHost, String facilitySearchPath,
                                     String internalUserUuid, PrintWriter log, boolean hrmsFilterRoleComplainant,
                                     String defaultTenantId) throws Exception {
@@ -276,17 +290,31 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
             return null;
         }
 
-        // Primary: HRMS by employee code (same as userName on login report / employee.code in HRMS)
+        EnrichedLocation location = locationCacheByUserName.get(userName);
+        if (location == null) {
+            location = computeEnrichedLocationForUser(restTemplate, mapper, hrmsHost, hrmsSearchPath, facilityHost, facilitySearchPath,
+                    internalUserUuid, tenantId, userName, hrmsFilterRoleComplainant, log);
+            locationCacheByUserName.put(userName, location);
+        }
+
+        ulr.put("state", location.state);
+        ulr.put("district", location.district);
+        ulr.put("block", location.block);
+        ulr.put("healthFacilityName", location.healthFacilityName);
+        return ulr;
+    }
+
+    private EnrichedLocation computeEnrichedLocationForUser(RestTemplate restTemplate, ObjectMapper mapper,
+                                                            String hrmsHost, String hrmsSearchPath,
+                                                            String facilityHost, String facilitySearchPath,
+                                                            String internalUserUuid, String tenantId, String userName,
+                                                            boolean hrmsFilterRoleComplainant, PrintWriter log) throws Exception {
         String boundaryCode = fetchBoundaryFromHrmsByEmployeeCode(restTemplate, mapper, hrmsHost, hrmsSearchPath,
                 internalUserUuid, tenantId, userName, hrmsFilterRoleComplainant);
 
         if (boundaryCode == null || boundaryCode.isBlank()) {
             log.println("[SKIP] no HRMS boundary for userName=" + userName);
-            ulr.put("state", "");
-            ulr.put("district", "");
-            ulr.put("block", "");
-            ulr.put("healthFacilityName", "");
-            return ulr;
+            return EnrichedLocation.empty();
         }
 
         Map<String, String> facility = fetchFacilityDetails(restTemplate, facilityHost, facilitySearchPath, boundaryCode, tenantId);
@@ -295,12 +323,7 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
         String block = firstNonBlank(facility.get("block"), fallbackDb[1]);
         String state = firstNonBlank(facility.get("state"), extractStateFromBoundaryCode(boundaryCode));
         String health = firstNonBlank(facility.get("healthFacilityName"), "");
-
-        ulr.put("state", state);
-        ulr.put("district", district);
-        ulr.put("block", block);
-        ulr.put("healthFacilityName", health);
-        return ulr;
+        return new EnrichedLocation(state, district, block, health);
     }
 
     /**
@@ -538,6 +561,24 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
             this.index = index;
             this.id = id;
             this.userLoginReport = userLoginReport;
+        }
+    }
+
+    private static final class EnrichedLocation {
+        final String state;
+        final String district;
+        final String block;
+        final String healthFacilityName;
+
+        EnrichedLocation(String state, String district, String block, String healthFacilityName) {
+            this.state = state;
+            this.district = district;
+            this.block = block;
+            this.healthFacilityName = healthFacilityName;
+        }
+
+        static EnrichedLocation empty() {
+            return new EnrichedLocation("", "", "", "");
         }
     }
 }
