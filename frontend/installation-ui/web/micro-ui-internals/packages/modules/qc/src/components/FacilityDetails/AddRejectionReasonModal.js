@@ -5,6 +5,7 @@ import CustomCloseSvg from "../CustomCloseSvg";
 const AddRejectionReasonModal = ({ t, onClose, onSave, rejectionReasons }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
+  const [reasonOptions, setReasonOptions] = useState([]);
   const [reasonMenu, setReasonMenu] = useState([]);
   const [reasons, setReasons] = useState([{ id: Date.now(), reason: "", comment: "" }]);
 
@@ -26,17 +27,22 @@ const AddRejectionReasonModal = ({ t, onClose, onSave, rejectionReasons }) => {
   };
 
   useEffect(() => {
+    setReasonOptions(
+      (mdmsData?.["Installation"]?.["RejectionReasons"] || [])
+        .map((rejectionReason) => ({...rejectionReason, label: rejectionReason.name}))
+        .sort((a, b) => a.label.localeCompare(b.label))
+    )
+  }, [mdmsData]);
+
+  useEffect(() => {
     const savedRejectionCodes = rejectionReasons.map(r => r.reason);
-    const reasonOptions = (mdmsData?.["Installation"]?.["RejectionReasons"] || [])
-      .map((rejectionReason) => ({...rejectionReason, label: rejectionReason.name}))
-      .sort((a, b) => a.label.localeCompare(b.label));
     const newReasonMenu = reasonOptions.filter(option => !savedRejectionCodes.includes(option.label));
     newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
     setReasonMenu(newReasonMenu);
-  }, [rejectionReasons, mdmsData]);
+  }, [rejectionReasons, reasonOptions]);
 
   const updateReasonsMenu = (selectedReasons) => {
-    const newReasonMenu = reasonMenu.filter(option => !selectedReasons.includes(option.label));
+    const newReasonMenu = reasonOptions.filter(option => !selectedReasons.includes(option.label));
     newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
     setReasonMenu(newReasonMenu);
   }
