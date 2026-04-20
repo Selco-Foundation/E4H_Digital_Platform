@@ -203,11 +203,7 @@ public class FacilityKibanaMapper {
     }
 
     private static String resolveFacilityCodeForIndex(Facility facility) {
-//        HealthFacilityDetails details = facility.getFacilityDetails();
-        String hfr = facility != null ? facility.getHfrId() : null;
-        if (hfr == null || hfr.isBlank()) {
-            hfr = facility.getHfrId();
-        }
+        String hfr = facility.getHfrId();
         if (hfr != null && !hfr.isBlank()) {
             return hfr;
         }
