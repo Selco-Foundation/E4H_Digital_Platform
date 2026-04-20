@@ -75,6 +75,7 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
         String facilityHost = trimTrailingSlash(getEnvOrDefault("EGOV_FACILITY_HOST", "http://localhost:8082"));
         String facilitySearchPath = getEnvOrDefault("EGOV_FACILITY_SEARCH_PATH", "/facility-service/v2/facility/search");
         String internalUserUuid = getEnvOrDefault("EGOV_INTERNAL_MICROSERVICE_USER_UUID", "4fef6612-07a8-4751-97e9-0e0ac0687ebe");
+        String defaultTenantId = getEnvOrDefault("LOGIN_REPORT_DEFAULT_TENANT_ID", "in");
 
         int scrollSize = Integer.parseInt(getEnvOrDefault("LOGIN_REPORT_MIGRATION_SCROLL_SIZE", "100"));
         int maxDocs = Integer.parseInt(getEnvOrDefault("LOGIN_REPORT_MIGRATION_MAX_DOCS", "0"));
@@ -132,7 +133,7 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
                     try {
                         ObjectNode mergedUserLoginReport = enrichDocument(restTemplate, objectMapper, source,
                                 hrmsHost, hrmsSearchPath, facilityHost, facilitySearchPath, internalUserUuid, migrationLogger,
-                                hrmsFilterRoleComplainant);
+                                hrmsFilterRoleComplainant, defaultTenantId);
                         if (mergedUserLoginReport == null) {
                             skipped++;
                             continue;
@@ -251,7 +252,8 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
      */
     private ObjectNode enrichDocument(RestTemplate restTemplate, ObjectMapper mapper, JsonNode source,
                                     String hrmsHost, String hrmsSearchPath, String facilityHost, String facilitySearchPath,
-                                    String internalUserUuid, PrintWriter log, boolean hrmsFilterRoleComplainant) throws Exception {
+                                    String internalUserUuid, PrintWriter log, boolean hrmsFilterRoleComplainant,
+                                    String defaultTenantId) throws Exception {
         JsonNode data = source.path("Data");
         JsonNode ulrNode = data.path("userLoginReport");
         if (ulrNode.isMissingNode() || ulrNode.isNull()) {
@@ -267,12 +269,10 @@ public class V20260420120000__migrate_login_report_es_hrms_facility extends Base
         if (userName.isEmpty()) {
             return null;
         }
-        String tenantId = textOrEmpty(source.path("tenantId"));
-        if (tenantId.isEmpty()) {
-            tenantId = textOrEmpty(data.path("tenantId"));
-        }
-        if (tenantId.isEmpty()) {
-            log.println("[SKIP] no tenantId for userName=" + userName);
+        // login-report index mapping does not include tenantId; use configured default tenant.
+        String tenantId = defaultTenantId;
+        if (tenantId == null || tenantId.isBlank()) {
+            log.println("[SKIP] no tenantId configured for userName=" + userName);
             return null;
         }
 
