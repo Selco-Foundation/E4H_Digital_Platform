@@ -302,9 +302,9 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                           child: DigitDropdown(
                             sentenceCaseEnabled: false,
                             items: const [
-                              DropdownItem(name: 'Option A', code: 'a'),
-                              DropdownItem(name: 'Option B', code: 'b'),
-                              DropdownItem(name: 'Option C', code: 'c'),
+                              DropdownItem(name: 'Image Not Clear', code: 'a'),
+                              DropdownItem(name: 'Incorrect Brand', code: 'b'),
+                              DropdownItem(name: 'Serial Number Incorrect', code: 'c'),
                             ],
                             onSelect: (sel) => setStatePopup(
                               () => entry.selectedCode = sel.name,

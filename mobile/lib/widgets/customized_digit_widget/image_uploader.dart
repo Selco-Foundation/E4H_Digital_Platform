@@ -21,6 +21,7 @@ enum _PickerSessionPhase { idle, launching, awaitingResult, recovering }
 class ImageUploader extends StatefulWidget {
   final Function(List<File>) onImagesSelected;
   final bool allowMultiples;
+  final int? maxImages;
   final bool isDisabled;
   final String? errorMessage;
   final List<File>? initialImages;
@@ -43,6 +44,7 @@ class ImageUploader extends StatefulWidget {
     super.key,
     required this.onImagesSelected,
     this.allowMultiples = false,
+    this.maxImages,
     this.isDisabled = false,
     this.initialImages,
     this.errorMessage,
@@ -149,6 +151,18 @@ class _ImageUploaderState extends State<ImageUploader>
       _pickerPhase == _PickerSessionPhase.launching ||
       _pickerPhase == _PickerSessionPhase.awaitingResult ||
       _pickerPhase == _PickerSessionPhase.recovering;
+
+  bool get _hasReachedImageLimit {
+    final limit = widget.maxImages;
+    return limit != null && _imageFiles.length >= limit;
+  }
+
+  bool get _shouldShowUploadControl {
+    if (widget.isDisabled) return false;
+    if (!widget.allowMultiples && _imageFiles.isNotEmpty) return false;
+    if (_hasReachedImageLimit) return false;
+    return true;
+  }
 
   Future<void> _startImagePick(ImageSource source) async {
     if (!mounted) return;
@@ -640,8 +654,7 @@ class _ImageUploaderState extends State<ImageUploader>
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
-          if (!widget.isDisabled)
+        if (_shouldShowUploadControl)
           Container(
             width: MediaQuery.of(context).size.width,
             height: 120,
@@ -719,8 +732,7 @@ class _ImageUploaderState extends State<ImageUploader>
               ),
             ),
           ),
-        if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
-          if (!widget.isDisabled)
+        if (_shouldShowUploadControl)
           const SizedBox(height: spacer2),
         Wrap(
           spacing: spacer2,

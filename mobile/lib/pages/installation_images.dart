@@ -8,12 +8,14 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/cache_installation_image/cache_installation_image.dart';
 import '../blocs/installation_images/installation_images.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_installation_image.dart';
 import '../model/installation_images/installation_images.dart';
+import '../repositories/activity_facility_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/utils.dart';
@@ -43,7 +45,6 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   StreamSubscription<LocationState>? _locSub;
   bool _hasAttemptedValidation = false;
   bool _isSaving = false;
-  bool _hydratedFromCache = false;
 
   bool get _isViewOnly =>
       widget.origin == FormOrigin.inboxSummary ||
@@ -122,7 +123,6 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   }
 
   Future<void> _populateFromCache(List<CacheInstallationImage> entries) async {
-    if (_hydratedFromCache) return;
     final grouped = <String, List<File>>{};
 
     final futures = entries.map((entry) async {
@@ -142,7 +142,17 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
       _selectedImagesByRequirement
         ..clear()
         ..addAll(grouped);
-      _hydratedFromCache = true;
+      _sectionMessages.clear();
+      _hasAttemptedValidation = false;
+    });
+  }
+
+  void _clearHydratedImages() {
+    if (!mounted) return;
+    setState(() {
+      _selectedImagesByRequirement.clear();
+      _sectionMessages.clear();
+      _hasAttemptedValidation = false;
     });
   }
 
@@ -274,8 +284,8 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   Future<void> _submitSelections() async {
     if (_currentActivityFacilityId == null || _userType == null) return;
     final ok = await _ensureLocationLoaded();
+    if (!mounted) return;
     if (!ok) {
-      if (!mounted) return;
       context.showSnackBar(
         const SnackBar(content: Text('Could not fetch location')),
       );
@@ -394,6 +404,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
                     ImageUploader(
                       label: 'Upload Images',
                       allowMultiples: requirement.allowMultiples,
+                      maxImages: requirement.requiredCount,
                       isDisabled: _isViewOnly,
                       errorMessage:
                           _isViewOnly ? null : _validationErrorFor(requirement),
@@ -433,16 +444,25 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           loaded: (entries) => _populateFromCache(entries),
           saved: () async {
             if (!mounted) return;
+            if (_currentActivityFacilityId != null && _userType != null) {
+              final isar = context.read<ActivityFacilityBloc>().isar;
+              await PrefilledActivityFacilityRepository(isar).addOrTouch(
+                activityFacilityId: _currentActivityFacilityId!,
+                userType: _userType!,
+              );
+            }
+            if (!mounted) return;
             setState(() {
               _isSaving = false;
             });
-            _popUntilThenRefreshOrigin(context, widget.origin);
+            _popUntilThenRefreshOrigin(this.context, widget.origin);
           },
           notFound: () async {
             if (!mounted) return;
             setState(() {
               _isSaving = false;
             });
+            _clearHydratedImages();
           },
           error: (message) async {
             if (!mounted) return;
