@@ -255,7 +255,7 @@ class AssetSubmissionBloc
       jobsById[job.activityFacilityId] = job;
     }
 
-    var completed = 0;
+    var successfulCount = 0;
     var activeCount = 0;
     var progressSum = 0;
     CacheSubmissionJob? failedJob;
@@ -266,7 +266,7 @@ class AssetSubmissionBloc
 
       progressSum += job.progressPercent;
       if (job.status == OperationStatuses.success) {
-        completed += 1;
+        successfulCount += 1;
       }
       if (job.status == OperationStatuses.queued ||
           job.status == OperationStatuses.running ||
@@ -278,14 +278,15 @@ class AssetSubmissionBloc
       }
     }
 
+    final displayCount = (successfulCount + activeCount).clamp(0, total);
     final progress = BulkOperationProgressModel(
-      completed: completed,
+      completed: displayCount,
       total: total,
       progressPercent: total == 0 ? 0 : (progressSum / total).round(),
       activeCount: activeCount,
-      label: completed >= total
+      label: displayCount >= total
           ? 'Sync completed'
-          : 'Syncing $completed of $total reports',
+          : 'Syncing $displayCount of $total reports',
     );
 
     emit(AssetSubmissionState.bulkProgress(progress));
@@ -307,7 +308,7 @@ class AssetSubmissionBloc
       return;
     }
 
-    emit(const AssetSubmissionState.success());
+    emit(AssetSubmissionState.bulkSuccess(progress));
   }
 
   OperationProgressModel _toProgressModel(CacheSubmissionJob job) {
@@ -370,6 +371,9 @@ class AssetSubmissionState with _$AssetSubmissionState {
   const factory AssetSubmissionState.bulkProgress(
     BulkOperationProgressModel progress,
   ) = _BulkProgress;
+  const factory AssetSubmissionState.bulkSuccess(
+    BulkOperationProgressModel progress,
+  ) = _BulkSuccess;
   const factory AssetSubmissionState.bulkFailure(String errorMessage) =
       _BulkFailure;
 }

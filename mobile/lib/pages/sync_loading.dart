@@ -22,6 +22,7 @@ class SyncLoadingPage extends StatelessWidget {
       builder: (context, state) {
         final progress = state.maybeWhen(
           bulkProgress: (progress) => progress,
+          bulkSuccess: (progress) => progress,
           orElse: () => const BulkOperationProgressModel(
             completed: 0,
             total: 0,
