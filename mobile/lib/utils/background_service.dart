@@ -471,7 +471,7 @@ String _pretty(Object? e) {
       lower.contains('status code: 401')) {
     return 'SESSION_EXPIRED';
   }
-  return s.replaceFirst(RegExp(r'^(Exception:\s*)+'), '');
+  return normalizeFriendlyNetworkErrorMessage(s);
 }
 
 @pragma('vm:entry-point')
@@ -1123,15 +1123,13 @@ Future<void> _performSubmissionForActivityFacility({
 
     final workflowMediaItems =
         workflowMedia.where((item) => item.filePath.isNotEmpty).toList();
-    final installationImageItems = installationImages
-        .where((item) => item.photoPath.isNotEmpty)
-        .toList();
+    final installationImageItems =
+        installationImages.where((item) => item.photoPath.isNotEmpty).toList();
     final assetPhotoItems = assetsByType.values
         .expand((items) => items)
         .where((a) => a.photoPath.isNotEmpty)
         .toList();
-    final totalAssetMediaUploads =
-        workflowMediaItems.length +
+    final totalAssetMediaUploads = workflowMediaItems.length +
         installationImageItems.length +
         assetPhotoItems.length;
 

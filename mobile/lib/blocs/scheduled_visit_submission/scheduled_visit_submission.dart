@@ -12,6 +12,7 @@ import '../../utils/background_service.dart'
         BackgroundServiceController,
         kEvtScheduleVisitDone,
         kEvtScheduleVisitError;
+import '../../utils/utils.dart';
 
 part 'scheduled_visit_submission.freezed.dart';
 
@@ -73,8 +74,7 @@ class ScheduleVisitSubmitBloc
 
   String _normalizeErrorMessage(String? message) {
     if (_isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
-    final m = (message ?? '').trim();
-    return m.isEmpty ? 'Failed.' : m;
+    return normalizeFriendlyNetworkErrorMessage(message);
   }
 
   Future<void> _onSubmit(

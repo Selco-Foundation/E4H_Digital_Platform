@@ -883,6 +883,38 @@ bool isSessionExpiredMessage(String? message) {
   return msg.contains('session_expired');
 }
 
+String normalizeFriendlyNetworkErrorMessage(
+  String? message, {
+  String fallback = 'Failed.',
+}) {
+  if (isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
+
+  final cleaned =
+      (message ?? '').trim().replaceFirst(RegExp(r'^(Exception:\s*)+'), '');
+  if (cleaned.isEmpty) return fallback;
+
+  final lower = cleaned.toLowerCase();
+
+  if (lower.contains('no network connection')) {
+    return 'No network connection. Connect to Wi-Fi or mobile data and try again.';
+  }
+
+  if (lower.contains('no internet access')) {
+    return "You're offline. Please reconnect to the internet and try again.";
+  }
+
+  if (lower.contains('failed host lookup') ||
+      lower.contains('socketexception') ||
+      lower.contains('software caused connection abort') ||
+      lower.contains('connection error') ||
+      lower.contains('connection reset') ||
+      lower.contains('network is unreachable')) {
+    return 'We could not submit because the internet connection was interrupted. Please try again.';
+  }
+
+  return cleaned;
+}
+
 void handleSessionExpired(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(content: Text('Token expired! Please login again.')),
@@ -901,10 +933,20 @@ class DioErrorParser {
       if (errors.isNotEmpty) {
         final firstErr = errors.first as Map<String, dynamic>;
         final msg = firstErr['message'] as String? ?? dioErr.message;
-        return Exception(msg);
+        return Exception(
+          normalizeFriendlyNetworkErrorMessage(
+            msg,
+            fallback: dioErr.message ?? 'Failed.',
+          ),
+        );
       }
     }
 
-    return Exception(dioErr.message);
+    return Exception(
+      normalizeFriendlyNetworkErrorMessage(
+        dioErr.message,
+        fallback: 'Failed.',
+      ),
+    );
   }
 }
