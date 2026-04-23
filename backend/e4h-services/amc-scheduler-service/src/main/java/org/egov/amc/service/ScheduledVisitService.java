@@ -175,6 +175,7 @@ public class ScheduledVisitService {
             OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), request.getRequestInfo().getUserInfo().getTenantId());
             if (otpResponse !=null && otpResponse.getOtp()!=null){
                 log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                sendOtpSms(employee.getUser().getMobileNumber(), otpResponse.getOtp().getOtp(), request.getRequestInfo().getUserInfo().getTenantId());
                 return  otpResponse;
             }
             else
@@ -208,6 +209,7 @@ public class ScheduledVisitService {
                 if (otpResponse !=null && otpResponse.getOtp()!=null){
                     log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
                     existingVisit.getVisitReport().setOtpReference(otpResponse.getOtp().getOtp());
+                    sendOtpSms(employee.getUser().getMobileNumber(), otpResponse.getOtp().getOtp(), existingVisit.getTenantId());
                 }
                 else {
                     log.warn("OTP generation returned null response for visit: {}", existingVisit.getId());
@@ -671,6 +673,25 @@ public class ScheduledVisitService {
             );
         }
         return otpResponse;
+    }
+
+    private void sendOtpSms(String mobileNumber, String otp, String tenantId) {
+        if (Boolean.FALSE.equals(amcServiceConfiguration.getSmsEnabled())) {
+            log.info("SMS notification is disabled. Skipping OTP SMS for mobile number {}", mobileNumber);
+            return;
+        }
+        if (mobileNumber == null || mobileNumber.isEmpty() || otp == null || otp.isEmpty()) {
+            log.info("Skipping OTP SMS due to missing mobile number or OTP value");
+            return;
+        }
+
+        String smsMessage = amcServiceConfiguration.getOtpSmsTemplate().replace("{otp}", otp);
+        SMSRequest smsRequest = SMSRequest.builder()
+                .mobileNumber(mobileNumber)
+                .message(smsMessage)
+                .build();
+        producer.push(amcServiceConfiguration.getSmsNotificationTopic(), smsRequest);
+        log.info("OTP SMS queued for mobile number {} in tenant {}", mobileNumber, tenantId);
     }
 
     public OtpResponse validateOTP(String identity, String tenantId, String otpCode) {
