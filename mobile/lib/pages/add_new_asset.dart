@@ -246,6 +246,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
     _locSub = locBloc.stream.listen((locationState) {
       if (locationState.latitude != null && locationState.longitude != null) {
+        if (!mounted) return;
         setState(() {
           _latitude = locationState.latitude;
           _longitude = locationState.longitude;
@@ -270,6 +271,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       final state = await locBloc.stream
           .firstWhere((s) => s.latitude != null && s.longitude != null)
           .timeout(timeout);
+      if (!mounted) return false;
       setState(() {
         _latitude = state.latitude;
         _longitude = state.longitude;
@@ -285,6 +287,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
       Permission.camera,
       Permission.locationWhenInUse,
     ].request();
+
+    if (!mounted) return;
 
     if (statuses[Permission.camera] != PermissionStatus.granted) {
       context.showSnackBar(
@@ -387,7 +391,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   }
 
   bool _isAssetComplete(AssetModel a, String assetType) {
-    if (a.serialNumber.isEmpty || a.photoPath == null) return false;
+    if (a.serialNumber.isEmpty ||
+        a.photoPath == null ||
+        a.latitude?.isNotEmpty != true ||
+        a.longitude?.isNotEmpty != true) {
+      return false;
+    }
 
     switch (assetType.toLowerCase()) {
       case 'battery':
@@ -510,6 +519,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 onPress: () async {
                   if (isDisabled) return;
                   if (_isSaving) return;
+                  final activityFacilityId = _currentActivityFacilityId;
+                  if (activityFacilityId == null) return;
+
+                  final addNewAssetBloc = context.read<CacheAddNewAssetBloc>();
+                  final assetCountBloc = context.read<CacheAssetCountBloc>();
+                  final router = context.router;
 
                   setState(() {
                     _isSaving = true;
@@ -520,7 +535,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       return CacheAddNewAsset(
                         assetId: asset.assetId,
                         documentId: asset.documentId,
-                        activityFacilityId: _currentActivityFacilityId!,
+                        activityFacilityId: activityFacilityId,
                         assetType: currentAssetType,
                         itemNumber: asset.capacity,
                         serialNumber: asset.serialNumber,
@@ -541,17 +556,15 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       );
                     }).toList();
 
-                    context.read<CacheAddNewAssetBloc>().add(
-                          CacheAddNewAssetEvent.replaceAll(
-                            _currentActivityFacilityId!,
-                            currentAssetType,
-                            entries,
-                          ),
-                        );
+                    addNewAssetBloc.add(
+                      CacheAddNewAssetEvent.replaceAll(
+                        activityFacilityId,
+                        currentAssetType,
+                        entries,
+                      ),
+                    );
 
-                    final result = await context
-                        .read<CacheAddNewAssetBloc>()
-                        .stream
+                    final result = await addNewAssetBloc.stream
                         .firstWhere((state) => state.maybeWhen(
                               loaded: (_) => true,
                               error: (_) => true,
@@ -573,18 +586,17 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       });
                     }
                   }
-                  if (_currentActivityFacilityId != null) {
-                    context.read<CacheAssetCountBloc>().add(
-                          CacheAssetCountEvent.update(
-                            CacheAssetCount(
-                              activityFacilityId: _currentActivityFacilityId!,
-                              assetType: currentAssetType,
-                              progress: 5,
-                            ),
-                          ),
-                        );
-                  }
-                  context.router.push(const MediaUploadRoute());
+                  if (!mounted) return;
+                  assetCountBloc.add(
+                    CacheAssetCountEvent.update(
+                      CacheAssetCount(
+                        activityFacilityId: activityFacilityId,
+                        assetType: currentAssetType,
+                        progress: 5,
+                      ),
+                    ),
+                  );
+                  router.push(const MediaUploadRoute());
                 },
               ),
               children: [
@@ -745,22 +757,40 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                       _isProcessingImageSelection[index] = true;
                       _lastProcessedPickerPaths[index] = selectedPath;
                       try {
-                        final ok = await _ensureLocationLoaded();
-                        if (!ok) {
+                        final copiedPath =
+                            await copyFileToLocalDir(imageFile.first);
+                        if (!mounted) return;
+
+                        setState(() {
+                          asset.photoPath = copiedPath;
+                          _cachedImageFutures.remove(index);
+                        });
+
+                        final hasLocation = await _ensureLocationLoaded();
+                        if (!mounted) return;
+
+                        if (hasLocation) {
+                          setState(() {
+                            asset.latitude = _latitude.toString();
+                            asset.longitude = _longitude.toString();
+                            _cachedImageFutures.remove(index);
+                          });
+                        } else {
                           context.showSnackBar(
                             const SnackBar(
                                 content: Text('Could not fetch location')),
                           );
-                          return;
                         }
-                        final copiedPath =
-                            await copyFileToLocalDir(imageFile.first);
-                        setState(() {
-                          asset.photoPath = copiedPath;
-                          asset.latitude = _latitude.toString();
-                          asset.longitude = _longitude.toString();
-                          _cachedImageFutures.remove(index);
-                        });
+                      } catch (e) {
+                        _lastProcessedPickerPaths.remove(index);
+                        AppLogger.instance.info(
+                          'AddNewAsset image processing failed index=$index path=$selectedPath error=$e',
+                        );
+                        if (!mounted) return;
+                        context.showSnackBar(
+                          const SnackBar(
+                              content: Text('Could not process image')),
+                        );
                       } finally {
                         _isProcessingImageSelection.remove(index);
                       }
@@ -882,7 +912,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     child: DigitTextFormInput(
                       controller: TextEditingController(),
                       isDisabled: true,
-                      initialValue: '$voltageUom',
+                      initialValue: voltageUom,
                       keyboardType: TextInputType.text,
                     ),
                   ),

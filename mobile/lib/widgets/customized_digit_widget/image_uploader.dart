@@ -19,7 +19,7 @@ import '../../utils/app_logger.dart';
 enum _PickerSessionPhase { idle, launching, awaitingResult, recovering }
 
 class ImageUploader extends StatefulWidget {
-  final Function(List<File>) onImagesSelected;
+  final FutureOr<void> Function(List<File>) onImagesSelected;
   final bool allowMultiples;
   final int? maxImages;
   final bool isDisabled;
@@ -63,7 +63,7 @@ class ImageUploader extends StatefulWidget {
   });
 
   @override
-  _ImageUploaderState createState() => _ImageUploaderState();
+  State<ImageUploader> createState() => _ImageUploaderState();
 }
 
 class _ImageUploaderState extends State<ImageUploader>
@@ -157,6 +157,21 @@ class _ImageUploaderState extends State<ImageUploader>
     if (!widget.allowMultiples && _imageFiles.isNotEmpty) return false;
     if (_hasReachedImageLimit) return false;
     return true;
+  }
+
+  Future<bool> _deliverImagesSelected(List<File> images) async {
+    try {
+      await Future<void>.sync(() => widget.onImagesSelected(images));
+      return true;
+    } catch (e, st) {
+      AppLogger.instance.info('ImageUploader callback failed: $e\n$st');
+      if (mounted) {
+        setState(() {
+          fileError = 'Failed to process selected image';
+        });
+      }
+      return false;
+    }
   }
 
   Future<void> _startImagePick(ImageSource source) async {
@@ -351,7 +366,7 @@ class _ImageUploaderState extends State<ImageUploader>
           ..add(image);
       }
     });
-    widget.onImagesSelected(List<File>.from(_imageFiles));
+    await _deliverImagesSelected(List<File>.from(_imageFiles));
     if (sessionToken != null) {
       _completeSession(sessionToken);
     }
@@ -418,7 +433,7 @@ class _ImageUploaderState extends State<ImageUploader>
     AppLogger.instance.info(
       'ImageUploader dispatch source=${_activeSource?.name ?? 'unknown'} recovery=$fromRecovery session=$sessionToken',
     );
-    widget.onImagesSelected(List<File>.from(_imageFiles));
+    await _deliverImagesSelected(List<File>.from(_imageFiles));
     _completeSession(sessionToken);
   }
 
@@ -874,11 +889,11 @@ class _ImageUploaderState extends State<ImageUploader>
         : const SizedBox.shrink();
   }
 
-  void _removeImage(int index) {
+  Future<void> _removeImage(int index) async {
     if (widget.isDisabled) return;
     setState(() {
       _imageFiles.removeAt(index);
     });
-    widget.onImagesSelected(List<File>.from(_imageFiles));
+    await _deliverImagesSelected(List<File>.from(_imageFiles));
   }
 }
