@@ -37,10 +37,10 @@ public class V20260414103000__MigrateComplaintResolversToVendorOrgs extends Base
 
 
     private static final String HRMS_SEARCH_URL =
-            System.getenv("EGOV_HRMS") + "/egov-hrms/employees/_search?roles=COMPLAINT_RESOLVER&tenantId=in&isActive=true";
+            System.getenv("EGOV_HRMS_HOST") + "/egov-hrms/employees/_search?roles=COMPLAINT_RESOLVER&tenantId=in&isActive=true";
 
     private static final String VENDOR_ORG_CREATE_URL =
-            System.getenv("VENDOR-REGISTRY") + "/vendor/organisation/v1/_create";
+            System.getenv("EGOV_VENDOR_HOST") + "/vendor/organisation/v1/_create";
 
     private static final String HRMS_AUTH_HEADER_VALUE = "Bearer your-auth-token";
 
