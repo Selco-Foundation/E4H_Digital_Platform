@@ -80,9 +80,9 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
     tenantId: `${Digit.ULBService.getStateId()}`,
     UserProfileValidationConfig: [
       {
-        name: "/^[a-zA-Z ]+$/i",
-        mobileNumber: "/^[6-9]{1}[0-9]{9}$/",
-        password: "/^([a-zA-Z0-9@#$%]{8,15})$/i",
+        name: /^[^"$<>?\\~`!@#%^()+={}\[\]*,:;“”‘’]*$/,
+        mobileNumber: /^[0-9]{10}$/,
+        password: /^([a-zA-Z0-9@#$%]{8,15})$/i,
       },
     ],
   };

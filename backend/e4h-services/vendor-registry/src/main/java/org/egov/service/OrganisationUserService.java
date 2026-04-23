@@ -50,7 +50,15 @@ public class OrganisationUserService {
         log.info("received request to create org user {} ", request );
 
         validator.validateCreateOrgUserRequest(request);
-//        List<OrgUser> orgUserList = request.getOrgUsers();
+
+        if (request.getId() != null && !request.getId().isBlank()) {
+            log.info("User with same phone already exists in org {}, HRMS employee updated, pushing to update topic",
+                    request.getOrganizationId());
+            organisationEnrichmentService.enrichOrgUserRequestOnUpdate(request);
+            organizationProducer.push(configuration.getUpdateOrgUserTopic(), request);
+            return request;
+        }
+
         try {
             log.info("processing  {} valid entities", request.getUser());
             organisationEnrichmentService.enrichOrgUserRequestOnCreate(request, request.getRequestInfo());
