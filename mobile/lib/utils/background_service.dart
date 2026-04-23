@@ -1111,13 +1111,13 @@ Future<void> _performSubmissionForActivityFacility({
     final workflowMedia = await isar.cacheMediaUploads
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
-        .filter()
-        .userTypeEqualTo(userType)
+        //.filter()
+        //.userTypeEqualTo(userType)
         .findAll();
     final installationImages = await isar.cacheInstallationImages
         .where()
-        .activityFacilityIdEqualTo(activityFacilityId)
-        .filter()
+        //.activityFacilityIdEqualTo(activityFacilityId)
+        //.filter()
         .userTypeEqualTo(userType)
         .findAll();
 
