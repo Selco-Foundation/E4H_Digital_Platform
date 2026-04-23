@@ -769,8 +769,8 @@ public class ScheduledVisitService {
     }
 
     public Employee getUserByUsername(Object request, String username) {
-        String encodedUsername = URLEncoder.encode(username, StandardCharsets.UTF_8);
-        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl() + "?tenantId=in&codes=" + encodedUsername;
+//        String encodedUsername = URLEncoder.encode(username, StandardCharsets.UTF_8);
+        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl() + "?tenantId=in&codes=" + username;
         log.debug("Calling HRMS employee search by username");
         Object response = requestRepository.fetchResult(new StringBuilder(url), request);
 
@@ -784,8 +784,8 @@ public class ScheduledVisitService {
     }
 
     private Facility getFacilityById(String facilityId) {
-        String encodedFacilityId = URLEncoder.encode(facilityId, StandardCharsets.UTF_8);
-        String url = amcServiceConfiguration.getFacilityServiceHost() + amcServiceConfiguration.getFacilityServiceSearchUrlV2() + "?facilityId=" + encodedFacilityId;
+//        String encodedFacilityId = URLEncoder.encode(facilityId, StandardCharsets.UTF_8);
+        String url = amcServiceConfiguration.getFacilityServiceHost() + amcServiceConfiguration.getFacilityServiceSearchUrlV2() + "?facilityId=" + facilityId;
         log.debug("Calling facility search v2 for facilityId={}", facilityId);
         Object response = requestRepository.fetchResult(new StringBuilder(url));
         FacilitySearchResponse facilityResponse = mapper.convertValue(response, FacilitySearchResponse.class);
