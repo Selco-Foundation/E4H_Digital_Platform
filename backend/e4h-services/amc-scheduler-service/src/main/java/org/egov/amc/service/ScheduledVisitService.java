@@ -204,20 +204,26 @@ public class ScheduledVisitService {
         if ("SUBMIT_VISIT_REPORT".equalsIgnoreCase(request.getWorkflow().getAction())) {
             // We need to update visit report on existing visit
             existingVisit.setVisitReport(request.getVisitReport());
+            log.info("SUBMIT_VISIT_REPORT started for visitId={} tenantId={}", existingVisit.getId(), existingVisit.getTenantId());
             // We need to send OTP to facility POC resolved by HFR username(HCR user)
             if (existingVisit.getFacilityId() == null || existingVisit.getFacilityId().trim().isEmpty()) {
+                log.error("SUBMIT_VISIT_REPORT failed: facilityId missing for visitId={}", existingVisit.getId());
                 throw new CustomException("UPDATE_WORKFLOW", "Facility ID is missing for visit: " + existingVisit.getId());
             }
 
+            log.debug("Fetching facility for visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
             Facility facility = getFacilityById(existingVisit.getFacilityId());
             if (facility == null) {
+                log.error("SUBMIT_VISIT_REPORT failed: facility not found for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
                 throw new CustomException("UPDATE_WORKFLOW", "Facility not found for facilityId: " + existingVisit.getFacilityId());
             }
 
             String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId(): facility.getNinId();
             if (username == null || username.trim().isEmpty()) {
+                log.error("SUBMIT_VISIT_REPORT failed: no hfrId/ninId for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
                 throw new CustomException("UPDATE_WORKFLOW", "HFR ID or NIN ID is missing in facility details for facilityId: " + existingVisit.getFacilityId());
             }
+            log.info("Resolved HRMS username for visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
 
             Employee employee = getUserByUsername(request, username);
             if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
@@ -255,18 +261,23 @@ public class ScheduledVisitService {
             }
             else{
                 if (existingVisit.getFacilityId() == null || existingVisit.getFacilityId().trim().isEmpty()) {
+                    log.error("SUBMIT_OTP failed: facilityId missing for visitId={}", existingVisit.getId());
                     throw new CustomException("UPDATE_WORKFLOW", "Facility ID is missing for visit: " + existingVisit.getId());
                 }
 
+                log.debug("Fetching facility for OTP validation visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
                 Facility facility = getFacilityById(existingVisit.getFacilityId());
                 if (facility == null) {
+                    log.error("SUBMIT_OTP failed: facility not found for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
                     throw new CustomException("UPDATE_WORKFLOW", "Facility not found for facilityId: " + existingVisit.getFacilityId());
                 }
 
                 String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId(): facility.getNinId();
                 if (username == null || username.trim().isEmpty()) {
+                    log.error("SUBMIT_OTP failed: no hfrId/ninId for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
                     throw new CustomException("UPDATE_WORKFLOW", "HFR ID or NIN ID is missing in facility details for facilityId: " + existingVisit.getFacilityId());
                 }
+                log.info("Resolved HRMS username for OTP validation visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
 
                 Employee employee = getUserByUsername(request, username);
                 if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
@@ -760,23 +771,29 @@ public class ScheduledVisitService {
     public Employee getUserByUsername(Object request, String username) {
         String encodedUsername = URLEncoder.encode(username, StandardCharsets.UTF_8);
         String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl() + "?tenantId=in&codes=" + encodedUsername;
+        log.debug("Calling HRMS employee search by username");
         Object response = requestRepository.fetchResult(new StringBuilder(url), request);
 
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            log.warn("No HRMS employee found for username={}", username);
             throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with username: " + username);
         }
+        log.debug("HRMS employee found for username={}", username);
         return employeeResponse.getEmployees().get(0);
     }
 
     private Facility getFacilityById(String facilityId) {
         String encodedFacilityId = URLEncoder.encode(facilityId, StandardCharsets.UTF_8);
         String url = amcServiceConfiguration.getFacilityServiceHost() + amcServiceConfiguration.getFacilityServiceSearchUrlV2() + "?facilityId=" + encodedFacilityId;
+        log.debug("Calling facility search v2 for facilityId={}", facilityId);
         Object response = requestRepository.fetchResult(new StringBuilder(url));
         FacilitySearchResponse facilityResponse = mapper.convertValue(response, FacilitySearchResponse.class);
         if (facilityResponse == null || facilityResponse.getFacilities() == null || facilityResponse.getFacilities().isEmpty()) {
+            log.warn("No facility found for facilityId={}", facilityId);
             return null;
         }
+        log.debug("Facility found for facilityId={}", facilityId);
         return facilityResponse.getFacilities().get(0);
     }
 
