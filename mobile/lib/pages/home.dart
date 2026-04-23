@@ -132,17 +132,6 @@ class _HomePageState extends State<HomePage>
           Navigator.of(context).push(_syncRoute!);
         }
       },
-      bulkSuccess: (_) {
-        if (_syncRoute != null) {
-          Navigator.of(context).pop();
-          _syncRoute = null;
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All drafts successfully synced!')),
-        );
-        _popupShown = false;
-        _refreshPendingSyncState();
-      },
       bulkFailure: (errorMessage) {
         if (_syncRoute != null) {
           Navigator.of(context).pop();
@@ -154,6 +143,17 @@ class _HomePageState extends State<HomePage>
           return;
         }
         _showSyncDialog(context, error: errorMessage);
+      },
+      success: () {
+        if (_syncRoute != null) {
+          Navigator.of(context).pop();
+          _syncRoute = null;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All drafts successfully synced!')),
+        );
+        _popupShown = false;
+        _refreshPendingSyncState();
       },
     );
   }

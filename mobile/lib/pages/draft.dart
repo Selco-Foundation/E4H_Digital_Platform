@@ -98,7 +98,18 @@ class _DraftPageState extends State<DraftPage> {
           Navigator.of(context).push(_syncRoute!);
         }
       },
-      bulkSuccess: (_) {
+      bulkFailure: (errorMessage) {
+        if (_syncRoute != null) {
+          Navigator.of(context).pop();
+          _syncRoute = null;
+        }
+        if (isSessionExpiredMessage(errorMessage)) {
+          handleSessionExpired(context);
+          return;
+        }
+        _showSyncDialog(context, error: errorMessage);
+      },
+      success: () {
         if (_syncRoute != null) {
           Navigator.of(context).pop();
           _syncRoute = null;
@@ -112,17 +123,6 @@ class _DraftPageState extends State<DraftPage> {
                 userType,
               ),
             );
-      },
-      bulkFailure: (errorMessage) {
-        if (_syncRoute != null) {
-          Navigator.of(context).pop();
-          _syncRoute = null;
-        }
-        if (isSessionExpiredMessage(errorMessage)) {
-          handleSessionExpired(context);
-          return;
-        }
-        _showSyncDialog(context, error: errorMessage);
       },
     );
   }

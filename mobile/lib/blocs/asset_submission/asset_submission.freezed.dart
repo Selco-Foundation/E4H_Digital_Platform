@@ -1442,7 +1442,6 @@ mixin _$AssetSubmissionState {
     required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
     required TResult Function(BulkOperationProgressModel progress) bulkProgress,
-    required TResult Function(BulkOperationProgressModel progress) bulkSuccess,
     required TResult Function(String errorMessage) bulkFailure,
   }) =>
       throw _privateConstructorUsedError;
@@ -1453,7 +1452,6 @@ mixin _$AssetSubmissionState {
     TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
     TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult? Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult? Function(String errorMessage)? bulkFailure,
   }) =>
       throw _privateConstructorUsedError;
@@ -1464,7 +1462,6 @@ mixin _$AssetSubmissionState {
     TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
     TResult Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) =>
@@ -1476,7 +1473,6 @@ mixin _$AssetSubmissionState {
     required TResult Function(_Failure value) failure,
     required TResult Function(_Success value) success,
     required TResult Function(_BulkProgress value) bulkProgress,
-    required TResult Function(_BulkSuccess value) bulkSuccess,
     required TResult Function(_BulkFailure value) bulkFailure,
   }) =>
       throw _privateConstructorUsedError;
@@ -1487,7 +1483,6 @@ mixin _$AssetSubmissionState {
     TResult? Function(_Failure value)? failure,
     TResult? Function(_Success value)? success,
     TResult? Function(_BulkProgress value)? bulkProgress,
-    TResult? Function(_BulkSuccess value)? bulkSuccess,
     TResult? Function(_BulkFailure value)? bulkFailure,
   }) =>
       throw _privateConstructorUsedError;
@@ -1498,7 +1493,6 @@ mixin _$AssetSubmissionState {
     TResult Function(_Failure value)? failure,
     TResult Function(_Success value)? success,
     TResult Function(_BulkProgress value)? bulkProgress,
-    TResult Function(_BulkSuccess value)? bulkSuccess,
     TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) =>
@@ -1567,7 +1561,6 @@ class _$InitialImpl implements _Initial {
     required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
     required TResult Function(BulkOperationProgressModel progress) bulkProgress,
-    required TResult Function(BulkOperationProgressModel progress) bulkSuccess,
     required TResult Function(String errorMessage) bulkFailure,
   }) {
     return initial();
@@ -1581,7 +1574,6 @@ class _$InitialImpl implements _Initial {
     TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
     TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult? Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult? Function(String errorMessage)? bulkFailure,
   }) {
     return initial?.call();
@@ -1595,7 +1587,6 @@ class _$InitialImpl implements _Initial {
     TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
     TResult Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -1613,7 +1604,6 @@ class _$InitialImpl implements _Initial {
     required TResult Function(_Failure value) failure,
     required TResult Function(_Success value) success,
     required TResult Function(_BulkProgress value) bulkProgress,
-    required TResult Function(_BulkSuccess value) bulkSuccess,
     required TResult Function(_BulkFailure value) bulkFailure,
   }) {
     return initial(this);
@@ -1627,7 +1617,6 @@ class _$InitialImpl implements _Initial {
     TResult? Function(_Failure value)? failure,
     TResult? Function(_Success value)? success,
     TResult? Function(_BulkProgress value)? bulkProgress,
-    TResult? Function(_BulkSuccess value)? bulkSuccess,
     TResult? Function(_BulkFailure value)? bulkFailure,
   }) {
     return initial?.call(this);
@@ -1641,7 +1630,6 @@ class _$InitialImpl implements _Initial {
     TResult Function(_Failure value)? failure,
     TResult Function(_Success value)? success,
     TResult Function(_BulkProgress value)? bulkProgress,
-    TResult Function(_BulkSuccess value)? bulkSuccess,
     TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -1726,7 +1714,6 @@ class _$InProgressImpl implements _InProgress {
     required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
     required TResult Function(BulkOperationProgressModel progress) bulkProgress,
-    required TResult Function(BulkOperationProgressModel progress) bulkSuccess,
     required TResult Function(String errorMessage) bulkFailure,
   }) {
     return inProgress(progress);
@@ -1740,7 +1727,6 @@ class _$InProgressImpl implements _InProgress {
     TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
     TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult? Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult? Function(String errorMessage)? bulkFailure,
   }) {
     return inProgress?.call(progress);
@@ -1754,7 +1740,6 @@ class _$InProgressImpl implements _InProgress {
     TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
     TResult Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -1772,7 +1757,6 @@ class _$InProgressImpl implements _InProgress {
     required TResult Function(_Failure value) failure,
     required TResult Function(_Success value) success,
     required TResult Function(_BulkProgress value) bulkProgress,
-    required TResult Function(_BulkSuccess value) bulkSuccess,
     required TResult Function(_BulkFailure value) bulkFailure,
   }) {
     return inProgress(this);
@@ -1786,7 +1770,6 @@ class _$InProgressImpl implements _InProgress {
     TResult? Function(_Failure value)? failure,
     TResult? Function(_Success value)? success,
     TResult? Function(_BulkProgress value)? bulkProgress,
-    TResult? Function(_BulkSuccess value)? bulkSuccess,
     TResult? Function(_BulkFailure value)? bulkFailure,
   }) {
     return inProgress?.call(this);
@@ -1800,7 +1783,6 @@ class _$InProgressImpl implements _InProgress {
     TResult Function(_Failure value)? failure,
     TResult Function(_Success value)? success,
     TResult Function(_BulkProgress value)? bulkProgress,
-    TResult Function(_BulkSuccess value)? bulkSuccess,
     TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -1891,7 +1873,6 @@ class _$FailureImpl implements _Failure {
     required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
     required TResult Function(BulkOperationProgressModel progress) bulkProgress,
-    required TResult Function(BulkOperationProgressModel progress) bulkSuccess,
     required TResult Function(String errorMessage) bulkFailure,
   }) {
     return failure(progress);
@@ -1905,7 +1886,6 @@ class _$FailureImpl implements _Failure {
     TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
     TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult? Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult? Function(String errorMessage)? bulkFailure,
   }) {
     return failure?.call(progress);
@@ -1919,7 +1899,6 @@ class _$FailureImpl implements _Failure {
     TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
     TResult Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -1937,7 +1916,6 @@ class _$FailureImpl implements _Failure {
     required TResult Function(_Failure value) failure,
     required TResult Function(_Success value) success,
     required TResult Function(_BulkProgress value) bulkProgress,
-    required TResult Function(_BulkSuccess value) bulkSuccess,
     required TResult Function(_BulkFailure value) bulkFailure,
   }) {
     return failure(this);
@@ -1951,7 +1929,6 @@ class _$FailureImpl implements _Failure {
     TResult? Function(_Failure value)? failure,
     TResult? Function(_Success value)? success,
     TResult? Function(_BulkProgress value)? bulkProgress,
-    TResult? Function(_BulkSuccess value)? bulkSuccess,
     TResult? Function(_BulkFailure value)? bulkFailure,
   }) {
     return failure?.call(this);
@@ -1965,7 +1942,6 @@ class _$FailureImpl implements _Failure {
     TResult Function(_Failure value)? failure,
     TResult Function(_Success value)? success,
     TResult Function(_BulkProgress value)? bulkProgress,
-    TResult Function(_BulkSuccess value)? bulkSuccess,
     TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -2028,7 +2004,6 @@ class _$SuccessImpl implements _Success {
     required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
     required TResult Function(BulkOperationProgressModel progress) bulkProgress,
-    required TResult Function(BulkOperationProgressModel progress) bulkSuccess,
     required TResult Function(String errorMessage) bulkFailure,
   }) {
     return success();
@@ -2042,7 +2017,6 @@ class _$SuccessImpl implements _Success {
     TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
     TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult? Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult? Function(String errorMessage)? bulkFailure,
   }) {
     return success?.call();
@@ -2056,7 +2030,6 @@ class _$SuccessImpl implements _Success {
     TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
     TResult Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -2074,7 +2047,6 @@ class _$SuccessImpl implements _Success {
     required TResult Function(_Failure value) failure,
     required TResult Function(_Success value) success,
     required TResult Function(_BulkProgress value) bulkProgress,
-    required TResult Function(_BulkSuccess value) bulkSuccess,
     required TResult Function(_BulkFailure value) bulkFailure,
   }) {
     return success(this);
@@ -2088,7 +2060,6 @@ class _$SuccessImpl implements _Success {
     TResult? Function(_Failure value)? failure,
     TResult? Function(_Success value)? success,
     TResult? Function(_BulkProgress value)? bulkProgress,
-    TResult? Function(_BulkSuccess value)? bulkSuccess,
     TResult? Function(_BulkFailure value)? bulkFailure,
   }) {
     return success?.call(this);
@@ -2102,7 +2073,6 @@ class _$SuccessImpl implements _Success {
     TResult Function(_Failure value)? failure,
     TResult Function(_Success value)? success,
     TResult Function(_BulkProgress value)? bulkProgress,
-    TResult Function(_BulkSuccess value)? bulkSuccess,
     TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -2187,7 +2157,6 @@ class _$BulkProgressImpl implements _BulkProgress {
     required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
     required TResult Function(BulkOperationProgressModel progress) bulkProgress,
-    required TResult Function(BulkOperationProgressModel progress) bulkSuccess,
     required TResult Function(String errorMessage) bulkFailure,
   }) {
     return bulkProgress(progress);
@@ -2201,7 +2170,6 @@ class _$BulkProgressImpl implements _BulkProgress {
     TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
     TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult? Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult? Function(String errorMessage)? bulkFailure,
   }) {
     return bulkProgress?.call(progress);
@@ -2215,7 +2183,6 @@ class _$BulkProgressImpl implements _BulkProgress {
     TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
     TResult Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -2233,7 +2200,6 @@ class _$BulkProgressImpl implements _BulkProgress {
     required TResult Function(_Failure value) failure,
     required TResult Function(_Success value) success,
     required TResult Function(_BulkProgress value) bulkProgress,
-    required TResult Function(_BulkSuccess value) bulkSuccess,
     required TResult Function(_BulkFailure value) bulkFailure,
   }) {
     return bulkProgress(this);
@@ -2247,7 +2213,6 @@ class _$BulkProgressImpl implements _BulkProgress {
     TResult? Function(_Failure value)? failure,
     TResult? Function(_Success value)? success,
     TResult? Function(_BulkProgress value)? bulkProgress,
-    TResult? Function(_BulkSuccess value)? bulkSuccess,
     TResult? Function(_BulkFailure value)? bulkFailure,
   }) {
     return bulkProgress?.call(this);
@@ -2261,7 +2226,6 @@ class _$BulkProgressImpl implements _BulkProgress {
     TResult Function(_Failure value)? failure,
     TResult Function(_Success value)? success,
     TResult Function(_BulkProgress value)? bulkProgress,
-    TResult Function(_BulkSuccess value)? bulkSuccess,
     TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -2279,171 +2243,6 @@ abstract class _BulkProgress implements AssetSubmissionState {
   BulkOperationProgressModel get progress;
   @JsonKey(ignore: true)
   _$$BulkProgressImplCopyWith<_$BulkProgressImpl> get copyWith =>
-      throw _privateConstructorUsedError;
-}
-
-/// @nodoc
-abstract class _$$BulkSuccessImplCopyWith<$Res> {
-  factory _$$BulkSuccessImplCopyWith(
-          _$BulkSuccessImpl value, $Res Function(_$BulkSuccessImpl) then) =
-      __$$BulkSuccessImplCopyWithImpl<$Res>;
-  @useResult
-  $Res call({BulkOperationProgressModel progress});
-}
-
-/// @nodoc
-class __$$BulkSuccessImplCopyWithImpl<$Res>
-    extends _$AssetSubmissionStateCopyWithImpl<$Res, _$BulkSuccessImpl>
-    implements _$$BulkSuccessImplCopyWith<$Res> {
-  __$$BulkSuccessImplCopyWithImpl(
-      _$BulkSuccessImpl _value, $Res Function(_$BulkSuccessImpl) _then)
-      : super(_value, _then);
-
-  @pragma('vm:prefer-inline')
-  @override
-  $Res call({
-    Object? progress = null,
-  }) {
-    return _then(_$BulkSuccessImpl(
-      null == progress
-          ? _value.progress
-          : progress // ignore: cast_nullable_to_non_nullable
-              as BulkOperationProgressModel,
-    ));
-  }
-}
-
-/// @nodoc
-
-class _$BulkSuccessImpl implements _BulkSuccess {
-  const _$BulkSuccessImpl(this.progress);
-
-  @override
-  final BulkOperationProgressModel progress;
-
-  @override
-  String toString() {
-    return 'AssetSubmissionState.bulkSuccess(progress: $progress)';
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        (other.runtimeType == runtimeType &&
-            other is _$BulkSuccessImpl &&
-            (identical(other.progress, progress) ||
-                other.progress == progress));
-  }
-
-  @override
-  int get hashCode => Object.hash(runtimeType, progress);
-
-  @JsonKey(ignore: true)
-  @override
-  @pragma('vm:prefer-inline')
-  _$$BulkSuccessImplCopyWith<_$BulkSuccessImpl> get copyWith =>
-      __$$BulkSuccessImplCopyWithImpl<_$BulkSuccessImpl>(this, _$identity);
-
-  @override
-  @optionalTypeArgs
-  TResult when<TResult extends Object?>({
-    required TResult Function() initial,
-    required TResult Function(OperationProgressModel progress) inProgress,
-    required TResult Function(OperationProgressModel progress) failure,
-    required TResult Function() success,
-    required TResult Function(BulkOperationProgressModel progress) bulkProgress,
-    required TResult Function(BulkOperationProgressModel progress) bulkSuccess,
-    required TResult Function(String errorMessage) bulkFailure,
-  }) {
-    return bulkSuccess(progress);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? initial,
-    TResult? Function(OperationProgressModel progress)? inProgress,
-    TResult? Function(OperationProgressModel progress)? failure,
-    TResult? Function()? success,
-    TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult? Function(BulkOperationProgressModel progress)? bulkSuccess,
-    TResult? Function(String errorMessage)? bulkFailure,
-  }) {
-    return bulkSuccess?.call(progress);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? initial,
-    TResult Function(OperationProgressModel progress)? inProgress,
-    TResult Function(OperationProgressModel progress)? failure,
-    TResult Function()? success,
-    TResult Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult Function(BulkOperationProgressModel progress)? bulkSuccess,
-    TResult Function(String errorMessage)? bulkFailure,
-    required TResult orElse(),
-  }) {
-    if (bulkSuccess != null) {
-      return bulkSuccess(progress);
-    }
-    return orElse();
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult map<TResult extends Object?>({
-    required TResult Function(_Initial value) initial,
-    required TResult Function(_InProgress value) inProgress,
-    required TResult Function(_Failure value) failure,
-    required TResult Function(_Success value) success,
-    required TResult Function(_BulkProgress value) bulkProgress,
-    required TResult Function(_BulkSuccess value) bulkSuccess,
-    required TResult Function(_BulkFailure value) bulkFailure,
-  }) {
-    return bulkSuccess(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult? mapOrNull<TResult extends Object?>({
-    TResult? Function(_Initial value)? initial,
-    TResult? Function(_InProgress value)? inProgress,
-    TResult? Function(_Failure value)? failure,
-    TResult? Function(_Success value)? success,
-    TResult? Function(_BulkProgress value)? bulkProgress,
-    TResult? Function(_BulkSuccess value)? bulkSuccess,
-    TResult? Function(_BulkFailure value)? bulkFailure,
-  }) {
-    return bulkSuccess?.call(this);
-  }
-
-  @override
-  @optionalTypeArgs
-  TResult maybeMap<TResult extends Object?>({
-    TResult Function(_Initial value)? initial,
-    TResult Function(_InProgress value)? inProgress,
-    TResult Function(_Failure value)? failure,
-    TResult Function(_Success value)? success,
-    TResult Function(_BulkProgress value)? bulkProgress,
-    TResult Function(_BulkSuccess value)? bulkSuccess,
-    TResult Function(_BulkFailure value)? bulkFailure,
-    required TResult orElse(),
-  }) {
-    if (bulkSuccess != null) {
-      return bulkSuccess(this);
-    }
-    return orElse();
-  }
-}
-
-abstract class _BulkSuccess implements AssetSubmissionState {
-  const factory _BulkSuccess(final BulkOperationProgressModel progress) =
-      _$BulkSuccessImpl;
-
-  BulkOperationProgressModel get progress;
-  @JsonKey(ignore: true)
-  _$$BulkSuccessImplCopyWith<_$BulkSuccessImpl> get copyWith =>
       throw _privateConstructorUsedError;
 }
 
@@ -2517,7 +2316,6 @@ class _$BulkFailureImpl implements _BulkFailure {
     required TResult Function(OperationProgressModel progress) failure,
     required TResult Function() success,
     required TResult Function(BulkOperationProgressModel progress) bulkProgress,
-    required TResult Function(BulkOperationProgressModel progress) bulkSuccess,
     required TResult Function(String errorMessage) bulkFailure,
   }) {
     return bulkFailure(errorMessage);
@@ -2531,7 +2329,6 @@ class _$BulkFailureImpl implements _BulkFailure {
     TResult? Function(OperationProgressModel progress)? failure,
     TResult? Function()? success,
     TResult? Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult? Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult? Function(String errorMessage)? bulkFailure,
   }) {
     return bulkFailure?.call(errorMessage);
@@ -2545,7 +2342,6 @@ class _$BulkFailureImpl implements _BulkFailure {
     TResult Function(OperationProgressModel progress)? failure,
     TResult Function()? success,
     TResult Function(BulkOperationProgressModel progress)? bulkProgress,
-    TResult Function(BulkOperationProgressModel progress)? bulkSuccess,
     TResult Function(String errorMessage)? bulkFailure,
     required TResult orElse(),
   }) {
@@ -2563,7 +2359,6 @@ class _$BulkFailureImpl implements _BulkFailure {
     required TResult Function(_Failure value) failure,
     required TResult Function(_Success value) success,
     required TResult Function(_BulkProgress value) bulkProgress,
-    required TResult Function(_BulkSuccess value) bulkSuccess,
     required TResult Function(_BulkFailure value) bulkFailure,
   }) {
     return bulkFailure(this);
@@ -2577,7 +2372,6 @@ class _$BulkFailureImpl implements _BulkFailure {
     TResult? Function(_Failure value)? failure,
     TResult? Function(_Success value)? success,
     TResult? Function(_BulkProgress value)? bulkProgress,
-    TResult? Function(_BulkSuccess value)? bulkSuccess,
     TResult? Function(_BulkFailure value)? bulkFailure,
   }) {
     return bulkFailure?.call(this);
@@ -2591,7 +2385,6 @@ class _$BulkFailureImpl implements _BulkFailure {
     TResult Function(_Failure value)? failure,
     TResult Function(_Success value)? success,
     TResult Function(_BulkProgress value)? bulkProgress,
-    TResult Function(_BulkSuccess value)? bulkSuccess,
     TResult Function(_BulkFailure value)? bulkFailure,
     required TResult orElse(),
   }) {
