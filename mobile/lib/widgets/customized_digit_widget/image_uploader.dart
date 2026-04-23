@@ -70,6 +70,7 @@ class _ImageUploaderState extends State<ImageUploader>
     with WidgetsBindingObserver {
   static const MethodChannel _imageToolsChannel =
       MethodChannel('org.e4h.asset/image_tools');
+  static bool _lostDataRecoveryInFlight = false;
 
   late final List<File> _imageFiles;
   late DigitTypography currentTypography;
@@ -93,12 +94,6 @@ class _ImageUploaderState extends State<ImageUploader>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _imageFiles = List<File>.from(widget.initialImages ?? const []);
-    unawaited(
-      _recoverLostDataIfNeeded(
-        trigger: 'init',
-        allowWithoutActiveSession: true,
-      ),
-    );
   }
 
   @override
@@ -417,7 +412,8 @@ class _ImageUploaderState extends State<ImageUploader>
           ..add(normalizedFile);
       }
     });
-    _lastRecoveredPath = fromRecovery ? normalizedFile.path : _lastRecoveredPath;
+    _lastRecoveredPath =
+        fromRecovery ? normalizedFile.path : _lastRecoveredPath;
     _lastDeliveredPath = normalizedFile.path;
     AppLogger.instance.info(
       'ImageUploader dispatch source=${_activeSource?.name ?? 'unknown'} recovery=$fromRecovery session=$sessionToken',
@@ -437,10 +433,18 @@ class _ImageUploaderState extends State<ImageUploader>
     final sessionToken = _activeSessionToken ?? ++_sessionToken;
     _activeSessionToken ??= sessionToken;
 
+    if (_lostDataRecoveryInFlight) {
+      AppLogger.instance.info(
+        'ImageUploader recoverSkipped trigger=$trigger session=$sessionToken reason=in_flight',
+      );
+      return;
+    }
+
     if (!mounted) return;
     setState(() {
       _pickerPhase = _PickerSessionPhase.recovering;
     });
+    _lostDataRecoveryInFlight = true;
     AppLogger.instance.info(
       'ImageUploader recover trigger=$trigger session=$sessionToken active=${_activeSource?.name ?? 'none'}',
     );
@@ -487,6 +491,8 @@ class _ImageUploaderState extends State<ImageUploader>
         });
       }
       _completeSession(sessionToken);
+    } finally {
+      _lostDataRecoveryInFlight = false;
     }
   }
 
@@ -732,8 +738,7 @@ class _ImageUploaderState extends State<ImageUploader>
               ),
             ),
           ),
-        if (_shouldShowUploadControl)
-          const SizedBox(height: spacer2),
+        if (_shouldShowUploadControl) const SizedBox(height: spacer2),
         Wrap(
           spacing: spacer2,
           runSpacing: spacer2,
@@ -790,8 +795,7 @@ class _ImageUploaderState extends State<ImageUploader>
                                   hoverColor: const DigitColors().transparent,
                                   highlightColor:
                                       const DigitColors().transparent,
-                                  splashColor:
-                                      const DigitColors().transparent,
+                                  splashColor: const DigitColors().transparent,
                                   onTap: () {
                                     _removeImage(index);
                                   },
@@ -804,8 +808,9 @@ class _ImageUploaderState extends State<ImageUploader>
                                     child: Icon(
                                       Icons.close,
                                       size: spacer4,
-                                      color:
-                                          const DigitColors().light.paperPrimary,
+                                      color: const DigitColors()
+                                          .light
+                                          .paperPrimary,
                                     ),
                                   ),
                                 ),
@@ -840,8 +845,7 @@ class _ImageUploaderState extends State<ImageUploader>
                                   hoverColor: const DigitColors().transparent,
                                   highlightColor:
                                       const DigitColors().transparent,
-                                  splashColor:
-                                      const DigitColors().transparent,
+                                  splashColor: const DigitColors().transparent,
                                   onTap: () {
                                     _removeImage(index);
                                   },
@@ -854,8 +858,9 @@ class _ImageUploaderState extends State<ImageUploader>
                                     child: Icon(
                                       Icons.close,
                                       size: spacer4,
-                                      color:
-                                          const DigitColors().light.paperPrimary,
+                                      color: const DigitColors()
+                                          .light
+                                          .paperPrimary,
                                     ),
                                   ),
                                 ),

@@ -30,6 +30,7 @@ import '../data/nosql/cache_asset_count.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/asset_type/asset_type.dart';
 import '../router/app_router.dart';
+import '../utils/app_logger.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
@@ -105,6 +106,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
   StreamSubscription<LocationState>? _locSub;
   final Map<int, Future<File?>> _cachedImageFutures = {};
   final Map<int, String> _lastProcessedPickerPaths = {};
+  final Map<int, bool> _isProcessingImageSelection = {};
   int _visibleAssetCount = 0;
 
   List<AssetModel> get _visibleAssets {
@@ -489,8 +491,8 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
           final visibleAssets = _visibleAssets;
           final isDisabled = maxAssets == 0 ||
               (visibleAssets.length != maxAssets ||
-                  visibleAssets.any(
-                      (a) => !_isAssetComplete(a, currentAssetType))) ||
+                  visibleAssets
+                      .any((a) => !_isAssetComplete(a, currentAssetType))) ||
               _isSaving;
 
           return Scaffold(
@@ -727,29 +729,41 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     onImagesSelected: (List<File> imageFile) async {
                       if (imageFile.isEmpty) {
                         _lastProcessedPickerPaths.remove(index);
+                        _isProcessingImageSelection.remove(index);
                         return;
                       }
                       final selectedPath = imageFile.first.path;
                       if (_lastProcessedPickerPaths[index] == selectedPath) {
                         return;
                       }
-                      _lastProcessedPickerPaths[index] = selectedPath;
-                      final ok = await _ensureLocationLoaded();
-                      if (!ok) {
-                        context.showSnackBar(
-                          const SnackBar(
-                              content: Text('Could not fetch location')),
+                      if (_isProcessingImageSelection[index] == true) {
+                        AppLogger.instance.info(
+                          'AddNewAsset ignored duplicate image processing index=$index path=$selectedPath',
                         );
                         return;
                       }
-                      final copiedPath =
-                          await copyFileToLocalDir(imageFile.first);
-                      setState(() {
-                        asset.photoPath = copiedPath;
-                        asset.latitude = _latitude.toString();
-                        asset.longitude = _longitude.toString();
-                        _cachedImageFutures.remove(index);
-                      });
+                      _isProcessingImageSelection[index] = true;
+                      _lastProcessedPickerPaths[index] = selectedPath;
+                      try {
+                        final ok = await _ensureLocationLoaded();
+                        if (!ok) {
+                          context.showSnackBar(
+                            const SnackBar(
+                                content: Text('Could not fetch location')),
+                          );
+                          return;
+                        }
+                        final copiedPath =
+                            await copyFileToLocalDir(imageFile.first);
+                        setState(() {
+                          asset.photoPath = copiedPath;
+                          asset.latitude = _latitude.toString();
+                          asset.longitude = _longitude.toString();
+                          _cachedImageFutures.remove(index);
+                        });
+                      } finally {
+                        _isProcessingImageSelection.remove(index);
+                      }
                     },
                   );
                 },
