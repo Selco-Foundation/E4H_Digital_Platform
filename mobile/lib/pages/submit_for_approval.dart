@@ -192,18 +192,16 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
 
   List<String> _extractRejectionReasonsFromWorkflow(
       ActivityFacilityWorkflow? wf) {
-    final txs = wf?.transactions;
-    if (txs == null || txs.isEmpty) return const <String>[];
+    final tx = latestTransactionWithComments(wf);
+    if (tx == null) return const <String>[];
 
     final out = <String>[];
     final seen = <String>{};
 
-    for (final tx in txs) {
-      for (final c in tx.comments ?? const <Comment>[]) {
-        final r = c.reason?.trim();
-        if (r == null || r.isEmpty) continue;
-        if (seen.add(r)) out.add(r);
-      }
+    for (final c in tx.comments ?? const <Comment>[]) {
+      final r = c.reason?.trim();
+      if (r == null || r.isEmpty) continue;
+      if (seen.add(r)) out.add(r);
     }
 
     return out;
@@ -684,13 +682,12 @@ class RejectedEditAssetSummary extends StatelessWidget {
         .whenOrNull(selected: (wf) => wf);
 
     final commentsByType = <String, List<Comment>>{};
-    if (workflow?.transactions != null) {
-      for (final tx in workflow!.transactions!) {
-        for (final c in tx.comments ?? []) {
-          final t =
-              c.assetType != null ? ReCase(c.assetType!).titleCase : 'Unknown';
-          commentsByType.putIfAbsent(t, () => []).add(c);
-        }
+    final latestTransaction = latestTransactionWithComments(workflow);
+    if (latestTransaction != null) {
+      for (final c in latestTransaction.comments ?? []) {
+        final t =
+            c.assetType != null ? ReCase(c.assetType!).titleCase : 'Unknown';
+        commentsByType.putIfAbsent(t, () => []).add(c);
       }
     }
 

@@ -35,6 +35,7 @@ import '../model/mdms/mdms.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../model/system/system.dart';
+import '../model/transaction/transaction.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
@@ -62,6 +63,18 @@ class IdGen {
   final Uuid uuid;
   const IdGen._internal() : uuid = const Uuid();
   String get identifier => uuid.v1();
+}
+
+Transaction? latestTransactionWithComments(ActivityFacilityWorkflow? workflow) {
+  final transactions = workflow?.transactions;
+  if (transactions == null || transactions.isEmpty) return null;
+
+  for (final transaction in transactions.reversed) {
+    final comments = transaction.comments;
+    if (comments != null && comments.isNotEmpty) return transaction;
+  }
+
+  return null;
 }
 
 void saveCacheSpecification(
