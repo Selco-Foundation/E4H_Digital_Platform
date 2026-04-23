@@ -36,12 +36,12 @@ import java.util.UUID;
 public class V20260415103000__LinkComplaintRoleUsersToPlatformOrg extends BaseJavaMigration {
 
     /** Single org name for the shared platform org (edit if your environment needs another label). */
-    private static final String GLOBAL_PLATFORM_ORG_NAME = "Global Complaint Functions Organisation";
+    private static final String GLOBAL_PLATFORM_ORG_NAME = "Selco Foundation";
 
-    private static final String HRMS_SEARCH_BASE = "http://localhost:8089/egov-hrms/employees/_search";
+    private static final String HRMS_SEARCH_BASE =  System.getenv("EGOV_HRMS") + "/egov-hrms/employees/_search";
 
     private static final String VENDOR_ORG_CREATE_URL =
-            "https://saura-emitra-uat.selcofoundation.org/vendor/organisation/v1/_create";
+            System.getenv("VENDOR-REGISTRY") + "/vendor/organisation/v1/_create";
 
     private static final String HRMS_AUTH_HEADER_VALUE = "Bearer your-auth-token";
 
@@ -58,10 +58,13 @@ public class V20260415103000__LinkComplaintRoleUsersToPlatformOrg extends BaseJa
     private static final Duration HTTP_TIMEOUT = Duration.ofMinutes(2);
 
     private static final List<String> HRMS_ROLES = List.of(
-            "COMPLAINANT",
             "COMPLAINT_FACILITATOR_2",
             "COMPLAINT_ASSESSOR",
-            "COMPLAINT_FACILITATOR_1"
+            "COMPLAINT_FACILITATOR_1",
+            "STATE_POC",
+            "CENTRAL_POC",
+            "CENTRAL_ONM_PROJECT_MANAGER",
+            "SENIOR_PROGRAM_MANAGER"
     );
 
     private final ObjectMapper objectMapper = new ObjectMapper();
