@@ -2,7 +2,7 @@ export const PGR_BASE = `/${window.contextPath}/pgr/citizen/`;
 
 const CREATE_COMPLAINT_PATH = "/create-complaint/";
 const REOPEN_COMPLAINT_PATH = "/reopen/";
-import { PGR_EMPLOYEE_COMPLAINT_DETAILS, PGR_EMPLOYEE_COMPLAINT_FEEDBACK, PGR_EMPLOYEE_CREATE_COMPLAINT } from "./Employee";
+import { PGR_EMPLOYEE_COMPLAINT_DETAILS, PGR_EMPLOYEE_COMPLAINT_FEEDBACK, PGR_EMPLOYEE_CREATE_COMPLAINT, PGR_EMPLOYEE_PAUSE_RMS } from "./Employee";
 
 export const PgrRoutes = {
   ComplaintsPage: "/complaints",
@@ -31,6 +31,7 @@ export const Employee = {
   ComplaintDetails: PGR_EMPLOYEE_COMPLAINT_DETAILS,
   ComplaintFeedback: PGR_EMPLOYEE_COMPLAINT_FEEDBACK,
   CreateComplaint: PGR_EMPLOYEE_CREATE_COMPLAINT,
+  PauseRMS: PGR_EMPLOYEE_PAUSE_RMS,
   Response: "/incident/response",
   Home: `/${window.contextPath}/employee`,
 };

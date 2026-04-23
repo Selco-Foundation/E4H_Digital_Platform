@@ -52,6 +52,7 @@ const Complaint = () => {
   let location = `/${window.contextPath}/employee/im/incident/create`;
 
   const CreateComplaint = Digit?.ComponentRegistryService?.getComponent('PGRCreateComplaintEmp');
+  const PauseRMS = Digit?.ComponentRegistryService?.getComponent("PGRPauseRMS");
   const ComplaintDetails = Digit?.ComponentRegistryService?.getComponent('PGRComplaintDetails');
   const ComplaintFeedback = Digit?.ComponentRegistryService?.getComponent('PGRComplaintFeedback');
   const Inbox = Digit?.ComponentRegistryService?.getComponent('PGRInbox');
@@ -88,6 +89,7 @@ const Complaint = () => {
         )}
         <Switch>
           <Route path={match.url + Employee.CreateComplaint} component={() => <CreateComplaint parentUrl={match.url} />} />
+          <Route path={match.url + Employee.PauseRMS} component={() => <PauseRMS parentUrl={match.url} />} />
           <Route path={match.url + Employee.ComplaintFeedback + ":incidentId/:tenantId"} component={() => <ComplaintFeedback parentRoute={match.url} />} />
           <Route path={match.url + Employee.ComplaintDetails + ":incidentId/:tenantId"} component={() => <ComplaintDetails />} />
           <Route path={match.url + Employee.Inbox} component={Inbox} />

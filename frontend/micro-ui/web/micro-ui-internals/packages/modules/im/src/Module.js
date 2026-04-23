@@ -21,6 +21,7 @@ import { ComplaintsList } from "./pages/citizen/ComplaintsList";
 import ComplaintDetailsPage from "./pages/citizen/ComplaintDetails";
 // import SelectRating from "./pages/citizen/Rating/SelectRating";
 import ResponseCitizen from "./pages/citizen/Response";
+import {PauseRMS} from "./pages/employee/PauseRMS";
 
 
 export const IMReducers = getRootReducer;
@@ -71,6 +72,7 @@ const componentsToRegister = {
   PGRComplaintDetails : ComplaintDetails,
   PGRComplaintFeedback : ComplaintFeedback,
   PGRCreateComplaintEmp : CreateComplaintEmp,
+  PGRPauseRMS : PauseRMS,
   PGRInbox : Inbox,
   PGRResponseEmp : ResponseEmp,
   PGRCreateComplaintCitizen : CreateComplaintCitizen,
