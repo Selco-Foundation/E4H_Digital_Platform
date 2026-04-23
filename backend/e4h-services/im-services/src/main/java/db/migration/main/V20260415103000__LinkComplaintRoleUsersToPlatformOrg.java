@@ -38,10 +38,11 @@ public class V20260415103000__LinkComplaintRoleUsersToPlatformOrg extends BaseJa
     /** Single org name for the shared platform org (edit if your environment needs another label). */
     private static final String GLOBAL_PLATFORM_ORG_NAME = "Selco Foundation";
 
-    private static final String HRMS_SEARCH_BASE =  System.getenv("EGOV_HRMS_HOST") + "/egov-hrms/employees/_search";
+
+    private static final String HRMS_SEARCH_BASE =  System.getenv("EGOV_HRMS_HOST") + "egov-hrms/employees/_search";
 
     private static final String VENDOR_ORG_CREATE_URL =
-            System.getenv("EGOV_VENDOR_HOST") + "/vendor/organisation/v1/_create";
+            System.getenv("EGOV_VENDOR_HOST") + "vendor/organisation/v1/_create";
 
     private static final String HRMS_AUTH_HEADER_VALUE = "Bearer your-auth-token";
 
