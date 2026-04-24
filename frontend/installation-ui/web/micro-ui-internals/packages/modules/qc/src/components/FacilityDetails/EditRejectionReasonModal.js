@@ -2,24 +2,40 @@ import React, { useEffect, useState } from "react";
 import { Dropdown, DustbinIcon, TextArea } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../CustomCloseSvg";
 
-const reasonOptions = [
-  { label: "Image Not Clear", code: "Image Not Clear" },
-  { label: "Incorrect Brand", code: "Incorrect Brand" },
-  { label: "Model Number Incorrect", code: "Model Number Incorrect" },
-  { label: "Serial Number Incorrect", code: "Serial Number Incorrect" }
-];
-
 const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existingReason, rejectionReasons }) => {
 
-  const [reasonMenu, setReasonMenu] = useState(reasonOptions)
+  const tenantId = Digit.ULBService.getCurrentTenantId();
+  const [reasonOptions, setReasonOptions] = useState([]);
+  const [reasonMenu, setReasonMenu] = useState([]);
   const [reason, setReason] = useState(existingReason);
 
+  const { data: mdmsData } = Digit.Hooks.useCustomMDMS(
+    tenantId,
+    "Installation",
+    [
+      {
+        name: "RejectionReasons",
+      },
+    ],
+    {
+      enabled: !!tenantId,
+    }
+  );
+
   useEffect(() => {
-    const savedRejectionCodes = rejectionReasons.map(r => r.reason);
-    const newReasonMenu = reasonMenu.filter(option => (option.code === existingReason.reason || !savedRejectionCodes.includes(option.code)));
+    setReasonOptions(
+      (mdmsData?.["Installation"]?.["RejectionReasons"] || [])
+        .map((rejectionReason) => ({ ...rejectionReason, label: rejectionReason.name }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+    );
+  }, [mdmsData]);
+
+  useEffect(() => {
+    const savedRejectionReasons = rejectionReasons.map(r => r.reason);
+    const newReasonMenu = reasonOptions.filter(option => (option.label === existingReason.reason || !savedRejectionReasons.includes(option.label)));
     newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
     setReasonMenu(newReasonMenu);
-  }, [rejectionReasons]);
+  }, [rejectionReasons, reasonOptions]);
 
   const updateReason = (id, key, value) => {
     setReason({ ...reason, [key]: value });
@@ -56,13 +72,15 @@ const EditRejectionReasonModal = ({ t, name, onClose, onUpdate, onDelete, existi
                 <DustbinIcon />
               </button>
             </div>
-            <Dropdown
-              t={t}
-              option={reasonMenu}
-              selected={reasonMenu?.find((opt) => opt.code === reason.reason)}
-              optionKey={"label"}
-              select={(e) => updateReason(reason.id, 'reason', e.code)}
-            />
+            <div className={"custom-dropdown"}>
+              <Dropdown
+                t={t}
+                option={reasonMenu}
+                selected={reasonMenu?.find((opt) => opt.label === reason.reason)}
+                optionKey={"label"}
+                select={(e) => updateReason(reason.id, 'reason', e.label)}
+              />
+            </div>
             <TextArea
               name={"comment"}
               onChange={(e) => updateReason(reason.id, 'comment', e.target.value)}
