@@ -91,7 +91,7 @@ const IMCard = () => {
     },
     {
       label: t("ES_IM_PAUSE_RMS"),
-      link: `/${window.contextPath}/employee/im/pause-rms`,
+      link: `/${window.contextPath}/employee/im/paused-rms-facilities`,
       role: "COMPLAINT_ASSESSOR"
     }
   ]
