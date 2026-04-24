@@ -1,26 +1,49 @@
-import React, { useState } from "react";
+import React, {useEffect, useState } from "react";
 import { DustbinIcon, TextArea } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../Custom/CustomCloseSvg";
 import CustomDropdown from "../Custom/CustomDropdown";
 
-const reasonOptions = [
-  { label: "Uploaded images are not clear", code: "Uploaded images are not clear" },
-  { label: "Battery/panel/inverter readings are not correct", code: "Battery/panel/inverter readings are not correct" },
-  { label: "Corrective actions are not satisfactory", code: "Corrective actions are not satisfactory" },
-  { label: "Remarks are not adequate", code: "Remarks are not adequate" }
-];
-
 const AddRejectionReasonModal = ({ t, onClose, handleConfirmRejection }) => {
 
-  const [reasonMenu, setReasonMenu] = useState(reasonOptions)
+  const tenantId = Digit.ULBService.getCurrentTenantId();
+  const [reasonOptions, setReasonOptions] = useState([]);
+  const [reasonMenu, setReasonMenu] = useState([])
   const [reasons, setReasons] = useState([{ id: Date.now(), reason: "", comment: "" }]);
+
+  const { data: mdmsData } = Digit.Hooks.useCustomMDMS(
+    tenantId,
+    "AMC",
+    [
+      {
+        name: "RejectionReasons",
+      },
+    ],
+    {
+      enabled: !!tenantId,
+    }
+  );
+
+  useEffect(() => {
+    setReasonOptions(
+      (mdmsData?.["AMC"]?.["RejectionReasons"] || [])
+        .map((rejectionReason) => ({...rejectionReason, label: rejectionReason.name}))
+        .sort((a, b) => a.label.localeCompare(b.label))
+    )
+  }, [mdmsData]);
+
+  useEffect(() => {
+    const savedRejectionCodes = reasons.map(r => r.reason);
+    const newReasonMenu = reasonOptions.filter(option => !savedRejectionCodes.includes(option.label));
+    newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
+    setReasonMenu(newReasonMenu);
+  }, [reasons, reasonOptions]);
 
   const addReason = () => {
     setReasons([...reasons, { id: Date.now(), reason: "", comment: "" }]);
   };
 
   const updateReasonsMenu = (selectedReasonCodes) => {
-    const newReasonMenu = reasonOptions.filter(option => !selectedReasonCodes.includes(option.code));
+    const newReasonMenu = reasonOptions.filter(option => !selectedReasonCodes.includes(option.label));
     newReasonMenu.sort((a, b) => a.label.localeCompare(b.label));
     setReasonMenu(newReasonMenu);
   }
@@ -68,9 +91,9 @@ const AddRejectionReasonModal = ({ t, onClose, handleConfirmRejection }) => {
               <CustomDropdown
                 t={t}
                 option={reasonMenu}
-                selected={reasonOptions?.find((opt) => opt.code === reason.reason)}
+                selected={reasonOptions?.find((opt) => opt.label === reason.reason)}
                 optionKey={"label"}
-                select={(e) => updateReason(reason.id, 'reason', e.code)}
+                select={(e) => updateReason(reason.id, 'reason', e.label)}
               />
               <TextArea
                 name={"comment"}
