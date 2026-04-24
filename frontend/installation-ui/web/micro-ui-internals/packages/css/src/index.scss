@@ -949,3 +949,11 @@ input[type="number"] {
 .digit-privacy-checkbox-align {
   margin-top: 1rem !important;
 }
+
+.custom-dropdown {
+  .employee-select-wrap {
+    .options-card {
+      margin-top: 0;
+    }
+  }
+}
