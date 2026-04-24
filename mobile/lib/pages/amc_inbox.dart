@@ -66,10 +66,25 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
         .add(const ReportTypeEvent.typeSelected("inbox"));
 
     final statuses = _statusesForTab(tabIndex);
-
-    context
-        .read<ScheduledVisitBloc>()
-        .add(ScheduledVisitEvent.loadInitial(statuses: statuses));
+    if (_searchQuery.isNotEmpty) {
+      context.read<ScheduledVisitBloc>().add(
+            ScheduledVisitEvent.loadInitial(
+              statuses: statuses,
+              query: _searchQuery,
+            ),
+          );
+    } else if (_sortDirection != null) {
+      context.read<ScheduledVisitBloc>().add(
+            ScheduledVisitEvent.loadInitial(
+              statuses: statuses,
+              sortDirection: _sortDirection,
+            ),
+          );
+    } else {
+      context
+          .read<ScheduledVisitBloc>()
+          .add(ScheduledVisitEvent.loadInitial(statuses: statuses));
+    }
   }
 
   void _onTabChanged(int index, UserTypeState userState) {
@@ -107,6 +122,8 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                       bloc.add(
                         ScheduledVisitEvent.loadMore(
                           statuses: _statusesForTab(_selectedTabIndex),
+                          query: _searchQuery.isNotEmpty ? _searchQuery : null,
+                          sortDirection: _sortDirection,
                         ),
                       );
                     }
@@ -174,7 +191,9 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                                       _searchQuery = text;
                                       _sortDirection = null;
                                     });
-                                    _fetchProjects(_selectedTabIndex);
+                                    if (text.isEmpty || text.length >= 3) {
+                                      _fetchProjects(_selectedTabIndex);
+                                    }
                                   },
                                   iconColor: const Light().primary2,
                                   enableBorder: OutlineInputBorder(

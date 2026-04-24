@@ -38,13 +38,37 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
   String? _sortDirection;
   String _searchQuery = '';
 
+  List<String> _statuses() {
+    return [WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name];
+  }
+
   @override
   void initState() {
     super.initState();
+    _fetchVisits();
+  }
 
-    context.read<ScheduledVisitBloc>().add(ScheduledVisitEvent.loadInitial(
-          statuses: [WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name],
-        ));
+  void _fetchVisits() {
+    final statuses = _statuses();
+    if (_searchQuery.isNotEmpty) {
+      context.read<ScheduledVisitBloc>().add(
+            ScheduledVisitEvent.loadInitial(
+              statuses: statuses,
+              query: _searchQuery,
+            ),
+          );
+    } else if (_sortDirection != null) {
+      context.read<ScheduledVisitBloc>().add(
+            ScheduledVisitEvent.loadInitial(
+              statuses: statuses,
+              sortDirection: _sortDirection,
+            ),
+          );
+    } else {
+      context.read<ScheduledVisitBloc>().add(
+            ScheduledVisitEvent.loadInitial(statuses: statuses),
+          );
+    }
   }
 
   @override
@@ -71,9 +95,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                     if (hasMore && !isLoadingMore) {
                       bloc.add(
                         ScheduledVisitEvent.loadMore(
-                          statuses: [
-                            WORKFLOW_STATUS_AMC_FIELD_STAFF.SCHEDULED.name
-                          ],
+                          statuses: _statuses(),
+                          query: _searchQuery.isNotEmpty ? _searchQuery : null,
+                          sortDirection: _sortDirection,
                         ),
                       );
                     }
@@ -250,6 +274,9 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                         _searchQuery = text;
                         _sortDirection = null;
                       });
+                      if (text.isEmpty || text.length >= 3) {
+                        _fetchVisits();
+                      }
                     },
                   ),
                 ),
@@ -299,7 +326,13 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                 Expanded(
                   child: DigitButton(
                     label: 'Clear',
-                    onPressed: () => Navigator.of(ctx).pop(),
+                    onPressed: () {
+                      setState(() {
+                        _sortDirection = null;
+                      });
+                      Navigator.of(ctx).pop();
+                      _fetchVisits();
+                    },
                     type: DigitButtonType.secondary,
                     size: DigitButtonSize.large,
                     mainAxisSize: MainAxisSize.min,
@@ -312,6 +345,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                     isDisabled: _sortDirection == null,
                     onPressed: () {
                       Navigator.of(ctx).pop();
+                      _fetchVisits();
                     },
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,

@@ -151,12 +151,16 @@ class ScheduledVisitRepository {
 
   Future<PaginatedScheduledVisits> fetchByWorkflowStatus({
     required List<String> statuses,
+    String? facilityName,
+    String? sortDirection,
     int limit = defaultPageSize,
     int offset = 0,
   }) async {
     final criteria = ScheduledVisitSearchCriteria(
       tenantId: envConfig.variables.tenantId,
+      facilityName: facilityName,
       statuses: statuses,
+      sortDirection: sortDirection,
     );
 
     try {
