@@ -169,9 +169,12 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                             onTap: isResendLoading
                                 ? () {}
                                 : () {
+                                    final visitId = _currentScheduledVisitId;
+                                    if (visitId == null) return;
+
                                     context
                                         .read<AmcOtpBloc>()
-                                        .add(const AmcOtpEvent.resend());
+                                        .add(AmcOtpEvent.resend(visitId: visitId));
                                   },
                             child: Text(
                               textAlign: TextAlign.end,

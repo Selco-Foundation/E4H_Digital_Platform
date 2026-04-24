@@ -113,11 +113,18 @@ class ScheduledVisitRemoteRepository {
     }
   }
 
-  Future<void> resendVisitOtp() async {
+  Future<void> resendVisitOtp({
+    required String visitId,
+  }) async {
     const path = 'asset-amc/v1/visit/_resend_otp';
 
     try {
-      await dio.post(path, data: <String, dynamic>{});
+      await dio.post(
+        path,
+        data: <String, dynamic>{
+          'visitId': visitId,
+        },
+      );
     } on DioError catch (e) {
       AppLogger.instance.info(
         'ScheduledVisitRemoteRepository.resendVisitOtp DioError=$e',
