@@ -2456,6 +2456,7 @@ mixin _$ScheduledVisitSearchCriteria {
   String? get tenantId => throw _privateConstructorUsedError;
   String? get facilityId => throw _privateConstructorUsedError;
   String? get facilityName => throw _privateConstructorUsedError;
+  List<String>? get assignedUsers => throw _privateConstructorUsedError;
   String? get amcConfigurationId => throw _privateConstructorUsedError;
   List<String> get statuses => throw _privateConstructorUsedError;
   int? get visitNumber => throw _privateConstructorUsedError;
@@ -2482,6 +2483,7 @@ abstract class $ScheduledVisitSearchCriteriaCopyWith<$Res> {
       {String? tenantId,
       String? facilityId,
       String? facilityName,
+      List<String>? assignedUsers,
       String? amcConfigurationId,
       List<String> statuses,
       int? visitNumber,
@@ -2507,6 +2509,7 @@ class _$ScheduledVisitSearchCriteriaCopyWithImpl<$Res,
     Object? tenantId = freezed,
     Object? facilityId = freezed,
     Object? facilityName = freezed,
+    Object? assignedUsers = freezed,
     Object? amcConfigurationId = freezed,
     Object? statuses = null,
     Object? visitNumber = freezed,
@@ -2527,6 +2530,10 @@ class _$ScheduledVisitSearchCriteriaCopyWithImpl<$Res,
           ? _value.facilityName
           : facilityName // ignore: cast_nullable_to_non_nullable
               as String?,
+      assignedUsers: freezed == assignedUsers
+          ? _value.assignedUsers
+          : assignedUsers // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
       amcConfigurationId: freezed == amcConfigurationId
           ? _value.amcConfigurationId
           : amcConfigurationId // ignore: cast_nullable_to_non_nullable
@@ -2568,6 +2575,7 @@ abstract class _$$ScheduledVisitSearchCriteriaImplCopyWith<$Res>
       {String? tenantId,
       String? facilityId,
       String? facilityName,
+      List<String>? assignedUsers,
       String? amcConfigurationId,
       List<String> statuses,
       int? visitNumber,
@@ -2592,6 +2600,7 @@ class __$$ScheduledVisitSearchCriteriaImplCopyWithImpl<$Res>
     Object? tenantId = freezed,
     Object? facilityId = freezed,
     Object? facilityName = freezed,
+    Object? assignedUsers = freezed,
     Object? amcConfigurationId = freezed,
     Object? statuses = null,
     Object? visitNumber = freezed,
@@ -2612,6 +2621,10 @@ class __$$ScheduledVisitSearchCriteriaImplCopyWithImpl<$Res>
           ? _value.facilityName
           : facilityName // ignore: cast_nullable_to_non_nullable
               as String?,
+      assignedUsers: freezed == assignedUsers
+          ? _value._assignedUsers
+          : assignedUsers // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
       amcConfigurationId: freezed == amcConfigurationId
           ? _value.amcConfigurationId
           : amcConfigurationId // ignore: cast_nullable_to_non_nullable
@@ -2647,13 +2660,15 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
       {this.tenantId,
       this.facilityId,
       this.facilityName,
+      final List<String>? assignedUsers,
       this.amcConfigurationId,
       final List<String> statuses = const <String>[],
       this.visitNumber,
       @EpochDateTimeConverter() this.scheduledFrom,
       @EpochDateTimeConverter() this.scheduledTo,
       this.sortDirection})
-      : _statuses = statuses,
+      : _assignedUsers = assignedUsers,
+        _statuses = statuses,
         super._();
 
   @override
@@ -2662,6 +2677,16 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
   final String? facilityId;
   @override
   final String? facilityName;
+  final List<String>? _assignedUsers;
+  @override
+  List<String>? get assignedUsers {
+    final value = _assignedUsers;
+    if (value == null) return null;
+    if (_assignedUsers is EqualUnmodifiableListView) return _assignedUsers;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
   @override
   final String? amcConfigurationId;
   final List<String> _statuses;
@@ -2686,7 +2711,7 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
 
   @override
   String toString() {
-    return 'ScheduledVisitSearchCriteria(tenantId: $tenantId, facilityId: $facilityId, facilityName: $facilityName, amcConfigurationId: $amcConfigurationId, statuses: $statuses, visitNumber: $visitNumber, scheduledFrom: $scheduledFrom, scheduledTo: $scheduledTo, sortDirection: $sortDirection)';
+    return 'ScheduledVisitSearchCriteria(tenantId: $tenantId, facilityId: $facilityId, facilityName: $facilityName, assignedUsers: $assignedUsers, amcConfigurationId: $amcConfigurationId, statuses: $statuses, visitNumber: $visitNumber, scheduledFrom: $scheduledFrom, scheduledTo: $scheduledTo, sortDirection: $sortDirection)';
   }
 
   @override
@@ -2700,6 +2725,8 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
                 other.facilityId == facilityId) &&
             (identical(other.facilityName, facilityName) ||
                 other.facilityName == facilityName) &&
+            const DeepCollectionEquality()
+                .equals(other._assignedUsers, _assignedUsers) &&
             (identical(other.amcConfigurationId, amcConfigurationId) ||
                 other.amcConfigurationId == amcConfigurationId) &&
             const DeepCollectionEquality().equals(other._statuses, _statuses) &&
@@ -2719,6 +2746,7 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
       tenantId,
       facilityId,
       facilityName,
+      const DeepCollectionEquality().hash(_assignedUsers),
       amcConfigurationId,
       const DeepCollectionEquality().hash(_statuses),
       visitNumber,
@@ -2741,6 +2769,7 @@ abstract class _ScheduledVisitSearchCriteria
       {final String? tenantId,
       final String? facilityId,
       final String? facilityName,
+      final List<String>? assignedUsers,
       final String? amcConfigurationId,
       final List<String> statuses,
       final int? visitNumber,
@@ -2755,6 +2784,8 @@ abstract class _ScheduledVisitSearchCriteria
   String? get facilityId;
   @override
   String? get facilityName;
+  @override
+  List<String>? get assignedUsers;
   @override
   String? get amcConfigurationId;
   @override

@@ -141,6 +141,7 @@ class ScheduledVisitSearchCriteria with _$ScheduledVisitSearchCriteria {
     String? tenantId,
     String? facilityId,
     String? facilityName,
+    List<String>? assignedUsers,
     String? amcConfigurationId,
     @Default(<String>[]) List<String> statuses,
     int? visitNumber,
@@ -154,6 +155,7 @@ class ScheduledVisitSearchCriteria with _$ScheduledVisitSearchCriteria {
   static const String TENANT_ID = 'tenantId';
   static const String FACILITY_ID = 'facilityId';
   static const String FACILITY_NAME = 'facilityName';
+  static const String ASSIGNED_USERS = 'assignedUsers';
   static const String AMC_CONFIGURATION_ID = 'amcConfigurationId';
   static const String STATUSES = 'statuses';
   static const String VISIT_NUMBER = 'visitNumber';
@@ -167,6 +169,9 @@ class ScheduledVisitSearchCriteria with _$ScheduledVisitSearchCriteria {
     if (facilityId != null) out[FACILITY_ID] = facilityId;
     if (facilityName != null && facilityName!.trim().isNotEmpty) {
       out[FACILITY_NAME] = facilityName!.trim();
+    }
+    if (assignedUsers != null && assignedUsers!.isNotEmpty) {
+      out[ASSIGNED_USERS] = assignedUsers;
     }
     if (amcConfigurationId != null) {
       out[AMC_CONFIGURATION_ID] = amcConfigurationId;
