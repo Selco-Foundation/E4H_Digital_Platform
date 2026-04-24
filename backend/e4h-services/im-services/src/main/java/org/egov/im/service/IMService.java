@@ -2,6 +2,7 @@ package org.egov.im.service;
 
 
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.request.User;
 
 import org.egov.im.config.IMConfiguration;
 import org.egov.im.producer.Producer;
@@ -447,5 +448,49 @@ public class IMService {
 	public int getComplaintTypes() {
 		
 		return Integer.valueOf(config.getComplaintTypes());
+	}
+
+	/**
+	 * Updates {@code boundarycode} on every incident row in {@code eg_incident_v2} for the given facility.
+	 * Intended to be called after a facility block / facility-boundary-code change (e.g. from facility-service).
+	 */
+	public int syncIncidentBoundaryCodeByFacility(IncidentBoundaryByFacilityUpdateRequest body) {
+		log.trace("IMService::syncIncidentBoundaryCodeByFacility method invoked");
+		if (body.getRequestInfo() == null || body.getRequestInfo().getUserInfo() == null) {
+			throw new CustomException("INVALID_REQUEST", "RequestInfo with userInfo is required");
+		}
+		validateFacilityAdminOrSystemUser(body.getRequestInfo());
+
+		String modifiedBy = body.getRequestInfo().getUserInfo().getUuid();
+		if (modifiedBy == null || modifiedBy.isBlank()) {
+			modifiedBy = body.getRequestInfo().getUserInfo().getUserName();
+		}
+		if (modifiedBy == null || modifiedBy.isBlank()) {
+			modifiedBy = "SYSTEM";
+		}
+
+		int updated = repository.updateIncidentBoundaryCodeByFacility(
+				body.getTenantId(),
+				body.getFacilityId(),
+				body.getNewBoundaryCode(),
+				modifiedBy
+		);
+		log.info("syncIncidentBoundaryCodeByFacility completed, updatedIncidents={}", updated);
+		return updated;
+	}
+
+	private void validateFacilityAdminOrSystemUser(RequestInfo requestInfo) {
+		User user = requestInfo.getUserInfo();
+		if (user.getRoles() == null || user.getRoles().isEmpty()) {
+			throw new CustomException("INSUFFICIENT_PRIVILEGES",
+					"Only FACILITY_ADMIN or SYSTEM_USER can sync incident boundaries");
+		}
+		boolean allowed = user.getRoles().stream()
+				.anyMatch(r -> r.getCode() != null
+						&& ("FACILITY_ADMIN".equalsIgnoreCase(r.getCode()) || "SYSTEM_USER".equalsIgnoreCase(r.getCode())));
+		if (!allowed) {
+			throw new CustomException("INSUFFICIENT_PRIVILEGES",
+					"Only FACILITY_ADMIN or SYSTEM_USER can sync incident boundaries");
+		}
 	}
 }

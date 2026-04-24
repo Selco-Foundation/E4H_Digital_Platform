@@ -671,6 +671,12 @@ public class FacilityService {
         existingFacility.setBoundaryCode(updatedFacilityBoundaryCode);
         upsertFacilityBoundaryLocalizations(List.of(existingFacility), request.getRequestInfo());
         cleanupOldFacilityBoundaryIfUnused(oldFacilityBoundaryCode, blockUpdate.getTenantId(), request.getRequestInfo());
+        syncImIncidentBoundaryCodesForFacility(
+                blockUpdate.getTenantId(),
+                blockUpdate.getFacilityId(),
+                updatedFacilityBoundaryCode,
+                request.getRequestInfo()
+        );
         log.info("Updated boundary code for facility {} to {}", blockUpdate.getFacilityId(), updatedFacilityBoundaryCode);
         log.trace("Exiting updateFacilityBlockBoundary method");
         return existingFacility;
@@ -1158,6 +1164,40 @@ public class FacilityService {
                 ))
                 .build();
         boundaryService.deleteBoundaries(deleteBoundaryRequest);
+    }
+
+    /**
+     * Notifies im-services to set {@code eg_incident_v2.boundarycode} for all incidents with the given facility id.
+     */
+    private void syncImIncidentBoundaryCodesForFacility(String tenantId, String facilityId, String newBoundaryCode, RequestInfo requestInfo) {
+        String host = configs.getImServicesHost();
+        String path = configs.getImIncidentBoundaryByFacilityUpdatePath();
+        if (host == null || host.isBlank()) {
+            log.warn("egov.im.services.host is not configured; skipping IM incident boundary sync for facility {}", facilityId);
+            return;
+        }
+        if (path == null || path.isBlank()) {
+            log.warn("egov.im.services.incident.boundary-by-facility.path is blank; skipping IM incident boundary sync for facility {}", facilityId);
+            return;
+        }
+
+        String url = UriComponentsBuilder.fromUriString(host.trim()).path(path).toUriString();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("RequestInfo", requestInfo);
+        payload.put("tenant_id", tenantId);
+        payload.put("facility_id", facilityId);
+        payload.put("new_boundary_code", newBoundaryCode);
+
+        try {
+            restTemplate.postForObject(url, payload, Map.class);
+            log.info("IM incident boundary sync completed for facilityId={}, tenantId={}", facilityId, tenantId);
+        } catch (Exception e) {
+            log.error("IM incident boundary sync failed for facilityId={}: {}", facilityId, e.getMessage(), e);
+            throw new CustomException(
+                    "INCIDENT_BOUNDARY_SYNC_FAILED",
+                    "Facility boundary was updated but incident boundary sync to im-services failed: " + e.getMessage()
+            );
+        }
     }
 
 }
