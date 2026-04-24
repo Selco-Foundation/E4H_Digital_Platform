@@ -8,7 +8,7 @@ import { setRejectionReasons } from "../../redux/actions";
 import { ImageViewer } from "@egovernments/digit-ui-react-components";
 import CustomCloseSvg from "../CustomCloseSvg";
 
-const Summary = ({ t, sectionName, section, count, specifications, details, items, images, videos, report, isReport, supportingDocuments = [] }) => {
+const Summary = ({ t, sectionName, section, count, specifications, details, items, images, videos, report, isReport, supportingDocuments = [], installationImages = [] }) => {
 
   const [expanded, setExpanded] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
@@ -136,7 +136,7 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
 
       {expanded &&
         (isReport ? (
-          report && <SystemParameterReport file={report} supportingDocuments={supportingDocuments} />
+          report && <SystemParameterReport t={t} file={report} supportingDocuments={supportingDocuments} installationImages={installationImages} />
         ) : (
           <div style={{ padding: "20px" }}>
             <Section title={t(`QC_INSTALLATION_ASSET_COUNT`)}>
@@ -153,7 +153,6 @@ const Summary = ({ t, sectionName, section, count, specifications, details, item
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_WARRANTY_START_DATE`), details.warrantyStartDate)}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_WARRANTY_DURATION`), details.warrantyDuration)}
               {AssetInfoItem(t(`QC_INSTALLATION_ASSET_BRAND`), t(`QC_INSTALLATION_BRAND_${details.brand}`))}
-              {AssetInfoItem(t(`QC_INSTALLATION_ASSET_MODEL_NUMBER`), details.modelNumber)}
             </Section>
 
             {section === "BATTERY" && (

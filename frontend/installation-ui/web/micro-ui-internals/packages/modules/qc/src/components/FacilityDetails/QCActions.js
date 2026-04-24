@@ -5,7 +5,7 @@ import { clearRejectionReasons } from "../../redux/actions";
 import { ActivityService } from "../../services/Activity";
 import CommonUtils from "../../utilities/CommonUtils";
 
-const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments }) => {
+const QCActions = ({ t, revalidateData, setUpdatingWorkflow, workflowDocuments }) => {
 
   const dispatch = useDispatch();
   const rejectionReasons = useSelector((state) => state.qc.rejectionReasons);
@@ -27,10 +27,10 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
       await ActivityService.updateActivityFacilityWorkflow(
         selectedFacility?.id, "APPROVE",
         [], "Approved by Installation Reviewer",
-        aggregatedDocuments
+        workflowDocuments
       );
 
-      revalidateData();
+      await revalidateData();
       dispatch(clearRejectionReasons());
       setUpdatingWorkflow(false);
       setToast({
@@ -83,10 +83,10 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
       await ActivityService.updateActivityFacilityWorkflow(
         selectedFacility?.id, "REJECT_AND_ASSIGN_FOR_FIELD_QC",
         comments, "Rejected by Installation Reviewer",
-        aggregatedDocuments
+        workflowDocuments
       );
 
-      revalidateData();
+      await revalidateData();
       dispatch(clearRejectionReasons());
       setUpdatingWorkflow(false);
       setToast({
@@ -115,10 +115,10 @@ const QCActions = ({ t, revalidateData, setUpdatingWorkflow, aggregatedDocuments
       await ActivityService.updateActivityFacilityWorkflow(
         selectedFacility?.id, "FLAG_FOR_QC",
         comments, "Flagged for QC by Installation Reviewer",
-        aggregatedDocuments
+        workflowDocuments
       );
 
-      revalidateData();
+      await revalidateData();
       dispatch(clearRejectionReasons());
       setUpdatingWorkflow(false);
       setToast({
