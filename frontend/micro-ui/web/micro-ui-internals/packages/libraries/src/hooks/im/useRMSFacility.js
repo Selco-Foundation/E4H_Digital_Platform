@@ -8,6 +8,7 @@ const fetchRMSPausedFacilities = async (queryFilter, limit, offset) => {
     totalCount: 2,
     pausedFacilities: [
       {
+        id: "1001",
         facilityId: "FAC-1001",
         facilityName: "Bagalkot CHC",
         boundaryCode: "India_Karnataka_Raichur_Raichur_BagalkotWard1",
@@ -17,6 +18,7 @@ const fetchRMSPausedFacilities = async (queryFilter, limit, offset) => {
         updatedAt: "2026-04-22T09:30:00Z",
       },
       {
+        id: "2042",
         facilityId: "FAC-2042",
         facilityName: "Hosur PHC",
         boundaryCode: "India_Karnataka_Racichur_Balakot_HosurWard2",
@@ -31,6 +33,7 @@ const fetchRMSPausedFacilities = async (queryFilter, limit, offset) => {
   return {
     rmsPausedFacilities:
       rmsPausedFacilityResponse?.pausedFacilities?.map((facility) => ({
+        id: facility.id,
         boundaryCode: facility.boundaryCode,
         facilityName: facility.facilityName,
         facilityId: facility.facilityId,

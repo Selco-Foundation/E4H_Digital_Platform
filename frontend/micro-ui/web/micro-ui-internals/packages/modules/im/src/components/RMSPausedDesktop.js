@@ -1,6 +1,7 @@
 import React from "react";
 import { Card, Loader } from "@selco/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import RMSPausedFilter from "./rmsPaused/Filter";
 import RMSPausedTable from "./rmsPaused/Table";
 
@@ -28,7 +29,16 @@ const RMSPausedDesktop = ({
     () => [
       {
         Header: t("RMS_FACILITY_NAME"),
-        Cell: ({ row }) => <span className="cell-text">{row.original.facilityName || "-"}</span>,
+        Cell: ({ row }) => (
+          <span className="cell-text">
+            <Link
+              to={`/${window.contextPath}/employee/im/pause-rms?id=${row.original.id}`}
+              style={{ color: "#7a2829" }}
+            >
+              {row.original.facilityName || "-"}
+            </Link>
+          </span>
+        ),
       },
       {
         Header: t("RMS_FACILITY_ID"),

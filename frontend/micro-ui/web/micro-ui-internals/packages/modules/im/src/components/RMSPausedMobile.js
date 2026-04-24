@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Card, FilterAction, Loader, PopUp, SubmitBar, ActionBar } from "@selco/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import RMSPausedFilter from "./rmsPaused/Filter";
 
 const RMSPausedMobile = ({ data, isLoading, onFilterChange, searchParams, onNextPage, onPrevPage, currentPage, pageSizeLimit, totalRecords }) => {
@@ -33,7 +34,15 @@ const RMSPausedMobile = ({ data, isLoading, onFilterChange, searchParams, onNext
           {!isLoading &&
             data?.rmsPausedFacilities?.map((item, index) => (
               <Card key={`${item.facilityId || item.boundaryCode}-${index}`} style={{ marginTop: 16 }}>
-                <div><b>{t("RMS_FACILITY_NAME")}:</b> {item.facilityName || "-"}</div>
+                <div>
+                  <b>{t("RMS_FACILITY_NAME")}:</b>{" "}
+                  <Link
+                    to={`/${window.contextPath}/employee/im/pause-rms?id=${item.id}`}
+                    style={{ color: "#7a2829" }}
+                  >
+                    {item.facilityName || "-"}
+                  </Link>
+                </div>
                 <div><b>{t("RMS_FACILITY_ID")}:</b> {item.facilityId || "-"}</div>
                 <div><b>{t("RMS_FACILITY_BOUNDARY")}:</b> {getBoundaryLabel(item.boundaryCode)}</div>
                 <div><b>{t("RMS_PAUSED_UNTIL")}:</b> {item.pausedUntil || "-"}</div>
