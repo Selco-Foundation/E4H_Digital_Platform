@@ -153,6 +153,15 @@ public class AMCServiceConfiguration {
     @Value("${email.activity.assignment.default.password}")
     private String defaultUserPassword;
 
+    @Value("${notification.sms.enabled:false}")
+    private Boolean smsEnabled;
+
+    @Value("${kafka.topics.notification.sms:egov.core.notification.sms}")
+    private String smsNotificationTopic;
+
+    @Value("${amc.otp.sms.message.template:Your OTP for scheduled visit verification is {otp}.}")
+    private String otpSmsTemplate;
+
     public String getFacilityBulkSearchPath() {
         return facilityBulkSearchUrl;
     }
