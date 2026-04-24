@@ -88,6 +88,12 @@ public class ScheduledVisitService {
                 throw new CustomException("CREATE_VISIT_ERROR", "A visit number: "+ scheduledVisit.getVisitNumber()+" already exist for configuration "+scheduledVisit.getAmcConfigurationId());
             }
 
+            Facility facility = getFacilityById(scheduledVisit.getFacilityId());
+            if (facility == null) {
+                throw new CustomException("CREATE_VISIT_ERROR", "Facility not found for facilityId: " + scheduledVisit.getFacilityId());
+            }
+            scheduledVisit.setFacilityName(facility.getFacilityName());
+
             // remove Duplicate Assignments
             Set<String> seenUsers = new HashSet<>();
             List<ScheduledVisitAssignment> assignments = scheduledVisit.getAssignments().stream().filter(a -> seenUsers.add(a.getAssignedUser()))
@@ -363,6 +369,7 @@ public class ScheduledVisitService {
                 .tenantId(existingVisit.getTenantId())
                 .amcConfigurationId(existingVisit.getAmcConfigurationId())
                 .facilityId(existingVisit.getFacilityId())
+                .facilityName(existingVisit.getFacilityName())
                 .visitNumber(existingVisit.getVisitNumber())
                 .status(existingVisit.getStatus())
                 .scheduledDate(existingVisit.getScheduledDate())
