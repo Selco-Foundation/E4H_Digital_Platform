@@ -96,7 +96,7 @@ const RMSPausedDesktop = ({
         </div>
       </div>
       <div style={{ flex: 1, overflowX: "scroll", width: "100%" }}>
-        <div style={{ marginTop: "21px", marginLeft: "24px", flex: 1 }}>{result}</div>
+        <div style={{ marginLeft: "24px", flex: 1 }}>{result}</div>
       </div>
     </div>
   );

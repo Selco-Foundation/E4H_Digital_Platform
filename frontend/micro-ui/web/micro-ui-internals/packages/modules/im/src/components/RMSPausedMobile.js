@@ -39,7 +39,7 @@ const RMSPausedMobile = ({ data, isLoading, onFilterChange, searchParams, onNext
                 <div>
                   <b>{t("RMS_FACILITY_NAME")}:</b>{" "}
                   <Link
-                    to={`/${window.contextPath}/employee/im/pause-rms?facilityId=${encodeURIComponent(row.original.facilityId)}`}
+                    to={`/${window.contextPath}/employee/im/pause-rms?facilityId=${encodeURIComponent(item.facilityId)}`}
                     style={{ color: "#7a2829" }}
                   >
                     {item.facilityName || "-"}

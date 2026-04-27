@@ -1,8 +1,11 @@
 import { Card } from "@selco/digit-ui-react-components";
 import React from "react";
 import { Link } from "react-router-dom";
+import {useTranslation} from "react-i18next";
 
 const RMSFacilitiesLink = ({ isMobile }) => {
+  const { t } = useTranslation();
+
   const GetLogo = () => (
     <div className="header">
       <span className="logo">
@@ -11,7 +14,7 @@ const RMSFacilitiesLink = ({ isMobile }) => {
           <path d="M19 6h-1V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v2H5a2 2 0 0 0-2 2v12h18V8a2 2 0 0 0-2-2zm-9-2h4v2h-4V4zm9 14H5V8h14v10z" style={{ fill: "white" }} />
         </svg>
       </span>
-      <span className="text">Facilities</span>
+      <span className="text">{t("FACILITIES")}</span>
     </div>
   );
 
@@ -29,18 +32,18 @@ const RMSFacilitiesLink = ({ isMobile }) => {
               border-radius: 4px;
           }
           .complaint-links-container .body .link {
-           padding-left: 0px;
-        }
-        .complaint-links-container .body {
-          padding-left: 0px;
-          margin-left: 0px;
+             padding-left: 0px;
+          }
+          .complaint-links-container .body {
+            padding-left: 0px;
+            margin-left: 0px;
           `}
         </style>
         {GetLogo()}
         <div className="body">
           <span className="link">
             <Link to={`/${window.contextPath}/employee/im/pause-rms`} style={{ color: "#7a2829" }}>
-              Pause RMS
+              {t("PAUSE_RMS")}
             </Link>
           </span>
         </div>

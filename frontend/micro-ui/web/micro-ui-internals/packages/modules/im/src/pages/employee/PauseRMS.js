@@ -39,7 +39,7 @@ export const PauseRMS = () => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
     if (boundaryData) {
       setStateBoundaryCode(boundaryData.states?.map((state) => state?.code)?.join(","));
-      setDistrictMenu(boundaryData.districts);
+      setDistrictMenu(boundaryData.districts || []);
       setBlockOptions(boundaryData.blocks);
       setFacilityBoundaries(boundaryData.facilities);
       setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);
@@ -283,7 +283,7 @@ export const PauseRMS = () => {
 
   const config = [
     {
-      head: t("TICKET_LOCATION"),
+      head: t("FACILITY_LOCATION"),
       body: [
         {
           label: t("INCIDENT_DISTRICT"),
@@ -373,6 +373,14 @@ export const PauseRMS = () => {
     },
   ];
 
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      history.goBack();
+    } else {
+      history.push(`/${window.contextPath}/employee/im/paused-rms-facilities`);
+    }
+  };
+
   return (
     <div className={"pause-rms-form-wrapper"}>
       <style>
@@ -404,8 +412,10 @@ export const PauseRMS = () => {
       )}
 
       <div style={{ color: "#9e1b32", marginBottom: "10px", textAlign: "right", marginRight: "0px" }}>
-        <div style={{ marginRight: "15px" }}>
-          <Link to={`/${window.contextPath}/employee`}>{t("CS_COMMON_BACK")}</Link>
+        <div style={{ paddingRight: "15px", display: "flex", justifyContent: "flex-end" }}>
+          <div onClick={handleBack} style={{ width: "fit-content", cursor: "pointer" }}>
+            {t("CS_COMMON_BACK")}
+          </div>
         </div>
       </div>
 
