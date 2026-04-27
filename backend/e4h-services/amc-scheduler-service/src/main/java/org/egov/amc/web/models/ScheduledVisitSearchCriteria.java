@@ -1,5 +1,6 @@
 package org.egov.amc.web.models;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 import java.util.List;
 
@@ -21,6 +22,9 @@ public class ScheduledVisitSearchCriteria {
     private Long actualDateTo;
     private List<Integer> visitNumbers;
     private List<String> assignedUsers;
+    private String facilityName;
+    @JsonProperty("sort_direction")
+    private String sortDirection;
     private Boolean includeExpired;
     private boolean isActive;
     private boolean isCountQuery;

@@ -18,6 +18,7 @@ public class ScheduledVisit {
     private String amcConfigurationId;
     private AmcConfiguration amcConfiguration;
     private String facilityId;
+    private String facilityName;
     private Facility facility;
     private Integer visitNumber;
     private Long scheduledDate;

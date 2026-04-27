@@ -2,7 +2,6 @@ import {useQuery, useQueryClient} from "react-query";
 import { AMCService } from "../services/AMC";
 import { FilestoreService } from "../services/Filestore";
 import {VisitService} from "../services/VisitService";
-import {amcConfig} from "../constants/AMCConfig";
 
 const generateAuditTrail = (processInstances) => {
   const auditTrail = [];
@@ -132,7 +131,8 @@ const fetchVisitDetails = async (filter, limit, offset) => {
   const assigneeDetails = visitData?.processInstances?.[0]?.assignes?.[0] || {};
   const auditTrail = generateAuditTrail(visitData.processInstances);
   const { reportDocumentAggregation, workflowDocuments } = await getDocumentAggregation(visitData.processInstances);
-  const format = amcConfig;
+  const mdmsConfigResponse = await Digit.MDMSService.getMultipleTypes(Digit.ULBService.getCurrentTenantId(), "AMC", ["FormConfig"]);
+  const format = mdmsConfigResponse?.["AMC"]?.["FormConfig"]?.[0] || {};
   generateVisitReport(visitData?.visitReport?.responses, format);
   const visitImages = await fetchVisitImages(visitData?.visitReport?.documents);
 
