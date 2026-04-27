@@ -280,6 +280,7 @@ public class ScheduledVisitValidator {
                 && (scheduledVisit.getScheduledDateFrom() == null || scheduledVisit.getScheduledDateFrom() == 0) && (scheduledVisit.getScheduledDateTo() == null || scheduledVisit.getScheduledDateTo() == 0)
                 && (scheduledVisit.getActualDateFrom() == null || scheduledVisit.getActualDateFrom() == 0) && (scheduledVisit.getActualDateTo() == null || scheduledVisit.getActualDateTo() == 0)
                 && (scheduledVisit.getVisitNumbers() == null || scheduledVisit.getVisitNumbers().isEmpty()) && (scheduledVisit.getAssignedUsers() == null || scheduledVisit.getAssignedUsers().isEmpty())
+                && StringUtils.isBlank(scheduledVisit.getFacilityName())
                 && (scheduledVisit.getIncludeExpired() == null) && (scheduledVisit.getProjectsIds()==null || scheduledVisit.getProjectsIds().isEmpty())){
             log.error("Any one scheduledVisit search field is required for ScheduledVisit Search");
             throw new CustomException("SCHEDULED_VISIT_SEARCH_FIELDS", "Any one scheduledVisit search field is required for ScheduledVisit Search");

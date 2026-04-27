@@ -114,7 +114,7 @@ const Filter = ({ t, fieldPlan, onFilterChange, projectQueryFilter, statusesList
     selected = selected || { [optionKey]: "", code: "" };
 
     return (
-      <div>
+      <div className={"custom-dropdown"}>
         <div className="filter-label">{label}</div>
         {<Dropdown t={t} option={options} selected={selected} select={(value) => select(value, key)} optionKey={optionKey} />}
 
