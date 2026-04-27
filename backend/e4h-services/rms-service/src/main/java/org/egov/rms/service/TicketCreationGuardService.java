@@ -17,6 +17,7 @@ import org.springframework.util.StringUtils;
 public class TicketCreationGuardService {
 
     private final AlertRepository alertRepository;
+    private final TicketPauseService ticketPauseService;
 
     /**
      * @return true when this alert must not result in a new ticket (open blocking incidents in IM).
@@ -26,6 +27,13 @@ public class TicketCreationGuardService {
             return false;
         }
         String facilityId = alert.getFacilityId();
+
+        if (ticketPauseService.isFacilityPaused(facilityId, null)) {
+            log.info(
+                    "TICKET POLICY: Skipping ticket — facility {} is currently paused for RMS auto ticket creation (alert type {}, subType {})",
+                    facilityId, alert.getAlertType(), alert.getAlertSubType());
+            return true;
+        }
 
         // Rule set 2: Any open inverter shutdown incident blocks all new RMS tickets.
         if (hasOpenInverterShutdownIncident(facilityId)) {
