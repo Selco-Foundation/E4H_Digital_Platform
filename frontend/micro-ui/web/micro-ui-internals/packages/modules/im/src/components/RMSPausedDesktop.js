@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import RMSPausedFilter from "./rmsPaused/Filter";
 import RMSPausedTable from "./rmsPaused/Table";
+import RMSFacilitiesLink from "./rmsPaused/FacilitiesLink";
 
 const RMSPausedDesktop = ({
   data,
@@ -19,20 +20,20 @@ const RMSPausedDesktop = ({
 }) => {
   const { t } = useTranslation();
 
-  const getBoundaryLabel = (code) => {
-    if (!code) return "-";
-    const translated = t(`Boundary_${code}`);
-    return translated === `Boundary_${code}` ? code : translated;
-  };
-
   const columns = React.useMemo(
-    () => [
+    () => {
+      const getBoundaryLabel = (code) => {
+        if (!code) return "-";
+        const translated = t(`Boundary_${code}`);
+        return translated === `Boundary_${code}` ? code : translated;
+      };
+      return [
       {
         Header: t("RMS_FACILITY_NAME"),
         Cell: ({ row }) => (
           <span className="cell-text">
             <Link
-              to={`/${window.contextPath}/employee/im/pause-rms?id=${row.original.id}`}
+              to={`/${window.contextPath}/employee/im/pause-rms?facilityId=${encodeURIComponent(row.original.facilityId)}`}
               style={{ color: "#7a2829" }}
             >
               {row.original.facilityName || "-"}
@@ -56,7 +57,8 @@ const RMSPausedDesktop = ({
         Header: t("RMS_PAUSED_BY"),
         Cell: ({ row }) => <span className="cell-text">{row.original.pausedBy || "-"}</span>,
       },
-    ],
+      ];
+    },
     [t]
   );
 
@@ -88,6 +90,7 @@ const RMSPausedDesktop = ({
   return (
     <div className="inbox-container">
       <div className="filters-container">
+        <RMSFacilitiesLink />
         <div style={{ paddingTop: "5px", paddingBottom: "0px" }}>
           <RMSPausedFilter onFilterChange={onFilterChange} type="desktop" searchParams={searchParams} />
         </div>

@@ -3,6 +3,7 @@ import { Card, FilterAction, Loader, PopUp, SubmitBar, ActionBar } from "@selco/
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import RMSPausedFilter from "./rmsPaused/Filter";
+import RMSFacilitiesLink from "./rmsPaused/FacilitiesLink";
 
 const RMSPausedMobile = ({ data, isLoading, onFilterChange, searchParams, onNextPage, onPrevPage, currentPage, pageSizeLimit, totalRecords }) => {
   const { t } = useTranslation();
@@ -22,6 +23,7 @@ const RMSPausedMobile = ({ data, isLoading, onFilterChange, searchParams, onNext
     <div style={{ padding: 0 }}>
       <div className="inbox-container">
         <div className="filters-container">
+          <RMSFacilitiesLink isMobile={true} />
           <div className="searchBox">
             <FilterAction text="FILTER" handleActionClick={() => setShowFilter(true)} />
           </div>
@@ -37,7 +39,7 @@ const RMSPausedMobile = ({ data, isLoading, onFilterChange, searchParams, onNext
                 <div>
                   <b>{t("RMS_FACILITY_NAME")}:</b>{" "}
                   <Link
-                    to={`/${window.contextPath}/employee/im/pause-rms?id=${item.id}`}
+                    to={`/${window.contextPath}/employee/im/pause-rms?facilityId=${encodeURIComponent(row.original.facilityId)}`}
                     style={{ color: "#7a2829" }}
                   >
                     {item.facilityName || "-"}
