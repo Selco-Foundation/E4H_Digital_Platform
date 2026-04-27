@@ -7,6 +7,8 @@ import org.egov.rms.repository.AlertRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
+
 /**
  * Enforces business rules that suppress new IM tickets when certain open incidents
  * already exist for the same RMS facility.
@@ -28,7 +30,7 @@ public class TicketCreationGuardService {
         }
         String facilityId = alert.getFacilityId();
 
-        if (ticketPauseService.isFacilityPaused(facilityId, null)) {
+        if (ticketPauseService.isFacilityPaused(facilityId, Instant.now())) {
             log.info(
                     "TICKET POLICY: Skipping ticket — facility {} is currently paused for RMS auto ticket creation (alert type {}, subType {})",
                     facilityId, alert.getAlertType(), alert.getAlertSubType());

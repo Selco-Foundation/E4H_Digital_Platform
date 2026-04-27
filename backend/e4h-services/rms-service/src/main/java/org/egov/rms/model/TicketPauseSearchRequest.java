@@ -13,7 +13,7 @@ import org.egov.common.contract.request.RequestInfo;
 @AllArgsConstructor
 public class TicketPauseSearchRequest {
 
-    @JsonProperty("requestInfo")
+    @JsonProperty("RequestInfo")
     private RequestInfo requestInfo;
 
     @JsonProperty("facilityId")

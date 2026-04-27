@@ -20,7 +20,7 @@ public class TicketPauseManageRequest {
         RESUME
     }
 
-    @JsonProperty("requestInfo")
+    @JsonProperty("RequestInfo")
     private RequestInfo requestInfo;
 
     @JsonProperty("action")

@@ -51,6 +51,17 @@ public class TicketPauseService {
             Optional<TicketPauseRepository.TicketPauseRecord> existingPause =
                     ticketPauseRepository.findActivePauseByFacility(facilityId, Instant.now());
             String requestedBy = extractRequestedBy(request.getRequestInfo());
+            if (!existingPause.isPresent()) {
+                log.info("Ticket resume skipped: no active pause found for facilityId={}", facilityId);
+                return TicketPauseResponse.success(
+                        facilityId,
+                        false,
+                        null,
+                        0L,
+                        null,
+                        "Facility was not paused"
+                );
+            }
 
             int updated = ticketPauseRepository.deactivatePause(facilityId);
             log.info("Ticket resume processed: facilityId={}, updatedRows={}", facilityId, updated);

@@ -76,6 +76,10 @@ public class TicketPauseRepository {
     public List<PausedFacilityItem> listActivePausedFacilities(List<String> boundaryCodes, int offset, int limit) {
         log.debug("Listing active paused facilities: boundaryFiltersCount={}, offset={}, limit={}",
                 boundaryCodes != null ? boundaryCodes.size() : 0, offset, limit);
+        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
+            log.warn("Boundary filter list is empty for listActivePausedFacilities; returning empty result");
+            return List.of();
+        }
         StringBuilder sql = new StringBuilder(
                 "SELECT facility_id, facility_name, boundary_code, paused_until, reason, requested_by, updated_at " +
                         "FROM rms_ticket_pause_config " +
@@ -91,6 +95,10 @@ public class TicketPauseRepository {
     public long countActivePausedFacilities(List<String> boundaryCodes) {
         log.debug("Counting active paused facilities: boundaryFiltersCount={}",
                 boundaryCodes != null ? boundaryCodes.size() : 0);
+        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
+            log.warn("Boundary filter list is empty for countActivePausedFacilities; returning 0");
+            return 0L;
+        }
         StringBuilder sql = new StringBuilder(
                 "SELECT COUNT(*) FROM rms_ticket_pause_config " +
                         "WHERE is_active = TRUE AND paused_until > CURRENT_TIMESTAMP ");
@@ -101,17 +109,31 @@ public class TicketPauseRepository {
     }
 
     private void appendBoundaryFilter(StringBuilder sql, List<Object> args, List<String> boundaryCodes) {
+        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
+            return;
+        }
         sql.append(" AND (");
         for (int i = 0; i < boundaryCodes.size(); i++) {
             if (i > 0) {
                 sql.append(" OR ");
             }
-            sql.append("(boundary_code = ? OR boundary_code LIKE ?)");
+            sql.append("(boundary_code = ? OR boundary_code LIKE ? ESCAPE '\\')");
             String code = boundaryCodes.get(i);
+            String escapedCode = escapeLikeValue(code);
             args.add(code);
-            args.add(code + "_%");
+            args.add(escapedCode + "\\_%");
         }
         sql.append(") ");
+    }
+
+    private String escapeLikeValue(String rawValue) {
+        if (rawValue == null) {
+            return null;
+        }
+        return rawValue
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     @Data
