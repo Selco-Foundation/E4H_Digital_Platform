@@ -1092,23 +1092,26 @@ public class FacilityService {
     }
 
     private void ensureFacilityBoundaryExists(String facilityBoundaryCode, String parentBlockBoundaryCode, String tenantId, RequestInfo requestInfo) {
+        boolean boundaryExists = false;
         try {
             boundaryValidator.validateBoundaries(Set.of(facilityBoundaryCode), tenantId, requestInfo);
-            return;
+            boundaryExists = true;
         } catch (Exception exception) {
             log.info("Facility boundary code {} not found, creating it under parent {}", facilityBoundaryCode, parentBlockBoundaryCode);
         }
 
-        BoundaryCreateRequest boundaryCreateRequest = BoundaryCreateRequest.builder()
-                .requestInfo(requestInfo)
-                .boundary(List.of(
-                        Boundary.builder()
-                                .tenantId(tenantId)
-                                .code(facilityBoundaryCode)
-                                .build()
-                ))
-                .build();
-        boundaryService.createBoundaries(boundaryCreateRequest);
+        if (!boundaryExists) {
+            BoundaryCreateRequest boundaryCreateRequest = BoundaryCreateRequest.builder()
+                    .requestInfo(requestInfo)
+                    .boundary(List.of(
+                            Boundary.builder()
+                                    .tenantId(tenantId)
+                                    .code(facilityBoundaryCode)
+                                    .build()
+                    ))
+                    .build();
+            boundaryService.createBoundaries(boundaryCreateRequest);
+        }
 
         BoundaryRelationshipRequest boundaryRelationshipRequest = BoundaryRelationshipRequest.builder()
                 .requestInfo(requestInfo)
@@ -1122,7 +1125,16 @@ public class FacilityService {
                                 .build()
                 )
                 .build();
-        boundaryService.createBoundaryRelationship(boundaryRelationshipRequest);
+        try {
+            boundaryService.createBoundaryRelationship(boundaryRelationshipRequest);
+        } catch (Exception e) {
+            String errMsg = e.getMessage() != null ? e.getMessage() : "";
+            if (errMsg.contains("DUPLICATE_RECORD")) {
+                log.info("Boundary relationship already exists for code {}. Skipping create.", facilityBoundaryCode);
+                return;
+            }
+            throw e;
+        }
     }
 
     private void cleanupOldFacilityBoundaryIfUnused(String oldFacilityBoundaryCode, String tenantId, RequestInfo requestInfo) {
