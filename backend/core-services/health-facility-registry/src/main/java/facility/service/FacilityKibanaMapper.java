@@ -17,13 +17,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.Base64;
+import java.util.*;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Mapper service to transform Facility objects to Kibana index format
@@ -74,11 +71,13 @@ public class FacilityKibanaMapper {
         FacilityKibanaIndex.FacilityKibanaIndexBuilder builder = FacilityKibanaIndex.builder()
                 .facilityId(facility.getFacilityId())
                 .name(facility.getFacilityName())
-                .phcName(new HashMap<>()) // Empty map to satisfy ES object type requirement
+                // Match existing index docs: null when unknown (not an empty object)
+                .phcName(null)
                 .phcType(facility.getFacilityType())
                 .tenantId(facility.getTenantId())
-                .tenantIdLocalized(facility.getTenantId())
-                .code(facility.getBoundaryCode())
+                // Used downstream as the health facility display name (see im-services-analytics)
+                .tenantIdLocalized(resolveTenantIdLocalized(facility))
+                .code(resolveFacilityCodeForIndex(facility))
                 .type(facility.getFacilityType())
                 .isLive(facility.getIsActive())
                 .synced(false)
@@ -95,25 +94,17 @@ public class FacilityKibanaMapper {
             builder.geoPoint(geoPoint);
         }
 
-        // Set solar panel status from additionalDetails if available
+        // Keep index behavior deterministic: default to FUNCTIONAL unless explicitly provided.
+        String solarPanelStatus = "FUNCTIONAL";
         if (facility.getAdditionalDetails() != null) {
             Object solarStatus = facility.getAdditionalDetails().get("solarPanelStatus");
-            if (solarStatus != null) {
-                builder.solarPanelStatus(solarStatus.toString());
+            if (solarStatus != null && !solarStatus.toString().isBlank()) {
+                solarPanelStatus = solarStatus.toString();
             }
         }
+        builder.solarPanelStatus(solarPanelStatus);
 
-        // Set vendor information from additionalDetails if available
-        if (facility.getAdditionalDetails() != null) {
-            Object vendorUserName = facility.getAdditionalDetails().get("mappedVendorUserName");
-            Object vendorName = facility.getAdditionalDetails().get("mappedVendorName");
-            if (vendorUserName != null) {
-                builder.mappedVendorUserName(vendorUserName.toString());
-            }
-            if (vendorName != null) {
-                builder.mappedVendorName(vendorName.toString());
-            }
-        }
+        applyMappedVendorFields(facility, builder);
 
         // Fetch boundary hierarchy and extract codes
         BoundaryCodes boundaryCodes = fetchBoundaryHierarchy(facility, requestInfo);
@@ -128,9 +119,10 @@ public class FacilityKibanaMapper {
             districtCode = boundaryCodes.getDistrictCode();
             stateCode = boundaryCodes.getStateCode();
             countryCode = boundaryCodes.getCountryCode();
-            builder.block(blockCode)
-                   .district(districtCode)
-                   .state(stateCode);
+            // Top-level state/district/block are human-readable labels (not full hierarchy codes)
+            builder.block(boundaryHierarchyCodeToDisplayLabel(blockCode))
+                   .district(boundaryHierarchyCodeToDisplayLabel(districtCode))
+                   .state(boundaryHierarchyCodeToDisplayLabel(stateCode));
         }
         
         // Build boundary info from fetched hierarchy (use extracted values)
@@ -154,6 +146,132 @@ public class FacilityKibanaMapper {
             log.warn("Boundary is null in FacilityKibanaIndex for facility {}", facility.getFacilityId());
         }
         return result;
+    }
+
+    /**
+     * Updates only mutable "display" fields for an existing Kibana index document.
+     * Falls back to full mapping when no existing document can be found.
+     */
+    public FacilityKibanaIndex toKibanaIndexForFacilityUpdate(Facility facility, RequestInfo requestInfo) {
+        if (facility == null) {
+            log.info("Skipping Kibana index update mapping: facility is null");
+            return null;
+        }
+
+        log.info("Preparing Kibana index update mapping for facilityId={} tenantId={}",
+                facility.getFacilityId(), facility.getTenantId());
+        FacilityKibanaIndex existingDoc = fetchExistingKibanaIndex(facility.getFacilityId(), facility.getTenantId());
+        log.info("Existing Kibana document found for facilityId={} existingDoc={}",
+                facility.getFacilityId(), existingDoc);
+        if (existingDoc == null) {
+            log.info("No existing Kibana document found for facilityId={} tenantId={}; falling back to full mapping",
+                    facility.getFacilityId(), facility.getTenantId());
+            return toKibanaIndex(facility, requestInfo);
+        }
+
+        if (facility.getFacilityName() != null && !facility.getFacilityName().isBlank()) {
+            existingDoc.setName(facility.getFacilityName());
+            existingDoc.setTenantIdLocalized(facility.getFacilityName());
+            log.info("Updated Kibana field name for facilityId={}", facility.getFacilityId());
+        }
+        if (facility.getFacilityType() != null && !facility.getFacilityType().isBlank()) {
+            existingDoc.setType(facility.getFacilityType());
+            existingDoc.setPhcType(facility.getFacilityType());
+            log.info("Updated Kibana fields type/phcType for facilityId={}", facility.getFacilityId());
+        }
+        if (facility.getIsActive() != null) {
+            existingDoc.setIsLive(facility.getIsActive());
+            log.info("Updated Kibana field isLive={} for facilityId={}",
+                    facility.getIsActive(), facility.getFacilityId());
+        }
+        existingDoc.setLastModifiedTime(System.currentTimeMillis());
+        log.info("Completed Kibana index update mapping for facilityId={} tenantId={}",
+                facility.getFacilityId(), facility.getTenantId());
+
+        return existingDoc;
+    }
+
+    /**
+     * Prefer HFR / official facility code for the index {@code code} field; fall back to boundary code.
+     */
+    private static String resolveTenantIdLocalized(Facility facility) {
+        String name = facility.getFacilityName();
+        if (name != null && !name.isBlank()) {
+            return name;
+        }
+        return facility.getTenantId();
+    }
+
+    private static String resolveFacilityCodeForIndex(Facility facility) {
+        String hfr = facility.getHfrId();
+        if (hfr != null && !hfr.isBlank()) {
+            return hfr;
+        }
+        return facility.getBoundaryCode();
+    }
+
+    /**
+     * The boundary relationship API returns hierarchical codes (e.g. {@code India_Nagaland_Zunheboto}).
+     * Indexed documents expect the display fragment (e.g. Nagaland, Zunheboto) like legacy rows.
+     */
+    private static String boundaryHierarchyCodeToDisplayLabel(String boundaryCode) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return null;
+        }
+        int i = boundaryCode.lastIndexOf('_');
+        if (i < 0) {
+            return boundaryCode;
+        }
+        return boundaryCode.substring(i + 1);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void applyMappedVendorFields(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+        Map<String, Object> ad = facility.getAdditionalDetails();
+        if (ad == null || ad.isEmpty()) {
+            return;
+        }
+        String user = firstNonBlankString(
+                ad.get("mappedVendorUserName"),
+                ad.get("mapped_vendor_user_name"),
+                ad.get("mappedVendorUsername"));
+        String name = firstNonBlankString(
+                ad.get("mappedVendorName"),
+                ad.get("mapped_vendor_name"));
+        if (user == null || name == null) {
+            Object nested = ad.get("vendor");
+            if (nested instanceof Map) {
+                Map<String, Object> v = (Map<String, Object>) nested;
+                if (user == null) {
+                    user = firstNonBlankString(v.get("userName"), v.get("mappedVendorUserName"), v.get("username"));
+                }
+                if (name == null) {
+                    name = firstNonBlankString(v.get("name"), v.get("vendorName"));
+                }
+            }
+        }
+        if (user != null) {
+            builder.mappedVendorUserName(user);
+        }
+        if (name != null) {
+            builder.mappedVendorName(name);
+        }
+    }
+
+    private static String firstNonBlankString(Object... values) {
+        if (values == null) {
+            return null;
+        }
+        for (Object o : values) {
+            if (o == null) {
+                continue;
+            }
+            String s = o.toString();
+            if (!s.isBlank()) {
+                return s;
+            }
+        }
+        return null;
     }
 
     /**
@@ -430,6 +548,100 @@ public class FacilityKibanaMapper {
         } catch (Exception e) {
             log.error("Error parsing search response: {}", e.getMessage(), e);
             return false;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private FacilityKibanaIndex fetchExistingKibanaIndex(String facilityId, String tenantId) {
+        if (facilityId == null || tenantId == null) {
+            log.info("Skipping Kibana lookup: facilityId or tenantId is null (facilityId={}, tenantId={})",
+                    facilityId, tenantId);
+            return null;
+        }
+
+        log.info("Fetching existing Kibana document for facilityId={} tenantId={}", facilityId, tenantId);
+        try {
+            Map<String, Object> searchQuery = Map.of(
+                    "query", Map.of(
+                            "bool", Map.of(
+                                    "must", List.of(
+                                            Map.of("term", Map.of("Data.facilityId.keyword", facilityId)),
+                                            Map.of("term", Map.of("Data.tenantId.keyword", tenantId))
+                                    )
+                            )
+                    ),
+                    "size", 1
+            );
+
+            String uri = getBaseUrl() + "/" + INDEX_NAME + "/" + SEARCH_PATH;
+            HttpEntity<Object> entity = new HttpEntity<>(searchQuery, buildHeaders());
+            log.info("Executing Kibana lookup query for facilityId={} tenantId={}", facilityId, tenantId);
+            Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
+            if (response == null) {
+                log.info("No Kibana response received for facilityId={} tenantId={}", facilityId, tenantId);
+                return null;
+            }
+
+            Object hitsObj = response.get("hits");
+            if (!(hitsObj instanceof Map)) {
+                log.info("Kibana response missing hits object for facilityId={} tenantId={}", facilityId, tenantId);
+                return null;
+            }
+
+            Object hitListObj = ((Map<String, Object>) hitsObj).get("hits");
+            if (!(hitListObj instanceof List) || ((List<?>) hitListObj).isEmpty()) {
+                log.info("No existing Kibana document found for facilityId={} tenantId={}", facilityId, tenantId);
+                return null;
+            }
+
+            Object firstHitObj = ((List<?>) hitListObj).get(0);
+            if (!(firstHitObj instanceof Map)) {
+                log.info("Kibana first hit has unexpected format for facilityId={} tenantId={}", facilityId, tenantId);
+                return null;
+            }
+
+            Object sourceObj = ((Map<String, Object>) firstHitObj).get("_source");
+            if (!(sourceObj instanceof Map)) {
+                log.info("Kibana hit missing _source for facilityId={} tenantId={}", facilityId, tenantId);
+                return null;
+            }
+
+            Object dataObj = ((Map<String, Object>) sourceObj).get("Data");
+            if (!(dataObj instanceof Map)) {
+                log.info("Kibana _source missing Data payload for facilityId={} tenantId={}", facilityId, tenantId);
+                return null;
+            }
+
+            FacilityKibanaIndex existingDoc = mapper.convertValue(dataObj, FacilityKibanaIndex.class);
+            String tenantIdLocalized = (String)((Map<String, Object>) dataObj).get("tenantId_localized");
+//            List<Integer> geoPoint = (List<Integer>)((Map<String, Object>) dataObj).get("geo-point");
+            Object geoPointObj = ((Map<String, Object>) dataObj).get("geo-point");
+            Integer total_tickets = (Integer)((Map<String, Object>) dataObj).get("total_tickets");
+            Integer open_tickets = (Integer)((Map<String, Object>) dataObj).get("open_tickets");
+            Integer closed_tickets = (Integer)((Map<String, Object>) dataObj).get("closed_tickets");
+            String solar_panel_status = (String)((Map<String, Object>) dataObj).get("solar_panel_status");
+            existingDoc.setTenantIdLocalized(tenantIdLocalized);
+//            String result = geoPoint!= null ? geoPoint.stream().map(String::valueOf).collect(Collectors.joining(", ")) : null;
+//            existingDoc.setGeoPoint(result);
+            String geoPointStr = null;
+            if (geoPointObj instanceof List) {
+                geoPointStr = ((List<?>) geoPointObj).stream()
+                        .map(String::valueOf)
+                        .collect(Collectors.joining(", "));
+            } else if (geoPointObj != null) {
+                geoPointStr = geoPointObj.toString();
+            }
+            existingDoc.setGeoPoint(geoPointStr);
+            existingDoc.setTotalTickets(total_tickets);
+            existingDoc.setOpenTickets(open_tickets);
+            existingDoc.setClosedTickets(closed_tickets);
+            existingDoc.setSolarPanelStatus(solar_panel_status);
+            log.info("Successfully fetched existing Kibana document for facilityId={} tenantId={}", facilityId, tenantId);
+            return existingDoc;
+        } catch (Exception e) {
+            log.warn("Unable to fetch existing Kibana document for facility {} and tenant {}: {}",
+                    facilityId, tenantId, e.getMessage());
+            return null;
         }
     }
 }
