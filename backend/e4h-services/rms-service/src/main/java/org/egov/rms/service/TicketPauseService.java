@@ -7,6 +7,7 @@ import org.egov.common.contract.request.User;
 import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.PausedFacilityItem;
 import org.egov.rms.model.TicketPauseManageRequest;
+import org.egov.rms.model.TicketPausePayload;
 import org.egov.rms.model.TicketPauseResponse;
 import org.egov.rms.model.TicketPauseSearchRequest;
 import org.egov.rms.model.TicketPausedFacilityListRequest;
@@ -37,17 +38,19 @@ public class TicketPauseService {
     private final TicketPauseAuditEventPublisher ticketPauseAuditEventPublisher;
 
     public TicketPauseResponse managePause(TicketPauseManageRequest request) {
-        if (request == null || request.getAction() == null) {
+        if (request == null || request.getTicketPause() == null || request.getTicketPause().getAction() == null) {
             throw new IllegalArgumentException("action is required");
         }
-        validateFacilityId(request.getFacilityId());
-        log.info("Ticket pause manage request received: action={}, facilityId={}", request.getAction(), request.getFacilityId());
+        TicketPausePayload payload = request.getTicketPause();
+        validateFacilityId(payload.getFacilityId());
+        log.info("Ticket pause manage request received: action={}, facilityId={}",
+                payload.getAction(), payload.getFacilityId());
 
-        if (request.getAction() == TicketPauseManageRequest.Action.PAUSE) {
-            return pause(request);
+        if (payload.getAction() == TicketPauseManageRequest.Action.PAUSE) {
+            return pause(request.getRequestInfo(), payload);
         }
-        if (request.getAction() == TicketPauseManageRequest.Action.RESUME) {
-            String facilityId = request.getFacilityId().trim();
+        if (payload.getAction() == TicketPauseManageRequest.Action.RESUME) {
+            String facilityId = payload.getFacilityId().trim();
             Optional<TicketPauseRepository.TicketPauseRecord> existingPause =
                     ticketPauseRepository.findActivePauseByFacility(facilityId, Instant.now());
             String requestedBy = extractRequestedBy(request.getRequestInfo());
@@ -69,10 +72,10 @@ public class TicketPauseService {
                     request.getRequestInfo(),
                     TicketPauseManageRequest.Action.RESUME,
                     facilityId,
-                    normalize(request.getFacilityName()),
-                    normalize(request.getBoundaryCode()),
+                    normalize(payload.getFacilityName()),
+                    normalize(payload.getBoundaryCode()),
                     null,
-                    normalize(request.getReason()),
+                    normalize(payload.getReason()),
                     requestedBy,
                     false,
                     existingPause
@@ -86,15 +89,15 @@ public class TicketPauseService {
                     "Auto ticket creation resumed successfully"
             );
         }
-        throw new IllegalArgumentException("Unsupported action: " + request.getAction());
+        throw new IllegalArgumentException("Unsupported action: " + payload.getAction());
     }
 
     public TicketPauseResponse getPauseState(TicketPauseSearchRequest request) {
-        if (request == null) {
+        if (request == null || request.getTicketPause() == null) {
             throw new IllegalArgumentException("request is required");
         }
-        validateFacilityId(request.getFacilityId());
-        String facilityId = request.getFacilityId().trim();
+        validateFacilityId(request.getTicketPause().getFacilityId());
+        String facilityId = request.getTicketPause().getFacilityId().trim();
         log.debug("Pause state lookup started: facilityId={}", facilityId);
         Optional<TicketPauseRepository.TicketPauseRecord> record = ticketPauseRepository.findActivePauseByFacility(facilityId, Instant.now());
         if (!record.isPresent()) {
@@ -109,14 +112,14 @@ public class TicketPauseService {
             );
         }
         TicketPauseRepository.TicketPauseRecord row = record.get();
-        long remainingMinutes = Math.max(0, ChronoUnit.MINUTES.between(Instant.now(), row.getPausedUntil()));
-        log.debug("Pause state lookup result: facilityId={}, isPaused=true, pausedUntil={}, remainingMinutes={}",
-                facilityId, row.getPausedUntil(), remainingMinutes);
+        long daysLeft = Math.max(0, ChronoUnit.DAYS.between(Instant.now(), row.getPausedUntil()));
+        log.debug("Pause state lookup result: facilityId={}, isPaused=true, pausedUntil={}, daysLeft={}",
+                facilityId, row.getPausedUntil(), daysLeft);
         return TicketPauseResponse.success(
                 facilityId,
                 true,
                 row.getPausedUntil(),
-                remainingMinutes,
+                daysLeft,
                 row.getReason(),
                 "Facility is paused"
         );
@@ -176,21 +179,21 @@ public class TicketPauseService {
         return paused;
     }
 
-    private TicketPauseResponse pause(TicketPauseManageRequest request) {
-        if (request.getPausedUntil() == null) {
+    private TicketPauseResponse pause(RequestInfo requestInfo, TicketPausePayload payload) {
+        if (payload.getPausedUntil() == null) {
             throw new IllegalArgumentException("pausedUntil is required when action is PAUSE");
         }
         Instant now = Instant.now();
-        Instant pausedUntil = request.getPausedUntil();
+        Instant pausedUntil = payload.getPausedUntil();
         if (!pausedUntil.isAfter(now)) {
             throw new IllegalArgumentException("pausedUntil must be a future timestamp when action is PAUSE");
         }
 
-        String facilityId = request.getFacilityId().trim();
-        String requestedBy = extractRequestedBy(request.getRequestInfo());
-        String normalizedFacilityName = normalize(request.getFacilityName());
-        String normalizedBoundaryCode = normalize(request.getBoundaryCode());
-        String normalizedReason = normalize(request.getReason());
+        String facilityId = payload.getFacilityId().trim();
+        String requestedBy = extractRequestedBy(requestInfo);
+        String normalizedFacilityName = normalize(payload.getFacilityName());
+        String normalizedBoundaryCode = normalize(payload.getBoundaryCode());
+        String normalizedReason = normalize(payload.getReason());
         ticketPauseRepository.upsertPause(
                 facilityId,
                 normalizedFacilityName,
@@ -201,7 +204,7 @@ public class TicketPauseService {
         );
         log.info("Ticket pause applied: facilityId={}, pausedUntil={}, requestedBy={}", facilityId, pausedUntil, requestedBy);
         publishPauseAuditSafely(
-                request.getRequestInfo(),
+                requestInfo,
                 TicketPauseManageRequest.Action.PAUSE,
                 facilityId,
                 normalizedFacilityName,
@@ -216,7 +219,7 @@ public class TicketPauseService {
                 facilityId,
                 true,
                 pausedUntil,
-                Math.max(0, ChronoUnit.MINUTES.between(now, pausedUntil)),
+                Math.max(0, ChronoUnit.DAYS.between(now, pausedUntil)),
                 normalizedReason,
                 "Auto ticket creation paused successfully"
         );

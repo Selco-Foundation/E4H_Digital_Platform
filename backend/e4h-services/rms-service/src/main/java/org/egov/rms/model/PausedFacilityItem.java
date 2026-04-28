@@ -26,8 +26,8 @@ public class PausedFacilityItem {
     @JsonProperty("pausedUntil")
     private Instant pausedUntil;
 
-    @JsonProperty("remainingMinutes")
-    private Long remainingMinutes;
+    @JsonProperty("daysLeft")
+    private Long daysLeft;
 
     @JsonProperty("reason")
     private String reason;

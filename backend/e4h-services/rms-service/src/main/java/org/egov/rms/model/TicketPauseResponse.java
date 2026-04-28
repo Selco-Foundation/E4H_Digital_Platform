@@ -26,8 +26,8 @@ public class TicketPauseResponse {
     @JsonProperty("pausedUntil")
     private Instant pausedUntil;
 
-    @JsonProperty("remainingMinutes")
-    private Long remainingMinutes;
+    @JsonProperty("daysLeft")
+    private Long daysLeft;
 
     @JsonProperty("reason")
     private String reason;
@@ -51,13 +51,13 @@ public class TicketPauseResponse {
     }
 
     public static TicketPauseResponse success(String facilityId, boolean isPaused, Instant pausedUntil,
-                                              Long remainingMinutes, String reason, String message) {
+                                              Long daysLeft, String reason, String message) {
         return TicketPauseResponse.builder()
                 .success(true)
                 .facilityId(facilityId)
                 .isPaused(isPaused)
                 .pausedUntil(pausedUntil)
-                .remainingMinutes(remainingMinutes)
+                .daysLeft(daysLeft)
                 .reason(reason)
                 .message(message)
                 .build();

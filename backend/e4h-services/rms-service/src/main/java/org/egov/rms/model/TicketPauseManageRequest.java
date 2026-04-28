@@ -7,8 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.egov.common.contract.request.RequestInfo;
 
-import java.time.Instant;
-
 @Data
 @Builder
 @NoArgsConstructor
@@ -23,22 +21,7 @@ public class TicketPauseManageRequest {
     @JsonProperty("RequestInfo")
     private RequestInfo requestInfo;
 
-    @JsonProperty("action")
-    private Action action;
-
-    @JsonProperty("facilityId")
-    private String facilityId;
-
-    @JsonProperty("facilityName")
-    private String facilityName;
-
-    @JsonProperty("boundaryCode")
-    private String boundaryCode;
-
-    @JsonProperty("pausedUntil")
-    private Instant pausedUntil;
-
-    @JsonProperty("reason")
-    private String reason;
+    @JsonProperty("PauseFacility")
+    private TicketPausePayload ticketPause;
 }
 

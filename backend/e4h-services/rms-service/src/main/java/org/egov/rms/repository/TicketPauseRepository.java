@@ -169,13 +169,13 @@ public class TicketPauseRepository {
         @Override
         public PausedFacilityItem mapRow(ResultSet rs, int rowNum) throws SQLException {
             Instant pausedUntil = rs.getTimestamp("paused_until").toInstant();
-            long remainingMinutes = Math.max(0, ChronoUnit.MINUTES.between(Instant.now(), pausedUntil));
+            long daysLeft = Math.max(0, ChronoUnit.DAYS.between(Instant.now(), pausedUntil));
             return PausedFacilityItem.builder()
                     .facilityId(rs.getString("facility_id"))
                     .facilityName(rs.getString("facility_name"))
                     .boundaryCode(rs.getString("boundary_code"))
                     .pausedUntil(pausedUntil)
-                    .remainingMinutes(remainingMinutes)
+                    .daysLeft(daysLeft)
                     .reason(rs.getString("reason"))
                     .pausedBy(rs.getString("requested_by"))
                     .updatedAt(rs.getTimestamp("updated_at").toInstant())
