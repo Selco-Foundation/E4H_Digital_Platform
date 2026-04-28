@@ -12,7 +12,6 @@ import org.springframework.util.StringUtils;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 @Slf4j
@@ -39,9 +38,10 @@ public class TicketPauseAuditEventPublisher {
             return;
         }
 
+        String tenantId = extractTenantId(requestInfo);
         long eventTime = Instant.now().toEpochMilli();
         Map<String, Object> event = new LinkedHashMap<>();
-        event.put("eventId", facilityId + "-" + eventTime + "-" + UUID.randomUUID());
+        event.put("eventId", buildDocumentId(facilityId));
         event.put("eventType", "RMS_TICKET_PAUSE");
         event.put("action", action.name());
         event.put("isPaused", isPaused);
@@ -51,13 +51,19 @@ public class TicketPauseAuditEventPublisher {
         event.put("pausedUntil", pausedUntil != null ? pausedUntil.toString() : null);
         event.put("reason", reason);
         event.put("requestedBy", requestedBy);
-        event.put("tenantId", extractTenantId(requestInfo));
+        event.put("tenantId", tenantId);
         event.put("eventTime", eventTime);
         event.put("requestInfo", requestInfo);
 
         log.info("Publishing pause audit event: action={}, facilityId={}, isPaused={}, topic={}",
                 action, facilityId, isPaused, topic);
         producer.push(topic, event);
+    }
+
+    private String buildDocumentId(String facilityId) {
+        String safeFacility = StringUtils.hasText(facilityId) ? facilityId.trim() : "unknown-facility";
+        // Keep a stable per-facility document key for upsert behavior in indexer.
+        return safeFacility;
     }
 
     private String extractTenantId(RequestInfo requestInfo) {
