@@ -13,6 +13,7 @@ import {
   SubmitBar,
   LabelFieldPair,
   Header,
+  Button,
 } from "@selco/digit-ui-react-components";
 
 import { useTranslation } from "react-i18next";
@@ -115,12 +116,10 @@ export const FormComposer = (props) => {
         </div>
         {formFields}
         {props.children}
-        <ActionBar>
+        <ActionBar className={props?.actionBarClassName}>
           <SubmitBar disabled={isDisabled} label={t(props.label)} submit="submit" />
           {props.secondaryActionLabel && (
-            <div className="primary-label-btn" style={{ margin: "20px auto 0 auto" }} onClick={props.onSecondaryActionClick}>
-              {props.secondaryActionLabel}
-            </div>
+            <Button name="secondary-action" className="previous-button" variation="secondary" label={t(props?.secondaryActionLabel)} onButtonClick={props?.onSecondaryActionClick} />
           )}
         </ActionBar>
       </Card>

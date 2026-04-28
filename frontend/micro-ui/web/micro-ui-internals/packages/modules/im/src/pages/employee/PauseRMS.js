@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Dropdown, Loader, PopUp, Toast } from "@selco/digit-ui-react-components";
+import { Dropdown, Loader, Toast } from "@selco/digit-ui-react-components";
 import { useHistory } from "react-router-dom";
 import { FormComposer } from "../../components/FormComposer";
-import { Link } from "react-router-dom";
 import {useQueryClient} from "react-query";
 import {useDispatch} from "react-redux";
 import {populatePauseRMSResponse} from "../../redux/actions/complaint";
@@ -24,8 +23,6 @@ export const PauseRMS = ({ parentUrl }) => {
   const [block, setBlock] = useState(null);
   const [creationError, setCreationError] = useState(null);
   const [canSubmit, setSubmitValve] = useState(false);
-  const tenantId = window.Digit.SessionStorage.get("Employee.tenantId");
-  const [duplicateTicketIds, setDuplicateTicketIds] = useState([]);
   const [blockUI, setBlockUI] = useState(false);
   const [selectBoundaryCode, setSelectBoundaryCode] = useState("");
   const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary") || {
@@ -447,96 +444,11 @@ export const PauseRMS = ({ parentUrl }) => {
         isDisabled={!canSubmit}
         label={isPausedFacility ? t("MODIFY") : t("DISABLE")}
         secondaryActionLabel={isPausedFacility ? t("ACTIVATE") : ""}
-        onSecondaryActionClick={isPausedFacility? () => resumeFacility : null}
+        onSecondaryActionClick={isPausedFacility ? () => resumeFacility() : null}
+        actionBarClassName={"reverse-actionbar"}
       />
 
       {creationError && <Toast error={creationError} isDleteBtn={true} label={creationError} onClose={() => setCreationError(null)} />}
-
-      {duplicateTicketIds?.length > 0 && (
-        <PopUp>
-          <div
-            style={{
-              backgroundColor: "white",
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "400px",
-              maxWidth: "95%",
-              padding: "24px",
-              borderRadius: "5px",
-            }}
-          >
-            <h2
-              style={{
-                margin: "0 0 16px 0",
-                fontSize: "20px",
-                fontWeight: "600",
-                color: "#333",
-                textAlign: "center",
-              }}
-            >
-              {t("IM_ALERT_POTENTIAL_DUPLICATES")}
-            </h2>
-
-            <div style={{ marginBottom: "24px" }}>
-              <p
-                style={{
-                  fontSize: "16px",
-                  textAlign: "center",
-                  marginBottom: "5px",
-                }}
-              >
-                {t("IM_ALERT_POTENTIAL_DUPLICATES_DESC")}
-              </p>
-              <p
-                style={{
-                  fontSize: "16px",
-                  textAlign: "center",
-                  marginBottom: "5px",
-                  maxHeight: "250px",
-                  overflow: "auto",
-                }}
-              >
-                <span>
-                  {t("IM_ALERT_POTENTIAL_DUPLICATES_EXISTING")}
-                  {": "}
-                </span>
-                {duplicateTicketIds.map(({ ticketId, ticketTenantId }, index, array) => (
-                  <span key={index}>
-                    <Link
-                      to={`/${window.contextPath}/employee/im/complaint/details/${ticketId}/${ticketTenantId}`}
-                      target={"_blank"}
-                      style={{ color: "#7a2829", textDecoration: "underline" }}
-                    >
-                      {ticketId}
-                    </Link>
-                    {index < array.length - 1 ? ", " : ""}
-                  </span>
-                ))}
-              </p>
-              <p
-                style={{
-                  fontSize: "16px",
-                  textAlign: "center",
-                }}
-              >
-                {t("IM_ALERT_POTENTIAL_DUPLICATES_ACTION_DESC")}
-              </p>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-around" }}>
-              <Button variation={"secondary"} style={{ width: "150px" }} label={t("TL_COMMON_YES")} onButtonClick={() => setDuplicateTicketIds([])} />
-              <Button
-                variation={"primary"}
-                style={{ width: "150px" }}
-                label={t("TL_COMMON_NO")}
-                onButtonClick={() => history.push(`/${window.contextPath}/employee/im/inbox`)}
-              />
-            </div>
-          </div>
-        </PopUp>
-      )}
     </div>
   );
 };
