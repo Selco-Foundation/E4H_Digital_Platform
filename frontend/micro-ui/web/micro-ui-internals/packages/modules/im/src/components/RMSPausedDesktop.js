@@ -81,7 +81,7 @@ const RMSPausedDesktop = ({
     );
   } else {
     result = (
-      <Card style={{ marginTop: 20 }}>
+      <Card>
         <p style={{ textAlign: "center" }}>{t("RMS_NO_PAUSED_FACILITIES_FOUND")}</p>
       </Card>
     );

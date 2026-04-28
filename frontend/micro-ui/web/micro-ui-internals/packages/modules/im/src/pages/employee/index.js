@@ -58,6 +58,7 @@ const Complaint = () => {
   const ComplaintFeedback = Digit?.ComponentRegistryService?.getComponent('PGRComplaintFeedback');
   const Inbox = Digit?.ComponentRegistryService?.getComponent('PGRInbox');
   const Response = Digit?.ComponentRegistryService?.getComponent('PGRResponseEmp');
+  const RMSResponse = Digit?.ComponentRegistryService?.getComponent("PGRRMSResponse");
 
   return (
     <React.Fragment>
@@ -96,6 +97,7 @@ const Complaint = () => {
           <Route path={match.url + Employee.ComplaintDetails + ":incidentId/:tenantId"} component={() => <ComplaintDetails />} />
           <Route path={match.url + Employee.Inbox} component={Inbox} />
           <Route path={match.url + Employee.Response} component={Response} />
+          <Route path={match.url + Employee.RMSResponse} component={RMSResponse} />
         </Switch>
       </div>
       {/* <ActionBar>

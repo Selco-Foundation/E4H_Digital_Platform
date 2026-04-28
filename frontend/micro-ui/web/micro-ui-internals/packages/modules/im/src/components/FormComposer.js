@@ -117,6 +117,11 @@ export const FormComposer = (props) => {
         {props.children}
         <ActionBar>
           <SubmitBar disabled={isDisabled} label={t(props.label)} submit="submit" />
+          {props.secondaryActionLabel && (
+            <div className="primary-label-btn" style={{ margin: "20px auto 0 auto" }} onClick={props.onSecondaryActionClick}>
+              {props.secondaryActionLabel}
+            </div>
+          )}
         </ActionBar>
       </Card>
     </form>

@@ -39,4 +39,20 @@ export const RMSService = {
     });
   },
 
+  updateRMSTicketPause: async (queryFilter) => {
+    const endpoint = "/rms-service/v1/ticket/pause";
+    const headers = {
+      "Content-Type": "application/json",
+    };
+
+    return await Request({
+      url: endpoint,
+      userService: true,
+      method: "POST",
+      auth: true,
+      data: queryFilter,
+      headers: headers,
+    });
+  }
+
 };

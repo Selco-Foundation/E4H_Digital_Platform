@@ -4,8 +4,12 @@ import { Button, Dropdown, Loader, PopUp, Toast } from "@selco/digit-ui-react-co
 import { useHistory } from "react-router-dom";
 import { FormComposer } from "../../components/FormComposer";
 import { Link } from "react-router-dom";
+import {useQueryClient} from "react-query";
+import {useDispatch} from "react-redux";
+import {populatePauseRMSResponse} from "../../redux/actions/complaint";
+import CommonUtils from "../../utilities/CommonUtils";
 
-export const PauseRMS = () => {
+export const PauseRMS = ({ parentUrl }) => {
   const { t } = useTranslation();
   const [healthcentre, setHealthCentre] = useState();
   const [districtMenu, setDistrictMenu] = useState([]);
@@ -32,7 +36,10 @@ export const PauseRMS = () => {
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [disableGeographySelection, setDisableGeographySelection] = useState(false);
+  const [isPausedFacility, setIsPausedFacility] = useState(false);
   const { facilityId } = Digit.Hooks.useQueryParams();
+  const client = useQueryClient();
+  const dispatch = useDispatch();
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
   const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
@@ -186,35 +193,22 @@ export const PauseRMS = () => {
   const history = useHistory();
 
   useEffect(() => {
-    if (
-      healthcentre?.code &&
-      district?.code &&
-      block?.code
-    ) {
+    if (healthcentre?.code && district?.code && block?.code) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [
-    healthcentre,
-    district,
-    block,
-  ]);
+  }, [healthcentre, district, block]);
 
   useEffect(() => {
     const checkFacilityStatus = async () => {
       if (healthcentre?.code) {
         setBlockUI(true);
         try {
-          const data = await Digit.RMSService.fetchFacilityStatus({facilityId: healthcentre?.id});
+          const data = await Digit.RMSService.fetchFacilityStatus({ facilityId: healthcentre?.id });
 
-          if (data?.items?.length) {
-            setDuplicateTicketIds(
-              data?.items?.map((item) => ({
-                ticketId: item?.businessObject?.incident?.incidentId,
-                ticketTenantId: item?.businessObject?.incident?.tenantId,
-              }))
-            );
+          if (data?.isPaused) {
+            setIsPausedFacility(true);
           }
         } catch (error) {
           console.error("Error fetching facility status:", error);
@@ -224,7 +218,7 @@ export const PauseRMS = () => {
       }
     };
 
-    // checkFacilityStatus();
+    checkFacilityStatus();
   }, [healthcentre]);
 
   const handleDistrictChange = async (selectedDistrict) => {
@@ -241,44 +235,46 @@ export const PauseRMS = () => {
     setBlock(selectedBlock);
   };
 
-  const wrapperSubmit = (data) => {
+  const wrapperSubmit = (data, action = "PAUSE") => {
     const abc = handleButtonClick();
     if (!canSubmit) return;
-    !abc && onSubmit(data);
+    !abc && onSubmit(data, action);
   };
 
-  const onSubmit = async (data) => {
-    Digit.Utils.analytics.trackSubmitTicket({ page_name: "new_ticket_page" });
+  const onSubmit = async (data, action) => {
+    Digit.Utils.analytics.trackSubmitTicket({ page_name: "pause_rms_page" });
     if (!canSubmit) return;
     const formData = {
       ...data,
-      district: {
-        ...district,
-        name: t(`Boundary_${district.code}`, { lng: "en_IN" }),
-      },
-      block: {
-        ...block,
-        name: t(`Boundary_${block.code}`, { lng: "en_IN" }),
-      },
-      healthcentre,
-      tenantId,
+      pausedUntil: data?.duration,
+      action,
+      facilityId: healthcentre?.id,
     };
+    setBlockUI(true);
 
-    // setBlockUI(true);
-    console.debug("formData", formData);
-    // const response = await Digit.Complaint.create(formData);
-    //
-    // if (!response?.IncidentWrappers) {
-    //   setBlockUI(false);
-    //   const assignErrorMessage = Array.isArray(response) ? response?.[0]?.message : response?.message || response;
-    //   setCreationError(assignErrorMessage || t("CS_COMMON_SOMETHING_WENT_WRONG"));
-    //   return;
-    // }
-    //
-    // setBlockUI(false);
-    // dispatch(populateCreateResponse(response));
-    // await client.refetchQueries(["fetchInboxData"]);
-    // history.push(parentUrl + "/incident/response");
+    try {
+      await Digit.RMSService.updateRMSTicketPause(formData);
+
+      setBlockUI(false);
+      dispatch(
+        populatePauseRMSResponse({
+          success: true,
+          message: t("PAUSE_RMS_SUCCESS_MESSAGE"),
+          cardText: t("PAUSE_RMS_CARD_TEXT"),
+          facilityId: healthcentre?.id,
+        })
+      );
+
+      await client.refetchQueries(["RMS_PAUSED_FACILITY"]);
+      history.push(parentUrl + "/incident/rms-response");
+    } catch (error) {
+      setBlockUI(false);
+      setCreationError(CommonUtils.getApiErrorMessage(error) || t("CS_COMMON_SOMETHING_WENT_WRONG"));
+    }
+  };
+
+  const resumeFacility = async () => {
+    await onSubmit({}, "RESUME");
   };
 
   const districtRef = useRef(null);
@@ -444,7 +440,15 @@ export const PauseRMS = () => {
         </div>
       </div>
 
-      <FormComposer heading={t("PAUSE_RMS")} config={config} onSubmit={wrapperSubmit} isDisabled={!canSubmit} label={t("FILE_INCIDENT")} />
+      <FormComposer
+        heading={t("PAUSE_RMS")}
+        config={config}
+        onSubmit={(data) => wrapperSubmit(data, "PAUSE")}
+        isDisabled={!canSubmit}
+        label={isPausedFacility ? t("MODIFY") : t("DISABLE")}
+        secondaryActionLabel={isPausedFacility ? t("ACTIVATE") : ""}
+        onSecondaryActionClick={isPausedFacility? () => resumeFacility : null}
+      />
 
       {creationError && <Toast error={creationError} isDleteBtn={true} label={creationError} onClose={() => setCreationError(null)} />}
 

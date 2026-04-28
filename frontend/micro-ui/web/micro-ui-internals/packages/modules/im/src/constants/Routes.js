@@ -40,6 +40,7 @@ export const Employee = {
   PauseRMS: PGR_EMPLOYEE_PAUSE_RMS,
   PausedRMSFacilities: PGR_EMPLOYEE_PAUSED_RMS_FACILITIES,
   Response: "/incident/response",
+  RMSResponse: "/incident/rms-response",
   Home: `/${window.contextPath}/employee`,
 };
 
