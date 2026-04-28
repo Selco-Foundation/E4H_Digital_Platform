@@ -16,7 +16,7 @@ public class TicketPauseSearchRequest {
     @JsonProperty("RequestInfo")
     private RequestInfo requestInfo;
 
-    @JsonProperty("FaclitySearch")
+    @JsonProperty("FacilitySearch")
     private TicketPauseSearchPayload ticketPause;
 }
 
