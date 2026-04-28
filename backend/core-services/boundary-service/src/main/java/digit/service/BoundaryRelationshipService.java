@@ -1,6 +1,7 @@
 package digit.service;
 
 import digit.repository.BoundaryRelationshipRepository;
+import digit.repository.BoundaryRepository;
 import digit.service.enrichment.BoundaryRelationshipEnricher;
 import digit.service.validator.BoundaryRelationshipValidator;
 import digit.util.HierarchyUtil;
@@ -24,14 +25,18 @@ public class BoundaryRelationshipService {
     private BoundaryRelationshipEnricher boundaryRelationshipEnricher;
 
     private BoundaryRelationshipRepository boundaryRelationshipRepository;
+    private BoundaryRepository boundaryRepository;
 
     private HierarchyUtil hierarchyUtil;
 
     public BoundaryRelationshipService(BoundaryRelationshipValidator boundaryRelationshipValidator, BoundaryRelationshipEnricher boundaryRelationshipEnricher,
-                                       BoundaryRelationshipRepository boundaryRelationshipRepository, HierarchyUtil hierarchyUtil) {
+                                       BoundaryRelationshipRepository boundaryRelationshipRepository,
+                                       BoundaryRepository boundaryRepository,
+                                       HierarchyUtil hierarchyUtil) {
         this.boundaryRelationshipValidator = boundaryRelationshipValidator;
         this.boundaryRelationshipEnricher = boundaryRelationshipEnricher;
         this.boundaryRelationshipRepository = boundaryRelationshipRepository;
+        this.boundaryRepository = boundaryRepository;
         this.hierarchyUtil = hierarchyUtil;
     }
 
@@ -348,6 +353,23 @@ public class BoundaryRelationshipService {
         }
 
         boundaryRelationshipRepository.delete(relation.getTenantId(), relation.getHierarchyType(), relation.getCode());
+
+        // If no relationship exists anymore for this code, delete boundary entity too.
+        List<BoundaryRelationshipDTO> remainingRelations = boundaryRelationshipRepository.search(
+                BoundaryRelationshipSearchCriteria.builder()
+                        .tenantId(relation.getTenantId())
+                        .codes(Collections.singletonList(relation.getCode()))
+                        .build()
+        );
+        if (CollectionUtils.isEmpty(remainingRelations)) {
+            boundaryRepository.delete(relation.getTenantId(), relation.getCode());
+            log.info("Boundary entity deleted after relationship delete, tenantId={}, code={}",
+                    relation.getTenantId(), relation.getCode());
+        } else {
+            log.info("Boundary entity not deleted because {} relationship(s) still reference code={}, tenantId={}",
+                    remainingRelations.size(), relation.getCode(), relation.getTenantId());
+        }
+
         log.info("Boundary relationship deleted successfully, tenantId={}, hierarchyType={}, code={}",
                 relation.getTenantId(), relation.getHierarchyType(), relation.getCode());
         return BoundaryRelationshipResponse.builder()
