@@ -473,6 +473,7 @@ public class IMService {
 				body.getTenantId(),
 				body.getFacilityId(),
 				body.getNewBoundaryCode(),
+				body.getNewBlockCode(),
 				modifiedBy
 		);
 		log.info("syncIncidentBoundaryCodeByFacility completed, updatedIncidents={}", updated);

@@ -151,13 +151,15 @@ public class IMRepository {
 	}
 
 	/**
-	 * Sets {@code boundarycode} on all rows in {@code eg_incident_v2} for the given {@code facilityid} and {@code tenantid}.
+	 * Sets {@code boundarycode} and {@code block} on all rows in {@code eg_incident_v2}
+	 * for the given {@code facilityid} and {@code tenantid}.
 	 *
 	 * @return number of rows updated
 	 */
-	public int updateIncidentBoundaryCodeByFacility(String tenantId, String facilityId, String newBoundaryCode, String lastModifiedBy) {
+	public int updateIncidentBoundaryCodeByFacility(String tenantId, String facilityId, String newBoundaryCode,
+													String newBlockCode, String lastModifiedBy) {
 		log.trace("IMRepository::updateIncidentBoundaryCodeByFacility method invoked");
-		String query = "UPDATE {schema}.eg_incident_v2 SET boundarycode = ?, lastmodifiedtime = ?, lastmodifiedby = ? "
+		String query = "UPDATE {schema}.eg_incident_v2 SET boundarycode = ?, block = ?, lastmodifiedtime = ?, lastmodifiedby = ? "
 				+ "WHERE facilityid = ? AND tenantid = ?";
 		try {
 			query = utils.replaceSchemaPlaceholder(query, tenantId);
@@ -168,8 +170,8 @@ public class IMRepository {
 		}
 		long now = System.currentTimeMillis();
 		log.debug("Updating incident boundarycode for facilityId={}, tenantId={}", facilityId, tenantId);
-		int updated = jdbcTemplate.update(query, newBoundaryCode, now, lastModifiedBy, facilityId, tenantId);
-		log.info("Updated boundarycode on {} incident row(s) for facilityId={}", updated, facilityId);
+		int updated = jdbcTemplate.update(query, newBoundaryCode, newBlockCode, now, lastModifiedBy, facilityId, tenantId);
+		log.info("Updated boundarycode/block on {} incident row(s) for facilityId={}", updated, facilityId);
 		return updated;
 	}
 

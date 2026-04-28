@@ -676,6 +676,7 @@ public class FacilityService {
                 blockUpdate.getTenantId(),
                 blockUpdate.getFacilityId(),
                 updatedFacilityBoundaryCode,
+                blockUpdate.getNewBlockBoundaryCode(),
                 request.getRequestInfo()
         );
         log.info("Updated boundary code for facility {} to {}", blockUpdate.getFacilityId(), updatedFacilityBoundaryCode);
@@ -1186,7 +1187,8 @@ public class FacilityService {
     /**
      * Notifies im-services to set {@code eg_incident_v2.boundarycode} for all incidents with the given facility id.
      */
-    private void syncImIncidentBoundaryCodesForFacility(String tenantId, String facilityId, String newBoundaryCode, RequestInfo requestInfo) {
+    private void syncImIncidentBoundaryCodesForFacility(String tenantId, String facilityId, String newBoundaryCode,
+                                                        String newBlockBoundaryCode, RequestInfo requestInfo) {
         String host = configs.getImServicesHost();
         String path = configs.getImIncidentBoundaryByFacilityUpdatePath();
         if (host == null || host.isBlank()) {
@@ -1204,6 +1206,7 @@ public class FacilityService {
         payload.put("tenant_id", tenantId);
         payload.put("facility_id", facilityId);
         payload.put("new_boundary_code", newBoundaryCode);
+        payload.put("new_block_code", deriveBlockFromBoundaryCode(newBlockBoundaryCode));
 
         try {
             restTemplate.postForObject(url, payload, Map.class);
@@ -1215,6 +1218,14 @@ public class FacilityService {
                     "Facility boundary was updated but incident boundary sync to im-services failed: " + e.getMessage()
             );
         }
+    }
+
+    private String deriveBlockFromBoundaryCode(String newBlockBoundaryCode) {
+        if (newBlockBoundaryCode == null || newBlockBoundaryCode.isBlank()) {
+            return newBlockBoundaryCode;
+        }
+        String[] segments = newBlockBoundaryCode.split("_");
+        return segments[segments.length - 1];
     }
 
 }

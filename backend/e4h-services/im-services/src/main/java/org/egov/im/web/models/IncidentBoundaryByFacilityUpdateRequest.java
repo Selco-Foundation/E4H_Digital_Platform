@@ -35,4 +35,8 @@ public class IncidentBoundaryByFacilityUpdateRequest {
     @NotBlank
     @JsonProperty("new_boundary_code")
     private String newBoundaryCode;
+
+    @NotBlank
+    @JsonProperty("new_block_code")
+    private String newBlockCode;
 }
