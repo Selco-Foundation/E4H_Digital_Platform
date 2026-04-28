@@ -336,9 +336,9 @@ public class BoundaryRelationshipService {
                         .codes(Collections.singletonList(relation.getCode()))
                         .build()
         );
-        if (CollectionUtils.isEmpty(existingRelations)) {
-            throw new CustomException("BOUNDARY_RELATIONSHIP_DOES_NOT_EXIST", "Provided boundary relationship for delete does not exist");
-        }
+//        if (CollectionUtils.isEmpty(existingRelations)) {
+//            throw new CustomException("BOUNDARY_RELATIONSHIP_DOES_NOT_EXIST", "Provided boundary relationship for delete does not exist");
+//        }
 
         // Prevent deleting a relation that still has children
         List<BoundaryRelationshipDTO> children = boundaryRelationshipRepository.search(
