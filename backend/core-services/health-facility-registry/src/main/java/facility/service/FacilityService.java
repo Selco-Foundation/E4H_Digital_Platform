@@ -663,6 +663,7 @@ public class FacilityService {
                 blockUpdate.getFacilityId(),
                 blockUpdate.getTenantId()
         );
+        log.info("{} Rows updated for facility {} and tenant {}", updatedRows, blockUpdate.getFacilityId(), blockUpdate.getTenantId());
         if (updatedRows == 0) {
             log.warn("No rows updated for facility {} and tenant {}", blockUpdate.getFacilityId(), blockUpdate.getTenantId());
             return null;
@@ -1125,45 +1126,49 @@ public class FacilityService {
     }
 
     private void cleanupOldFacilityBoundaryIfUnused(String oldFacilityBoundaryCode, String tenantId, RequestInfo requestInfo) {
-        if (oldFacilityBoundaryCode == null || oldFacilityBoundaryCode.isBlank()) {
-            return;
-        }
-        Integer usageCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM facility WHERE tenant_id = ? AND boundary_code = ?",
-                Integer.class,
-                tenantId,
-                oldFacilityBoundaryCode
-        );
-        if (usageCount != null && usageCount > 0) {
-            log.info("Skipping old facility boundary cleanup for code {} because {} facilities still reference it",
-                    oldFacilityBoundaryCode, usageCount);
-            return;
-        }
+        try {
+            if (oldFacilityBoundaryCode == null || oldFacilityBoundaryCode.isBlank()) {
+                return;
+            }
+            Integer usageCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM facility WHERE tenant_id = ? AND boundary_code = ?",
+                    Integer.class,
+                    tenantId,
+                    oldFacilityBoundaryCode
+            );
+            if (usageCount != null && usageCount > 0) {
+                log.info("Skipping old facility boundary cleanup for code {} because {} facilities still reference it",
+                        oldFacilityBoundaryCode, usageCount);
+                return;
+            }
 
-        log.info("No facilities reference old boundary code {}. Deleting relationship and boundary entity", oldFacilityBoundaryCode);
-        BoundaryRelationshipRequest deleteRelationshipRequest = BoundaryRelationshipRequest.builder()
-                .requestInfo(requestInfo)
-                .boundaryRelationship(
-                        BoundaryRelation.builder()
-                                .tenantId(tenantId)
-                                .hierarchyType("SELCO")
-                                .boundaryType("Facility")
-                                .code(oldFacilityBoundaryCode)
-                                .build()
-                )
-                .build();
-        boundaryService.deleteBoundaryRelationship(deleteRelationshipRequest);
+            log.info("No facilities reference old boundary code {}. Deleting relationship and boundary entity", oldFacilityBoundaryCode);
+            BoundaryRelationshipRequest deleteRelationshipRequest = BoundaryRelationshipRequest.builder()
+                    .requestInfo(requestInfo)
+                    .boundaryRelationship(
+                            BoundaryRelation.builder()
+                                    .tenantId(tenantId)
+                                    .hierarchyType("SELCO")
+                                    .boundaryType("Facility")
+                                    .code(oldFacilityBoundaryCode)
+                                    .build()
+                    )
+                    .build();
+            boundaryService.deleteBoundaryRelationship(deleteRelationshipRequest);
 
-        BoundaryCreateRequest deleteBoundaryRequest = BoundaryCreateRequest.builder()
-                .requestInfo(requestInfo)
-                .boundary(List.of(
-                        Boundary.builder()
-                                .tenantId(tenantId)
-                                .code(oldFacilityBoundaryCode)
-                                .build()
-                ))
-                .build();
-        boundaryService.deleteBoundaries(deleteBoundaryRequest);
+            BoundaryCreateRequest deleteBoundaryRequest = BoundaryCreateRequest.builder()
+                    .requestInfo(requestInfo)
+                    .boundary(List.of(
+                            Boundary.builder()
+                                    .tenantId(tenantId)
+                                    .code(oldFacilityBoundaryCode)
+                                    .build()
+                    ))
+                    .build();
+            boundaryService.deleteBoundaries(deleteBoundaryRequest);
+        } catch (Exception e) {
+            log.info("Skipping old boundary cleanup for code {} due to exception: {}", oldFacilityBoundaryCode, e.getMessage(), e);
+        }
     }
 
     /**
