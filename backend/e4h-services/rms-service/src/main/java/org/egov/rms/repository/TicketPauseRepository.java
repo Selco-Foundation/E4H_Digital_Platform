@@ -58,11 +58,11 @@ public class TicketPauseRepository {
         );
     }
 
-    public int deactivatePause(String facilityId) {
-        log.debug("Deactivating pause record: facilityId={}", facilityId);
+    public int deactivatePause(String facilityId, Instant pausedUntilSnapshot) {
+        log.debug("Deactivating pause record: facilityId={}, pausedUntilSnapshot={}", facilityId, pausedUntilSnapshot);
         String sql = "UPDATE rms_ticket_pause_config SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP " +
-                "WHERE facility_id = ? AND is_active = TRUE";
-        return jdbcTemplate.update(sql, facilityId);
+                "WHERE facility_id = ? AND paused_until = ? AND is_active = TRUE";
+        return jdbcTemplate.update(sql, facilityId, Timestamp.from(pausedUntilSnapshot));
     }
 
     public Optional<TicketPauseRecord> findActivePauseByFacility(String facilityId, Instant now) {

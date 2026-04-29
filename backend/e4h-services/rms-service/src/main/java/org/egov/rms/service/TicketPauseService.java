@@ -38,6 +38,10 @@ public class TicketPauseService {
     private final TicketPauseAuditEventPublisher ticketPauseAuditEventPublisher;
 
     public TicketPauseResponse managePause(TicketPauseManageRequest request) {
+        if (!isPauseEnabled()) {
+            log.warn("Ticket pause manage requested while feature is disabled; ignoring request");
+            throw new IllegalArgumentException("RMS ticket pause feature is disabled");
+        }
         if (request == null || request.getTicketPause() == null || request.getTicketPause().getAction() == null) {
             throw new IllegalArgumentException("action is required");
         }
@@ -67,8 +71,10 @@ public class TicketPauseService {
                 );
             }
 
-            int updated = ticketPauseRepository.deactivatePause(facilityId);
-            log.info("Ticket resume processed: facilityId={}, updatedRows={}", facilityId, updated);
+            TicketPauseRepository.TicketPauseRecord record = existingPause.get();
+            int updated = ticketPauseRepository.deactivatePause(facilityId, record.getPausedUntil());
+            log.info("Ticket resume processed: facilityId={}, updatedRows={}, pausedUntilSnapshot={}",
+                    facilityId, updated, record.getPausedUntil());
             publishPauseAuditSafely(
                     request.getRequestInfo(),
                     TicketPauseManageRequest.Action.RESUME,
@@ -95,6 +101,22 @@ public class TicketPauseService {
     }
 
     public TicketPauseResponse getPauseState(TicketPauseSearchRequest request) {
+        if (!isPauseEnabled()) {
+            log.warn("Ticket pause search requested while feature is disabled; treating as not paused");
+            if (request != null && request.getTicketPause() != null
+                    && StringUtils.hasText(request.getTicketPause().getFacilityId())) {
+                String facilityId = request.getTicketPause().getFacilityId().trim();
+                return TicketPauseResponse.success(
+                        facilityId,
+                        false,
+                        null,
+                        0L,
+                        null,
+                        "Facility is not paused"
+                );
+            }
+            throw new IllegalArgumentException("RMS ticket pause feature is disabled");
+        }
         if (request == null || request.getTicketPause() == null) {
             throw new IllegalArgumentException("request is required");
         }
