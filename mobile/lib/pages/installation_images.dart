@@ -243,20 +243,6 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
     InstallationImageItem requirement,
     List<File> files,
   ) {
-    final previousFiles =
-        _selectedImagesByRequirement[requirement.code] ?? const <File>[];
-
-    if (files.length > requirement.requiredCount) {
-      setState(() {
-        _sectionMessages[requirement.code] =
-            'Maximum of ${requirement.requiredCount} '
-            '${requirement.requiredCount == 1 ? 'image' : 'images'} reached';
-        _selectedImagesByRequirement[requirement.code] =
-            List<File>.from(previousFiles);
-      });
-      return;
-    }
-
     setState(() {
       _sectionMessages.remove(requirement.code);
       _selectedImagesByRequirement[requirement.code] = List<File>.from(files);

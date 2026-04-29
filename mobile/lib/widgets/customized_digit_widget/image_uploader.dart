@@ -78,8 +78,8 @@ class _ImageUploaderState extends State<ImageUploader>
   late bool isTab;
   String? capitalizedErrorMessage;
   String fileError = '';
-  String? _lastRecoveredPath;
-  String? _lastDeliveredPath;
+  final Set<String> _recoveredPaths = <String>{};
+  final Set<String> _lastDeliveredPaths = <String>{};
 
   final ImagePicker _picker = ImagePicker();
   _PickerSessionPhase _pickerPhase = _PickerSessionPhase.idle;
@@ -152,6 +152,12 @@ class _ImageUploaderState extends State<ImageUploader>
     return limit != null && _imageFiles.length >= limit;
   }
 
+  int? get _remainingImageSlots {
+    final limit = widget.maxImages;
+    if (limit == null) return null;
+    return limit - _imageFiles.length;
+  }
+
   bool get _shouldShowUploadControl {
     if (widget.isDisabled) return false;
     if (!widget.allowMultiples && _imageFiles.isNotEmpty) return false;
@@ -189,6 +195,8 @@ class _ImageUploaderState extends State<ImageUploader>
     _activeSessionToken = sessionToken;
     _activeSource = source;
     _recoveryAttemptedSinceResume = false;
+    _recoveredPaths.clear();
+    _lastDeliveredPaths.clear();
     setState(() {
       fileError = '';
       _pickerPhase = _PickerSessionPhase.launching;
@@ -304,6 +312,32 @@ class _ImageUploaderState extends State<ImageUploader>
         _pickerPhase = _PickerSessionPhase.awaitingResult;
       });
 
+      if (source == ImageSource.gallery && widget.allowMultiples) {
+        final pickedFiles = await _picker.pickMultiImage(
+          imageQuality: widget.imageQuality,
+          maxWidth: widget.maxWidth,
+          maxHeight: widget.maxHeight,
+          requestFullMetadata: widget.requestFullMetadata,
+        );
+
+        if (!mounted || _activeSessionToken != sessionToken) return;
+
+        if (pickedFiles.isEmpty) {
+          if (kDebugMode) {
+            AppLogger.instance.info('No images selected.');
+          }
+          _completeSession(sessionToken);
+          return;
+        }
+
+        await _processPickedFiles(
+          pickedFiles,
+          sessionToken: sessionToken,
+          fromRecovery: false,
+        );
+        return;
+      }
+
       final pickedFile = await _picker.pickImage(
         source: source,
         imageQuality: widget.imageQuality,
@@ -322,8 +356,8 @@ class _ImageUploaderState extends State<ImageUploader>
         return;
       }
 
-      await _processPickedFile(
-        pickedFile,
+      await _processPickedFiles(
+        <XFile>[pickedFile],
         sessionToken: sessionToken,
         fromRecovery: false,
       );
@@ -356,8 +390,9 @@ class _ImageUploaderState extends State<ImageUploader>
   Future<void> _handleImageCapture(File image) async {
     if (!mounted) return;
     final sessionToken = _activeSessionToken;
+    final int imagesBeforeSelection = _imageFiles.length;
     setState(() {
-      fileError = '';
+      fileError = _buildOverflowMessage(imagesBeforeSelection, 1);
       if (widget.allowMultiples) {
         _imageFiles.add(image);
       } else {
@@ -372,15 +407,19 @@ class _ImageUploaderState extends State<ImageUploader>
     }
   }
 
-  Future<void> _processPickedFile(
+  Future<({File? file, bool shouldAbort})> _preparePickedFile(
     XFile pickedFile, {
     required int sessionToken,
     required bool fromRecovery,
   }) async {
-    if (!mounted || _activeSessionToken != sessionToken) return;
+    if (!mounted || _activeSessionToken != sessionToken) {
+      return (file: null, shouldAbort: true);
+    }
 
     final normalizedFile = await _normalizeImageFile(File(pickedFile.path));
-    if (!mounted || _activeSessionToken != sessionToken) return;
+    if (!mounted || _activeSessionToken != sessionToken) {
+      return (file: null, shouldAbort: true);
+    }
 
     final normalizedXFile = XFile(
       normalizedFile.path,
@@ -395,41 +434,96 @@ class _ImageUploaderState extends State<ImageUploader>
         setState(() {
           fileError = validationError;
         });
-        _completeSession(sessionToken);
-        return;
+        return (file: null, shouldAbort: true);
       }
     }
 
-    if (fromRecovery && _lastRecoveredPath == normalizedFile.path) {
+    if (fromRecovery && _recoveredPaths.contains(normalizedFile.path)) {
       AppLogger.instance.info(
         'ImageUploader suppress duplicate recovery path=${normalizedFile.path} session=$sessionToken',
       );
-      _completeSession(sessionToken);
-      return;
+      return (file: null, shouldAbort: false);
     }
 
-    if (_lastDeliveredPath == normalizedFile.path &&
-        _lastCompletedSessionToken == sessionToken) {
+    if (_lastCompletedSessionToken == sessionToken &&
+        _lastDeliveredPaths.contains(normalizedFile.path)) {
       AppLogger.instance.info(
         'ImageUploader suppress duplicate dispatch path=${normalizedFile.path} session=$sessionToken',
       );
+      return (file: null, shouldAbort: false);
+    }
+
+    if (fromRecovery) {
+      _recoveredPaths.add(normalizedFile.path);
+    }
+
+    return (file: normalizedFile, shouldAbort: false);
+  }
+
+  String _buildOverflowMessage(int existingCount, int selectedCount) {
+    if (!widget.allowMultiples) return '';
+    final limit = widget.maxImages;
+    if (limit == null) return '';
+
+    final remainingSlots = limit - existingCount;
+    if (remainingSlots <= 0) {
+      return 'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached';
+    }
+    if (selectedCount <= remainingSlots) return '';
+    return 'Only $remainingSlots more '
+        '${remainingSlots == 1 ? 'image can' : 'images can'} be added';
+  }
+
+  Future<void> _processPickedFiles(
+    List<XFile> pickedFiles, {
+    required int sessionToken,
+    required bool fromRecovery,
+  }) async {
+    if (!mounted || _activeSessionToken != sessionToken) return;
+
+    final List<File> nextFiles = <File>[];
+    final int imagesBeforeSelection = _imageFiles.length;
+    final overflowMessage = _buildOverflowMessage(
+      imagesBeforeSelection,
+      pickedFiles.length,
+    );
+    final remainingSlots = widget.allowMultiples ? _remainingImageSlots : null;
+    final cappedFiles = widget.allowMultiples && remainingSlots != null
+        ? pickedFiles.take(remainingSlots).toList()
+        : pickedFiles;
+
+    for (final pickedFile in cappedFiles) {
+      final preparedResult = await _preparePickedFile(
+        pickedFile,
+        sessionToken: sessionToken,
+        fromRecovery: fromRecovery,
+      );
+      if (!mounted || _activeSessionToken != sessionToken) return;
+      if (preparedResult.shouldAbort) {
+        _completeSession(sessionToken);
+        return;
+      }
+      if (preparedResult.file != null) {
+        nextFiles.add(preparedResult.file!);
+      }
+    }
+
+    if (nextFiles.isEmpty) {
       _completeSession(sessionToken);
       return;
     }
 
     setState(() {
-      fileError = '';
+      fileError = overflowMessage;
       if (widget.allowMultiples) {
-        _imageFiles.add(normalizedFile);
+        _imageFiles.addAll(nextFiles);
       } else {
         _imageFiles
           ..clear()
-          ..add(normalizedFile);
+          ..addAll(nextFiles);
       }
     });
-    _lastRecoveredPath =
-        fromRecovery ? normalizedFile.path : _lastRecoveredPath;
-    _lastDeliveredPath = normalizedFile.path;
+    _lastDeliveredPaths.addAll(nextFiles.map((file) => file.path));
     AppLogger.instance.info(
       'ImageUploader dispatch source=${_activeSource?.name ?? 'unknown'} recovery=$fromRecovery session=$sessionToken',
     );
@@ -478,8 +572,13 @@ class _ImageUploaderState extends State<ImageUploader>
         return;
       }
 
-      final x = response.file;
-      if (x == null) {
+      final recoveredFiles =
+          (response.files != null && response.files!.isNotEmpty)
+          ? response.files!
+          : response.file != null
+              ? <XFile>[response.file!]
+              : const <XFile>[];
+      if (recoveredFiles.isEmpty) {
         if (response.exception != null) {
           AppLogger.instance
               .info('retrieveLostData exception: ${response.exception}');
@@ -493,8 +592,8 @@ class _ImageUploaderState extends State<ImageUploader>
         return;
       }
 
-      await _processPickedFile(
-        x,
+      await _processPickedFiles(
+        recoveredFiles,
         sessionToken: sessionToken,
         fromRecovery: true,
       );
