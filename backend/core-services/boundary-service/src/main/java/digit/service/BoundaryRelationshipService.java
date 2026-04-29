@@ -6,6 +6,7 @@ import digit.service.enrichment.BoundaryRelationshipEnricher;
 import digit.service.validator.BoundaryRelationshipValidator;
 import digit.util.HierarchyUtil;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.utils.ResponseInfoUtil;
 import org.egov.tracer.model.CustomException;
@@ -16,6 +17,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class BoundaryRelationshipService {
 
     private BoundaryRelationshipValidator boundaryRelationshipValidator;
