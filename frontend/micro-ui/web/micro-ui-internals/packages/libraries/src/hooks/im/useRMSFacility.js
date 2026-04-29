@@ -32,8 +32,20 @@ const useRMSPausedFacility = (queryFilter, limit = 10, offset = 0) => {
     country: ["-"],
   };
 
-  Object.keys(jurisdictionCurrentBoundary).forEach((key) => {
-    filter.Facility[key] = [...(queryFilter?.filter?.[key] || []), ...jurisdictionCurrentBoundary[key]];
+  const boundaryFieldsMap = {
+    state: "state",
+    district: "district",
+    block: "block",
+    facility: "boundaryCodes",
+  };
+
+  Object.keys(boundaryFieldsMap).forEach((key) => {
+    const filterBoundaries = queryFilter?.filters?.[key]?.map((entity) => entity.code) || [];
+    const jurisdictionBoundaries = jurisdictionCurrentBoundary[key] || [];
+    const filterValues = [...new Set([...filterBoundaries, ...jurisdictionBoundaries])];
+    if (filterValues.length) {
+      filter.Facility[boundaryFieldsMap[key]] = filterValues;
+    }
   })
 
   const queryClient = useQueryClient();

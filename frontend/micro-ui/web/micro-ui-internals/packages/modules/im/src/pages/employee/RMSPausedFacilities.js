@@ -80,7 +80,7 @@ const RMSPausedFacilities = () => {
     ...(selectedFilters?.district?.length ? { district: selectedFilters.district.map((item) => item.code).join(",") } : {}),
     ...(selectedFilters?.block?.length ? { block: selectedFilters.block.map((item) => item.code).join(",") } : {}),
   };
-  const { data: pausedFacilitiesData, isLoading } = Digit.Hooks.im.useRMSPausedFacility(queryFilter, pageSize, pageOffset);
+  const { data: pausedFacilitiesData, isLoading } = Digit.Hooks.im.useRMSPausedFacility(searchParams, pageSize, pageOffset);
 
   useEffect(() => {
     if (pausedFacilitiesData !== undefined) {
