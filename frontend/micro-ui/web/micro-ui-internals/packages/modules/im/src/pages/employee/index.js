@@ -91,7 +91,7 @@ const Complaint = () => {
         )}
         <Switch>
           <Route path={match.url + Employee.CreateComplaint} component={() => <CreateComplaint parentUrl={match.url} />} />
-          <Route path={match.url + Employee.PauseRMS} component={() => <PauseRMS />} />
+          <Route path={match.url + Employee.PauseRMS} component={() => <PauseRMS parentUrl={match.url} />} />
           <Route path={match.url + Employee.PausedRMSFacilities} component={() => <RMSPausedFacilities />} />
           <Route path={match.url + Employee.ComplaintFeedback + ":incidentId/:tenantId"} component={() => <ComplaintFeedback parentRoute={match.url} />} />
           <Route path={match.url + Employee.ComplaintDetails + ":incidentId/:tenantId"} component={() => <ComplaintDetails />} />

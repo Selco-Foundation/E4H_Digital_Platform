@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Dropdown, Loader, Toast } from "@selco/digit-ui-react-components";
+import { Dropdown, Loader, TextInput, Toast } from "@selco/digit-ui-react-components";
 import { useHistory } from "react-router-dom";
 import { FormComposer } from "../../components/FormComposer";
 import {useQueryClient} from "react-query";
@@ -8,8 +8,18 @@ import {useDispatch} from "react-redux";
 import {populatePauseRMSResponse} from "../../redux/actions/complaint";
 import CommonUtils from "../../utilities/CommonUtils";
 
+const formatDate = (timestamp) => {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  const month = String(date.getMonth() + 1).padStart(2, "0"); // months are 0-based
+  const day = String(date.getDate()).padStart(2, "0");
+  const year = date.getFullYear();
+  return `${year}-${month}-${day}`;
+};
+
 export const PauseRMS = ({ parentUrl }) => {
   const { t } = useTranslation();
+  const tenantId = Digit.ULBService.getCurrentTenantId();
   const [healthcentre, setHealthCentre] = useState();
   const [districtMenu, setDistrictMenu] = useState([]);
   const [sortedDistrictMenu, setSortedDistrictMenu] = useState([]);
@@ -37,6 +47,8 @@ export const PauseRMS = ({ parentUrl }) => {
   const { facilityId } = Digit.Hooks.useQueryParams();
   const client = useQueryClient();
   const dispatch = useDispatch();
+  const [savedReason, setSavedReason] = useState("");
+  const [savedDuration, setSavedDuration] = useState("");
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
   const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
@@ -86,6 +98,7 @@ export const PauseRMS = ({ parentUrl }) => {
           code: facility.boundaryCode,
           id: facility.facilityId,
           status: facility.facilityStatus,
+          facilityName: facility.facilityName,
           parentCode: facilityBoundaryCodeToParentMap.get(facility.boundaryCode),
         }))
       );
@@ -202,10 +215,17 @@ export const PauseRMS = ({ parentUrl }) => {
       if (healthcentre?.code) {
         setBlockUI(true);
         try {
-          const data = await Digit.RMSService.fetchFacilityStatus({FaclitySearch: { facilityId: healthcentre?.id }});
+          const data = await Digit.RMSService.fetchFacilityStatus({
+            FacilitySearch: {
+              tenantId,
+              facilityId: healthcentre?.id
+            }
+          });
 
           if (data?.isPaused) {
             setIsPausedFacility(true);
+            setSavedReason(data?.reason || "");
+            setSavedDuration(data?.pausedUntil ? formatDate(data.pausedUntil * 1000) : "");
           }
         } catch (error) {
           console.error("Error fetching facility status:", error);
@@ -243,9 +263,13 @@ export const PauseRMS = ({ parentUrl }) => {
     if (!canSubmit) return;
     const formData = {
       ...data,
-      pausedUntil: data?.duration,
+      tenantId,
+      reason: savedReason,
+      pausedUntil: `${savedDuration}T23:59:59Z`,
       action,
       facilityId: healthcentre?.id,
+      facilityName: healthcentre?.facilityName,
+      boundaryCode: healthcentre?.code,
     };
     setBlockUI(true);
 
@@ -363,29 +387,41 @@ export const PauseRMS = ({ parentUrl }) => {
       body: [
         {
           label: t("RMS_PAUSE_DURATION"),
-          type: "date",
-          isMandatory: false,
-          populators: {
-            name: "duration",
-            validation: {
-              minLength: 0,
-              maxLength: 256,
-            },
-            error: t("CS_LENGTH_EXCEED"),
-          },
+          type: "custom",
+          isMandatory: true,
+          populators: (
+            <TextInput
+              type={"date"}
+              className="field desktop-w-full"
+              value={savedDuration}
+              onChange={(e) => setSavedDuration(e.target.value)}
+              validation={{
+                minLength: 0,
+                maxLength: 256,
+              }}
+              error={t("CS_LENGTH_EXCEED")}
+              required={true}
+            />
+          ),
         },
         {
           label: t("RMS_PAUSE_REASON"),
-          type: "text",
+          type: "custom",
           isMandatory: false,
-          populators: {
-            name: "reason",
-            validation: {
-              minLength: 0,
-              maxLength: 256,
-            },
-            error: t("CS_LENGTH_EXCEED"),
-          },
+          populators: (
+            <TextInput
+              type={"text"}
+              className="field desktop-w-full"
+              value={savedReason}
+              onChange={(e) => setSavedReason(e.target.value)}
+              validation={{
+                minLength: 0,
+                maxLength: 256,
+              }}
+              error={t("CS_LENGTH_EXCEED")}
+              required={true}
+            />
+          ),
         },
       ],
     },
