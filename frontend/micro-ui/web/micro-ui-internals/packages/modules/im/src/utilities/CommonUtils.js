@@ -42,7 +42,37 @@ const getApiErrorMessage = (e) => {
     : (e?.message ? e.message : "");
 };
 
+const formatUTCDate = (timestamp, format = "YYYY-MM-DD") => {
+  if (!timestamp) return "";
+
+  const ts = String(timestamp).length === 10 ? timestamp * 1000 : timestamp;
+
+  const date = new Date(ts);
+
+  const monthsShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthsLong = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const daysShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const daysLong = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  const map = {
+    YYYY: date.getUTCFullYear(),
+    MM: String(date.getUTCMonth() + 1).padStart(2, "0"),
+    DD: String(date.getUTCDate()).padStart(2, "0"),
+    HH: String(date.getUTCHours()).padStart(2, "0"),
+    mm: String(date.getUTCMinutes()).padStart(2, "0"),
+    ss: String(date.getUTCSeconds()).padStart(2, "0"),
+
+    MMM: monthsShort[date.getUTCMonth()],
+    MMMM: monthsLong[date.getUTCMonth()],
+    ddd: daysShort[date.getUTCDay()],
+    dddd: daysLong[date.getUTCDay()],
+  };
+
+  return format.replace(/MMMM|MMM|YYYY|MM|DD|HH|mm|ss|dddd|ddd/g, (token) => map[token]);
+};
+
 export default {
   isNotEqual,
   getApiErrorMessage,
-}
+  formatUTCDate,
+};

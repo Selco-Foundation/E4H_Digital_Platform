@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import RMSPausedFilter from "./rmsPaused/Filter";
 import RMSPausedTable from "./rmsPaused/Table";
 import RMSFacilitiesLink from "./rmsPaused/FacilitiesLink";
+import CommonUtils from "../utilities/CommonUtils";
 
 const RMSPausedDesktop = ({
   data,
@@ -36,7 +37,7 @@ const RMSPausedDesktop = ({
               to={`/${window.contextPath}/employee/im/pause-rms?facilityId=${encodeURIComponent(row.original.facilityId)}`}
               style={{ color: "#7a2829" }}
             >
-              {row.original.facilityName || "-"}
+              {getBoundaryLabel(row.original.boundaryCode) || "-"}
             </Link>
           </span>
         ),
@@ -46,12 +47,8 @@ const RMSPausedDesktop = ({
         Cell: ({ row }) => <span className="cell-text">{row.original.facilityId || "-"}</span>,
       },
       {
-        Header: t("RMS_FACILITY_BOUNDARY"),
-        Cell: ({ row }) => <span className="cell-text">{getBoundaryLabel(row.original.boundaryCode)}</span>,
-      },
-      {
         Header: t("RMS_PAUSED_UNTIL"),
-        Cell: ({ row }) => <span className="cell-text">{row.original.pausedUntil || "-"}</span>,
+        Cell: ({ row }) => <span className="cell-text">{row.original.pausedUntil ? CommonUtils.formatUTCDate(row.original.pausedUntil * 1000, "DD/MM/YYYY") : "-"}</span>,
       },
       {
         Header: t("RMS_PAUSED_BY"),

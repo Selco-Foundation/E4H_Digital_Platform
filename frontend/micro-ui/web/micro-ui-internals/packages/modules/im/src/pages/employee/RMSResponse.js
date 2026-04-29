@@ -11,7 +11,8 @@ const BannerPicker = ({ response }) => {
     return (
       <Banner
         message={response.message}
-        complaintNumber={response.facilityId}
+        applicationNumber={response.facilityId}
+        info={response.info}
         successful={true}
       />
     );

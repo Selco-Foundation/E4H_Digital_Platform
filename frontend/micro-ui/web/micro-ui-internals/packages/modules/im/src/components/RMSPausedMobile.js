@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import RMSPausedFilter from "./rmsPaused/Filter";
 import RMSFacilitiesLink from "./rmsPaused/FacilitiesLink";
+import CommonUtils from "../utilities/CommonUtils";
 
 const RMSPausedMobile = ({ data, isLoading, onFilterChange, searchParams, onNextPage, onPrevPage, currentPage, pageSizeLimit, totalRecords }) => {
   const { t } = useTranslation();
@@ -42,12 +43,11 @@ const RMSPausedMobile = ({ data, isLoading, onFilterChange, searchParams, onNext
                     to={`/${window.contextPath}/employee/im/pause-rms?facilityId=${encodeURIComponent(item.facilityId)}`}
                     style={{ color: "#7a2829" }}
                   >
-                    {item.facilityName || "-"}
+                    {getBoundaryLabel(item.boundaryCode) || "-"}
                   </Link>
                 </div>
                 <div><b>{t("RMS_FACILITY_ID")}:</b> {item.facilityId || "-"}</div>
-                <div><b>{t("RMS_FACILITY_BOUNDARY")}:</b> {getBoundaryLabel(item.boundaryCode)}</div>
-                <div><b>{t("RMS_PAUSED_UNTIL")}:</b> {item.pausedUntil || "-"}</div>
+                <div><b>{t("RMS_PAUSED_UNTIL")}:</b> {item.pausedUntil ? CommonUtils.formatUTCDate(item.pausedUntil * 1000, "DD/MM/YYYY") : "-"}</div>
                 <div><b>{t("RMS_PAUSED_BY")}:</b> {item.pausedBy || "-"}</div>
               </Card>
             ))}

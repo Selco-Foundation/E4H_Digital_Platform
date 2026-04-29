@@ -8,15 +8,6 @@ import {useDispatch} from "react-redux";
 import {populatePauseRMSResponse} from "../../redux/actions/complaint";
 import CommonUtils from "../../utilities/CommonUtils";
 
-const formatDate = (timestamp) => {
-  if (!timestamp) return "";
-  const date = new Date(timestamp);
-  const month = String(date.getMonth() + 1).padStart(2, "0"); // months are 0-based
-  const day = String(date.getDate()).padStart(2, "0");
-  const year = date.getFullYear();
-  return `${year}-${month}-${day}`;
-};
-
 export const PauseRMS = ({ parentUrl }) => {
   const { t } = useTranslation();
   const tenantId = Digit.ULBService.getCurrentTenantId();
@@ -225,7 +216,7 @@ export const PauseRMS = ({ parentUrl }) => {
           if (data?.isPaused) {
             setIsPausedFacility(true);
             setSavedReason(data?.reason || "");
-            setSavedDuration(data?.pausedUntil ? formatDate(data.pausedUntil * 1000) : "");
+            setSavedDuration(data?.pausedUntil ? CommonUtils.formatUTCDate(data.pausedUntil * 1000) : "");
           }
         } catch (error) {
           console.error("Error fetching facility status:", error);
@@ -247,6 +238,7 @@ export const PauseRMS = ({ parentUrl }) => {
   async function selectedHealthCentre(value) {
     setHealthCentre(value);
   }
+
   const handleBlockChange = (selectedBlock) => {
     setHealthCentre({});
     setBlock(selectedBlock);
@@ -280,9 +272,10 @@ export const PauseRMS = ({ parentUrl }) => {
       dispatch(
         populatePauseRMSResponse({
           success: true,
-          message: t("PAUSE_RMS_SUCCESS_MESSAGE"),
-          cardText: t("PAUSE_RMS_CARD_TEXT"),
+          message: action === "PAUSE" ? (isPausedFacility ? t("MODIFY_PAUSE_RMS_SUCCESS_MESSAGE") : t("PAUSE_RMS_SUCCESS_MESSAGE")) : t("RESUME_RMS_SUCCESS_MESSAGE"),
+          cardText: action === "PAUSE" ? (isPausedFacility ? t("MODIFY_PAUSE_RMS_CARD_TEXT") : t("PAUSE_RMS_CARD_TEXT")) : t("RESUME_RMS_CARD_TEXT"),
           facilityId: healthcentre?.id,
+          info: t("RMS_FACILITY_ID")
         })
       );
 
@@ -478,8 +471,8 @@ export const PauseRMS = ({ parentUrl }) => {
         config={config}
         onSubmit={(data) => wrapperSubmit(data, "PAUSE")}
         isDisabled={!canSubmit}
-        label={isPausedFacility ? t("MODIFY") : t("DISABLE")}
-        secondaryActionLabel={isPausedFacility ? t("ACTIVATE") : ""}
+        label={isPausedFacility ? t("CS_ACTION_MODIFY") : t("CS_ACTION_DISABLE")}
+        secondaryActionLabel={isPausedFacility ? t("CS_ACTION_ACTIVATE") : ""}
         onSecondaryActionClick={isPausedFacility ? () => resumeFacility() : null}
         actionBarClassName={"reverse-actionbar"}
       />
