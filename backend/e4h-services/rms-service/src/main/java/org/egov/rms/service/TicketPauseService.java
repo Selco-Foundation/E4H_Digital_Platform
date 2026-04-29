@@ -53,6 +53,7 @@ public class TicketPauseService {
             String facilityId = payload.getFacilityId().trim();
             Optional<TicketPauseRepository.TicketPauseRecord> existingPause =
                     ticketPauseRepository.findActivePauseByFacility(facilityId, Instant.now());
+            String tenantId = extractTenantId(request.getRequestInfo(), payload.getTenantId());
             String requestedBy = extractRequestedBy(request.getRequestInfo());
             if (!existingPause.isPresent()) {
                 log.info("Ticket resume skipped: no active pause found for facilityId={}", facilityId);
@@ -78,6 +79,7 @@ public class TicketPauseService {
                     normalize(payload.getReason()),
                     requestedBy,
                     false,
+                    tenantId,
                     existingPause
             );
             return TicketPauseResponse.success(
@@ -190,6 +192,7 @@ public class TicketPauseService {
         }
 
         String facilityId = payload.getFacilityId().trim();
+        String tenantId = extractTenantId(requestInfo, payload.getTenantId());
         String requestedBy = extractRequestedBy(requestInfo);
         String normalizedFacilityName = normalize(payload.getFacilityName());
         String normalizedBoundaryCode = normalize(payload.getBoundaryCode());
@@ -200,7 +203,8 @@ public class TicketPauseService {
                 normalizedBoundaryCode,
                 pausedUntil,
                 normalizedReason,
-                requestedBy
+                requestedBy,
+                tenantId
         );
         log.info("Ticket pause applied: facilityId={}, pausedUntil={}, requestedBy={}", facilityId, pausedUntil, requestedBy);
         publishPauseAuditSafely(
@@ -213,6 +217,7 @@ public class TicketPauseService {
                 normalizedReason,
                 requestedBy,
                 true,
+                tenantId,
                 Optional.empty()
         );
         return TicketPauseResponse.success(
@@ -225,6 +230,18 @@ public class TicketPauseService {
         );
     }
 
+    private String extractTenantId(RequestInfo requestInfo, String payloadTenantId) {
+        if (StringUtils.hasText(payloadTenantId)) {
+            return payloadTenantId.trim();
+        }
+        if (requestInfo != null
+                && requestInfo.getUserInfo() != null
+                && StringUtils.hasText(requestInfo.getUserInfo().getTenantId())) {
+            return requestInfo.getUserInfo().getTenantId().trim();
+        }
+        return config.getDefaultTenantId();
+    }
+
     private void publishPauseAuditSafely(
             RequestInfo requestInfo,
             TicketPauseManageRequest.Action action,
@@ -235,6 +252,7 @@ public class TicketPauseService {
             String reason,
             String requestedBy,
             boolean isPaused,
+            String tenantIdOverride,
             Optional<TicketPauseRepository.TicketPauseRecord> existingPause
     ) {
         try {
@@ -250,7 +268,8 @@ public class TicketPauseService {
                     pausedUntil,
                     StringUtils.hasText(reason) ? reason : fallbackReason,
                     requestedBy,
-                    isPaused
+                    isPaused,
+                    tenantIdOverride
             );
         } catch (Exception e) {
             log.error("Failed to publish pause audit event for facilityId={}", facilityId, e);

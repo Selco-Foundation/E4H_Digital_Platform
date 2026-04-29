@@ -31,17 +31,19 @@ public class TicketPauseRepository {
     }
 
     public void upsertPause(String facilityId, String facilityName, String boundaryCode,
-                            Instant pausedUntil, String reason, String requestedBy) {
-        log.debug("Upserting pause record: facilityId={}, boundaryCode={}, pausedUntil={}", facilityId, boundaryCode, pausedUntil);
+                            Instant pausedUntil, String reason, String requestedBy, String tenantId) {
+        log.debug("Upserting pause record: facilityId={}, boundaryCode={}, pausedUntil={}, tenantId={}",
+                facilityId, boundaryCode, pausedUntil, tenantId);
         String sql = "INSERT INTO rms_ticket_pause_config " +
-                "(id, facility_id, facility_name, boundary_code, paused_until, reason, requested_by, is_active, created_at, updated_at) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) " +
+                "(id, facility_id, facility_name, boundary_code, paused_until, reason, requested_by, tenant_id, is_active, created_at, updated_at) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP) " +
                 "ON CONFLICT (facility_id) DO UPDATE SET " +
                 "facility_name = EXCLUDED.facility_name, " +
                 "boundary_code = EXCLUDED.boundary_code, " +
                 "paused_until = EXCLUDED.paused_until, " +
                 "reason = EXCLUDED.reason, " +
                 "requested_by = EXCLUDED.requested_by, " +
+                "tenant_id = EXCLUDED.tenant_id, " +
                 "is_active = TRUE, " +
                 "updated_at = CURRENT_TIMESTAMP";
         jdbcTemplate.update(sql,
@@ -51,7 +53,8 @@ public class TicketPauseRepository {
                 boundaryCode,
                 Timestamp.from(pausedUntil),
                 reason,
-                requestedBy
+                requestedBy,
+                tenantId
         );
     }
 

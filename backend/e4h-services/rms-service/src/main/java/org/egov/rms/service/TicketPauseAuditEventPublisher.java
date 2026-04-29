@@ -30,7 +30,8 @@ public class TicketPauseAuditEventPublisher {
             Instant pausedUntil,
             String reason,
             String requestedBy,
-            boolean isPaused
+            boolean isPaused,
+            String tenantIdOverride
     ) {
         String topic = config.getTicketPauseAuditTopicIndexer();
         if (!StringUtils.hasText(topic)) {
@@ -38,7 +39,9 @@ public class TicketPauseAuditEventPublisher {
             return;
         }
 
-        String tenantId = extractTenantId(requestInfo);
+        String tenantId = StringUtils.hasText(tenantIdOverride)
+                ? tenantIdOverride.trim()
+                : extractTenantId(requestInfo);
         long eventTime = Instant.now().toEpochMilli();
         Map<String, Object> event = new LinkedHashMap<>();
         event.put("eventId", buildDocumentId(facilityId));
