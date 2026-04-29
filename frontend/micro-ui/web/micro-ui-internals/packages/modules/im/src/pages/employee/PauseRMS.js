@@ -202,7 +202,7 @@ export const PauseRMS = ({ parentUrl }) => {
       if (healthcentre?.code) {
         setBlockUI(true);
         try {
-          const data = await Digit.RMSService.fetchFacilityStatus({ facilityId: healthcentre?.id });
+          const data = await Digit.RMSService.fetchFacilityStatus({FaclitySearch: { facilityId: healthcentre?.id }});
 
           if (data?.isPaused) {
             setIsPausedFacility(true);
@@ -250,7 +250,7 @@ export const PauseRMS = ({ parentUrl }) => {
     setBlockUI(true);
 
     try {
-      await Digit.RMSService.updateRMSTicketPause(formData);
+      await Digit.RMSService.updateRMSTicketPause({ PauseFacility: formData });
 
       setBlockUI(false);
       dispatch(
