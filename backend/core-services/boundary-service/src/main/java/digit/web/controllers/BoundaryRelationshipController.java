@@ -114,4 +114,18 @@ public class BoundaryRelationshipController {
         return new ResponseEntity<>(boundaryRelationshipResponse, HttpStatus.ACCEPTED);
     }
 
+    @RequestMapping(value = "/_delete", method = RequestMethod.POST)
+    public ResponseEntity<BoundaryRelationshipResponse> delete(@Valid @RequestBody BoundaryRelationshipRequest body) {
+        log.trace("delete method invoked");
+        log.info("Processing boundary relationship delete request, tenantId={}, hierarchyType={}, code={}",
+                body.getBoundaryRelationship() != null ? body.getBoundaryRelationship().getTenantId() : null,
+                body.getBoundaryRelationship() != null ? body.getBoundaryRelationship().getHierarchyType() : null,
+                body.getBoundaryRelationship() != null ? body.getBoundaryRelationship().getCode() : null);
+
+        BoundaryRelationshipResponse boundaryRelationshipResponse = boundaryRelationshipService.deleteBoundaryRelationship(body);
+
+        log.info("Boundary relationship delete request processed successfully");
+        return new ResponseEntity<>(boundaryRelationshipResponse, HttpStatus.OK);
+    }
+
 }
