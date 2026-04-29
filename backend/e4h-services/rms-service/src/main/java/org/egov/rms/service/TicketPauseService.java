@@ -187,12 +187,25 @@ public class TicketPauseService {
     }
 
     private List<String> extractBoundaryFilters(TicketPausedFacilityListRequest request) {
-        Set<String> merged = new LinkedHashSet<>();
-        merged.addAll(normalizeBoundaryCodes(request.getFacility().getState()));
-        merged.addAll(normalizeBoundaryCodes(request.getFacility().getDistrict()));
-        merged.addAll(normalizeBoundaryCodes(request.getFacility().getBlock()));
-        merged.addAll(normalizeBoundaryCodes(request.getFacility().getBoundaryCodes()));
-        return new ArrayList<>(merged);
+        // Use most-specific boundary level to avoid over-broad OR queries:
+        // boundaryCodes > block > district > state
+        List<String> boundaryCodes = normalizeBoundaryCodes(request.getFacility().getBoundaryCodes());
+        if (!boundaryCodes.isEmpty()) {
+            return new ArrayList<>(new LinkedHashSet<>(boundaryCodes));
+        }
+
+        List<String> blockCodes = normalizeBoundaryCodes(request.getFacility().getBlock());
+        if (!blockCodes.isEmpty()) {
+            return new ArrayList<>(new LinkedHashSet<>(blockCodes));
+        }
+
+        List<String> districtCodes = normalizeBoundaryCodes(request.getFacility().getDistrict());
+        if (!districtCodes.isEmpty()) {
+            return new ArrayList<>(new LinkedHashSet<>(districtCodes));
+        }
+
+        List<String> stateCodes = normalizeBoundaryCodes(request.getFacility().getState());
+        return new ArrayList<>(new LinkedHashSet<>(stateCodes));
     }
 
     public boolean isFacilityPaused(String facilityId, Instant now) {
