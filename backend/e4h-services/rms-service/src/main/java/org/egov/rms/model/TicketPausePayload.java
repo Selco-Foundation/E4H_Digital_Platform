@@ -17,6 +17,9 @@ public class TicketPausePayload {
     @JsonProperty("action")
     private TicketPauseManageRequest.Action action;
 
+    @JsonProperty("tenantId")
+    private String tenantId;
+
     @JsonProperty("facilityId")
     private String facilityId;
 

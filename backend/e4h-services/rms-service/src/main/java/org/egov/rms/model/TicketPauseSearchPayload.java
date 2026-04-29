@@ -14,4 +14,7 @@ public class TicketPauseSearchPayload {
 
     @JsonProperty("facilityId")
     private String facilityId;
+
+    @JsonProperty("tenantId")
+    private String tenantId;
 }
