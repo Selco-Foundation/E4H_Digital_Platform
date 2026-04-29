@@ -4,9 +4,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.rms.config.RMSConfiguration;
-import org.egov.rms.repository.ServiceRequestRepository;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,7 +28,7 @@ import java.util.Set;
 public class UserDirectoryService {
 
     private final RMSConfiguration config;
-    private final ServiceRequestRepository serviceRequestRepository;
+    private final RestTemplate restTemplate;
 
     public Map<String, String> getDisplayNamesByUuids(RequestInfo requestInfo, Set<String> uuids, String tenantId) {
         if (uuids == null || uuids.isEmpty()) {
@@ -50,7 +56,16 @@ public class UserDirectoryService {
                 request.put("tenantId", tenantId.trim());
             }
 
-            Object responseObj = serviceRequestRepository.postForObject(uri, request);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Object> entity = new HttpEntity<>(request, headers);
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    uri.toString(),
+                    HttpMethod.POST,
+                    entity,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            Object responseObj = response.getBody();
             if (!(responseObj instanceof Map<?, ?> responseMap)) {
                 return Collections.emptyMap();
             }
