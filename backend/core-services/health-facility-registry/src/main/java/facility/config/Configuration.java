@@ -120,4 +120,16 @@ public class Configuration {
 
     @Value("${egov.localization.upsert.path}")
     private String localizationUpsertPath;
+
+    /**
+     * Base URL for im-services (e.g. {@code http://localhost:8880}). When blank, incident boundary sync after facility block update is skipped.
+     */
+    @Value("${egov.im.services.host:}")
+    private String imServicesHost;
+
+    /**
+     * Path to POST incident boundary-by-facility update (under im-services context), e.g. {@code /im-services/v2/request/_update-boundary-by-facility}.
+     */
+    @Value("${egov.im.services.incident.boundary-by-facility.path:/im-services/v2/request/_update-boundary-by-facility}")
+    private String imIncidentBoundaryByFacilityUpdatePath;
 }

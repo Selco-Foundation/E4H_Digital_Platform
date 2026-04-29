@@ -458,17 +458,7 @@ public class FacilityService {
         }
 
         log.info("Updating facility {} for tenant {}", update.getFacilityId(), update.getTenantId());
-        var userInfo = request.getRequestInfo().getUserInfo();
-        if (userInfo.getRoles() == null)
-            throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
-
-        boolean isFacilityAdmin = userInfo.getRoles().stream()
-                .anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
-        boolean isSystemUser = userInfo.getRoles().stream()
-                .anyMatch(role -> SYSTEM_USER.equalsIgnoreCase(role.getCode()));
-        if (!isFacilityAdmin && !isSystemUser) {
-            throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
-        }
+        validateFacilityEditAuthorization(request.getRequestInfo());
 
         // Check if the facility exists in DB before attempting an update
         String fetchFullFacilitySql = "SELECT fac.*, " +
@@ -628,6 +618,70 @@ public class FacilityService {
         log.info("Successfully updated facility {}", update.getFacilityId());
         log.trace("Exiting updateFacility method");
         return facility;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Facility updateFacilityBlockBoundary(FacilityBlockUpdateRequest request) {
+        log.trace("Entering updateFacilityBlockBoundary method");
+        FacilityBlockUpdate blockUpdate = request.getFacilityBlockUpdate();
+        if (blockUpdate == null) {
+            throw new IllegalArgumentException("FacilityBlockUpdate payload is required");
+        }
+        if (blockUpdate.getFacilityId() == null || blockUpdate.getFacilityId().isBlank()
+                || blockUpdate.getTenantId() == null || blockUpdate.getTenantId().isBlank()
+                || blockUpdate.getNewBlockBoundaryCode() == null || blockUpdate.getNewBlockBoundaryCode().isBlank()) {
+            throw new IllegalArgumentException("facility_id, tenant_id and new_block_boundary_code must be provided");
+        }
+
+        validateFacilityEditAuthorization(request.getRequestInfo());
+
+        Facility existingFacility = getFacilityFromDb(blockUpdate.getFacilityId(), blockUpdate.getTenantId());
+        if (existingFacility == null) {
+            log.warn("Facility {} not found for tenant {}", blockUpdate.getFacilityId(), blockUpdate.getTenantId());
+            return null;
+        }
+        String oldFacilityBoundaryCode = existingFacility.getBoundaryCode();
+
+        // Validate that requested target block exists in boundary service.
+        boundaryValidator.validateBoundaries(
+                Set.of(blockUpdate.getNewBlockBoundaryCode()),
+                blockUpdate.getTenantId(),
+                request.getRequestInfo()
+        );
+
+        String updatedFacilityBoundaryCode = blockUpdate.getNewBlockBoundaryCode() + "_" + blockUpdate.getFacilityId();
+        if (updatedFacilityBoundaryCode.equals(existingFacility.getBoundaryCode())) {
+            log.info("No boundary update needed for facility {} (boundary code unchanged)", blockUpdate.getFacilityId());
+            return existingFacility;
+        }
+
+        ensureFacilityBoundaryExists(updatedFacilityBoundaryCode, blockUpdate.getNewBlockBoundaryCode(), blockUpdate.getTenantId(), request.getRequestInfo());
+
+        int updatedRows = jdbcTemplate.update(
+                "UPDATE facility SET boundary_code = ? WHERE id = ? AND tenant_id = ?",
+                updatedFacilityBoundaryCode,
+                blockUpdate.getFacilityId(),
+                blockUpdate.getTenantId()
+        );
+        log.info("{} Rows updated for facility {} and tenant {}", updatedRows, blockUpdate.getFacilityId(), blockUpdate.getTenantId());
+        if (updatedRows == 0) {
+            log.warn("No rows updated for facility {} and tenant {}", blockUpdate.getFacilityId(), blockUpdate.getTenantId());
+            return null;
+        }
+
+        existingFacility.setBoundaryCode(updatedFacilityBoundaryCode);
+        upsertFacilityBoundaryLocalizations(List.of(existingFacility), request.getRequestInfo());
+        cleanupOldFacilityBoundaryIfUnused(oldFacilityBoundaryCode, blockUpdate.getTenantId(), request.getRequestInfo());
+        syncImIncidentBoundaryCodesForFacility(
+                blockUpdate.getTenantId(),
+                blockUpdate.getFacilityId(),
+                updatedFacilityBoundaryCode,
+                blockUpdate.getNewBlockBoundaryCode(),
+                request.getRequestInfo()
+        );
+        log.info("Updated boundary code for facility {} to {}", blockUpdate.getFacilityId(), updatedFacilityBoundaryCode);
+        log.trace("Exiting updateFacilityBlockBoundary method");
+        return existingFacility;
     }
 
     /**
@@ -1010,6 +1064,168 @@ public class FacilityService {
                 }
             }
         }
+    }
+
+    private void validateFacilityEditAuthorization(RequestInfo requestInfo) {
+        var userInfo = requestInfo != null ? requestInfo.getUserInfo() : null;
+        if (userInfo == null || userInfo.getRoles() == null) {
+            throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
+        }
+
+        boolean isFacilityAdmin = userInfo.getRoles().stream()
+                .anyMatch(role -> FACILITY_ADMIN.equalsIgnoreCase(role.getCode()));
+        boolean isSystemUser = userInfo.getRoles().stream()
+                .anyMatch(role -> SYSTEM_USER.equalsIgnoreCase(role.getCode()));
+        if (!isFacilityAdmin && !isSystemUser) {
+            throw new IllegalArgumentException("Only FACILITY_ADMIN or SYSTEM_USER roles can edit facilities");
+        }
+    }
+
+    private Facility getFacilityFromDb(String facilityId, String tenantId) {
+        String fetchFullFacilitySql = "SELECT fac.*, " +
+                " (SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive " +
+                " FROM facility fac WHERE fac.id = ? AND fac.tenant_id = ?";
+        try {
+            return jdbcTemplate.queryForObject(fetchFullFacilitySql, new Object[]{facilityId, tenantId}, facilityRowMapper.rowMapper);
+        } catch (EmptyResultDataAccessException e) {
+            return null;
+        }
+    }
+
+    private void ensureFacilityBoundaryExists(String facilityBoundaryCode, String parentBlockBoundaryCode, String tenantId, RequestInfo requestInfo) {
+        boolean boundaryExists = false;
+        try {
+            boundaryValidator.validateBoundaries(Set.of(facilityBoundaryCode), tenantId, requestInfo);
+            boundaryExists = true;
+        } catch (Exception exception) {
+            log.info("Facility boundary code {} not found, creating it under parent {}", facilityBoundaryCode, parentBlockBoundaryCode);
+        }
+
+        if (!boundaryExists) {
+            BoundaryCreateRequest boundaryCreateRequest = BoundaryCreateRequest.builder()
+                    .requestInfo(requestInfo)
+                    .boundary(List.of(
+                            Boundary.builder()
+                                    .tenantId(tenantId)
+                                    .code(facilityBoundaryCode)
+                                    .build()
+                    ))
+                    .build();
+            boundaryService.createBoundaries(boundaryCreateRequest);
+        }
+
+        BoundaryRelationshipRequest boundaryRelationshipRequest = BoundaryRelationshipRequest.builder()
+                .requestInfo(requestInfo)
+                .boundaryRelationship(
+                        BoundaryRelation.builder()
+                                .tenantId(tenantId)
+                                .boundaryType("Facility")
+                                .code(facilityBoundaryCode)
+                                .parent(parentBlockBoundaryCode)
+                                .hierarchyType("SELCO")
+                                .build()
+                )
+                .build();
+        try {
+            boundaryService.createBoundaryRelationship(boundaryRelationshipRequest);
+        } catch (Exception e) {
+            String errMsg = e.getMessage() != null ? e.getMessage() : "";
+            if (errMsg.contains("DUPLICATE_RECORD")) {
+                log.info("Boundary relationship already exists for code {}. Skipping create.", facilityBoundaryCode);
+                return;
+            }
+            throw e;
+        }
+    }
+
+    private void cleanupOldFacilityBoundaryIfUnused(String oldFacilityBoundaryCode, String tenantId, RequestInfo requestInfo) {
+        try {
+            if (oldFacilityBoundaryCode == null || oldFacilityBoundaryCode.isBlank()) {
+                return;
+            }
+            Integer usageCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM facility WHERE tenant_id = ? AND boundary_code = ?",
+                    Integer.class,
+                    tenantId,
+                    oldFacilityBoundaryCode
+            );
+            if (usageCount != null && usageCount > 0) {
+                log.info("Skipping old facility boundary cleanup for code {} because {} facilities still reference it",
+                        oldFacilityBoundaryCode, usageCount);
+                return;
+            }
+
+            log.info("No facilities reference old boundary code {}. Deleting relationship and boundary entity", oldFacilityBoundaryCode);
+            BoundaryRelationshipRequest deleteRelationshipRequest = BoundaryRelationshipRequest.builder()
+                    .requestInfo(requestInfo)
+                    .boundaryRelationship(
+                            BoundaryRelation.builder()
+                                    .tenantId(tenantId)
+                                    .hierarchyType("SELCO")
+                                    .boundaryType("Facility")
+                                    .code(oldFacilityBoundaryCode)
+                                    .build()
+                    )
+                    .build();
+            boundaryService.deleteBoundaryRelationship(deleteRelationshipRequest);
+
+            BoundaryCreateRequest deleteBoundaryRequest = BoundaryCreateRequest.builder()
+                    .requestInfo(requestInfo)
+                    .boundary(List.of(
+                            Boundary.builder()
+                                    .tenantId(tenantId)
+                                    .code(oldFacilityBoundaryCode)
+                                    .build()
+                    ))
+                    .build();
+            boundaryService.deleteBoundaries(deleteBoundaryRequest);
+        } catch (Exception e) {
+            log.info("Skipping old boundary cleanup for code {} due to exception: {}", oldFacilityBoundaryCode, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Notifies im-services to set {@code eg_incident_v2.boundarycode} for all incidents with the given facility id.
+     */
+    private void syncImIncidentBoundaryCodesForFacility(String tenantId, String facilityId, String newBoundaryCode,
+                                                        String newBlockBoundaryCode, RequestInfo requestInfo) {
+        String host = configs.getImServicesHost();
+        String path = configs.getImIncidentBoundaryByFacilityUpdatePath();
+        if (host == null || host.isBlank()) {
+            log.warn("egov.im.services.host is not configured; skipping IM incident boundary sync for facility {}", facilityId);
+            return;
+        }
+        if (path == null || path.isBlank()) {
+            log.warn("egov.im.services.incident.boundary-by-facility.path is blank; skipping IM incident boundary sync for facility {}", facilityId);
+            return;
+        }
+
+        String url = UriComponentsBuilder.fromUriString(host.trim()).path(path).toUriString();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("RequestInfo", requestInfo);
+        payload.put("tenant_id", tenantId);
+        payload.put("facility_id", facilityId);
+        payload.put("new_boundary_code", newBoundaryCode);
+        payload.put("new_block_code", deriveBlockFromBoundaryCode(newBlockBoundaryCode));
+
+        try {
+            restTemplate.postForObject(url, payload, Map.class);
+            log.info("IM incident boundary sync completed for facilityId={}, tenantId={}", facilityId, tenantId);
+        } catch (Exception e) {
+            log.error("IM incident boundary sync failed for facilityId={}: {}", facilityId, e.getMessage(), e);
+            throw new CustomException(
+                    "INCIDENT_BOUNDARY_SYNC_FAILED",
+                    "Facility boundary was updated but incident boundary sync to im-services failed: " + e.getMessage()
+            );
+        }
+    }
+
+    private String deriveBlockFromBoundaryCode(String newBlockBoundaryCode) {
+        if (newBlockBoundaryCode == null || newBlockBoundaryCode.isBlank()) {
+            return newBlockBoundaryCode;
+        }
+        String[] segments = newBlockBoundaryCode.split("_");
+        return segments[segments.length - 1];
     }
 
 }
