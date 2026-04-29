@@ -74,12 +74,6 @@ const RMSPausedFacilities = () => {
   };
 
   const isMobile = Digit.Utils.browser.isMobile();
-  const selectedFilters = searchParams?.filters || {};
-  const queryFilter = {
-    ...(selectedFilters?.state?.length ? { state: selectedFilters.state.map((item) => item.code).join(",") } : {}),
-    ...(selectedFilters?.district?.length ? { district: selectedFilters.district.map((item) => item.code).join(",") } : {}),
-    ...(selectedFilters?.block?.length ? { block: selectedFilters.block.map((item) => item.code).join(",") } : {}),
-  };
   const { data: pausedFacilitiesData, isLoading } = Digit.Hooks.im.useRMSPausedFacility(searchParams, pageSize, pageOffset);
 
   useEffect(() => {
@@ -87,10 +81,6 @@ const RMSPausedFacilities = () => {
       setTotalRecords(pausedFacilitiesData?.total || 0);
     }
   }, [pausedFacilitiesData]);
-
-  if (!pausedFacilitiesData && isLoading) {
-    return <Loader />;
-  }
 
   return (
     <div>

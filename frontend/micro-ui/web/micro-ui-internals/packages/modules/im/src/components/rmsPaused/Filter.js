@@ -79,29 +79,38 @@ const RMSPausedFilter = ({ onFilterChange, searchParams, type, onClose }) => {
 
   const handleStateChange = (selectedState) => {
     if (!selectedState?.code) return;
-    setFilters({
-      ...filters,
-      state: [selectedState],
-      district: [],
-      block: [],
-    });
+    const previouslySelectedState = filters.state[0];
+    if (previouslySelectedState?.code !== selectedState.code) {
+      setFilters({
+        ...filters,
+        state: [selectedState],
+        district: [],
+        block: [],
+      });
+    }
   };
 
   const handleDistrictChange = (selectedDistrict) => {
     if (!selectedDistrict?.code) return;
-    setFilters({
-      ...filters,
-      district: [selectedDistrict],
-      block: [],
-    });
+    const previouslySelectedDistrict = filters.district[0];
+    if (previouslySelectedDistrict?.code !== selectedDistrict.code) {
+      setFilters({
+        ...filters,
+        district: [selectedDistrict],
+        block: [],
+      });
+    }
   };
 
   const handleBlockChange = (selectedBlock) => {
     if (!selectedBlock?.code) return;
-    setFilters({
-      ...filters,
-      block: [selectedBlock],
-    });
+    const previouslySelectedBlock = filters.block[0];
+    if (previouslySelectedBlock?.code !== selectedBlock.code) {
+      setFilters({
+        ...filters,
+        block: [selectedBlock],
+      });
+    }
   };
 
   const onRemove = (index, key) => {
@@ -126,17 +135,23 @@ const RMSPausedFilter = ({ onFilterChange, searchParams, type, onClose }) => {
     onClose();
   };
 
-  const renderSelect = (label, options, key, selected, onSelect) => (
-    <div>
-      <div className="filter-label">{label}</div>
-      <Dropdown option={options} selected={selected} select={onSelect} optionKey="name" />
-      <div className="tag-container">
-        {filters[key]?.map((value, index) => (
-          <RemoveableTag key={`${value.code}-${index}`} text={`${value.name} ...`} onClick={() => onRemove(index, key)} />
-        ))}
+  const renderSelect = (label, options, key, selected, onSelect) => {
+    const disableSelection = (!options || options.length === 1)
+    if (disableSelection && options?.length) {
+      onSelect(options[0]);
+    }
+    return (
+      <div>
+        <div className="filter-label">{label}</div>
+        <Dropdown disable={disableSelection} option={options} selected={selected} select={onSelect} optionKey="name" />
+        <div className="tag-container">
+          {filters[key]?.map((value, index) => (
+            <RemoveableTag disabled={disableSelection} key={`${value.code}-${index}`} text={`${value.name} ...`} onClick={() => onRemove(index, key)} />
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    )
+  };
 
   return (
     <React.Fragment>
@@ -156,9 +171,9 @@ const RMSPausedFilter = ({ onFilterChange, searchParams, type, onClose }) => {
             )}
           </div>
           <div>
-            {renderSelect(t("CS_STATE"), stateMenu, "state", filters?.state?.[0], handleStateChange)}
-            {renderSelect(t("CS_DISTRICT"), districtMenu, "district", filters?.district?.[0], handleDistrictChange)}
-            {renderSelect(t("CS_BLOCK"), blockMenu, "block", filters?.block?.[0], handleBlockChange)}
+            {renderSelect(t("CS_STATE"), stateMenu, "state", null, handleStateChange)}
+            {renderSelect(t("CS_DISTRICT"), districtMenu, "district", null, handleDistrictChange)}
+            {renderSelect(t("CS_BLOCK"), blockMenu, "block", null, handleBlockChange)}
           </div>
         </div>
       </div>
