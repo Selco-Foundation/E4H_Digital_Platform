@@ -194,12 +194,12 @@ export const PauseRMS = ({ parentUrl }) => {
   const history = useHistory();
 
   useEffect(() => {
-    if (healthcentre?.code && district?.code && block?.code) {
+    if (healthcentre?.code && district?.code && block?.code && savedDuration) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [healthcentre, district, block]);
+  }, [healthcentre, district, block, savedDuration]);
 
   useEffect(() => {
     const checkFacilityStatus = async () => {
@@ -294,10 +294,12 @@ export const PauseRMS = ({ parentUrl }) => {
   const districtRef = useRef(null);
   const blockRef = useRef(null);
   const healthCareRef = useRef(null);
+  const durationRef = useRef(null);
   const fieldsToValidate = [
     { field: district, ref: districtRef },
     { field: block, ref: blockRef },
     { field: healthcentre, ref: healthCareRef },
+    { field: savedDuration, ref: durationRef },
   ];
 
   const handleButtonClick = () => {
@@ -387,11 +389,13 @@ export const PauseRMS = ({ parentUrl }) => {
               type={"date"}
               className="field desktop-w-full"
               value={savedDuration}
+              inputRef={durationRef}
               onChange={(e) => setSavedDuration(e.target.value)}
               validation={{
                 minLength: 0,
                 maxLength: 256,
               }}
+              min={new Date().toISOString().split("T")[0]}
               error={t("CS_LENGTH_EXCEED")}
               required={true}
             />
