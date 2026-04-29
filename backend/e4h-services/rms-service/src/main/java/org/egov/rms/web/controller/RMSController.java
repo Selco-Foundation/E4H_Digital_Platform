@@ -5,7 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.service.CenterIdMappingService;
 import org.egov.rms.service.DataCollectorService;
 import org.egov.rms.service.RMSOrchestratorService;
+import org.egov.rms.service.TicketPauseService;
 import org.egov.rms.service.TicketStatusUpdateService;
+import org.egov.rms.model.TicketPauseManageRequest;
+import org.egov.rms.model.TicketPauseResponse;
+import org.egov.rms.model.TicketPauseSearchRequest;
+import org.egov.rms.model.TicketPausedFacilityListRequest;
+import org.egov.rms.model.TicketPausedFacilityListResponse;
 import org.egov.rms.model.RMSFacilityData;
 import org.egov.rms.model.TicketStatusUpdateRequest;
 import org.egov.rms.model.TicketStatusUpdateResponse;
@@ -30,6 +36,7 @@ public class RMSController {
     private final CenterIdMappingService mappingService;
     private final DataCollectorService dataCollectorService;
     private final TicketStatusUpdateService ticketStatusUpdateService;
+    private final TicketPauseService ticketPauseService;
     private final RMSConfiguration config;
 
     /**
@@ -133,6 +140,63 @@ public class RMSController {
             TicketStatusUpdateResponse errorResponse = TicketStatusUpdateResponse.error(
                     "Error processing ticket status update: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    /**
+     * Manage facility pause/resume for RMS auto-ticket creation.
+     */
+    @PostMapping("/ticket/pause")
+    public ResponseEntity<TicketPauseResponse> manageTicketPause(@RequestBody TicketPauseManageRequest request) {
+        try {
+            TicketPauseResponse response = ticketPauseService.managePause(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid ticket pause manage request: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(TicketPauseResponse.error("VALIDATION_ERROR", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error managing ticket pause", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(TicketPauseResponse.error("INTERNAL_SERVER_ERROR",
+                            "Error managing ticket pause: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Fetch pause state for a facility.
+     */
+    @PostMapping("/ticket/pause/_search")
+    public ResponseEntity<TicketPauseResponse> searchTicketPause(@RequestBody TicketPauseSearchRequest request) {
+        try {
+            TicketPauseResponse response = ticketPauseService.getPauseState(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid ticket pause search request: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(TicketPauseResponse.error("VALIDATION_ERROR", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error searching ticket pause", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(TicketPauseResponse.error("INTERNAL_SERVER_ERROR",
+                            "Error searching ticket pause: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Fetch paused facilities list for given boundaries.
+     */
+    @PostMapping("/ticket/paused_facility")
+    public ResponseEntity<TicketPausedFacilityListResponse> searchPausedFacilities(@RequestBody TicketPausedFacilityListRequest request) {
+        try {
+            TicketPausedFacilityListResponse response = ticketPauseService.listPausedFacilities(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid paused facility list request: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(TicketPausedFacilityListResponse.error("VALIDATION_ERROR", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error searching paused facilities", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(TicketPausedFacilityListResponse.error("INTERNAL_SERVER_ERROR",
+                            "Error searching paused facilities: " + e.getMessage()));
         }
     }
 }
