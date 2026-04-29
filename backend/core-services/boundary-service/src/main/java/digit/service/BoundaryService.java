@@ -9,6 +9,7 @@ import digit.service.validator.BoundaryEntityValidator;
 import digit.util.HierarchyUtil;
 import digit.util.ResponseUtil;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.utils.ResponseInfoUtil;
@@ -25,6 +26,7 @@ import static digit.constants.BoundaryConstants.MASTER_STATE_INFO;
 import static digit.constants.BoundaryConstants.MDMS_COMMON_MASTERS_MODULE_NAME;
 
 @Service
+@Slf4j
 public class BoundaryService {
 
     private final BoundaryEntityValidator boundaryEntityValidator;
