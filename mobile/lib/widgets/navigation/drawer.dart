@@ -11,15 +11,17 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../blocs/auth/authbloc.dart';
 import '../../blocs/localization/app_localization.dart';
 import '../../blocs/user_type/user_type.dart';
+import '../../model/response/responsemodel.dart';
 import '../../router/app_router.dart';
 import '../../utils/i18_key_constants.dart' as i18;
+import '../../utils/role_login_resolver.dart';
+import '../../utils/utils.dart';
 
 class CustomDrawer extends StatelessWidget {
   const CustomDrawer({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         return Padding(
@@ -49,9 +51,28 @@ class CustomDrawer extends StatelessWidget {
                 ),
                 onPressed: () {
                   Navigator.of(context, rootNavigator: true).pop();
-                  final userState = context.read<UserTypeBloc>().state;
-                  if (userState.maybeWhen(
-                      amc: () => true, orElse: () => false)) {
+
+                  final List<Roles> roles = state.maybeWhen(
+                    authenticated: (_, __, userRequest) =>
+                        userRequest?.roles ?? const [],
+                    orElse: () => const [],
+                  );
+                  final resolution = RoleLoginResolver.resolveRoles(roles);
+
+                  if (resolution.requiresSelection) {
+                    context.router.replaceAll([const RoleSelectionRoute()]);
+                    return;
+                  }
+
+                  final userType =
+                      resolution.directUserType ?? USER_TYPES.FIELD_STAFF;
+                  context.read<UserTypeBloc>().add(
+                        UserTypeEvent.typeSelected(
+                          userType.name.toLowerCase(),
+                        ),
+                      );
+
+                  if (userType == USER_TYPES.AMC) {
                     context.router.replaceAll([const AmcHomeRoute()]);
                   } else {
                     context.router.replaceAll([const HomeRoute()]);
@@ -118,27 +139,6 @@ class CustomDrawer extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class LanguageButtonsWidget extends StatelessWidget {
-  const LanguageButtonsWidget({
-    super.key,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: [
-        DigitButton(
-          type: DigitButtonType.secondary,
-          label: "ENGLISH",
-          onPressed: () {},
-          size: DigitButtonSize.large,
-        ),
-      ],
     );
   }
 }

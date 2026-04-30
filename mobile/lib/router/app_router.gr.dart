@@ -248,6 +248,12 @@ abstract class _$AppRouter extends RootStackRouter {
         ),
       );
     },
+    RoleSelectionRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const RoleSelectionPage(),
+      );
+    },
     SelectAssetTypeRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -1015,6 +1021,20 @@ class PdfViewerRouteArgs {
   String toString() {
     return 'PdfViewerRouteArgs{path: $path, key: $key}';
   }
+}
+
+/// generated route for
+/// [RoleSelectionPage]
+class RoleSelectionRoute extends PageRouteInfo<void> {
+  const RoleSelectionRoute({List<PageRouteInfo>? children})
+      : super(
+          RoleSelectionRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'RoleSelectionRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
 }
 
 /// generated route for

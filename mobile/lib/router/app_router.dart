@@ -32,6 +32,7 @@ import '../pages/login.dart';
 import '../pages/media_upload.dart';
 import '../pages/overall_asset_summary.dart';
 import '../pages/pdf_viewer.dart';
+import '../pages/role_selection.dart';
 import '../pages/select_asset_type.dart';
 import '../pages/select_health_facility.dart';
 import '../pages/setup_new_password.dart';
@@ -128,6 +129,7 @@ class AppRouter extends _$AppRouter {
           AutoRoute(
               page: InstallationImagesRoute.page,
               path: Routes.installationCompletionImages),
+          AutoRoute(page: RoleSelectionRoute.page, path: Routes.roleSelection),
         ])
       ];
 }
