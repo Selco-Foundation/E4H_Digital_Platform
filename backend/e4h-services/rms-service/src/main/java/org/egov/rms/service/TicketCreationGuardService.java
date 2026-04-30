@@ -20,6 +20,7 @@ public class TicketCreationGuardService {
 
     private final AlertRepository alertRepository;
     private final TicketPauseService ticketPauseService;
+    private final FacilityEligibilityService facilityEligibilityService;
 
     /**
      * @return true when this alert must not result in a new ticket (open blocking incidents in IM).
@@ -29,6 +30,14 @@ public class TicketCreationGuardService {
             return false;
         }
         String facilityId = alert.getFacilityId();
+        String hfrId = alert.getHfrId();
+
+        if (!facilityEligibilityService.isEligibleByHfrOrFacilityId(hfrId, facilityId)) {
+            log.info(
+                    "TICKET POLICY: Skipping ticket — facility not eligible under MDMS district allowlist (facilityId={}, hfrId={}, alert type {}, subType {})",
+                    facilityId, hfrId, alert.getAlertType(), alert.getAlertSubType());
+            return true;
+        }
 
         if (ticketPauseService.isFacilityPaused(facilityId, Instant.now())) {
             log.info(
