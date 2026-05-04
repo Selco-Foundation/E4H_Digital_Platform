@@ -2853,42 +2853,6 @@ def get_vendor_id_for_amc_field_staff(user_info_data: List[dict]) -> str:
     return next(iter(candidates))
 
 
-def collect_amc_assignment_users_for_vendor(user_info_data: List[dict], amc_vendor_id: str) -> List[dict]:
-    # Users from the vendor block matching amc_vendor_id (same id rules as get_vendor_id_for_amc_field_staff).
-    assignment_users: List[dict] = []
-    for vendor_mapping in user_info_data:
-        vendor_id = (vendor_mapping.get("vendorId") or "").strip()
-        vendor_name = (vendor_mapping.get("vendor") or "").strip()
-        if not vendor_id:
-            if not vendor_name:
-                continue
-            vendor_id = vendor_name
-        if vendor_id != amc_vendor_id:
-            continue
-
-        users = vendor_mapping.get("users", [])
-        if not users and "userId" in vendor_mapping:
-            users = [{"userId": vendor_mapping.get("userId"), "userName": vendor_mapping.get("userName")}]
-        if not isinstance(users, list):
-            continue
-
-        for user in users:
-            user_id = user.get("uuid") or user.get("userId") or user.get("id")
-            if not user_id:
-                continue
-            user_name = user.get("name") or user.get("userName", "")
-            user_tenant_id = user.get("tenantId")
-            assignment_users.append({
-                "id": str(user_id),
-                "userId": str(user_id),
-                "userName": user_name,
-                "name": user_name,
-                "tenantId": user_tenant_id,
-                "fullUser": user,
-            })
-    return assignment_users
-
-
 @router.post('/amcConfigurationBulkIngest',
              summary='Bulk ingest AMC configuration template data',
              response_description="Returns processed Excel file with AMC configuration creation results")
@@ -2918,15 +2882,74 @@ async def bulk_ingest_amc_configurations(
 
         amc_vendor_id = get_vendor_id_for_amc_field_staff(user_info_data)
 
-        assignment_users = collect_amc_assignment_users_for_vendor(user_info_data, amc_vendor_id)
-        if not assignment_users:
-            raise HTTPException(
-                status_code=400,
-                detail="No valid assignment users for the selected AMC vendor in user_info_list "
-                "(each user needs uuid, userId, or id). AMC configurations require at least one assignment.",
-            )
+        assignment_users = []
+        vendor_mappings = []  # One entry per payload item with valid users
+        for vendor_mapping in user_info_data:
+            # Primary key: vendorId (UUID)
+            vendor_id = vendor_mapping.get("vendorId", "").strip()
+            # Secondary: vendor name (for backward compatibility and Excel lookup)
+            vendor_name = vendor_mapping.get("vendor", "").strip()
 
-        input_temp_file, _ = await _save_upload_to_temp_file(amc_file, suffix=".xlsx")
+            if not vendor_id:
+                # Fallback: if no vendorId, use vendor name as key
+                if not vendor_name:
+                    logger.warning(f"Vendor mapping missing both vendorId and vendor name: {vendor_mapping}")
+                    continue
+                vendor_id = vendor_name  # Use name as fallback key
+
+            # Support both old format (single user) and new format (list of users)
+            users = vendor_mapping.get("users", [])
+            if not users:
+                # Backward compatibility: if "users" not found, check for single user fields
+                if "userId" in vendor_mapping:
+                    users = [{"userId": vendor_mapping.get("userId"), "userName": vendor_mapping.get("userName")}]
+                else:
+                    logger.warning(f"No users found for vendorId: {vendor_id}")
+                    continue
+
+            # Validate users list
+            if not isinstance(users, list):
+                raise HTTPException(status_code=400, detail=f"users must be a list for vendorId: {vendor_id}")
+
+            # Process users
+            for user in users:
+                # Extract user ID - prefer 'id' (from full user object), then 'userId', then 'uuid'
+                user_id = user.get("uuid") or user.get("userId") or user.get("id")
+
+                if not user_id:
+                    logger.warning(f"User object missing ID field: {user}")
+                    continue
+
+                # Extract user name - prefer 'name', then 'userName'
+                user_name = user.get("name") or user.get("userName", "")
+
+                # Extract tenant ID from user object if available
+                user_tenant_id = user.get("tenantId")
+
+                assignment_users.append({
+                    "id": str(user_id),  # Convert to string for consistency
+                    "userId": str(user_id),  # Keep for backward compatibility
+                    "userName": user_name,
+                    "name": user_name,
+                    "tenantId": user_tenant_id,
+                    "fullUser": user  # Store full user object for reference
+                })
+
+            if not assignment_users:
+                logger.warning(f"No valid users found for vendorId: {vendor_id}")
+                continue
+
+            vendor_mappings.append({
+                "vendorId": vendor_id,
+                "vendorName": vendor_name,
+                "users": assignment_users
+            })
+
+        # Save uploaded file
+        input_temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        content = await amc_file.read()
+        input_temp_file.write(content)
+        input_temp_file.close()
 
         # Prepare output file
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -3078,9 +3101,37 @@ async def bulk_ingest_amc_configurations(
                     continue
                 seen_configs.add(config_key)
 
-                assignments = [a.copy() for a in assignments_template]
+                # Create assignments array from vendor users
+                assignments = []
+                for user in assignment_users:
+                    # Use user's id (from full user object) or userId (backward compatibility)
+                    assigned_user_id = user.get("id") or user.get("userId")
+                    # Prefer user's tenantId if available, otherwise use default tenant_id
+                    assignment_tenant_id = user.get("tenantId") or tenant_id
 
-                end_date = now + timedelta(days=duration_months * 30)
+                    assignment = {
+                        "assignedUser": str(assigned_user_id),
+                        "tenantId": assignment_tenant_id
+                    }
+                    assignments.append(assignment)
+
+                # Convert asset types to API format (objects with code and name)
+                asset_types_formatted = []
+                asset_type_names = {
+                    "INVERTER": "Inverter",
+                    "PANEL": "Panel",
+                    "BATTERY": "Battery"
+                }
+                for asset_type in DEFAULT_AMC_ASSET_TYPES:
+                    asset_types_formatted.append({
+                        "code": asset_type,
+                        "name": asset_type_names.get(asset_type, asset_type.title())
+                    })
+
+                # Calculate configuration dates (start date = now, end date = start + duration)
+                now = datetime.now()
+                configuration_start_date = int(now.timestamp() * 1000)  # Convert to milliseconds
+                end_date = now + timedelta(days=duration_months * 30)  # Approximate: 30 days per month
                 configuration_end_date = int(end_date.timestamp() * 1000)
 
                 configs_to_create.append({
