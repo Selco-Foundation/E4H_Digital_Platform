@@ -67,13 +67,23 @@ public class TicketPauseRepository {
 
     public Optional<TicketPauseRecord> findActivePauseByFacility(String facilityId, Instant now) {
         log.debug("Finding active pause: facilityId={}, now={}", facilityId, now);
-        String sql = "SELECT facility_id, facility_name, boundary_code, paused_until, reason, requested_by, updated_at " +
+        String sql = "SELECT facility_id, tenant_id, facility_name, boundary_code, paused_until, reason, requested_by, updated_at " +
                 "FROM rms_ticket_pause_config " +
                 "WHERE facility_id = ? AND is_active = TRUE AND paused_until > ? " +
                 "LIMIT 1";
         List<TicketPauseRecord> rows = jdbcTemplate.query(sql, new TicketPauseRecordRowMapper(),
                 facilityId, Timestamp.from(now));
         return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
+    }
+
+    public List<TicketPauseRecord> findExpiredActivePauses(Instant now, int limit) {
+        log.debug("Finding expired active pauses: now={}, limit={}", now, limit);
+        String sql = "SELECT facility_id, tenant_id, facility_name, boundary_code, paused_until, reason, requested_by, updated_at " +
+                "FROM rms_ticket_pause_config " +
+                "WHERE is_active = TRUE AND paused_until <= ? " +
+                "ORDER BY paused_until ASC " +
+                "LIMIT ?";
+        return jdbcTemplate.query(sql, new TicketPauseRecordRowMapper(), Timestamp.from(now), limit);
     }
 
     public List<PausedFacilityItem> listActivePausedFacilities(List<String> boundaryCodes, int offset, int limit) {
@@ -145,6 +155,7 @@ public class TicketPauseRepository {
     @AllArgsConstructor
     public static class TicketPauseRecord {
         private String facilityId;
+        private String tenantId;
         private String facilityName;
         private String boundaryCode;
         private Instant pausedUntil;
@@ -158,6 +169,7 @@ public class TicketPauseRepository {
         public TicketPauseRecord mapRow(ResultSet rs, int rowNum) throws SQLException {
             return TicketPauseRecord.builder()
                     .facilityId(rs.getString("facility_id"))
+                    .tenantId(rs.getString("tenant_id"))
                     .facilityName(rs.getString("facility_name"))
                     .boundaryCode(rs.getString("boundary_code"))
                     .pausedUntil(rs.getTimestamp("paused_until").toInstant())

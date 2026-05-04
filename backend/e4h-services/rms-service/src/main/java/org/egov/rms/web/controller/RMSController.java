@@ -8,6 +8,8 @@ import org.egov.rms.service.RMSOrchestratorService;
 import org.egov.rms.service.TicketPauseService;
 import org.egov.rms.service.TicketStatusUpdateService;
 import org.egov.rms.model.TicketPauseManageRequest;
+import org.egov.rms.model.TicketPauseExpiryRequest;
+import org.egov.rms.model.TicketPauseExpiryResponse;
 import org.egov.rms.model.TicketPauseResponse;
 import org.egov.rms.model.TicketPauseSearchRequest;
 import org.egov.rms.model.TicketPausedFacilityListRequest;
@@ -197,6 +199,25 @@ public class RMSController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(TicketPausedFacilityListResponse.error("INTERNAL_SERVER_ERROR",
                             "Error searching paused facilities: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Reconcile expired paused facilities (for Kubernetes CronJob trigger).
+     */
+    @PostMapping("/ticket/pause/_expire")
+    public ResponseEntity<TicketPauseExpiryResponse> reconcileExpiredPauses(@RequestBody(required = false) TicketPauseExpiryRequest request) {
+        try {
+            TicketPauseExpiryResponse response = ticketPauseService.reconcileExpiredPauses(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid pause expiry reconciliation request: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(TicketPauseExpiryResponse.error("VALIDATION_ERROR", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error reconciling expired paused facilities", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(TicketPauseExpiryResponse.error("INTERNAL_SERVER_ERROR",
+                            "Error reconciling expired paused facilities: " + e.getMessage()));
         }
     }
 }
