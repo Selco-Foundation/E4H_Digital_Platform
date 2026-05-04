@@ -8,6 +8,8 @@ import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.PausedFacilityItem;
 import org.egov.rms.model.TicketPauseManageRequest;
 import org.egov.rms.model.TicketPausePayload;
+import org.egov.rms.model.TicketPauseExpiryRequest;
+import org.egov.rms.model.TicketPauseExpiryResponse;
 import org.egov.rms.model.TicketPauseResponse;
 import org.egov.rms.model.TicketPauseSearchRequest;
 import org.egov.rms.model.TicketPausedFacilityListRequest;
@@ -33,6 +35,8 @@ public class TicketPauseService {
 
     private static final int DEFAULT_LIMIT = 50;
     private static final int MAX_LIMIT = 200;
+    private static final int DEFAULT_EXPIRE_BATCH_LIMIT = 200;
+    private static final int MAX_EXPIRE_BATCH_LIMIT = 1000;
 
     private final TicketPauseRepository ticketPauseRepository;
     private final RMSConfiguration config;
@@ -178,6 +182,60 @@ public class TicketPauseService {
         return TicketPausedFacilityListResponse.success(totalCount, items);
     }
 
+    public TicketPauseExpiryResponse reconcileExpiredPauses(TicketPauseExpiryRequest request) {
+        int limit = DEFAULT_EXPIRE_BATCH_LIMIT;
+        if (request != null && request.getLimit() != null) {
+            if (request.getLimit() <= 0) {
+                throw new IllegalArgumentException("limit must be positive");
+            }
+            limit = Math.min(request.getLimit(), MAX_EXPIRE_BATCH_LIMIT);
+        }
+        Instant now = Instant.now();
+        List<TicketPauseRepository.TicketPauseRecord> expiredRows =
+                ticketPauseRepository.findExpiredActivePauses(now, limit);
+
+        if (expiredRows.isEmpty()) {
+            return TicketPauseExpiryResponse.success(0, 0, 0, "No expired paused facilities found");
+        }
+
+        int resumedCount = 0;
+        int skippedCount = 0;
+        for (TicketPauseRepository.TicketPauseRecord row : expiredRows) {
+            int updated = ticketPauseRepository.deactivatePause(row.getFacilityId(), row.getPausedUntil());
+            if (updated > 0) {
+                resumedCount += 1;
+                String tenantId = StringUtils.hasText(row.getTenantId())
+                        ? row.getTenantId().trim()
+                        : extractTenantId(request != null ? request.getRequestInfo() : null, null);
+                publishPauseAuditSafely(
+                        request != null ? request.getRequestInfo() : null,
+                        TicketPauseManageRequest.Action.RESUME,
+                        row.getFacilityId(),
+                        row.getFacilityName(),
+                        row.getBoundaryCode(),
+                        null,
+                        row.getReason(),
+                        "SYSTEM_AUTO_RESUME",
+                        false,
+                        tenantId,
+                        Optional.of(row)
+                );
+            } else {
+                skippedCount += 1;
+            }
+        }
+
+        int processedCount = expiredRows.size();
+        log.info("Expired pause reconciliation completed: processedCount={}, resumedCount={}, skippedCount={}",
+                processedCount, resumedCount, skippedCount);
+        return TicketPauseExpiryResponse.success(
+                processedCount,
+                resumedCount,
+                skippedCount,
+                "Expired paused facilities reconciled successfully"
+        );
+    }
+
     private int extractOffset(TicketPausedFacilityListRequest request) {
         return request.getFacility().getOffset() == null ? 0 : Math.max(0, request.getFacility().getOffset());
     }
@@ -187,12 +245,25 @@ public class TicketPauseService {
     }
 
     private List<String> extractBoundaryFilters(TicketPausedFacilityListRequest request) {
-        Set<String> merged = new LinkedHashSet<>();
-        merged.addAll(normalizeBoundaryCodes(request.getFacility().getState()));
-        merged.addAll(normalizeBoundaryCodes(request.getFacility().getDistrict()));
-        merged.addAll(normalizeBoundaryCodes(request.getFacility().getBlock()));
-        merged.addAll(normalizeBoundaryCodes(request.getFacility().getBoundaryCodes()));
-        return new ArrayList<>(merged);
+        // Use most-specific boundary level to avoid over-broad OR queries:
+        // boundaryCodes > block > district > state
+        List<String> boundaryCodes = normalizeBoundaryCodes(request.getFacility().getBoundaryCodes());
+        if (!boundaryCodes.isEmpty()) {
+            return new ArrayList<>(new LinkedHashSet<>(boundaryCodes));
+        }
+
+        List<String> blockCodes = normalizeBoundaryCodes(request.getFacility().getBlock());
+        if (!blockCodes.isEmpty()) {
+            return new ArrayList<>(new LinkedHashSet<>(blockCodes));
+        }
+
+        List<String> districtCodes = normalizeBoundaryCodes(request.getFacility().getDistrict());
+        if (!districtCodes.isEmpty()) {
+            return new ArrayList<>(new LinkedHashSet<>(districtCodes));
+        }
+
+        List<String> stateCodes = normalizeBoundaryCodes(request.getFacility().getState());
+        return new ArrayList<>(new LinkedHashSet<>(stateCodes));
     }
 
     public boolean isFacilityPaused(String facilityId, Instant now) {
