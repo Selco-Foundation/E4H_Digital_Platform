@@ -109,7 +109,7 @@ public class OrganisationUserService {
 
     public DeleteOrgUserRequest deleteUserOrg(DeleteOrgUserRequest request) {
         log.info("received request to delete bulk activity facility staff");
-//        validator.validateDeleteOrgUserRequest(request);
+        validator.validateDeleteOrgUserRequest(request);
         try {
             deactivateHrmsUser(request);
             request.setIsDeleted(true);
