@@ -1,5 +1,6 @@
 package digit.web.controllers;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import digit.service.BoundaryRelationshipService;
@@ -13,6 +14,7 @@ import jakarta.validation.Valid;
 
 @Controller
 @RequestMapping("/boundary-relationships")
+@Slf4j
 public class BoundaryRelationshipController {
 
     private BoundaryRelationshipService boundaryRelationshipService;
@@ -68,6 +70,20 @@ public class BoundaryRelationshipController {
     public ResponseEntity<BoundaryRelationshipResponse> update(@Valid @RequestBody BoundaryRelationshipRequest body) {
         BoundaryRelationshipResponse boundaryRelationshipResponse = boundaryRelationshipService.updateBoundaryRelationship(body);
         return new ResponseEntity<>(boundaryRelationshipResponse, HttpStatus.ACCEPTED);
+    }
+
+    @RequestMapping(value = "/_delete", method = RequestMethod.POST)
+    public ResponseEntity<BoundaryRelationshipResponse> delete(@Valid @RequestBody BoundaryRelationshipRequest body) {
+        log.trace("delete method invoked");
+        log.info("Processing boundary relationship delete request, tenantId={}, hierarchyType={}, code={}",
+                body.getBoundaryRelationship() != null ? body.getBoundaryRelationship().getTenantId() : null,
+                body.getBoundaryRelationship() != null ? body.getBoundaryRelationship().getHierarchyType() : null,
+                body.getBoundaryRelationship() != null ? body.getBoundaryRelationship().getCode() : null);
+
+        BoundaryRelationshipResponse boundaryRelationshipResponse = boundaryRelationshipService.deleteBoundaryRelationship(body);
+
+        log.info("Boundary relationship delete request processed successfully");
+        return new ResponseEntity<>(boundaryRelationshipResponse, HttpStatus.OK);
     }
 
 }
