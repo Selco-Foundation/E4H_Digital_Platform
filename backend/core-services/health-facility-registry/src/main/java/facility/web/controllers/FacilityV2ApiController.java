@@ -118,6 +118,31 @@ public class FacilityV2ApiController {
         }
     }
 
+    @PostMapping("/update-block")
+    public ResponseEntity<Facility> updateFacilityBlock(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Updates the block boundary for an existing facility and regenerates facility boundary code",
+                    required = true
+            )
+            @Valid @RequestBody FacilityBlockUpdateRequest facilityBlockUpdateRequest) {
+        log.trace("Entering updateFacilityBlock endpoint");
+        String facilityId = facilityBlockUpdateRequest.getFacilityBlockUpdate() != null
+                ? facilityBlockUpdateRequest.getFacilityBlockUpdate().getFacilityId() : null;
+        String newBlockCode = facilityBlockUpdateRequest.getFacilityBlockUpdate() != null
+                ? facilityBlockUpdateRequest.getFacilityBlockUpdate().getNewBlockBoundaryCode() : null;
+        log.info("Received facility block update request for facilityId: {}, newBlockBoundaryCode: {}", facilityId, newBlockCode);
+
+        Facility updated = facilityService.updateFacilityBlockBoundary(facilityBlockUpdateRequest);
+        if (updated != null) {
+            log.info("Successfully updated facility block for facilityId: {}", facilityId);
+            log.trace("Exiting updateFacilityBlock endpoint");
+            return ResponseEntity.ok(updated);
+        } else {
+            log.warn("Facility not found for block update, facilityId: {}", facilityId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
 
     @RequestMapping(value = "/assessment/_update", method = RequestMethod.POST)
     public ResponseEntity<FacilityAssessment> updateHFAssessment(@Parameter(in = ParameterIn.DEFAULT, description = "Health facility assessment data updated", required = true, schema = @Schema()) @Valid @RequestBody FacilityAssessmentCreateRequest body) {

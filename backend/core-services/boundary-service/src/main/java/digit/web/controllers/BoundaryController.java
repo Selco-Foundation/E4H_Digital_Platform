@@ -77,6 +77,19 @@ public class BoundaryController {
         return new ResponseEntity<>(boundaryResponse,HttpStatus.ACCEPTED);
     }
 
+    @PostMapping(value = "/_delete")
+    public ResponseEntity<BoundaryResponse> delete(@Valid @RequestBody BoundaryRequest body) {
+        log.trace("delete method invoked");
+        log.info("Processing boundary delete request, boundary count={}",
+                body.getBoundary() != null ? body.getBoundary().size() : 0);
+
+        BoundaryResponse boundaryResponse = boundaryService.deleteBoundary(body);
+
+        log.info("Boundary delete request processed successfully, deleted {} boundaries",
+                boundaryResponse.getBoundary() != null ? boundaryResponse.getBoundary().size() : 0);
+        return new ResponseEntity<>(boundaryResponse, HttpStatus.OK);
+    }
+
     @GetMapping("/getAllBoundaries")
     public ResponseEntity<List<FlatBoundaryResponse>> getAllBoundaries(
             @RequestParam(defaultValue = "0") int page,

@@ -13,4 +13,6 @@ public interface BoundaryRepository {
 
     public void update(BoundaryRequest boundaryRequest);
 
+    public void delete(String tenantId, String code);
+
 }
