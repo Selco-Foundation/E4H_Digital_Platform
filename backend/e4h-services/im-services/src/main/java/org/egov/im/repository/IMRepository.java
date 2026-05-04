@@ -134,6 +134,31 @@ public class IMRepository {
 		return dynamicData;
 	}
 
+	/**
+	 * Sets {@code boundarycode} and {@code block} on all rows in {@code eg_incident_v2}
+	 * for the given {@code facilityid} and {@code tenantid}.
+	 *
+	 * @return number of rows updated
+	 */
+	public int updateIncidentBoundaryCodeByFacility(String tenantId, String facilityId, String newBoundaryCode,
+													String newBlockCode, String lastModifiedBy) {
+		log.trace("IMRepository::updateIncidentBoundaryCodeByFacility method invoked");
+		String query = "UPDATE {schema}.eg_incident_v2 SET boundarycode = ?, block = ?, lastmodifiedtime = ?, lastmodifiedby = ? "
+				+ "WHERE facilityid = ? AND tenantid = ?";
+		try {
+			query = utils.replaceSchemaPlaceholder(query, tenantId);
+		} catch (Exception e) {
+			log.error("Failed to replace schema placeholder for incident boundary update, tenantId: {}", tenantId, e);
+			throw new CustomException("PGR_UPDATE_ERROR",
+					"TenantId length is not sufficient to replace query schema in a multi state instance");
+		}
+		long now = System.currentTimeMillis();
+		log.debug("Updating incident boundarycode for facilityId={}, tenantId={}", facilityId, tenantId);
+		int updated = jdbcTemplate.update(query, newBoundaryCode, newBlockCode, now, lastModifiedBy, facilityId, tenantId);
+		log.info("Updated boundarycode/block on {} incident row(s) for facilityId={}", updated, facilityId);
+		return updated;
+	}
+
 
 
 }
