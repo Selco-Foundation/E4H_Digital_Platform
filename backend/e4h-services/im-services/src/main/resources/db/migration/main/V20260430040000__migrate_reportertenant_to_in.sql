@@ -2,7 +2,5 @@
 -- Aligns gateway-extracted tenantIds with state-level tenant when payloads embed nested tenantId fields
 
 UPDATE public.eg_incident_v2
-SET reportertenant = 'in',
-    phctype = 'in'
-WHERE reportertenant IS NULL OR reportertenant != 'in'
-   OR phctype IS NULL OR phctype != 'in';
+SET reportertenant = 'in'
+WHERE reportertenant IS NULL OR reportertenant != 'in';
