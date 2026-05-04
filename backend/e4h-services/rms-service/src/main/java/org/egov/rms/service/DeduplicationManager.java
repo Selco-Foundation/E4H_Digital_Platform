@@ -75,15 +75,20 @@ public class DeduplicationManager {
                 }
             }
 
-            // Alert is new or suppression window has passed
-            uniqueAlerts.add(alert);
-            // Save alert to active_alerts table if it doesn't exist
+            // Alert is new or suppression window has passed. Persist first, then allow ticket creation.
             try {
                 alertRepository.saveAlert(alert);
-                log.debug("Successfully saved alert {} to active_alerts", alert.getId());
+                log.info("ACTIVE_ALERTS_PERSIST_SUCCESS alertId={} facilityId={} type={} subType={} status={}",
+                        alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType(), alert.getStatus());
+                uniqueAlerts.add(alert);
             } catch (Exception e) {
-                log.error("Failed to save alert {} to active_alerts: {}", alert.getId(), e.getMessage(), e);
-                // Continue processing other alerts even if one fails
+                log.error("ACTIVE_ALERTS_PERSIST_FAILED alertId={} facilityId={} type={} subType={} status={} reason={}",
+                        alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType(),
+                        alert.getStatus(), e.getMessage(), e);
+                // Do not proceed to ticket creation if we could not persist state.
+                log.warn("TICKET_CREATION_SKIPPED alertId={} facilityId={} type={} subType={} cause=ACTIVE_ALERTS_PERSIST_FAILED",
+                        alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
+                continue;
             }
         }
 
