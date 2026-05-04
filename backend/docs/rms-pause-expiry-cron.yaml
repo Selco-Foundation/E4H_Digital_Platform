@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: rms-pause-expiry-cron
+  labels:
+    app: rms-service
+    job-type: pause-expiry-reconciliation
+spec:
+  # Once a day at 10:00
+  schedule: "0 10 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: rms-pause-expiry-runner
+              image: rms-pause-expiry-cron:latest
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: RMS_PAUSE_EXPIRE_URL
+                  value: "http://rms-service.core-dev:8080/rms-service/v1/ticket/pause/_expire"
+                - name: RMS_PAUSE_EXPIRE_TENANT_ID
+                  value: "in"
+                - name: RMS_PAUSE_EXPIRE_LIMIT
+                  value: "500"
+                # Inject via secret in real deployments
+                - name: RMS_PAUSE_EXPIRE_AUTH_TOKEN
+                  value: ""
+          restartPolicy: OnFailure
+
