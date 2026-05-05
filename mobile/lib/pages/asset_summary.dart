@@ -22,13 +22,16 @@ import '../blocs/report_type/report_type.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
+import '../model/appconfig/mdmsRequest.dart';
 import '../model/asset_summary/asset_summary.dart';
 import '../model/brand/brand.dart';
 import '../model/comment/comment.dart';
 import '../model/mdms/mdms.dart';
 import '../model/system/system.dart';
 import '../model/transaction/transaction.dart';
+import '../repositories/app_init_repo.dart' hide envConfig;
 import '../router/app_router.dart';
+import '../utils/envConfig.dart' as env;
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
@@ -40,6 +43,7 @@ import '../widgets/progress_indicator/operation_progress_overlay.dart';
 
 class _ReasonEntry {
   String? selectedCode;
+  String? selectedName;
   final TextEditingController controller = TextEditingController();
 }
 
@@ -59,11 +63,14 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
   ActivityFacilityWorkflow? selectedActivityFacility;
 
   final List<_ReasonEntry> _reasons = [];
+  List<DropdownItem> _rejectionReasonItems = const [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadRejectionReasons();
+
       assetType = context.read<AssetTypeBloc>().state.when(
             initial: () => '',
             inverter: () => 'inverter',
@@ -101,6 +108,47 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             );
       });
     });
+  }
+
+  @override
+  void dispose() {
+    for (final entry in _reasons) {
+      entry.controller.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _loadRejectionReasons() async {
+    try {
+      final docs = await AppInitRepo().searchRejectionReasons(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: env.envConfig.variables.tenantId,
+            schemaCode: "Installation.RejectionReasons",
+            moduleDetails: [],
+          ),
+        ),
+        useCacheRead: true,
+      );
+
+      final items = docs
+          .where((doc) => doc.isActive)
+          .map((doc) => DropdownItem(
+                name: doc.data.name,
+                code: doc.data.code,
+              ))
+          .toList();
+
+      if (!mounted) return;
+      setState(() {
+        _rejectionReasonItems = items;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _rejectionReasonItems = const [];
+      });
+    }
   }
 
   void _openImage(String path) {
@@ -272,10 +320,16 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
     );
   }
 
-  void _showSendBackPopup(BuildContext context) {
+  Future<void> _showSendBackPopup(BuildContext context) async {
+    await _loadRejectionReasons();
+    if (!context.mounted) return;
+
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
 
+    for (final entry in _reasons) {
+      entry.controller.dispose();
+    }
     _reasons
       ..clear()
       ..add(_ReasonEntry());
@@ -301,17 +355,15 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                           label: 'Reason',
                           child: DigitDropdown(
                             sentenceCaseEnabled: false,
-                            items: const [
-                              DropdownItem(name: 'Image Not Clear', code: 'a'),
-                              DropdownItem(name: 'Incorrect Brand', code: 'b'),
-                              DropdownItem(name: 'Serial Number Incorrect', code: 'c'),
-                            ],
-                            onSelect: (sel) => setStatePopup(
-                              () => entry.selectedCode = sel.name,
-                            ),
+                            items: _rejectionReasonItems,
+                            onSelect: (sel) => setStatePopup(() {
+                              entry.selectedCode = sel.code;
+                              entry.selectedName = sel.name;
+                            }),
                             selectedOption: DropdownItem(
-                                name: entry.selectedCode ?? '',
-                                code: entry.selectedCode ?? ''),
+                              name: entry.selectedName ?? '',
+                              code: entry.selectedCode ?? '',
+                            ),
                           ),
                         ),
                         Positioned(
@@ -331,6 +383,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                               onPressed: () {
                                 setStatePopup(() {
                                   _reasons.remove(entry);
+                                  entry.controller.dispose();
                                 });
                               },
                             ),
@@ -395,13 +448,25 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 
                             final reasons = _reasons
                                 .where((e) =>
-                                    (e.selectedCode?.isNotEmpty ?? false) ||
+                                    (e.selectedName?.isNotEmpty ?? false) ||
                                     e.controller.text.trim().isNotEmpty)
                                 .map((e) => {
-                                      'reason': (e.selectedCode ?? '').trim(),
+                                      'reason':
+                                          (e.selectedName ?? '').trim(),
                                       'comment': e.controller.text.trim(),
                                     })
                                 .toList();
+
+                            if (reasons.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Select a reason or enter additional details.',
+                                  ),
+                                ),
+                              );
+                              return;
+                            }
 
                             final transactions = [
                               Transaction(

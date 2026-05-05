@@ -9,6 +9,7 @@ import '../../model/brand/brand.dart';
 import '../../model/installation_images/installation_images.dart';
 import '../../model/localization/localizationModel.dart';
 import '../../model/mdms/mdms.dart';
+import '../../model/rejection_reason/rejection_reason.dart';
 import '../../model/response/responsemodel.dart';
 import '../../model/role_actions/role_actions_model.dart';
 import '../../model/solution_design_type/solution_design_type.dart';
@@ -150,6 +151,21 @@ class SecureStore {
 
   Future<String?> getInstallationImages() async {
     return await storage.read(key: 'installationImages');
+  }
+
+  Future<void> setRejectionReasons(
+      List<Mdms<RejectionReasonData>> list) async {
+    final List<Map<String, dynamic>> jsonList = list
+        .map((mdms) => mdms.toJson((data) => data.toJson()))
+        .toList();
+    await storage.write(
+      key: 'rejectionReasons',
+      value: json.encode(jsonList),
+    );
+  }
+
+  Future<String?> getRejectionReasons() async {
+    return await storage.read(key: 'rejectionReasons');
   }
 
   Future<void> setFormSchemas(Map<String, dynamic> schemas) async {

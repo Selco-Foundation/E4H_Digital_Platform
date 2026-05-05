@@ -11,6 +11,7 @@ import '../model/asset_type/asset_type.dart';
 import '../model/brand/brand.dart';
 import '../model/installation_images/installation_images.dart';
 import '../model/mdms/mdms.dart';
+import '../model/rejection_reason/rejection_reason.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../model/system/system.dart';
@@ -189,6 +190,21 @@ class AppInitRepo {
       readCache: storage.getInstallationImages,
       writeCache: (list) => storage.setInstallationImages(list),
       dataFromJson: InstallationImagesData.fromJson,
+      useCacheRead: useCacheRead,
+      cacheOnly: cacheOnly,
+    );
+  }
+
+  Future<List<Mdms<RejectionReasonData>>> searchRejectionReasons(
+      MdmsRequestModel mdmsRequestBody,
+      {bool useCacheRead = false,
+      bool cacheOnly = false}) async {
+    final storage = SecureStore();
+    return _searchCachedMdms<RejectionReasonData>(
+      request: mdmsRequestBody,
+      readCache: storage.getRejectionReasons,
+      writeCache: (list) => storage.setRejectionReasons(list),
+      dataFromJson: RejectionReasonData.fromJson,
       useCacheRead: useCacheRead,
       cacheOnly: cacheOnly,
     );

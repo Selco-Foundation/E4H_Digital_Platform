@@ -193,7 +193,38 @@ class AppInitialization extends Bloc<InitEvent, InitState> {
         ),
         cacheOnly: cacheOnly,
       ),
+      _fetchRejectionReasonsForCache(
+        appInitRepo,
+        tenantId: tenantId,
+        cacheOnly: cacheOnly,
+      ),
     ]);
+  }
+
+  Future<List<dynamic>> _fetchRejectionReasonsForCache(
+    AppInitRepo appInitRepo, {
+    required String tenantId,
+    required bool cacheOnly,
+  }) async {
+    try {
+      return await appInitRepo.searchRejectionReasons(
+        MdmsRequestModel(
+          mdmsCriteria: MdmsCriteriaModel(
+            tenantId: tenantId,
+            schemaCode: "Installation.RejectionReasons",
+            moduleDetails: [],
+          ),
+        ),
+        cacheOnly: cacheOnly,
+      );
+    } catch (e) {
+      if (isSessionExpiredMessage(e.toString())) {
+        rethrow;
+      }
+
+      AppLogger.instance.info('Failed to load rejection reasons: $e');
+      return <dynamic>[];
+    }
   }
 
   Future<void> _emitInitializedState({
