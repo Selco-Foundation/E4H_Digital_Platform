@@ -24,8 +24,8 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Creates a new PLATFORM organisation via vendor API (global name), finds HRMS employees with any of the complaint
- * workflow roles, and inserts {@code eg_org_user} rows linking each distinct user to that org's id from the response.
+ * Finds HRMS employees with any of the complaint workflow roles and inserts {@code eg_org_user} rows linking each
+ * distinct user to an existing platform organisation id ({@link #EXISTING_PLATFORM_ORG_ID} — edit per environment if needed).
  * <p>
  * A user who appears under more than one role (e.g. COMPLAINANT and COMPLAINT_FACILITATOR_1) is still linked only once:
  * all role searches merge into a {@link java.util.LinkedHashSet} keyed by {@code user.uuid}.
@@ -35,20 +35,14 @@ import java.util.UUID;
 @Slf4j
 public class V20260415103000__LinkComplaintRoleUsersToPlatformOrg extends BaseJavaMigration {
 
-    /** Single org name for the shared platform org (edit if your environment needs another label). */
-    private static final String GLOBAL_PLATFORM_ORG_NAME = "Selco Foundation";
-
+    /** Existing vendor organisation id (uuid); replace with the correct org for this deployment. */
+    private static final String EXISTING_PLATFORM_ORG_ID = "c9661407-5594-4020-b1f4-95af1be22d8b";
 
     private static final String HRMS_SEARCH_BASE =  System.getenv("EGOV_HRMS_HOST") + "egov-hrms/employees/_search";
-
-    private static final String VENDOR_ORG_CREATE_URL =
-            System.getenv("EGOV_VENDOR_HOST") + "vendor/organisation/v1/_create";
 
     private static final String HRMS_AUTH_HEADER_VALUE = "Bearer your-auth-token";
 
     private static final String HRMS_REQUEST_INFO_AUTH_TOKEN = "Bearer your-auth-token";
-
-    private static final String ORG_REQUEST_INFO_AUTH_TOKEN = "AUTH_TOKEN";
 
     private static final String SYSTEM_USER = "00000000-0000-0000-0000-000000000001";
 
@@ -80,8 +74,11 @@ public class V20260415103000__LinkComplaintRoleUsersToPlatformOrg extends BaseJa
         HttpClient httpClient = HttpClient.newBuilder().connectTimeout(HTTP_TIMEOUT).build();
         Connection connection = context.getConnection();
 
-        String platformOrgId = createPlatformOrganisationAndGetId(httpClient);
-        log.info("Created PLATFORM organisation id={} name={}", platformOrgId, GLOBAL_PLATFORM_ORG_NAME);
+        String platformOrgId = EXISTING_PLATFORM_ORG_ID.trim();
+        if (platformOrgId.isBlank()) {
+            throw new IllegalStateException("EXISTING_PLATFORM_ORG_ID must be set to the target organisation uuid.");
+        }
+        log.info("Linking complaint-role users to existing organisation id={}", platformOrgId);
 
         // One eg_org_user per HRMS user.uuid; same person matched by several roles is deduped here.
         Set<String> userUuids = new LinkedHashSet<>();
@@ -99,17 +96,6 @@ public class V20260415103000__LinkComplaintRoleUsersToPlatformOrg extends BaseJa
             inserted++;
         }
         log.info("PLATFORM org user links migration finished; inserted {} eg_org_user row(s).", inserted);
-    }
-
-    /** Calls organisation {@code _create} once and returns the new org's {@code id} (or {@code uuid}) from the response. */
-    private String createPlatformOrganisationAndGetId(HttpClient httpClient) throws Exception {
-        String body = buildPlatformOrgCreateBody();
-        JsonNode orgResponse = postJson(httpClient, VENDOR_ORG_CREATE_URL, body, null);
-        String id = extractFirstOrganisationId(orgResponse);
-        if (id == null || id.isBlank()) {
-            throw new IllegalStateException("Organisation create did not return an id; response=" + orgResponse);
-        }
-        return id;
     }
 
     private void fetchEmployeeUuidsForRole(HttpClient httpClient, String role, Set<String> outUuids) throws Exception {
@@ -180,23 +166,6 @@ public class V20260415103000__LinkComplaintRoleUsersToPlatformOrg extends BaseJa
         }
     }
 
-    private static String extractFirstOrganisationId(JsonNode orgResponse) {
-        JsonNode orgs = orgResponse.get("organisations");
-        if (orgs == null || !orgs.isArray() || orgs.isEmpty()) {
-            return null;
-        }
-        JsonNode first = orgs.get(0);
-        JsonNode id = first.get("id");
-        if (id != null && id.isTextual() && !id.asText().isBlank()) {
-            return id.asText();
-        }
-        JsonNode uuid = first.get("uuid");
-        if (uuid != null && uuid.isTextual() && !uuid.asText().isBlank()) {
-            return uuid.asText();
-        }
-        return null;
-    }
-
     private JsonNode postJson(HttpClient httpClient, String url, String jsonBody, String authorizationHeader) throws Exception {
         HttpRequest.Builder b = HttpRequest.newBuilder()
                 .uri(URI.create(url))
@@ -243,47 +212,6 @@ public class V20260415103000__LinkComplaintRoleUsersToPlatformOrg extends BaseJa
         ArrayNode roles = userInfo.putArray("roles");
         ObjectNode role = roles.addObject();
         role.put("name", "EMPLOYEE");
-        return objectMapper.writeValueAsString(root);
-    }
-
-    private String buildPlatformOrgCreateBody() throws Exception {
-        ObjectNode root = objectMapper.createObjectNode();
-        ArrayNode organisations = root.putArray("organisations");
-        ObjectNode org = organisations.addObject();
-        org.put("tenantId", TENANT_IN);
-        org.put("name", GLOBAL_PLATFORM_ORG_NAME);
-        org.put("orgType", "PLATFORM");
-        org.put("orgStatus", "ACTIVE");
-        org.put("isActive", true);
-        org.putArray("orgAddress");
-
-        ObjectNode ri = root.putObject("RequestInfo");
-        ri.put("apiId", "Rainmaker");
-        ri.put("authToken", ORG_REQUEST_INFO_AUTH_TOKEN);
-        ri.put("msgId", "1776161055449|en_IN");
-        ri.putObject("plainAccessRequest");
-        ObjectNode userInfo = ri.putObject("userInfo");
-        userInfo.put("id", 15633);
-        userInfo.put("uuid", "495c29c3-ce82-40fd-b61a-0bc83ffe0e1d");
-        userInfo.put("userName", "platform_admin_uat");
-        userInfo.put("name", "Platform Admin UAT");
-        userInfo.put("mobileNumber", "9909099909");
-        userInfo.put("emailId", "platformadmin@selcofoundation.org");
-        userInfo.put("locale", "en_IN");
-        userInfo.put("type", "EMPLOYEE");
-        userInfo.put("active", true);
-        userInfo.put("tenantId", TENANT_IN);
-        userInfo.put("permanentCity", "All");
-        ArrayNode roles = userInfo.putArray("roles");
-        ObjectNode r1 = roles.addObject();
-        r1.put("name", "Employee");
-        r1.put("code", "EMPLOYEE");
-        r1.put("tenantId", TENANT_IN);
-        ObjectNode r2 = roles.addObject();
-        r2.put("name", "Organization Platform Administrator");
-        r2.put("code", "ORG_PLATFORM_ADMIN");
-        r2.put("tenantId", TENANT_IN);
-
         return objectMapper.writeValueAsString(root);
     }
 }
