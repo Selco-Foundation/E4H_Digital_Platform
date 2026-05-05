@@ -12,6 +12,7 @@ import InfoCard from "../../components/FacilityDetails/InfoCard";
 
 const FacilityDetails = ({t}) => {
 
+  const tenantId = Digit.ULBService.getCurrentTenantId();
   const [assets, setAssets] = useState([]);
   const dispatch = useDispatch();
   const url = window.location.href;
@@ -19,9 +20,10 @@ const FacilityDetails = ({t}) => {
   const activityFacilityId = url.split("facilities/")[1].split("/")[0].split("?")[0];
   const [facilityDetails, setFacilityDetails] = useState({});
   const [auditTrail, setAuditTrail] = useState([]);
-  const [aggregatedAssets, setAggregatedAssets] = useState({});
-  const [aggregatedDocuments, setAggregatedDocuments] = useState([]);
+  const [aggregatedDocuments, setAggregatedDocuments] = useState({});
+  const [workflowDocuments, setWorkflowDocuments] = useState([]);
   const [updatingWorkflow, setUpdatingWorkflow] = useState(false);
+  const [installationImages, setInstallationImages] = useState([]);
 
   const {
     isLoading: fieldPlanDataLoading,
@@ -42,6 +44,20 @@ const FacilityDetails = ({t}) => {
 
   const { isLoading, data: assetData } = useAsset(activityFacilityId);
 
+  const { data: mdmsResponse, isLoading: mdmsLoading } = Digit.Hooks.useCustomMDMS(
+    tenantId,
+    "common-masters",
+    [
+      {
+        name: "InstallationImages",
+      },
+    ],
+    {
+      select: (data) => data,
+      enabled: !!tenantId,
+    }
+  );
+
   useEffect(() => {
     if (assetData) {
       setAssets(assetData);
@@ -58,11 +74,25 @@ const FacilityDetails = ({t}) => {
     if (facilityData) {
       setAuditTrail(facilityData.auditTrail);
       setFacilityDetails(facilityData.facilityDetails);
-      setAggregatedAssets(facilityData.assetAggregation);
       setAggregatedDocuments(facilityData.documentAggregation);
+      setWorkflowDocuments(facilityData.workflowDocuments);
       dispatch(setSelectedFacility(facilityData.facilityDetails));
     }
   }, [facilityData]);
+
+  useEffect(() => {
+    const installationImageCriteria = mdmsResponse?.["common-masters"]?.["InstallationImages"]?.[0]?.["InstallationImage"];
+    if (facilityData?.installationImages && installationImageCriteria) {
+      setInstallationImages(
+        installationImageCriteria.map((criterion) => ({
+          description: criterion.description,
+          images: facilityData?.installationImages.filter((image) => image.imageCode === criterion.code),
+          providedImagesCount: facilityData?.installationImages.filter((image) => image.imageCode === criterion.code).length,
+          requiredImagesCount: criterion["required_count"],
+        }))
+      )
+    }
+  }, [facilityData, mdmsResponse]);
 
   useEffect(() => {
     return () => {
@@ -70,14 +100,14 @@ const FacilityDetails = ({t}) => {
     }
   }, []);
 
-  if (isLoading || facilityDataLoading || fieldPlanDataLoading) {
+  if (isLoading || facilityDataLoading || fieldPlanDataLoading || mdmsLoading) {
     return <Loader />;
   }
 
-  const revalidateData = () => {
-    revalidateFieldPlans();
-    revalidateFacilities();
-    revalidateFacilityDetails();
+  const revalidateData = async () => {
+    await revalidateFieldPlans();
+    await revalidateFacilities();
+    await revalidateFacilityDetails();
   }
 
   return (
@@ -119,21 +149,22 @@ const FacilityDetails = ({t}) => {
           specifications={asset?.specifications}
           details={asset?.details}
           items={asset?.items}
-          images={aggregatedAssets.images?.[asset.assetType]}
-          videos={aggregatedAssets.videos?.[asset.assetType]}
+          images={aggregatedDocuments.images?.[asset.assetType]}
+          videos={aggregatedDocuments.videos?.[asset.assetType]}
         />
       })}
 
-      {aggregatedAssets?.bomCompletionReport && (
+      {aggregatedDocuments?.bomCompletionReport && (
         <Summary
           t={t}
           sectionName="InstallationCompletionReport"
           section="INSTALLATION_COMPLETION_REPORT"
           report={{
-            ...aggregatedAssets?.bomCompletionReport,
+            ...aggregatedDocuments?.bomCompletionReport,
             name: `${facilityDetails.facilityName}.pdf`
           }}
-          supportingDocuments={aggregatedAssets.installationReportDocuments}
+          supportingDocuments={aggregatedDocuments.installationReportDocuments}
+          installationImages={installationImages}
           isReport={true}
         />
       )}
@@ -143,7 +174,7 @@ const FacilityDetails = ({t}) => {
           t={t}
           revalidateData={revalidateData}
           setUpdatingWorkflow={setUpdatingWorkflow}
-          aggregatedDocuments={aggregatedDocuments}
+          workflowDocuments={workflowDocuments}
         />
       )}
 

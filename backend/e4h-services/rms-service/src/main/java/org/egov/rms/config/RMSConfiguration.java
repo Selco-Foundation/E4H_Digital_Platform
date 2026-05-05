@@ -77,6 +77,16 @@ public class RMSConfiguration {
     @Value("${facility.service.search.endpoint}")
     private String facilityServiceSearchEndpoint;
 
+    // MDMS Configuration
+    @Value("${egov.mdms.host}")
+    private String mdmsHost;
+
+    @Value("${egov.mdms.search.endpoint}")
+    private String mdmsSearchEndpoint;
+
+    @Value("${rms.mdms.facility.sync.limit:200}")
+    private Integer mdmsFacilitySyncLimit;
+
     // User Service Configuration
     @Value("${egov.user.host}")
     private String userHost;
@@ -88,7 +98,7 @@ public class RMSConfiguration {
     private String systemUserUuid;
 
     // Default Tenant
-    @Value("${rms.default.tenant.id:pg}")
+    @Value("${rms.default.tenant.id:in}")
     private String defaultTenantId;
 
     // Scheduler Configuration
@@ -126,5 +136,12 @@ public class RMSConfiguration {
     // Testing Configuration
     @Value("${rms.testing.max.tickets.per.trigger:-1}")
     private Integer maxTicketsPerTrigger; // -1 means unlimited, positive number limits tickets per trigger
+
+    // Ticket Pause Configuration
+    @Value("${rms.ticket.pause.enabled:true}")
+    private Boolean ticketPauseEnabled;
+
+    @Value("${rms.kafka.ticket.pause.topic.indexer:save-rms-ticket-pause-indexer}")
+    private String ticketPauseAuditTopicIndexer;
 }
 

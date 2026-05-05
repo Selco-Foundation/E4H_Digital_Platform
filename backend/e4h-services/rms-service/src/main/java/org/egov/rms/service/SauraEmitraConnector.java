@@ -1,6 +1,5 @@
 package org.egov.rms.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.rms.config.RMSConfiguration;
@@ -16,8 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.concurrent.TimeUnit;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -26,7 +23,6 @@ public class SauraEmitraConnector {
     private final RMSConfiguration config;
     private final RestTemplate restTemplate;
     private final AlertRepository alertRepository;
-    private final ObjectMapper objectMapper;
 
     /**
      * Creates a ticket in Saura eMitra (IM service) with retry logic
@@ -58,12 +54,35 @@ public class SauraEmitraConnector {
                     String ticketId = extractTicketId(responseBody);
                     
                     if (ticketId != null) {
-                        // Update alert with ticket ID
-                        alertRepository.updateTicketId(alert.getId(), ticketId);
+                        log.info("IM_TICKET_CREATE_SUCCESS alertId={} facilityId={} type={} subType={} ticketId={}",
+                                alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType(), ticketId);
+                        // Update alert with ticket ID. If id-based update misses due to prior upsert key replacement,
+                        // fallback to facility/type/subType key to ensure active_alerts is synchronized.
+                        int updatedById = alertRepository.updateTicketId(alert.getId(), ticketId);
+                        log.info("ACTIVE_ALERTS_TICKET_LINK_BY_ID alertId={} ticketId={} updatedRows={}",
+                                alert.getId(), ticketId, updatedById);
+                        if (updatedById == 0) {
+                            log.warn("ACTIVE_ALERTS_TICKET_LINK_BY_ID_MISS alertId={} facilityId={} type={} subType={} ticketId={}",
+                                    alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType(), ticketId);
+                            int updatedByKey = alertRepository.updateTicketIdByFacilityKey(
+                                    alert.getFacilityId(),
+                                    alert.getAlertType(),
+                                    alert.getAlertSubType(),
+                                    ticketId
+                            );
+                            if (updatedByKey == 0) {
+                                log.error("ACTIVE_ALERTS_TICKET_LINK_FAILED ticketId={} alertId={} facilityId={} type={} subType={} updatedRowsById={} updatedRowsByFacilityKey={}",
+                                        ticketId, alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
+                            } else {
+                                log.info("ACTIVE_ALERTS_TICKET_LINK_FALLBACK_SUCCESS ticketId={} facilityId={} type={} subType={} updatedRowsByFacilityKey={}",
+                                        ticketId, alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType(), updatedByKey);
+                            }
+                        }
                         log.info("Successfully created ticket {} for alert: {}", ticketId, alert.getId());
                         return true;
                     } else {
-                        log.warn("Ticket created but ticket ID not found in response for alert: {}", alert.getId());
+                        log.error("IM_TICKET_ID_MISSING alertId={} facilityId={} type={} subType={}",
+                                alert.getId(), alert.getFacilityId(), alert.getAlertType(), alert.getAlertSubType());
                     }
                 }
                 
