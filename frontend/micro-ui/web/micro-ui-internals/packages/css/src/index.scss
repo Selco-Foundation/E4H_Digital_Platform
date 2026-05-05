@@ -95,6 +95,7 @@
 @import "./pages/employee/oldMobileInbox.scss";
 @import "./pages/employee/dss.scss";
 @import "./pages/employee/iframe.scss";
+@import "./pages/employee/reverseactionbar.scss";
 
 @import "./pages/citizen/payment/payment-type.scss";
 @import "./pages/citizen/container.scss";
@@ -769,4 +770,11 @@ input[type="number"] {
   border: 1px solid #464646;
   margin-bottom: 24px;
   padding: 0 5px;
+}
+
+.pause-rms-form-wrapper {
+  .field-container {
+    max-width: 100%;
+  }
+;
 }
