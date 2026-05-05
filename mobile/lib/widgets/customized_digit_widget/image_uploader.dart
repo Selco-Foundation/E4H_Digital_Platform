@@ -390,9 +390,25 @@ class _ImageUploaderState extends State<ImageUploader>
   Future<void> _handleImageCapture(File image) async {
     if (!mounted) return;
     final sessionToken = _activeSessionToken;
-    final int imagesBeforeSelection = _imageFiles.length;
+    final remainingSlots = widget.allowMultiples ? _remainingImageSlots : null;
+    if (widget.allowMultiples &&
+        remainingSlots != null &&
+        remainingSlots <= 0) {
+      final limit = widget.maxImages;
+      if (limit != null) {
+        setState(() {
+          fileError =
+              'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached';
+        });
+      }
+      if (sessionToken != null) {
+        _completeSession(sessionToken);
+      }
+      return;
+    }
+
     setState(() {
-      fileError = _buildOverflowMessage(imagesBeforeSelection, 1);
+      fileError = '';
       if (widget.allowMultiples) {
         _imageFiles.add(image);
       } else {
@@ -460,20 +476,6 @@ class _ImageUploaderState extends State<ImageUploader>
     return (file: normalizedFile, shouldAbort: false);
   }
 
-  String _buildOverflowMessage(int existingCount, int selectedCount) {
-    if (!widget.allowMultiples) return '';
-    final limit = widget.maxImages;
-    if (limit == null) return '';
-
-    final remainingSlots = limit - existingCount;
-    if (remainingSlots <= 0) {
-      return 'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached';
-    }
-    if (selectedCount <= remainingSlots) return '';
-    return 'Only $remainingSlots more '
-        '${remainingSlots == 1 ? 'image can' : 'images can'} be added';
-  }
-
   Future<void> _processPickedFiles(
     List<XFile> pickedFiles, {
     required int sessionToken,
@@ -482,12 +484,24 @@ class _ImageUploaderState extends State<ImageUploader>
     if (!mounted || _activeSessionToken != sessionToken) return;
 
     final List<File> nextFiles = <File>[];
-    final int imagesBeforeSelection = _imageFiles.length;
-    final overflowMessage = _buildOverflowMessage(
-      imagesBeforeSelection,
-      pickedFiles.length,
-    );
     final remainingSlots = widget.allowMultiples ? _remainingImageSlots : null;
+    if (widget.allowMultiples &&
+        remainingSlots != null &&
+        remainingSlots <= 0) {
+      final limit = widget.maxImages;
+      if (limit != null) {
+        setState(() {
+          fileError =
+              'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached';
+        });
+      }
+      _completeSession(sessionToken);
+      return;
+    }
+
+    final exceededLimit = widget.allowMultiples &&
+        remainingSlots != null &&
+        pickedFiles.length > remainingSlots;
     final cappedFiles = widget.allowMultiples && remainingSlots != null
         ? pickedFiles.take(remainingSlots).toList()
         : pickedFiles;
@@ -514,7 +528,10 @@ class _ImageUploaderState extends State<ImageUploader>
     }
 
     setState(() {
-      fileError = overflowMessage;
+      final limit = widget.maxImages;
+      fileError = exceededLimit && limit != null
+          ? 'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached'
+          : '';
       if (widget.allowMultiples) {
         _imageFiles.addAll(nextFiles);
       } else {
@@ -574,10 +591,10 @@ class _ImageUploaderState extends State<ImageUploader>
 
       final recoveredFiles =
           (response.files != null && response.files!.isNotEmpty)
-          ? response.files!
-          : response.file != null
-              ? <XFile>[response.file!]
-              : const <XFile>[];
+              ? response.files!
+              : response.file != null
+                  ? <XFile>[response.file!]
+                  : const <XFile>[];
       if (recoveredFiles.isEmpty) {
         if (response.exception != null) {
           AppLogger.instance
@@ -991,6 +1008,7 @@ class _ImageUploaderState extends State<ImageUploader>
   Future<void> _removeImage(int index) async {
     if (widget.isDisabled) return;
     setState(() {
+      fileError = '';
       _imageFiles.removeAt(index);
     });
     await _deliverImagesSelected(List<File>.from(_imageFiles));
