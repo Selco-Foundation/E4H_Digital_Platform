@@ -77,6 +77,16 @@ public class RMSConfiguration {
     @Value("${facility.service.search.endpoint}")
     private String facilityServiceSearchEndpoint;
 
+    // MDMS Configuration
+    @Value("${egov.mdms.host}")
+    private String mdmsHost;
+
+    @Value("${egov.mdms.search.endpoint}")
+    private String mdmsSearchEndpoint;
+
+    @Value("${rms.mdms.facility.sync.limit:200}")
+    private Integer mdmsFacilitySyncLimit;
+
     // User Service Configuration
     @Value("${egov.user.host}")
     private String userHost;
