@@ -2,25 +2,31 @@ package digit.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import digit.repository.BoundaryRelationshipRepository;
 import digit.repository.impl.BoundaryRepositoryImpl;
 import digit.service.enrichment.BoundaryEntityEnricher;
 import digit.service.validator.BoundaryEntityValidator;
 import digit.util.HierarchyUtil;
 import digit.util.ResponseUtil;
 import digit.web.models.*;
+import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.utils.ResponseInfoUtil;
+import org.egov.tracer.model.CustomException;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static digit.constants.BoundaryConstants.MASTER_STATE_INFO;
 import static digit.constants.BoundaryConstants.MDMS_COMMON_MASTERS_MODULE_NAME;
 
 @Service
+@Slf4j
 public class BoundaryService {
 
     private final BoundaryEntityValidator boundaryEntityValidator;
@@ -29,14 +35,17 @@ public class BoundaryService {
 
     private final BoundaryRepositoryImpl repository;
     private HierarchyUtil hierarchyUtil;
+    private final BoundaryRelationshipRepository boundaryRelationshipRepository;
 
     public BoundaryService(BoundaryEntityValidator boundaryEntityValidator , ResponseUtil responseUtil,
-                           BoundaryRepositoryImpl repository, HierarchyUtil hierarchyUtil) {
+                           BoundaryRepositoryImpl repository, HierarchyUtil hierarchyUtil,
+                           BoundaryRelationshipRepository boundaryRelationshipRepository) {
 
         this.boundaryEntityValidator = boundaryEntityValidator;
         this.responseUtil = responseUtil;
         this.repository = repository;
         this.hierarchyUtil = hierarchyUtil;
+        this.boundaryRelationshipRepository = boundaryRelationshipRepository;
     }
 
     /**
@@ -65,6 +74,50 @@ public class BoundaryService {
             createMdmsStateInfo(boundaryRequest);
 
         return boundaryResponse;
+    }
+
+    public BoundaryResponse deleteBoundary(BoundaryRequest boundaryRequest) {
+        log.trace("deleteBoundary method invoked");
+        if (boundaryRequest == null || CollectionUtils.isEmpty(boundaryRequest.getBoundary())) {
+            throw new IllegalArgumentException("Boundary list is required for delete");
+        }
+
+        List<Boundary> deletedBoundaries = new ArrayList<>();
+        for (Boundary boundary : boundaryRequest.getBoundary()) {
+            if (boundary == null || boundary.getTenantId() == null || boundary.getCode() == null) {
+                throw new IllegalArgumentException("tenantId and code are required for boundary delete");
+            }
+
+            List<Boundary> existing = repository.search(
+                    BoundarySearchCriteria.builder()
+                            .tenantId(boundary.getTenantId())
+                            .codes(Collections.singletonList(boundary.getCode()))
+                            .build()
+            );
+            if (CollectionUtils.isEmpty(existing)) {
+                throw new CustomException("BOUNDARY_ENTITY_DOES_NOT_EXIST", "Boundary entity does not exist for code: " + boundary.getCode());
+            }
+
+            // Do not delete the boundary entity if a relationship still points to it.
+            List<BoundaryRelationshipDTO> relationships = boundaryRelationshipRepository.search(
+                    BoundaryRelationshipSearchCriteria.builder()
+                            .tenantId(boundary.getTenantId())
+                            .codes(Collections.singletonList(boundary.getCode()))
+                            .build()
+            );
+            if (!CollectionUtils.isEmpty(relationships)) {
+                throw new CustomException("BOUNDARY_RELATIONSHIP_EXISTS", "Boundary relationship exists for boundary code: " + boundary.getCode());
+            }
+
+            repository.delete(boundary.getTenantId(), boundary.getCode());
+            deletedBoundaries.add(boundary);
+            log.info("Boundary deleted successfully, tenantId={}, code={}", boundary.getTenantId(), boundary.getCode());
+        }
+
+        return BoundaryResponse.builder()
+                .responseInfo(ResponseInfoUtil.createResponseInfoFromRequestInfo(boundaryRequest.getRequestInfo(), Boolean.TRUE))
+                .boundary(deletedBoundaries)
+                .build();
     }
 
     /**
