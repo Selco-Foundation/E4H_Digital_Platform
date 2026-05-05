@@ -33,7 +33,7 @@ import java.util.UUID;
  * Expects {@code eg_org_user} on the Flyway datasource (organisation / vendor-registry schema).
  */
 @Slf4j
-public class V20260415103000__LinkComplaintRoleUsersToPlatformOrg extends BaseJavaMigration {
+public class V20260420150000__LinkComplaintRoleUsersToPlatformOrg extends BaseJavaMigration {
 
     /** Single org name for the shared platform org (edit if your environment needs another label). */
     private static final String GLOBAL_PLATFORM_ORG_NAME = "Selco Foundation";
