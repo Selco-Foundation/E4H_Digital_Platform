@@ -16,6 +16,7 @@ const fetchFacilities = async (boundaryCodes) => {
         boundaryCode: facility.boundaryCode,
         facilityId: facility.facility_id,
         facilityStatus: facility.facility_status,
+        facilityName: facility.facility_name,
       })) || [],
     total: facilityResponse?.totalCount,
   };

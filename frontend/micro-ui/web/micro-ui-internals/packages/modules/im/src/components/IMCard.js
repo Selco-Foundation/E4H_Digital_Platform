@@ -88,6 +88,11 @@ const IMCard = () => {
       label: t("ES_IM_NEW_INCIDENT"),
       link: `/${window.contextPath}/employee/im/incident/create`,
       role: "COMPLAINANT" || "EMPLOYEE"
+    },
+    {
+      label: t("ES_IM_PAUSE_RMS"),
+      link: `/${window.contextPath}/employee/im/paused-rms-facilities`,
+      role: "COMPLAINT_ASSESSOR"
     }
   ]
 

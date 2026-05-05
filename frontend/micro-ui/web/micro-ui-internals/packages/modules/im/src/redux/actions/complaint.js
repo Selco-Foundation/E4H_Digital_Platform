@@ -1,4 +1,4 @@
-import { CREATE_COMPLAINT } from "./types";
+import { CREATE_COMPLAINT, PAUSE_RMS } from "./types";
 
 const createComplaint = ({
   complaintType,
@@ -40,7 +40,15 @@ const populateCreateResponse = (response) => (dispatch) => {
   });
 }
 
+const populatePauseRMSResponse = (response) => (dispatch) => {
+  dispatch({
+    type: PAUSE_RMS,
+    payload: response,
+  });
+}
+
 export {
   createComplaint,
   populateCreateResponse,
+  populatePauseRMSResponse,
 };

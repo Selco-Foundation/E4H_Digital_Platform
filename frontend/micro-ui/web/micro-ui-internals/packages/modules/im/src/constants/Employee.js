@@ -1,3 +1,5 @@
 export const PGR_EMPLOYEE_COMPLAINT_DETAILS = "/complaint/details/";
 export const PGR_EMPLOYEE_COMPLAINT_FEEDBACK = "/complaint/feedback/";
 export const PGR_EMPLOYEE_CREATE_COMPLAINT = "/incident/create"
+export const PGR_EMPLOYEE_PAUSE_RMS = "/pause-rms"
+export const PGR_EMPLOYEE_PAUSED_RMS_FACILITIES = "/paused-rms-facilities"
