@@ -203,6 +203,10 @@ public class IMConstants {
 
     public static final String PENDING_RESOLUTION_PREFIX = "PENDING_RESOLUTION_";
 
+    public static final String ROLE_COMPLAINANT = "COMPLAINANT";
+    public static final String ROLE_COMPLAINT_ASSESSOR = "COMPLAINT_ASSESSOR";
+    public static final String ROLE_COMPLAINT_RESOLVER = "COMPLAINT_RESOLVER";
+
     public static final String ASIA_KOLKATA = "Asia/Kolkata";
 
     public static final String PENDINGFORASSIGNMENT_PREFIX = "PENDINGFORASSIGNMENT_";
