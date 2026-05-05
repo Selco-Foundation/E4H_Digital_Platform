@@ -297,7 +297,7 @@ class ProjectServiceClient:
     def search_project(self, request_info: RequestInfo, project_id: str):
         url = f"{self.project_service_url}/project/v2/_search"
         headers = {
-            "Content-Type":"application/json"
+            "Content-Type": "application/json"
         }
         params = {
             "tenantId": "in",
@@ -334,7 +334,7 @@ class ProjectServiceClient:
     def update_workflow(self, request_info: RequestInfo, project_id: str, action: str):
         url = f"{self.project_service_url}/project/v1/project/workflow/update"
         headers = {
-            "Content-Type":"application/json"
+            "Content-Type": "application/json"
         }
         payload = {
             'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
@@ -362,7 +362,8 @@ class ProjectServiceClient:
             logger.error(f"Request error updating workflow: {req_err}", exc_info=True)
             raise req_err
 
-    def unlink_project_facility(self, request_info: RequestInfo, project_id: str, facility_id: str, project_facility_data: Dict[str, Any] = None):
+    def unlink_project_facility(self, request_info: RequestInfo, project_id: str, facility_id: str,
+                                project_facility_data: Dict[str, Any] = None):
         """
         Unlink a facility from a project by setting isDeleted to True
         """
@@ -377,27 +378,28 @@ class ProjectServiceClient:
                 logger.debug(f"Searching for ProjectFacility record for facility {facility_id}")
                 search_response = self.search_project_facility(request_info, project_id)
                 project_facilities = search_response.get("ProjectFacilities", [])
-                
+
                 # Find the specific facility in the results
                 target_facility = None
                 for pf in project_facilities:
                     if pf.get("facilityId") == facility_id:
                         target_facility = pf
                         break
-                
+
                 if not target_facility:
-                    logger.warning(f"No ProjectFacility record found for facility {facility_id} and project {project_id}")
+                    logger.warning(
+                        f"No ProjectFacility record found for facility {facility_id} and project {project_id}")
                     return None
-            
+
             project_facility_id = target_facility.get("id")
             row_version = target_facility.get("rowVersion")
-            
+
             if not project_facility_id:
                 logger.warning("No ID found for ProjectFacility record")
                 return None
-            
+
             logger.debug(f"Found ProjectFacility record with ID: {project_facility_id}, rowVersion: {row_version}")
-            
+
             # Now update the record to set isDeleted = True
             update_url = f"{self.project_service_url}/project/facility/v1/_update"
             update_headers = {
@@ -412,7 +414,7 @@ class ProjectServiceClient:
                 'isDeleted': True,
                 'tenantId': 'in'
             }
-            
+
             # Only add rowVersion if it exists in the source record
             if row_version is not None:
                 project_facility_payload['rowVersion'] = row_version
@@ -421,13 +423,13 @@ class ProjectServiceClient:
                 'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
                 'ProjectFacility': project_facility_payload
             }
-            
+
             update_response = requests.post(update_url, headers=update_headers, json=update_payload)
             update_response.raise_for_status()
             logger.info(f"Project facility unlinked successfully: project_id={project_id}, facility_id={facility_id}")
             logger.debug(f"Unlink response: {json.loads(update_response.text)}")
             return update_response
-            
+
         except requests.exceptions.HTTPError as http_err:
             logger.error(f"HTTP error unlinking project facility: {http_err}", exc_info=True)
             raise http_err
