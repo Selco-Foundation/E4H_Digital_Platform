@@ -7,6 +7,8 @@ import org.egov.rms.repository.AlertRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
+
 /**
  * Enforces business rules that suppress new IM tickets when certain open incidents
  * already exist for the same RMS facility.
@@ -17,6 +19,8 @@ import org.springframework.util.StringUtils;
 public class TicketCreationGuardService {
 
     private final AlertRepository alertRepository;
+    private final TicketPauseService ticketPauseService;
+    private final FacilityEligibilityService facilityEligibilityService;
 
     /**
      * @return true when this alert must not result in a new ticket (open blocking incidents in IM).
@@ -26,6 +30,21 @@ public class TicketCreationGuardService {
             return false;
         }
         String facilityId = alert.getFacilityId();
+        String hfrId = alert.getHfrId();
+
+        if (!facilityEligibilityService.isEligibleByHfrOrFacilityId(hfrId, facilityId)) {
+            log.info(
+                    "TICKET POLICY: Skipping ticket — facility not eligible under MDMS district allowlist (facilityId={}, hfrId={}, alert type {}, subType {})",
+                    facilityId, hfrId, alert.getAlertType(), alert.getAlertSubType());
+            return true;
+        }
+
+        if (ticketPauseService.isFacilityPaused(facilityId, Instant.now())) {
+            log.info(
+                    "TICKET POLICY: Skipping ticket — facility {} is currently paused for RMS auto ticket creation (alert type {}, subType {})",
+                    facilityId, alert.getAlertType(), alert.getAlertSubType());
+            return true;
+        }
 
         // Rule set 2: Any open inverter shutdown incident blocks all new RMS tickets.
         if (hasOpenInverterShutdownIncident(facilityId)) {

@@ -82,6 +82,26 @@ public class RequestsApiController{
 
     }
 
+    /**
+     * Bulk-updates {@code boundarycode} on {@code eg_incident_v2} for all incidents with the given {@code facility_id}.
+     * Used when a facility's block (and thus facility boundary code) changes.
+     */
+    @RequestMapping(value = "/request/_update-boundary-by-facility", method = RequestMethod.POST)
+    public ResponseEntity<IncidentBoundaryByFacilityUpdateResponse> updateIncidentBoundaryByFacility(
+            @Valid @RequestBody IncidentBoundaryByFacilityUpdateRequest body) {
+        log.trace("RequestsApiController::updateIncidentBoundaryByFacility method invoked");
+        log.info("Received incident boundary-by-facility update for tenantId={}, facilityId={}",
+                body.getTenantId(), body.getFacilityId());
+        int updated = imService.syncIncidentBoundaryCodeByFacility(body);
+        ResponseInfo responseInfo = responseInfoFactory.createResponseInfoFromRequestInfo(body.getRequestInfo(), true);
+        IncidentBoundaryByFacilityUpdateResponse response = IncidentBoundaryByFacilityUpdateResponse.builder()
+                .responseInfo(responseInfo)
+                .updatedIncidents(updated)
+                .build();
+        log.info("Incident boundary-by-facility update completed, updatedIncidents={}", updated);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
     @RequestMapping(value="/request/_update", method = RequestMethod.POST)
     public ResponseEntity<IncidentResponse> requestsUpdatePost(@Valid @RequestBody IncidentRequest request) throws IOException {
         IncidentRequest enrichedReq = imService.update(request);

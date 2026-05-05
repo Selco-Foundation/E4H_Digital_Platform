@@ -7,6 +7,7 @@ import org.egov.common.contract.request.Role;
 import org.egov.common.contract.request.User;
 import org.egov.rms.config.RMSConfiguration;
 import org.egov.rms.model.Alert;
+import org.egov.rms.model.EligibilitySnapshot;
 import org.egov.rms.model.IMServiceRequest;
 import org.egov.rms.model.RMSFacilityData;
 import org.egov.rms.repository.AlertRepository;
@@ -28,6 +29,8 @@ public class RMSOrchestratorService {
     private final RMSConfiguration config;
     private final AlertRepository alertRepository;
     private final TicketCreationGuardService ticketCreationGuardService;
+    private final FacilityEligibilitySyncService facilityEligibilitySyncService;
+    private final FacilityEligibilityService facilityEligibilityService;
 
     /**
      * Executes the complete RMS workflow: collect data, apply rules, deduplicate, generate tickets
@@ -46,6 +49,10 @@ public class RMSOrchestratorService {
         try {
             // Create system RequestInfo
             RequestInfo requestInfo = createSystemRequestInfo();
+
+            EligibilitySnapshot eligibilitySnapshot =
+                    facilityEligibilitySyncService.syncEligibleFacilities(requestInfo, config.getDefaultTenantId());
+            facilityEligibilityService.refreshSnapshot(eligibilitySnapshot);
             
             // ALWAYS process all alert types - collect fresh data, create alerts, and generate tickets
             log.info("Processing all alert types with fresh data collection");
@@ -325,8 +332,8 @@ public class RMSOrchestratorService {
         roles.add(role6);
         
         User user = User.builder()
-                .id(13684L)
-                .uuid("dee83ed3-8fc3-4cef-a5d3-8464bf1b1155")
+                .id(14301L)
+                .uuid("fb022833-743d-43cb-adfa-312fbd13f438")
                 .userName("rms_user")
                 .name("RMS_USER")
                 .mobileNumber("9901224634")

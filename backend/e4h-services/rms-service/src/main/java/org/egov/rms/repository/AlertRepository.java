@@ -105,11 +105,19 @@ public class AlertRepository {
     /**
      * Updates alert with ticket ID
      */
-    public void updateTicketId(String alertId, String ticketId) {
+    public int updateTicketId(String alertId, String ticketId) {
         String sql = "UPDATE active_alerts SET ticket_id = ?, status = 'TICKET_CREATED', updated_at = CURRENT_TIMESTAMP " +
                 "WHERE id = ?";
+        return jdbcTemplate.update(sql, ticketId, alertId);
+    }
 
-        jdbcTemplate.update(sql, ticketId, alertId);
+    /**
+     * Fallback ticket linkage when alert id has changed due to upsert.
+     */
+    public int updateTicketIdByFacilityKey(String facilityId, Alert.AlertType alertType, Alert.AlertSubType alertSubType, String ticketId) {
+        String sql = "UPDATE active_alerts SET ticket_id = ?, status = 'TICKET_CREATED', updated_at = CURRENT_TIMESTAMP " +
+                "WHERE facility_id = ? AND alert_type = ? AND alert_sub_type = ?";
+        return jdbcTemplate.update(sql, ticketId, facilityId, alertType.name(), alertSubType.name());
     }
 
     /**

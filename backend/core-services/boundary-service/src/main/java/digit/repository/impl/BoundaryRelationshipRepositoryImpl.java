@@ -81,6 +81,19 @@ public class BoundaryRelationshipRepositoryImpl implements BoundaryRelationshipR
         log.debug("Boundary relationship update request published to Kafka successfully");
     }
 
+    @Override
+    public void delete(String tenantId, String hierarchyType, String code) {
+        log.trace("delete method invoked");
+        log.debug("Deleting boundary relationship, tenantId={}, hierarchyType={}, code={}", tenantId, hierarchyType, code);
+        jdbcTemplate.update(
+                "DELETE FROM boundary_relationship WHERE tenantid = ? AND hierarchytype = ? AND code = ?",
+                tenantId,
+                hierarchyType,
+                code
+        );
+        log.debug("Boundary relationship delete query executed successfully");
+    }
+
     /**
      * This method implements boundary relationship repository interface. In this implementation
      * it creates query to search data in PostgreSQL database and returns the search response back
