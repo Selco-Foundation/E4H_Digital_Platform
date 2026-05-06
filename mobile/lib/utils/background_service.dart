@@ -31,6 +31,7 @@ import '../repositories/activity_facility_workflow_repo.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
+import '../repositories/installation_images_repo.dart';
 import '../repositories/operation_progress_repo.dart';
 import '../repositories/scheduled_visit_repo.dart';
 import '../utils/operation_progress.dart';
@@ -1111,14 +1112,10 @@ Future<void> _performSubmissionForActivityFacility({
     final workflowMedia = await isar.cacheMediaUploads
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
-        //.filter()
-        //.userTypeEqualTo(userType)
         .findAll();
     final installationImages = await isar.cacheInstallationImages
         .where()
-        //.activityFacilityIdEqualTo(activityFacilityId)
-        //.filter()
-        .userTypeEqualTo(userType)
+        .activityFacilityIdEqualTo(activityFacilityId)
         .findAll();
 
     final workflowMediaItems =
@@ -1655,6 +1652,10 @@ Future<void> _performSubmissionForActivityFacility({
           .delete(isar: isar, activityFacilityId: activityFacilityId);
       await BomRepository()
           .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
+      await InstallationImagesRepository(isar).deleteAllCachedImages(
+        activityFacilityId: activityFacilityId,
+        userType: userType,
+      );
       await workflowRepo.deleteWorkflowMediaDocs(
         isar: isar,
         activityFacilityId: activityFacilityId,
@@ -1793,6 +1794,10 @@ Future<void> _performRejectionForActivityFacility({
           .delete(isar: isar, activityFacilityId: activityFacilityId);
       await BomRepository()
           .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
+      await InstallationImagesRepository(isar).deleteAllCachedImages(
+        activityFacilityId: activityFacilityId,
+        userType: userType,
+      );
       await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
         isar: isar,
         activityFacilityId: activityFacilityId,

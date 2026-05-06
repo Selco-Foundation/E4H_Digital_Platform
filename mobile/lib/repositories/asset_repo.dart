@@ -355,8 +355,9 @@ class AssetRepository {
         }
 
         for (var doc in activityFacility.workflow?.documents ?? []) {
-          if (doc.documentType.contains('INSTALLATION_IMAGE')) {
-            final parts = doc.documentType?.split('-') ?? [];
+          final docType = doc.documentType ?? '';
+          if (docType.contains('INSTALLATION_IMAGE')) {
+            final parts = docType.split('-');
             if (parts.length != 2) continue;
 
             final codeFromDoc = parts[1];
@@ -368,9 +369,9 @@ class AssetRepository {
               latitude: doc.geoLocation?.latitude?.toString() ?? '',
               longitude: doc.geoLocation?.longitude?.toString() ?? '',
             ));
-          } else if (doc.documentType != 'ASSET' &&
-              !doc.documentType.contains('INSTALLATION_REPORT')) {
-            final parts = doc.documentType?.split('-') ?? [];
+          } else if (docType != 'ASSET' &&
+              !docType.contains('INSTALLATION_REPORT')) {
+            final parts = docType.split('-');
             if (parts.length != 2) continue;
 
             final assetTypeFromDoc = parts[0];
