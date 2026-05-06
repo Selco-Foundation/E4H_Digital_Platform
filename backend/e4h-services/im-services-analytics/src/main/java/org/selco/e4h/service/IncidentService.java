@@ -1,5 +1,6 @@
 package org.selco.e4h.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -140,7 +142,7 @@ public class IncidentService {
                         incidentStatusAgregation.setTenantId(tenantId);
                         incidentStatusAgregation.setBoundary(boundary);
                         incidentStatusAgregation.setTenantIdLocalized((String) data.get("tenantId_localized"));
-                        incidentStatusAgregation.setGeoPoint((List<Double>) data.get("geo-point"));
+                        incidentStatusAgregation.setGeoPoint(parseGeoPoint(data.get("geo-point")));
                         incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
                         incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
 
@@ -209,7 +211,7 @@ public class IncidentService {
             String type = (String)data.get("type");
             String tenantId = (String)data.get("tenantId");
             String tenantIdLocalized = (String)data.get("tenantId_localized");
-            List<Double> geoPoint = (List<Double>) data.get("geo-point");
+            List<Double> geoPoint = parseGeoPoint(data.get("geo-point"));
 
             IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
             incidentStatusAgregation.setBlock(block);
@@ -256,5 +258,74 @@ public class IncidentService {
         } catch (Exception e) {
             log.error("Error processing PHC document, skipping: {}", phc, e);
         }
+    }
+
+    private List<Double> parseGeoPoint(Object geoPointValue) {
+        if (geoPointValue == null) {
+            return null;
+        }
+
+        try {
+            if (geoPointValue instanceof List<?> listValue) {
+                return toDoubleList(listValue);
+            }
+
+            if (geoPointValue instanceof String stringValue) {
+                String trimmed = stringValue.trim();
+                if (trimmed.isEmpty()) {
+                    return null;
+                }
+                if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+                    trimmed = trimmed.substring(1, trimmed.length() - 1);
+                }
+                if (trimmed.isBlank()) {
+                    return null;
+                }
+
+                String[] tokens = trimmed.split(",");
+                List<Object> rawValues = new ArrayList<>();
+                for (String token : tokens) {
+                    rawValues.add(token.trim());
+                }
+                return toDoubleList(rawValues);
+            }
+
+            return objectMapper.convertValue(geoPointValue, new TypeReference<List<Double>>() {});
+        } catch (Exception e) {
+            log.warn("Unable to parse geo-point value: {}", geoPointValue, e);
+            return null;
+        }
+    }
+
+    private List<Double> toDoubleList(List<?> rawValues) {
+        List<Double> parsedValues = new ArrayList<>();
+        for (Object value : rawValues) {
+            Double parsedValue = toDouble(value);
+            if (parsedValue != null) {
+                parsedValues.add(parsedValue);
+            }
+        }
+        return parsedValues.isEmpty() ? null : parsedValues;
+    }
+
+    private Double toDouble(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number numberValue) {
+            return numberValue.doubleValue();
+        }
+        if (value instanceof String stringValue) {
+            String trimmed = stringValue.trim();
+            if (trimmed.isEmpty()) {
+                return null;
+            }
+            try {
+                return Double.parseDouble(trimmed);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 }

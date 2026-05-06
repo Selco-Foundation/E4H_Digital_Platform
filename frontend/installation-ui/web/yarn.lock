@@ -1027,6 +1027,11 @@
   resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.27.4.tgz#a91ec580e6c00c67118127777c316dfd5a5a6abf"
   integrity sha512-t3yaEOuGu9NlIZ+hIeGbBjFtZT7j2cb2tg0fuaJKeGotchRjjLfrBA9Kwf8quhpP1EUuxModQg04q/mBwyg8uA==
 
+"@babel/runtime@^7.21.0":
+  version "7.29.2"
+  resolved "https://registry.yarnpkg.com/@babel/runtime/-/runtime-7.29.2.tgz#9a6e2d05f4b6692e1801cd4fb176ad823930ed5e"
+  integrity sha512-JiDShH45zKHWyGe4ZNVRrCjBz8Nh9TMmZG1kh4QTK8hCBTWBi8Da+i7s1fJw7/lYpM4ccepSNfqzZ/QvABBi5g==
+
 "@babel/template@^7.12.13", "@babel/template@^7.25.9", "@babel/template@^7.27.1", "@babel/template@^7.27.2", "@babel/template@^7.3.3":
   version "7.27.2"
   resolved "https://registry.yarnpkg.com/@babel/template/-/template-7.27.2.tgz#fa78ceed3c4e7b63ebf6cb39e5852fca45f6809d"
@@ -1153,28 +1158,6 @@
     react-table "7.7.0"
     react-webcam "7.2.0"
 
-"@egovernments/digit-ui-components@0.2.0-beta.18":
-  version "0.2.0-beta.18"
-  resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-components/-/digit-ui-components-0.2.0-beta.18.tgz#785ff9c768330ceda23b1735b7456d7fa3738100"
-  integrity sha512-hmEvceUwNHUmeL78LPF4lWX8KK4ivV/M+DFdFbYBDspt/RX0AqJ/UaF7ODnvcs8w4zBqeQ5gueNUTSmpfp33ew==
-  dependencies:
-    "@cyntler/react-doc-viewer" "1.10.3"
-    "@egovernments/digit-ui-components-css" "0.2.1"
-    "@egovernments/digit-ui-libraries" "1.8.10"
-    "@egovernments/digit-ui-svg-components" "1.0.14"
-    "@googlemaps/js-api-loader" "1.13.10"
-    autoprefixer "^10.4.15"
-    postcss-flexbugs-fixes "^5.0.2"
-    react-data-table-component "7.6.2"
-    react-date-range "1.3.0"
-    react-drag-drop-files "2.3.10"
-    react-hook-form "6.15.8"
-    react-i18next "11.16.2"
-    react-lottie "1.2.4"
-    react-table "7.7.0"
-    react-webcam "7.2.0"
-    styled-components "5.0.0"
-
 "@egovernments/digit-ui-components@0.2.0-beta.63":
   version "0.2.0-beta.63"
   resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-components/-/digit-ui-components-0.2.0-beta.63.tgz#48897f61335a5bfb24f9867acac670964032d593"
@@ -1214,27 +1197,6 @@
   version "1.8.1-beta.1"
   resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-libraries/-/digit-ui-libraries-1.8.1-beta.1.tgz#9ebcc420b44d51eb6879bea25e0a0106e0295b65"
   integrity sha512-uezzaD8wJNGd0jNJo6bdkpPlsAY/8v4vY7x3L+4vuLUtiPO9QxftjzjD04ODywPEJZdRkEGVynySKhe0or9XnQ==
-  dependencies:
-    axios "0.21.1"
-    babel-preset-react "6.24.1"
-    date-fns "2.28.0"
-    dom-to-image "2.6.0"
-    html2canvas "1.4.1"
-    i18next "19.9.2"
-    i18next-react-postprocessor "3.0.7"
-    pdfmake "0.1.72"
-    react "17.0.2"
-    react-i18next "11.16.2"
-    react-query "3.6.1"
-    react-redux "7.2.8"
-    react-router-dom "5.3.0"
-    redux "4.1.2"
-    xlsx "0.17.5"
-
-"@egovernments/digit-ui-libraries@1.8.10":
-  version "1.8.10"
-  resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-libraries/-/digit-ui-libraries-1.8.10.tgz#cabf414d856a2fc80a5fec99e2809d19da69e9f9"
-  integrity sha512-+Ar/cMi+nsWtfRojSiADzTL9LQCfvKnmJbZP/mISUPVJolzyAyASWcty7QB45PXHLt2KFT17/xbcUtcVKeChUA==
   dependencies:
     axios "0.21.1"
     babel-preset-react "6.24.1"
@@ -1295,24 +1257,6 @@
     redux "4.1.2"
     xlsx "0.17.5"
 
-"@egovernments/digit-ui-module-core@1.8.42":
-  version "1.8.42"
-  resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-module-core/-/digit-ui-module-core-1.8.42.tgz#d1d41346994f8c9fe7602ee829361d3e7baa16fd"
-  integrity sha512-BFW7zBlToj7gxlwHKu5JH6kVZPBhabMblJcj9jetMNyfMzq4OZC2Lt25PuLwOGEI/oiP9LJoBMy079Mn40NUQA==
-  dependencies:
-    "@egovernments/digit-ui-components" "0.2.0-beta.18"
-    "@egovernments/digit-ui-react-components" "1.8.21"
-    "@egovernments/digit-ui-svg-components" "1.0.19"
-    react "17.0.2"
-    react-dom "17.0.2"
-    react-i18next "11.16.2"
-    react-query "3.6.1"
-    react-redux "7.2.8"
-    react-router-dom "5.3.0"
-    react-tooltip "4.1.2"
-    redux "4.1.2"
-    redux-thunk "2.4.1"
-
 "@egovernments/digit-ui-module-utilities@1.0.16":
   version "1.0.16"
   resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-module-utilities/-/digit-ui-module-utilities-1.0.16.tgz#fe9ce145baf6ae73a170c5f2a8f4a6b836a843bf"
@@ -1354,27 +1298,6 @@
     react-joyride "2.5.5"
     react-table "7.7.0"
 
-"@egovernments/digit-ui-react-components@1.8.21":
-  version "1.8.21"
-  resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-react-components/-/digit-ui-react-components-1.8.21.tgz#4cedf01a74ab04a7d54d2460dc1c47403514ba00"
-  integrity sha512-FliqIjUChSt1/u8qdtJjwswdEwDHE0xLk397FN57feUt0KFBF3083orCjMPKi4unY4wXkpr3w4TZD1kH72c+Og==
-  dependencies:
-    "@cyntler/react-doc-viewer" "1.10.3"
-    "@egovernments/digit-ui-components" "0.2.0"
-    "@egovernments/digit-ui-svg-components" "1.0.21"
-    "@googlemaps/js-api-loader" "1.13.10"
-    "@hookform/resolvers" "1.3.7"
-    ajv "8.11.2"
-    ajv-errors "3.0.0"
-    ajv-formats "2.1.1"
-    json-schema-to-yup "1.8.8"
-    react-date-range "1.3.0"
-    react-drag-drop-files "2.3.10"
-    react-hook-form "6.15.8"
-    react-i18next "11.16.2"
-    react-joyride "2.5.5"
-    react-table "7.7.0"
-
 "@egovernments/digit-ui-react-components@1.8.24":
   version "1.8.24"
   resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-react-components/-/digit-ui-react-components-1.8.24.tgz#bd24377eb59fc281aec575f797bed0847dd621f4"
@@ -1400,11 +1323,6 @@
   version "1.0.14"
   resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-svg-components/-/digit-ui-svg-components-1.0.14.tgz#97ec26c16a871cbf910af0238eba689581ccfa83"
   integrity sha512-qV0rxTbIpwwZ2HhkiV+D0lbKldHPEakD39RI2S2tj4Aq4eYKona/M2Y1amvg/I+SjvqtpJKUC/9taPKg+9aHcw==
-
-"@egovernments/digit-ui-svg-components@1.0.19":
-  version "1.0.19"
-  resolved "https://registry.yarnpkg.com/@egovernments/digit-ui-svg-components/-/digit-ui-svg-components-1.0.19.tgz#e5b2a54e7451853c0d9360653f5b7bcb828e7edf"
-  integrity sha512-aq3H9not72/JT/LhD2ZuK4syLMKEUQCQNKwjpRg1jyX4dhZDqSnW1NXtEqMNSLpKakyWimI7WxnYNj+kIcAIFw==
 
 "@egovernments/digit-ui-svg-components@1.0.21":
   version "1.0.21"
@@ -1805,6 +1723,11 @@
     schema-utils "^2.6.5"
     source-map "^0.7.3"
 
+"@popperjs/core@^2.9.2":
+  version "2.11.8"
+  resolved "https://registry.yarnpkg.com/@popperjs/core/-/core-2.11.8.tgz#6b79032e760a0899cd4204710beede972a3a185f"
+  integrity sha512-P1st0aksCrn9sGZhp8GMYwBnQsbvAWsZAX44oXNNvLHGqAOcoVxmjZiohstwQ7SqKnbR47akdNi+uleWD8+g6A==
+
 "@react-dnd/asap@^5.0.1":
   version "5.0.2"
   resolved "https://registry.yarnpkg.com/@react-dnd/asap/-/asap-5.0.2.tgz#1f81f124c1cd6f39511c11a881cfb0f715343488"
@@ -1891,10 +1814,10 @@
   resolved "https://registry.yarnpkg.com/@rtsao/scc/-/scc-1.1.0.tgz#927dd2fae9bc3361403ac2c7a00c32ddce9ad7e8"
   integrity sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g==
 
-"@selco/installation-ui-css@1.0.20":
-  version "1.0.20"
-  resolved "https://registry.yarnpkg.com/@selco/installation-ui-css/-/installation-ui-css-1.0.20.tgz#2f9b0fb9e226894b2aa9cdf82d7719dbf25a15d0"
-  integrity sha512-gh4ovNNN2nrvR1f0ULapD3dGimcqms2fhNdm9gnWEUkeNSk4zlzNT+oPjAoGRCOamrBVpo5oGtOR3lq185ym5A==
+"@selco/installation-ui-css@1.0.23":
+  version "1.0.23"
+  resolved "https://registry.yarnpkg.com/@selco/installation-ui-css/-/installation-ui-css-1.0.23.tgz#7d5de46858042092ce2515d9b3b5c9d63d4fd6d0"
+  integrity sha512-mUn4/8ByZr1D7PGxl3vEuMIWUR8i87+wUVnygSCDlg8pzS3EboqaOxopLVW+8ilOSf5XVBMB26hlGERw3PtzbA==
   dependencies:
     node-sass "4.14.1"
     normalize.css "8.0.1"
@@ -4727,6 +4650,11 @@ css-loader@5.2.6:
     schema-utils "^3.0.0"
     semver "^7.3.5"
 
+css-mediaquery@^0.1.2:
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/css-mediaquery/-/css-mediaquery-0.1.2.tgz#6a2c37344928618631c54bd33cedd301da18bea0"
+  integrity sha512-COtn4EROW5dBGlE/4PiKnh6rZpAPxDeFLaEEwt4i10jpDMFt2EhQGS79QmmrO+iKCHv0PU/HrOWEhijFd1x99Q==
+
 css-modules-loader-core@^1.1.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/css-modules-loader-core/-/css-modules-loader-core-1.1.0.tgz#5908668294a1becd261ae0a4ce21b0b551f21d16"
@@ -5019,6 +4947,13 @@ date-fns@2.28.0:
   version "2.28.0"
   resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-2.28.0.tgz#9570d656f5fc13143e50c975a3b6bbeb46cd08b2"
   integrity sha512-8d35hViGYx/QH0icHYCeLmsLmMUheMmTyV9Fcm6gvNwdw31yXXH+O85sOBJ+OLnLQMKZowvpKb6FgMIQjcpvQw==
+
+date-fns@^2.24.0:
+  version "2.30.0"
+  resolved "https://registry.yarnpkg.com/date-fns/-/date-fns-2.30.0.tgz#f367e644839ff57894ec6ac480de40cae4b0f4d0"
+  integrity sha512-fnULvOpxnC5/Vg3NCiWelDsLiUc9bRwAPs/+LfTLNvetFCtCTN+yQz15C/fs4AwX1R9K5GLtLfn8QW+dWisaAw==
+  dependencies:
+    "@babel/runtime" "^7.21.0"
 
 debug@2.6.9, debug@^2.2.0, debug@^2.3.3, debug@^2.6.0:
   version "2.6.9"
@@ -7442,6 +7377,11 @@ husky@7.0.4:
   resolved "https://registry.yarnpkg.com/husky/-/husky-7.0.4.tgz#242048245dc49c8fb1bf0cc7cfb98dd722531535"
   integrity sha512-vbaCKN2QLtP/vD4yvs6iz6hBEo6wkSzs8HpRah1Z6aGmF2KW5PdYuAd7uX5a+OyBZHBhd+TFLqgjUgytQr4RvQ==
 
+hyphenate-style-name@^1.0.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/hyphenate-style-name/-/hyphenate-style-name-1.1.0.tgz#1797bf50369588b47b72ca6d5e65374607cf4436"
+  integrity sha512-WDC/ui2VVRrz3jOVi+XtjqkDjiVjTtFaAGiW37k6b+ohyQ5wYDOGkvCZa8+H0nx3gyvv0+BST9xuOgIyGQ00gw==
+
 i18next-react-postprocessor@3.0.7:
   version "3.0.7"
   resolved "https://registry.yarnpkg.com/i18next-react-postprocessor/-/i18next-react-postprocessor-3.0.7.tgz#c909963b182e2f00900dec9e4455d4354ae5e28b"
@@ -9275,6 +9215,13 @@ match-sorter@^6.0.2:
   dependencies:
     "@babel/runtime" "^7.23.8"
     remove-accents "0.5.0"
+
+matchmediaquery@^0.3.0:
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/matchmediaquery/-/matchmediaquery-0.3.1.tgz#8247edc47e499ebb7c58f62a9ff9ccf5b815c6d7"
+  integrity sha512-Hlk20WQHRIm9EE9luN1kjRjYXAQToHOIAHPJn9buxBwuhfTHoKUcX+lXBbxc85DVQfXYbEQ4HcwQdd128E3qHQ==
+  dependencies:
+    css-mediaquery "^0.1.2"
 
 math-intrinsics@^1.1.0:
   version "1.1.0"
@@ -11586,7 +11533,7 @@ prompts@^2.0.1:
     kleur "^3.0.3"
     sisteransi "^1.0.5"
 
-prop-types@^15.6.2, prop-types@^15.7.2, prop-types@^15.8.1:
+prop-types@^15.6.1, prop-types@^15.6.2, prop-types@^15.7.2, prop-types@^15.8.1:
   version "15.8.1"
   resolved "https://registry.yarnpkg.com/prop-types/-/prop-types-15.8.1.tgz#67d87bf1a694f48435cf332c24af10214a3140b5"
   integrity sha512-oj87CgZICdulUohogVAR7AjlC0327U4el4L6eAvOqCeudMDVU0NThNaV+b9Df4dXgSP1gXMTnPdhfe/2qDH5cg==
@@ -11815,6 +11762,18 @@ react-date-range@^1.4.0:
     react-list "^0.8.13"
     shallow-equal "^1.2.1"
 
+react-datepicker@4.8.0:
+  version "4.8.0"
+  resolved "https://registry.yarnpkg.com/react-datepicker/-/react-datepicker-4.8.0.tgz#11b8918d085a1ce4781eee4c8e4641b3cd592010"
+  integrity sha512-u69zXGHMpxAa4LeYR83vucQoUCJQ6m/WBsSxmUMu/M8ahTSVMMyiyQzauHgZA2NUr9y0FUgOAix71hGYUb6tvg==
+  dependencies:
+    "@popperjs/core" "^2.9.2"
+    classnames "^2.2.6"
+    date-fns "^2.24.0"
+    prop-types "^15.7.2"
+    react-onclickoutside "^6.12.0"
+    react-popper "^2.2.5"
+
 react-dev-utils@^11.0.1:
   version "11.0.4"
   resolved "https://registry.yarnpkg.com/react-dev-utils/-/react-dev-utils-11.0.4.tgz#a7ccb60257a1ca2e0efe7a83e38e6700d17aa37a"
@@ -11897,6 +11856,11 @@ react-error-overlay@^6.0.9:
   resolved "https://registry.yarnpkg.com/react-error-overlay/-/react-error-overlay-6.1.0.tgz#22b86256beb1c5856f08a9a228adb8121dd985f2"
   integrity sha512-SN/U6Ytxf1QGkw/9ve5Y+NxBbZM6Ht95tuXNMKs8EJyFa/Vy/+Co3stop3KBHARfn/giv+Lj1uUnTfOJ3moFEQ==
 
+react-fast-compare@^3.0.1:
+  version "3.2.2"
+  resolved "https://registry.yarnpkg.com/react-fast-compare/-/react-fast-compare-3.2.2.tgz#929a97a532304ce9fee4bcae44234f1ce2c21d49"
+  integrity sha512-nsO+KSNgo1SbJqJEYRE9ERzo7YtYbou/OqjSQKxV7jcKox7+usiUVZOAC+XnDOABXggQTno0Y1CpVnuWEc1boQ==
+
 react-floater@^0.7.6:
   version "0.7.9"
   resolved "https://registry.yarnpkg.com/react-floater/-/react-floater-0.7.9.tgz#b15a652e817f200bfa42a2023ee8d3105803b968"
@@ -11960,6 +11924,11 @@ react-lottie@1.2.4:
     babel-runtime "^6.26.0"
     lottie-web "^5.1.3"
 
+react-onclickoutside@^6.12.0:
+  version "6.13.2"
+  resolved "https://registry.yarnpkg.com/react-onclickoutside/-/react-onclickoutside-6.13.2.tgz#caa6df2c0cfe017506548fa810303fb85d13fb7c"
+  integrity sha512-h6Hbf1c8b7tIYY4u90mDdBLY4+AGQVMFtIE89HgC0DtVCh/JfKl477gYqUtGLmjZBKK3MJxomP/lFiLbz4sq9A==
+
 react-pdf@5.7.2:
   version "5.7.2"
   resolved "https://registry.yarnpkg.com/react-pdf/-/react-pdf-5.7.2.tgz#c458dedf7983822668b40dcac1eae052c1f6e056"
@@ -11975,6 +11944,14 @@ react-pdf@5.7.2:
     prop-types "^15.6.2"
     tiny-invariant "^1.0.0"
     tiny-warning "^1.0.0"
+
+react-popper@^2.2.5:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/react-popper/-/react-popper-2.3.0.tgz#17891c620e1320dce318bad9fede46a5f71c70ba"
+  integrity sha512-e1hj8lL3uM+sgSR4Lxzn5h1GxBlpa4CQz0XLF8kx4MDrDRWY0Ena4c97PUeSX9i5W3UAfDP0z0FXCTQkoXUl3Q==
+  dependencies:
+    react-fast-compare "^3.0.1"
+    warning "^4.0.2"
 
 react-query@3.6.1:
   version "3.6.1"
@@ -12000,6 +11977,16 @@ react-refresh@^0.8.3:
   version "0.8.3"
   resolved "https://registry.yarnpkg.com/react-refresh/-/react-refresh-0.8.3.tgz#721d4657672d400c5e3c75d063c4a85fb2d5d68f"
   integrity sha512-X8jZHc7nCMjaCqoU+V2I0cOhNW+QMBwSUkeXnTi8IPe6zaRWfn60ZzvFDZqWPfmSJfjub7dDW1SP0jaHWLu/hg==
+
+react-responsive@9.0.2:
+  version "9.0.2"
+  resolved "https://registry.yarnpkg.com/react-responsive/-/react-responsive-9.0.2.tgz#34531ca77a61e7a8775714016d21241df7e4205c"
+  integrity sha512-+4CCab7z8G8glgJoRjAwocsgsv6VA2w7JPxFWHRc7kvz8mec1/K5LutNC2MG28Mn8mu6+bu04XZxHv5gyfT7xQ==
+  dependencies:
+    hyphenate-style-name "^1.0.0"
+    matchmediaquery "^0.3.0"
+    prop-types "^15.6.1"
+    shallow-equal "^1.2.1"
 
 react-router-dom@5.3.0:
   version "5.3.0"
@@ -14765,7 +14752,7 @@ walker@^1.0.7, walker@~1.0.5:
   dependencies:
     makeerror "1.0.12"
 
-warning@^4.0.3:
+warning@^4.0.2, warning@^4.0.3:
   version "4.0.3"
   resolved "https://registry.yarnpkg.com/warning/-/warning-4.0.3.tgz#16e9e077eb8a86d6af7d64aa1e05fd85b4678ca3"
   integrity sha512-rpJyN222KWIvHJ/F53XSZv0Zl/accqHR8et1kpaMTD/fLCRxtV8iX8czMzY7sVZupTI3zcUTg8eycS2kNF9l6w==

@@ -9,6 +9,7 @@ import {
   CardLabelError,
   BreadCrumb,
   BackButton,
+  Button,
   Loader,
   SubmitBar
 } from "@selco/digit-ui-react-components";
@@ -16,6 +17,7 @@ import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Redirect, useHistory } from "react-router-dom";
 import UploadDrawer from "./ImageUpload/UploadDrawer";
+import CustomTextInput from "../../../components/CustomTextInput";
 
 const defaultImage =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAO4AAADUCAMAAACs0e/bAAAAM1BMVEXK0eL" +
@@ -73,6 +75,65 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   const jurisdictionCurrentBoundaryCodes = Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionCurrentBoundary);
   const jurisdictionCurrentBoundaryTypes = Digit.Utils.BoundaryUtil.aggregateBoundaryTypes(jurisdictionCurrentBoundary);
   const isOnlyFacilityType = jurisdictionCurrentBoundaryTypes.length === 1 && jurisdictionCurrentBoundaryTypes[0] === "facility";
+
+  const defaultValidationConfig = {
+    tenantId: `${Digit.ULBService.getStateId()}`,
+    UserProfileValidationConfig: [
+      {
+        name: /^[^"$<>?\\~`!@#%^()+={}\[\]*,:;“”‘’]*$/,
+        mobileNumber: /^[0-9]{10}$/,
+        password: /^([a-zA-Z0-9@#$%]{8,15})$/i,
+      },
+    ],
+  };
+
+  const mapConfigToRegExp = (config) => {
+    return (
+      config?.UserProfileValidationConfig?.[0] &&
+      Object.entries(config?.UserProfileValidationConfig[0]).reduce((acc, [key, value]) => {
+        if (typeof value === "string") {
+          try {
+            // Checking if value looks like a regex (starts with "/" and ends with "/flags")
+            if (value.startsWith("/") && value.lastIndexOf("/") > 0) {
+              const lastSlashIndex = value.lastIndexOf("/");
+              const pattern = value.slice(1, lastSlashIndex); // Extracting regex pattern
+              const flags = value.slice(lastSlashIndex + 1); // Extracting regex flags
+
+              acc[key] = new RegExp(pattern, flags); // Converting properly
+            } else {
+              acc[key] = new RegExp(value); // Treating it as a normal regex pattern (no flags)
+            }
+          } catch (error) {
+            console.error(`Error parsing regex for key "${key}":`, error);
+            acc[key] = value; // Keeping as string if invalid regex
+          }
+        } else {
+          acc[key] = value; // Keeping non-string values as it is
+        }
+        return acc;
+      }, {})
+    );
+  };
+
+  const [validationConfig, setValidationConfig] = useState(mapConfigToRegExp(defaultValidationConfig) || {});
+
+  const { data: mdmsValidationData, isValidationConfigLoading } = Digit.Hooks.useCustomMDMS(
+    stateCode,
+    "commonUiConfig",
+    [{ name: "UserProfileValidationConfig" }],
+    {
+      select: (data) => {
+        return data?.commonUiConfig;
+      },
+    }
+  );
+
+  useEffect(() => {
+    if (mdmsValidationData && mdmsValidationData?.UserProfileValidationConfig?.[0]) {
+      const updatedValidationConfig = mapConfigToRegExp(mdmsValidationData);
+      setValidationConfig(updatedValidationConfig);
+    }
+  }, [mdmsValidationData]);
 
   useEffect(() => {
     setCity((jurisdictionCurrentBoundaryCodes?.length === 1 &&  isOnlyFacilityType) ? t(`Boundary_${jurisdictionCurrentBoundaryCodes?.[0]}`) : t("CORE_COMMON_ALL"))
@@ -169,33 +230,49 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
 
   const setUserCurrentPassword = (value) => {
     setCurrentPassword(value);
-
-    if (!new RegExp(/^([a-zA-Z0-9@#$%]{8,15})$/i).test(value)) {
-      setErrors({...errors, currentPassword: {type: "pattern", message: "CORE_COMMON_PROFILE_PASSWORD_INVALID"}})
-    }else{
-      setErrors({...errors, currentPassword: null});
+    if (!validationConfig?.password.test(value)) {
+      setErrors({
+        ...errors,
+        currentPassword: {
+          type: "pattern",
+          message: "CORE_COMMON_PROFILE_PASSWORD_INVALID",
+        },
+      });
+    } else {
+      setErrors({ ...errors, currentPassword: null });
     }
-  }
+  };
 
   const setUserNewPassword = (value) => {
     setNewPassword(value);
-
-    if (!new RegExp(/^([a-zA-Z0-9@#$%]{8,15})$/i).test(value)) {
-      setErrors({...errors, newPassword: {type: "pattern", message: "CORE_COMMON_PROFILE_PASSWORD_INVALID"}})
-    }else{
-      setErrors({...errors, newPassword: null});
+    if (!validationConfig?.password.test(value)) {
+      setErrors({
+        ...errors,
+        newPassword: {
+          type: "pattern",
+          message: "CORE_COMMON_PROFILE_PASSWORD_INVALID",
+        },
+      });
+    } else {
+      setErrors({ ...errors, newPassword: null });
     }
-  }
+  };
 
   const setUserConfirmPassword = (value) => {
     setConfirmPassword(value);
 
-    if (!new RegExp(/^([a-zA-Z0-9@#$%]{8,15})$/i).test(value)) {
-      setErrors({...errors, confirmPassword: {type: "pattern", message: "CORE_COMMON_PROFILE_PASSWORD_INVALID"}})
-    }else{
-      setErrors({...errors, confirmPassword: null});
+    if (!validationConfig?.password.test(value)) {
+      setErrors({
+        ...errors,
+        confirmPassword: {
+          type: "pattern",
+          message: "CORE_COMMON_PROFILE_PASSWORD_INVALID",
+        },
+      });
+    } else {
+      setErrors({ ...errors, confirmPassword: null });
     }
-  }
+  };
 
   const removeProfilePic = () => {
     setProfilePic(null);
@@ -220,31 +297,59 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
         photo: profilePic,
       };
 
-      if (!new RegExp(/^([a-zA-Z ])*$/).test(name) || name === "" || name.length > 50 || name.length < 1) {
-        throw JSON.stringify({ type: "error", message: t("CORE_COMMON_PROFILE_NAME_INVALID") });
+      if (!validationConfig?.name.test(name) || name === "" || name.length > 50 || name.length < 1) {
+        throw JSON.stringify({
+          type: "error",
+          message: t("CORE_COMMON_PROFILE_NAME_INVALID"),
+        });
       }
 
-      if (userType === "employee" && !new RegExp(/^[6-9]{1}[0-9]{9}$/).test(mobileNumber)) {
-        throw JSON.stringify({ type: "error", message: t("CORE_COMMON_PROFILE_MOBILE_NUMBER_INVALID") });
+      if (userType === "employee" && !validationConfig?.mobileNumber.test(mobileNumber)) {
+        throw JSON.stringify({
+          type: "error",
+          message: t("CORE_COMMON_PROFILE_MOBILE_NUMBER_INVALID"),
+        });
       }
 
       if (email.length && !(email.includes("@") && email.includes("."))) {
-        throw JSON.stringify({ type: "error", message: t("CORE_COMMON_PROFILE_EMAIL_INVALID") });
+        throw JSON.stringify({
+          type: "error",
+          message: t("CORE_COMMON_PROFILE_EMAIL_INVALID"),
+        });
+      }
+      const trimmedCurrentPassword = currentPassword?.trim();
+      const trimmedNewPassword = newPassword?.trim();
+      const trimmedConfirmPassword = confirmPassword?.trim();
+
+      if (changepassword && !(trimmedCurrentPassword && trimmedNewPassword && trimmedConfirmPassword)) {
+        throw JSON.stringify({
+          type: "error",
+          message: t("CORE_COMMON_PROFILE_PASSWORD_MANDATORY"),
+        });
+      }
+      if (changepassword && (trimmedCurrentPassword && trimmedNewPassword && trimmedConfirmPassword)) {
+        if (trimmedNewPassword !== trimmedConfirmPassword) {
+          throw JSON.stringify({
+            type: "error",
+            message: t("CORE_COMMON_PROFILE_PASSWORD_MISMATCH"),
+          });
+        }
+
+        if (!(trimmedCurrentPassword.length && trimmedNewPassword.length && trimmedConfirmPassword.length)) {
+          throw JSON.stringify({
+            type: "error",
+            message: t("CORE_COMMON_PROFILE_PASSWORD_INVALID"),
+          });
+        }
+
+        if (!validationConfig?.password.test(trimmedNewPassword) && !validationConfig?.password.test(trimmedConfirmPassword)) {
+          throw JSON.stringify({
+            type: "error",
+            message: t("CORE_COMMON_PROFILE_PASSWORD_INVALID"),
+          });
+        }
       }
 
-      if (changepassword && (currentPassword.length || newPassword.length || confirmPassword.length)) {
-        if (newPassword !== confirmPassword) {
-          throw JSON.stringify({ type: "error", message: t("CORE_COMMON_PROFILE_PASSWORD_MISMATCH") });
-        }
-
-        if (!(currentPassword.length && newPassword.length && confirmPassword.length)) {
-          throw JSON.stringify({ type: "error", message: t("CORE_COMMON_PROFILE_PASSWORD_INVALID") });
-        }
-
-        if (!new RegExp(/^([a-zA-Z0-9@#$%]{8,15})$/i).test(newPassword) && !new RegExp(/^([a-zA-Z0-9@#$%]{8,15})$/i).test(confirmPassword)) {
-          throw JSON.stringify({ type: "error", message: t("CORE_COMMON_PROFILE_PASSWORD_INVALID") });
-        }
-      }
       requestData["locale"]=Digit.StoreData.getCurrentLanguage();
       const { responseInfo, user } = await Digit.UserService.updateUser(requestData, stateCode);
 
@@ -273,17 +378,17 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
         }
       }
 
-      if (currentPassword.length && newPassword.length && confirmPassword.length) {
+      if (trimmedCurrentPassword?.length && trimmedNewPassword?.length && trimmedConfirmPassword?.length) {
         const requestData = {
-          existingPassword: currentPassword,
-          newPassword: newPassword,
+          existingPassword: trimmedCurrentPassword,
+          newPassword: trimmedNewPassword,
           tenantId: tenant,
           type: "EMPLOYEE",
           username: userInfo?.userName,
-          confirmPassword: confirmPassword,
+          confirmPassword: trimmedConfirmPassword,
         };
 
-        if (newPassword === confirmPassword) {
+        if (trimmedNewPassword === trimmedConfirmPassword) {
           try {
             const res = await Digit.UserService.changePassword(requestData, tenant);
 
@@ -346,7 +451,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
   if (loading) return <Loader></Loader>;
 
   return (
-    <div className="user-profile">
+    <div className="user-profile" style={{overflow: "auto"}}>
         <style>{
           `
         @media (min-width: 780px) {
@@ -370,7 +475,8 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
           background: userType === "citizen" ? "white" : "",
           borderRadius: userType === "citizen" ? "4px" : "",
           maxWidth: userType === "citizen" ? "960px" : "",
-          paddingBottom:"50px"
+          paddingBottom:"50px",
+          marginBottom: "100px",
         }}
       >
         <section
@@ -591,26 +697,27 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                 </div>
               </LabelFieldPair>
 
-              <LabelFieldPair>
+              <React.Fragment>
                 <div>
-                  {/* <a style={{ color: "#7a2829", cursor: "default", marginBottom: "5", cursor: "pointer" }} onClick={TogleforPassword}>
-                    {t("CORE_COMMON_CHANGE_PASSWORD")}
-                  </a> */}
                   {changepassword ? (
-                    <div style={{ marginTop: "10px" }}>
+                    <div>
                       <LabelFieldPair style={{ display: "flex" }}>
                         <CardLabel  className="profile-label-margin" style={editScreen ? { color: "#B1B4B6", width: "300px" } : { width: "300px" }}>{`${t(
                           "CORE_COMMON_PROFILE_CURRENT_PASSWORD"
                         )}`}</CardLabel>
                         <div style={{width: "100%"}}>
-                          <TextInput
+                          <CustomTextInput
                             t={t}
                             type={"password"}
                             isMandatory={false}
-                            name="name"
-                            pattern="^([a-zA-Z0-9@#$%])+$"
-                            onChange={(e) => setUserCurrentPassword(e.target.value)}
-                            disable={editScreen}
+                            name="currentPassword"
+                            value={currentPassword}
+                            pattern={
+                              mdmsValidationData?.UserProfileValidationConfig?.[0]?.password ||
+                              defaultValidationConfig?.UserProfileValidationConfig?.[0]?.password
+                            }
+                            onChange={(e) => setUserCurrentPassword(e?.target?.value)}
+                            disabled={editScreen}
                           />
                           {errors?.currentPassword && <CardLabelError>{t(errors?.currentPassword?.message)}</CardLabelError>}
                         </div>
@@ -621,14 +728,18 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                           "CORE_COMMON_PROFILE_NEW_PASSWORD"
                         )}`}</CardLabel>
                         <div style={{width: "100%"}}>
-                          <TextInput
+                          <CustomTextInput
                             t={t}
                             type={"password"}
                             isMandatory={false}
-                            name="name"
-                            pattern="^([a-zA-Z0-9@#$%])+$"
-                            onChange={(e) => setUserNewPassword(e.target.value)}
-                            disable={editScreen}
+                            name="newPassword"
+                            value={newPassword}
+                            pattern={
+                              mdmsValidationData?.UserProfileValidationConfig?.[0]?.password ||
+                              defaultValidationConfig?.UserProfileValidationConfig?.[0]?.password
+                            }
+                            onChange={(e) => setUserNewPassword(e?.target?.value)}
+                            disabled={editScreen}
                           />
                           {errors?.newPassword && <CardLabelError>{t(errors?.newPassword?.message)}</CardLabelError>}
                       </div>
@@ -639,24 +750,30 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
                           "CORE_COMMON_PROFILE_CONFIRM_PASSWORD"
                         )}`}</CardLabel>
                         <div style={{width: "100%"}}>
-                          <TextInput
+                          <CustomTextInput
                             t={t}
                             type={"password"}
                             isMandatory={false}
-                            name="name"
-                            pattern="^([a-zA-Z0-9@#$%])+$"
-                            onChange={(e) => setUserConfirmPassword(e.target.value)}
-                            disable={editScreen}
+                            name="confirmPassword"
+                            value={confirmPassword}
+                            pattern={
+                              mdmsValidationData?.UserProfileValidationConfig?.[0]?.password ||
+                              defaultValidationConfig?.UserProfileValidationConfig?.[0]?.password
+                            }
+                            onChange={(e) => setUserConfirmPassword(e?.target?.value)}
+                            disabled={editScreen}
                           />
                           {errors?.confirmPassword && <CardLabelError>{t(errors?.confirmPassword?.message)}</CardLabelError>}
                         </div>
                       </LabelFieldPair>
                     </div>
                   ) : (
-                    ""
+                    <button type={"button"} style={{ color: "#7a2829", marginBottom: "5", cursor: "pointer", outline: "none" }} onClick={TogleforPassword}>
+                      {t("CORE_COMMON_CHANGE_PASSWORD")}
+                    </button>
                   )}
                 </div>
-              </LabelFieldPair>
+              </React.Fragment>
             </React.Fragment>
           )}
         </section>
@@ -664,7 +781,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
 
       {userType === "employee" ? (
         <div className="action-bar-wrap">
-      
+
           <SubmitBar t={t} label={t("CORE_COMMON_SAVE")} onSubmit={updateProfile} />
           {/* <button
             onClick={updateProfile}
@@ -682,7 +799,7 @@ const UserProfile = ({ stateCode, userType, cityDetails }) => {
           >
             {t("CORE_COMMON_SAVE")}
           </button> */}
-     
+
         </div>
       ) : (
         ""

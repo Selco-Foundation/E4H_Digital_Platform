@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.util.*;
@@ -20,8 +21,15 @@ import java.util.stream.Collectors;
 
 import static facility.config.ServiceConstants.*;
 
+@Slf4j
 @Component
 public class BoundaryUtil {
+
+    /**
+     * Batch size for boundary-relationships API when resolving only codes present on facility rows.
+     * Avoids loading the full hierarchy tree when enriching bulk search results.
+     */
+    private static final int BOUNDARY_CODE_BATCH_SIZE = 50;
     @Autowired
     private RestTemplate restTemplate;
 
@@ -106,6 +114,43 @@ public class BoundaryUtil {
         }
 
         return listBlock;
+    }
+
+    /**
+     * Resolves boundary hierarchy (state / district / block) only for the given facility boundary codes
+     * by calling the boundary v2 API in batches, then parsing with the same mapping as the full-tree path.
+     * Use this for bulk facility responses instead of {@link #getBoundaryByCode()} when you already know
+     * which codes appear on {@code facility.boundary_code}.
+     */
+    public Map<String, Boundary> getBoundaryMapForFacilityCodes(Collection<String> boundaryCodes) {
+        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<String> distinct = boundaryCodes.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
+        if (distinct.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, Boundary> merged = new HashMap<>();
+        for (int i = 0; i < distinct.size(); i += BOUNDARY_CODE_BATCH_SIZE) {
+            int end = Math.min(i + BOUNDARY_CODE_BATCH_SIZE, distinct.size());
+            List<String> batch = distinct.subList(i, end);
+            try {
+                String jsonString = getBoundaryData(batch);
+                merged.putAll(extractBlockToDistrictMapping(jsonString));
+            } catch (IOException e) {
+                log.error("Failed to parse boundary batch (size={}): {}", batch.size(), e.getMessage());
+                throw new CustomException("CONFIG_ERROR", "Error parsing boundary response: " + e.getMessage());
+            } catch (Exception e) {
+                log.error("Failed to fetch boundary data for batch (size={}): {}", batch.size(), e.getMessage());
+                throw new CustomException("CONFIG_ERROR", "Error in fetching boundary data: " + e.getMessage());
+            }
+        }
+        return merged;
     }
 
     public static Map<String, Boundary> extractBlockToDistrictMapping(String json) throws IOException {

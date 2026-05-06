@@ -12,6 +12,8 @@ public interface BoundaryRelationshipRepository {
 
     public void update(BoundaryRelationshipRequestDTO boundaryRelationshipRequest);
 
+    public void delete(String tenantId, String hierarchyType, String code);
+
     public List<BoundaryRelationshipDTO> search(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria);
     public Integer getBoundaryCount(BoundaryRelationshipSearchCriteria boundaryRelationshipSearchCriteria);
 

@@ -101,6 +101,9 @@ public class FacilityUpdateRequestFacilityUpdate {
     @JsonProperty("facility_status")
     private String status;
 
+    @JsonProperty("isActive")
+    private Boolean isActive;
+
     @JsonProperty("pocDesignation")
     @Pattern(
             regexp = "^[a-zA-Z\\s]+$",
