@@ -38,6 +38,11 @@ public class QueryBuilderUtil {
             params.add(request.getFacilityId());
         }
 
+        if (request.getFacilityCategory() != null && !request.getFacilityCategory().isBlank()) {
+            whereClause.append(" AND facility_category = ?");
+            params.add(request.getFacilityCategory());
+        }
+
         if (request.getFacilityName() != null && !request.getFacilityName().isBlank()) {
             whereClause.append(" AND facility_name ILIKE ?");
             params.add("%" + request.getFacilityName() + "%");
@@ -104,6 +109,12 @@ public class QueryBuilderUtil {
             whereClause.append(" AND fac.id in ( ").append(createQuery(criteria.getFacilityIds().size())).append(" )");
             params.addAll(criteria.getFacilityIds());
             log.debug("Added {} facility IDs to WHERE clause", criteria.getFacilityIds().size());
+        }
+
+        if (!CollectionUtils.isEmpty(criteria.getFacilityCategory())) {
+            whereClause.append(" AND fac.facility_category in ( ").append(createQuery(criteria.getFacilityCategory().size())).append(" )");
+            params.addAll(criteria.getFacilityCategory());
+            log.debug("Added {} facility categories to WHERE clause", criteria.getFacilityCategory().size());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getFacilityNames())) {
