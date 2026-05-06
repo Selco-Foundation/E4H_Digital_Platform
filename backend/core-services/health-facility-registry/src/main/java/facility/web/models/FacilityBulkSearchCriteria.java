@@ -14,6 +14,7 @@ import java.util.List;
 public class FacilityBulkSearchCriteria {
     private List<String> tenantIds;
     private List<String> facilityIds;
+    private List<String> facilityCategory;
     private List<String> facilityNames;
     private List<String> hfrIds;
     private List<String> ninIds;

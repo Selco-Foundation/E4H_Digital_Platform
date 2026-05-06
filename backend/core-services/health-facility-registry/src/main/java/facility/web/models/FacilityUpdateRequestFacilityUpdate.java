@@ -39,6 +39,11 @@ public class FacilityUpdateRequestFacilityUpdate {
     private String facilityId;
 
     /** Exact facility type under a category */
+    @Schema(name = "facility_category", description = "Facility category", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+    @JsonProperty("facility_category")
+    private String facilityCategory;
+
+    /** Exact facility type under a category */
     @Schema(name = "facility_type", description = "The exact facility type under a category.", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("facility_type")
     private String facilityType;
