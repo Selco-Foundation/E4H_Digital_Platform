@@ -17,9 +17,29 @@ import '../../model/solution_design_type_bom/solution_design_type_bom.dart';
 import '../../model/system/system.dart';
 import '../../model/warranty/warranty.dart';
 
+class _SecureStorageKeys {
+  static const String appConfig = 'appConfig';
+  static const String assetCount = 'assetCount';
+  static const String assetType = 'assetType';
+  static const String system = 'system';
+  static const String warranty = 'warranty';
+  static const String brand = 'brand';
+  static const String solutionDesign = 'solutionDesign';
+  static const String solutionDesignBom = 'solutionDesignBom';
+  static const String formConfigsRaw = 'formConfigsRaw';
+  static const String amcFormConfigsRaw = 'amcFormConfigsRaw';
+  static const String installationImages = 'installationImages';
+  static const String rejectionReasons = 'rejectionReasons';
+  static const String formSchemas = 'forms_schemas';
+  static const String accessToken = 'accessToken';
+  static const String accessInfo = 'accessInfo';
+  static const String actionsWrapper = 'actionsWrapper';
+  static const String individualId = 'individualId';
+}
+
 class SecureStore {
   final storage = const FlutterSecureStorage(
-    aOptions: const AndroidOptions(
+    aOptions: AndroidOptions(
       encryptedSharedPreferences: true,
       resetOnError: true,
     ),
@@ -38,75 +58,96 @@ class SecureStore {
 
   Future setAppConfig(MdmsResponseModel mdmsResponseModel) async {
     String jsonMdmsResponse = json.encode(mdmsResponseModel.toJson());
-    await storage.write(key: 'appConfig', value: jsonMdmsResponse);
+    await storage.write(
+      key: _SecureStorageKeys.appConfig,
+      value: jsonMdmsResponse,
+    );
   }
 
   Future<String?> getAppConfig() async {
-    return await storage.read(key: 'appConfig');
+    return await storage.read(key: _SecureStorageKeys.appConfig);
   }
 
   Future setAssetCount(List<Mdms<AssetCountData>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((assetCount) => assetCount.toJson()))
         .toList();
-    await storage.write(key: 'assetCount', value: json.encode(jsonList));
+    await storage.write(
+      key: _SecureStorageKeys.assetCount,
+      value: json.encode(jsonList),
+    );
   }
 
   Future<String?> getAssetCount() async {
-    return await storage.read(key: 'assetCount');
+    return await storage.read(key: _SecureStorageKeys.assetCount);
   }
 
   Future setAssetType(List<Mdms<AssetTypeData>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((assetType) => assetType.toJson()))
         .toList();
-    await storage.write(key: 'assetType', value: json.encode(jsonList));
+    await storage.write(
+      key: _SecureStorageKeys.assetType,
+      value: json.encode(jsonList),
+    );
   }
 
   Future<String?> getAssetType() async {
-    return await storage.read(key: 'assetType');
+    return await storage.read(key: _SecureStorageKeys.assetType);
   }
 
   Future setSystem(List<Mdms<SystemData>> list) async {
     final List<Map<String, dynamic>> jsonList =
         list.map((mdms) => mdms.toJson((system) => system.toJson())).toList();
-    await storage.write(key: 'system', value: json.encode(jsonList));
+    await storage.write(
+      key: _SecureStorageKeys.system,
+      value: json.encode(jsonList),
+    );
   }
 
   Future<String?> getSystem() async {
-    return await storage.read(key: 'system');
+    return await storage.read(key: _SecureStorageKeys.system);
   }
 
   Future setWarranty(List<Mdms<WarrantyData>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((warranty) => warranty.toJson()))
         .toList();
-    await storage.write(key: 'warranty', value: json.encode(jsonList));
+    await storage.write(
+      key: _SecureStorageKeys.warranty,
+      value: json.encode(jsonList),
+    );
   }
 
   Future<String?> getWarranty() async {
-    return await storage.read(key: 'warranty');
+    return await storage.read(key: _SecureStorageKeys.warranty);
   }
 
   Future setBrand(List<Mdms<BrandData>> list) async {
     final List<Map<String, dynamic>> jsonList =
         list.map((mdms) => mdms.toJson((brand) => brand.toJson())).toList();
-    await storage.write(key: 'brand', value: json.encode(jsonList));
+    await storage.write(
+      key: _SecureStorageKeys.brand,
+      value: json.encode(jsonList),
+    );
   }
 
   Future<String?> getBrand() async {
-    return await storage.read(key: 'brand');
+    return await storage.read(key: _SecureStorageKeys.brand);
   }
 
   Future setSolutionDesignType(List<Mdms<SolutionDesignType>> list) async {
     final List<Map<String, dynamic>> jsonList = list
         .map((mdms) => mdms.toJson((solutionDesign) => solutionDesign.toJson()))
         .toList();
-    await storage.write(key: 'solutionDesign', value: json.encode(jsonList));
+    await storage.write(
+      key: _SecureStorageKeys.solutionDesign,
+      value: json.encode(jsonList),
+    );
   }
 
   Future<String?> getSolutionDesignType() async {
-    return await storage.read(key: 'solutionDesign');
+    return await storage.read(key: _SecureStorageKeys.solutionDesign);
   }
 
   Future setSolutionDesignTypeBom(
@@ -115,89 +156,100 @@ class SecureStore {
         .map((mdms) =>
             mdms.toJson((solutionDesignBom) => solutionDesignBom.toJson()))
         .toList();
-    await storage.write(key: 'solutionDesignBom', value: json.encode(jsonList));
+    await storage.write(
+      key: _SecureStorageKeys.solutionDesignBom,
+      value: json.encode(jsonList),
+    );
   }
 
   Future<String?> getSolutionDesignTypeBom() async {
-    return await storage.read(key: 'solutionDesignBom');
+    return await storage.read(key: _SecureStorageKeys.solutionDesignBom);
   }
 
   Future<void> setFormConfigsRaw(List<Map<String, dynamic>> list) async {
-    await storage.write(key: 'formConfigsRaw', value: json.encode(list));
+    await storage.write(
+      key: _SecureStorageKeys.formConfigsRaw,
+      value: json.encode(list),
+    );
   }
 
   Future<String?> getFormConfigsRaw() async {
-    return await storage.read(key: 'formConfigsRaw');
+    return await storage.read(key: _SecureStorageKeys.formConfigsRaw);
   }
 
   Future<void> setAMCFormConfigsRaw(List<Map<String, dynamic>> list) async {
-    await storage.write(key: 'amcFormConfigsRaw', value: json.encode(list));
+    await storage.write(
+      key: _SecureStorageKeys.amcFormConfigsRaw,
+      value: json.encode(list),
+    );
   }
 
   Future<String?> getAMCFormConfigsRaw() async {
-    return await storage.read(key: 'amcFormConfigsRaw');
+    return await storage.read(key: _SecureStorageKeys.amcFormConfigsRaw);
   }
 
   Future<void> setInstallationImages(
       List<Mdms<InstallationImagesData>> list) async {
-    final List<Map<String, dynamic>> jsonList = list
-        .map((mdms) => mdms.toJson((data) => data.toJson()))
-        .toList();
+    final List<Map<String, dynamic>> jsonList =
+        list.map((mdms) => mdms.toJson((data) => data.toJson())).toList();
     await storage.write(
-      key: 'installationImages',
+      key: _SecureStorageKeys.installationImages,
       value: json.encode(jsonList),
     );
   }
 
   Future<String?> getInstallationImages() async {
-    return await storage.read(key: 'installationImages');
+    return await storage.read(key: _SecureStorageKeys.installationImages);
   }
 
-  Future<void> setRejectionReasons(
-      List<Mdms<RejectionReasonData>> list) async {
-    final List<Map<String, dynamic>> jsonList = list
-        .map((mdms) => mdms.toJson((data) => data.toJson()))
-        .toList();
+  Future<void> setRejectionReasons(List<Mdms<RejectionReasonData>> list) async {
+    final List<Map<String, dynamic>> jsonList =
+        list.map((mdms) => mdms.toJson((data) => data.toJson())).toList();
     await storage.write(
-      key: 'rejectionReasons',
+      key: _SecureStorageKeys.rejectionReasons,
       value: json.encode(jsonList),
     );
   }
 
   Future<String?> getRejectionReasons() async {
-    return await storage.read(key: 'rejectionReasons');
+    return await storage.read(key: _SecureStorageKeys.rejectionReasons);
   }
 
   Future<void> setFormSchemas(Map<String, dynamic> schemas) async {
     await storage.write(
-      key: 'forms_schemas',
+      key: _SecureStorageKeys.formSchemas,
       value: json.encode(schemas),
     );
   }
 
   Future<String?> getFormSchemas() async {
-    return await storage.read(key: 'forms_schemas');
+    return await storage.read(key: _SecureStorageKeys.formSchemas);
   }
 
   Future setAccessToken(String? accessToken) async {
-    await storage.write(key: 'accessToken', value: accessToken);
+    await storage.write(
+        key: _SecureStorageKeys.accessToken, value: accessToken);
   }
 
   Future<String?> getAccessToken() async {
-    return await storage.read(key: 'accessToken');
+    return await storage.read(key: _SecureStorageKeys.accessToken);
   }
 
   Future deleteAccessToken() async {
-    await storage.delete(key: 'accessToken');
+    await storage.delete(key: _SecureStorageKeys.accessToken);
   }
 
   Future setAccessInfo(ResponseModel accessInfo) async {
     String jsonAccessInfo = json.encode(accessInfo.toJson());
-    await storage.write(key: 'accessInfo', value: jsonAccessInfo);
+    await storage.write(
+      key: _SecureStorageKeys.accessInfo,
+      value: jsonAccessInfo,
+    );
   }
 
   Future<ResponseModel?> getAccessInfo() async {
-    String? jsonAccessInfo = await storage.read(key: 'accessInfo');
+    String? jsonAccessInfo =
+        await storage.read(key: _SecureStorageKeys.accessInfo);
     if (jsonAccessInfo == null) return null;
     try {
       return ResponseModel.fromJson(json.decode(jsonAccessInfo));
@@ -207,16 +259,20 @@ class SecureStore {
   }
 
   Future deleteAccessInfo() async {
-    await storage.delete(key: 'accessInfo');
+    await storage.delete(key: _SecureStorageKeys.accessInfo);
   }
 
   Future setRoleActions(RoleActionsWrapperModel actionsWrapper) async {
     String jsonActionsWrapper = json.encode(actionsWrapper.toJson());
-    await storage.write(key: 'actionsWrapper', value: jsonActionsWrapper);
+    await storage.write(
+      key: _SecureStorageKeys.actionsWrapper,
+      value: jsonActionsWrapper,
+    );
   }
 
   Future<RoleActionsWrapperModel?> getRoleActions() async {
-    String? jsonActionsWrapper = await storage.read(key: 'actionsWrapper');
+    String? jsonActionsWrapper =
+        await storage.read(key: _SecureStorageKeys.actionsWrapper);
 
     if (jsonActionsWrapper == null) return null;
 
@@ -228,16 +284,16 @@ class SecureStore {
   }
 
   Future setSelectedIndividual(String? id) async {
-    await storage.write(key: 'individualId', value: id);
+    await storage.write(key: _SecureStorageKeys.individualId, value: id);
   }
 
   Future<String?> getSelectedIndividual() async {
-    final result = await storage.read(key: 'individualId');
+    final result = await storage.read(key: _SecureStorageKeys.individualId);
     return result;
   }
 
   Future deleteSelectedIndividual() async {
-    await storage.delete(key: 'individualId');
+    await storage.delete(key: _SecureStorageKeys.individualId);
   }
 
   String _kRawSchema(String schemaKey) => 'raw_schema_$schemaKey';

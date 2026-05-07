@@ -13,7 +13,7 @@ class InstallationImagesBloc
   InstallationImagesBloc(
     Isar isar, {
     AppInitRepo? appInitRepo,
-  }) : _repository = InstallationImagesRepository(
+  })  : _repository = InstallationImagesRepository(
           isar,
           appInitRepo: appInitRepo,
         ),
@@ -34,12 +34,17 @@ class InstallationImagesBloc
       if (activeItems.isNotEmpty) {
         emit(InstallationImagesState.loaded(activeItems));
         return;
+      } else {
+        emit(const InstallationImagesState.error(
+          'No installation images found.',
+        ));
+        return;
       }
-    } catch (_) {}
-
-    emit(const InstallationImagesState.error(
-      'Failed to load mdms installation images. Please try again.',
-    ));
+    } catch (_) {
+      emit(const InstallationImagesState.error(
+        'Failed to load mdms installation images. Please try again.',
+      ));
+    }
   }
 }
 

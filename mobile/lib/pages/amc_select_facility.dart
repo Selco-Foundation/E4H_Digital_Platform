@@ -175,7 +175,8 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                                     ),
                                     builder: (context, snapshot) {
                                       final label = snapshot.data ?? 'Start';
-                                      final locality = parseBoundaryCodeLocality(
+                                      final locality =
+                                          parseBoundaryCodeLocality(
                                         items[index].facility?.boundaryCode,
                                       );
                                       return AMCInstallationReportCard(
@@ -274,7 +275,8 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                         _searchQuery = text;
                         _sortDirection = null;
                       });
-                      if (text.isEmpty || text.length >= 3) {
+                      if (text.isEmpty ||
+                          text.length >= minFacilitySearchQueryLength) {
                         _fetchVisits();
                       }
                     },

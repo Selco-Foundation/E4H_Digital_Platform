@@ -337,6 +337,7 @@ enum FormOrigin { overallSummary, inboxSummary, submitForApproval, submitted }
 enum SYSTEM_TYPE { DC }
 
 const String DEFAULT_SORT_DIRECTION = "DESC";
+const int minFacilitySearchQueryLength = 3;
 
 bool isValidUuid(String value) {
   try {

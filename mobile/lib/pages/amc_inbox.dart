@@ -191,7 +191,9 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                                       _searchQuery = text;
                                       _sortDirection = null;
                                     });
-                                    if (text.isEmpty || text.length >= 3) {
+                                    if (text.isEmpty ||
+                                        text.length >=
+                                            minFacilitySearchQueryLength) {
                                       _fetchProjects(_selectedTabIndex);
                                     }
                                   },
