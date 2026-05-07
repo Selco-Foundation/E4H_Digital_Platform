@@ -103,7 +103,7 @@ public class FacilityV2ApiController {
             )
             @Valid @RequestBody FacilityUpdateRequest facilityUpdateRequest) {
         log.trace("Entering updateFacility endpoint");
-        String facilityId = facilityUpdateRequest.getFacilityUpdate() != null 
+        String facilityId = facilityUpdateRequest.getFacilityUpdate() != null
                 ? facilityUpdateRequest.getFacilityUpdate().getFacilityId() : null;
         log.info("Received facility update request for facilityId: {}", facilityId);
 
@@ -143,7 +143,7 @@ public class FacilityV2ApiController {
     public ResponseEntity<FacilitySearchResponse> searchFacilities(
             @ModelAttribute FacilitySearchRequest searchRequest) {
         log.trace("Entering searchFacilities endpoint");
-        log.info("Received facility search request with limit={}, offset={}", 
+        log.info("Received facility search request with limit={}, offset={}",
                 searchRequest.getLimit(), searchRequest.getOffset());
         List<Facility> facilities = facilityService.searchFacilities(searchRequest);
         int totalCount = facilityService.countFacilities(searchRequest);
@@ -159,7 +159,7 @@ public class FacilityV2ApiController {
     ) {
         log.trace("Entering bulkSearchFacilities endpoint");
         FacilityBulkSearchCriteria criteria = searchRequest.getFacilityBulkSearchCriteria();
-        int criteriaCount = criteria != null ? 
+        int criteriaCount = criteria != null ?
                 (criteria.getTenantIds() != null ? criteria.getTenantIds().size() : 0) : 0;
         log.info("Received bulk facility search request with {} tenant criteria", criteriaCount);
         List<Facility> facilities = facilityService.bulkSearchFacilities(searchRequest);

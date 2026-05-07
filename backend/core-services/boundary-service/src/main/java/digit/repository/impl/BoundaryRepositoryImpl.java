@@ -135,6 +135,18 @@ public class BoundaryRepositoryImpl implements BoundaryRepository {
         log.debug("Boundary update request published to Kafka successfully");
     }
 
+    @Override
+    public void delete(String tenantId, String code) {
+        log.trace("delete method invoked");
+        log.debug("Deleting boundary entity, tenantId={}, code={}", tenantId, code);
+        jdbcTemplate.update(
+                "DELETE FROM boundary WHERE tenantid = ? AND code = ?",
+                tenantId,
+                code
+        );
+        log.debug("Boundary delete query executed successfully");
+    }
+
     /**
      * This method returns the set of codes for a given tenantId
      * @param tenantId

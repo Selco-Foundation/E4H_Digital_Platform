@@ -92,6 +92,7 @@ import { usePrivacyContext } from "./usePrivacyContext";
 import useStaticData from "./useStaticData";
 import useBoundary from "./im/useBoundary";
 import useFacility from "./im/useFacility";
+import useRMSPausedFacility from "./im/useRMSFacility";
 
 
 
@@ -163,7 +164,8 @@ const survey = {
 const im = {
   useBoundary,
   useFacility,
-}
+  useRMSPausedFacility,
+};
 
 const Hooks = {
   useSessionStorage,
