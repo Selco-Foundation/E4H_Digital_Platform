@@ -1,7 +1,50 @@
 import re
+from typing import Any, Callable, Dict, List, MutableMapping
 
 import pandas as pd
 from fastapi import HTTPException
+
+# Same wording everywhere: MDMS pre-validation, API import, and Excel client hints.
+ERR_HFR_ID_REQUIRED_WHEN_HEALTH = (
+    "HFR ID is required when Facility Category is HEALTH."
+)
+ERR_NIN_ID_REQUIRED_WHEN_HEALTH = (
+    "NIN ID is required when Facility Category is HEALTH."
+)
+
+
+def normalize_facility_category_value(row: pd.Series) -> str:
+    """
+    Reads facility category from common template column names.
+    Returns upper-cased value or '' when unset (IDs stay optional).
+    """
+    candidates = (
+        "Category of HC (Mandatory)",
+        "Facility Category (Mandatory)",
+    )
+    for key in candidates:
+        if key not in row.index:
+            continue
+        val = row.get(key, "")
+        if pd.isna(val):
+            continue
+        s = str(val).strip()
+        if s:
+            return s.upper()
+    return ""
+
+
+def is_health_facility_category(category: str) -> bool:
+    return category == "HEALTH"
+
+
+def _is_legacy_mdms_hfr_nin_at_least_one_constraint(rc: Any) -> bool:
+    """MDMS used to require at least one of HFR/NIN; rules are category-based now."""
+    ctype = getattr(rc, "type", None)
+    if ctype != "atLeastOneRequired":
+        return False
+    fields = getattr(rc, "fields", None) or []
+    return set(fields) == {"HFR ID", "NIN ID"}
 
 
 def project_facility_validation(
@@ -186,7 +229,12 @@ def validate_row_constraints(df, schema, add_err):
 
     for idx, row in df.iterrows():
         for rc in row_constraints:
-            fields = [col_map.get(f, f) for f in rc.fields]
+            if _is_legacy_mdms_hfr_nin_at_least_one_constraint(rc):
+                continue
+            raw_fields = getattr(rc, "fields", None) or []
+            if not raw_fields:
+                continue
+            fields = [col_map.get(f, f) for f in raw_fields]
             values = []
             for f in fields:
                 val = row.get(f, "")
@@ -206,29 +254,76 @@ def validate_row_constraints(df, schema, add_err):
 
 
 def validate_hfr_nin(df, add_err, facility_client):
-    checked_in_db = {}
+    checked_in_db: Dict[str, bool] = {}
 
     for idx, row in df.iterrows():
-        hfr = row.get("HFR ID", "")
-        nin = row.get("NIN ID", "")
-
-        hfr = str(hfr).strip() if pd.notna(hfr) else ""
-        nin = str(nin).strip() if pd.notna(nin) else ""
-
-        # Skip if both are empty/NaN
-        if not hfr and not nin:
-            continue
-
-        # Pass only available IDs to DB check
-        check_db_duplicates(
-            cache=checked_in_db,
-            facility_client=facility_client,
-            add_err=add_err,
-            df=df,
+        validate_hfr_nin_for_row(
+            row=row,
             row_idx=idx,
-            hfr=hfr if hfr else None,
-            nin=nin if nin else None,
+            df=df,
+            add_err=add_err,
+            facility_client=facility_client,
+            checked_in_db=checked_in_db,
         )
+
+
+def validate_hfr_nin_for_row(
+    row: pd.Series,
+    row_idx: Any,
+    df: pd.DataFrame,
+    add_err: Callable[[Any, str], None],
+    facility_client: Any,
+    checked_in_db: MutableMapping[str, bool],
+) -> None:
+    """Category-aware HFR/NIN checks + duplicate lookup (shared by bulk validate and import)."""
+    hfr = row.get("HFR ID", "")
+    nin = row.get("NIN ID", "")
+
+    hfr = str(hfr).strip() if pd.notna(hfr) else ""
+    nin = str(nin).strip() if pd.notna(nin) else ""
+
+    category = normalize_facility_category_value(row)
+    if is_health_facility_category(category):
+        if not hfr:
+            add_err(row_idx, ERR_HFR_ID_REQUIRED_WHEN_HEALTH)
+        if not nin:
+            add_err(row_idx, ERR_NIN_ID_REQUIRED_WHEN_HEALTH)
+
+    if not hfr and not nin:
+        return
+
+    check_db_duplicates(
+        cache=checked_in_db,
+        facility_client=facility_client,
+        add_err=add_err,
+        df=df,
+        row_idx=row_idx,
+        hfr=hfr if hfr else None,
+        nin=nin if nin else None,
+    )
+
+
+def collect_hfr_nin_errors_for_row(
+    row: pd.Series,
+    row_idx: Any,
+    df: pd.DataFrame,
+    facility_client: Any,
+    checked_in_db: MutableMapping[str, bool],
+) -> List[str]:
+    out: List[str] = []
+
+    def add_err(_idx: Any, msg: str) -> None:
+        out.append(msg)
+
+    validate_hfr_nin_for_row(
+        row=row,
+        row_idx=row_idx,
+        df=df,
+        add_err=add_err,
+        facility_client=facility_client,
+        checked_in_db=checked_in_db,
+    )
+    return list(dict.fromkeys(out))
 
 
 def check_db_duplicates(cache, facility_client, add_err, df, row_idx, hfr=None, nin=None):

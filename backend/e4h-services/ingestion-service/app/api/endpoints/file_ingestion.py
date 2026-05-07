@@ -13,13 +13,11 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 
 from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
 from app.utils.excel_utils import autofit_columns
-from app.utils.facility_validator import project_facility_validation, facility_validation
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
-from openpyxl import load_workbook
-from openpyxl.styles import Protection
-from openpyxl.utils.dataframe import dataframe_to_rows
-
-from app.utils.facility_validator import project_facility_validation
+from app.utils.facility_validator import (
+    project_facility_validation,
+    facility_validation,
+    collect_hfr_nin_errors_for_row,
+)
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
 import psycopg2
@@ -485,6 +483,7 @@ async def upload_facilities_excel_sheet(
             dst.write(src.read())
 
         df = pd.read_excel(facility_file_path, sheet_name=facility_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
 
         if 'status' not in df.columns:
@@ -504,7 +503,15 @@ async def upload_facilities_excel_sheet(
         if facility_service_url and not df.empty:
             facility_client = FacilityServiceClient(facility_service_url)
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
+            hfr_nin_db_cache: Dict[str, bool] = {}
             for index, row in df[df['status'] != 'success'].iterrows():
+                hfr_nin_errs = collect_hfr_nin_errors_for_row(
+                    row, index, df, facility_client, hfr_nin_db_cache,
+                )
+                if hfr_nin_errs:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = '; '.join(hfr_nin_errs)
+                    continue
                 try:
                     facility_data_payload = create_facility_payload(request_info, row, are_facilities_onm_ready, facility_schema)
                     response = facility_client.create_facility(facility_data_payload)
