@@ -42,6 +42,8 @@ import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
 import '../widgets/summary/summary.dart';
 import 'app_logger.dart';
+import 'extensions.dart';
+import 'i18_key_constants.dart' as i18;
 
 getSelectedLanguage(Initialized state, int index) {
   if (AppSharedPreferences().getSelectedLocale == null) {
@@ -931,7 +933,8 @@ String normalizeFriendlyNetworkErrorMessage(
 
 void handleSessionExpired(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Token expired! Please login again.')),
+    SnackBar(
+        content: Text(context.translate(i18.common.tokenExpiredLoginAgain))),
   );
   context.read<AuthBloc>().add(const AuthEvent.logout());
   context.router.replace(const UnauthenticatedRouteWrapper());

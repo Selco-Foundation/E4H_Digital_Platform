@@ -26,6 +26,7 @@ import '../repositories/activity_facility_repo.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/bom_buttons.dart';
 import '../widgets/cards/element_asset_summary.dart';
@@ -96,7 +97,9 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
     final activityFacilityId = _currentProjectId;
     if (activityFacilityId == null) {
       context.showSnackBar(
-        const SnackBar(content: Text("No project selected")),
+        SnackBar(
+            content:
+                Text(context.translate(i18.inboxAssetSummary.noProjectSelected))),
       );
       return;
     }
@@ -183,8 +186,9 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
               state.maybeWhen(
                 success: () {
                   context.showSnackBar(
-                    const SnackBar(
-                        content: Text("Report sent back successfully")),
+                    SnackBar(
+                        content: Text(context.translate(
+                            i18.inboxAssetSummary.reportSentBackSuccessfully))),
                   );
                   context.router.popAndPush(const InboxRoute());
                 },
@@ -219,7 +223,9 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                     },
                     failure: (error) {
                       context.showSnackBar(
-                        SnackBar(content: Text("Asset Sync failed: $error")),
+                        SnackBar(
+                            content: Text(
+                                '${context.translate(i18.inboxAssetSummary.assetSyncFailed)}: $error')),
                       );
                     },
                   );
@@ -243,7 +249,9 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                         orElse: () => null,
                       );
                       if (errorMessage != null) {
-                        return Center(child: Text("Error: $errorMessage"));
+                        return Center(
+                            child: Text(
+                                '${context.translate(i18.common.error)}: $errorMessage'));
                       }
 
                       int battery = 0, inverter = 0, panel = 0;
@@ -284,7 +292,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                   children: [
                                     DigitButton(
                                       mainAxisSize: MainAxisSize.max,
-                                      label: "Add more details",
+                                      label: context.translate(
+                                          i18.inboxAssetSummary.addMoreDetails),
                                       type: DigitButtonType.primary,
                                       size: DigitButtonSize.large,
                                       onPressed: () {
@@ -298,8 +307,10 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                     DigitButton(
                                       mainAxisSize: MainAxisSize.max,
                                       label: sendingBack
-                                          ? "Sending back..."
-                                          : "Send Back",
+                                          ? context.translate(
+                                              i18.inboxAssetSummary.sendingBack)
+                                          : context.translate(
+                                              i18.inboxAssetSummary.sendBack),
                                       type: DigitButtonType.secondary,
                                       size: DigitButtonSize.large,
                                       onPressed: sendingBack
@@ -309,10 +320,12 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                 builder: (ctx) => Popup(
                                                   onCrossTap: () =>
                                                       Navigator.of(ctx).pop(),
-                                                  title:
-                                                      "Are you sure you want to send back the report?",
-                                                  description:
-                                                      "If you send back the report now, you cannot add any more rejection reasons or add more details until it is sent back from the field",
+                                                  title: context.translate(i18
+                                                      .inboxAssetSummary
+                                                      .sendBackReportConfirmationTitle),
+                                                  description: context.translate(i18
+                                                      .inboxAssetSummary
+                                                      .sendBackReportConfirmationDescription),
                                                   type: PopUpType.simple,
                                                   actionAlignment:
                                                       MainAxisAlignment.center,
@@ -323,7 +336,10 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                         Expanded(
                                                           flex: 1,
                                                           child: DigitButton(
-                                                            label: "Close",
+                                                            label: context
+                                                                .translate(i18
+                                                                    .inboxAssetSummary
+                                                                    .close),
                                                             onPressed: () {
                                                               Navigator.of(ctx)
                                                                   .pop();
@@ -344,7 +360,10 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                         Expanded(
                                                           flex: 1,
                                                           child: DigitButton(
-                                                            label: "Send back",
+                                                            label: context
+                                                                .translate(i18
+                                                                    .inboxAssetSummary
+                                                                    .sendBack),
                                                             onPressed: () =>
                                                                 _sendBackReport(
                                                                     ctx),
@@ -377,7 +396,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        'Summary Overview',
+                                        context.translate(i18
+                                            .inboxAssetSummary.summaryOverview),
                                         style: textTheme.headingXl.copyWith(
                                             color: theme
                                                 .colorTheme.primary.primary2),
@@ -387,7 +407,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                         children: [
                                           ElementAssetSummary(
                                             count: battery,
-                                            text: 'Batteries',
+                                            text: context.translate(
+                                                i18.assetCount.batteries),
                                             onPress: () {
                                               context.read<AssetTypeBloc>().add(
                                                   const AssetTypeEvent
@@ -409,7 +430,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                           ),
                                           ElementAssetSummary(
                                             count: inverter,
-                                            text: 'Inverters',
+                                            text: context.translate(
+                                                i18.assetCount.inverters),
                                             onPress: () {
                                               context.read<AssetTypeBloc>().add(
                                                   const AssetTypeEvent
@@ -431,7 +453,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                           ),
                                           ElementAssetSummary(
                                             count: panel,
-                                            text: 'Panels',
+                                            text: context
+                                                .translate(i18.assetCount.panels),
                                             lastCard: true,
                                             onPress: () {
                                               context.read<AssetTypeBloc>().add(
@@ -459,7 +482,9 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                           DigitCard(
                                             children: [
                                               Text(
-                                                'Installation Completion Report',
+                                                context.translate(i18
+                                                    .inboxAssetSummary
+                                                    .installationCompletionReport),
                                                 style:
                                                     textTheme.headingM.copyWith(
                                                   color: theme.colorTheme

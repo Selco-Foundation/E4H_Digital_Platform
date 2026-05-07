@@ -145,17 +145,18 @@ class _SelectAssetTypePageState extends State<SelectAssetTypePage> {
                         const SizedBox(height: spacer4),
                         DigitCard(children: [
                           Text(
-                            'Asset Type',
+                            context.translate(i18.selectAssetType.title),
                             style: textTheme.headingXl.copyWith(
                                 color: theme.colorTheme.primary.primary2),
                           ),
                           Text(
-                            'Choose the asset type',
+                            context.translate(i18.assetCount.chooseAssetType),
                             style: textTheme.bodyL
                                 .copyWith(color: theme.colorTheme.text.primary),
                           ),
                           LabeledField(
-                            label: 'Select Asset Type',
+                            label: context
+                                .translate(i18.selectAssetType.selectAssetType),
                             labelStyle: textTheme.label.copyWith(
                               color: theme.colorTheme.text.primary,
                             ),

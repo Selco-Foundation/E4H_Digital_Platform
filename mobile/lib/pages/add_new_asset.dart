@@ -292,15 +292,17 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
 
     if (statuses[Permission.camera] != PermissionStatus.granted) {
       context.showSnackBar(
-        const SnackBar(
-            content: Text('Camera permission is required to scan QR codes')),
+        SnackBar(
+            content:
+                Text(context.translate(i18.addNewAsset.cameraPermissionRequired))),
       );
     }
 
     if (statuses[Permission.locationWhenInUse] != PermissionStatus.granted) {
       context.showSnackBar(
-        const SnackBar(
-            content: Text('Location permission is required to geotag photos')),
+        SnackBar(
+            content: Text(
+                context.translate(i18.addNewAsset.locationPermissionRequired))),
       );
     }
 
@@ -677,7 +679,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
           ],
         ),
         LabeledField(
-          label: 'Serial Number',
+          label: context.translate(i18.common.serialNumber),
           capitalizedFirstLetter: false,
           child: Row(
             children: [
@@ -691,7 +693,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                     initialValue: asset.serialNumber,
                     isDisabled: true,
                     innerLabel: asset.serialNumber.isEmpty
-                        ? 'Scan serial number'
+                        ? context.translate(i18.addNewAsset.scanSerialNumber)
                         : asset.serialNumber,
                     keyboardType: TextInputType.none,
                   ),
@@ -701,7 +703,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               Expanded(
                 flex: 3,
                 child: DigitButton(
-                  label: 'Scan',
+                  label: context.translate(i18.common.scan),
                   type: DigitButtonType.secondary,
                   onPressed: () {
                     _openScannerForAsset(index);
@@ -716,7 +718,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         BlocBuilder<LocationBloc, LocationState>(
           builder: (context, locationState) {
             return LabeledField(
-              label: 'Supporting Photo',
+              label: context.translate(i18.addNewAsset.supportingPhoto),
               capitalizedFirstLetter: false,
               child: FutureBuilder<File?>(
                 future: _cachedImageFutures.putIfAbsent(
@@ -777,8 +779,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                           });
                         } else {
                           context.showSnackBar(
-                            const SnackBar(
-                                content: Text('Could not fetch location')),
+                            SnackBar(
+                                content: Text(context.translate(
+                                    i18.common.couldNotFetchLocation))),
                           );
                         }
                       } catch (e) {
@@ -788,8 +791,9 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                         );
                         if (!mounted) return;
                         context.showSnackBar(
-                          const SnackBar(
-                              content: Text('Could not process image')),
+                          SnackBar(
+                              content: Text(context.translate(
+                                  i18.addNewAsset.couldNotProcessImage))),
                         );
                       } finally {
                         _isProcessingImageSelection.remove(index);
@@ -808,7 +812,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               Expanded(
                 flex: 3,
                 child: LabeledField(
-                  label: 'Capacity',
+                  label: context.translate(i18.common.capacity),
                   capitalizedFirstLetter: false,
                   child: DigitTextFormInput(
                     key: ValueKey(
@@ -826,7 +830,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
               Expanded(
                 flex: 1,
                 child: LabeledField(
-                  label: 'Unit',
+                  label: context.translate(i18.common.unit),
                   capitalizedFirstLetter: false,
                   child: DigitTextFormInput(
                     controller: TextEditingController(text: assetCapacityUom),
@@ -853,12 +857,12 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         DigitCard(
           children: [
             Text(
-              '$heading Capacity',
+              '$heading ${context.translate(i18.common.capacity)}',
               style: textTheme.headingXl
                   .copyWith(color: theme.colorTheme.primary.primary2),
             ),
             LabeledField(
-              label: '$heading Type',
+              label: '$heading ${context.translate(i18.addNewAsset.type)}',
               capitalizedFirstLetter: false,
               child: DigitDropdown(
                   sentenceCaseEnabled: false,
@@ -882,7 +886,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 Expanded(
                   flex: 3,
                   child: LabeledField(
-                    label: 'Voltage',
+                    label: context.translate(i18.common.voltage),
                     capitalizedFirstLetter: false,
                     child: DigitDropdown(
                       sentenceCaseEnabled: false,
@@ -907,7 +911,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 Expanded(
                   flex: 1,
                   child: LabeledField(
-                    label: 'Unit',
+                    label: context.translate(i18.common.unit),
                     capitalizedFirstLetter: false,
                     child: DigitTextFormInput(
                       controller: TextEditingController(),
@@ -924,7 +928,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 Expanded(
                   flex: 3,
                   child: LabeledField(
-                    label: 'Current',
+                    label: context.translate(i18.common.current),
                     capitalizedFirstLetter: false,
                     child: DigitTextFormInput(
                       key: ValueKey(
@@ -942,7 +946,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 Expanded(
                   flex: 1,
                   child: LabeledField(
-                    label: 'Unit',
+                    label: context.translate(i18.common.unit),
                     capitalizedFirstLetter: false,
                     child: DigitTextFormInput(
                       controller: TextEditingController(),
@@ -968,7 +972,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
         DigitCard(
           children: [
             Text(
-              '$heading Capacity',
+              '$heading ${context.translate(i18.common.capacity)}',
               style: textTheme.headingXl
                   .copyWith(color: theme.colorTheme.primary.primary2),
             ),
@@ -977,7 +981,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 Expanded(
                   flex: 3,
                   child: LabeledField(
-                    label: 'Voltage',
+                    label: context.translate(i18.common.voltage),
                     capitalizedFirstLetter: false,
                     child: DigitTextFormInput(
                       key: ValueKey(
@@ -995,7 +999,7 @@ class _AddNewAssetPageState extends State<AddNewAssetPage> {
                 Expanded(
                   flex: 1,
                   child: LabeledField(
-                    label: 'Unit',
+                    label: context.translate(i18.common.unit),
                     capitalizedFirstLetter: false,
                     child: DigitTextFormInput(
                       controller: TextEditingController(),

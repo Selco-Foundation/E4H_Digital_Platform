@@ -72,12 +72,14 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
         state.maybeWhen(
           resendSuccess: () {
             ctx.showSnackBar(
-              const SnackBar(content: Text('AMC Service completion code resent successfully')),
+              SnackBar(
+                  content: Text(context.translate(i18.amcOtp.resendSuccess))),
             );
           },
           submitSuccess: () {
             ctx.showSnackBar(
-              const SnackBar(content: Text('AMC Service completion code verified successfully')),
+              SnackBar(
+                  content: Text(context.translate(i18.amcOtp.verifySuccess))),
             );
             ctx.router.push(const AmcHomeRoute());
           },
@@ -107,7 +109,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                       isDisabled: isDisabled,
                       showSuffixIcon: false,
                       text: isResendLoading
-                          ? 'Resending...'
+                          ? context.translate(i18.amcOtp.resending)
                           : context.translate(i18.common.coreCommonSubmit),
                       onPress: () {
                         form.markAllAsTouched();
@@ -134,7 +136,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                       const SizedBox(height: spacer6),
                       Center(
                         child: Text(
-                          'Please ask for AMC Service completion code from the HCR',
+                          context.translate(i18.amcOtp.instruction),
                           style: textTheme.headingM.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
@@ -151,7 +153,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                             },
                           },
                           builder: (field) => DigitOTPInput(
-                            label: "Enter AMC Service completion code",
+                            label: context.translate(i18.amcOtp.enterCode),
                             inputFormatter: [
                               FilteringTextInputFormatter.digitsOnly
                             ],
@@ -172,13 +174,14 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                                     final visitId = _currentScheduledVisitId;
                                     if (visitId == null) return;
 
-                                    context
-                                        .read<AmcOtpBloc>()
-                                        .add(AmcOtpEvent.resend(visitId: visitId));
+                                    context.read<AmcOtpBloc>().add(
+                                        AmcOtpEvent.resend(visitId: visitId));
                                   },
                             child: Text(
                               textAlign: TextAlign.end,
-                              isResendLoading ? 'Resending...' : 'Resend AMC Service completion code',
+                              isResendLoading
+                                  ? context.translate(i18.amcOtp.resending)
+                                  : context.translate(i18.amcOtp.resendCode),
                               style: textTheme.linkM.copyWith(
                                   color: theme.colorTheme.alert.error),
                             ),

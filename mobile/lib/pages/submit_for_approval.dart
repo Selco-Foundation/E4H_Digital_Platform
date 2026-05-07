@@ -31,6 +31,7 @@ import '../repositories/activity_facility_workflow_repo.dart';
 import '../repositories/installation_images_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/bom_buttons.dart';
 import '../widgets/button/footer_button.dart';
@@ -289,12 +290,13 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
         type: PopUpType.alert,
         onCrossTap: () => Navigator.of(ctx).pop(),
         onOutsideTap: () => Navigator.of(ctx).pop(),
-        title: "Required Installation Images",
+        title: context.translate(i18.submitForApproval.requiredInstallationImages),
         actionAlignment: MainAxisAlignment.center,
         actions: const [],
         additionalWidgets: [
           Text(
-            "Enter required installation images",
+            context.translate(
+                i18.submitForApproval.enterRequiredInstallationImages),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,
@@ -323,8 +325,9 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                 await _loadInitialCompletion();
               },
               failure: (msg) {
-                context.showSnackBar(
-                    SnackBar(content: Text('BOM sync failed: $msg')));
+                context.showSnackBar(SnackBar(
+                    content: Text(
+                        '${context.translate(i18.submitForApproval.bomSyncFailed)}: $msg')));
               },
               orElse: () {},
             );
@@ -344,7 +347,9 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                             activityFacilityId: activityFacilityId),
                       );
                   context.showSnackBar(
-                    SnackBar(content: Text("Sync failed: $error")),
+                    SnackBar(
+                        content: Text(
+                            '${context.translate(i18.common.syncFailed)}: $error')),
                   );
                 },
               );
@@ -502,7 +507,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Summary',
+                        context.translate(i18.submitForApproval.summary),
                         style: textTheme.headingXl
                             .copyWith(color: theme.colorTheme.primary.primary2),
                       ),
@@ -512,7 +517,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                       DigitCard(
                         children: [
                           Text(
-                            'Installation Completion Report',
+                            context.translate(i18
+                                .submitForApproval.installationCompletionReport),
                             style: textTheme.headingM.copyWith(
                                 color: theme.colorTheme.primary.primary2),
                           ),
@@ -552,7 +558,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                             )
                           ],
                           Text(
-                            'Please scan and upload the installation completion report',
+                            context.translate(i18
+                                .submitForApproval.scanUploadCompletionReport),
                             style: textTheme.bodyS.copyWith(
                                 color: theme.colorTheme.text.secondary),
                           ),
@@ -565,7 +572,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                             ],
                             showPreview: true,
                             allowMultiples: true,
-                            label: 'Upload',
+                            label:
+                                context.translate(i18.submitForApproval.upload),
                             onFilesSelected: (files) {
                               if (files.isEmpty) {
                                 return <PlatformFile, String?>{};
@@ -604,7 +612,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                       ),
                       const SizedBox(height: spacer4),
                       Text(
-                        "Rejection List",
+                        context.translate(i18.submitForApproval.rejectionList),
                         style: textTheme.headingXl
                             .copyWith(color: theme.colorTheme.primary.primary2),
                       ),
@@ -614,7 +622,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                           SizedBox(width: context.width),
                           if (_rejectionReasons.isEmpty)
                             Text(
-                              "No rejection reasons found",
+                              context.translate(
+                                  i18.submitForApproval.noRejectionReasonsFound),
                               style: textTheme.bodyS,
                             )
                           else
@@ -717,7 +726,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
             children: [
               Center(
                 child: Text(
-                  'Error loading counts:\n$error',
+                  '${context.translate(i18.submitForApproval.errorLoadingCounts)}:\n$error',
                   style: textTheme.bodyL
                       .copyWith(color: theme.colorTheme.alert.error),
                   textAlign: TextAlign.center,
@@ -744,7 +753,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
     final textTheme = theme.digitTextTheme(ctx);
     final hasComments = comments != null && comments.isNotEmpty;
 
-    String buttonText = "Edit";
+    String buttonText = ctx.translate(i18.common.coreCommonEdit);
 
     final userState = ctx.read<UserTypeBloc>().state;
     bool isRejectedByQc = false;
@@ -758,7 +767,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
           WORKFLOW_STATUS_FIELD_STAFF.REJECTED_BY_QC_SPOC.name;
 
       if (isFieldStaff && isRejectedByQc) {
-        buttonText = "View";
+        buttonText = ctx.translate(i18.submitForApproval.view);
       }
     });
 
@@ -770,7 +779,7 @@ class RejectedEditAssetSummary extends StatelessWidget {
                 assetType.toLowerCase() !=
                         ASSET_TYPES.BATTERY.name.toLowerCase()
                     ? '${assetType}s'
-                    : 'Batteries',
+                    : ctx.translate(i18.assetCount.batteries),
                 style: textTheme.headingS)),
         Center(child: Text('$count', style: textTheme.bodyL)),
       ]),
@@ -846,7 +855,7 @@ class RejectionReasonsList extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Rejection Reason(s)',
+                  context.translate(i18.submitForApproval.rejectionReasons),
                   style: textTheme.headingS
                       .copyWith(color: theme.colorTheme.text.primary),
                 ),
@@ -890,7 +899,9 @@ class RejectionReasonsList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
                 vertical: spacer1, horizontal: spacer3),
             child: Text(
-              reason == null ? 'Reason $index' : '$reason',
+              reason == null
+                  ? '${context.translate(i18.submitForApproval.reason)} $index'
+                  : '$reason',
               style: labelStyle,
             ),
           ),

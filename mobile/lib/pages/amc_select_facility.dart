@@ -22,6 +22,7 @@ import '../repositories/dynamic_form_repo.dart';
 import '../repositories/scheduled_visit_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/cards/report_detail_row.dart';
@@ -136,7 +137,8 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                       failure: (msg) => Padding(
                         padding: const EdgeInsets.all(spacer2),
                         child: Text(
-                          'Failed to load scheduled visits',
+                          context.translate(
+                              i18.amcSelectFacility.failedToLoadVisits),
                           style: textTheme.bodyS
                               .copyWith(color: theme.colorTheme.alert.error),
                         ),
@@ -147,7 +149,8 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                           return Padding(
                             padding: const EdgeInsets.all(spacer4),
                             child: Text(
-                              'No scheduled visits found.',
+                              context
+                                  .translate(i18.amcSelectFacility.noVisitsFound),
                               style: textTheme.bodyS.copyWith(
                                 color: theme.colorTheme.text.secondary,
                               ),
@@ -260,7 +263,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Select Health Facility',
+              context.translate(i18.amcSelectFacility.title),
               style: textTheme.bodyL
                   .copyWith(color: theme.colorTheme.text.primary),
             ),
@@ -305,11 +308,11 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, popupSetState) => Popup(
           onCrossTap: () => Navigator.of(ctx).pop(),
-          title: 'Sort by',
+          title: context.translate(i18.common.sortBy),
           type: PopUpType.simple,
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
-            Text('Submission Date',
+            Text(context.translate(i18.common.submissionDate),
                 style: textTheme.headingS
                     .copyWith(color: theme.colorTheme.text.primary)),
             RadioList(
@@ -319,15 +322,19 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
               onChanged: (value) =>
                   popupSetState(() => _sortDirection = value.code),
               radioDigitButtons: [
-                RadioButtonModel(code: 'DESC', name: 'Newest first'),
-                RadioButtonModel(code: 'ASC', name: 'Oldest first'),
+                RadioButtonModel(
+                    code: 'DESC',
+                    name: context.translate(i18.common.newestFirst)),
+                RadioButtonModel(
+                    code: 'ASC',
+                    name: context.translate(i18.common.oldestFirst)),
               ],
             ),
             Row(
               children: [
                 Expanded(
                   child: DigitButton(
-                    label: 'Clear',
+                    label: context.translate(i18.common.clear),
                     onPressed: () {
                       setState(() {
                         _sortDirection = null;
@@ -343,7 +350,7 @@ class _AmcSelectFacilityPageState extends State<AmcSelectFacilityPage> {
                 const SizedBox(width: spacer5),
                 Expanded(
                   child: DigitButton(
-                    label: 'Sort',
+                    label: context.translate(i18.common.sort),
                     isDisabled: _sortDirection == null,
                     onPressed: () {
                       Navigator.of(ctx).pop();
@@ -440,7 +447,7 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
             const SizedBox(height: spacer4),
             const DigitDivider(dividerType: DividerType.small),
             ReportDetailRow(
-              label: 'Status',
+              label: context.translate(i18.common.status),
               value: _detailText(
                 context.translate(widget.status ?? ''),
                 textTheme,
@@ -448,27 +455,29 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
               ),
             ),
             ReportDetailRow(
-              label: 'AMC Date',
+              label: context.translate(i18.amcSelectFacility.amcDate),
               value: _detailText(formattedDate, textTheme, theme),
             ),
             ReportDetailRow(
-              label: 'State',
+              label: context.translate(i18.common.state),
               value: _detailText(_displayValue(widget.state), textTheme, theme),
             ),
             ReportDetailRow(
-              label: 'District',
+              label: context.translate(i18.common.district),
               value:
                   _detailText(_displayValue(widget.district), textTheme, theme),
             ),
             ReportDetailRow(
-              label: 'Block',
+              label: context.translate(i18.common.block),
               value: _detailText(_displayValue(widget.block), textTheme, theme),
             ),
             const SizedBox(height: spacer4),
             DigitButton(
               mainAxisSize: MainAxisSize.max,
               label:
-                  effectiveLabel.isEmpty ? 'Report' : '$effectiveLabel Report',
+                  effectiveLabel.isEmpty
+                      ? context.translate(i18.amcSelectFacility.report)
+                      : '$effectiveLabel ${context.translate(i18.amcSelectFacility.report)}',
               onPressed: widget.onPress,
               type: DigitButtonType.primary,
               size: DigitButtonSize.large,
@@ -482,7 +491,8 @@ class _AMCInstallationReportCardState extends State<AMCInstallationReportCard> {
 
                 return DigitButton(
                   mainAxisSize: MainAxisSize.max,
-                  label: 'Submit For Approval',
+                  label: context
+                      .translate(i18.amcSelectFacility.submitForApproval),
                   onPressed: () {
                     context.router.push(const AmcOtpRoute());
                   },

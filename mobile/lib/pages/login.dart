@@ -156,7 +156,7 @@ class _LoginPageState extends State<LoginPage> {
                         return state.maybeWhen(
                           loading: () => DigitButton(
                             isDisabled: true,
-                            label: 'Loading...',
+                            label: context.translate(i18.common.loading),
                             type: DigitButtonType.primary,
                             onPressed: () {},
                             size: DigitButtonSize.large,

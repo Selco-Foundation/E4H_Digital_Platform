@@ -18,6 +18,7 @@ import '../model/installation_images/installation_images.dart';
 import '../repositories/activity_facility_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/customized_digit_widget/image_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -273,7 +274,9 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
     if (!mounted) return;
     if (!ok) {
       context.showSnackBar(
-        const SnackBar(content: Text('Could not fetch location')),
+        SnackBar(
+            content:
+                Text(context.translate(i18.common.couldNotFetchLocation))),
       );
       return;
     }
@@ -336,7 +339,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           ),
           const SizedBox(height: spacer3),
           DigitButton(
-            label: 'Retry',
+            label: context.translate(i18.common.retry),
             mainAxisSize: MainAxisSize.max,
             type: DigitButtonType.primary,
             size: DigitButtonSize.large,
@@ -355,7 +358,8 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           return DigitCard(
             children: [
               Text(
-                'No installation image configuration found.',
+                context
+                    .translate(i18.installationImages.noConfigurationFound),
                 style: textTheme.bodyL.copyWith(
                   color: theme.colorTheme.alert.error,
                 ),
@@ -388,7 +392,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
                       ),
                     ),
                     ImageUploader(
-                      label: 'Upload Images',
+                      label: context.translate(i18.common.uploadImages),
                       allowMultiples: requirement.allowMultiples,
                       maxImages: requirement.requiredCount,
                       isDisabled: _isViewOnly,
@@ -481,8 +485,10 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
                     DigitButton(
                       isDisabled: _isSubmitDisabled(loadedRequirements),
                       label: _isViewOnly
-                          ? 'Back'
-                          : (_isSaving ? 'Loading...' : 'Submit'),
+                          ? context.translate(i18.installationImages.back)
+                          : (_isSaving
+                              ? context.translate(i18.common.loading)
+                              : context.translate(i18.common.coreCommonSubmit)),
                       onPressed: () => _validateAndContinue(loadedRequirements),
                       type: DigitButtonType.primary,
                       size: DigitButtonSize.large,
@@ -500,7 +506,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Installation Images',
+                          context.translate(i18.installationImages.title),
                           style: textTheme.headingXl.copyWith(
                             color: theme.colorTheme.primary.primary2,
                           ),

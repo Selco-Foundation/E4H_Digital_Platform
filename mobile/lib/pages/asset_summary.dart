@@ -208,7 +208,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                         children: [
                           const SizedBox(height: spacer2),
                           Text(
-                            '$heading Summary',
+                            '$heading ${context.translate(i18.assetSummary.summary)}',
                             style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2,
                             ),
@@ -217,14 +217,16 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                           BlocBuilder<AssetSummaryBloc, AssetSummaryState>(
                             builder: (context, state) {
                               return state.when(
-                                initial: () => const Center(
-                                  child: Text('Loading summary...'),
+                                initial: () => Center(
+                                  child: Text(context.translate(
+                                      i18.assetSummary.loadingSummary)),
                                 ),
                                 loading: () => const Center(
                                   child: CircularProgressIndicator(),
                                 ),
                                 error: (msg) => Center(
-                                  child: Text('Error loading summary:\n$msg'),
+                                  child: Text(
+                                      '${context.translate(i18.assetSummary.errorLoadingSummary)}:\n$msg'),
                                 ),
                                 loaded: (summary) {
                                   return _buildSummaryCards(summary, heading);
@@ -340,7 +342,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         builder: (ctx, setStatePopup) {
           return Popup(
             onCrossTap: () => Navigator.of(ctx).pop(),
-            title: "Rejection Reason",
+            title: context.translate(i18.assetSummary.rejectionReason),
             type: PopUpType.simple,
             actionAlignment: MainAxisAlignment.center,
             additionalWidgets: [
@@ -352,7 +354,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                       clipBehavior: Clip.none,
                       children: [
                         LabeledField(
-                          label: 'Reason',
+                          label: context.translate(i18.assetSummary.reason),
                           child: DigitDropdown(
                             sentenceCaseEnabled: false,
                             items: _rejectionReasonItems,
@@ -393,11 +395,13 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                     ),
                     const SizedBox(height: spacer2),
                     LabeledField(
-                      label: 'Additional Details',
+                      label:
+                          context.translate(i18.assetSummary.additionalDetails),
                       child: InputField(
                         type: InputType.textArea,
                         controller: entry.controller,
-                        innerLabel: 'Details for the selected reason',
+                        innerLabel: context.translate(
+                            i18.assetSummary.detailsForSelectedReason),
                         textAreaScroll: TextAreaScroll.vertical,
                       ),
                     ),
@@ -413,7 +417,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                       setStatePopup(() => _reasons.add(_ReasonEntry()));
                     },
                     child: Text(
-                      'Add Reason',
+                      context.translate(i18.assetSummary.addReason),
                       style: textTheme.headingM.copyWith(
                         color: theme.colorTheme.primary.primary1,
                       ),
@@ -425,7 +429,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                 children: [
                   Expanded(
                     child: DigitButton(
-                      label: "Back",
+                      label: context.translate(i18.assetSummary.back),
                       type: DigitButtonType.secondary,
                       onPressed: () => Navigator.of(ctx).pop(),
                       size: DigitButtonSize.large,
@@ -438,7 +442,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
                       alignment: Alignment.center,
                       children: [
                         DigitButton(
-                          label: "Submit",
+                          label: context.translate(i18.assetSummary.submit),
                           type: DigitButtonType.primary,
                           size: DigitButtonSize.large,
                           mainAxisSize: MainAxisSize.min,
@@ -459,9 +463,10 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
 
                             if (reasons.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                    'Select a reason or enter additional details.',
+                                    context.translate(i18.assetSummary
+                                        .selectReasonOrEnterAdditionalDetails),
                                   ),
                                 ),
                               );
@@ -575,7 +580,11 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const KeyColumn(keys: ['Serial Number', 'Capacity', 'Image']),
+                KeyColumn(keys: [
+                  context.translate(i18.common.serialNumber),
+                  context.translate(i18.common.capacity),
+                  context.translate(i18.common.images),
+                ]),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -638,13 +647,18 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
       children: [
         DigitCard(children: [
           Text(
-            'Health Facility Details',
+            context.translate(i18.assetSummary.healthFacilityDetails),
             style: textTheme.headingM.copyWith(
               color: Theme.of(context).colorTheme.primary.primary2,
             ),
           ),
           Row(children: [
-            const Expanded(flex: 1, child: KeyColumn(keys: ['Name', 'Status'])),
+            Expanded(
+                flex: 1,
+                child: KeyColumn(keys: [
+                  context.translate(i18.assetSummary.name),
+                  context.translate(i18.common.status),
+                ])),
             Expanded(
               flex: 1,
               child: ValueColumn(values: [
@@ -657,7 +671,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         const SizedBox(height: spacer4),
         DigitCard(children: [
           Text(
-            'Count',
+            context.translate(i18.assetSummary.count),
             style: textTheme.headingM.copyWith(
               color: Theme.of(context).colorTheme.primary.primary2,
             ),
@@ -670,13 +684,16 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         const SizedBox(height: spacer4),
         DigitCard(children: [
           Text(
-            'Specifications',
+            context.translate(i18.assetSummary.specifications),
             style: textTheme.headingM.copyWith(
               color: Theme.of(context).colorTheme.primary.primary2,
             ),
           ),
           Row(children: [
-            const KeyColumn(keys: ['System', 'Capacity']),
+            KeyColumn(keys: [
+              context.translate(i18.assetSummary.system),
+              context.translate(i18.common.capacity),
+            ]),
             ValueColumn(values: [system, '$capacity$capacityUnit']),
           ]),
         ]),
@@ -684,7 +701,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
         DigitCard(children: [
           Row(children: [
             Text(
-              'Details',
+              context.translate(i18.assetSummary.details),
               style: textTheme.headingM.copyWith(
                 color: Theme.of(context).colorTheme.primary.primary2,
               ),
@@ -696,10 +713,10 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
             ),
           ]),
           Row(children: [
-            const KeyColumn(keys: [
-              'Warranty Start Date',
-              'Warranty Duration',
-              'Brand',
+            KeyColumn(keys: [
+              context.translate(i18.assetSummary.warrantyStartDate),
+              context.translate(i18.assetSummary.warrantyDuration),
+              context.translate(i18.assetSummary.brand),
             ]),
             ValueColumn(values: [
               warrantyStart,
@@ -716,7 +733,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '$heading Images',
+                  '$heading ${context.translate(i18.common.images)}',
                   style: textTheme.headingM.copyWith(
                     color: Theme.of(context).colorTheme.primary.primary2,
                   ),
@@ -741,7 +758,7 @@ class _AssetSummaryPageState extends State<AssetSummaryPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '$heading Videos',
+                  '$heading ${context.translate(i18.common.videos)}',
                   style: textTheme.headingM.copyWith(
                     color: Theme.of(context).colorTheme.primary.primary2,
                   ),

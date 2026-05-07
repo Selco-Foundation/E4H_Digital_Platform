@@ -310,7 +310,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
               },
               failure: (msg) {
                 context.showSnackBar(
-                  const SnackBar(content: Text('BOM sync failed')),
+                  SnackBar(
+                      content:
+                          Text(context.translate(i18.common.bomSyncFailed))),
                 );
               },
               orElse: () {},
@@ -332,7 +334,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                           activityFacilityId: _currentProjectId!),
                     );
                 context.showSnackBar(
-                  SnackBar(content: Text("Sync failed: $error")),
+                  SnackBar(
+                      content: Text(
+                          '${context.translate(i18.common.syncFailed)}: $error')),
                 );
               },
             );
@@ -369,9 +373,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                         success: () {
                           ScaffoldMessenger.of(context).clearSnackBars();
                           context.showSnackBar(
-                            const SnackBar(
-                                content:
-                                    Text("All assets submitted successfully")),
+                            SnackBar(
+                                content: Text(context.translate(i18
+                                    .overallAssetSummary
+                                    .allAssetsSubmittedSuccessfully))),
                           );
 
                           final router = context.router.root;
@@ -583,20 +588,26 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                           initial: () {
                                             return DigitCard(
                                               children: [
-                                                const ElementAssetSummary(
+                                                ElementAssetSummary(
                                                     count: 0,
-                                                    text: 'Batteries'),
-                                                const ElementAssetSummary(
+                                                    text: context.translate(
+                                                        i18.assetCount.batteries)),
+                                                ElementAssetSummary(
                                                   count: 0,
-                                                  text: 'Inverters',
+                                                  text: context.translate(
+                                                      i18.assetCount.inverters),
                                                 ),
-                                                const ElementAssetSummary(
-                                                    count: 0, text: 'Panels'),
+                                                ElementAssetSummary(
+                                                    count: 0,
+                                                    text: context.translate(
+                                                        i18.assetCount.panels)),
                                                 const SizedBox(height: spacer6),
                                                 DigitButton(
                                                   mainAxisSize:
                                                       MainAxisSize.max,
-                                                  label: 'Add More Assets',
+                                                  label: context.translate(i18
+                                                      .overallAssetSummary
+                                                      .addMoreAssets),
                                                   prefixIcon: Icons.add_box,
                                                   onPressed: () {},
                                                   type: DigitButtonType.primary,
@@ -608,20 +619,26 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                           loading: () {
                                             return DigitCard(
                                               children: [
-                                                const Row(
+                                                Row(
                                                   mainAxisAlignment:
                                                       MainAxisAlignment
                                                           .spaceEvenly,
                                                   children: [
                                                     ElementAssetSummary(
                                                         count: 0,
-                                                        text: 'Batteries'),
+                                                        text: context.translate(
+                                                            i18.assetCount
+                                                                .batteries)),
                                                     ElementAssetSummary(
                                                         count: 0,
-                                                        text: 'Inverters'),
+                                                        text: context.translate(
+                                                            i18.assetCount
+                                                                .inverters)),
                                                     ElementAssetSummary(
                                                         count: 0,
-                                                        text: 'Panels'),
+                                                        text: context.translate(
+                                                            i18.assetCount
+                                                                .panels)),
                                                   ],
                                                 ),
                                                 const SizedBox(height: spacer6),
@@ -632,7 +649,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 DigitButton(
                                                   mainAxisSize:
                                                       MainAxisSize.max,
-                                                  label: 'Add More Assets',
+                                                  label: context.translate(i18
+                                                      .overallAssetSummary
+                                                      .addMoreAssets),
                                                   prefixIcon: Icons.add_box,
                                                   onPressed: () {},
                                                   type: DigitButtonType.primary,
@@ -646,7 +665,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               children: [
                                                 Center(
                                                   child: Text(
-                                                    'Error loading counts:\n$message',
+                                                    '${context.translate(i18.overallAssetSummary.errorLoadingCounts)}:\n$message',
                                                     style: textTheme.bodyL
                                                         .copyWith(
                                                             color: theme
@@ -660,7 +679,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 DigitButton(
                                                   mainAxisSize:
                                                       MainAxisSize.max,
-                                                  label: 'Retry',
+                                                  label: context
+                                                      .translate(i18.common.retry),
                                                   prefixIcon: Icons.refresh,
                                                   onPressed: () {
                                                     final selState = context
@@ -885,7 +905,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                     ],
                                                     showPreview: true,
                                                     allowMultiples: true,
-                                                    label: 'Upload',
+                                                    label: context.translate(i18
+                                                        .overallAssetSummary
+                                                        .upload),
                                                     onFilesSelected: (files) {
                                                       if (files.isEmpty) {
                                                         return <PlatformFile,

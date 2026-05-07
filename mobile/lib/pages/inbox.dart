@@ -17,6 +17,8 @@ import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/cards/inbox_report_rejected_card.dart';
@@ -151,8 +153,15 @@ class _InboxPageState extends State<InboxPage> {
     return BlocBuilder<UserTypeBloc, UserTypeState>(
       builder: (context, userState) {
         final tabs = userState.maybeWhen(
-          supervisor: () => ['For Review', 'Rejected', 'Approved'],
-          orElse: () => ['Rejected', 'Approved'],
+          supervisor: () => [
+            context.translate(i18.inbox.forReview),
+            context.translate(i18.inbox.rejected),
+            context.translate(i18.inbox.approved),
+          ],
+          orElse: () => [
+            context.translate(i18.inbox.rejected),
+            context.translate(i18.inbox.approved),
+          ],
         );
 
         return NotificationListener<ScrollNotification>(
@@ -183,7 +192,7 @@ class _InboxPageState extends State<InboxPage> {
                       Row(
                         children: [
                           Text(
-                            'Inbox',
+                            context.translate(i18.inbox.title),
                             style: textTheme.headingXl.copyWith(
                                 color: theme.colorTheme.primary.primary2),
                           ),
@@ -216,7 +225,8 @@ class _InboxPageState extends State<InboxPage> {
                             children: [
                               Expanded(
                                 child: DigitSearchFormInput(
-                                  innerLabel: "Search Health Facility",
+                                  innerLabel: context
+                                      .translate(i18.inbox.searchHealthFacility),
                                   suffixIcon: Icons.search,
                                   onChange: (text) {
                                     setState(() {
@@ -251,7 +261,7 @@ class _InboxPageState extends State<InboxPage> {
                                       color: theme.colorTheme.primary.primary1,
                                       size: spacer8,
                                     ),
-                                    Text("Sort",
+                                    Text(context.translate(i18.common.sort),
                                         style: textTheme.headingS.copyWith(
                                             color: theme
                                                 .colorTheme.primary.primary1))
@@ -308,8 +318,8 @@ class _InboxPageState extends State<InboxPage> {
     bool isLoadingMore = false,
   }) {
     if (projectsList.isEmpty) {
-      return const Center(
-        child: Text('No Projects to display'),
+      return Center(
+        child: Text(context.translate(i18.inbox.noProjectsToDisplay)),
       );
     }
     return Column(
@@ -401,15 +411,19 @@ class _InboxPageState extends State<InboxPage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, popupSetState) => Popup(
           onCrossTap: () => Navigator.of(ctx).pop(),
-          title: 'Sort by',
+          title: context.translate(i18.common.sortBy),
           type: PopUpType.simple,
           additionalWidgets: [
             RadioList(
               groupValue: _sortDirection ?? '',
               containerPadding: const EdgeInsets.symmetric(vertical: spacer2),
               radioDigitButtons: [
-                RadioButtonModel(code: 'DESC', name: 'Newest first'),
-                RadioButtonModel(code: 'ASC', name: 'Oldest first'),
+                RadioButtonModel(
+                    code: 'DESC',
+                    name: context.translate(i18.common.newestFirst)),
+                RadioButtonModel(
+                    code: 'ASC',
+                    name: context.translate(i18.common.oldestFirst)),
               ],
               onChanged: (val) =>
                   popupSetState(() => _sortDirection = val.code),
@@ -418,7 +432,7 @@ class _InboxPageState extends State<InboxPage> {
               children: [
                 Expanded(
                   child: DigitButton(
-                    label: 'Clear',
+                    label: context.translate(i18.common.clear),
                     type: DigitButtonType.secondary,
                     size: DigitButtonSize.large,
                     onPressed: () {
@@ -436,7 +450,7 @@ class _InboxPageState extends State<InboxPage> {
                   child: DigitButton(
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
-                    label: 'Sort',
+                    label: context.translate(i18.common.sort),
                     isDisabled: _sortDirection == null,
                     onPressed: () {
                       Navigator.of(ctx).pop();

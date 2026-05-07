@@ -223,19 +223,22 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   color: theme.colorTheme.primary.primary2),
                             ),
                             LabeledField(
-                              label: 'Warranty Start Date',
+                              label: context
+                                  .translate(i18.assetSummary.warrantyStartDate),
                               labelStyle: textTheme.headingS.copyWith(
                                   color: theme.colorTheme.text.primary),
                               capitalizedFirstLetter: false,
                               child: DigitDateFormInput(
                                 controller: TextEditingController(),
-                                initialValue: 'Default Today Date',
+                                initialValue: context
+                                    .translate(i18.assetTypeDetail.defaultTodayDate),
                                 isDisabled: true,
                                 readOnly: true,
                               ),
                             ),
                             LabeledField(
-                                label: 'Warranty Duration',
+                                label: context.translate(
+                                    i18.assetSummary.warrantyDuration),
                                 labelStyle: textTheme.headingS.copyWith(
                                     color: theme.colorTheme.text.primary),
                                 capitalizedFirstLetter: false,
@@ -265,7 +268,7 @@ class _AssetTypeDetailPageState extends State<AssetTypeDetailPage> {
                                   },
                                 )),
                             LabeledField(
-                              label: 'Brand',
+                              label: context.translate(i18.assetSummary.brand),
                               labelStyle: textTheme.headingS.copyWith(
                                   color: theme.colorTheme.text.primary),
                               capitalizedFirstLetter: false,

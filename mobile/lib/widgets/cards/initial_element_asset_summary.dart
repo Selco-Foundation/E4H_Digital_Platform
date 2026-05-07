@@ -17,6 +17,8 @@ import '../../data/nosql/cache_add_new_asset.dart';
 import '../../data/nosql/cache_asset_count.dart';
 import '../../model/asset_count/asset_count.dart';
 import '../../model/mdms/mdms.dart';
+import '../../utils/extensions.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 
 class AssetCounter extends StatelessWidget {
   final String symbol;
@@ -438,7 +440,7 @@ class _InitialElementAssetSummaryState
           children: [
             DigitButton(
               mainAxisSize: MainAxisSize.max,
-              label: 'Add Details',
+              label: context.translate(i18.sharedCards.addDetails),
               type: DigitButtonType.secondary,
               size: DigitButtonSize.medium,
               isDisabled: _count <= 0,

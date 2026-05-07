@@ -4,6 +4,8 @@ import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
 import 'package:flutter/material.dart';
 
 import '../../utils/operation_progress.dart';
+import '../../utils/extensions.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 
 class OperationProgressOverlay extends StatelessWidget {
   final OperationProgressModel? progress;
@@ -69,8 +71,10 @@ class OperationProgressOverlay extends StatelessWidget {
                 const SizedBox(height: spacer1),
                 Text(
                   model.isFailure
-                      ? (model.errorMessage ?? 'Something went wrong.')
-                      : 'Please wait while this completes.',
+                      ? (model.errorMessage ??
+                          context
+                              .translate(i18.progressOverlay.somethingWentWrong))
+                      : context.translate(i18.progressOverlay.pleaseWait),
                   textAlign: TextAlign.center,
                   style: textTheme.bodyS.copyWith(
                     color: model.isFailure
@@ -80,7 +84,7 @@ class OperationProgressOverlay extends StatelessWidget {
                 ),
                 if (model.isFailure && closeHandler != null)
                   DigitButton(
-                    label: 'Close',
+                    label: context.translate(i18.progressOverlay.close),
                     type: DigitButtonType.secondary,
                     size: DigitButtonSize.large,
                     mainAxisSize: MainAxisSize.max,

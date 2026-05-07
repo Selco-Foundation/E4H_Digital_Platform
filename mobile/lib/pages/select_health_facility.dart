@@ -23,6 +23,7 @@ import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/cards/report_detail_row.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -255,7 +256,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Select Health Facility',
+              context.translate(i18.selectHealthFacility.title),
               style: textTheme.bodyL
                   .copyWith(color: theme.colorTheme.text.primary),
             ),
@@ -293,9 +294,11 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
 
   Widget _buildProjectList(List<ActivityFacilityWorkflow> projects) {
     if (projects.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: spacer4),
-        child: Center(child: Text('No projects found')),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: spacer4),
+        child: Center(
+            child: Text(
+                context.translate(i18.selectHealthFacility.noProjectsFound))),
       );
     }
     return Padding(
@@ -339,11 +342,11 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, popupSetState) => Popup(
           onCrossTap: () => Navigator.of(ctx).pop(),
-          title: 'Sort by',
+          title: context.translate(i18.common.sortBy),
           type: PopUpType.simple,
           actionAlignment: MainAxisAlignment.center,
           additionalWidgets: [
-            Text('Submission Date',
+            Text(context.translate(i18.common.submissionDate),
                 style: textTheme.headingS
                     .copyWith(color: theme.colorTheme.text.primary)),
             RadioList(
@@ -353,15 +356,19 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
               onChanged: (value) =>
                   popupSetState(() => _sortDirection = value.code),
               radioDigitButtons: [
-                RadioButtonModel(code: 'DESC', name: 'Newest first'),
-                RadioButtonModel(code: 'ASC', name: 'Oldest first'),
+                RadioButtonModel(
+                    code: 'DESC',
+                    name: context.translate(i18.common.newestFirst)),
+                RadioButtonModel(
+                    code: 'ASC',
+                    name: context.translate(i18.common.oldestFirst)),
               ],
             ),
             Row(
               children: [
                 Expanded(
                   child: DigitButton(
-                    label: 'Clear',
+                    label: context.translate(i18.common.clear),
                     onPressed: () => Navigator.of(ctx).pop(),
                     type: DigitButtonType.secondary,
                     size: DigitButtonSize.large,
@@ -371,7 +378,7 @@ class _SelectHealthFacilityPageState extends State<SelectHealthFacilityPage> {
                 const SizedBox(width: spacer5),
                 Expanded(
                   child: DigitButton(
-                    label: 'Sort',
+                    label: context.translate(i18.common.sort),
                     isDisabled: _sortDirection == null,
                     onPressed: () {
                       context.read<ActivityFacilityBloc>().add(
@@ -460,7 +467,7 @@ class InstallationReportCard extends StatelessWidget {
                 const SizedBox(height: spacer4),
                 const DigitDivider(dividerType: DividerType.small),
                 ReportDetailRow(
-                  label: 'Status',
+                  label: context.translate(i18.common.status),
                   value: _detailText(
                     context.translate('$status'),
                     textTheme,
@@ -468,11 +475,11 @@ class InstallationReportCard extends StatelessWidget {
                   ),
                 ),
                 ReportDetailRow(
-                  label: 'Date Assigned',
+                  label: context.translate(i18.common.dateAssigned),
                   value: _detailText(formattedDate, textTheme, theme),
                 ),
                 ReportDetailRow(
-                  label: 'Solution Doc',
+                  label: context.translate(i18.common.solutionDoc),
                   value: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -490,7 +497,7 @@ class InstallationReportCard extends StatelessWidget {
                             }
                           },
                           child: Text(
-                            "Solution Doc",
+                            context.translate(i18.common.solutionDoc),
                             style: textTheme.bodyL.copyWith(
                               color: theme.colorTheme.text.disabled,
                               fontSize: spacer3,
@@ -504,15 +511,15 @@ class InstallationReportCard extends StatelessWidget {
                   ),
                 ),
                 ReportDetailRow(
-                  label: 'State',
+                  label: context.translate(i18.common.state),
                   value: _detailText(_displayValue(state), textTheme, theme),
                 ),
                 ReportDetailRow(
-                  label: 'District',
+                  label: context.translate(i18.common.district),
                   value: _detailText(_displayValue(district), textTheme, theme),
                 ),
                 ReportDetailRow(
-                  label: 'Block',
+                  label: context.translate(i18.common.block),
                   value: _detailText(_displayValue(block), textTheme, theme),
                 ),
                 Padding(
@@ -544,8 +551,10 @@ class InstallationReportCard extends StatelessWidget {
                 DigitButton(
                   mainAxisSize: MainAxisSize.max,
                   label: (fraction * 100).round() > 0
-                      ? 'Resume Installation Report'
-                      : 'Start Installation Report',
+                      ? context.translate(
+                          i18.selectHealthFacility.resumeInstallationReport)
+                      : context.translate(
+                          i18.selectHealthFacility.startInstallationReport),
                   onPressed: onPress,
                   type: DigitButtonType.primary,
                   size: DigitButtonSize.large,
@@ -553,7 +562,8 @@ class InstallationReportCard extends StatelessWidget {
                 const SizedBox(height: spacer4),
                 DigitButton(
                   mainAxisSize: MainAxisSize.max,
-                  label: 'Submit For Approval',
+                  label: context
+                      .translate(i18.selectHealthFacility.submitForApproval),
                   onPressed: () {
                     context.read<SelectedActivityFacilityBloc>().add(
                         SelectedActivityFacilityEvent.select(

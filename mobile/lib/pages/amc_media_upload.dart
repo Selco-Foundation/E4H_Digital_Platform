@@ -268,7 +268,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                   handleSessionExpired(context);
                   return;
                 }
-                context.showSnackBar(SnackBar(content: Text("$error")));
+                context.showSnackBar(SnackBar(content: Text(error)));
               },
               orElse: () {},
             );
@@ -301,7 +301,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
       child: BlocBuilder<ScheduleVisitSubmitBloc, ScheduleVisitSubmitState>(
         builder: (context, scheduleState) {
           String footerText = isReadOnlyMedia
-              ? "Back to Home"
+              ? context.translate(i18.common.backToHome)
               : context.translate(i18.common.coreCommonSubmit);
 
           final mustPickRejection =
@@ -325,7 +325,7 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                     notAllRejectionsChecked,
                 showSuffixIcon: false,
                 text: scheduleState.maybeWhen(
-                  loading: () => "Loading...",
+                  loading: () => context.translate(i18.common.loading),
                   orElse: () => footerText,
                 ),
                 onPress: () async {
@@ -382,13 +382,14 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                       DigitCard(children: [
                         SizedBox(width: context.width),
                         Text(
-                          'Images',
+                          context.translate(i18.common.images),
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
                         if (!isReadOnlyMedia)
                           Text(
-                            'Please take a selfie in front of the name board of the health center',
+                            context.translate(
+                                i18.amcMediaUpload.selfieInstruction),
                             style: textTheme.headingS
                                 .copyWith(color: theme.colorTheme.text.primary),
                           ),
@@ -414,9 +415,9 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                               final ok = await _ensureLocationLoaded();
                               if (!ok) {
                                 context.showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                          Text('Could not fetch location')),
+                                  SnackBar(
+                                      content: Text(context.translate(
+                                          i18.common.couldNotFetchLocation))),
                                 );
                               }
                             },
@@ -430,14 +431,16 @@ class _AmcMediaUploadPageState extends State<AmcMediaUploadPage> {
                           children: [
                             SizedBox(width: context.width),
                             Text(
-                              "Rejection List",
+                              context.translate(
+                                  i18.amcMediaUpload.rejectionList),
                               style: textTheme.headingXl.copyWith(
                                   color: theme.colorTheme.primary.primary2),
                             ),
                             const SizedBox(height: spacer1),
                             if (_rejectionReasons.isEmpty)
                               Text(
-                                "No rejection reasons found",
+                                context.translate(i18
+                                    .amcMediaUpload.noRejectionReasonsFound),
                                 style: textTheme.bodyS,
                               )
                             else
