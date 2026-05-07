@@ -59,7 +59,7 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
     } catch (err) {
       setShowToast({
         type: "error",
-        label: err?.response?.data?.error?.fields?.[0]?.message || "ES_SOMETHING_WRONG",
+        label: err?.response?.data?.error?.fields?.[0]?.message || "ES_INVALID_LOGIN_CREDENTIALS",
       });
     }
     setTimeout(closeToast, 5000);
