@@ -71,7 +71,7 @@ export const CreateComplaint = ({ parentUrl }) => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
     if (boundaryData) {
       setStateBoundaryCode(boundaryData.states?.map((state) => state?.code)?.join(","));
-      setDistrictMenu(boundaryData.districts);
+      setDistrictMenu(boundaryData.districts || []);
       setBlockOptions(boundaryData.blocks);
       setFacilityBoundaries(boundaryData.facilities);
       setFacilityBoundaryCodes(boundaryData.facilities?.map((facility) => facility?.code) || ["-"]);

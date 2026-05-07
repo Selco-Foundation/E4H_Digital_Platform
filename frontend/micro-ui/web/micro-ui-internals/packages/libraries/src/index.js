@@ -39,6 +39,7 @@ import { subFormRegistry } from "./subFormRegistry";
 import AccessControlService from "./services/elements/Access";
 import {BoundaryService} from "./services/elements/IM/Boundary";
 import {FacilityService} from "./services/elements/IM/Facility";
+import {RMSService} from "./services/elements/IM/RMS";
 
 const setupLibraries = (Library, props) => {
   window.Digit = window.Digit || {};
@@ -75,6 +76,7 @@ const initLibraries = () => {
   setupLibraries("EventsServices", EventsServices);
   setupLibraries("BoundaryService", BoundaryService);
   setupLibraries("FacilityService", FacilityService);
+  setupLibraries("RMSService", RMSService);
 
   setupLibraries("InboxGeneral", InboxGeneral);
   setupLibraries("ShareFiles", ShareFiles);

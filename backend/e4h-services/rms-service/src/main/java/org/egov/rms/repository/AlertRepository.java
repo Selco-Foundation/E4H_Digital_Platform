@@ -105,11 +105,19 @@ public class AlertRepository {
     /**
      * Updates alert with ticket ID
      */
-    public void updateTicketId(String alertId, String ticketId) {
+    public int updateTicketId(String alertId, String ticketId) {
         String sql = "UPDATE active_alerts SET ticket_id = ?, status = 'TICKET_CREATED', updated_at = CURRENT_TIMESTAMP " +
                 "WHERE id = ?";
+        return jdbcTemplate.update(sql, ticketId, alertId);
+    }
 
-        jdbcTemplate.update(sql, ticketId, alertId);
+    /**
+     * Fallback ticket linkage when alert id has changed due to upsert.
+     */
+    public int updateTicketIdByFacilityKey(String facilityId, Alert.AlertType alertType, Alert.AlertSubType alertSubType, String ticketId) {
+        String sql = "UPDATE active_alerts SET ticket_id = ?, status = 'TICKET_CREATED', updated_at = CURRENT_TIMESTAMP " +
+                "WHERE facility_id = ? AND alert_type = ? AND alert_sub_type = ?";
+        return jdbcTemplate.update(sql, ticketId, facilityId, alertType.name(), alertSubType.name());
     }
 
     /**
@@ -273,7 +281,44 @@ public class AlertRepository {
             return hasExistingTicket(facilityId, alertType, alertSubType);
         }
     }
-    
+
+    /**
+     * Returns true if an open incident exists in eg_incident_v2 for this RMS facility id
+     * and the given IM incident type/sub-type. Matches {@code additionaldetails->>'rmsFacilityId'} only
+     * (same identifier as used when RMS creates tickets).
+     */
+    public boolean hasOpenIncidentForRmsFacility(String facilityId, String incidentType, String incidentSubType) {
+        if (facilityId == null || facilityId.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            String[] openStatuses = {
+                    "PENDINGFORASSIGNMENT",
+                    "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
+                    "PENDING_ASSIGNMENT_OUT_OF_WARRANTY",
+                    "PENDING_RESOLUTION_SPARE_PART_NEEDED",
+                    "PENDING_RESOLUTION_OUT_OF_WARRANTY",
+                    "PENDINGRESOLUTION"
+            };
+            String sql = "SELECT applicationstatus FROM eg_incident_v2 " +
+                    "WHERE incidenttype = ? " +
+                    "AND incidentsubtype = ? " +
+                    "AND applicationstatus IN (?, ?, ?, ?, ?, ?) " +
+                    "AND additionaldetails->>'rmsFacilityId' = ? " +
+                    "LIMIT 1";
+            List<String> statuses = jdbcTemplate.queryForList(sql, String.class,
+                    incidentType, incidentSubType,
+                    openStatuses[0], openStatuses[1], openStatuses[2],
+                    openStatuses[3], openStatuses[4], openStatuses[5],
+                    facilityId);
+            return statuses != null && !statuses.isEmpty();
+        } catch (Exception e) {
+            log.error("Error checking open incident for facility: {}, type: {}, subType: {}",
+                    facilityId, incidentType, incidentSubType, e);
+            return false;
+        }
+    }
+
     /**
      * Maps RMS alert type to IM service incident type (same as PayloadGenerator)
      */

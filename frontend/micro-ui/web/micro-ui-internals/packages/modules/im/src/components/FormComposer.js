@@ -13,6 +13,7 @@ import {
   SubmitBar,
   LabelFieldPair,
   Header,
+  Button,
 } from "@selco/digit-ui-react-components";
 
 import { useTranslation } from "react-i18next";
@@ -59,6 +60,13 @@ export const FormComposer = (props) => {
             <TextInput className="field desktop-w-full" {...populators} inputRef={register(populators.validation)} />
           </div>
         );
+      case "date":
+        return (
+          <div className="field-container">
+            {populators.componentInFront ? populators.componentInFront : null}
+            <TextInput type={"date"} className="field desktop-w-full" {...populators} inputRef={register(populators.validation)} />
+          </div>
+        );
       case "textarea":
         return <TextArea className="field desktop-w-full" name={populators.name || ""} {...populators} inputRef={register(populators.validation)} />;
       default:
@@ -103,14 +111,16 @@ export const FormComposer = (props) => {
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Card>
-        <div style={{marginLeft: isMobileView? "-15px":"0px"}}>
-        <Header>{t("NEW_TICKET")}</Header>
+        <div style={{ marginLeft: isMobileView ? "-15px" : "0px" }}>
+          <Header>{props.heading || t("NEW_TICKET")}</Header>
         </div>
-        <CardSubHeader>{props.heading}</CardSubHeader>
         {formFields}
         {props.children}
-        <ActionBar>
+        <ActionBar className={props?.actionBarClassName}>
           <SubmitBar disabled={isDisabled} label={t(props.label)} submit="submit" />
+          {props.secondaryActionLabel && (
+            <Button name="secondary-action" className="previous-button" variation="secondary" label={t(props?.secondaryActionLabel)} onButtonClick={props?.onSecondaryActionClick} />
+          )}
         </ActionBar>
       </Card>
     </form>
