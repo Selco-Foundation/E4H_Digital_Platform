@@ -412,6 +412,7 @@ class PdfViewer {
 
 class SharedCards {
   const SharedCards();
+  String get summary => 'SHARED_CARDS_SUMMARY';
   String get viewSummary => 'SHARED_CARDS_VIEW_SUMMARY';
   String get submitForApproval => 'SHARED_CARDS_SUBMIT_FOR_APPROVAL';
   String get viewReport => 'SHARED_CARDS_VIEW_REPORT';

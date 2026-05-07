@@ -426,7 +426,7 @@ class _InitialElementAssetSummaryState
                 child: GestureDetector(
                   onTap: widget.onPress ?? () {},
                   child: Text(
-                    "Summary",
+                    context.translate(i18.sharedCards.summary),
                     style: textTheme.bodyS.copyWith(
                       color: theme.colorTheme.primary.primary1,
                     ),
