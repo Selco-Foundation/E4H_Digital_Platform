@@ -1,6 +1,11 @@
 from typing import Dict, List, Union, Any, Optional
 
 import pandas as pd
+
+from app.utils.facility_validator import (
+    ERR_HFR_ID_REQUIRED_WHEN_HEALTH,
+    ERR_NIN_ID_REQUIRED_WHEN_HEALTH,
+)
 from openpyxl import load_workbook
 from openpyxl.comments import Comment
 from openpyxl.styles import Protection, Alignment, PatternFill
@@ -420,3 +425,84 @@ def add_non_blank_validations_to_file(
 
     except Exception as e:
         raise
+
+
+def _header_base_name(header: Any) -> str:
+    if header is None:
+        return ""
+    return str(header).replace(" (Mandatory)", "").strip().lower()
+
+
+def add_health_category_hfr_nin_validations(
+    file_path: str,
+    sheet_name: str,
+) -> None:
+    """
+    Excel client-side validation: when Category is HEALTH, HFR ID and NIN ID must be filled.
+    Matches server-side facility_validator messaging.
+    """
+    category_labels = {"category", "Category of HC (Mandatory)"}
+    try:
+        wb = load_workbook(file_path)
+        if sheet_name not in wb.sheetnames:
+            return
+
+        ws = wb[sheet_name]
+        header_cells = list(ws[1])
+        letter_by_header = {}
+        for cell in header_cells:
+            if cell.value is None:
+                continue
+            letter_by_header[str(cell.value).strip()] = cell.column_letter
+
+        cat_letter = None
+        hfr_letter = None
+        nin_letter = None
+        for h, letter in letter_by_header.items():
+            base = _header_base_name(h)
+            if base in category_labels:
+                cat_letter = letter
+            elif base == "hfr id":
+                hfr_letter = letter
+            elif base == "nin id":
+                nin_letter = letter
+
+        if not cat_letter or not hfr_letter or not nin_letter:
+            wb.save(file_path)
+            return
+
+        max_row = ws.max_row + 1000
+        if max_row < 2:
+            max_row = 2
+
+        hfr_formula = (
+            f'=IF(UPPER(TRIM(${cat_letter}2))="HEALTH",LEN(TRIM({hfr_letter}2))>0,TRUE)'
+        )
+        nin_formula = (
+            f'=IF(UPPER(TRIM(${cat_letter}2))="HEALTH",LEN(TRIM({nin_letter}2))>0,TRUE)'
+        )
+
+        dv_hfr = DataValidation(
+            type="custom",
+            formula1=hfr_formula,
+            allow_blank=True,
+            showErrorMessage=True,
+            errorTitle="Validation",
+            error=ERR_HFR_ID_REQUIRED_WHEN_HEALTH,
+        )
+        dv_nin = DataValidation(
+            type="custom",
+            formula1=nin_formula,
+            allow_blank=True,
+            showErrorMessage=True,
+            errorTitle="Validation",
+            error=ERR_NIN_ID_REQUIRED_WHEN_HEALTH,
+        )
+        ws.add_data_validation(dv_hfr)
+        ws.add_data_validation(dv_nin)
+        dv_hfr.add(f"{hfr_letter}2:{hfr_letter}{max_row}")
+        dv_nin.add(f"{nin_letter}2:{nin_letter}{max_row}")
+
+        wb.save(file_path)
+    except Exception as e:
+        logger.warning(f"Skipping HFR/NIN conditional Excel validation: {e}")
