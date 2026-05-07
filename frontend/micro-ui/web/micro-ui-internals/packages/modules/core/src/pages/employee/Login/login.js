@@ -247,7 +247,7 @@ const Login = ({ config: propsConfig, t, isDisabled }) => {
         </FormComposer>
         <div style={{ textAlign: "center", marginTop: "1rem" }}>
           <button
-            onClick={() => setPopup(true)}
+            onClick={onForgotPassword}
             style={{
               color: "blue",
               textDecoration: "underline",

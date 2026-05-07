@@ -20,7 +20,7 @@ const SelectOtp = ({ config, otp, onOtpChange, onResend, onSelect, t, error, use
   if (userType === "employee") {
     return (
       <Fragment>
-        <OTPInput length={6} onChange={onOtpChange} value={otp} />
+        <OTPInput length={4} onChange={onOtpChange} value={otp} />
         {timeLeft > 0 ? (
           <CardText>{`${t("CS_RESEND_ANOTHER_OTP")} ${timeLeft} ${t("CS_RESEND_SECONDS")}`}</CardText>
         ) : (
@@ -34,8 +34,8 @@ const SelectOtp = ({ config, otp, onOtpChange, onResend, onSelect, t, error, use
   }
 
   return (
-    <FormStep onSelect={onSelect} config={config} t={t} isDisabled={!(otp?.length === 6 && canSubmit)}>
-      <OTPInput length={6} onChange={onOtpChange} value={otp} />
+    <FormStep onSelect={onSelect} config={config} t={t} isDisabled={!(otp?.length === 4 && canSubmit)}>
+      <OTPInput length={4} onChange={onOtpChange} value={otp} />
       {timeLeft > 0 ? (
         <CardText>{`${t("CS_RESEND_ANOTHER_OTP")} ${timeLeft} ${t("CS_RESEND_SECONDS")}`}</CardText>
       ) : (
