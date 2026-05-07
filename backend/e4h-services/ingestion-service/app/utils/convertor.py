@@ -506,6 +506,9 @@ def create_facility_payload(request_info: RequestInfo, row: Series, are_faciliti
     facility_type_name = safe_get(row, 'Type of HC (Mandatory)')
     facility_type_code = get_mdms_code_by_name(facility_schema, 'Type of HC', facility_type_name)
 
+    facility_category_name = safe_get(row, 'Category of HC (Mandatory)')
+    facility_category_code = get_mdms_code_by_name(facility_schema, 'Category of HC', facility_category_name)
+
     solar_solution_design_type_name = safe_get(row, 'Solution Design Type (Mandatory)')
     solar_solution_design_type_code = get_mdms_code_by_name(facility_schema, 'Solution Design Type', solar_solution_design_type_name)
 
@@ -516,7 +519,7 @@ def create_facility_payload(request_info: RequestInfo, row: Series, are_faciliti
                 'tenant_id': 'in',
                 'facility_name': safe_get(row, 'Health Centre Name (Mandatory)'),
                 'facility_type': facility_type_code,
-                'facility_category': safe_get(row, 'Category', 'HEALTH'),
+                'facility_category': facility_category_code,
                 'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
                 'facility_region': safe_get(row, 'Region', 'RURAL'),
                 'isActive': True,
