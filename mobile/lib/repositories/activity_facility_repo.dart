@@ -473,8 +473,6 @@ class UnsubmittedActivityFacilityRepository {
       final toDelete = await col
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
-          //.filter()
-          //.userTypeEqualTo(userType)
           .findAll();
       for (final e in toDelete) {
         await col.delete(e.id);
@@ -546,7 +544,6 @@ class PrefilledActivityFacilityRepository {
     final col = _isar.cachePrefilledActivityFacilitys;
     final row = await col
         .where()
-        //.activityFacilityIdUserTypeEqualTo(activityFacilityId, userType)
         .activityFacilityIdEqualToAnyUserType(activityFacilityId)
         .findFirst();
     if (row != null) {

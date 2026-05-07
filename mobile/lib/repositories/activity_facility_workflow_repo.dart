@@ -82,8 +82,6 @@ class ActivityFacilityWorkflowRepository {
       final mediaEntries = await mediaCol
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
-          //.filter()
-          //.userTypeEqualTo(userType)
           .findAll();
       for (final entry in mediaEntries) {
         await mediaCol.delete(entry.id);
@@ -93,8 +91,6 @@ class ActivityFacilityWorkflowRepository {
       final installationImages = await installationImageCol
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
-          //.filter()
-          //.userTypeEqualTo(userType)
           .findAll();
       for (final entry in installationImages) {
         await installationImageCol.delete(entry.id);

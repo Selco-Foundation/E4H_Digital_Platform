@@ -411,8 +411,9 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                 i18.assetCount.batteries),
                                             onPress: () {
                                               context.read<AssetTypeBloc>().add(
-                                                  const AssetTypeEvent
-                                                      .typeSelected("BATTERY"));
+                                                  AssetTypeEvent.typeSelected(
+                                                      ASSET_TYPES
+                                                          .BATTERY.name));
 
                                               inboxState.maybeWhen(
                                                   rejected: () => {
@@ -434,9 +435,9 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                                 i18.assetCount.inverters),
                                             onPress: () {
                                               context.read<AssetTypeBloc>().add(
-                                                  const AssetTypeEvent
-                                                      .typeSelected(
-                                                      "INVERTER"));
+                                                  AssetTypeEvent.typeSelected(
+                                                      ASSET_TYPES
+                                                          .INVERTER.name));
                                               inboxState.maybeWhen(
                                                   rejected: () => {
                                                         context
@@ -458,8 +459,8 @@ class _InboxAssetSummaryPageState extends State<InboxAssetSummaryPage> {
                                             lastCard: true,
                                             onPress: () {
                                               context.read<AssetTypeBloc>().add(
-                                                  const AssetTypeEvent
-                                                      .typeSelected("PANEL"));
+                                                  AssetTypeEvent.typeSelected(
+                                                      ASSET_TYPES.PANEL.name));
                                               inboxState.maybeWhen(
                                                   rejected: () => {
                                                         context

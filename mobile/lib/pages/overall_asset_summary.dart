@@ -718,40 +718,50 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               children: [
                                                 DynamicElementAssetSummary(
                                                   isInitial: fromNewOrReport,
-                                                  assetTypeCode: 'battery',
+                                                  assetTypeCode: ASSET_TYPES
+                                                      .BATTERY.name
+                                                      .toLowerCase(),
                                                   count: batteryCount,
-                                                  text: 'Batteries',
+                                                  text: context.translate(
+                                                      i18.assetCount.batteries),
                                                   onAddDetailPress: () {
                                                     _handleAddDetailPress(
-                                                        "BATTERY");
+                                                        ASSET_TYPES
+                                                            .BATTERY.name);
                                                   },
                                                   onPress: () {
                                                     context
                                                         .read<AssetTypeBloc>()
-                                                        .add(
-                                                            const AssetTypeEvent
-                                                                .typeSelected(
-                                                                "BATTERY"));
+                                                        .add(AssetTypeEvent
+                                                            .typeSelected(
+                                                                ASSET_TYPES
+                                                                    .BATTERY
+                                                                    .name));
                                                     context.router.push(
                                                         const AssetSummaryRoute());
                                                   },
                                                 ),
                                                 DynamicElementAssetSummary(
                                                   isInitial: fromNewOrReport,
-                                                  assetTypeCode: 'inverter',
+                                                  assetTypeCode: ASSET_TYPES
+                                                      .INVERTER.name
+                                                      .toLowerCase(),
                                                   count: inverterCount,
-                                                  text: 'Inverters',
+                                                  text: context.translate(i18
+                                                      .assetCount.inverters),
                                                   onAddDetailPress: () {
                                                     _handleAddDetailPress(
-                                                        "INVERTER");
+                                                        ASSET_TYPES
+                                                            .INVERTER.name);
                                                   },
                                                   onPress: () {
                                                     context
                                                         .read<AssetTypeBloc>()
-                                                        .add(
-                                                            const AssetTypeEvent
-                                                                .typeSelected(
-                                                                "INVERTER"));
+                                                        .add(AssetTypeEvent
+                                                            .typeSelected(
+                                                                ASSET_TYPES
+                                                                    .INVERTER
+                                                                    .name));
                                                     context.router.push(
                                                         const AssetSummaryRoute());
                                                   },
@@ -760,21 +770,26 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                   submitted: () =>
                                                       DynamicElementAssetSummary(
                                                     isInitial: fromNewOrReport,
-                                                    assetTypeCode: 'panel',
+                                                    assetTypeCode: ASSET_TYPES
+                                                        .PANEL.name
+                                                        .toLowerCase(),
                                                     lastCard: true,
                                                     count: panelCount,
-                                                    text: 'Panels',
+                                                    text: context.translate(
+                                                        i18.assetCount.panels),
                                                     onAddDetailPress: () {
                                                       _handleAddDetailPress(
-                                                          "PANEL");
+                                                          ASSET_TYPES
+                                                              .PANEL.name);
                                                     },
                                                     onPress: () {
                                                       context
                                                           .read<AssetTypeBloc>()
-                                                          .add(
-                                                              const AssetTypeEvent
-                                                                  .typeSelected(
-                                                                  "PANEL"));
+                                                          .add(AssetTypeEvent
+                                                              .typeSelected(
+                                                                  ASSET_TYPES
+                                                                      .PANEL
+                                                                      .name));
                                                       context.router.push(
                                                           const AssetSummaryRoute());
                                                     },
@@ -782,24 +797,32 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                   orElse: () => Column(
                                                     children: [
                                                       DynamicElementAssetSummary(
-                                                        assetTypeCode: 'panel',
+                                                        assetTypeCode:
+                                                            ASSET_TYPES
+                                                                .PANEL.name
+                                                                .toLowerCase(),
                                                         lastCard:
                                                             fromNewOrReport,
                                                         isInitial:
                                                             fromNewOrReport,
                                                         count: panelCount,
-                                                        text: 'Panels',
+                                                        text: context.translate(
+                                                            i18.assetCount
+                                                                .panels),
                                                         onAddDetailPress: () {
                                                           _handleAddDetailPress(
-                                                              "PANEL");
+                                                              ASSET_TYPES
+                                                                  .PANEL.name);
                                                         },
                                                         onPress: () {
                                                           context
                                                               .read<
                                                                   AssetTypeBloc>()
-                                                              .add(const AssetTypeEvent
+                                                              .add(AssetTypeEvent
                                                                   .typeSelected(
-                                                                  "PANEL"));
+                                                                      ASSET_TYPES
+                                                                          .PANEL
+                                                                          .name));
                                                           context.router.push(
                                                               const AssetSummaryRoute());
                                                         },
@@ -808,8 +831,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                         DigitButton(
                                                           mainAxisSize:
                                                               MainAxisSize.max,
-                                                          label:
-                                                              'Add More Assets',
+                                                          label: context
+                                                              .translate(i18
+                                                                  .overallAssetSummary
+                                                                  .addMoreAssets),
                                                           prefixIcon:
                                                               Icons.add_box,
                                                           onPressed: () {
