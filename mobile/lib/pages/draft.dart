@@ -10,6 +10,8 @@ import '../blocs/asset_submission/asset_submission.dart';
 import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/button/footer_button.dart';
 import '../widgets/cards/inbox_report_card.dart';
@@ -69,12 +71,12 @@ class _DraftPageState extends State<DraftPage> {
         type: PopUpType.alert,
         onCrossTap: () => Navigator.of(ctx).pop(),
         onOutsideTap: () => Navigator.of(ctx).pop(),
-        title: "Sync Failed",
+        title: context.translate(i18.draft.syncFailed),
         actionAlignment: MainAxisAlignment.center,
         actions: const [],
         additionalWidgets: [
           Text(
-            error ?? "Something went wrong.",
+            error ?? context.translate(i18.draft.somethingWentWrong),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,
@@ -115,7 +117,7 @@ class _DraftPageState extends State<DraftPage> {
           _syncRoute = null;
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All drafts successfully synced!')),
+          SnackBar(content: Text(context.translate(i18.draft.allDraftsSynced))),
         );
         context.read<ActivityFacilityBloc>().add(
               ActivityFacilityEvent.loadUnSubmitted(
@@ -195,7 +197,7 @@ class _DraftPageState extends State<DraftPage> {
             ),
             footer: FooterButton(
               showSuffixIcon: false,
-              text: 'Sync',
+              text: context.translate(i18.draft.sync),
               onPress: () {
                 context.read<AssetSubmissionBloc>().add(
                       AssetSubmissionEvent.submitAllDrafts(userType: userType),
@@ -212,7 +214,7 @@ class _DraftPageState extends State<DraftPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Submitted Reports',
+                      context.translate(i18.draft.submittedReports),
                       style: textTheme.headingXl.copyWith(
                         color: theme.colorTheme.primary.primary2,
                       ),
@@ -225,7 +227,8 @@ class _DraftPageState extends State<DraftPage> {
                             if (drafts.isEmpty) {
                               return Center(
                                 child: Text(
-                                  'No unsynced reports found.',
+                                  context
+                                      .translate(i18.draft.noUnsyncedReportsFound),
                                   style: textTheme.bodyL.copyWith(
                                     color: theme.colorTheme.text.primary,
                                   ),

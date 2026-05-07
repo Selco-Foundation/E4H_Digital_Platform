@@ -11,6 +11,7 @@ import '../blocs/cache_sync_record/cache_sync_record.dart';
 import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/sync_popup_guard.dart';
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -103,12 +104,12 @@ class _HomePageState extends State<HomePage>
         type: PopUpType.alert,
         onCrossTap: () => Navigator.of(ctx).pop(),
         onOutsideTap: () => Navigator.of(ctx).pop(),
-        title: "Sync Failed",
+        title: context.translate(i18.home.syncFailed),
         actionAlignment: MainAxisAlignment.center,
         actions: const [],
         additionalWidgets: [
           Text(
-            error ?? "Something went wrong.",
+            error ?? context.translate(i18.home.somethingWentWrong),
             textAlign: TextAlign.center,
             style: textTheme.bodyL.copyWith(
               color: theme.colorTheme.text.primary,
@@ -150,7 +151,7 @@ class _HomePageState extends State<HomePage>
           _syncRoute = null;
         }
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All drafts successfully synced!')),
+          SnackBar(content: Text(context.translate(i18.home.allDraftsSynced))),
         );
         _popupShown = false;
         _refreshPendingSyncState();
@@ -172,16 +173,16 @@ class _HomePageState extends State<HomePage>
               final formatted = "${dt.day.toString().padLeft(2, '0')}/"
                   "${dt.month.toString().padLeft(2, '0')}/"
                   "${dt.year}";
-              return "Your data was last synced on $formatted.";
+              return "${context.translate(i18.home.lastSyncedPrefix)} $formatted.";
             },
             loading: () => "---",
-            orElse: () => "Your data has not been synced. Sync now!",
+            orElse: () => context.translate(i18.home.notSynced),
           );
           return Popup(
             type: PopUpType.alert,
             onCrossTap: () => Navigator.of(ctx).pop(),
             onOutsideTap: () => Navigator.of(ctx).pop(),
-            title: "Data not synced!",
+            title: context.translate(i18.home.dataNotSynced),
             actionAlignment: MainAxisAlignment.center,
             actions: const [],
             additionalWidgets: [
@@ -200,7 +201,7 @@ class _HomePageState extends State<HomePage>
                     children: [
                       Expanded(
                         child: DigitButton(
-                          label: "Skip",
+                          label: context.translate(i18.home.skip),
                           onPressed: () {
                             _popupShown = false;
                             Navigator.of(ctx).pop();
@@ -212,7 +213,7 @@ class _HomePageState extends State<HomePage>
                       const SizedBox(width: spacer5),
                       Expanded(
                         child: DigitButton(
-                          label: "Sync Data",
+                          label: context.translate(i18.home.syncData),
                           onPressed: () {
                             _popupShown = false;
                             Navigator.of(ctx).pop();
@@ -243,12 +244,12 @@ class _HomePageState extends State<HomePage>
     final List<Map<String, dynamic>> homeItems = [
       {
         'icon': Icons.text_snippet_outlined,
-        'label': 'Installation Report',
+        'label': context.translate(i18.home.installationReport),
         'onPressed': () => context.router.push(const InstallationReportRoute()),
       },
       {
         'icon': Icons.autorenew,
-        'label': 'Data Sync',
+        'label': context.translate(i18.home.dataSync),
         'onPressed': () {
           context
               .read<AssetSubmissionBloc>()

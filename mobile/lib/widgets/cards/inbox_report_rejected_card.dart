@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../utils/extensions.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 import 'report_detail_row.dart';
 
 class InboxReportRejectedCard extends StatelessWidget {
@@ -49,7 +50,7 @@ class InboxReportRejectedCard extends StatelessWidget {
             const SizedBox(height: spacer4),
             const DigitDivider(dividerType: DividerType.small),
             ReportDetailRow(
-              label: 'Status',
+              label: context.translate(i18.common.status),
               labelFlex: 1,
               valueFlex: 2,
               value: _detailText(
@@ -59,25 +60,25 @@ class InboxReportRejectedCard extends StatelessWidget {
               ),
             ),
             ReportDetailRow(
-              label: 'Submission Date',
+              label: context.translate(i18.common.submissionDate),
               labelFlex: 1,
               valueFlex: 2,
               value: _detailText(formattedDate, textTheme, theme),
             ),
             ReportDetailRow(
-              label: 'State',
+              label: context.translate(i18.common.state),
               labelFlex: 1,
               valueFlex: 2,
               value: _detailText(_displayValue(state), textTheme, theme),
             ),
             ReportDetailRow(
-              label: 'District',
+              label: context.translate(i18.common.district),
               labelFlex: 1,
               valueFlex: 2,
               value: _detailText(_displayValue(district), textTheme, theme),
             ),
             ReportDetailRow(
-              label: 'Block',
+              label: context.translate(i18.common.block),
               labelFlex: 1,
               valueFlex: 2,
               value: _detailText(_displayValue(block), textTheme, theme),
@@ -85,7 +86,7 @@ class InboxReportRejectedCard extends StatelessWidget {
             const SizedBox(height: spacer8),
             DigitButton(
                 mainAxisSize: MainAxisSize.max,
-                label: 'View Details',
+                label: context.translate(i18.sharedCards.viewDetails),
                 onPressed: onPress,
                 type: DigitButtonType.primary,
                 size: DigitButtonSize.large),
@@ -93,7 +94,8 @@ class InboxReportRejectedCard extends StatelessWidget {
             DigitButton(
                 isDisabled: true,
                 mainAxisSize: MainAxisSize.max,
-                label: 'Re-Submit for Approval',
+                label:
+                    context.translate(i18.sharedCards.resubmitForApproval),
                 onPressed: onPress,
                 type: DigitButtonType.secondary,
                 size: DigitButtonSize.large),

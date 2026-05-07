@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/asset_submission/asset_submission.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/operation_progress.dart';
 
 @RoutePage()
@@ -27,7 +28,7 @@ class SyncLoadingPage extends StatelessWidget {
             total: 0,
             progressPercent: 0,
             activeCount: 0,
-            label: 'Preparing sync',
+            label: '',
           ),
         );
         final progressValue =
@@ -54,7 +55,9 @@ class SyncLoadingPage extends StatelessWidget {
                     ),
                     SizedBox(height: context.height * 0.03),
                     Text(
-                      isSuccessful ? "Syncing Successful!" : "Syncing reports",
+                      isSuccessful
+                          ? context.translate(i18.syncLoading.successful)
+                          : context.translate(i18.syncLoading.syncingReports),
                       style: textTheme.headingS.copyWith(
                           color: isSuccessful
                               ? const Light().alertSuccess
@@ -62,7 +65,9 @@ class SyncLoadingPage extends StatelessWidget {
                     ),
                     const SizedBox(height: spacer2),
                     Text(
-                      progress.label,
+                      progress.label.isEmpty
+                          ? context.translate(i18.syncLoading.preparingSync)
+                          : context.translate(progress.label),
                       textAlign: TextAlign.center,
                       style: textTheme.bodyL
                           .copyWith(color: theme.colorTheme.text.primary),
@@ -82,7 +87,7 @@ class SyncLoadingPage extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          '${progress.completed} of ${progress.total} reports completed',
+                          '${progress.completed} ${context.translate(i18.syncLoading.of)} ${progress.total} ${context.translate(i18.syncLoading.completedSuffix)}',
                           style: textTheme.bodyS
                               .copyWith(color: const Light().textDisabled),
                         ),

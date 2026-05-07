@@ -262,18 +262,18 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                       const SizedBox(height: spacer4),
                       DigitCard(children: [
                         Text(
-                          '$assetType Images',
+                          '$assetType ${context.translate(i18.common.images)}',
                           style: textTheme.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
                         Text(
-                          'Please add all images of the $assetType',
+                          '${context.translate(i18.mediaUpload.addAllImages)} $assetType',
                           style: textTheme.bodyL.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
                         const SizedBox(height: spacer2),
                         ImageUploader(
-                          label: 'Upload Images',
+                          label: context.translate(i18.common.uploadImages),
                           allowMultiples: true,
                           initialImages: _selectedImages,
                           onImagesSelected: (files) {
@@ -282,8 +282,9 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                             });
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
-                                context.showSnackBar(const SnackBar(
-                                    content: Text('Could not fetch location')));
+                                context.showSnackBar(SnackBar(
+                                    content: Text(context.translate(
+                                        i18.common.couldNotFetchLocation))));
                               }
                             });
                           },
@@ -296,13 +297,13 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         Row(
                           children: [
                             Text(
-                              '$assetType Videos',
+                              '$assetType ${context.translate(i18.common.videos)}',
                               style: textTheme.headingXl.copyWith(
                                   color: theme.colorTheme.primary.primary2),
                             ),
                             const SizedBox(width: spacer1),
                             Text(
-                              '(Optional)',
+                              context.translate(i18.common.optional),
                               style: textTheme.bodyL.copyWith(
                                   color: theme.colorTheme.primary.primary2),
                             ),
@@ -310,7 +311,7 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                         ),
                         const SizedBox(height: spacer2),
                         VideoUploader(
-                          label: 'Upload Videos',
+                          label: context.translate(i18.common.uploadVideos),
                           allowMultiples: true,
                           initialVideos: _selectedVideos,
                           onVideosSelected: (files) {
@@ -319,8 +320,9 @@ class _MediaUploadPageState extends State<MediaUploadPage> {
                             });
                             _ensureLocationLoaded().then((ok) {
                               if (!ok) {
-                                context.showSnackBar(const SnackBar(
-                                    content: Text('Could not fetch location')));
+                                context.showSnackBar(SnackBar(
+                                    content: Text(context.translate(
+                                        i18.common.couldNotFetchLocation))));
                               }
                             });
                           },

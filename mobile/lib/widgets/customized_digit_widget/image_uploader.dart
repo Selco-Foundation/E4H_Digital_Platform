@@ -19,8 +19,10 @@ import '../../utils/app_logger.dart';
 enum _PickerSessionPhase { idle, launching, awaitingResult, recovering }
 
 class ImageUploader extends StatefulWidget {
-  final Function(List<File>) onImagesSelected;
+  final FutureOr<void> Function(List<File>) onImagesSelected;
   final bool allowMultiples;
+  final int? maxImages;
+  final bool isDisabled;
   final String? errorMessage;
   final List<File>? initialImages;
   final String? label;
@@ -42,6 +44,8 @@ class ImageUploader extends StatefulWidget {
     super.key,
     required this.onImagesSelected,
     this.allowMultiples = false,
+    this.maxImages,
+    this.isDisabled = false,
     this.initialImages,
     this.errorMessage,
     this.label,
@@ -59,13 +63,14 @@ class ImageUploader extends StatefulWidget {
   });
 
   @override
-  _ImageUploaderState createState() => _ImageUploaderState();
+  State<ImageUploader> createState() => _ImageUploaderState();
 }
 
 class _ImageUploaderState extends State<ImageUploader>
     with WidgetsBindingObserver {
   static const MethodChannel _imageToolsChannel =
       MethodChannel('org.e4h.asset/image_tools');
+  static bool _lostDataRecoveryInFlight = false;
 
   late final List<File> _imageFiles;
   late DigitTypography currentTypography;
@@ -73,8 +78,8 @@ class _ImageUploaderState extends State<ImageUploader>
   late bool isTab;
   String? capitalizedErrorMessage;
   String fileError = '';
-  String? _lastRecoveredPath;
-  String? _lastDeliveredPath;
+  final Set<String> _recoveredPaths = <String>{};
+  final Set<String> _lastDeliveredPaths = <String>{};
 
   final ImagePicker _picker = ImagePicker();
   _PickerSessionPhase _pickerPhase = _PickerSessionPhase.idle;
@@ -89,12 +94,6 @@ class _ImageUploaderState extends State<ImageUploader>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _imageFiles = List<File>.from(widget.initialImages ?? const []);
-    unawaited(
-      _recoverLostDataIfNeeded(
-        trigger: 'init',
-        allowWithoutActiveSession: true,
-      ),
-    );
   }
 
   @override
@@ -148,6 +147,39 @@ class _ImageUploaderState extends State<ImageUploader>
       _pickerPhase == _PickerSessionPhase.awaitingResult ||
       _pickerPhase == _PickerSessionPhase.recovering;
 
+  bool get _hasReachedImageLimit {
+    final limit = widget.maxImages;
+    return limit != null && _imageFiles.length >= limit;
+  }
+
+  int? get _remainingImageSlots {
+    final limit = widget.maxImages;
+    if (limit == null) return null;
+    return limit - _imageFiles.length;
+  }
+
+  bool get _shouldShowUploadControl {
+    if (widget.isDisabled) return false;
+    if (!widget.allowMultiples && _imageFiles.isNotEmpty) return false;
+    if (_hasReachedImageLimit) return false;
+    return true;
+  }
+
+  Future<bool> _deliverImagesSelected(List<File> images) async {
+    try {
+      await Future<void>.sync(() => widget.onImagesSelected(images));
+      return true;
+    } catch (e, st) {
+      AppLogger.instance.info('ImageUploader callback failed: $e\n$st');
+      if (mounted) {
+        setState(() {
+          fileError = 'Failed to process selected image';
+        });
+      }
+      return false;
+    }
+  }
+
   Future<void> _startImagePick(ImageSource source) async {
     if (!mounted) return;
     if (_hasActivePickerSession) {
@@ -163,6 +195,8 @@ class _ImageUploaderState extends State<ImageUploader>
     _activeSessionToken = sessionToken;
     _activeSource = source;
     _recoveryAttemptedSinceResume = false;
+    _recoveredPaths.clear();
+    _lastDeliveredPaths.clear();
     setState(() {
       fileError = '';
       _pickerPhase = _PickerSessionPhase.launching;
@@ -278,6 +312,32 @@ class _ImageUploaderState extends State<ImageUploader>
         _pickerPhase = _PickerSessionPhase.awaitingResult;
       });
 
+      if (source == ImageSource.gallery && widget.allowMultiples) {
+        final pickedFiles = await _picker.pickMultiImage(
+          imageQuality: widget.imageQuality,
+          maxWidth: widget.maxWidth,
+          maxHeight: widget.maxHeight,
+          requestFullMetadata: widget.requestFullMetadata,
+        );
+
+        if (!mounted || _activeSessionToken != sessionToken) return;
+
+        if (pickedFiles.isEmpty) {
+          if (kDebugMode) {
+            AppLogger.instance.info('No images selected.');
+          }
+          _completeSession(sessionToken);
+          return;
+        }
+
+        await _processPickedFiles(
+          pickedFiles,
+          sessionToken: sessionToken,
+          fromRecovery: false,
+        );
+        return;
+      }
+
       final pickedFile = await _picker.pickImage(
         source: source,
         imageQuality: widget.imageQuality,
@@ -296,8 +356,8 @@ class _ImageUploaderState extends State<ImageUploader>
         return;
       }
 
-      await _processPickedFile(
-        pickedFile,
+      await _processPickedFiles(
+        <XFile>[pickedFile],
         sessionToken: sessionToken,
         fromRecovery: false,
       );
@@ -330,6 +390,23 @@ class _ImageUploaderState extends State<ImageUploader>
   Future<void> _handleImageCapture(File image) async {
     if (!mounted) return;
     final sessionToken = _activeSessionToken;
+    final remainingSlots = widget.allowMultiples ? _remainingImageSlots : null;
+    if (widget.allowMultiples &&
+        remainingSlots != null &&
+        remainingSlots <= 0) {
+      final limit = widget.maxImages;
+      if (limit != null) {
+        setState(() {
+          fileError =
+              'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached';
+        });
+      }
+      if (sessionToken != null) {
+        _completeSession(sessionToken);
+      }
+      return;
+    }
+
     setState(() {
       fileError = '';
       if (widget.allowMultiples) {
@@ -340,21 +417,25 @@ class _ImageUploaderState extends State<ImageUploader>
           ..add(image);
       }
     });
-    widget.onImagesSelected(List<File>.from(_imageFiles));
+    await _deliverImagesSelected(List<File>.from(_imageFiles));
     if (sessionToken != null) {
       _completeSession(sessionToken);
     }
   }
 
-  Future<void> _processPickedFile(
+  Future<({File? file, bool shouldAbort})> _preparePickedFile(
     XFile pickedFile, {
     required int sessionToken,
     required bool fromRecovery,
   }) async {
-    if (!mounted || _activeSessionToken != sessionToken) return;
+    if (!mounted || _activeSessionToken != sessionToken) {
+      return (file: null, shouldAbort: true);
+    }
 
     final normalizedFile = await _normalizeImageFile(File(pickedFile.path));
-    if (!mounted || _activeSessionToken != sessionToken) return;
+    if (!mounted || _activeSessionToken != sessionToken) {
+      return (file: null, shouldAbort: true);
+    }
 
     final normalizedXFile = XFile(
       normalizedFile.path,
@@ -369,44 +450,101 @@ class _ImageUploaderState extends State<ImageUploader>
         setState(() {
           fileError = validationError;
         });
-        _completeSession(sessionToken);
-        return;
+        return (file: null, shouldAbort: true);
       }
     }
 
-    if (fromRecovery && _lastRecoveredPath == normalizedFile.path) {
+    if (fromRecovery && _recoveredPaths.contains(normalizedFile.path)) {
       AppLogger.instance.info(
         'ImageUploader suppress duplicate recovery path=${normalizedFile.path} session=$sessionToken',
       );
+      return (file: null, shouldAbort: false);
+    }
+
+    if (_lastCompletedSessionToken == sessionToken &&
+        _lastDeliveredPaths.contains(normalizedFile.path)) {
+      AppLogger.instance.info(
+        'ImageUploader suppress duplicate dispatch path=${normalizedFile.path} session=$sessionToken',
+      );
+      return (file: null, shouldAbort: false);
+    }
+
+    if (fromRecovery) {
+      _recoveredPaths.add(normalizedFile.path);
+    }
+
+    return (file: normalizedFile, shouldAbort: false);
+  }
+
+  Future<void> _processPickedFiles(
+    List<XFile> pickedFiles, {
+    required int sessionToken,
+    required bool fromRecovery,
+  }) async {
+    if (!mounted || _activeSessionToken != sessionToken) return;
+
+    final List<File> nextFiles = <File>[];
+    final remainingSlots = widget.allowMultiples ? _remainingImageSlots : null;
+    if (widget.allowMultiples &&
+        remainingSlots != null &&
+        remainingSlots <= 0) {
+      final limit = widget.maxImages;
+      if (limit != null) {
+        setState(() {
+          fileError =
+              'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached';
+        });
+      }
       _completeSession(sessionToken);
       return;
     }
 
-    if (_lastDeliveredPath == normalizedFile.path &&
-        _lastCompletedSessionToken == sessionToken) {
-      AppLogger.instance.info(
-        'ImageUploader suppress duplicate dispatch path=${normalizedFile.path} session=$sessionToken',
+    final exceededLimit = widget.allowMultiples &&
+        remainingSlots != null &&
+        pickedFiles.length > remainingSlots;
+    final cappedFiles = widget.allowMultiples && remainingSlots != null
+        ? pickedFiles.take(remainingSlots).toList()
+        : pickedFiles;
+
+    for (final pickedFile in cappedFiles) {
+      final preparedResult = await _preparePickedFile(
+        pickedFile,
+        sessionToken: sessionToken,
+        fromRecovery: fromRecovery,
       );
+      if (!mounted || _activeSessionToken != sessionToken) return;
+      if (preparedResult.shouldAbort) {
+        _completeSession(sessionToken);
+        return;
+      }
+      if (preparedResult.file != null) {
+        nextFiles.add(preparedResult.file!);
+      }
+    }
+
+    if (nextFiles.isEmpty) {
       _completeSession(sessionToken);
       return;
     }
 
     setState(() {
-      fileError = '';
+      final limit = widget.maxImages;
+      fileError = exceededLimit && limit != null
+          ? 'Maximum of $limit ${limit == 1 ? 'image' : 'images'} reached'
+          : '';
       if (widget.allowMultiples) {
-        _imageFiles.add(normalizedFile);
+        _imageFiles.addAll(nextFiles);
       } else {
         _imageFiles
           ..clear()
-          ..add(normalizedFile);
+          ..addAll(nextFiles);
       }
     });
-    _lastRecoveredPath = fromRecovery ? normalizedFile.path : _lastRecoveredPath;
-    _lastDeliveredPath = normalizedFile.path;
+    _lastDeliveredPaths.addAll(nextFiles.map((file) => file.path));
     AppLogger.instance.info(
       'ImageUploader dispatch source=${_activeSource?.name ?? 'unknown'} recovery=$fromRecovery session=$sessionToken',
     );
-    widget.onImagesSelected(List<File>.from(_imageFiles));
+    await _deliverImagesSelected(List<File>.from(_imageFiles));
     _completeSession(sessionToken);
   }
 
@@ -421,10 +559,18 @@ class _ImageUploaderState extends State<ImageUploader>
     final sessionToken = _activeSessionToken ?? ++_sessionToken;
     _activeSessionToken ??= sessionToken;
 
+    if (_lostDataRecoveryInFlight) {
+      AppLogger.instance.info(
+        'ImageUploader recoverSkipped trigger=$trigger session=$sessionToken reason=in_flight',
+      );
+      return;
+    }
+
     if (!mounted) return;
     setState(() {
       _pickerPhase = _PickerSessionPhase.recovering;
     });
+    _lostDataRecoveryInFlight = true;
     AppLogger.instance.info(
       'ImageUploader recover trigger=$trigger session=$sessionToken active=${_activeSource?.name ?? 'none'}',
     );
@@ -443,8 +589,13 @@ class _ImageUploaderState extends State<ImageUploader>
         return;
       }
 
-      final x = response.file;
-      if (x == null) {
+      final recoveredFiles =
+          (response.files != null && response.files!.isNotEmpty)
+              ? response.files!
+              : response.file != null
+                  ? <XFile>[response.file!]
+                  : const <XFile>[];
+      if (recoveredFiles.isEmpty) {
         if (response.exception != null) {
           AppLogger.instance
               .info('retrieveLostData exception: ${response.exception}');
@@ -458,8 +609,8 @@ class _ImageUploaderState extends State<ImageUploader>
         return;
       }
 
-      await _processPickedFile(
-        x,
+      await _processPickedFiles(
+        recoveredFiles,
         sessionToken: sessionToken,
         fromRecovery: true,
       );
@@ -471,6 +622,8 @@ class _ImageUploaderState extends State<ImageUploader>
         });
       }
       _completeSession(sessionToken);
+    } finally {
+      _lostDataRecoveryInFlight = false;
     }
   }
 
@@ -498,6 +651,12 @@ class _ImageUploaderState extends State<ImageUploader>
       highlightColor: const DigitColors().transparent,
       splashColor: const DigitColors().transparent,
       onTap: () {
+        if (widget.isDisabled) {
+          setState(() {
+            fileError = '';
+          });
+          return;
+        }
         if (_hasActivePickerSession) {
           setState(() {
             fileError = 'Camera is still opening, please wait';
@@ -632,7 +791,7 @@ class _ImageUploaderState extends State<ImageUploader>
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
+        if (_shouldShowUploadControl)
           Container(
             width: MediaQuery.of(context).size.width,
             height: 120,
@@ -710,8 +869,7 @@ class _ImageUploaderState extends State<ImageUploader>
               ),
             ),
           ),
-        if (!(widget.allowMultiples == false && _imageFiles.isNotEmpty))
-          const SizedBox(height: spacer2),
+        if (_shouldShowUploadControl) const SizedBox(height: spacer2),
         Wrap(
           spacing: spacer2,
           runSpacing: spacer2,
@@ -760,31 +918,34 @@ class _ImageUploaderState extends State<ImageUploader>
                                     cacheWidth: thumb,
                                     cacheHeight: thumb,
                                   ),
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: InkWell(
-                                hoverColor: const DigitColors().transparent,
-                                highlightColor: const DigitColors().transparent,
-                                splashColor: const DigitColors().transparent,
-                                onTap: () {
-                                  _removeImage(index);
-                                },
-                                child: Container(
-                                  width: spacer6,
-                                  height: spacer6,
-                                  decoration: BoxDecoration(
-                                    color: const DigitColors().light.primary2,
-                                  ),
-                                  child: Icon(
-                                    Icons.close,
-                                    size: spacer4,
-                                    color:
-                                        const DigitColors().light.paperPrimary,
+                            if (!widget.isDisabled)
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: InkWell(
+                                  hoverColor: const DigitColors().transparent,
+                                  highlightColor:
+                                      const DigitColors().transparent,
+                                  splashColor: const DigitColors().transparent,
+                                  onTap: () {
+                                    _removeImage(index);
+                                  },
+                                  child: Container(
+                                    width: spacer6,
+                                    height: spacer6,
+                                    decoration: BoxDecoration(
+                                      color: const DigitColors().light.primary2,
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      size: spacer4,
+                                      color: const DigitColors()
+                                          .light
+                                          .paperPrimary,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -807,31 +968,34 @@ class _ImageUploaderState extends State<ImageUploader>
                                     cacheWidth: (thumb *
                                         2), // slightly larger for wide preview
                                   ),
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: InkWell(
-                                hoverColor: const DigitColors().transparent,
-                                highlightColor: const DigitColors().transparent,
-                                splashColor: const DigitColors().transparent,
-                                onTap: () {
-                                  _removeImage(index);
-                                },
-                                child: Container(
-                                  width: spacer6,
-                                  height: spacer6,
-                                  decoration: BoxDecoration(
-                                    color: const DigitColors().light.primary2,
-                                  ),
-                                  child: Icon(
-                                    Icons.close,
-                                    size: spacer4,
-                                    color:
-                                        const DigitColors().light.paperPrimary,
+                            if (!widget.isDisabled)
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: InkWell(
+                                  hoverColor: const DigitColors().transparent,
+                                  highlightColor:
+                                      const DigitColors().transparent,
+                                  splashColor: const DigitColors().transparent,
+                                  onTap: () {
+                                    _removeImage(index);
+                                  },
+                                  child: Container(
+                                    width: spacer6,
+                                    height: spacer6,
+                                    decoration: BoxDecoration(
+                                      color: const DigitColors().light.primary2,
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      size: spacer4,
+                                      color: const DigitColors()
+                                          .light
+                                          .paperPrimary,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -841,10 +1005,12 @@ class _ImageUploaderState extends State<ImageUploader>
         : const SizedBox.shrink();
   }
 
-  void _removeImage(int index) {
+  Future<void> _removeImage(int index) async {
+    if (widget.isDisabled) return;
     setState(() {
+      fileError = '';
       _imageFiles.removeAt(index);
     });
-    widget.onImagesSelected(List<File>.from(_imageFiles));
+    await _deliverImagesSelected(List<File>.from(_imageFiles));
   }
 }
