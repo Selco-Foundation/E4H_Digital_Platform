@@ -24,6 +24,12 @@ import static facility.config.ServiceConstants.SYSTEM_USER;
 @Service
 @Slf4j
 public class FacilityService {
+    private static final String CATEGORY_HEALTH = "HEALTH";
+    private static final String CATEGORY_ANGANWADI = "ANGANWADI";
+    private static final String ERR_HFR_ID_REQUIRED_WHEN_HEALTH =
+            "HFR ID is required when Facility Category is HEALTH.";
+    private static final String ERR_NIN_ID_REQUIRED_WHEN_HEALTH =
+            "NIN ID is required when Facility Category is HEALTH.";
 
     private final FacilityRepository facilityRepository;
     private final JdbcTemplate jdbcTemplate;
@@ -183,6 +189,9 @@ public class FacilityService {
                 if (facility.getAddress().getAddressId() == null) {
                     facility.getAddress().setAddressId(UUID.randomUUID().toString());
                 }
+
+                // HFR/NIN are category-aware: mandatory only for HEALTH.
+                validateCategoryBasedIdentifiers(facility.getFacilityCategory(), facility.getHfrId(), facility.getNinId());
 
                 // Check uniqueness for HFR ID or NIN ID
                 validateHfrOrNinUniqueness(facility, tenantId);
@@ -365,6 +374,34 @@ public class FacilityService {
         log.trace("Exiting validateHfrOrNinUniqueness method");
     }
 
+    private void validateCategoryBasedIdentifiers(String facilityCategory, String hfrId, String ninId) {
+        String normalizedCategory = facilityCategory == null ? "" : facilityCategory.trim().toUpperCase(Locale.ROOT);
+        if (CATEGORY_HEALTH.equals(normalizedCategory)) {
+            List<String> errors = new ArrayList<>();
+            if (hfrId == null || hfrId.isBlank()) {
+                errors.add(ERR_HFR_ID_REQUIRED_WHEN_HEALTH);
+            }
+            if (ninId == null || ninId.isBlank()) {
+                errors.add(ERR_NIN_ID_REQUIRED_WHEN_HEALTH);
+            }
+            if (!errors.isEmpty()) {
+                throw new IllegalArgumentException(String.join(" ", errors));
+            }
+            return;
+        }
+        if (CATEGORY_ANGANWADI.equals(normalizedCategory)) {
+            // Explicitly optional for ANGANWADI.
+            return;
+        }
+    }
+
+    private String firstNonBlank(String primary, String fallback) {
+        if (primary != null && !primary.isBlank()) {
+            return primary;
+        }
+        return fallback;
+    }
+
     /**
      * Creates POC user as HRMS employee if not exists (checks by phone number uniqueness).
      * Validates required fields (HFR ID, POC contact, POC name) before attempting creation.
@@ -495,6 +532,11 @@ public class FacilityService {
         facility.setFacilityStatus(update.getStatus());
         facility.setIsActive(update.getIsActive());
         facility.setUserId(update.getUserId());
+
+        String effectiveCategory = firstNonBlank(update.getFacilityCategory(), existingFacility.getFacilityCategory());
+        String effectiveHfrId = firstNonBlank(update.getHfrId(), existingFacility.getHfrId());
+        String effectiveNinId = firstNonBlank(update.getNinId(), existingFacility.getNinId());
+        validateCategoryBasedIdentifiers(effectiveCategory, effectiveHfrId, effectiveNinId);
 
         // Validate with MDMS and boundary APIs
         log.info("Validating facility update against MDMS and boundaries");
