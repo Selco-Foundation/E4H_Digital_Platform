@@ -264,6 +264,7 @@ public class FacilityMdmsValidator {
 
         map.put("Health Centre Name", facility.getFacilityName());
         map.put("Type of HC", facility.getFacilityType());
+        map.put("Category of HC", facility.getFacilityCategory());
         map.put("facility_id", facility.getFacilityId());
         map.put("tenant_id", facility.getTenantId());
         map.put("boundaryCode", facility.getBoundaryCode());
