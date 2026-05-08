@@ -101,7 +101,7 @@ const ProjectFieldPlans = () => {
     () => [
       {
         id: "fieldPlanName",
-        Header: () => GetHead("Field Plan Name"),
+        Header: () => GetHead("FIELD_PLAN_NAME"),
         Cell: ({ row }) => (
           <Link
             to={`/${window.contextPath}/employee/pm/project/${projectId}/field-plan/create?fieldPlanId=${row.original["id"]}&key=1`}
@@ -113,27 +113,27 @@ const ProjectFieldPlans = () => {
       },
       {
         id: "activities",
-        Header: () => GetHead("Activities"),
+        Header: () => GetHead("ACTIVITIES"),
         Cell: ({ row }) => GetActivityList(row.original["activities"]),
       },
       {
         id: "startDate",
-        Header: () => GetHead("Start Date"),
+        Header: () => GetHead("START_DATE"),
         Cell: ({ row }) => GetCell(row.original["startDate"] ? formatDate(row.original["startDate"]) : ""),
       },
       {
         id: "endDate",
-        Header: () => GetHead("End Date"),
+        Header: () => GetHead("END_DATE"),
         Cell: ({ row }) => GetCell(row.original["endDate"] ? formatDate(row.original["endDate"]) : ""),
       },
       {
         id: "numberOfHealthFacilities",
-        Header: () => GetHead("No. of Health Facilities"),
+        Header: () => GetHead("NUMBER_OF_HEALTH_FACILITIES"),
         Cell: ({ row }) => GetCell(row.original["healthFacilityNumber"]),
       },
       {
         id: "status",
-        Header: () => GetHead("Status"),
+        Header: () => GetHead("FIELD_PLAN_STATUS"),
         Cell: ({ row }) => GetCell(row.original["status"] ? t(`PM_FIELD_PLAN_STATUS_${row.original["status"].toUpperCase()}`) : ""),
       },
     ],
