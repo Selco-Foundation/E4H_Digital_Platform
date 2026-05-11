@@ -2455,6 +2455,8 @@ abstract class _ScheduledVisitAssignment implements ScheduledVisitAssignment {
 mixin _$ScheduledVisitSearchCriteria {
   String? get tenantId => throw _privateConstructorUsedError;
   String? get facilityId => throw _privateConstructorUsedError;
+  String? get facilityName => throw _privateConstructorUsedError;
+  List<String>? get assignedUsers => throw _privateConstructorUsedError;
   String? get amcConfigurationId => throw _privateConstructorUsedError;
   List<String> get statuses => throw _privateConstructorUsedError;
   int? get visitNumber => throw _privateConstructorUsedError;
@@ -2462,6 +2464,7 @@ mixin _$ScheduledVisitSearchCriteria {
   DateTime? get scheduledFrom => throw _privateConstructorUsedError;
   @EpochDateTimeConverter()
   DateTime? get scheduledTo => throw _privateConstructorUsedError;
+  String? get sortDirection => throw _privateConstructorUsedError;
 
   @JsonKey(ignore: true)
   $ScheduledVisitSearchCriteriaCopyWith<ScheduledVisitSearchCriteria>
@@ -2479,11 +2482,14 @@ abstract class $ScheduledVisitSearchCriteriaCopyWith<$Res> {
   $Res call(
       {String? tenantId,
       String? facilityId,
+      String? facilityName,
+      List<String>? assignedUsers,
       String? amcConfigurationId,
       List<String> statuses,
       int? visitNumber,
       @EpochDateTimeConverter() DateTime? scheduledFrom,
-      @EpochDateTimeConverter() DateTime? scheduledTo});
+      @EpochDateTimeConverter() DateTime? scheduledTo,
+      String? sortDirection});
 }
 
 /// @nodoc
@@ -2502,11 +2508,14 @@ class _$ScheduledVisitSearchCriteriaCopyWithImpl<$Res,
   $Res call({
     Object? tenantId = freezed,
     Object? facilityId = freezed,
+    Object? facilityName = freezed,
+    Object? assignedUsers = freezed,
     Object? amcConfigurationId = freezed,
     Object? statuses = null,
     Object? visitNumber = freezed,
     Object? scheduledFrom = freezed,
     Object? scheduledTo = freezed,
+    Object? sortDirection = freezed,
   }) {
     return _then(_value.copyWith(
       tenantId: freezed == tenantId
@@ -2517,6 +2526,14 @@ class _$ScheduledVisitSearchCriteriaCopyWithImpl<$Res,
           ? _value.facilityId
           : facilityId // ignore: cast_nullable_to_non_nullable
               as String?,
+      facilityName: freezed == facilityName
+          ? _value.facilityName
+          : facilityName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      assignedUsers: freezed == assignedUsers
+          ? _value.assignedUsers
+          : assignedUsers // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
       amcConfigurationId: freezed == amcConfigurationId
           ? _value.amcConfigurationId
           : amcConfigurationId // ignore: cast_nullable_to_non_nullable
@@ -2537,6 +2554,10 @@ class _$ScheduledVisitSearchCriteriaCopyWithImpl<$Res,
           ? _value.scheduledTo
           : scheduledTo // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      sortDirection: freezed == sortDirection
+          ? _value.sortDirection
+          : sortDirection // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -2553,11 +2574,14 @@ abstract class _$$ScheduledVisitSearchCriteriaImplCopyWith<$Res>
   $Res call(
       {String? tenantId,
       String? facilityId,
+      String? facilityName,
+      List<String>? assignedUsers,
       String? amcConfigurationId,
       List<String> statuses,
       int? visitNumber,
       @EpochDateTimeConverter() DateTime? scheduledFrom,
-      @EpochDateTimeConverter() DateTime? scheduledTo});
+      @EpochDateTimeConverter() DateTime? scheduledTo,
+      String? sortDirection});
 }
 
 /// @nodoc
@@ -2575,11 +2599,14 @@ class __$$ScheduledVisitSearchCriteriaImplCopyWithImpl<$Res>
   $Res call({
     Object? tenantId = freezed,
     Object? facilityId = freezed,
+    Object? facilityName = freezed,
+    Object? assignedUsers = freezed,
     Object? amcConfigurationId = freezed,
     Object? statuses = null,
     Object? visitNumber = freezed,
     Object? scheduledFrom = freezed,
     Object? scheduledTo = freezed,
+    Object? sortDirection = freezed,
   }) {
     return _then(_$ScheduledVisitSearchCriteriaImpl(
       tenantId: freezed == tenantId
@@ -2590,6 +2617,14 @@ class __$$ScheduledVisitSearchCriteriaImplCopyWithImpl<$Res>
           ? _value.facilityId
           : facilityId // ignore: cast_nullable_to_non_nullable
               as String?,
+      facilityName: freezed == facilityName
+          ? _value.facilityName
+          : facilityName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      assignedUsers: freezed == assignedUsers
+          ? _value._assignedUsers
+          : assignedUsers // ignore: cast_nullable_to_non_nullable
+              as List<String>?,
       amcConfigurationId: freezed == amcConfigurationId
           ? _value.amcConfigurationId
           : amcConfigurationId // ignore: cast_nullable_to_non_nullable
@@ -2610,6 +2645,10 @@ class __$$ScheduledVisitSearchCriteriaImplCopyWithImpl<$Res>
           ? _value.scheduledTo
           : scheduledTo // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      sortDirection: freezed == sortDirection
+          ? _value.sortDirection
+          : sortDirection // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -2620,18 +2659,34 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
   const _$ScheduledVisitSearchCriteriaImpl(
       {this.tenantId,
       this.facilityId,
+      this.facilityName,
+      final List<String>? assignedUsers,
       this.amcConfigurationId,
       final List<String> statuses = const <String>[],
       this.visitNumber,
       @EpochDateTimeConverter() this.scheduledFrom,
-      @EpochDateTimeConverter() this.scheduledTo})
-      : _statuses = statuses,
+      @EpochDateTimeConverter() this.scheduledTo,
+      this.sortDirection})
+      : _assignedUsers = assignedUsers,
+        _statuses = statuses,
         super._();
 
   @override
   final String? tenantId;
   @override
   final String? facilityId;
+  @override
+  final String? facilityName;
+  final List<String>? _assignedUsers;
+  @override
+  List<String>? get assignedUsers {
+    final value = _assignedUsers;
+    if (value == null) return null;
+    if (_assignedUsers is EqualUnmodifiableListView) return _assignedUsers;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(value);
+  }
+
   @override
   final String? amcConfigurationId;
   final List<String> _statuses;
@@ -2651,10 +2706,12 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
   @override
   @EpochDateTimeConverter()
   final DateTime? scheduledTo;
+  @override
+  final String? sortDirection;
 
   @override
   String toString() {
-    return 'ScheduledVisitSearchCriteria(tenantId: $tenantId, facilityId: $facilityId, amcConfigurationId: $amcConfigurationId, statuses: $statuses, visitNumber: $visitNumber, scheduledFrom: $scheduledFrom, scheduledTo: $scheduledTo)';
+    return 'ScheduledVisitSearchCriteria(tenantId: $tenantId, facilityId: $facilityId, facilityName: $facilityName, assignedUsers: $assignedUsers, amcConfigurationId: $amcConfigurationId, statuses: $statuses, visitNumber: $visitNumber, scheduledFrom: $scheduledFrom, scheduledTo: $scheduledTo, sortDirection: $sortDirection)';
   }
 
   @override
@@ -2666,6 +2723,10 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
                 other.tenantId == tenantId) &&
             (identical(other.facilityId, facilityId) ||
                 other.facilityId == facilityId) &&
+            (identical(other.facilityName, facilityName) ||
+                other.facilityName == facilityName) &&
+            const DeepCollectionEquality()
+                .equals(other._assignedUsers, _assignedUsers) &&
             (identical(other.amcConfigurationId, amcConfigurationId) ||
                 other.amcConfigurationId == amcConfigurationId) &&
             const DeepCollectionEquality().equals(other._statuses, _statuses) &&
@@ -2674,7 +2735,9 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
             (identical(other.scheduledFrom, scheduledFrom) ||
                 other.scheduledFrom == scheduledFrom) &&
             (identical(other.scheduledTo, scheduledTo) ||
-                other.scheduledTo == scheduledTo));
+                other.scheduledTo == scheduledTo) &&
+            (identical(other.sortDirection, sortDirection) ||
+                other.sortDirection == sortDirection));
   }
 
   @override
@@ -2682,11 +2745,14 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
       runtimeType,
       tenantId,
       facilityId,
+      facilityName,
+      const DeepCollectionEquality().hash(_assignedUsers),
       amcConfigurationId,
       const DeepCollectionEquality().hash(_statuses),
       visitNumber,
       scheduledFrom,
-      scheduledTo);
+      scheduledTo,
+      sortDirection);
 
   @JsonKey(ignore: true)
   @override
@@ -2700,20 +2766,26 @@ class _$ScheduledVisitSearchCriteriaImpl extends _ScheduledVisitSearchCriteria {
 abstract class _ScheduledVisitSearchCriteria
     extends ScheduledVisitSearchCriteria {
   const factory _ScheduledVisitSearchCriteria(
-          {final String? tenantId,
-          final String? facilityId,
-          final String? amcConfigurationId,
-          final List<String> statuses,
-          final int? visitNumber,
-          @EpochDateTimeConverter() final DateTime? scheduledFrom,
-          @EpochDateTimeConverter() final DateTime? scheduledTo}) =
-      _$ScheduledVisitSearchCriteriaImpl;
+      {final String? tenantId,
+      final String? facilityId,
+      final String? facilityName,
+      final List<String>? assignedUsers,
+      final String? amcConfigurationId,
+      final List<String> statuses,
+      final int? visitNumber,
+      @EpochDateTimeConverter() final DateTime? scheduledFrom,
+      @EpochDateTimeConverter() final DateTime? scheduledTo,
+      final String? sortDirection}) = _$ScheduledVisitSearchCriteriaImpl;
   const _ScheduledVisitSearchCriteria._() : super._();
 
   @override
   String? get tenantId;
   @override
   String? get facilityId;
+  @override
+  String? get facilityName;
+  @override
+  List<String>? get assignedUsers;
   @override
   String? get amcConfigurationId;
   @override
@@ -2726,6 +2798,8 @@ abstract class _ScheduledVisitSearchCriteria
   @override
   @EpochDateTimeConverter()
   DateTime? get scheduledTo;
+  @override
+  String? get sortDirection;
   @override
   @JsonKey(ignore: true)
   _$$ScheduledVisitSearchCriteriaImplCopyWith<

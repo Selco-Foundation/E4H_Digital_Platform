@@ -16,9 +16,10 @@ final _privateConstructorUsedError = UnsupportedError(
 
 /// @nodoc
 mixin _$AmcOtpEvent {
+  String get visitId => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function() resend,
+    required TResult Function(String visitId) resend,
     required TResult Function(String visitId, String schemaCode, int version,
             String otp, ScheduledVisit? scheduledVisit)
         submit,
@@ -26,7 +27,7 @@ mixin _$AmcOtpEvent {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? resend,
+    TResult? Function(String visitId)? resend,
     TResult? Function(String visitId, String schemaCode, int version,
             String otp, ScheduledVisit? scheduledVisit)?
         submit,
@@ -34,7 +35,7 @@ mixin _$AmcOtpEvent {
       throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? resend,
+    TResult Function(String visitId)? resend,
     TResult Function(String visitId, String schemaCode, int version, String otp,
             ScheduledVisit? scheduledVisit)?
         submit,
@@ -60,6 +61,10 @@ mixin _$AmcOtpEvent {
     required TResult orElse(),
   }) =>
       throw _privateConstructorUsedError;
+
+  @JsonKey(ignore: true)
+  $AmcOtpEventCopyWith<AmcOtpEvent> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
@@ -67,6 +72,8 @@ abstract class $AmcOtpEventCopyWith<$Res> {
   factory $AmcOtpEventCopyWith(
           AmcOtpEvent value, $Res Function(AmcOtpEvent) then) =
       _$AmcOtpEventCopyWithImpl<$Res, AmcOtpEvent>;
+  @useResult
+  $Res call({String visitId});
 }
 
 /// @nodoc
@@ -78,13 +85,30 @@ class _$AmcOtpEventCopyWithImpl<$Res, $Val extends AmcOtpEvent>
   final $Val _value;
   // ignore: unused_field
   final $Res Function($Val) _then;
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? visitId = null,
+  }) {
+    return _then(_value.copyWith(
+      visitId: null == visitId
+          ? _value.visitId
+          : visitId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ) as $Val);
+  }
 }
 
 /// @nodoc
-abstract class _$$AmcOtpEventResendImplCopyWith<$Res> {
+abstract class _$$AmcOtpEventResendImplCopyWith<$Res>
+    implements $AmcOtpEventCopyWith<$Res> {
   factory _$$AmcOtpEventResendImplCopyWith(_$AmcOtpEventResendImpl value,
           $Res Function(_$AmcOtpEventResendImpl) then) =
       __$$AmcOtpEventResendImplCopyWithImpl<$Res>;
+  @override
+  @useResult
+  $Res call({String visitId});
 }
 
 /// @nodoc
@@ -94,60 +118,85 @@ class __$$AmcOtpEventResendImplCopyWithImpl<$Res>
   __$$AmcOtpEventResendImplCopyWithImpl(_$AmcOtpEventResendImpl _value,
       $Res Function(_$AmcOtpEventResendImpl) _then)
       : super(_value, _then);
+
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({
+    Object? visitId = null,
+  }) {
+    return _then(_$AmcOtpEventResendImpl(
+      visitId: null == visitId
+          ? _value.visitId
+          : visitId // ignore: cast_nullable_to_non_nullable
+              as String,
+    ));
+  }
 }
 
 /// @nodoc
 
 class _$AmcOtpEventResendImpl implements AmcOtpEventResend {
-  const _$AmcOtpEventResendImpl();
+  const _$AmcOtpEventResendImpl({required this.visitId});
+
+  @override
+  final String visitId;
 
   @override
   String toString() {
-    return 'AmcOtpEvent.resend()';
+    return 'AmcOtpEvent.resend(visitId: $visitId)';
   }
 
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        (other.runtimeType == runtimeType && other is _$AmcOtpEventResendImpl);
+        (other.runtimeType == runtimeType &&
+            other is _$AmcOtpEventResendImpl &&
+            (identical(other.visitId, visitId) || other.visitId == visitId));
   }
 
   @override
-  int get hashCode => runtimeType.hashCode;
+  int get hashCode => Object.hash(runtimeType, visitId);
+
+  @JsonKey(ignore: true)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$AmcOtpEventResendImplCopyWith<_$AmcOtpEventResendImpl> get copyWith =>
+      __$$AmcOtpEventResendImplCopyWithImpl<_$AmcOtpEventResendImpl>(
+          this, _$identity);
 
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function() resend,
+    required TResult Function(String visitId) resend,
     required TResult Function(String visitId, String schemaCode, int version,
             String otp, ScheduledVisit? scheduledVisit)
         submit,
   }) {
-    return resend();
+    return resend(visitId);
   }
 
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? resend,
+    TResult? Function(String visitId)? resend,
     TResult? Function(String visitId, String schemaCode, int version,
             String otp, ScheduledVisit? scheduledVisit)?
         submit,
   }) {
-    return resend?.call();
+    return resend?.call(visitId);
   }
 
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? resend,
+    TResult Function(String visitId)? resend,
     TResult Function(String visitId, String schemaCode, int version, String otp,
             ScheduledVisit? scheduledVisit)?
         submit,
     required TResult orElse(),
   }) {
     if (resend != null) {
-      return resend();
+      return resend(visitId);
     }
     return orElse();
   }
@@ -185,14 +234,24 @@ class _$AmcOtpEventResendImpl implements AmcOtpEventResend {
 }
 
 abstract class AmcOtpEventResend implements AmcOtpEvent {
-  const factory AmcOtpEventResend() = _$AmcOtpEventResendImpl;
+  const factory AmcOtpEventResend({required final String visitId}) =
+      _$AmcOtpEventResendImpl;
+
+  @override
+  String get visitId;
+  @override
+  @JsonKey(ignore: true)
+  _$$AmcOtpEventResendImplCopyWith<_$AmcOtpEventResendImpl> get copyWith =>
+      throw _privateConstructorUsedError;
 }
 
 /// @nodoc
-abstract class _$$AmcOtpEventSubmitImplCopyWith<$Res> {
+abstract class _$$AmcOtpEventSubmitImplCopyWith<$Res>
+    implements $AmcOtpEventCopyWith<$Res> {
   factory _$$AmcOtpEventSubmitImplCopyWith(_$AmcOtpEventSubmitImpl value,
           $Res Function(_$AmcOtpEventSubmitImpl) then) =
       __$$AmcOtpEventSubmitImplCopyWithImpl<$Res>;
+  @override
   @useResult
   $Res call(
       {String visitId,
@@ -312,7 +371,7 @@ class _$AmcOtpEventSubmitImpl implements AmcOtpEventSubmit {
   @override
   @optionalTypeArgs
   TResult when<TResult extends Object?>({
-    required TResult Function() resend,
+    required TResult Function(String visitId) resend,
     required TResult Function(String visitId, String schemaCode, int version,
             String otp, ScheduledVisit? scheduledVisit)
         submit,
@@ -323,7 +382,7 @@ class _$AmcOtpEventSubmitImpl implements AmcOtpEventSubmit {
   @override
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
-    TResult? Function()? resend,
+    TResult? Function(String visitId)? resend,
     TResult? Function(String visitId, String schemaCode, int version,
             String otp, ScheduledVisit? scheduledVisit)?
         submit,
@@ -334,7 +393,7 @@ class _$AmcOtpEventSubmitImpl implements AmcOtpEventSubmit {
   @override
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
-    TResult Function()? resend,
+    TResult Function(String visitId)? resend,
     TResult Function(String visitId, String schemaCode, int version, String otp,
             ScheduledVisit? scheduledVisit)?
         submit,
@@ -386,11 +445,13 @@ abstract class AmcOtpEventSubmit implements AmcOtpEvent {
       required final String otp,
       final ScheduledVisit? scheduledVisit}) = _$AmcOtpEventSubmitImpl;
 
+  @override
   String get visitId;
   String get schemaCode;
   int get version;
   String get otp;
   ScheduledVisit? get scheduledVisit;
+  @override
   @JsonKey(ignore: true)
   _$$AmcOtpEventSubmitImplCopyWith<_$AmcOtpEventSubmitImpl> get copyWith =>
       throw _privateConstructorUsedError;

@@ -32,7 +32,7 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
     emit(const AmcOtpState.resendLoading());
 
     try {
-      await scheduledVisitRepo.resendVisitOtp();
+      await scheduledVisitRepo.resendVisitOtp(visitId: event.visitId);
       emit(const AmcOtpState.resendSuccess());
     } catch (e) {
       AppLogger.instance.error(title: "Resend AMC Service completion code", message: e.toString());
@@ -145,7 +145,9 @@ class AmcOtpBloc extends Bloc<AmcOtpEvent, AmcOtpState> {
 
 @freezed
 class AmcOtpEvent with _$AmcOtpEvent {
-  const factory AmcOtpEvent.resend() = AmcOtpEventResend;
+  const factory AmcOtpEvent.resend({
+    required String visitId,
+  }) = AmcOtpEventResend;
 
   const factory AmcOtpEvent.submit({
     required String visitId,

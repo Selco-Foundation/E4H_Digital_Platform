@@ -14,6 +14,7 @@ import '../data/nosql/cache_asset_count.dart';
 import '../data/nosql/cache_asset_detail.dart';
 import '../data/nosql/cache_bom_doc.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_installation_image.dart';
 import '../data/nosql/cache_operation_checkpoint.dart';
 import '../data/nosql/cache_media_upload.dart';
 import '../data/nosql/cache_prefilled_activity_facility.dart';
@@ -65,6 +66,7 @@ class Constants {
           CacheUnsubmittedActivityFacilitySchema,
           CacheSyncRecordSchema,
           CacheCompletionReportSchema,
+          CacheInstallationImageSchema,
           CacheBomDocSchema,
           CachePrefilledActivityFacilitySchema,
           CacheActivityFacilityBomValuesSchema,

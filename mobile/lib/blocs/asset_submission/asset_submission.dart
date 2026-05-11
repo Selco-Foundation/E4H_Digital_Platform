@@ -9,6 +9,7 @@ import '../../data/nosql/cache_sync_record.dart';
 import '../../data/nosql/cache_unsubmitted_activity_facility.dart';
 import '../../repositories/operation_progress_repo.dart';
 import '../../utils/background_service.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 import '../../utils/operation_progress.dart';
 
 part 'asset_submission.freezed.dart';
@@ -228,7 +229,7 @@ class AssetSubmissionBloc
           total: activityFacilityIds.length,
           progressPercent: 0,
           activeCount: activityFacilityIds.length,
-          label: 'Preparing sync',
+          label: i18.syncLoading.preparingSync,
         ),
       ),
     );
@@ -278,6 +279,7 @@ class AssetSubmissionBloc
       }
     }
 
+    final syncingCount = (completed + activeCount).clamp(0, total);
     final progress = BulkOperationProgressModel(
       completed: completed,
       total: total,
@@ -285,7 +287,7 @@ class AssetSubmissionBloc
       activeCount: activeCount,
       label: completed >= total
           ? 'Sync completed'
-          : 'Syncing $completed of $total reports',
+          : 'Syncing $syncingCount of $total reports',
     );
 
     emit(AssetSubmissionState.bulkProgress(progress));

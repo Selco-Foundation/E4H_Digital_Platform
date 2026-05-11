@@ -9,6 +9,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 import '../utils/app_logger.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../widgets/header/back_navigation_help_header.dart';
 
 @RoutePage()
@@ -72,12 +74,15 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
           if (_isLoading) ...[
             const Expanded(child: Center(child: CircularProgressIndicator()))
           ] else if (_localPath == null) ...[
-            const Expanded(
-                child: Center(child: Text('Failed to load document')))
+            Expanded(
+                child: Center(
+                    child: Text(
+                        context.translate(i18.pdfViewer.failedToLoadDocument))))
           ] else ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text('Page ${_currentPage + 1} of $_pages'),
+              child: Text(
+                  '${context.translate(i18.pdfViewer.pageOf)} ${_currentPage + 1} ${context.translate(i18.pdfViewer.of)} $_pages'),
             ),
             Expanded(
               child: PDFView(

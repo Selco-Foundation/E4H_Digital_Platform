@@ -24,6 +24,8 @@ import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../blocs/user_type/user_type.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -66,10 +68,25 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
         .add(const ReportTypeEvent.typeSelected("inbox"));
 
     final statuses = _statusesForTab(tabIndex);
-
-    context
-        .read<ScheduledVisitBloc>()
-        .add(ScheduledVisitEvent.loadInitial(statuses: statuses));
+    if (_searchQuery.isNotEmpty) {
+      context.read<ScheduledVisitBloc>().add(
+            ScheduledVisitEvent.loadInitial(
+              statuses: statuses,
+              query: _searchQuery,
+            ),
+          );
+    } else if (_sortDirection != null) {
+      context.read<ScheduledVisitBloc>().add(
+            ScheduledVisitEvent.loadInitial(
+              statuses: statuses,
+              sortDirection: _sortDirection,
+            ),
+          );
+    } else {
+      context
+          .read<ScheduledVisitBloc>()
+          .add(ScheduledVisitEvent.loadInitial(statuses: statuses));
+    }
   }
 
   void _onTabChanged(int index, UserTypeState userState) {
@@ -90,7 +107,10 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
 
     return BlocBuilder<UserTypeBloc, UserTypeState>(
       builder: (context, userState) {
-        final tabs = ['Rejected', 'Approved'];
+        final tabs = [
+          context.translate(i18.inbox.rejected),
+          context.translate(i18.inbox.approved),
+        ];
 
         return NotificationListener<ScrollNotification>(
           onNotification: (notification) {
@@ -107,6 +127,8 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                       bloc.add(
                         ScheduledVisitEvent.loadMore(
                           statuses: _statusesForTab(_selectedTabIndex),
+                          query: _searchQuery.isNotEmpty ? _searchQuery : null,
+                          sortDirection: _sortDirection,
                         ),
                       );
                     }
@@ -134,7 +156,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                       Row(
                         children: [
                           Text(
-                            'Inbox',
+                            context.translate(i18.inbox.title),
                             style: textTheme.headingXl.copyWith(
                                 color: theme.colorTheme.primary.primary2),
                           ),
@@ -167,14 +189,19 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                             children: [
                               Expanded(
                                 child: DigitSearchFormInput(
-                                  innerLabel: "Search Health Facility",
+                                  innerLabel: context
+                                      .translate(i18.inbox.searchHealthFacility),
                                   suffixIcon: Icons.search,
                                   onChange: (text) {
                                     setState(() {
                                       _searchQuery = text;
                                       _sortDirection = null;
                                     });
-                                    _fetchProjects(_selectedTabIndex);
+                                    if (text.isEmpty ||
+                                        text.length >=
+                                            minFacilitySearchQueryLength) {
+                                      _fetchProjects(_selectedTabIndex);
+                                    }
                                   },
                                   iconColor: const Light().primary2,
                                   enableBorder: OutlineInputBorder(
@@ -201,7 +228,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                                       color: theme.colorTheme.primary.primary1,
                                       size: spacer8,
                                     ),
-                                    Text("Sort",
+                                    Text(context.translate(i18.common.sort),
                                         style: textTheme.headingS.copyWith(
                                             color: theme
                                                 .colorTheme.primary.primary1))
@@ -252,8 +279,8 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
     bool isLoadingMore = false,
   }) {
     if (items.isEmpty) {
-      return const Center(
-        child: Text('No AMC visits to display'),
+      return Center(
+        child: Text(context.translate(i18.amcInbox.noVisitsToDisplay)),
       );
     }
 
@@ -267,7 +294,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                     parseBoundaryCodeLocality(visit.facility?.boundaryCode);
                 if (_selectedTabIndex == 0) {
                   return AMCInstallationReportCard(
-                    label: "View",
+                    label: context.translate(i18.submitForApproval.view),
                     title: visit.facility?.facilityName ?? '',
                     status: visit.status ?? '---',
                     dateAssigned: visit.scheduledDate ?? DateTime.now(),
@@ -331,15 +358,19 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, popupSetState) => Popup(
           onCrossTap: () => Navigator.of(ctx).pop(),
-          title: 'Sort by',
+          title: context.translate(i18.common.sortBy),
           type: PopUpType.simple,
           additionalWidgets: [
             RadioList(
               groupValue: _sortDirection ?? '',
               containerPadding: const EdgeInsets.symmetric(vertical: spacer2),
               radioDigitButtons: [
-                RadioButtonModel(code: 'DESC', name: 'Newest first'),
-                RadioButtonModel(code: 'ASC', name: 'Oldest first'),
+                RadioButtonModel(
+                    code: 'DESC',
+                    name: context.translate(i18.common.newestFirst)),
+                RadioButtonModel(
+                    code: 'ASC',
+                    name: context.translate(i18.common.oldestFirst)),
               ],
               onChanged: (val) =>
                   popupSetState(() => _sortDirection = val.code),
@@ -348,7 +379,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
               children: [
                 Expanded(
                   child: DigitButton(
-                    label: 'Clear',
+                    label: context.translate(i18.common.clear),
                     type: DigitButtonType.secondary,
                     size: DigitButtonSize.large,
                     onPressed: () {
@@ -366,7 +397,7 @@ class _AmcInboxPageState extends State<AmcInboxPage> {
                   child: DigitButton(
                     type: DigitButtonType.primary,
                     size: DigitButtonSize.large,
-                    label: 'Sort',
+                    label: context.translate(i18.common.sort),
                     isDisabled: _sortDirection == null,
                     onPressed: () {
                       Navigator.of(ctx).pop();

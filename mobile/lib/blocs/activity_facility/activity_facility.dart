@@ -211,7 +211,7 @@ class ActivityFacilityBloc
     FetchActivityFacilityBySearchEvent event,
     Emitter<ActivityFacilityState> emit,
   ) async {
-    if (event.query.length < 3) {
+    if (event.query.length < minFacilitySearchQueryLength) {
       emit(const ActivityFacilityState.initial());
       return;
     }

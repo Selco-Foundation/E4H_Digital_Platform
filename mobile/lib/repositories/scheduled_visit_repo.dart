@@ -7,6 +7,7 @@ import '../data/nosql/cache_amc_media_upload.dart';
 import '../data/nosql/cache_prefilled_scheduled_visit.dart';
 import '../data/nosql/cache_scheduled_visit.dart';
 import '../data/remote_client.dart';
+import '../data/secure_storage/secureStore.dart';
 import '../model/document/document.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../utils/app_logger.dart';
@@ -113,11 +114,18 @@ class ScheduledVisitRemoteRepository {
     }
   }
 
-  Future<void> resendVisitOtp() async {
+  Future<void> resendVisitOtp({
+    required String visitId,
+  }) async {
     const path = 'asset-amc/v1/visit/_resend_otp';
 
     try {
-      await dio.post(path, data: <String, dynamic>{});
+      await dio.post(
+        path,
+        data: <String, dynamic>{
+          'visitId': visitId,
+        },
+      );
     } on DioError catch (e) {
       AppLogger.instance.info(
         'ScheduledVisitRemoteRepository.resendVisitOtp DioError=$e',
@@ -144,12 +152,19 @@ class ScheduledVisitRepository {
 
   Future<PaginatedScheduledVisits> fetchByWorkflowStatus({
     required List<String> statuses,
+    String? facilityName,
+    String? sortDirection,
     int limit = defaultPageSize,
     int offset = 0,
   }) async {
+    final accessInfo = await SecureStore().getAccessInfo();
+    final assignedUserUuid = accessInfo?.userRequest?.uuid;
     final criteria = ScheduledVisitSearchCriteria(
       tenantId: envConfig.variables.tenantId,
+      facilityName: facilityName,
+      assignedUsers: assignedUserUuid == null ? null : [assignedUserUuid],
       statuses: statuses,
+      sortDirection: sortDirection,
     );
 
     try {

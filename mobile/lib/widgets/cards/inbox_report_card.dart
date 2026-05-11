@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../utils/extensions.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 import 'report_detail_row.dart';
 
 class InboxReportCard extends StatelessWidget {
@@ -52,7 +53,7 @@ class InboxReportCard extends StatelessWidget {
           const SizedBox(height: spacer4),
           const DigitDivider(dividerType: DividerType.small),
           ReportDetailRow(
-            label: 'Status',
+            label: context.translate(i18.common.status),
             value: _detailText(
               context.translate(status ?? ''),
               textTheme,
@@ -60,29 +61,29 @@ class InboxReportCard extends StatelessWidget {
             ),
           ),
           ReportDetailRow(
-            label: 'Submission Date',
+            label: context.translate(i18.common.submissionDate),
             value: _detailText(formattedDate, textTheme, theme),
           ),
           ReportDetailRow(
-            label: 'State',
+            label: context.translate(i18.common.state),
             value: _detailText(_displayValue(state), textTheme, theme),
           ),
           ReportDetailRow(
-            label: 'District',
+            label: context.translate(i18.common.district),
             value: _detailText(_displayValue(district), textTheme, theme),
           ),
           ReportDetailRow(
-            label: 'Block',
+            label: context.translate(i18.common.block),
             value: _detailText(_displayValue(block), textTheme, theme),
           ),
           const SizedBox(height: spacer4),
           DigitButton(
               mainAxisSize: MainAxisSize.max,
               label: !(isAmc!)
-                  ? 'View Summary'
+                  ? context.translate(i18.sharedCards.viewSummary)
                   : isOtp!
-                      ? 'Submit For Approval'
-                      : 'View Report',
+                      ? context.translate(i18.sharedCards.submitForApproval)
+                      : context.translate(i18.sharedCards.viewReport),
               onPressed: onPress,
               type: DigitButtonType.secondary,
               size: DigitButtonSize.large),

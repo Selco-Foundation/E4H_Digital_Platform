@@ -11,6 +11,8 @@ import '../blocs/selected_amc_origin/selected_amc_origin.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/cards/inbox_report_card.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -25,7 +27,6 @@ class AmcDraftPage extends StatefulWidget {
 }
 
 class _AmcDraftPageState extends State<AmcDraftPage> {
-  final tabs = ['Pending Otp Approval', 'Pending Approval'];
   int _selectedTabIndex = 0;
 
   List<String> _statusesForTab(int tabIndex) {
@@ -62,6 +63,10 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.digitTextTheme(context);
+    final tabs = [
+      context.translate(i18.amcDraft.pendingOtpApproval),
+      context.translate(i18.amcDraft.pendingApproval),
+    ];
 
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
@@ -103,7 +108,7 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Pending Approval',
+                    context.translate(i18.amcDraft.pendingApproval),
                     style: textTheme.headingXl.copyWith(
                       color: theme.colorTheme.primary.primary2,
                     ),
@@ -164,8 +169,8 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
     bool isLoadingMore = false,
   }) {
     if (items.isEmpty) {
-      return const Center(
-        child: Text('No AMC drafts to display'),
+      return Center(
+        child: Text(context.translate(i18.amcDraft.noDraftsToDisplay)),
       );
     }
 
