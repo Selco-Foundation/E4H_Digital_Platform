@@ -147,7 +147,6 @@ public class UserService {
         log.trace("UserService::enrichUser method invoked");
         RequestInfo requestInfo = request.getRequestInfo();
         String accountId = request.getIncident().getReporter().getUuid();
-//        String tenantId = request.getIncident().getPhcType();
 
         log.trace("Searching user by accountId");
         UserDetailResponse userDetailResponse = searchUser(null,accountId,null);
@@ -217,7 +216,6 @@ public class UserService {
         UserSearchRequest userSearchRequest =new UserSearchRequest();
         userSearchRequest.setActive(true);
         userSearchRequest.setUserType(USERTYPE_EMPLOYEE);
-//        userSearchRequest.setTenantId(stateLevelTenant);
 
         if(StringUtils.isEmpty(accountId) && StringUtils.isEmpty(userName))
             return null;
