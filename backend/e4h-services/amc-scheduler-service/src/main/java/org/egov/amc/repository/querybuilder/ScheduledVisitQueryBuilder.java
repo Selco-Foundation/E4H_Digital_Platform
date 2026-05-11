@@ -22,7 +22,7 @@ import static org.egov.amc.util.AmcConstants.DOT;
 public class ScheduledVisitQueryBuilder {
 
     private static final String FETCH_SCHEDULED_VISIT_QUERY = "SELECT sv.id AS sv_visit_id, sv.tenant_id AS sv_tenant_id, sv.amc_configuration_id AS sv_amc_configuration_id, sv.facility_id AS sv_facility_id, " +
-            "sv.project_id AS sv_project_id, sv.visit_number AS sv_visit_number, sv.scheduled_date AS sv_scheduled_date, sv.actual_visit_date AS sv_actual_visit_date, sv.last_scheduled_visit_date AS sv_last_scheduled_visit_date," +
+            "sv.facility_name AS sv_facility_name, sv.project_id AS sv_project_id, sv.visit_number AS sv_visit_number, sv.scheduled_date AS sv_scheduled_date, sv.actual_visit_date AS sv_actual_visit_date, sv.last_scheduled_visit_date AS sv_last_scheduled_visit_date," +
             " sv.status AS sv_status, sv.visit_report AS sv_visit_report, sv.created_by AS sv_created_by, sv.created_time AS sv_created_time, sv.last_modified_by AS sv_last_modified_by, sv.last_modified_time AS sv_last_modified_time, " +
             "ac.id AS amc_id, ac.tenant_id AS amc_tenant_id, ac.vendor_id as amc_vendor_id, ac.facility_id as amc_facility_id, ac.project_id as amc_project_id, ac.asset_types as amc_asset_types, ac.duration_months as amc_duration_months, " +
             "ac.visit_frequency_months as amc_visit_frequency_months, ac.configuration_start_date as amc_configuration_start_date, ac.configuration_end_date as amc_configuration_end_date, ac.status AS amc_status, ac.additional_details AS amc_additional_details, ac.created_by AS amc_created_by," +
@@ -46,10 +46,10 @@ public class ScheduledVisitQueryBuilder {
             "    ) AS assignments " +
             " " +
             "FROM scheduled_visits sv LEFT JOIN amc_configuration ac ON sv.amc_configuration_id = ac.id LEFT JOIN facility f ON sv.facility_id = f.id LEFT JOIN scheduled_visit_assignments sva ON sv.id = sva.scheduled_visit_id ";
-    private static final String SCHEDULED_VISIT_COUNT_QUERY = "SELECT COUNT(*) FROM scheduled_visits sv LEFT JOIN amc_configuration ac ON sv.amc_configuration_id = ac.id LEFT JOIN facility f ON sv.facility_id = f.id ";
+    private static final String SCHEDULED_VISIT_COUNT_QUERY = "SELECT COUNT(DISTINCT sv.id) FROM scheduled_visits sv LEFT JOIN amc_configuration ac ON sv.amc_configuration_id = ac.id LEFT JOIN facility f ON sv.facility_id = f.id LEFT JOIN scheduled_visit_assignments sva ON sv.id = sva.scheduled_visit_id ";
 
     private final String paginationWrapper = "SELECT * FROM " +
-            "(SELECT *, DENSE_RANK() OVER (ORDER BY sv_last_modified_time DESC , sv_visit_id) offset_ FROM " +
+            "(SELECT *, DENSE_RANK() OVER (ORDER BY sv_last_modified_time %s , sv_visit_id) offset_ FROM " +
             "({})" +
             " result) result_offset " +
             "WHERE offset_ > ? AND offset_ <= ?";
@@ -104,7 +104,7 @@ public class ScheduledVisitQueryBuilder {
         }
 
         String groupBy = " GROUP BY sv.id, sv.tenant_id, sv.amc_configuration_id, sv.facility_id,sv.project_id,  " +
-                "    sv.visit_number, sv.scheduled_date, sv.actual_visit_date, sv.status, sv.last_scheduled_visit_date, " +
+                "    sv.facility_name, sv.visit_number, sv.scheduled_date, sv.actual_visit_date, sv.status, sv.last_scheduled_visit_date, " +
                 "    sv.visit_report, sv.created_by, sv.created_time, sv.last_modified_by, sv.last_modified_time, " +
                 "\n" +
                 "    ac.id, ac.tenant_id, ac.vendor_id, ac.facility_id, ac.project_id, " +
@@ -121,7 +121,7 @@ public class ScheduledVisitQueryBuilder {
         queryBuilder.append(groupBy);
 
         //Wrap constructed SQL query with where criteria in pagination query
-        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset());
+        return addPaginationWrapper(queryBuilder.toString(), preparedStmtList, urlParams.getLimit(), urlParams.getOffset(), criteria.getSortDirection());
     }
 
     private void extracted(Long lastChangedSince, List<Object> preparedStmtList, ScheduledVisitSearchCriteria criteria, StringBuilder queryBuilder) {
@@ -142,6 +142,12 @@ public class ScheduledVisitQueryBuilder {
             addClauseIfRequired(preparedStmtList, queryBuilder);
             queryBuilder.append(" sv.facility_id IN (").append(createQuery(criteria.getFacilityIds())).append(")");
             preparedStmtList.addAll(criteria.getFacilityIds());
+        }
+
+        if (StringUtils.isNotBlank(criteria.getFacilityName())) {
+            addClauseIfRequired(preparedStmtList, queryBuilder);
+            queryBuilder.append(" LOWER(COALESCE(sv.facility_name, f.facility_name)) LIKE ? ");
+            preparedStmtList.add("%" + criteria.getFacilityName().trim().toLowerCase() + "%");
         }
 
         if (!CollectionUtils.isEmpty(criteria.getProjectsIds())) {
@@ -205,10 +211,11 @@ public class ScheduledVisitQueryBuilder {
         }
     }
 
-    private String addPaginationWrapper(String query, List<Object> preparedStmtList, Integer limitParam, Integer offsetParam) {
+    private String addPaginationWrapper(String query, List<Object> preparedStmtList, Integer limitParam, Integer offsetParam, String sortDirection) {
         int limit = config.getDefaultLimit();
         int offset = config.getDefaultOffset();
-        String finalQuery = paginationWrapper.replace("{}", query);
+        String direction = "ASC".equalsIgnoreCase(sortDirection) ? "ASC" : "DESC";
+        String finalQuery = String.format(paginationWrapper, direction).replace("{}", query);
 
         if (limitParam != null) {
             if (limitParam <= config.getMaxLimit())

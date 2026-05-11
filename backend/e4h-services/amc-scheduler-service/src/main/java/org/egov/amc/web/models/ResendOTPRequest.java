@@ -3,7 +3,6 @@ package org.egov.amc.web.models;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,4 +21,7 @@ import java.util.List;
 public class ResendOTPRequest {
     @JsonProperty("RequestInfo")
     private @NotNull @Valid RequestInfo requestInfo = null;
+
+    @JsonProperty("visitId")
+    private @NotNull String visitId;
 }

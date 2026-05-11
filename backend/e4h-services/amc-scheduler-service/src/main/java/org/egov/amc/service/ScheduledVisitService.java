@@ -20,8 +20,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
 import java.sql.Array;
 import java.sql.Timestamp;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -90,6 +92,12 @@ public class ScheduledVisitService {
                         scheduledVisits.get(0).getId());
                 throw new CustomException("CREATE_VISIT_ERROR", "A visit number: "+ scheduledVisit.getVisitNumber()+" already exist for configuration "+scheduledVisit.getAmcConfigurationId());
             }
+
+            Facility facility = getFacilityById(scheduledVisit.getFacilityId());
+            if (facility == null) {
+                throw new CustomException("CREATE_VISIT_ERROR", "Facility not found for facilityId: " + scheduledVisit.getFacilityId());
+            }
+            scheduledVisit.setFacilityName(facility.getFacilityName());
 
             // remove Duplicate Assignments
             Set<String> seenUsers = new HashSet<>();
@@ -178,25 +186,64 @@ public class ScheduledVisitService {
     }
 
     public OtpResponse resendOTP(ResendOTPRequest request) {
-        if(request.getRequestInfo()==null || request.getRequestInfo().getUserInfo() ==null || request.getRequestInfo().getUserInfo().getUuid().isEmpty())
-            throw new CustomException("GENERATE_TOKEN", "User ID is not found in requestInfo");
+        if(request == null || request.getRequestInfo() == null || request.getRequestInfo().getUserInfo() == null
+                || request.getRequestInfo().getUserInfo().getTenantId() == null
+                || request.getRequestInfo().getUserInfo().getTenantId().trim().isEmpty())
+            throw new CustomException("GENERATE_TOKEN", "Tenant ID is not found in requestInfo");
 
-        Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
-        if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
-            OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), request.getRequestInfo().getUserInfo().getTenantId());
-            if (otpResponse !=null && otpResponse.getOtp()!=null){
-                log.debug("OTP generated successfully for mobile number ending with: {}",
-                        employee.getUser().getMobileNumber() != null && employee.getUser().getMobileNumber().length() > 4
-                        ? employee.getUser().getMobileNumber().substring(employee.getUser().getMobileNumber().length() - 4)
-                        : "N/A");
-                log.info("OTP generated for resend request, userId: {}", request.getRequestInfo().getUserInfo().getUuid());
-                return  otpResponse;
-            }
-            else
-                throw new CustomException("GENERATE_TOKEN", "Error occured while generating OTP");
+        if (request.getVisitId() == null || request.getVisitId().trim().isEmpty()) {
+            throw new CustomException("GENERATE_TOKEN", "Visit ID is mandatory for resend OTP");
         }
-        else
-            throw new CustomException("GENERATE_TOKEN", "User in requestInfo not found");
+
+        String tenantId = request.getRequestInfo().getUserInfo().getTenantId();
+        log.info("Resend OTP requested for visitId={} tenantId={}", request.getVisitId(), tenantId);
+
+        ScheduledVisitSearchCriteria criteria = ScheduledVisitSearchCriteria.builder()
+                .ids(List.of(request.getVisitId()))
+                .tenantId(tenantId)
+                .build();
+        ScheduledVisitSearchRequest searchRequest = ScheduledVisitSearchRequest.builder()
+                .RequestInfo(request.getRequestInfo())
+                .searchCriteria(criteria)
+                .build();
+        List<ScheduledVisit> scheduledVisitsList = searchScheduledVisit(searchRequest, 10, 0, tenantId, false, null);
+        if (scheduledVisitsList == null || scheduledVisitsList.isEmpty()) {
+            throw new CustomException("GENERATE_TOKEN", "Visit not found with ID: " + request.getVisitId());
+        }
+
+        ScheduledVisit existingVisit = scheduledVisitsList.get(0);
+        if (existingVisit.getFacilityId() == null || existingVisit.getFacilityId().trim().isEmpty()) {
+            log.error("RESEND_OTP failed: facilityId missing for visitId={}", existingVisit.getId());
+            throw new CustomException("GENERATE_TOKEN", "Facility ID is missing for visit: " + existingVisit.getId());
+        }
+
+        log.debug("Fetching facility for resend OTP visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
+        Facility facility = getFacilityById(existingVisit.getFacilityId());
+        if (facility == null) {
+            log.error("RESEND_OTP failed: facility not found for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
+            throw new CustomException("GENERATE_TOKEN", "Facility not found for facilityId: " + existingVisit.getFacilityId());
+        }
+
+        String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId() : facility.getNinId();
+        if (username == null || username.trim().isEmpty()) {
+            log.error("RESEND_OTP failed: no hfrId/ninId for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
+            throw new CustomException("GENERATE_TOKEN", "HFR ID or NIN ID is missing in facility details for facilityId: " + existingVisit.getFacilityId());
+        }
+        log.info("Resolved HRMS username for resend OTP visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
+
+        Employee employee = getUserByUsername(request, username);
+        if (employee != null && employee.getUser() != null && employee.getUser().getMobileNumber() != null && !employee.getUser().getMobileNumber().isEmpty()) {
+            OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
+            if (otpResponse != null && otpResponse.getOtp() != null) {
+                log.info("OTP {} generated for this mobile number {}", otpResponse.getOtp().getOtp(), employee.getUser().getMobileNumber());
+                sendOtpSms(employee.getUser().getMobileNumber(), otpResponse.getOtp().getOtp(), existingVisit.getTenantId());
+                return otpResponse;
+            } else {
+                throw new CustomException("GENERATE_TOKEN", "Error occured while generating OTP");
+            }
+        } else {
+            throw new CustomException("GENERATE_TOKEN", "Employee or mobile number not found for username: " + username);
+        }
     }
 
     public List<ScheduledVisit> updateVisitWorkflow(VisitReportSubmissionRequest request) throws Exception {
@@ -219,8 +266,28 @@ public class ScheduledVisitService {
         if ("SUBMIT_VISIT_REPORT".equalsIgnoreCase(request.getWorkflow().getAction())) {
             // We need to update visit report on existing visit
             existingVisit.setVisitReport(request.getVisitReport());
-            // We need to send OTP to AMC_FIELD_STAFF
-            Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+            log.info("SUBMIT_VISIT_REPORT started for visitId={} tenantId={}", existingVisit.getId(), existingVisit.getTenantId());
+            // We need to send OTP to facility POC resolved by HFR username(HCR user)
+            if (existingVisit.getFacilityId() == null || existingVisit.getFacilityId().trim().isEmpty()) {
+                log.error("SUBMIT_VISIT_REPORT failed: facilityId missing for visitId={}", existingVisit.getId());
+                throw new CustomException("UPDATE_WORKFLOW", "Facility ID is missing for visit: " + existingVisit.getId());
+            }
+
+            log.debug("Fetching facility for visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
+            Facility facility = getFacilityById(existingVisit.getFacilityId());
+            if (facility == null) {
+                log.error("SUBMIT_VISIT_REPORT failed: facility not found for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
+                throw new CustomException("UPDATE_WORKFLOW", "Facility not found for facilityId: " + existingVisit.getFacilityId());
+            }
+
+            String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId(): facility.getNinId();
+            if (username == null || username.trim().isEmpty()) {
+                log.error("SUBMIT_VISIT_REPORT failed: no hfrId/ninId for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
+                throw new CustomException("UPDATE_WORKFLOW", "HFR ID or NIN ID is missing in facility details for facilityId: " + existingVisit.getFacilityId());
+            }
+            log.info("Resolved HRMS username for visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
+
+            Employee employee = getUserByUsername(request, username);
             if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
                 log.trace("Creating OTP for visit report submission, visitId: {}", existingVisit.getId());
                 OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
@@ -228,6 +295,7 @@ public class ScheduledVisitService {
                     log.debug("OTP generated successfully for visitId: {}", existingVisit.getId());
                     log.info("OTP generated for visit report submission, visitId: {}", existingVisit.getId());
                     existingVisit.getVisitReport().setOtpReference(otpResponse.getOtp().getOtp());
+                    sendOtpSms(employee.getUser().getMobileNumber(), otpResponse.getOtp().getOtp(), existingVisit.getTenantId());
                 }
                 else {
                     log.warn("OTP generation returned null response for visit: {}", existingVisit.getId());
@@ -256,7 +324,26 @@ public class ScheduledVisitService {
                 existingVisit.getVisitReport().setOtpVerifiedAt(new Timestamp(System.currentTimeMillis()).getTime());
             }
             else{
-                Employee employee =  getUserById(request, request.getRequestInfo().getUserInfo().getUuid());
+                if (existingVisit.getFacilityId() == null || existingVisit.getFacilityId().trim().isEmpty()) {
+                    log.error("SUBMIT_OTP failed: facilityId missing for visitId={}", existingVisit.getId());
+                    throw new CustomException("UPDATE_WORKFLOW", "Facility ID is missing for visit: " + existingVisit.getId());
+                }
+
+                log.debug("Fetching facility for OTP validation visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
+                Facility facility = getFacilityById(existingVisit.getFacilityId());
+                if (facility == null) {
+                    log.error("SUBMIT_OTP failed: facility not found for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
+                    throw new CustomException("UPDATE_WORKFLOW", "Facility not found for facilityId: " + existingVisit.getFacilityId());
+                }
+
+                String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId(): facility.getNinId();
+                if (username == null || username.trim().isEmpty()) {
+                    log.error("SUBMIT_OTP failed: no hfrId/ninId for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
+                    throw new CustomException("UPDATE_WORKFLOW", "HFR ID or NIN ID is missing in facility details for facilityId: " + existingVisit.getFacilityId());
+                }
+                log.info("Resolved HRMS username for OTP validation visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
+
+                Employee employee = getUserByUsername(request, username);
                 if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
                     OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
                     if (otpResponse !=null && otpResponse.getOtp()!=null){
@@ -297,6 +384,7 @@ public class ScheduledVisitService {
                 .tenantId(existingVisit.getTenantId())
                 .amcConfigurationId(existingVisit.getAmcConfigurationId())
                 .facilityId(existingVisit.getFacilityId())
+                .facilityName(existingVisit.getFacilityName())
                 .visitNumber(existingVisit.getVisitNumber())
                 .status(existingVisit.getStatus())
                 .scheduledDate(existingVisit.getScheduledDate())
@@ -716,6 +804,25 @@ public class ScheduledVisitService {
         return otpResponse;
     }
 
+    private void sendOtpSms(String mobileNumber, String otp, String tenantId) {
+        if (Boolean.FALSE.equals(amcServiceConfiguration.getSmsEnabled())) {
+            log.info("SMS notification is disabled. Skipping OTP SMS for mobile number {}", mobileNumber);
+            return;
+        }
+        if (mobileNumber == null || mobileNumber.isEmpty() || otp == null || otp.isEmpty()) {
+            log.info("Skipping OTP SMS due to missing mobile number or OTP value");
+            return;
+        }
+
+        String smsMessage = amcServiceConfiguration.getOtpSmsTemplate().replace("{otp}", otp);
+        SMSRequest smsRequest = SMSRequest.builder()
+                .mobileNumber(mobileNumber)
+                .message(smsMessage)
+                .build();
+        producer.push(amcServiceConfiguration.getSmsNotificationTopic(), smsRequest);
+        log.info("OTP SMS queued for mobile number {} in tenant {}", mobileNumber, tenantId);
+    }
+
     public OtpResponse validateOTP(String identity, String tenantId, String otpCode) {
         log.trace("Entering validateOTP method for tenantId: {}", tenantId);
         String url = amcServiceConfiguration.getOtpServiceHost() + amcServiceConfiguration.getOtpServiceValidateUrl();
@@ -750,6 +857,35 @@ public class ScheduledVisitService {
             throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with ID: " + userId);
         }
         return employeeResponse.getEmployees().get(0);
+    }
+
+    public Employee getUserByUsername(Object request, String username) {
+//        String encodedUsername = URLEncoder.encode(username, StandardCharsets.UTF_8);
+        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl() + "?tenantId=in&codes=" + username;
+        log.debug("Calling HRMS employee search by username");
+        Object response = requestRepository.fetchResult(new StringBuilder(url), request);
+
+        EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
+        if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
+            log.warn("No HRMS employee found for username={}", username);
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with username: " + username);
+        }
+        log.debug("HRMS employee found for username={}", username);
+        return employeeResponse.getEmployees().get(0);
+    }
+
+    private Facility getFacilityById(String facilityId) {
+//        String encodedFacilityId = URLEncoder.encode(facilityId, StandardCharsets.UTF_8);
+        String url = amcServiceConfiguration.getFacilityServiceHost() + amcServiceConfiguration.getFacilityServiceSearchUrlV2() + "?facilityId=" + facilityId;
+        log.debug("Calling facility search v2 for facilityId={}", facilityId);
+        Object response = requestRepository.fetchResult(new StringBuilder(url));
+        FacilitySearchResponse facilityResponse = mapper.convertValue(response, FacilitySearchResponse.class);
+        if (facilityResponse == null || facilityResponse.getFacilities() == null || facilityResponse.getFacilities().isEmpty()) {
+            log.warn("No facility found for facilityId={}", facilityId);
+            return null;
+        }
+        log.debug("Facility found for facilityId={}", facilityId);
+        return facilityResponse.getFacilities().get(0);
     }
 
 }
