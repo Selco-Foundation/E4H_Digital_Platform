@@ -441,7 +441,7 @@ def add_health_category_hfr_nin_validations(
     Excel client-side validation: when Category is HEALTH, HFR ID and NIN ID must be filled.
     Matches server-side facility_validator messaging.
     """
-    category_labels = {"category", "Category of HC (Mandatory)"}
+    category_labels = {"category", "Category of Facility (Mandatory)"}
     try:
         wb = load_workbook(file_path)
         if sheet_name not in wb.sheetnames:

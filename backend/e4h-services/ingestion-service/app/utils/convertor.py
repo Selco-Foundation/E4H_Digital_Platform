@@ -509,8 +509,8 @@ def create_facility_payload(request_info: RequestInfo, row: Series, are_faciliti
     facility_type_name = safe_get(row, 'Type of HC (Mandatory)')
     facility_type_code = get_mdms_code_by_name(facility_schema, 'Type of HC', facility_type_name)
 
-    facility_category_name = safe_get(row, 'Category of HC (Mandatory)')
-    facility_category_code = get_mdms_code_by_name(facility_schema, 'Category of HC', facility_category_name)
+    facility_category_name = safe_get(row, 'Category of Facility (Mandatory)')
+    facility_category_code = get_mdms_code_by_name(facility_schema, 'Category of Facility', facility_category_name)
 
     solar_solution_design_type_name = safe_get(row, 'Solution Design Type (Mandatory)')
     solar_solution_design_type_code = get_mdms_code_by_name(facility_schema, 'Solution Design Type', solar_solution_design_type_name)

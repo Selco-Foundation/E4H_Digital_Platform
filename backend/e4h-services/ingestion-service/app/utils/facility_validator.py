@@ -19,7 +19,7 @@ def normalize_facility_category_value(row: pd.Series) -> str:
     Returns upper-cased value or '' when unset (IDs stay optional).
     """
     candidates = (
-        "Category of HC (Mandatory)",
+        "Category of Facility (Mandatory)",
         "Facility Category (Mandatory)",
     )
     for key in candidates:
@@ -183,9 +183,31 @@ def validate_columns(df, schema, add_err):
             # --- Dropdown check (MDMS values) ---
             mdms_values = col.get("mdms_values")
             if mdms_values:
-                allowed_values = [v.get("name") for v in mdms_values if v.get("name")]
+                effective_mdms = mdms_values
+                facility_cat_for_type = ""
+                if col.get("code") == "facility_type":
+                    facility_cat_for_type = normalize_facility_category_value(df.iloc[i])
+                    if facility_cat_for_type in ("HEALTH", "ANGANWADI"):
+                        effective_mdms = [
+                            v
+                            for v in mdms_values
+                            if str(v.get("facilityCategory") or "").strip().upper()
+                            == facility_cat_for_type
+                        ]
+                allowed_values = [v.get("name") for v in effective_mdms if v.get("name")]
                 if str_val not in allowed_values:
-                    add_err(i, f"Invalid value in column '{col_name}'")
+                    if col.get("code") == "facility_type" and facility_cat_for_type in (
+                        "HEALTH",
+                        "ANGANWADI",
+                    ):
+                        add_err(
+                            i,
+                            f"{col_name} must be a facility type for Facility Category "
+                            f"'{facility_cat_for_type}' (MDMS facilityCategory); "
+                            f"'{str_val}' is not valid for this category.",
+                        )
+                    else:
+                        add_err(i, f"Invalid value in column '{col_name}'")
 
 def validate_unique_ids(df, schema, add_err):
     unique_columns = [c for c in schema["column_list"] if c["type"] == "Unique_Id"]
