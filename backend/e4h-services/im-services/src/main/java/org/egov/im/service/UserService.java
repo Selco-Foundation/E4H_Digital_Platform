@@ -147,10 +147,9 @@ public class UserService {
         log.trace("UserService::enrichUser method invoked");
         RequestInfo requestInfo = request.getRequestInfo();
         String accountId = request.getIncident().getReporter().getUuid();
-        String tenantId = request.getIncident().getReporter().getTenantId();
 
         log.trace("Searching user by accountId");
-        UserDetailResponse userDetailResponse = searchUser(tenantId,accountId,null);
+        UserDetailResponse userDetailResponse = searchUser(null,accountId,null);
 
         if(userDetailResponse.getUser().isEmpty()) {
             log.error("No user found for accountId: {}", accountId);
@@ -217,7 +216,6 @@ public class UserService {
         UserSearchRequest userSearchRequest =new UserSearchRequest();
         userSearchRequest.setActive(true);
         userSearchRequest.setUserType(USERTYPE_EMPLOYEE);
-        userSearchRequest.setTenantId(stateLevelTenant);
 
         if(StringUtils.isEmpty(accountId) && StringUtils.isEmpty(userName))
             return null;
@@ -227,6 +225,9 @@ public class UserService {
 
         if(!StringUtils.isEmpty(userName))
             userSearchRequest.setUserName(userName);
+
+        if(!StringUtils.isEmpty(stateLevelTenant))
+            userSearchRequest.setTenantId(stateLevelTenant);
 
         log.debug("Searching user with stateLevelTenant={}, accountId={}, userName={}", stateLevelTenant, accountId, userName);
         StringBuilder uri = new StringBuilder(config.getUserHost()).append(config.getUserSearchEndpoint());
