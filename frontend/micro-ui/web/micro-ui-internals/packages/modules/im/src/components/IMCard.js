@@ -10,7 +10,7 @@ const IMCard = () => {
   const [total, setTotal] = useState("-");
   const { userName, roles } = Digit.UserService.getUser().info;
   const userRoles = Digit.SessionStorage.get("User")?.info?.roles || [];
-  const isTechPocUser = roles?.every((role) => role.code === "COMPLAINT_FACILITATOR_2" || role.code === "EMPLOYEE");
+  const isTechPocUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_2");
 
   const isCodePresent = (array, codeToCheck) =>{
     return array.some(item => item.code === codeToCheck);
