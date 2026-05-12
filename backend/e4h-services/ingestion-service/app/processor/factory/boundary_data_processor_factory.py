@@ -1,6 +1,7 @@
 from app.core.logging import AppLogger
 from app.ingest.boundary_excel_data_loader import BoundaryExcelDataLoader
 from app.ingest.boundary_hierarchy_validator import BoundaryHierarchyValidator
+from app.ingest.boundary_india_country_validator import BoundaryIndiaCountryValidator
 from app.ingest.excel_data_writer import ExcelDataWriter
 from app.ingest.pattern_validator import PatternValidator
 from app.ingest.required_field_validator import RequiredFieldValidator
@@ -41,6 +42,7 @@ class BoundaryDataProcessorFactory:
                 raise Exception("Could not set up MDMS validators")
 
         # Add boundary-specific validators
+        validators.append(BoundaryIndiaCountryValidator())
         validators.append(BoundaryHierarchyValidator())
 
         # Initialize data writer for output
