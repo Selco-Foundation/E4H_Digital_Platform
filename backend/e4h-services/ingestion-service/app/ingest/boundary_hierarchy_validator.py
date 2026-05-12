@@ -5,8 +5,8 @@ import pandas as pd
 
 from app.ingest.service.validator import Validator
 
-# Must match BoundaryDataProcessor.to_camel_case / BoundaryExcelDataLoader.to_camel_case
-_ALLOWED_COUNTRY_SEGMENT = "India"
+# After _boundary_segment_code, only this country is allowed (case-insensitive: INDIA, India, india).
+_ALLOWED_COUNTRY_SEGMENT_LOWER = "india"
 
 
 def _boundary_segment_code(cell) -> str:
@@ -47,7 +47,7 @@ class BoundaryIndiaCountryValidator(Validator):
             segment = _boundary_segment_code(raw)
             if not segment:
                 continue
-            if segment != _ALLOWED_COUNTRY_SEGMENT:
+            if segment.lower() != _ALLOWED_COUNTRY_SEGMENT_LOWER:
                 result_df.at[idx, "error"] = (
                     f"{result_df.at[idx, 'error']}"
                     f"Country must be India; '{raw}' is not allowed. "
