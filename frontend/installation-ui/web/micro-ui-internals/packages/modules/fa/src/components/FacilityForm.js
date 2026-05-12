@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../hooks/useBoundary";
+import CommonUtils from "../utilities/CommonUtils";
 
 const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}, formToast, setFormToast }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const [defaultValues, setDefaultValues] = useState({});
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+  const [selectedFacilityCategory, setSelectedFacilityCategory] = useState({});
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -35,6 +37,9 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
       {
         name: "FacilityType",
       },
+      {
+        name: "FacilityCategory",
+      },
     ],
     {
       select: (data) => data,
@@ -47,8 +52,13 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
     { code: "NO", name: t("TL_COMMON_NO") },
   ];
 
-  const solarSolutionDesignTypes = mdmsResponse?.facility?.SolarSolutionDesignType || [];
-  const facilityTypes = mdmsResponse?.facility?.FacilityType || [];
+  const sortMenu = (options, field = "name") => {
+    return options.sort((a, b) => a[field].localeCompare(b[field]));
+  }
+
+  const solarSolutionDesignTypes = sortMenu(mdmsResponse?.facility?.SolarSolutionDesignType || []);
+  const facilityTypes = sortMenu(mdmsResponse?.facility?.FacilityType || []);
+  const facilityCategories = sortMenu(mdmsResponse?.facility?.FacilityCategory || []);
 
   const isFormLoading = boundaryLoading || mdmsLoading;
 
@@ -126,6 +136,20 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           },
           {
             inline: true,
+            label: "FACILITY_CATEGORY",
+            isMandatory: true,
+            key: "facilityCategory",
+            type: "dropdown",
+            populators: {
+              name: "facilityCategory",
+              error: t("CORE_COMMON_REQUIRED"),
+              optionsKey: "name",
+              required: true,
+              options: facilityCategories,
+            },
+          },
+          {
+            inline: true,
             label: "FACILITY_TYPE",
             isMandatory: true,
             key: "facilityType",
@@ -135,7 +159,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               error: t("CORE_COMMON_REQUIRED"),
               optionsKey: "name",
               required: true,
-              options: facilityTypes,
+              options: facilityTypes.filter((facilityType) => facilityType.facilityCategory === selectedFacilityCategory?.code),
             },
           },
           {
@@ -277,7 +301,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
         ],
       },
     ],
-    [t, mdmsResponse, createdFacility, boundaryData, solarSolutionDesignTypes, facilityTypes]
+    [t, mdmsResponse, createdFacility, boundaryData, selectedFacilityCategory]
   );
 
   const handleFormSubmit = (formData) => {
@@ -292,6 +316,12 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
       });
     }
   };
+
+  const handleFormChange = (_, formData) => {
+    if (CommonUtils.isNotEqual(formData?.facilityCategory, selectedFacilityCategory)) {
+      setSelectedFacilityCategory(formData?.facilityCategory);
+    }
+  }
 
   if (isFormLoading) {
     return (
@@ -323,6 +353,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
         defaultValues={defaultValues}
         config={addFacilityFormConfig}
         onSubmit={handleFormSubmit}
+        onFormValueChange={handleFormChange}
         label={t("CORE_COMMON_SAVE")}
         heading={""}
         cardStyle={{ boxShadow: "none" }}

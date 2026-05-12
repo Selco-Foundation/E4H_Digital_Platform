@@ -108,9 +108,11 @@ const FacilityDetails = () => {
   const handleFacilityUpdate = async (formData) => {
     try {
       setBlockUI(true);
+      const facilityCategoryValue = formData?.facilityCategory;
       const facilityTypeValue = formData?.facilityType;
       const solarDesignValue = formData?.solarSolutionDesignType;
 
+      const facilityCategoryCode = facilityCategoryValue?.code;
       const facilityTypeCode = facilityTypeValue?.code;
       const solarDesignCode = solarDesignValue?.code;
 
@@ -119,6 +121,7 @@ const FacilityDetails = () => {
           ...facilityData?.facility,
           tenant_id: tenantId,
           facility_name: formData?.facilityName,
+          facility_category: facilityCategoryCode,
           facility_type: facilityTypeCode,
           isActive: formData?.isOperational?.code === "YES",
           isOnmReady: formData?.isOnmReady?.code === "YES",
