@@ -44,10 +44,6 @@ public class OrganisationUserService {
 
     private final UserUtil userUtil;
 
-    private static final String EMPLOYEE_ROLE_CODE = "EMPLOYEE";
-    private static final String EMPLOYEE_ROLE_NAME = "Employee";
-    private static final String DEFAULT_ROLE_TENANT = "in";
-
     @Autowired
     public OrganisationUserService(OrganisationUserServiceValidator validator, OrganisationUserRepository userRepository, OrganisationUserEnrichmentService organisationEnrichmentService, OrganizationProducer organizationProducer, Configuration configuration, NotificationService notificationService, HRMSUtils hrmsUtils, ObjectMapper mapper, UserUtil userUtil) {
         this.validator = validator;
@@ -64,8 +60,6 @@ public class OrganisationUserService {
 
     public OrgUserRequest createOrgUser(OrgUserRequest request) {
         log.info("received request to create org user {} ", request );
-
-        ensureDefaultEmployeeRoleForOrgUser(request);
 
         validator.validateCreateOrgUserRequest(request);
 
@@ -89,36 +83,6 @@ public class OrganisationUserService {
         }
 
         return request;
-    }
-
-    /**
-     * Ensures vendor org users created via /organisation/v1/user/_create get the EMPLOYEE role (and user type)
-     * when not already provided, so HRMS / egov-user behave like other internal staff users.
-     */
-    private void ensureDefaultEmployeeRoleForOrgUser(OrgUserRequest request) {
-        User user = request.getUser();
-        if (user == null) {
-            return;
-        }
-        if (StringUtils.isBlank(user.getType())) {
-            user.setType(EMPLOYEE_ROLE_CODE);
-        }
-        if (user.getRoles() == null) {
-            user.setRoles(new ArrayList<>());
-        }
-        boolean hasEmployeeRole = user.getRoles().stream()
-                .filter(Objects::nonNull)
-                .anyMatch(r -> r.getCode() != null && EMPLOYEE_ROLE_CODE.equalsIgnoreCase(r.getCode()));
-        if (!hasEmployeeRole) {
-            String roleTenantId = StringUtils.isNotBlank(user.getTenantId())
-                    ? userUtil.getStateLevelTenant(user.getTenantId())
-                    : DEFAULT_ROLE_TENANT;
-            user.getRoles().add(Role.builder()
-                    .code(EMPLOYEE_ROLE_CODE)
-                    .name(EMPLOYEE_ROLE_NAME)
-                    .tenantId(roleTenantId)
-                    .build());
-        }
     }
 
     public List<OrgUser> searchOrganisationUsers(OrgUserSearchRequest request, URLParams urlParams) {

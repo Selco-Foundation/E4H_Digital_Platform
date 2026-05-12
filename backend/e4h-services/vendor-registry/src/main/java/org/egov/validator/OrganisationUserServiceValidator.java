@@ -53,6 +53,10 @@ public class OrganisationUserServiceValidator {
     private static final String INVALID_ORG_SEARCH_DATE ="INVALID_ORG_SEARCH_DATE";
     /** Default country jurisdiction when none are supplied; must match {@link HRMSUtils#buildJurisdictions(List)}. */
     private static final String DEFAULT_HRMS_JURISDICTION_BOUNDARY = "India";
+
+    private static final String EMPLOYEE_ROLE_CODE = "EMPLOYEE";
+    private static final String EMPLOYEE_ROLE_NAME = "Employee";
+    private static final String DEFAULT_ROLE_TENANT = "in";
     @Autowired
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
                                             OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil, OrganisationUserRepository userRepository, ObjectMapper mapper) {
@@ -136,6 +140,7 @@ public class OrganisationUserServiceValidator {
                 if(encryptedPocMobileNumber!=null && !encryptedPocMobileNumber.isBlank()){
                     orgUser.setMobileNumber(encryptedPocMobileNumber);
                 }
+
                 // Call HRMS service to create user
                 User user = User.builder()
                         .userName(orgUser.getUserName())
@@ -151,6 +156,8 @@ public class OrganisationUserServiceValidator {
                         .roles(orgUser.getRoles())
                         .jurisdictions(orgUser.getJurisdictions())
                         .build();
+
+                ensureDefaultEmployeeRoleForOrgUser(user);
 
                 Employee employee1 = hrmsUtils.buildEmployee(user, orgType);
                 EmployeeRequest employeeRequest = EmployeeRequest.builder().requestInfo(request.getRequestInfo()).employees(List.of(employee1)).build();
@@ -731,6 +738,32 @@ public class OrganisationUserServiceValidator {
             }
         }
         return -1;
+    }
+
+    /**
+     * Ensures vendor org users created via /organisation/v1/user/_create get the EMPLOYEE role (and user type)
+     * when not already provided, so HRMS / egov-user behave like other internal staff users.
+     */
+    private void ensureDefaultEmployeeRoleForOrgUser(User user) {
+        if (StringUtils.isBlank(user.getType())) {
+            user.setType(EMPLOYEE_ROLE_CODE);
+        }
+        if (user.getRoles() == null) {
+            user.setRoles(new ArrayList<>());
+        }
+        boolean hasEmployeeRole = user.getRoles().stream()
+                .filter(Objects::nonNull)
+                .anyMatch(r -> r.getCode() != null && EMPLOYEE_ROLE_CODE.equalsIgnoreCase(r.getCode()));
+        if (!hasEmployeeRole) {
+            String roleTenantId = StringUtils.isNotBlank(user.getTenantId())
+                    ? userUtil.getStateLevelTenant(user.getTenantId())
+                    : DEFAULT_ROLE_TENANT;
+            user.getRoles().add(Role.builder()
+                    .code(EMPLOYEE_ROLE_CODE)
+                    .name(EMPLOYEE_ROLE_NAME)
+                    .tenantId(roleTenantId)
+                    .build());
+        }
     }
 
     private static boolean isDefaultIndiaJurisdictionBoundary(String boundary) {
