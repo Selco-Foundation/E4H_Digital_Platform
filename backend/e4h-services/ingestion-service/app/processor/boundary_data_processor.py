@@ -1,4 +1,5 @@
 import os
+import string
 from typing import List, Dict, Set, Tuple
 import re
 import pandas as pd
@@ -104,6 +105,11 @@ class BoundaryDataProcessor:
             district = self.to_camel_case(str(row.get('District', '')).strip())
             block = self.to_camel_case(str(row.get('Block', '')).strip())
 
+            country_label = self.boundary_localization_label(row.get("Country"))
+            state_label = self.boundary_localization_label(row.get("State"))
+            district_label = self.boundary_localization_label(row.get("District"))
+            block_label = self.boundary_localization_label(row.get("Block"))
+
             # Country level
             if country:
                 full_code = country
@@ -111,6 +117,7 @@ class BoundaryDataProcessor:
                 if country not in self.boundary_data["Country"]:
                     self.boundary_data["Country"][country] = {
                         "name": country,
+                        "localization_label": country_label or country,
                         "parent": None,
                         "full_code": full_code
                     }
@@ -122,6 +129,7 @@ class BoundaryDataProcessor:
                 if state not in self.boundary_data["State"]:
                     self.boundary_data["State"][state] = {
                         "name": state,
+                        "localization_label": state_label or state,
                         "parent": country,
                         "full_code": full_code
                     }
@@ -133,6 +141,7 @@ class BoundaryDataProcessor:
                 if district not in self.boundary_data["District"]:
                     self.boundary_data["District"][district] = {
                         "name": district,
+                        "localization_label": district_label or district,
                         "parent": f"{country}_{state}",
                         "full_code": full_code
                     }
@@ -144,6 +153,7 @@ class BoundaryDataProcessor:
                 if block not in self.boundary_data["Block"]:
                     self.boundary_data["Block"][block] = {
                         "name": block,
+                        "localization_label": block_label or block,
                         "parent": f"{country}_{state}_{district}",
                         "full_code": full_code
                     }
@@ -288,8 +298,8 @@ class BoundaryDataProcessor:
                 full_code = data["full_code"]
                 if full_code in self.failed_boundaries:
                     continue
-                # message = display name (e.g. "Karnataka", "Bangalore Urban"), not full code
-                display_name = data.get("name") or code
+                # Human-readable label for localization (spaces preserved; leading/trailing stripped)
+                display_name = data.get("localization_label") or data.get("name") or code
                 messages.append({
                     "code": f"Boundary_{full_code}",
                     "message": display_name,
@@ -318,10 +328,10 @@ class BoundaryDataProcessor:
                 row_failed = False
                 row_errors = []
 
-                country = str(row.get('Country', '')).strip()
-                state = str(row.get('State', '')).strip()
-                district = str(row.get('District', '')).strip()
-                block = str(row.get('Block', '')).strip()
+                country = self.to_camel_case(str(row.get('Country', '')).strip())
+                state = self.to_camel_case(str(row.get('State', '')).strip())
+                district = self.to_camel_case(str(row.get('District', '')).strip())
+                block = self.to_camel_case(str(row.get('Block', '')).strip())
 
                 # Check each level that exists in this row
                 if country:
@@ -376,8 +386,18 @@ class BoundaryDataProcessor:
 
         cleaned = re.sub(r"[_\-]+", " ", text.strip())
 
-        # Split sur espaces
         parts = cleaned.split()
 
-        # Met juste la première lettre en majuscule, sans forcer le reste en minuscule
+        # First letter of each token uppercased; concatenated for boundary codes (no spaces)
         return "".join(word[:1].upper() + word[1:] for word in parts)
+
+    @staticmethod
+    def boundary_localization_label(cell) -> str:
+        """Trim ends, collapse internal whitespace to single spaces, title-case each word (e.g. 'West Bengal')."""
+        if cell is None or (isinstance(cell, float) and pd.isna(cell)):
+            return ""
+        raw = str(cell).strip()
+        if not raw:
+            return ""
+        normalized = re.sub(r"\s+", " ", raw)
+        return string.capwords(normalized)
