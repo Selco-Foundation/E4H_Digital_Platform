@@ -145,6 +145,7 @@ public class FacilityService {
                         .facilityPocName(facilityCreate.getFacilityPocName())
                         .facilityPocEmail(facilityCreate.getFacilityPocEmail())
                         .facilityPocPhone(facilityCreate.getFacilityPocPhone())
+                        .facilityPocUsername(facilityCreate.getFacilityPocUsername())
                         .hfrId(facilityCreate.getHfrId())
                         .ninId(facilityCreate.getNinId())
                         .userId(facilityCreate.getUserId())
@@ -403,8 +404,9 @@ public class FacilityService {
     }
 
     /**
-     * Creates POC user as HRMS employee if not exists (checks by phone number uniqueness).
-     * Validates required fields (HFR ID, POC contact, POC name) before attempting creation.
+     * Creates POC user as HRMS employee if not exists (checks by employee username / code in HRMS).
+     * For {@code ANGANWADI} facilities, username is {@code facilityPocUsername} (HFR not required).
+     * Otherwise validates HFR ID (or NIN-backed flow), POC contact, and POC name before attempting creation.
      * Supports both direct fields (facilityPocName, facilityPocPhone, hfrId) and nested facilityDetails.
      *
      * @param facility The facility for which to create POC user
@@ -441,10 +443,30 @@ public class FacilityService {
             facilityDetails.setPocEmail(facility.getFacilityPocEmail().trim());
         }
 
-        // Validate required fields
-        if (facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank() ||
-            facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank() ||
-            facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
+        String normalizedCategory = facility.getFacilityCategory() == null
+                ? ""
+                : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+
+        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR + contact + name)
+        if (isAnganwadi) {
+            String pocUsername = facility.getFacilityPocUsername() == null
+                    ? ""
+                    : facility.getFacilityPocUsername().trim();
+            if (pocUsername.isBlank()
+                    || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
+                    || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
+                log.warn("Cannot create POC user for ANGANWADI facility {}: missing facility POC username, POC contact, or POC name. " +
+                                "POC username: {}, POC Contact: {}, POC Name: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(pocUsername.isBlank() ? null : pocUsername),
+                        sanitizeForLog(facilityDetails.getPocContact()),
+                        sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
+                return;
+            }
+        } else if (facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()
+                || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
+                || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
             log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name. " +
                     "HFR ID: {}, POC Contact: {}, POC Name: {}",
                     sanitizeForLog(facility.getFacilityId()),
@@ -454,8 +476,14 @@ public class FacilityService {
             return;
         }
 
-
-        String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId(): facility.getNinId();
+        String username;
+        if (isAnganwadi) {
+            username = facility.getFacilityPocUsername().trim();
+        } else {
+            username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()
+                    ? facility.getHfrId().trim()
+                    : facility.getNinId();
+        }
         // Check if employee already exists by mobile number
         boolean employeeExists = hrmsService.employeeExistsByUsername(
                 username,
@@ -467,8 +495,8 @@ public class FacilityService {
             // Create POC user as HRMS employee with COMPLAINANT and EMPLOYEE roles
             boolean created = hrmsService.createFacilityPOCEmployee(facility, requestInfo);
             if (created) {
-                log.info("Successfully created POC user for facility {} with HFR ID {}",
-                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
+                log.info("Successfully created POC user for facility {} with username {}",
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(username));
             } else {
                 log.warn("Failed to create POC user for facility {}", sanitizeForLog(facility.getFacilityId()));
             }
@@ -527,6 +555,7 @@ public class FacilityService {
         facility.setFacilityPocName(update.getPocName());
         facility.setFacilityPocPhone(update.getPocContact());
         facility.setFacilityPocEmail(update.getPocEmail());
+        facility.setFacilityPocUsername(firstNonBlank(update.getFacilityPocUsername(), existingFacility.getFacilityPocUsername()));
         facility.setHfrId(update.getHfrId());
         facility.setNinId(update.getNinId());
         facility.setFacilityStatus(update.getStatus());
@@ -588,6 +617,7 @@ public class FacilityService {
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
                     .facilityPocPhone(facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank() ? facility.getFacilityPocPhone(): existingFacility.getFacilityPocPhone())
                     .facilityPocEmail(facility.getFacilityPocEmail()!=null && !facility.getFacilityPocEmail().isBlank() ? facility.getFacilityPocEmail(): existingFacility.getFacilityPocEmail())
+                    .facilityPocUsername(facility.getFacilityPocUsername()!=null && !facility.getFacilityPocUsername().isBlank() ? facility.getFacilityPocUsername(): existingFacility.getFacilityPocUsername())
                     .hfrId(facility.getHfrId()!=null && !facility.getHfrId().isBlank() ? facility.getHfrId(): existingFacility.getHfrId())
                     .ninId(facility.getNinId()!=null && !facility.getNinId().isBlank() ? facility.getNinId(): existingFacility.getNinId())
                     .userId(facility.getUserId()!=null && !facility.getUserId().isBlank() ? facility.getUserId(): existingFacility.getUserId())
@@ -645,6 +675,7 @@ public class FacilityService {
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
                     .facilityPocPhone(facility.getFacilityPocPhone()!=null && !facility.getFacilityPocPhone().isBlank() ? facility.getFacilityPocPhone(): existingFacility.getFacilityPocPhone())
                     .facilityPocEmail(facility.getFacilityPocEmail()!=null && !facility.getFacilityPocEmail().isBlank() ? facility.getFacilityPocEmail(): existingFacility.getFacilityPocEmail())
+                    .facilityPocUsername(facility.getFacilityPocUsername()!=null && !facility.getFacilityPocUsername().isBlank() ? facility.getFacilityPocUsername(): existingFacility.getFacilityPocUsername())
                     .hfrId(facility.getHfrId()!=null && !facility.getHfrId().isBlank() ? facility.getHfrId(): existingFacility.getHfrId())
                     .ninId(facility.getNinId()!=null && !facility.getNinId().isBlank() ? facility.getNinId(): existingFacility.getNinId())
                     .userId(facility.getUserId()!=null && !facility.getUserId().isBlank() ? facility.getUserId(): existingFacility.getUserId())

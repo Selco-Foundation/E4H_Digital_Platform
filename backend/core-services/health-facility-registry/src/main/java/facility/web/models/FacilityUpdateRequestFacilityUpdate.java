@@ -103,6 +103,9 @@ public class FacilityUpdateRequestFacilityUpdate {
     @JsonProperty("facility_poc_email")
     private String pocEmail;
 
+    @JsonProperty("facility_poc_username")
+    private String facilityPocUsername;
+
     @JsonProperty("facility_status")
     private String status;
 

@@ -21,6 +21,12 @@ public class FacilityMdmsValidator {
 
     private static final String MDMS_SOURCE = "mdmsSource";
 
+    /** MDMS code for optional column that becomes mandatory when category is ANGANWADI (ingestion-aligned). */
+    private static final String MDMS_CODE_FACILITY_POC_USERNAME = "facility_poc_username";
+
+    private static final String ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI =
+            "PoC Username is required when Facility Category is ANGANWADI.";
+
     private final MdmsUtil mdmsUtil;
 
     /**
@@ -105,6 +111,8 @@ public class FacilityMdmsValidator {
                 throw new IllegalArgumentException("Missing required field: " + name);
             }
 
+            validateAnganwadiRequiresPocUsername(col, input, value);
+
             if (value != null && col.containsKey("pattern")) {
                 String pattern = (String) col.get("pattern");
                 if (!value.toString().matches(pattern)) {
@@ -118,6 +126,22 @@ public class FacilityMdmsValidator {
             validateColumns(mdmsList, col, value, name, input);
         }
         log.trace("Exiting validateFields method");
+    }
+
+    /**
+     * MDMS marks {@code facility_poc_username} as optional; it is required when facility category is ANGANWADI.
+     */
+    private void validateAnganwadiRequiresPocUsername(Map<String, Object> col, Map<String, Object> input, Object value) {
+        if (!MDMS_CODE_FACILITY_POC_USERNAME.equals(col.get("code"))) {
+            return;
+        }
+        if (!"ANGANWADI".equals(normalizeFacilityCategoryForValidation(input))) {
+            return;
+        }
+        if (value == null || value.toString().isBlank()) {
+            log.error("Validation failed: {}", ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI);
+            throw new IllegalArgumentException(ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI);
+        }
     }
 
     /**
@@ -230,6 +254,7 @@ public class FacilityMdmsValidator {
             }
             String s = v.toString().trim();
             if (!s.isEmpty()) {
+                // Values are typically MDMS codes (e.g. ANGANWADI, HEALTH).
                 return s.toUpperCase(Locale.ROOT);
             }
         }
@@ -323,6 +348,7 @@ public class FacilityMdmsValidator {
         map.put("NIN ID", facility.getNinId());
         map.put("HC PoC Name", facility.getFacilityPocName());
         map.put("HC PoC Contact number", facility.getFacilityPocPhone());
+        map.put("PoC Username", facility.getFacilityPocUsername());
 
         HealthFacilityDetails details = facility.getFacilityDetails();
         if (details != null) {
