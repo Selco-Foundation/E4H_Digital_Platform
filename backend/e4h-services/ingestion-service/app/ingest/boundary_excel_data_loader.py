@@ -82,8 +82,7 @@ class BoundaryExcelDataLoader(DataLoader):
 
         cleaned = re.sub(r"[_\-]+", " ", text.strip())
 
-        # Split sur espaces
         parts = cleaned.split()
 
-        # Met juste la première lettre en majuscule, sans forcer le reste en minuscule
+        # First letter of each token uppercased; concatenated for boundary codes (no spaces)
         return "".join(word[:1].upper() + word[1:] for word in parts)
