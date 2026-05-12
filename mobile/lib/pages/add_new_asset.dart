@@ -1,0 +1,1020 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:collection/collection.dart';
+import 'package:digit_scanner/blocs/scanner.dart';
+import 'package:digit_ui_components/enum/app_enums.dart';
+import 'package:digit_ui_components/models/DropdownModels.dart';
+import 'package:digit_ui_components/services/location_bloc.dart';
+import 'package:digit_ui_components/theme/TextTheme/digit_text_theme.dart';
+import 'package:digit_ui_components/theme/digit_extended_theme.dart';
+import 'package:digit_ui_components/theme/spacers.dart';
+import 'package:digit_ui_components/widgets/atoms/digit_button.dart';
+import 'package:digit_ui_components/widgets/atoms/digit_dropdown_input.dart';
+import 'package:digit_ui_components/widgets/atoms/digit_text_form_input.dart';
+import 'package:digit_ui_components/widgets/atoms/labelled_fields.dart';
+import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
+import 'package:digit_ui_components/widgets/scrollable_content.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:recase/recase.dart';
+
+import '../blocs/app_init/app_init.dart';
+import '../blocs/asset_type/asset_type.dart';
+import '../blocs/cache_add_new_asset/cache_add_new_asset.dart';
+import '../blocs/cache_asset_count/cache_asset_count.dart';
+import '../blocs/selected_activity_facility/selected_activity_facility.dart';
+import '../data/nosql/cache_add_new_asset.dart';
+import '../data/nosql/cache_asset_count.dart';
+import '../model/activity_facility_workflow/activity_facility_workflow.dart';
+import '../model/asset_type/asset_type.dart';
+import '../router/app_router.dart';
+import '../utils/app_logger.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
+import '../utils/utils.dart';
+import '../widgets/button/footer_button.dart';
+import '../widgets/cards/stepper.dart';
+import '../widgets/customized_digit_widget/image_uploader.dart';
+import '../widgets/customized_digit_widget/qr_scanner.dart';
+import '../widgets/header/back_navigation_help_header.dart';
+
+class AssetModel {
+  String? assetId;
+  String? documentId;
+  String serialNumber;
+  String capacity;
+  String? capacityUnit;
+  String? panelCapacity;
+  String? batteryCapacity;
+  String? batteryVoltage;
+  String? batteryType;
+  String? voltageUnit;
+  String? inverterCapacity;
+  String? inverterCapacityUnit;
+  String? currentUnit;
+  String unit;
+  String? photoPath;
+  String? latitude;
+  String? longitude;
+  AssetModel({
+    this.assetId,
+    this.documentId,
+    required this.serialNumber,
+    this.capacity = '1',
+    this.capacityUnit,
+    this.panelCapacity,
+    this.batteryVoltage,
+    this.batteryType,
+    this.batteryCapacity,
+    this.voltageUnit,
+    this.inverterCapacity,
+    this.inverterCapacityUnit,
+    this.currentUnit,
+    this.unit = 'KvA',
+    this.photoPath,
+    this.longitude,
+    this.latitude,
+  });
+}
+
+@RoutePage()
+class AddNewAssetPage extends StatefulWidget {
+  const AddNewAssetPage({super.key});
+  @override
+  State<AddNewAssetPage> createState() => _AddNewAssetPageState();
+}
+
+class _AddNewAssetPageState extends State<AddNewAssetPage> {
+  bool _isSaving = false;
+
+  String? _currentActivityFacilityId;
+  ActivityFacilityWorkflow? activityFacilityWorkflow;
+  final List<AssetModel> _assets = [AssetModel(serialNumber: '')];
+  String currentAssetType = "";
+  late List<String> assetCapacity = [];
+  late String assetCapacityUom = "";
+  late List<String> voltages = [];
+  late String voltageUom = "";
+  late List<AssetType> assetTypeList = [];
+  late List<String> typesField = [];
+  late AssetType? selectedAssetType;
+
+  double? _latitude;
+  double? _longitude;
+  StreamSubscription<LocationState>? _locSub;
+  final Map<int, Future<File?>> _cachedImageFutures = {};
+  final Map<int, String> _lastProcessedPickerPaths = {};
+  final Map<int, bool> _isProcessingImageSelection = {};
+  int _visibleAssetCount = 0;
+
+  List<AssetModel> get _visibleAssets {
+    final count = _visibleAssetCount.clamp(0, _assets.length);
+    return _assets.take(count).toList(growable: false);
+  }
+
+  int _requiredAssetCountFromState(CacheAssetCountState state) {
+    return state.maybeWhen(
+      loaded: (entries) =>
+          entries
+              .firstWhereOrNull((e) => e.assetType == currentAssetType)
+              ?.count ??
+          0,
+      added: (entry) => entry.assetType == currentAssetType ? entry.count : 0,
+      updated: (entry) => entry.assetType == currentAssetType ? entry.count : 0,
+      orElse: () => _visibleAssetCount,
+    );
+  }
+
+  int _requiredAssetCount() {
+    return _requiredAssetCountFromState(
+        context.read<CacheAssetCountBloc>().state);
+  }
+
+  AssetModel _buildBlankAsset() {
+    final asset = AssetModel(serialNumber: '');
+
+    if (_assets.isNotEmpty &&
+        (currentAssetType == 'battery' || currentAssetType == 'panel')) {
+      asset.batteryType = _assets.first.batteryType;
+      asset.batteryVoltage = _assets.first.batteryVoltage;
+      asset.batteryCapacity = _assets.first.batteryCapacity;
+      asset.panelCapacity = _assets.first.panelCapacity;
+    }
+
+    _applyPrefilledCapacityToAsset(asset);
+    return asset;
+  }
+
+  void _syncVisibleAssets(int requiredCount) {
+    if (requiredCount < 0) {
+      return;
+    }
+
+    while (_assets.length < requiredCount) {
+      _assets.add(_buildBlankAsset());
+    }
+
+    _visibleAssetCount = requiredCount;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final locBloc = context.read<LocationBloc>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _requestPermissions();
+      currentAssetType = context.read<AssetTypeBloc>().state.when(
+            initial: () => '',
+            inverter: () => 'inverter',
+            battery: () => 'battery',
+            panel: () => 'panel',
+          );
+
+      context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
+          selected: (proj) {
+        setState(() {
+          _currentActivityFacilityId = proj.activityFacility.id;
+          activityFacilityWorkflow = proj;
+          _applyPrefilledCapacityToAllAssets();
+        });
+
+        context.read<CacheAssetCountBloc>().add(CacheAssetCountEvent.get(
+            proj.activityFacility.id, currentAssetType));
+        context.read<CacheAddNewAssetBloc>().add(
+              CacheAddNewAssetEvent.get(
+                  proj.activityFacility.id, currentAssetType),
+            );
+      });
+
+      context.read<AppInitialization>().state.maybeWhen(
+            orElse: () => [],
+            initialized: (appConfig, assetCount, assetType, system, warranty,
+                brand, solutionDesign, _) {
+              assetTypeList = assetType.first.data.assetType
+                  .map((at) => at)
+                  .where((at) =>
+                      at.code.toUpperCase() == currentAssetType.toUpperCase())
+                  .toList();
+
+              final selectedSolutionDesignCode = activityFacilityWorkflow
+                  ?.activityFacility
+                  .facility
+                  ?.facilityDetails
+                  ?.solar_solution_design_type;
+
+              final matchedSystemCode = solutionDesign
+                  .map((m) => m.data)
+                  .firstWhereOrNull(
+                      (sd) => sd.code == selectedSolutionDesignCode)
+                  ?.systemCode;
+
+              final systemCode = matchedSystemCode ??
+                  system.first.data.system.firstOrNull?.code;
+
+              selectedAssetType = assetTypeList.firstWhereOrNull((asset) =>
+                  asset.code.toUpperCase() == currentAssetType.toUpperCase());
+
+              final fields = selectedAssetType?.formFields ?? [];
+              final assetCapacityField = fields.firstWhereOrNull(
+                (field) =>
+                    field.key == "capacity" && field.system == systemCode,
+              );
+              final assetCapacityUomField = fields.firstWhereOrNull((field) =>
+                  field.key == "capacity_uom" && field.system == systemCode);
+              final voltageField = fields.firstWhereOrNull((field) =>
+                  field.key == "voltage" && field.system == systemCode);
+              final voltageUomField = fields.firstWhereOrNull((field) =>
+                  field.key == "voltage_uom" && field.system == systemCode);
+              typesField = fields
+                      .firstWhereOrNull((field) => field.types != null)
+                      ?.types ??
+                  [];
+              assetCapacity = assetCapacityField?.options ?? [];
+              assetCapacityUom =
+                  assetCapacityUomField?.options?.firstOrNull ?? '';
+              voltages = voltageField != null && voltageField.options != null
+                  ? voltageField.options!
+                  : [];
+              voltageUom = voltageUomField?.options?.firstOrNull ?? '';
+
+              return assetType;
+            },
+          );
+    });
+
+    _locSub = locBloc.stream.listen((locationState) {
+      if (locationState.latitude != null && locationState.longitude != null) {
+        if (!mounted) return;
+        setState(() {
+          _latitude = locationState.latitude;
+          _longitude = locationState.longitude;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _locSub?.cancel();
+    super.dispose();
+  }
+
+  Future<bool> _ensureLocationLoaded(
+      {Duration timeout = const Duration(seconds: 10)}) async {
+    final locBloc = context.read<LocationBloc>();
+    if (locBloc.state.latitude != null && locBloc.state.longitude != null) {
+      return true;
+    }
+    try {
+      final state = await locBloc.stream
+          .firstWhere((s) => s.latitude != null && s.longitude != null)
+          .timeout(timeout);
+      if (!mounted) return false;
+      setState(() {
+        _latitude = state.latitude;
+        _longitude = state.longitude;
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _requestPermissions() async {
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.camera,
+      Permission.locationWhenInUse,
+    ].request();
+
+    if (!mounted) return;
+
+    if (statuses[Permission.camera] != PermissionStatus.granted) {
+      context.showSnackBar(
+        SnackBar(
+            content:
+                Text(context.translate(i18.addNewAsset.cameraPermissionRequired))),
+      );
+    }
+
+    if (statuses[Permission.locationWhenInUse] != PermissionStatus.granted) {
+      context.showSnackBar(
+        SnackBar(
+            content: Text(
+                context.translate(i18.addNewAsset.locationPermissionRequired))),
+      );
+    }
+
+    final locBloc = context.read<LocationBloc>();
+    locBloc.add(const LocationEvent.requestPermission());
+    locBloc.add(const LocationEvent.requestService());
+  }
+
+  void _updateAsset(int index, String serial) {
+    setState(() => _assets[index].serialNumber = serial);
+  }
+
+  Future<void> _openScannerForAsset(int index) async {
+    final scannerBloc = context.read<DigitScannerBloc>();
+    scannerBloc.add(const DigitScannerEvent.handleScanner(qrCode: []));
+
+    final selectedCode = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (ctx) => BlocProvider.value(
+          value: scannerBloc,
+          child: const DigitScannerPage(
+            quantity: 10,
+            isGS1code: false,
+            singleValue: true,
+          ),
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+
+    scannerBloc.add(const DigitScannerEvent.handleScanner(qrCode: []));
+
+    if (selectedCode != null && selectedCode.trim().isNotEmpty) {
+      _updateAsset(index, selectedCode.trim());
+    }
+  }
+
+  String _prefilledCapacityFor(String assetType) {
+    final wf = activityFacilityWorkflow ??
+        context.read<SelectedActivityFacilityBloc>().state.maybeWhen(
+              selected: (proj) => proj,
+              orElse: () => null,
+            );
+
+    final ad = wf?.activityFacility.additionalDetails;
+    if (ad == null) return '';
+
+    switch (assetType.toLowerCase()) {
+      case 'battery':
+        return (ad.battery?.capacity ?? '').toString();
+      case 'inverter':
+        return (ad.inverter?.capacity ?? '').toString();
+      case 'panel':
+        return (ad.panel?.capacity ?? '').toString();
+      default:
+        return '';
+    }
+  }
+
+  void _applyPrefilledCapacityToAsset(AssetModel asset) {
+    final cap = _prefilledCapacityFor(currentAssetType);
+    if (cap.isEmpty) return;
+
+    asset.capacity = cap;
+
+    switch (currentAssetType.toLowerCase()) {
+      case 'battery':
+        asset.batteryCapacity = cap;
+        break;
+      case 'panel':
+        asset.panelCapacity = cap;
+        break;
+      case 'inverter':
+        asset.inverterCapacity = cap;
+        break;
+    }
+  }
+
+  void _applyPrefilledCapacityToAllAssets() {
+    final cap = _prefilledCapacityFor(currentAssetType);
+    if (cap.isEmpty) return;
+
+    for (final a in _assets) {
+      _applyPrefilledCapacityToAsset(a);
+    }
+  }
+
+  bool _isAssetComplete(AssetModel a, String assetType) {
+    if (a.serialNumber.isEmpty ||
+        a.photoPath == null ||
+        a.latitude?.isNotEmpty != true ||
+        a.longitude?.isNotEmpty != true) {
+      return false;
+    }
+
+    switch (assetType.toLowerCase()) {
+      case 'battery':
+        return a.batteryType?.isNotEmpty == true &&
+            a.batteryVoltage?.isNotEmpty == true &&
+            a.batteryCapacity?.isNotEmpty == true;
+      case 'panel':
+        return a.panelCapacity?.isNotEmpty == true;
+      case 'inverter':
+        return a.inverterCapacity?.isNotEmpty == true;
+      default:
+        return true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<CacheAddNewAssetBloc, CacheAddNewAssetState>(
+          listener: (context, state) {
+            state.maybeWhen(
+              loaded: (entries) {
+                setState(() {
+                  _assets.clear();
+                  for (final entry in entries) {
+                    final assetModel = AssetModel(
+                      assetId: entry.assetId,
+                      documentId: entry.documentId,
+                      serialNumber: entry.serialNumber,
+                      capacity: entry.itemNumber,
+                      unit: assetCapacityUom,
+                      latitude: entry.latitude,
+                      longitude: entry.longitude,
+                      photoPath: entry.photoPath,
+                      capacityUnit: entry.capacityUnit ?? assetCapacityUom,
+                      panelCapacity: entry.panelCapacity,
+                      batteryCapacity: entry.batteryCapacity,
+                      batteryVoltage: entry.batteryVoltage,
+                      batteryType: entry.batteryType,
+                      voltageUnit: entry.voltageUnit ?? voltageUom,
+                      inverterCapacity: entry.inverterCapacity,
+                      inverterCapacityUnit:
+                          entry.inverterCapacityUnit ?? assetCapacityUom,
+                      currentUnit: entry.currentUnit,
+                    );
+                    _applyPrefilledCapacityToAsset(assetModel);
+                    _assets.add(assetModel);
+                  }
+
+                  _syncVisibleAssets(_requiredAssetCount());
+                });
+
+                _cachedImageFutures.clear();
+                for (var i = 0; i < _assets.length; i++) {
+                  final path = _assets[i].photoPath;
+                  if (path != null) {
+                    _cachedImageFutures[i] = getCachedFile(path);
+                  }
+                }
+              },
+              orElse: () {},
+            );
+          },
+        ),
+        BlocListener<CacheAssetCountBloc, CacheAssetCountState>(
+          listener: (context, state) {
+            state.maybeWhen(
+              loaded: (_) {
+                final requiredCount = _requiredAssetCountFromState(state);
+                if (_visibleAssetCount == requiredCount) return;
+                setState(() {
+                  _syncVisibleAssets(requiredCount);
+                });
+              },
+              added: (_) {
+                final requiredCount = _requiredAssetCountFromState(state);
+                if (_visibleAssetCount == requiredCount) return;
+                setState(() {
+                  _syncVisibleAssets(requiredCount);
+                });
+              },
+              updated: (_) {
+                final requiredCount = _requiredAssetCountFromState(state);
+                if (_visibleAssetCount == requiredCount) return;
+                setState(() {
+                  _syncVisibleAssets(requiredCount);
+                });
+              },
+              orElse: () {},
+            );
+          },
+        ),
+      ],
+      child: BlocBuilder<AssetTypeBloc, AssetTypeState>(
+        builder: (ctx, assetTypeState) {
+          final maxAssets = _visibleAssetCount;
+          final visibleAssets = _visibleAssets;
+          final isDisabled = maxAssets == 0 ||
+              (visibleAssets.length != maxAssets ||
+                  visibleAssets
+                      .any((a) => !_isAssetComplete(a, currentAssetType))) ||
+              _isSaving;
+
+          return Scaffold(
+            body: ScrollableContent(
+              header: const BackNavigationHelpHeaderWidget(
+                showBackNavigation: true,
+                showHelp: false,
+              ),
+              enableFixedDigitButton: true,
+              backgroundColor: theme.colorTheme.generic.background,
+              footer: FooterButton(
+                showSuffixIcon: false,
+                text: context.translate(i18.common.coreCommonNext),
+                isDisabled: isDisabled,
+                onPress: () async {
+                  if (isDisabled) return;
+                  if (_isSaving) return;
+                  final activityFacilityId = _currentActivityFacilityId;
+                  if (activityFacilityId == null) return;
+
+                  final addNewAssetBloc = context.read<CacheAddNewAssetBloc>();
+                  final assetCountBloc = context.read<CacheAssetCountBloc>();
+                  final router = context.router;
+
+                  setState(() {
+                    _isSaving = true;
+                  });
+
+                  try {
+                    final entries = visibleAssets.map((asset) {
+                      return CacheAddNewAsset(
+                        assetId: asset.assetId,
+                        documentId: asset.documentId,
+                        activityFacilityId: activityFacilityId,
+                        assetType: currentAssetType,
+                        itemNumber: asset.capacity,
+                        serialNumber: asset.serialNumber,
+                        documentType: "ASSET",
+                        photoPath: asset.photoPath!,
+                        longitude: asset.longitude!,
+                        latitude: asset.latitude!,
+                        capacityUnit: asset.capacityUnit ?? assetCapacityUom,
+                        panelCapacity: asset.panelCapacity,
+                        batteryCapacity: asset.batteryCapacity,
+                        batteryVoltage: asset.batteryVoltage,
+                        batteryType: asset.batteryType,
+                        voltageUnit: asset.voltageUnit ?? voltageUom,
+                        inverterCapacity: asset.inverterCapacity,
+                        inverterCapacityUnit:
+                            asset.inverterCapacityUnit ?? assetCapacityUom,
+                        currentUnit: asset.currentUnit,
+                      );
+                    }).toList();
+
+                    addNewAssetBloc.add(
+                      CacheAddNewAssetEvent.replaceAll(
+                        activityFacilityId,
+                        currentAssetType,
+                        entries,
+                      ),
+                    );
+
+                    final result = await addNewAssetBloc.stream
+                        .firstWhere((state) => state.maybeWhen(
+                              loaded: (_) => true,
+                              error: (_) => true,
+                              orElse: () => false,
+                            ));
+
+                    final errMsg = result.maybeWhen(
+                      error: (m) => m,
+                      orElse: () => null,
+                    );
+
+                    if (errMsg != null) {
+                      throw Exception(errMsg);
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isSaving = false;
+                      });
+                    }
+                  }
+                  if (!mounted) return;
+                  assetCountBloc.add(
+                    CacheAssetCountEvent.update(
+                      CacheAssetCount(
+                        activityFacilityId: activityFacilityId,
+                        assetType: currentAssetType,
+                        progress: 5,
+                      ),
+                    ),
+                  );
+                  router.push(const MediaUploadRoute());
+                },
+              ),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: spacer2, vertical: spacer4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          AppStepper(context: context, activeIndex: 4),
+                        ],
+                      ),
+                      const SizedBox(height: spacer4),
+                      assetTypeState.maybeWhen(
+                          battery: () => _batteryCapacity(theme, textTheme,
+                              _assets, currentAssetType.titleCase),
+                          panel: () => _panelCapacity(
+                                theme,
+                                textTheme,
+                                _assets,
+                                currentAssetType.titleCase,
+                              ),
+                          orElse: () => const SizedBox()),
+                      ...visibleAssets.asMap().entries.map((e) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: spacer4),
+                          child: _buildAssetCard(
+                            context: context,
+                            theme: theme,
+                            textTheme: textTheme,
+                            heading: currentAssetType.titleCase,
+                            index: e.key,
+                            asset: e.value,
+                            maxAsset: maxAssets,
+                            assetType: currentAssetType,
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildAssetCard({
+    required BuildContext context,
+    required ThemeData theme,
+    required DigitTextTheme textTheme,
+    required String heading,
+    required int index,
+    required int maxAsset,
+    required AssetModel asset,
+    required String assetType,
+  }) {
+    return DigitCard(
+      key: ValueKey(asset.serialNumber.isEmpty ? index : asset.serialNumber),
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '$heading ${index + 1}',
+              style: textTheme.headingXl
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            ),
+            Text("${index + 1}/$maxAsset",
+                style: textTheme.bodyL
+                    .copyWith(color: theme.colorTheme.text.secondary))
+          ],
+        ),
+        LabeledField(
+          label: context.translate(i18.common.serialNumber),
+          capitalizedFirstLetter: false,
+          child: Row(
+            children: [
+              Expanded(
+                flex: 6,
+                child: GestureDetector(
+                  onTap: () {
+                    _openScannerForAsset(index);
+                  },
+                  child: DigitTextFormInput(
+                    initialValue: asset.serialNumber,
+                    isDisabled: true,
+                    innerLabel: asset.serialNumber.isEmpty
+                        ? context.translate(i18.addNewAsset.scanSerialNumber)
+                        : asset.serialNumber,
+                    keyboardType: TextInputType.none,
+                  ),
+                ),
+              ),
+              const SizedBox(width: spacer2),
+              Expanded(
+                flex: 3,
+                child: DigitButton(
+                  label: context.translate(i18.common.scan),
+                  type: DigitButtonType.secondary,
+                  onPressed: () {
+                    _openScannerForAsset(index);
+                  },
+                  size: DigitButtonSize.large,
+                  mainAxisSize: MainAxisSize.max,
+                ),
+              ),
+            ],
+          ),
+        ),
+        BlocBuilder<LocationBloc, LocationState>(
+          builder: (context, locationState) {
+            return LabeledField(
+              label: context.translate(i18.addNewAsset.supportingPhoto),
+              capitalizedFirstLetter: false,
+              child: FutureBuilder<File?>(
+                future: _cachedImageFutures.putIfAbsent(
+                  index,
+                  () => asset.photoPath != null
+                      ? getCachedFile(asset.photoPath!)
+                      : Future.value(null),
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final file = snapshot.data;
+                  return ImageUploader(
+                    // Stability caps for OEM camera intents (Samsung devices in particular).
+                    imageQuality: 60, // 0..100 (lower => smaller)
+                    maxWidth: 1280,
+                    maxHeight: 1280,
+                    requestFullMetadata: false,
+                    initialImages: file != null ? [file] : [],
+                    onImagesSelected: (List<File> imageFile) async {
+                      if (imageFile.isEmpty) {
+                        _lastProcessedPickerPaths.remove(index);
+                        _isProcessingImageSelection.remove(index);
+                        return;
+                      }
+                      final selectedPath = imageFile.first.path;
+                      if (_lastProcessedPickerPaths[index] == selectedPath) {
+                        return;
+                      }
+                      if (_isProcessingImageSelection[index] == true) {
+                        AppLogger.instance.info(
+                          'AddNewAsset ignored duplicate image processing index=$index path=$selectedPath',
+                        );
+                        return;
+                      }
+                      _isProcessingImageSelection[index] = true;
+                      _lastProcessedPickerPaths[index] = selectedPath;
+                      try {
+                        final copiedPath =
+                            await copyFileToLocalDir(imageFile.first);
+                        if (!mounted) return;
+
+                        setState(() {
+                          asset.photoPath = copiedPath;
+                          _cachedImageFutures.remove(index);
+                        });
+
+                        final hasLocation = await _ensureLocationLoaded();
+                        if (!mounted) return;
+
+                        if (hasLocation) {
+                          setState(() {
+                            asset.latitude = _latitude.toString();
+                            asset.longitude = _longitude.toString();
+                            _cachedImageFutures.remove(index);
+                          });
+                        } else {
+                          context.showSnackBar(
+                            SnackBar(
+                                content: Text(context.translate(
+                                    i18.common.couldNotFetchLocation))),
+                          );
+                        }
+                      } catch (e) {
+                        _lastProcessedPickerPaths.remove(index);
+                        AppLogger.instance.info(
+                          'AddNewAsset image processing failed index=$index path=$selectedPath error=$e',
+                        );
+                        if (!mounted) return;
+                        context.showSnackBar(
+                          SnackBar(
+                              content: Text(context.translate(
+                                  i18.addNewAsset.couldNotProcessImage))),
+                        );
+                      } finally {
+                        _isProcessingImageSelection.remove(index);
+                      }
+                    },
+                  );
+                },
+              ),
+            );
+          },
+        ),
+        if (assetType == 'inverter') ...[
+          const SizedBox(height: spacer4),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: LabeledField(
+                  label: context.translate(i18.common.capacity),
+                  capitalizedFirstLetter: false,
+                  child: DigitTextFormInput(
+                    key: ValueKey(
+                        'inverter-cap-${_prefilledCapacityFor('inverter')}'),
+                    controller: TextEditingController(
+                      text: _prefilledCapacityFor('inverter'),
+                    ),
+                    isDisabled: true,
+                    readOnly: true,
+                    keyboardType: TextInputType.text,
+                  ),
+                ),
+              ),
+              const SizedBox(width: spacer6),
+              Expanded(
+                flex: 1,
+                child: LabeledField(
+                  label: context.translate(i18.common.unit),
+                  capitalizedFirstLetter: false,
+                  child: DigitTextFormInput(
+                    controller: TextEditingController(text: assetCapacityUom),
+                    isDisabled: true,
+                    readOnly: true,
+                    keyboardType: TextInputType.text,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _batteryCapacity(ThemeData theme, DigitTextTheme textTheme,
+      List<AssetModel> assets, String heading) {
+    final firstAsset =
+        assets.isNotEmpty ? assets.first : AssetModel(serialNumber: '');
+
+    return Column(
+      children: [
+        DigitCard(
+          children: [
+            Text(
+              '$heading ${context.translate(i18.common.capacity)}',
+              style: textTheme.headingXl
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            ),
+            LabeledField(
+              label: '$heading ${context.translate(i18.addNewAsset.type)}',
+              capitalizedFirstLetter: false,
+              child: DigitDropdown(
+                  sentenceCaseEnabled: false,
+                  items: typesField
+                      .map((type) => DropdownItem(name: type, code: type))
+                      .toList(),
+                  selectedOption: DropdownItem(
+                    name: firstAsset.batteryType ?? '',
+                    code: firstAsset.batteryType ?? '',
+                  ),
+                  onSelect: (DropdownItem sel) {
+                    setState(() {
+                      for (var asset in assets) {
+                        asset.batteryType = sel.code;
+                      }
+                    });
+                  }),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: LabeledField(
+                    label: context.translate(i18.common.voltage),
+                    capitalizedFirstLetter: false,
+                    child: DigitDropdown(
+                      sentenceCaseEnabled: false,
+                      items: voltages
+                          .map((type) => DropdownItem(name: type, code: type))
+                          .toList(),
+                      selectedOption: DropdownItem(
+                        name: firstAsset.batteryVoltage ?? '',
+                        code: firstAsset.batteryVoltage ?? '',
+                      ),
+                      onSelect: (DropdownItem sel) {
+                        setState(() {
+                          for (var asset in assets) {
+                            asset.batteryVoltage = sel.code;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: spacer6),
+                Expanded(
+                  flex: 1,
+                  child: LabeledField(
+                    label: context.translate(i18.common.unit),
+                    capitalizedFirstLetter: false,
+                    child: DigitTextFormInput(
+                      controller: TextEditingController(),
+                      isDisabled: true,
+                      initialValue: voltageUom,
+                      keyboardType: TextInputType.text,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: LabeledField(
+                    label: context.translate(i18.common.current),
+                    capitalizedFirstLetter: false,
+                    child: DigitTextFormInput(
+                      key: ValueKey(
+                          'battery-cap-${_prefilledCapacityFor('battery')}'),
+                      controller: TextEditingController(
+                        text: _prefilledCapacityFor('battery'),
+                      ),
+                      isDisabled: true,
+                      readOnly: true,
+                      keyboardType: TextInputType.text,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: spacer6),
+                Expanded(
+                  flex: 1,
+                  child: LabeledField(
+                    label: context.translate(i18.common.unit),
+                    capitalizedFirstLetter: false,
+                    child: DigitTextFormInput(
+                      controller: TextEditingController(),
+                      isDisabled: true,
+                      initialValue: assetCapacityUom,
+                      keyboardType: TextInputType.text,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: spacer8),
+      ],
+    );
+  }
+
+  Widget _panelCapacity(ThemeData theme, DigitTextTheme textTheme,
+      List<AssetModel> assets, String heading) {
+    return Column(
+      children: [
+        DigitCard(
+          children: [
+            Text(
+              '$heading ${context.translate(i18.common.capacity)}',
+              style: textTheme.headingXl
+                  .copyWith(color: theme.colorTheme.primary.primary2),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: LabeledField(
+                    label: context.translate(i18.common.voltage),
+                    capitalizedFirstLetter: false,
+                    child: DigitTextFormInput(
+                      key: ValueKey(
+                          'panel-cap-${_prefilledCapacityFor('panel')}'),
+                      controller: TextEditingController(
+                        text: _prefilledCapacityFor('panel'),
+                      ),
+                      isDisabled: true,
+                      readOnly: true,
+                      keyboardType: TextInputType.text,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: spacer6),
+                Expanded(
+                  flex: 1,
+                  child: LabeledField(
+                    label: context.translate(i18.common.unit),
+                    capitalizedFirstLetter: false,
+                    child: DigitTextFormInput(
+                      controller: TextEditingController(),
+                      isDisabled: true,
+                      initialValue: assetCapacityUom,
+                      keyboardType: TextInputType.text,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: spacer8),
+      ],
+    );
+  }
+}
