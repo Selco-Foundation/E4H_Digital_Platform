@@ -10,7 +10,6 @@ import org.egov.kafka.OrganizationProducer;
 import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
 import org.egov.util.HRMSUtils;
-import org.egov.util.UserUtil;
 import org.egov.validator.OrganisationUserServiceValidator;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
