@@ -5,6 +5,7 @@ import pandas as pd
 from app.utils.facility_validator import (
     ERR_HFR_ID_REQUIRED_WHEN_HEALTH,
     ERR_NIN_ID_REQUIRED_WHEN_HEALTH,
+    ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI,
 )
 from openpyxl import load_workbook
 from openpyxl.comments import Comment
@@ -433,76 +434,97 @@ def _header_base_name(header: Any) -> str:
     return str(header).replace(" (Mandatory)", "").strip().lower()
 
 
-def add_health_category_hfr_nin_validations(
-    file_path: str,
-    sheet_name: str,
-) -> None:
+def _column_letter_for_base(letter_by_header: Dict[str, str], base_target: str) -> Optional[str]:
+    for h, letter in letter_by_header.items():
+        if _header_base_name(h) == base_target:
+            return letter
+    return None
+
+
+def _facility_category_column_letter(letter_by_header: Dict[str, str]) -> Optional[str]:
+    for h, letter in letter_by_header.items():
+        base = _header_base_name(h)
+        if base in ("Category of Facility (Mandatory)", "facility category", "category"):
+            return letter
+    return None
+
+
+def add_facility_category_conditional_validations(file_path: str, sheet_name: str) -> None:
     """
-    Excel client-side validation: when Category is HEALTH, HFR ID and NIN ID must be filled.
-    Matches server-side facility_validator messaging.
+    Excel client-side rules aligned with facility_validator:
+    - HEALTH: HFR ID and NIN ID required
+    - ANGANWADI: PoC Username required
     """
-    category_labels = {"category", "Category of Facility (Mandatory)"}
     try:
         wb = load_workbook(file_path)
         if sheet_name not in wb.sheetnames:
             return
 
         ws = wb[sheet_name]
-        header_cells = list(ws[1])
-        letter_by_header = {}
-        for cell in header_cells:
+        letter_by_header: Dict[str, str] = {}
+        for cell in ws[1]:
             if cell.value is None:
                 continue
             letter_by_header[str(cell.value).strip()] = cell.column_letter
 
-        cat_letter = None
-        hfr_letter = None
-        nin_letter = None
-        for h, letter in letter_by_header.items():
-            base = _header_base_name(h)
-            if base in category_labels:
-                cat_letter = letter
-            elif base == "hfr id":
-                hfr_letter = letter
-            elif base == "nin id":
-                nin_letter = letter
+        cat_letter = _facility_category_column_letter(letter_by_header)
+        hfr_letter = _column_letter_for_base(letter_by_header, "hfr id")
+        nin_letter = _column_letter_for_base(letter_by_header, "nin id")
+        poc_letter = _column_letter_for_base(letter_by_header, "poc username")
 
-        if not cat_letter or not hfr_letter or not nin_letter:
-            wb.save(file_path)
-            return
+        max_row = max(ws.max_row + 1000, 2)
 
-        max_row = ws.max_row + 1000
-        if max_row < 2:
-            max_row = 2
+        if cat_letter and hfr_letter and nin_letter:
+            hfr_formula = (
+                f'=IF(UPPER(TRIM(${cat_letter}2))="HEALTH",LEN(TRIM({hfr_letter}2))>0,TRUE)'
+            )
+            nin_formula = (
+                f'=IF(UPPER(TRIM(${cat_letter}2))="HEALTH",LEN(TRIM({nin_letter}2))>0,TRUE)'
+            )
+            dv_hfr = DataValidation(
+                type="custom",
+                formula1=hfr_formula,
+                allow_blank=True,
+                showErrorMessage=True,
+                errorTitle="Validation",
+                error=ERR_HFR_ID_REQUIRED_WHEN_HEALTH,
+            )
+            dv_nin = DataValidation(
+                type="custom",
+                formula1=nin_formula,
+                allow_blank=True,
+                showErrorMessage=True,
+                errorTitle="Validation",
+                error=ERR_NIN_ID_REQUIRED_WHEN_HEALTH,
+            )
+            ws.add_data_validation(dv_hfr)
+            ws.add_data_validation(dv_nin)
+            dv_hfr.add(f"{hfr_letter}2:{hfr_letter}{max_row}")
+            dv_nin.add(f"{nin_letter}2:{nin_letter}{max_row}")
 
-        hfr_formula = (
-            f'=IF(UPPER(TRIM(${cat_letter}2))="HEALTH",LEN(TRIM({hfr_letter}2))>0,TRUE)'
-        )
-        nin_formula = (
-            f'=IF(UPPER(TRIM(${cat_letter}2))="HEALTH",LEN(TRIM({nin_letter}2))>0,TRUE)'
-        )
-
-        dv_hfr = DataValidation(
-            type="custom",
-            formula1=hfr_formula,
-            allow_blank=True,
-            showErrorMessage=True,
-            errorTitle="Validation",
-            error=ERR_HFR_ID_REQUIRED_WHEN_HEALTH,
-        )
-        dv_nin = DataValidation(
-            type="custom",
-            formula1=nin_formula,
-            allow_blank=True,
-            showErrorMessage=True,
-            errorTitle="Validation",
-            error=ERR_NIN_ID_REQUIRED_WHEN_HEALTH,
-        )
-        ws.add_data_validation(dv_hfr)
-        ws.add_data_validation(dv_nin)
-        dv_hfr.add(f"{hfr_letter}2:{hfr_letter}{max_row}")
-        dv_nin.add(f"{nin_letter}2:{nin_letter}{max_row}")
+        if cat_letter and poc_letter:
+            poc_formula = (
+                f'=IF(UPPER(TRIM(${cat_letter}2))="ANGANWADI",LEN(TRIM({poc_letter}2))>0,TRUE)'
+            )
+            dv_poc = DataValidation(
+                type="custom",
+                formula1=poc_formula,
+                allow_blank=True,
+                showErrorMessage=True,
+                errorTitle="Validation",
+                error=ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI,
+            )
+            ws.add_data_validation(dv_poc)
+            dv_poc.add(f"{poc_letter}2:{poc_letter}{max_row}")
 
         wb.save(file_path)
     except Exception as e:
-        logger.warning(f"Skipping HFR/NIN conditional Excel validation: {e}")
+        logger.warning(f"Skipping facility category conditional Excel validation: {e}")
+
+
+def add_health_category_hfr_nin_validations(
+    file_path: str,
+    sheet_name: str,
+) -> None:
+    """Backward-compatible alias; applies HEALTH HFR/NIN and ANGANWADI PoC Username rules."""
+    add_facility_category_conditional_validations(file_path, sheet_name)

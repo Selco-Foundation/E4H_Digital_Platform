@@ -12,7 +12,7 @@ from app.schemas.vendor_ingestion_shema_response import IngestionSchemaResponse
 from app.utils.convertor import convert_json_to_boundary, format_facility_data_for_template
 from app.utils.excel_utils import add_dropdowns_to_excel, lock_excel_columns, add_validations_to_excel, \
     lock_prefilled_rows_in_excel, add_non_blank_validations_to_file, autofit_columns, \
-    add_health_category_hfr_nin_validations
+    add_facility_category_conditional_validations
 from app.utils.file_utils import create_empty_excel_file, create_excel_data_writer, remove_default_empty_sheet
 from app.utils.localization_service_client import LocalizationServiceClient
 
@@ -215,10 +215,10 @@ class FacilityTemplateService:
                     facility_schema=facility_schema,
                     allow_blank_map=allow_blank_map
                 )
-                # add_health_category_hfr_nin_validations(
-                #     file_path=output_path,
-                #     sheet_name="FacilityMapping",
-                # )
+#                 add_facility_category_conditional_validations(
+#                     file_path=output_path,
+#                     sheet_name="FacilityMapping",
+#                 )
 
             autofit_columns(
                 file_path=output_path,

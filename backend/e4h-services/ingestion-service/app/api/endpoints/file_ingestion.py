@@ -17,6 +17,7 @@ from app.utils.facility_validator import (
     project_facility_validation,
     facility_validation,
     collect_hfr_nin_errors_for_row,
+    collect_anganwadi_poc_username_errors_for_row,
 )
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
@@ -512,9 +513,13 @@ async def upload_facilities_excel_sheet(
                 hfr_nin_errs = collect_hfr_nin_errors_for_row(
                     row, index, df, facility_client, hfr_nin_db_cache,
                 )
-                if hfr_nin_errs:
+                anganwadi_poc_errs = collect_anganwadi_poc_username_errors_for_row(
+                    row, index, df, facility_schema,
+                )
+                pre_errs = list(dict.fromkeys([*hfr_nin_errs, *anganwadi_poc_errs]))
+                if pre_errs:
                     df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = '; '.join(hfr_nin_errs)
+                    df.at[index, 'error'] = '; '.join(pre_errs)
                     continue
                 try:
                     facility_data_payload = create_facility_payload(request_info, row, are_facilities_onm_ready, facility_schema)
