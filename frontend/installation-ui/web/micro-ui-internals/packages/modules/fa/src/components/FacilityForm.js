@@ -307,7 +307,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
   const handleFormSubmit = (formData) => {
     const hasHfrId = formData?.hfrId && `${formData.hfrId}`.trim().length > 0;
     const hasNinId = formData?.ninId && `${formData.ninId}`.trim().length > 0;
-    if (hasHfrId || hasNinId) {
+    if (formData?.facilityCategory?.code !== "HEALTH" || hasHfrId || hasNinId) {
       onFormSubmit(formData);
     } else {
       setFormToast({
