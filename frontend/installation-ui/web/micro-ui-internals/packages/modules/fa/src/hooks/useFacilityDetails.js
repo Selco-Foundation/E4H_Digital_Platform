@@ -12,6 +12,7 @@ const fetchFacilityDetails = async (queryFilter) => {
     facilityTypeCode: facility?.facility_type,
     solarDesignCode: facility?.facility_details?.solar_solution_design_type,
     facilityPocName: facility?.facility_poc_name,
+    facilityPocUsername: facility?.facility_poc_username,
     facilityPocPhone: facility?.facility_poc_phone,
     facilityPocEmail: facility?.facility_poc_email,
     hfrId: facility?.hfr_id,

@@ -243,9 +243,11 @@ const FacilityDetails = () => {
       </div>
       <div>
         <InfoItem title={t("FACILITY_NAME")} value={createdFacility?.facilityName} />
+        <InfoItem title={t("FACILITY_CATEGORY")} value={createdFacility?.facilityCategory?.name} />
         <InfoItem title={t("FACILITY_TYPE")} value={createdFacility?.facilityType?.name} />
         <InfoItem title={t("FACILITY_SOLAR_SOLUTION_DESIGN_TYPE")} value={createdFacility?.solarSolutionDesignType?.name} />
         <InfoItem title={t("FACILITY_POC_NAME")} value={createdFacility?.facilityPocName} />
+        <InfoItem title={t("FACILITY_POC_USERNAME")} value={createdFacility?.facilityPocUsername} />
         <InfoItem title={t("FACILITY_POC_PHONE")} value={createdFacility?.facilityPocPhone} />
         <InfoItem title={t("FACILITY_POC_EMAIL")} value={createdFacility?.facilityPocEmail} />
         <InfoItem title={t("FACILITY_HFR_ID")} value={createdFacility?.hfrId} />
