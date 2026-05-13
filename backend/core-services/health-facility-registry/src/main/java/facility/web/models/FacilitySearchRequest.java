@@ -1,9 +1,8 @@
 package facility.web.models;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
-
-import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -17,6 +16,7 @@ public class FacilitySearchRequest {
     private String facilityPocName;
     private String facilityPocPhone;
     private String facilityPocEmail;
+    private String facilityPocUsername;
     private String facilityStatus;
     private String userId;
     private String hfrId;

@@ -21,6 +21,7 @@ public class FacilityBulkSearchCriteria {
     private List<String> facilityPocNames;
     private List<String> facilityPocPhones;
     private List<String> facilityPocEmails;
+    private List<String> facilityPocUsernames;
     private List<String> facilityStatus;
     private List<String> userIds;
     private List<String> boundaryCodes;

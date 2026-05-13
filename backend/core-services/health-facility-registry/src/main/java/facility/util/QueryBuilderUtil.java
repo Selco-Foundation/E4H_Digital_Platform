@@ -74,6 +74,11 @@ public class QueryBuilderUtil {
             params.add(request.getFacilityPocEmail());
         }
 
+        if (request.getFacilityPocUsername() != null && !request.getFacilityPocUsername().isBlank()) {
+            whereClause.append(" AND facility_poc_username = ?");
+            params.add(request.getFacilityPocUsername());
+        }
+
         if (request.getFacilityStatus() != null && !request.getFacilityStatus().isBlank()) {
             whereClause.append(" AND facility_status = ?");
             params.add(request.getFacilityStatus());
@@ -148,6 +153,12 @@ public class QueryBuilderUtil {
         if (!CollectionUtils.isEmpty(criteria.getFacilityPocEmails())) {
             whereClause.append(" AND facility_poc_email in ( ").append(createQuery(criteria.getFacilityPocEmails().size())).append(" )");
             params.addAll(criteria.getFacilityPocEmails());
+        }
+
+        if (!CollectionUtils.isEmpty(criteria.getFacilityPocUsernames())) {
+            whereClause.append(" AND fac.facility_poc_username in ( ").append(createQuery(criteria.getFacilityPocUsernames().size())).append(" )");
+            params.addAll(criteria.getFacilityPocUsernames());
+            log.debug("Added {} facility PoC usernames to WHERE clause", criteria.getFacilityPocUsernames().size());
         }
 
         if (!CollectionUtils.isEmpty(criteria.getFacilityStatus())) {
