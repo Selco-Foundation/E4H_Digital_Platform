@@ -449,6 +449,7 @@ public class OrganisationUserServiceValidator {
                     // Check if Roles from request are valid
                     validateOrgRoles(orgRolesReqSet, roleCodesMDMS);
                 }
+                ensureDefaultEmployeeRoleForOrgUser(orgUser);
                 employee.getUser().setRoles(orgUser.getRoles());
             }
 
