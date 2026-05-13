@@ -138,6 +138,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             inline: true,
             label: "FACILITY_CATEGORY",
             isMandatory: true,
+            disable: !!createdFacility?.id,
             key: "facilityCategory",
             type: "dropdown",
             populators: {
@@ -187,18 +188,20 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               error: t("CORE_COMMON_REQUIRED"),
             },
           },
-          {
-            inline: true,
-            label: "FACILITY_POC_USERNAME",
-            isMandatory: selectedFacilityCategory?.code && selectedFacilityCategory?.code !== "HEALTH",
-            disable: selectedFacilityCategory?.code === "HEALTH",
-            key: "facilityPocUsername",
-            type: "text",
-            populators: {
-              name: "facilityPocUsername",
-              error: t("CORE_COMMON_REQUIRED"),
+          ...(selectedFacilityCategory?.code && selectedFacilityCategory?.code !== "HEALTH" ? [
+            {
+              inline: true,
+              label: "FACILITY_POC_USERNAME",
+              isMandatory: true,
+              disable: !!createdFacility?.id,
+              key: "facilityPocUsername",
+              type: "text",
+              populators: {
+                name: "facilityPocUsername",
+                error: t("CORE_COMMON_REQUIRED"),
+              },
             },
-          },
+          ] : []),
           {
             inline: true,
             label: "FACILITY_POC_PHONE",
@@ -222,28 +225,30 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               error: t("CORE_COMMON_REQUIRED"),
             },
           },
-          {
-            inline: true,
-            label: "FACILITY_HFR_ID",
-            isMandatory: false,
-            disable: !!createdFacility?.id,
-            key: "hfrId",
-            type: "text",
-            populators: {
-              name: "hfrId",
+          ...(selectedFacilityCategory?.code && selectedFacilityCategory?.code === "HEALTH" ? [
+            {
+              inline: true,
+              label: "FACILITY_HFR_ID",
+              isMandatory: false,
+              disable: !!createdFacility?.id,
+              key: "hfrId",
+              type: "text",
+              populators: {
+                name: "hfrId",
+              },
             },
-          },
-          {
-            inline: true,
-            label: "FACILITY_NIN_ID",
-            isMandatory: false,
-            disable: !!createdFacility?.id,
-            key: "ninId",
-            type: "text",
-            populators: {
-              name: "ninId",
+            {
+              inline: true,
+              label: "FACILITY_NIN_ID",
+              isMandatory: false,
+              disable: !!createdFacility?.id,
+              key: "ninId",
+              type: "text",
+              populators: {
+                name: "ninId",
+              },
             },
-          },
+          ] : []),
           {
             inline: true,
             label: "FACILITY_IS_OPERATIONAL",

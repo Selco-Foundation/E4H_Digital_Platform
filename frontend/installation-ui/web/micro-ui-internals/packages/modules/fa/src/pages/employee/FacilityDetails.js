@@ -136,7 +136,6 @@ const FacilityDetails = () => {
             ...(formData?.longitude ? { longitude: parseFloat(formData.longitude) } : {}),
           },
           facility_poc_name: formData?.facilityPocName,
-          facility_poc_username: formData?.facilityPocUsername,
           facility_poc_phone: formData?.facilityPocPhone,
           facility_poc_email: formData?.facilityPocEmail,
           facility_details: {
