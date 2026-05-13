@@ -17,20 +17,37 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
   const { path } = useRouteMatch();
   const location = useLocation();
   const jurisdictionBoundaries = Digit.SessionStorage.get("Jurisdiction.Boundaries");
+  const jurisdictionCurrentBoundary = Digit.SessionStorage.get("Jurisdiction.CurrentBoundary");
   const dispatch = useDispatch();
 
   const { data: boundaryData } = Digit.Hooks.im.useBoundary(Digit.Utils.BoundaryUtil.aggregateBoundaryCodes(jurisdictionBoundaries));
 
-  useEffect(() => {
+  useEffect(async () => {
     const initData = Digit.SessionStorage.get("initData");
     if (!initData || !Array.isArray(initData.languages)) return;
+
+    const { roles } = Digit.UserService.getUser().info;
+    const isFacilityPocUser = roles?.length && roles.map((r) => r.code)?.every(role => (role === "EMPLOYEE" || role === "COMPLAINANT"));
+    let logoCategory = "HEALTH";
+
+    if (isFacilityPocUser) {
+      const facilityBoundaryCode = jurisdictionCurrentBoundary?.facility?.[0];
+      const queryFilter = {
+        tenantId : [Digit.ULBService.getCurrentTenantId()],
+        boundaryCodes: [facilityBoundaryCode],
+        isOnmReady: true,
+      }
+
+      const facilityResponse = await Digit.FacilityService.fetchFacilities(queryFilter);
+      logoCategory = facilityResponse?.facilities?.[0]?.facility_category || "HEALTH";
+    }
 
     if (boundaryData) {
       const stateCodes = (boundaryData.states || []).map((state) => state.code);
       const stateBoundaryInfos = window?.globalConfigs?.getStateBoundaryInfos?.(stateCodes);
       if (stateBoundaryInfos?.length === 1) {
-        dispatch(addStateLogos(stateBoundaryInfos[0].logos || []))
-        dispatch(setCrmHelplineNumber(stateBoundaryInfos[0].crmHelplineNumber || ""))
+        dispatch(addStateLogos((stateBoundaryInfos[0].logos || []).filter((logo) => logo.category === logoCategory)));
+        dispatch(setCrmHelplineNumber(stateBoundaryInfos[0].crmHelplineNumber || ""));
       }
       const boundaryLanguages = [];
       if (stateBoundaryInfos) {
