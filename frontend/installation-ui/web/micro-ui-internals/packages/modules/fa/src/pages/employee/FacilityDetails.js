@@ -67,6 +67,9 @@ const FacilityDetails = () => {
       {
         name: "FacilityType",
       },
+      {
+        name: "FacilityCategory",
+      },
     ],
     {
       select: (data) => data,
@@ -76,6 +79,7 @@ const FacilityDetails = () => {
 
   const solarSolutionDesignTypes = mdmsResponse?.facility?.SolarSolutionDesignType || [];
   const facilityTypes = mdmsResponse?.facility?.FacilityType || [];
+  const facilityCategories = mdmsResponse?.facility?.FacilityCategory || [];
 
   useEffect(() => {
     if (facilityData && mdmsResponse) {
@@ -100,6 +104,7 @@ const FacilityDetails = () => {
         isOperational: facilityData?.isActive ? { code: "YES", name: t("TL_COMMON_YES") } : { code: "NO", name: t("TL_COMMON_NO") },
         isOnmReady: facilityData?.isOnmReady ? { code: "YES", name: t("TL_COMMON_YES") } : { code: "NO", name: t("TL_COMMON_NO") },
         solarSolutionDesignType: solarSolutionDesignTypes.find((type) => type.code === facilityData?.solarDesignCode) || {},
+        facilityCategory: facilityCategories.find((type) => type.code === facilityData?.facilityCategoryCode) || {},
         facilityType: facilityTypes.find((type) => type.code === facilityData?.facilityTypeCode) || {},
       });
     }
@@ -131,6 +136,7 @@ const FacilityDetails = () => {
             ...(formData?.longitude ? { longitude: parseFloat(formData.longitude) } : {}),
           },
           facility_poc_name: formData?.facilityPocName,
+          facility_poc_username: formData?.facilityPocUsername,
           facility_poc_phone: formData?.facilityPocPhone,
           facility_poc_email: formData?.facilityPocEmail,
           facility_details: {

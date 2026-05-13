@@ -8,6 +8,7 @@ const fetchFacilityDetails = async (queryFilter) => {
   return {
     id: facility?.facility_id,
     facilityName: facility?.facility_name,
+    facilityCategoryCode: facility?.facility_category,
     facilityTypeCode: facility?.facility_type,
     solarDesignCode: facility?.facility_details?.solar_solution_design_type,
     facilityPocName: facility?.facility_poc_name,

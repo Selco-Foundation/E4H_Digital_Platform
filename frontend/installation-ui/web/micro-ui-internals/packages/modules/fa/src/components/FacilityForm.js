@@ -189,6 +189,18 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           },
           {
             inline: true,
+            label: "FACILITY_POC_USERNAME",
+            isMandatory: selectedFacilityCategory?.code && selectedFacilityCategory?.code !== "HEALTH",
+            disable: selectedFacilityCategory?.code === "HEALTH",
+            key: "facilityPocUsername",
+            type: "text",
+            populators: {
+              name: "facilityPocUsername",
+              error: t("CORE_COMMON_REQUIRED"),
+            },
+          },
+          {
+            inline: true,
             label: "FACILITY_POC_PHONE",
             isMandatory: true,
             key: "facilityPocPhone",
@@ -320,6 +332,12 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
   const handleFormChange = (_, formData) => {
     if (CommonUtils.isNotEqual(formData?.facilityCategory, selectedFacilityCategory)) {
       setSelectedFacilityCategory(formData?.facilityCategory);
+      if (formData?.facilityType?.facilityCategory !== formData?.facilityCategory?.code) {
+        setDefaultValues({
+          ...formData,
+          facilityType: undefined,
+        })
+      }
     }
   }
 
