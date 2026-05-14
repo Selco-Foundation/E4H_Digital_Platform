@@ -458,7 +458,7 @@ public class FacilityService {
         }
 
         log.info("Updating facility {} for tenant {}", update.getFacilityId(), update.getTenantId());
-//        validateFacilityEditAuthorization(request.getRequestInfo());
+        validateFacilityEditAuthorization(request.getRequestInfo());
 
         // Check if the facility exists in DB before attempting an update
         String fetchFullFacilitySql = "SELECT fac.*, " +
@@ -506,14 +506,14 @@ public class FacilityService {
 
         // Validate with MDMS and boundary APIs
         log.info("Validating facility update against MDMS and boundaries");
-//        facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
-//        if (facility.getBoundaryCode() != null) {
-//            log.debug("Validating boundary code: {}", facility.getBoundaryCode());
-//            boundaryValidator.validateBoundaries(
-//                    Set.of(facility.getBoundaryCode()),
-//                    update.getTenantId(),
-//                    request.getRequestInfo());
-//        }
+        facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
+        if (facility.getBoundaryCode() != null) {
+            log.debug("Validating boundary code: {}", facility.getBoundaryCode());
+            boundaryValidator.validateBoundaries(
+                    Set.of(facility.getBoundaryCode()),
+                    update.getTenantId(),
+                    request.getRequestInfo());
+        }
 
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
         if (facility.getIsActive() == null) facility.setIsActive(existingFacility.getIsActive());
