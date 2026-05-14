@@ -12,17 +12,6 @@ const Header = () => {
   return (
     <div className="bannerHeader">
      <img className="bannerLogo" src={"https://selco-assets.s3.ap-south-1.amazonaws.com/TwoClr_horizontal_4X.png"} alt="Selco Foundation" style={{ width:"100px"}} />
-      <p
-        style={{
-          marginLeft:"-10px",
-          paddingLeft:"10px",
-          fontSize: "22px",
-          color: "#07556b",
-          fontWeight: "600",
-        }}
-      >
-        {t("CORE_COMMON_LOGIN")}
-      </p>
     </div>
   );
 }
