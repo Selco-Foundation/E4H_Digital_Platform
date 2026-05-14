@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import CustomDropdown from "../Custom/CustomDropdown";
+import {Dropdown} from "@egovernments/digit-ui-react-components";
 
 const StateSelector = ({ data = {}, setValue, props }) => {
   const { t, name, boundaryData, disable } = props;
@@ -28,20 +28,19 @@ const StateSelector = ({ data = {}, setValue, props }) => {
   };
 
   return (
-    <div className={"employee-select-wrap"}>
-      <CustomDropdown
-        disable={disable}
-        t={t}
-        option={stateMenu}
-        selected={selectedState}
-        select={handleStateSelection}
-        optionKey={"name"}
-        optionsCardStyle={{
-          zIndex: 10000000,
-          maxHeight: "400px",
-        }}
-      />
-    </div>
+    <Dropdown
+      style={{ display: "flex", justifyContent: "space-between" }}
+      disable={disable}
+      t={t}
+      option={stateMenu}
+      selected={selectedState}
+      select={handleStateSelection}
+      optionKey={"name"}
+      optionsCardStyle={{
+        zIndex: 10000000,
+        maxHeight: "400px",
+      }}
+    />
   );
 };
 
