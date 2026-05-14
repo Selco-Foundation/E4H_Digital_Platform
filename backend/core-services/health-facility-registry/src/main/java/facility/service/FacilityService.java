@@ -535,6 +535,14 @@ public class FacilityService {
             address.setAddressId(existingFacility.getAddress().getAddressId());
         }
 
+        try{
+            String decryptedMobileNumber = decryptMobileNumber(existingFacility.getFacilityPocPhone());
+            if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                existingFacility.setFacilityPocPhone(decryptedMobileNumber);
+            }
+        }
+        catch(Exception e){}
+
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
         facility.setTenantId(update.getTenantId());
