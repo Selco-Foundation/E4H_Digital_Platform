@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, {Fragment, useEffect, useState } from "react";
 import { Loader, Button, Toast } from "@egovernments/digit-ui-react-components";
 import { Tab } from "@egovernments/digit-ui-components";
 import useFacilityDetails from "../../hooks/useFacilityDetails";
@@ -67,6 +67,9 @@ const FacilityDetails = () => {
       {
         name: "FacilityType",
       },
+      {
+        name: "FacilityCategory",
+      },
     ],
     {
       select: (data) => data,
@@ -76,6 +79,7 @@ const FacilityDetails = () => {
 
   const solarSolutionDesignTypes = mdmsResponse?.facility?.SolarSolutionDesignType || [];
   const facilityTypes = mdmsResponse?.facility?.FacilityType || [];
+  const facilityCategories = mdmsResponse?.facility?.FacilityCategory || [];
 
   useEffect(() => {
     if (facilityData && mdmsResponse) {
@@ -100,6 +104,7 @@ const FacilityDetails = () => {
         isOperational: facilityData?.isActive ? { code: "YES", name: t("TL_COMMON_YES") } : { code: "NO", name: t("TL_COMMON_NO") },
         isOnmReady: facilityData?.isOnmReady ? { code: "YES", name: t("TL_COMMON_YES") } : { code: "NO", name: t("TL_COMMON_NO") },
         solarSolutionDesignType: solarSolutionDesignTypes.find((type) => type.code === facilityData?.solarDesignCode) || {},
+        facilityCategory: facilityCategories.find((type) => type.code === facilityData?.facilityCategoryCode) || {},
         facilityType: facilityTypes.find((type) => type.code === facilityData?.facilityTypeCode) || {},
       });
     }
@@ -108,9 +113,11 @@ const FacilityDetails = () => {
   const handleFacilityUpdate = async (formData) => {
     try {
       setBlockUI(true);
+      const facilityCategoryValue = formData?.facilityCategory;
       const facilityTypeValue = formData?.facilityType;
       const solarDesignValue = formData?.solarSolutionDesignType;
 
+      const facilityCategoryCode = facilityCategoryValue?.code;
       const facilityTypeCode = facilityTypeValue?.code;
       const solarDesignCode = solarDesignValue?.code;
 
@@ -119,6 +126,7 @@ const FacilityDetails = () => {
           ...facilityData?.facility,
           tenant_id: tenantId,
           facility_name: formData?.facilityName,
+          facility_category: facilityCategoryCode,
           facility_type: facilityTypeCode,
           isActive: formData?.isOperational?.code === "YES",
           isOnmReady: formData?.isOnmReady?.code === "YES",
@@ -234,13 +242,21 @@ const FacilityDetails = () => {
       </div>
       <div>
         <InfoItem title={t("FACILITY_NAME")} value={createdFacility?.facilityName} />
+        <InfoItem title={t("FACILITY_CATEGORY")} value={createdFacility?.facilityCategory?.name} />
         <InfoItem title={t("FACILITY_TYPE")} value={createdFacility?.facilityType?.name} />
         <InfoItem title={t("FACILITY_SOLAR_SOLUTION_DESIGN_TYPE")} value={createdFacility?.solarSolutionDesignType?.name} />
         <InfoItem title={t("FACILITY_POC_NAME")} value={createdFacility?.facilityPocName} />
+        {createdFacility?.facilityCategory?.code !== "HEALTH" && (
+          <InfoItem title={t("FACILITY_POC_USERNAME")} value={createdFacility?.facilityPocUsername} />
+        )}
         <InfoItem title={t("FACILITY_POC_PHONE")} value={createdFacility?.facilityPocPhone} />
         <InfoItem title={t("FACILITY_POC_EMAIL")} value={createdFacility?.facilityPocEmail} />
-        <InfoItem title={t("FACILITY_HFR_ID")} value={createdFacility?.hfrId} />
-        <InfoItem title={t("FACILITY_NIN_ID")} value={createdFacility?.ninId} />
+        {createdFacility?.facilityCategory?.code === "HEALTH" && (
+          <Fragment>
+            <InfoItem title={t("FACILITY_HFR_ID")} value={createdFacility?.hfrId} />
+            <InfoItem title={t("FACILITY_NIN_ID")} value={createdFacility?.ninId} />
+          </Fragment>
+        )}
         <InfoItem title={t("FACILITY_LATITUDE")} value={createdFacility?.latitude} />
         <InfoItem title={t("FACILITY_LONGITUDE")} value={createdFacility?.longitude} />
         <Section title={t("GEOGRAPHY_DETAILS")}>

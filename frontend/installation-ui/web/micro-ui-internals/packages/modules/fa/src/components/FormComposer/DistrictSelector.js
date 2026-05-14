@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import CustomDropdown from "../Custom/CustomDropdown";
+import {Dropdown} from "@egovernments/digit-ui-react-components";
 
 const DistrictSelector = ({ data = {}, setValue, props }) => {
   const { t, name, stateIdentifier, boundaryData, disable } = props;
@@ -40,20 +40,19 @@ const DistrictSelector = ({ data = {}, setValue, props }) => {
   };
 
   return (
-    <div className={"employee-select-wrap"}>
-      <CustomDropdown
-        disable={disable || !selectedState}
-        t={t}
-        option={districtMenu}
-        selected={selectedDistrict}
-        select={handleDistrictSelection}
-        optionKey={"name"}
-        optionsCardStyle={{
-          zIndex: 10000000,
-          maxHeight: "400px",
-        }}
-      />
-    </div>
+    <Dropdown
+      style={{ display: "flex", justifyContent: "space-between" }}
+      disable={disable || !selectedState}
+      t={t}
+      option={districtMenu}
+      selected={selectedDistrict}
+      select={handleDistrictSelection}
+      optionKey={"name"}
+      optionsCardStyle={{
+        zIndex: 10000000,
+        maxHeight: "400px",
+      }}
+    />
   );
 };
 
