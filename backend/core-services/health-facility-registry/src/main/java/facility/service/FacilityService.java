@@ -26,10 +26,9 @@ import static facility.config.ServiceConstants.SYSTEM_USER;
 public class FacilityService {
     private static final String CATEGORY_HEALTH = "HEALTH";
     private static final String CATEGORY_ANGANWADI = "ANGANWADI";
-    private static final String ERR_HFR_ID_REQUIRED_WHEN_HEALTH =
-            "HFR ID is required when Facility Category is HEALTH.";
-    private static final String ERR_NIN_ID_REQUIRED_WHEN_HEALTH =
-            "NIN ID is required when Facility Category is HEALTH.";
+    /** When category is HEALTH, MDMS-style rule: at least one of HFR ID or NIN ID must be present. */
+    private static final String ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH =
+            "When Facility Category is HEALTH, at least one of HFR ID or NIN ID is required.";
 
     private final FacilityRepository facilityRepository;
     private final JdbcTemplate jdbcTemplate;
@@ -378,15 +377,10 @@ public class FacilityService {
     private void validateCategoryBasedIdentifiers(String facilityCategory, String hfrId, String ninId) {
         String normalizedCategory = facilityCategory == null ? "" : facilityCategory.trim().toUpperCase(Locale.ROOT);
         if (CATEGORY_HEALTH.equals(normalizedCategory)) {
-            List<String> errors = new ArrayList<>();
-            if (hfrId == null || hfrId.isBlank()) {
-                errors.add(ERR_HFR_ID_REQUIRED_WHEN_HEALTH);
-            }
-            if (ninId == null || ninId.isBlank()) {
-                errors.add(ERR_NIN_ID_REQUIRED_WHEN_HEALTH);
-            }
-            if (!errors.isEmpty()) {
-                throw new IllegalArgumentException(String.join(" ", errors));
+            boolean hasHfr = hfrId != null && !hfrId.isBlank();
+            boolean hasNin = ninId != null && !ninId.isBlank();
+            if (!hasHfr && !hasNin) {
+                throw new IllegalArgumentException(ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH);
             }
             return;
         }

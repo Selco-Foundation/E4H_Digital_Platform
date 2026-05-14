@@ -5,11 +5,8 @@ import pandas as pd
 from fastapi import HTTPException
 
 # Same wording everywhere: MDMS pre-validation, API import, and Excel client hints.
-ERR_HFR_ID_REQUIRED_WHEN_HEALTH = (
-    "HFR ID is required when Facility Category is HEALTH."
-)
-ERR_NIN_ID_REQUIRED_WHEN_HEALTH = (
-    "NIN ID is required when Facility Category is HEALTH."
+ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH = (
+    "When Facility Category is HEALTH, at least one of HFR ID or NIN ID is required."
 )
 ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI = (
     "PoC Username is required when Facility Category is ANGANWADI."
@@ -68,7 +65,11 @@ def resolve_spreadsheet_header_for_schema_code(
 
 
 def _is_legacy_mdms_hfr_nin_at_least_one_constraint(rc: Any) -> bool:
-    """MDMS used to require at least one of HFR/NIN; rules are category-based now."""
+    """
+    MDMS may define atLeastOneRequired on HFR ID + NIN ID for all rows.
+    We enforce the same rule only when category is HEALTH in validate_hfr_nin_for_row,
+    so skip this row constraint here to avoid duplicate errors.
+    """
     ctype = getattr(rc, "type", None)
     if ctype != "atLeastOneRequired":
         return False
@@ -352,11 +353,8 @@ def validate_hfr_nin_for_row(
     nin = str(nin).strip() if pd.notna(nin) else ""
 
     category = normalize_facility_category_value(row)
-    if is_health_facility_category(category):
-        if not hfr:
-            add_err(row_idx, ERR_HFR_ID_REQUIRED_WHEN_HEALTH)
-        if not nin:
-            add_err(row_idx, ERR_NIN_ID_REQUIRED_WHEN_HEALTH)
+    if is_health_facility_category(category) and not hfr and not nin:
+        add_err(row_idx, ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH)
 
     if not hfr and not nin:
         return

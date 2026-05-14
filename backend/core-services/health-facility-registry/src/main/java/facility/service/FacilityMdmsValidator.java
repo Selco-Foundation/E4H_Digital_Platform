@@ -27,6 +27,10 @@ public class FacilityMdmsValidator {
     private static final String ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI =
             "PoC Username is required when Facility Category is ANGANWADI.";
 
+    /** Same semantics as API / ingestion when MDMS row constraint message is absent. */
+    private static final String ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH =
+            "When Facility Category is HEALTH, at least one of HFR ID or NIN ID is required.";
+
     private final MdmsUtil mdmsUtil;
 
     /**
@@ -157,11 +161,31 @@ public class FacilityMdmsValidator {
         log.debug("Validating {} row constraints", constraints.size());
         for (Map<String, Object> constraint : constraints) {
             List<String> fields = (List<String>) constraint.get("fields");
-            long present = fields.stream().filter(f -> input.get(f) != null && !input.get(f).toString().isBlank()).count();
+            if (fields == null) {
+                log.debug("Skipping row constraint with null fields");
+                continue;
+            }
+
+            long present = fields.stream()
+                    .filter(f -> input.get(f) != null && !input.get(f).toString().isBlank())
+                    .count();
 
             String type = (String) constraint.get("type");
             String message = (String) constraint.get("message");
             log.trace("Validating constraint type: {} with {} fields, {} present", type, fields.size(), present);
+
+            // MDMS atLeastOneRequired on HFR ID + NIN ID applies only when category is HEALTH (ANGANWADI: optional).
+            if ("atLeastOneRequired".equals(type) && isHfrNinAtLeastOneConstraint(fields)) {
+                if (!"HEALTH".equals(normalizeFacilityCategoryForValidation(input))) {
+                    continue;
+                }
+                if (present < 1) {
+                    String err = (message != null && !message.isBlank()) ? message : ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH;
+                    log.error("Validation failed: atLeastOneRequired (HFR/NIN, HEALTH only) - {}", err);
+                    throw new IllegalArgumentException(err);
+                }
+                continue;
+            }
 
             switch (type) {
                 case "atLeastOneRequired":
@@ -182,6 +206,17 @@ public class FacilityMdmsValidator {
             }
         }
         log.trace("Exiting validateRowConstraints method");
+    }
+
+    private static boolean isHfrNinAtLeastOneConstraint(List<String> fields) {
+        if (fields == null || fields.size() != 2) {
+            return false;
+        }
+        Set<String> normalized = fields.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .collect(Collectors.toSet());
+        return normalized.contains("HFR ID") && normalized.contains("NIN ID");
     }
 
     /**

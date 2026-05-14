@@ -3,8 +3,7 @@ from typing import Dict, List, Union, Any, Optional
 import pandas as pd
 
 from app.utils.facility_validator import (
-    ERR_HFR_ID_REQUIRED_WHEN_HEALTH,
-    ERR_NIN_ID_REQUIRED_WHEN_HEALTH,
+    ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH,
     ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI,
 )
 from openpyxl import load_workbook
@@ -452,7 +451,7 @@ def _facility_category_column_letter(letter_by_header: Dict[str, str]) -> Option
 def add_facility_category_conditional_validations(file_path: str, sheet_name: str) -> None:
     """
     Excel client-side rules aligned with facility_validator:
-    - HEALTH: HFR ID and NIN ID required
+    - HEALTH: at least one of HFR ID or NIN ID (MDMS atLeastOneRequired semantics)
     - ANGANWADI: PoC Username required
     """
     try:
@@ -475,32 +474,21 @@ def add_facility_category_conditional_validations(file_path: str, sheet_name: st
         max_row = max(ws.max_row + 1000, 2)
 
         if cat_letter and hfr_letter and nin_letter:
-            hfr_formula = (
-                f'=IF(UPPER(TRIM(${cat_letter}2))="HEALTH",LEN(TRIM({hfr_letter}2))>0,TRUE)'
+            hfr_or_nin_formula = (
+                f'=IF(UPPER(TRIM(${cat_letter}2))<>"HEALTH",TRUE,'
+                f'OR(LEN(TRIM({hfr_letter}2))>0,LEN(TRIM({nin_letter}2))>0))'
             )
-            nin_formula = (
-                f'=IF(UPPER(TRIM(${cat_letter}2))="HEALTH",LEN(TRIM({nin_letter}2))>0,TRUE)'
-            )
-            dv_hfr = DataValidation(
+            dv_hfr_nin = DataValidation(
                 type="custom",
-                formula1=hfr_formula,
+                formula1=hfr_or_nin_formula,
                 allow_blank=True,
                 showErrorMessage=True,
                 errorTitle="Validation",
-                error=ERR_HFR_ID_REQUIRED_WHEN_HEALTH,
+                error=ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH,
             )
-            dv_nin = DataValidation(
-                type="custom",
-                formula1=nin_formula,
-                allow_blank=True,
-                showErrorMessage=True,
-                errorTitle="Validation",
-                error=ERR_NIN_ID_REQUIRED_WHEN_HEALTH,
-            )
-            ws.add_data_validation(dv_hfr)
-            ws.add_data_validation(dv_nin)
-            dv_hfr.add(f"{hfr_letter}2:{hfr_letter}{max_row}")
-            dv_nin.add(f"{nin_letter}2:{nin_letter}{max_row}")
+            ws.add_data_validation(dv_hfr_nin)
+            dv_hfr_nin.add(f"{hfr_letter}2:{hfr_letter}{max_row}")
+            dv_hfr_nin.add(f"{nin_letter}2:{nin_letter}{max_row}")
 
         if cat_letter and poc_letter:
             poc_formula = (
