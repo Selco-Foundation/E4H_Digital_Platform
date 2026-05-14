@@ -18,6 +18,8 @@ from app.schemas.vendor_ingestion_shema_response import (
     MDMS, IngestionSchemaResponse, MDMSAuditDetails, MDMSColumn, MDMSData,
     MDMSDataSource, ResponseInfo)
 
+from app.utils.facility_validator import format_col_name
+
 logger = AppLogger().get_logger()
 
 
@@ -509,44 +511,54 @@ def create_facility_payload(request_info: RequestInfo, row: Series, are_faciliti
     facility_type_name = safe_get(row, 'Type of HC (Mandatory)')
     facility_type_code = get_mdms_code_by_name(facility_schema, 'Type of HC', facility_type_name)
 
+    facility_category_name = safe_get(row, 'Category of Facility (Mandatory)')
+    facility_category_code = get_mdms_code_by_name(facility_schema, 'Category of Facility', facility_category_name)
+
     solar_solution_design_type_name = safe_get(row, 'Solution Design Type (Mandatory)')
     solar_solution_design_type_code = get_mdms_code_by_name(facility_schema, 'Solution Design Type', solar_solution_design_type_name)
 
+    poc_username_hdr = next(
+        (format_col_name(c) for c in facility_schema if c.get("code") == "facility_poc_username"),
+        None,
+    )
+
+    facility_record = {
+        'tenant_id': 'in',
+        'facility_name': safe_get(row, 'Health Centre Name (Mandatory)'),
+        'facility_type': facility_type_code,
+        'facility_category': facility_category_code,
+        'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
+        'facility_region': safe_get(row, 'Region', 'RURAL'),
+        'isActive': True,
+        'blockBoundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
+        'address': {
+            'tenantId': 'in',
+            'latitude': safe_get(row, 'Latitude'),
+            'longitude': safe_get(row, 'Longitude'),
+            'addressLine1': safe_get(row, 'Address'),
+            'state': safe_get(row, 'State (Mandatory)'),
+            'district': safe_get(row, 'District (Mandatory)'),
+            'block': safe_get(row, 'Block (Mandatory)')
+        },
+        'facility_poc_name': safe_get(row, 'HC PoC Name (Mandatory)'),
+        'facility_poc_phone': safe_get(row, 'HC PoC Contact number (Mandatory)'),
+        'facility_poc_email': safe_get(row, 'HC PoC Email'),
+        'facility_status': 'ACTIVE',
+        'hfr_id': safe_get(row, 'HFR ID'),
+        'nin_id': safe_get(row, 'NIN ID'),
+        'isOnmReady': are_facilities_onm_ready,
+        'facility_details': {
+            'vendor_code': safe_get(row, 'Vendor Code (Mandatory)'),
+            'solar_solution_design_type': solar_solution_design_type_code,
+            'pocDesignation': safe_get(row, 'HC PoC Designation')
+        }
+    }
+    if poc_username_hdr:
+        facility_record['facility_poc_username'] = safe_get(row, poc_username_hdr)
+
     return {
         'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-        'facilities': [
-            {
-                'tenant_id': 'in',
-                'facility_name': safe_get(row, 'Health Centre Name (Mandatory)'),
-                'facility_type': facility_type_code,
-                'facility_category': safe_get(row, 'Category', 'HEALTH'),
-                'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
-                'facility_region': safe_get(row, 'Region', 'RURAL'),
-                'isActive': True,
-                'blockBoundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
-                'address': {
-                    'tenantId': 'in',
-                    'latitude': safe_get(row, 'Latitude'),
-                    'longitude': safe_get(row, 'Longitude'),
-                    'addressLine1': safe_get(row, 'Address'),
-                    'state': safe_get(row, 'State (Mandatory)'),
-                    'district': safe_get(row, 'District (Mandatory)'),
-                    'block': safe_get(row, 'Block (Mandatory)')
-                },
-                'facility_poc_name': safe_get(row, 'HC PoC Name (Mandatory)'),
-                'facility_poc_phone': safe_get(row, 'HC PoC Contact number (Mandatory)'),
-                'facility_poc_email': safe_get(row, 'HC PoC Email'),
-                'facility_status': 'ACTIVE',
-                'hfr_id': safe_get(row, 'HFR ID'),
-                'nin_id': safe_get(row, 'NIN ID'),
-                'isOnmReady': are_facilities_onm_ready,
-                'facility_details': {
-                    'vendor_code': safe_get(row, 'Vendor Code (Mandatory)'),
-                    'solar_solution_design_type': solar_solution_design_type_code,
-                    'pocDesignation': safe_get(row, 'HC PoC Designation')
-                }
-            }
-        ]
+        'facilities': [facility_record]
     }
 
 def convert_response_to_facility(response: Dict[str, Any], role_type: str):

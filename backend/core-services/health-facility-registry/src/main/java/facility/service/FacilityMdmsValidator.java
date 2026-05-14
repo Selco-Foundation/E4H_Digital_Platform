@@ -21,6 +21,16 @@ public class FacilityMdmsValidator {
 
     private static final String MDMS_SOURCE = "mdmsSource";
 
+    /** MDMS code for optional column that becomes mandatory when category is ANGANWADI (ingestion-aligned). */
+    private static final String MDMS_CODE_FACILITY_POC_USERNAME = "facility_poc_username";
+
+    private static final String ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI =
+            "PoC Username is required when Facility Category is ANGANWADI.";
+
+    /** Same semantics as API / ingestion when MDMS row constraint message is absent. */
+    private static final String ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH =
+            "When Facility Category is HEALTH, at least one of HFR ID or NIN ID is required.";
+
     private final MdmsUtil mdmsUtil;
 
     /**
@@ -105,6 +115,8 @@ public class FacilityMdmsValidator {
                 throw new IllegalArgumentException("Missing required field: " + name);
             }
 
+            validateAnganwadiRequiresPocUsername(col, input, value);
+
             if (value != null && col.containsKey("pattern")) {
                 String pattern = (String) col.get("pattern");
                 if (!value.toString().matches(pattern)) {
@@ -115,9 +127,25 @@ public class FacilityMdmsValidator {
             }
 
             // Check if value is allowed per MDMS source
-            validateColumns(mdmsList, col, value, name);
+            validateColumns(mdmsList, col, value, name, input);
         }
         log.trace("Exiting validateFields method");
+    }
+
+    /**
+     * MDMS marks {@code facility_poc_username} as optional; it is required when facility category is ANGANWADI.
+     */
+    private void validateAnganwadiRequiresPocUsername(Map<String, Object> col, Map<String, Object> input, Object value) {
+        if (!MDMS_CODE_FACILITY_POC_USERNAME.equals(col.get("code"))) {
+            return;
+        }
+        if (!"ANGANWADI".equals(normalizeFacilityCategoryForValidation(input))) {
+            return;
+        }
+        if (value == null || value.toString().isBlank()) {
+            log.error("Validation failed: {}", ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI);
+            throw new IllegalArgumentException(ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI);
+        }
     }
 
     /**
@@ -133,11 +161,31 @@ public class FacilityMdmsValidator {
         log.debug("Validating {} row constraints", constraints.size());
         for (Map<String, Object> constraint : constraints) {
             List<String> fields = (List<String>) constraint.get("fields");
-            long present = fields.stream().filter(f -> input.get(f) != null && !input.get(f).toString().isBlank()).count();
+            if (fields == null) {
+                log.debug("Skipping row constraint with null fields");
+                continue;
+            }
+
+            long present = fields.stream()
+                    .filter(f -> input.get(f) != null && !input.get(f).toString().isBlank())
+                    .count();
 
             String type = (String) constraint.get("type");
             String message = (String) constraint.get("message");
             log.trace("Validating constraint type: {} with {} fields, {} present", type, fields.size(), present);
+
+            // MDMS atLeastOneRequired on HFR ID + NIN ID applies only when category is HEALTH (ANGANWADI: optional).
+            if ("atLeastOneRequired".equals(type) && isHfrNinAtLeastOneConstraint(fields)) {
+                if (!"HEALTH".equals(normalizeFacilityCategoryForValidation(input))) {
+                    continue;
+                }
+                if (present < 1) {
+                    String err = (message != null && !message.isBlank()) ? message : ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH;
+                    log.error("Validation failed: atLeastOneRequired (HFR/NIN, HEALTH only) - {}", err);
+                    throw new IllegalArgumentException(err);
+                }
+                continue;
+            }
 
             switch (type) {
                 case "atLeastOneRequired":
@@ -160,10 +208,24 @@ public class FacilityMdmsValidator {
         log.trace("Exiting validateRowConstraints method");
     }
 
+    private static boolean isHfrNinAtLeastOneConstraint(List<String> fields) {
+        if (fields == null || fields.size() != 2) {
+            return false;
+        }
+        Set<String> normalized = fields.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .collect(Collectors.toSet());
+        return normalized.contains("HFR ID") && normalized.contains("NIN ID");
+    }
+
     /**
      * Validates values against the list of allowed MDMS values.
+     * For facility type ({@code facility_type} / {@code facility.FacilityType}), when facility category is
+     * {@code HEALTH} or {@code ANGANWADI}, only MDMS rows whose {@code facilityCategory} matches are considered.
      */
-    private void validateColumns(List<Map<String, Object>> mdmsList, Map<String, Object> col, Object value, String name) {
+    private void validateColumns(List<Map<String, Object>> mdmsList, Map<String, Object> col, Object value, String name,
+                                 Map<String, Object> input) {
         log.trace("Entering validateColumns method for field: {}", name);
         if (value != null && col.containsKey(MDMS_SOURCE)) {
             Map<String, String> src = (Map<String, String>) col.get(MDMS_SOURCE);
@@ -176,9 +238,20 @@ public class FacilityMdmsValidator {
                 return;
             }
 
-            Set<String> valid = mdmsList.stream()
+            Stream<Map<String, Object>> dataStream = mdmsList.stream()
                     .filter(m -> schemaCode.equals(m.get("schemaCode")))
-                    .map(m -> (Map<String, Object>) m.get("data"))
+                    .map(m -> (Map<String, Object>) m.get("data"));
+
+            String categoryForType = "";
+            if (isFacilityTypeMdmsColumn(col, schemaCode)) {
+                categoryForType = normalizeFacilityCategoryForValidation(input);
+                if ("HEALTH".equals(categoryForType) || "ANGANWADI".equals(categoryForType)) {
+                    final String expectedCategory = categoryForType;
+                    dataStream = dataStream.filter(d -> expectedCategory.equals(mdmsFacilityCategoryUpper(d)));
+                }
+            }
+
+            Set<String> valid = dataStream
                     .map(d -> (String) d.get(field))
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
@@ -186,11 +259,49 @@ public class FacilityMdmsValidator {
             log.debug("Found {} valid values for field {} from MDMS", valid.size(), name);
             if (!valid.contains(value.toString())) {
                 log.error("Validation failed: Invalid value for field {} - value not found in allowed MDMS values", name);
+                if (isFacilityTypeMdmsColumn(col, schemaCode)
+                        && ("HEALTH".equals(categoryForType) || "ANGANWADI".equals(categoryForType))) {
+                    throw new IllegalArgumentException(
+                            name + " must be a facility type for Facility Category '" + categoryForType
+                                    + "' (MDMS facilityCategory); '" + value + "' is not valid for this category. Allowed: "
+                                    + valid);
+                }
                 throw new IllegalArgumentException("Invalid value for " + name + ": " + value + " — allowed: " + valid);
             }
             log.trace("MDMS validation passed for field: {}", name);
         }
         log.trace("Exiting validateColumns method");
+    }
+
+    private static boolean isFacilityTypeMdmsColumn(Map<String, Object> col, String schemaCode) {
+        Object code = col.get("code");
+        return "facility_type".equals(code) || "facility.FacilityType".equals(schemaCode);
+    }
+
+    /**
+     * Upper-case category from payload (same keys as ingestion template / {@link #convertFacilityToMap}).
+     */
+    private static String normalizeFacilityCategoryForValidation(Map<String, Object> input) {
+        for (String key : List.of("Category of Facility", "Facility Category")) {
+            Object v = input.get(key);
+            if (v == null) {
+                continue;
+            }
+            String s = v.toString().trim();
+            if (!s.isEmpty()) {
+                // Values are typically MDMS codes (e.g. ANGANWADI, HEALTH).
+                return s.toUpperCase(Locale.ROOT);
+            }
+        }
+        return "";
+    }
+
+    private static String mdmsFacilityCategoryUpper(Map<String, Object> data) {
+        Object fc = data.get("facilityCategory");
+        if (fc == null) {
+            return "";
+        }
+        return fc.toString().trim().toUpperCase(Locale.ROOT);
     }
 
     /**
@@ -264,6 +375,7 @@ public class FacilityMdmsValidator {
 
         map.put("Health Centre Name", facility.getFacilityName());
         map.put("Type of HC", facility.getFacilityType());
+        map.put("Category of Facility", facility.getFacilityCategory());
         map.put("facility_id", facility.getFacilityId());
         map.put("tenant_id", facility.getTenantId());
         map.put("boundaryCode", facility.getBoundaryCode());
@@ -271,6 +383,7 @@ public class FacilityMdmsValidator {
         map.put("NIN ID", facility.getNinId());
         map.put("HC PoC Name", facility.getFacilityPocName());
         map.put("HC PoC Contact number", facility.getFacilityPocPhone());
+        map.put("PoC Username", facility.getFacilityPocUsername());
 
         HealthFacilityDetails details = facility.getFacilityDetails();
         if (details != null) {

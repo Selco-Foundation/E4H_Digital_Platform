@@ -27,21 +27,17 @@ const ForgotPassword = ({ config: propsConfig, t }) => {
   };
 
   const onForgotPassword = async (data) => {
-    if (!data.city) {
-      alert(t("ES_SELECT_HEALTH_CARE"));
-      return;
-    }
     const requestData = {
       otp: {
         mobileNumber: data.mobileNumber,
         userType: getUserType().toUpperCase(),
         type: "passwordreset",
-        tenantId: data.city.code,
+        tenantId: "in",
       },
     };
     try {
-      await Digit.UserService.sendOtp(requestData, data.city.code);
-      history.push(`/${window.contextPath}/employee/user/change-password?mobile_number=${data.mobileNumber}&tenantId=${data.city.code}`);
+      await Digit.UserService.sendOtp(requestData, "in");
+      history.push(`/${window.contextPath}/employee/user/change-password?mobile_number=${data.mobileNumber}&tenantId=in`);
     } catch (err) {
       setShowToast(err?.response?.data?.error?.fields?.[0]?.message || "Invalid login credentials!");
       setTimeout(closeToast, 5000);
@@ -62,27 +58,6 @@ const ForgotPassword = ({ config: propsConfig, t }) => {
           populators: {
             name: userId.name,
             componentInFront: "+91",
-          },
-          isMandatory: true,
-        },
-        {
-          label: t(city.label),
-          type: city.type,
-          populators: {
-            name: city.name,
-            customProps: {},
-            component: (props, customProps) => (
-              <Dropdown
-                option={cities}
-                optionKey="name"
-                id={city.name}
-                className="login-city-dd"
-                select={(d) => {
-                  props.onChange(d);
-                }}
-                {...customProps}
-              />
-            ),
           },
           isMandatory: true,
         },
