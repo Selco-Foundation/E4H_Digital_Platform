@@ -563,6 +563,7 @@ public class FacilityService {
         facility.setFacilityStatus(update.getStatus());
         facility.setIsActive(update.getIsActive());
         facility.setUserId(update.getUserId());
+        facility.setIsOnmReady(update.getIsOnmReady());
 
         String effectiveCategory = firstNonBlank(update.getFacilityCategory(), existingFacility.getFacilityCategory());
         String effectiveHfrId = firstNonBlank(update.getHfrId(), existingFacility.getHfrId());
@@ -1115,7 +1116,7 @@ public class FacilityService {
     }
 
     public boolean checkPOCDetailsUpdated(Facility existingFacilityDetails, Facility requestFacilityDetails) {
-        boolean isOnmReady = existingFacilityDetails.getIsOnmReady();
+        boolean isOnmReady = requestFacilityDetails.getIsOnmReady();
         boolean pocDetailsUpdated = (!Objects.equals(existingFacilityDetails.getFacilityPocPhone(), requestFacilityDetails.getFacilityPocPhone()) ||
                 !Objects.equals(existingFacilityDetails.getFacilityPocName(), requestFacilityDetails.getFacilityPocName()) ||
                 !Objects.equals(existingFacilityDetails.getFacilityPocEmail(), requestFacilityDetails.getFacilityPocEmail()));
