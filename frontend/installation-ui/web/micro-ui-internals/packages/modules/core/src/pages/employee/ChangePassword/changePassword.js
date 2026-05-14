@@ -7,6 +7,7 @@ import Background from "../../../components/Background";
 import Header from "../../../components/Header";
 import SelectOtp from "../../citizen/Login/SelectOtp";
 import ImageComponent from "../../../components/ImageComponent";
+import {useLoginConfig} from "../../../hooks/useLoginConfig";
 
 const ChangePasswordComponent = ({ config: propsConfig, t }) => {
   const [user, setUser] = useState(null);
@@ -16,6 +17,15 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
   const [isOtpValid, setIsOtpValid] = useState(true);
   const [showToast, setShowToast] = useState(null);
   const getUserType = () => Digit.UserService.getType();
+  const stateCode = window?.globalConfigs?.getConfig("STATE_LEVEL_TENANT_ID") || "in";
+
+  const { data : mdmsData } = useLoginConfig(stateCode);
+
+  if(mdmsData?.config){
+    propsConfig.header = mdmsData?.config[0]?.header;
+    propsConfig.bannerImages = mdmsData?.config[0]?.bannerImages;
+  }
+
   useEffect(() => {
     if (!user) {
       Digit.UserService.setType("employee");
@@ -42,9 +52,15 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
 
     try {
       await Digit.UserService.sendOtp(requestData, tenantId);
-      setShowToast(t("ES_OTP_RESEND"));
+      setShowToast({
+        type: "success",
+        label: "ES_OTP_RESEND",
+      });
     } catch (err) {
-      setShowToast(err?.response?.data?.error_description || t("ES_INVALID_LOGIN_CREDENTIALS"));
+      setShowToast({
+        type: "error",
+        label: err?.response?.data?.error?.fields?.[0]?.message || "ES_INVALID_LOGIN_CREDENTIALS",
+      });
     }
     setTimeout(closeToast, 5000);
   };
@@ -52,7 +68,10 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
   const onChangePassword = async (data) => {
     try {
       if (data.newPassword !== data.confirmPassword) {
-        return setShowToast(t("ERR_PASSWORD_DO_NOT_MATCH"));
+        return setShowToast({
+          type: "error",
+          label: "CORE_COMMON_PROFILE_PASSWORD_MISMATCH",
+        });
       }
       const requestData = {
         ...data,
@@ -64,7 +83,10 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
       const response = await Digit.UserService.changePassword(requestData, tenantId);
       navigateToLogin();
     } catch (err) {
-      setShowToast(err?.response?.data?.error?.fields?.[0]?.message || t("ES_SOMETHING_WRONG"));
+      setShowToast({
+        type: "error",
+        label: err?.response?.data?.error?.fields?.[0]?.message || "ES_SOMETHING_WRONG",
+      });
       setTimeout(closeToast, 5000);
     }
   };
@@ -120,7 +142,7 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
         cardStyle={{ maxWidth: "408px", margin: "auto" }}
         className="employeeChangePassword"
       >
-        <Header />
+        {propsConfig?.header ? <Header loginHeader={propsConfig?.header} /> : <Header />}
         <CardSubHeader style={{ textAlign: "center" }}> {propsConfig.texts.header} </CardSubHeader>
         <CardText>
           {`${t(`CS_LOGIN_OTP_TEXT`)} `}
@@ -143,7 +165,7 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
           </div>
         </div> */}
       </FormComposer>
-      {showToast && <Toast type={"error"} label={t(showToast)} onClose={closeToast} />}
+      {showToast && <Toast type={showToast?.type} label={t(showToast?.label)} onClose={closeToast} />}
       <div className="EmployeeLoginFooter">
         <ImageComponent
           alt="Powered by DIGIT"

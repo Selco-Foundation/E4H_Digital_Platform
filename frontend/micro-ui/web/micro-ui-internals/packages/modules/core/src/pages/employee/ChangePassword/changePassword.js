@@ -41,9 +41,15 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
 
     try {
       await Digit.UserService.sendOtp(requestData, tenantId);
-      setShowToast(t("ES_OTP_RESEND"));
+      setShowToast({
+        type: "success",
+        label: "ES_OTP_RESEND",
+      });
     } catch (err) {
-      setShowToast(err?.response?.data?.error_description || t("ES_INVALID_LOGIN_CREDENTIALS"));
+      setShowToast({
+        type: "error",
+        label: err?.response?.data?.error?.fields?.[0]?.message || "ES_INVALID_LOGIN_CREDENTIALS",
+      });
     }
     setTimeout(closeToast, 5000);
   };
@@ -51,7 +57,10 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
   const onChangePassword = async (data) => {
     try {
       if (data.newPassword !== data.confirmPassword) {
-        return setShowToast(t("ERR_PASSWORD_DO_NOT_MATCH"));
+        return setShowToast({
+          type: "error",
+          label: "CORE_COMMON_PROFILE_PASSWORD_MISMATCH",
+        });
       }
       const requestData = {
         ...data,
@@ -63,7 +72,10 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
       const response = await Digit.UserService.changePassword(requestData, tenantId);
       navigateToLogin();
     } catch (err) {
-      setShowToast(err?.response?.data?.error?.fields?.[0]?.message || t("ES_SOMETHING_WRONG"));
+      setShowToast({
+        type: "error",
+        label: err?.response?.data?.error?.fields?.[0]?.message || "ES_SOMETHING_WRONG",
+      });
       setTimeout(closeToast, 5000);
     }
   };
@@ -142,7 +154,7 @@ const ChangePasswordComponent = ({ config: propsConfig, t }) => {
           </div>
         </div> */}
       </FormComposer>
-      {showToast && <Toast error={true} label={t(showToast)} onClose={closeToast} />}
+      {showToast && <Toast error={showToast?.type === "error"}  warning={showToast?.type === "warning"} label={t(showToast?.label)} onClose={closeToast} />}
       <div className="EmployeeLoginFooter">
         <img
           alt="Powered by DIGIT"

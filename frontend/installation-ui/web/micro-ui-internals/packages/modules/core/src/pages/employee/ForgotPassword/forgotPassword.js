@@ -19,8 +19,8 @@ const ForgotPassword = ({ config: propsConfig, t, stateCode }) => {
   const { data : mdmsData } = useLoginConfig(stateCode);
   
   if(mdmsData?.config){
-    const bannerImages = mdmsData?.config[0]?.bannerImages;
-    propsConfig.bannerImages = bannerImages;
+    propsConfig.header = mdmsData?.config[0]?.header;
+    propsConfig.bannerImages = mdmsData?.config[0]?.bannerImages;
   }
 
   useEffect(() => {
@@ -101,7 +101,7 @@ const ForgotPassword = ({ config: propsConfig, t, stateCode }) => {
               cardStyle={{ maxWidth: "408px", margin: "auto" }}
               className="employeeForgotPassword"
             >
-              <Header />
+              {propsConfig?.header ? <Header loginHeader={propsConfig?.header} /> : <Header />}
             </FormComposerV2>
             {showToast && <Toast type={"error"} label={t(showToast)} onClose={closeToast} />}
             <div className="EmployeeLoginFooter">
@@ -138,7 +138,7 @@ const ForgotPassword = ({ config: propsConfig, t, stateCode }) => {
           cardStyle={{ maxWidth: "408px", margin: "auto" }}
           className="employeeForgotPassword"
         >
-          <Header />
+          {propsConfig?.header ? <Header loginHeader={propsConfig?.header} /> : <Header />}
         </FormComposerV2>
         {showToast && <Toast type={"error"} label={t(showToast)} onClose={closeToast} />}
         <div className="EmployeeLoginFooter">

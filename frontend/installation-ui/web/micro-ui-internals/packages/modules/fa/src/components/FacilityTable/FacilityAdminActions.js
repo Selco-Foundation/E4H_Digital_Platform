@@ -43,10 +43,12 @@ const FacilityAdminActions = ({ t }) => {
   const handleAddFacilitySubmit = async (formData) => {
     try {
       setBlockUI(true);
+      const facilityCategoryValue = formData?.facilityCategory;
       const facilityTypeValue = formData?.facilityType;
       const solarDesignValue = formData?.solarSolutionDesignType;
       const block = formData?.block;
 
+      const facilityCategoryCode = facilityCategoryValue?.code;
       const facilityTypeCode = facilityTypeValue?.code;
       const solarDesignCode = solarDesignValue?.code;
 
@@ -55,6 +57,7 @@ const FacilityAdminActions = ({ t }) => {
           {
             tenant_id: tenantId,
             facility_name: formData?.facilityName,
+            facility_category: facilityCategoryCode,
             facility_type: facilityTypeCode,
             isActive: formData?.isOperational?.code === "YES",
             isOnmReady: formData?.isOnmReady?.code === "YES",
@@ -65,6 +68,7 @@ const FacilityAdminActions = ({ t }) => {
               ...(formData?.longitude ? { longitude: parseFloat(formData.longitude) } : {}),
             },
             facility_poc_name: formData?.facilityPocName,
+            facility_poc_username: formData?.facilityPocUsername,
             facility_poc_phone: formData?.facilityPocPhone,
             facility_poc_email: formData?.facilityPocEmail,
             hfr_id: formData?.hfrId,
