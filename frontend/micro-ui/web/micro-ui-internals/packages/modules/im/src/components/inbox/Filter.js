@@ -19,7 +19,7 @@ const Filter = (props) => {
   const [facilityBoundaries, setFacilityBoundaries] = useState([]);
   const [facilityBoundaryCodes, setFacilityBoundaryCodes] = useState(["-"]);
   const [systemFunctionalityMenu, setSystemFunctionalityMenu] = useState([]);
-  const isTechPocUser = roles?.every((role) => role.code === "COMPLAINT_FACILITATOR_2" || role.code === "EMPLOYEE");
+  const isTechPocUser = roles?.some((role) => role.code === "COMPLAINT_FACILITATOR_2");
 
   const assignedToOptions = useMemo(
     () => [
