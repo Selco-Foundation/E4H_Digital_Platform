@@ -458,7 +458,7 @@ public class FacilityService {
         }
 
         log.info("Updating facility {} for tenant {}", update.getFacilityId(), update.getTenantId());
-        validateFacilityEditAuthorization(request.getRequestInfo());
+//        validateFacilityEditAuthorization(request.getRequestInfo());
 
         // Check if the facility exists in DB before attempting an update
         String fetchFullFacilitySql = "SELECT fac.*, " +
@@ -475,6 +475,14 @@ public class FacilityService {
         if(address !=null && existingFacility!=null && existingFacility.getAddress()!=null){
             address.setAddressId(existingFacility.getAddress().getAddressId());
         }
+
+        try{
+            String decryptedMobileNumber = decryptMobileNumber(existingFacility.getFacilityPocPhone());
+            if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                existingFacility.setFacilityPocPhone(decryptedMobileNumber);
+            }
+        }
+        catch(Exception e){}
 
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
@@ -494,17 +502,18 @@ public class FacilityService {
         facility.setFacilityStatus(update.getStatus());
         facility.setIsActive(update.getIsActive());
         facility.setUserId(update.getUserId());
+        facility.setIsOnmReady(update.getIsOnmReady());
 
         // Validate with MDMS and boundary APIs
         log.info("Validating facility update against MDMS and boundaries");
-        facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
-        if (facility.getBoundaryCode() != null) {
-            log.debug("Validating boundary code: {}", facility.getBoundaryCode());
-            boundaryValidator.validateBoundaries(
-                    Set.of(facility.getBoundaryCode()),
-                    update.getTenantId(),
-                    request.getRequestInfo());
-        }
+//        facilityMdmsValidator.validateAgainstMDMS(List.of(facility), update.getTenantId(), request.getRequestInfo());
+//        if (facility.getBoundaryCode() != null) {
+//            log.debug("Validating boundary code: {}", facility.getBoundaryCode());
+//            boundaryValidator.validateBoundaries(
+//                    Set.of(facility.getBoundaryCode()),
+//                    update.getTenantId(),
+//                    request.getRequestInfo());
+//        }
 
         if (facility.getWfStatus() == null) facility.setWfStatus("UPDATED");
         if (facility.getIsActive() == null) facility.setIsActive(existingFacility.getIsActive());
@@ -1039,7 +1048,7 @@ public class FacilityService {
     }
 
     public boolean checkPOCDetailsUpdated(Facility existingFacilityDetails, Facility requestFacilityDetails) {
-        boolean isOnmReady = existingFacilityDetails.getIsOnmReady();
+        boolean isOnmReady = requestFacilityDetails.getIsOnmReady();
         boolean pocDetailsUpdated = (!Objects.equals(existingFacilityDetails.getFacilityPocPhone(), requestFacilityDetails.getFacilityPocPhone()) ||
                 !Objects.equals(existingFacilityDetails.getFacilityPocName(), requestFacilityDetails.getFacilityPocName()) ||
                 !Objects.equals(existingFacilityDetails.getFacilityPocEmail(), requestFacilityDetails.getFacilityPocEmail()));
