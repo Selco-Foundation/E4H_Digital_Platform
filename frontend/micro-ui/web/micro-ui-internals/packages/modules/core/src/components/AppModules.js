@@ -32,14 +32,20 @@ export const AppModules = ({ stateCode, userType, modules, appTenants }) => {
 
     if (isFacilityPocUser) {
       const facilityBoundaryCode = jurisdictionCurrentBoundary?.facility?.[0];
-      const queryFilter = {
-        tenantId : [Digit.ULBService.getCurrentTenantId()],
-        boundaryCodes: [facilityBoundaryCode],
-        isOnmReady: true,
-      }
+      if (facilityBoundaryCode) {
+        const queryFilter = {
+          tenantId : [Digit.ULBService.getCurrentTenantId()],
+          boundaryCodes: [facilityBoundaryCode],
+          isOnmReady: true,
+        }
 
-      const facilityResponse = await Digit.FacilityService.fetchFacilities(queryFilter);
-      logoCategory = facilityResponse?.facilities?.[0]?.facility_category || "HEALTH";
+        try {
+          const facilityResponse = await Digit.FacilityService.fetchFacilities(queryFilter);
+          logoCategory = facilityResponse?.facilities?.[0]?.facility_category || "HEALTH";
+        } catch (e) {
+          console.error("Error fetching facility category of POC", e);
+        }
+      }
     }
 
     if (boundaryData) {
