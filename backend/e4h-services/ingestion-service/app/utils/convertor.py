@@ -10,12 +10,17 @@ from psycopg.types import none
 from pydantic import ValidationError
 from sqlalchemy import false, true
 
+from app.core.logging import AppLogger
 from app.schemas.boundary import Boundary
 from app.schemas.request_info import RequestInfo
 from app.schemas.vendor import Vendor
 from app.schemas.vendor_ingestion_shema_response import (
     MDMS, IngestionSchemaResponse, MDMSAuditDetails, MDMSColumn, MDMSData,
     MDMSDataSource, ResponseInfo)
+
+from app.utils.facility_validator import format_col_name
+
+logger = AppLogger().get_logger()
 
 
 def format_facility_data_for_template(
@@ -79,8 +84,8 @@ def format_facility_data_for_template(
                 row[include_column_name] = include_value
                 # Debug logging
                 facility_id = facility.get("facility_id", "unknown")
-                print(
-                    f"DEBUG: Facility {facility_id} - include_in_project field: {facility.get('include_in_project', 'NOT_SET')} -> setting to: {include_value} in column: {include_column_name}")
+                logger.debug(
+                    f"Facility {facility_id} - include_in_project field: {facility.get('include_in_project', 'NOT_SET')} -> setting to: {include_value} in column: {include_column_name}")
 
             formatted_rows.append(row)
 
@@ -113,8 +118,8 @@ def format_facility_data_for_template(
                 row[include_column_name] = include_value
                 # Debug logging
                 facility_id = facility.get("facility_id", "unknown")
-                print(
-                    f"DEBUG: Facility {facility_id} - include_in_fieldplan field: {facility.get('include_in_fieldplan', 'NOT_SET')} -> setting to: {include_value} in column: {include_column_name}")
+                logger.debug(
+                    f"Facility {facility_id} - include_in_fieldplan field: {facility.get('include_in_fieldplan', 'NOT_SET')} -> setting to: {include_value} in column: {include_column_name}")
 
             formatted_rows.append(row)
 
@@ -137,10 +142,10 @@ def request_info_from_json(request_info_input: Union[str, Dict[str, Any]]) -> Re
         return RequestInfo(**data)
 
     except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON string: {e}")
+        logger.error(f"Invalid JSON string in request_info_from_json: {e}", exc_info=True)
         raise
     except Exception as e:
-        print(f"Error: Pydantic model creation failed: {e}")
+        logger.error(f"Pydantic model creation failed in request_info_from_json: {e}", exc_info=True)
         raise
 
 
@@ -165,7 +170,7 @@ def convert_json_to_object(json_str: str) -> Optional[IngestionSchemaResponse]:
             try:
                 response_info_data = ResponseInfo(**data['ResponseInfo'])
             except ValidationError as e:
-                print(f"Validation Error for ResponseInfo: {e}")
+                logger.warning(f"Validation error for ResponseInfo: {e}")
                 # Provide default or None
 
         # Process mdms list
@@ -220,7 +225,7 @@ def convert_json_to_object(json_str: str) -> Optional[IngestionSchemaResponse]:
                     mdms_obj = MDMS(**item)
                     mdms_objects.append(mdms_obj)
                 except ValidationError as e:
-                    print(f"Validation Error for MDMS item: {e}")
+                    logger.warning(f"Validation error for MDMS item: {e}")
                     # Skip invalid item
 
         # Create response object with proper field names
@@ -230,7 +235,7 @@ def convert_json_to_object(json_str: str) -> Optional[IngestionSchemaResponse]:
                 mdms=mdms_objects if mdms_objects else None
             )
         except ValidationError as e:
-            print(f"Validation Error when creating response object: {e}")
+            logger.warning(f"Validation error when creating response object: {e}")
             # Try with explicit field names matching the class definition
             return IngestionSchemaResponse(**{
                 "ResponseInfo": response_info_data,
@@ -238,13 +243,13 @@ def convert_json_to_object(json_str: str) -> Optional[IngestionSchemaResponse]:
             })
 
     except json.JSONDecodeError as e:
-        print(f"Error: Invalid JSON string. Details: {e}")
+        logger.error(f"Invalid JSON string in convert_json_to_object: {e}", exc_info=True)
         return None
     except ValidationError as e:
-        print(f"Error: Data validation failed. Details: {e}")
+        logger.error(f"Data validation failed in convert_json_to_object: {e}", exc_info=True)
         return None
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        logger.error(f"Unexpected error in convert_json_to_object: {e}", exc_info=True)
         return None
 
 
@@ -506,44 +511,54 @@ def create_facility_payload(request_info: RequestInfo, row: Series, are_faciliti
     facility_type_name = safe_get(row, 'Type of HC (Mandatory)')
     facility_type_code = get_mdms_code_by_name(facility_schema, 'Type of HC', facility_type_name)
 
+    facility_category_name = safe_get(row, 'Category of Facility (Mandatory)')
+    facility_category_code = get_mdms_code_by_name(facility_schema, 'Category of Facility', facility_category_name)
+
     solar_solution_design_type_name = safe_get(row, 'Solution Design Type (Mandatory)')
     solar_solution_design_type_code = get_mdms_code_by_name(facility_schema, 'Solution Design Type', solar_solution_design_type_name)
 
+    poc_username_hdr = next(
+        (format_col_name(c) for c in facility_schema if c.get("code") == "facility_poc_username"),
+        None,
+    )
+
+    facility_record = {
+        'tenant_id': 'in',
+        'facility_name': safe_get(row, 'Health Centre Name (Mandatory)'),
+        'facility_type': facility_type_code,
+        'facility_category': facility_category_code,
+        'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
+        'facility_region': safe_get(row, 'Region', 'RURAL'),
+        'isActive': True,
+        'blockBoundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
+        'address': {
+            'tenantId': 'in',
+            'latitude': safe_get(row, 'Latitude'),
+            'longitude': safe_get(row, 'Longitude'),
+            'addressLine1': safe_get(row, 'Address'),
+            'state': safe_get(row, 'State (Mandatory)'),
+            'district': safe_get(row, 'District (Mandatory)'),
+            'block': safe_get(row, 'Block (Mandatory)')
+        },
+        'facility_poc_name': safe_get(row, 'HC PoC Name (Mandatory)'),
+        'facility_poc_phone': safe_get(row, 'HC PoC Contact number (Mandatory)'),
+        'facility_poc_email': safe_get(row, 'HC PoC Email'),
+        'facility_status': 'ACTIVE',
+        'hfr_id': safe_get(row, 'HFR ID'),
+        'nin_id': safe_get(row, 'NIN ID'),
+        'isOnmReady': are_facilities_onm_ready,
+        'facility_details': {
+            'vendor_code': safe_get(row, 'Vendor Code (Mandatory)'),
+            'solar_solution_design_type': solar_solution_design_type_code,
+            'pocDesignation': safe_get(row, 'HC PoC Designation')
+        }
+    }
+    if poc_username_hdr:
+        facility_record['facility_poc_username'] = safe_get(row, poc_username_hdr)
+
     return {
         'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
-        'facilities': [
-            {
-                'tenant_id': 'in',
-                'facility_name': safe_get(row, 'Health Centre Name (Mandatory)'),
-                'facility_type': facility_type_code,
-                'facility_category': safe_get(row, 'Category', 'HEALTH'),
-                'facility_ownership': safe_get(row, 'Ownership', 'GOVERNMENT'),
-                'facility_region': safe_get(row, 'Region', 'RURAL'),
-                'isActive': True,
-                'blockBoundaryCode': safe_get(row, 'Boundary Code (Mandatory)'),
-                'address': {
-                    'tenantId': 'in',
-                    'latitude': safe_get(row, 'Latitude'),
-                    'longitude': safe_get(row, 'Longitude'),
-                    'addressLine1': safe_get(row, 'Address'),
-                    'state': safe_get(row, 'State (Mandatory)'),
-                    'district': safe_get(row, 'District (Mandatory)'),
-                    'block': safe_get(row, 'Block (Mandatory)')
-                },
-                'facility_poc_name': safe_get(row, 'HC PoC Name (Mandatory)'),
-                'facility_poc_phone': safe_get(row, 'HC PoC Contact number (Mandatory)'),
-                'facility_poc_email': safe_get(row, 'HC PoC Email'),
-                'facility_status': 'ACTIVE',
-                'hfr_id': safe_get(row, 'HFR ID'),
-                'nin_id': safe_get(row, 'NIN ID'),
-                'isOnmReady': are_facilities_onm_ready,
-                'facility_details': {
-                    'vendor_code': safe_get(row, 'Vendor Code (Mandatory)'),
-                    'solar_solution_design_type': solar_solution_design_type_code,
-                    'pocDesignation': safe_get(row, 'HC PoC Designation')
-                }
-            }
-        ]
+        'facilities': [facility_record]
     }
 
 def convert_response_to_facility(response: Dict[str, Any], role_type: str):
@@ -754,9 +769,21 @@ def get_incident_request_info():
 
 
 def create_update_payload(search_response: dict, update_data: dict) -> dict:
-    incident_wrapper = search_response.get("IncidentWrappers", [{}])[0]
+    wrappers = search_response.get("IncidentWrappers") or []
+    if not wrappers:
+        raise ValueError("Incident not found in search response (empty IncidentWrappers).")
+    incident_wrapper = wrappers[0]
     incident = incident_wrapper.get("incident", {})
     workflow = incident_wrapper.get("workflow", {})
+    filed_date = incident.get("filedDate")
+
+    if pd.isna(filed_date) or int(filed_date) == 0:
+        formatted_date = ""
+    else :
+        dt = datetime.fromtimestamp(int(filed_date) / 1000)
+        formatted_date = dt.strftime("%d/%m/%Y")
+
+
 
     request_info = get_incident_request_info()
 
@@ -765,44 +792,19 @@ def create_update_payload(search_response: dict, update_data: dict) -> dict:
 
     details = {
         "CS_COMPLAINT_DETAILS_TICKET_NO": incident.get("incidentId"),
-        "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus', 'PENDINGFORASSIGNMENT')}",
+        "CS_COMPLAINT_DETAILS_APPLICATION_STATUS": f"CS_COMMON_{incident.get('applicationStatus')}",
         "CS_ADDCOMPLAINT_TICKET_TYPE": f"SERVICEDEFS.{original_type.upper()}",
         "CS_ADDCOMPLAINT_TICKET_SUB_TYPE": f"SERVICEDEFS.{original_subtype.upper()}",
-        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": incident.get("systemFunctional", "NON_FUNCTIONAL"),
+        "CS_ADDCOMPLAINT_SYSTEM_FUNCTIONAL": update_data.get("systemFunctional"),
         "CS_ADDCOMPLAINT_DISTRICT": incident.get("district", ""),
         "CS_ADDCOMPLAINT_BLOCK": incident.get("block", ""),
         "CS_ADDCOMPLAINT_HEALTH_CARE_CENTRE": incident.get("tenantId", ""),
         "CS_COMPLAINT_COMMENTS": incident.get("comments", ""),
         "CS_ADDCOMPLAINT_HEALTH_CARE_SUB_TYPE": incident.get("phcSubType", ""),
-        "CS_COMPLAINT_FILED_DATE": update_data.get("filed_date", "")
+        "CS_COMPLAINT_FILED_DATE": formatted_date
     }
-
-    additional_detail = incident.get("additionalDetail", {})
-    existing_reject_reasons = additional_detail.get("rejectReason", [])
-
-    new_reason = update_data.get("reject_reason", "Duplication")
-
-    if isinstance(existing_reject_reasons, list):
-        if new_reason not in existing_reject_reasons:
-            existing_reject_reasons.append(new_reason)
-    else:
-        existing_reject_reasons = [new_reason]
-
-    incident["additionalDetail"] = {
-        **additional_detail,
-        "rejectReason": existing_reject_reasons
-    }
-
-    incident["incidentType"] = original_type
-    incident["incidentSubType"] = original_subtype
-
-    # Create workflow object
-    workflow.update({
-        "action": update_data.get("action", "REJECT"),
-        "comments": update_data.get("comments", ""),
-        "rejectReason": update_data.get("reject_reason", "Duplication"),
-        "assignee": [request_info["userInfo"]["uuid"]]
-    })
+    systemFunctional = update_data.get("systemFunctional")
+    incident["systemFunctional"] = systemFunctional
 
     audit = {
         "details": incident.get("auditDetails", {}),
@@ -931,10 +933,21 @@ def resolve_boundary_codes_for_dataframe(
                 locale="en_IN",
                 module="rainmaker-in",
             )
-            reverse_map = build_localization_reverse_map(loc_response.get("messages", []))
+            messages = loc_response.get("messages", [])
+            if logger:
+                logger.info(f"Localization service returned {len(messages)} messages for boundary resolution")
+            reverse_map = build_localization_reverse_map(messages)
+            if logger:
+                logger.info(f"Built reverse map with {len(reverse_map)} entries")
         except Exception as e:
             if logger:
                 logger.error(f"Error fetching localizations for boundary resolution: {e}", exc_info=True)
+    else:
+        if logger:
+            logger.warning("localization_service_url is not set; boundary code resolution will be skipped")
+
+    if logger:
+        logger.info(f"DataFrame columns: {list(df.columns)}")
 
     for index, row in df.iterrows():
         raw_code = row.get(boundary_code_column, '')
