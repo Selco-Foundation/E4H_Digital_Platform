@@ -199,6 +199,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               populators: {
                 name: "facilityPocUsername",
                 error: t("CORE_COMMON_REQUIRED"),
+                validation: { pattern: { value: /^[^ "$<>?\\~`!@#%^()+={}\[\]*,:;“”‘’]*$/, message: t("FACILITY_POC_USERNAME_VALIDATION_ERROR") } },
               },
             },
           ] : []),
@@ -211,7 +212,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             populators: {
               name: "facilityPocPhone",
               error: t("CORE_COMMON_REQUIRED"),
-              validation: { minlength: 10, maxlength: 10, pattern: { value: /^[0-9]\d{9}$/, message: "Enter a valid mobile number" } },
+              validation: { minlength: 10, maxlength: 10, pattern: { value: /^[0-9]\d{9}$/, message: t("FACILITY_POC_PHONE_VALIDATION_ERROR") } },
             },
           },
           {
