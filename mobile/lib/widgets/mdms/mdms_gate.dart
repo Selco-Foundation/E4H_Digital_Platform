@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/app_init/app_init.dart';
 import '../../blocs/auth/authbloc.dart';
 import '../../router/app_router.dart';
+import '../../utils/extensions.dart';
+import '../../utils/i18_key_constants.dart' as i18;
 import '../../utils/utils.dart';
 
 class MdmsGate extends StatefulWidget {
@@ -36,16 +38,18 @@ class _MdmsGateState extends State<MdmsGate> {
         builder: (_) => PopScope(
           canPop: false,
           onPopInvoked: (didPop) {},
-          child: const Dialog(
-            insetPadding: EdgeInsets.all(24),
+          child: Dialog(
+            insetPadding: const EdgeInsets.all(24),
             child: Padding(
-              padding: EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(),
-                  SizedBox(width: 16),
-                  Flexible(child: Text('Loading app data…')),
+                  const CircularProgressIndicator(),
+                  const SizedBox(width: 16),
+                  Flexible(
+                      child:
+                          Text(context.translate(i18.mdmsGate.loadingAppData))),
                 ],
               ),
             ),

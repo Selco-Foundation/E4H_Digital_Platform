@@ -202,15 +202,15 @@ class _AssetCountPageState extends State<AssetCountPage> {
                     Center(child: AppStepper(context: context)),
                     const SizedBox(height: spacer4),
                     DigitCard(children: [
-                      Text('Asset Count',
+                      Text(context.translate(i18.assetCount.title),
                           style: txt.headingXl.copyWith(
                               color: theme.colorTheme.primary.primary2)),
-                      Text('Choose the asset type',
+                      Text(context.translate(i18.assetCount.chooseAssetType),
                           style: txt.bodyL
                               .copyWith(color: theme.colorTheme.text.primary)),
                       const SizedBox(height: spacer2),
                       LabeledField(
-                        label: 'Inverters',
+                        label: context.translate(i18.assetCount.inverters),
                         labelStyle: txt.headingS
                             .copyWith(color: theme.colorTheme.text.primary),
                         child: InputField(
@@ -240,7 +240,7 @@ class _AssetCountPageState extends State<AssetCountPage> {
                         ),
                       ),
                       LabeledField(
-                        label: 'Batteries',
+                        label: context.translate(i18.assetCount.batteries),
                         labelStyle: txt.headingS
                             .copyWith(color: theme.colorTheme.text.primary),
                         child: InputField(
@@ -270,7 +270,7 @@ class _AssetCountPageState extends State<AssetCountPage> {
                         ),
                       ),
                       LabeledField(
-                        label: 'Panels',
+                        label: context.translate(i18.assetCount.panels),
                         labelStyle: txt.headingS
                             .copyWith(color: theme.colorTheme.text.primary),
                         child: InputField(

@@ -19,6 +19,8 @@ import '../repositories/activity_facility_repo.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
+import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 
@@ -162,7 +164,7 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
 
     if (schemaJson == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Loading schema')),
+        SnackBar(content: Text(context.translate(i18.common.loadingSchema))),
       );
       return;
     }
@@ -385,7 +387,8 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
             }
             final schemaObject = state.cachedSchemas[currentKey];
             if (schemaObject == null) {
-              return const Center(child: Text('Form schema missing.'));
+              return Center(
+                  child: Text(context.translate(i18.common.formSchemaMissing)));
             }
             final pageSchema = schemaObject.pages[widget.pageName];
             if (pageSchema == null) {
@@ -468,8 +471,10 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                     ReactiveFormConsumer(
                       builder: (context, form, child) => DigitButton(
                         label: (pageIndex) < schemaObject.pages.length - 1
-                            ? (pageSchema.actionLabel ?? 'Next')
-                            : (pageSchema.actionLabel ?? 'Submit'),
+                            ? (pageSchema.actionLabel ??
+                                context.translate(i18.common.coreCommonNext))
+                            : (pageSchema.actionLabel ??
+                                context.translate(i18.dynamicForm.submit)),
                         onPressed: () async {
                           final propKeys =
                               (pageSchema.properties?.keys.toList() ??
@@ -492,7 +497,9 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                             final first = missing.first;
                             final label = labelForKey(pageSchema, first);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('$label is required')),
+                              SnackBar(
+                                  content: Text(
+                                      '$label ${context.translate(i18.common.isRequired)}')),
                             );
                             return;
                           }
@@ -505,25 +512,29 @@ class _DynamicFormsPageState extends State<DynamicFormsPage> {
                             final errors = c.errors;
                             if (errors
                                 .containsKey(ValidationMessage.required)) {
-                              reason = 'is required';
+                              reason = context.translate(i18.common.isRequired);
                             } else if (errors
                                 .containsKey(ValidationMessage.pattern)) {
-                              reason = 'has an invalid format';
+                              reason = context
+                                  .translate(i18.common.hasInvalidFormat);
                             } else if (errors
                                 .containsKey(ValidationMessage.number)) {
-                              reason = 'must be a number';
+                              reason =
+                                  context.translate(i18.common.mustBeNumber);
                             } else if (errors
                                 .containsKey(ValidationMessage.min)) {
-                              reason = 'is below the minimum';
+                              reason =
+                                  context.translate(i18.common.belowMinimum);
                             } else if (errors
                                 .containsKey(ValidationMessage.max)) {
-                              reason = 'is above the maximum';
+                              reason =
+                                  context.translate(i18.common.aboveMaximum);
                             }
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                   content: Text(reason == null
-                                      ? 'Please correct: $label'
+                                      ? '${context.translate(i18.common.pleaseCorrect)}: $label'
                                       : '$label $reason')),
                             );
                             return;

@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:digit_ui_components/digit_components.dart';
 import 'package:digit_ui_components/services/location_bloc.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
+import 'package:digit_ui_components/widgets/atoms/pop_up_card.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
+import 'package:digit_ui_components/widgets/molecules/show_pop_up.dart';
 import 'package:file_picker/src/platform_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
-import 'package:selco/utils/app_logger.dart';
 
 import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/activity_facility_bom/activity_facility_bom.dart';
@@ -25,6 +26,7 @@ import '../model/activity_facility_workflow/activity_facility_workflow.dart';
 import '../model/mdms/mdms.dart';
 import '../model/solution_design_type/solution_design_type.dart';
 import '../repositories/activity_facility_workflow_repo.dart';
+import '../repositories/installation_images_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
@@ -32,6 +34,7 @@ import '../utils/sync_popup_guard.dart';
 import '../utils/utils.dart';
 import '../widgets/button/bom_buttons.dart';
 import '../widgets/button/footer_button.dart';
+import '../widgets/cards/dynamic_element_asset_summary.dart';
 import '../widgets/cards/element_asset_summary.dart';
 import '../widgets/customized_digit_widget/file_uploader.dart';
 import '../widgets/header/back_navigation_help_header.dart';
@@ -231,6 +234,66 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
     setState(() => _system = sys);
   }
 
+  Future<bool> _hasInstallationImages() async {
+    if (_currentProjectId == null) return false;
+
+    final repo =
+        InstallationImagesRepository(context.read<CacheAssetBloc>().isar);
+    return repo.hasCachedImages(
+      activityFacilityId: _currentProjectId!,
+      userType: userType,
+    );
+  }
+
+  void _showInstallationImagesRequiredPopup() {
+    final theme = Theme.of(context);
+    final textTheme = theme.digitTextTheme(context);
+
+    showCustomPopup(
+      context: context,
+      builder: (ctx) => Popup(
+        type: PopUpType.alert,
+        onCrossTap: () => Navigator.of(ctx).pop(),
+        onOutsideTap: () => Navigator.of(ctx).pop(),
+        title: "Required Installation Images",
+        actionAlignment: MainAxisAlignment.center,
+        actions: const [],
+        additionalWidgets: [
+          Text(
+            "Enter required installation images",
+            textAlign: TextAlign.center,
+            style: textTheme.bodyL.copyWith(
+              color: theme.colorTheme.text.primary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleAddDetailPress(String assetTypeCode) {
+    context
+        .read<AssetTypeBloc>()
+        .add(AssetTypeEvent.typeSelected(assetTypeCode));
+
+    saveCacheSpecification(
+      context,
+      activityFacilityId: _currentProjectId!,
+      project: projectWorkflow,
+      selectedAssetType: assetTypeCode,
+    );
+
+    final isSupervisor = context.read<UserTypeBloc>().state.maybeWhen(
+          supervisor: () => true,
+          orElse: () => false,
+        );
+
+    isSupervisor
+        ? context.router.push(const SpecificationRoute())
+        : context.router.push(const AssetTypeDetailRoute());
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -247,7 +310,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
               },
               failure: (msg) {
                 context.showSnackBar(
-                  const SnackBar(content: Text('BOM sync failed')),
+                  SnackBar(
+                      content:
+                          Text(context.translate(i18.common.bomSyncFailed))),
                 );
               },
               orElse: () {},
@@ -269,7 +334,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                           activityFacilityId: _currentProjectId!),
                     );
                 context.showSnackBar(
-                  SnackBar(content: Text("Sync failed: $error")),
+                  SnackBar(
+                      content: Text(
+                          '${context.translate(i18.common.syncFailed)}: $error')),
                 );
               },
             );
@@ -306,9 +373,10 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                         success: () {
                           ScaffoldMessenger.of(context).clearSnackBars();
                           context.showSnackBar(
-                            const SnackBar(
-                                content:
-                                    Text("All assets submitted successfully")),
+                            SnackBar(
+                                content: Text(context.translate(i18
+                                    .overallAssetSummary
+                                    .allAssetsSubmittedSuccessfully))),
                           );
 
                           final router = context.router.root;
@@ -378,19 +446,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                   orElse: () => USER_TYPES.FIELD_STAFF.name,
                                 );
 
-                                final bool requireCompletionForSupervisor =
-                                    resolvedUserType ==
-                                        USER_TYPES.SUPERVISOR.name;
-
-                                final bool hasAnyCompletion =
-                                    _existingReports.isNotEmpty ||
-                                        _pickedFiles.isNotEmpty;
-
                                 final bool isDisabled = (batteryCount == 0 ||
                                     inverterCount == 0 ||
-                                    panelCount == 0 ||
-                                    (requireCompletionForSupervisor &&
-                                        !hasAnyCompletion));
+                                    panelCount == 0);
 
                                 return reportState.maybeWhen(
                                   submitted: () => const SizedBox.shrink(),
@@ -407,6 +465,13 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                         ? () {}
                                         : () async {
                                             if (isDisabled) return;
+                                            if (resolvedUserType ==
+                                                    USER_TYPES
+                                                        .SUPERVISOR.name &&
+                                                !await _hasInstallationImages()) {
+                                              _showInstallationImagesRequiredPopup();
+                                              return;
+                                            }
                                             await _ensureLocationLoaded();
 
                                             final selState = context
@@ -523,20 +588,26 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                           initial: () {
                                             return DigitCard(
                                               children: [
-                                                const ElementAssetSummary(
+                                                ElementAssetSummary(
                                                     count: 0,
-                                                    text: 'Batteries'),
-                                                const ElementAssetSummary(
+                                                    text: context.translate(
+                                                        i18.assetCount.batteries)),
+                                                ElementAssetSummary(
                                                   count: 0,
-                                                  text: 'Inverters',
+                                                  text: context.translate(
+                                                      i18.assetCount.inverters),
                                                 ),
-                                                const ElementAssetSummary(
-                                                    count: 0, text: 'Panels'),
+                                                ElementAssetSummary(
+                                                    count: 0,
+                                                    text: context.translate(
+                                                        i18.assetCount.panels)),
                                                 const SizedBox(height: spacer6),
                                                 DigitButton(
                                                   mainAxisSize:
                                                       MainAxisSize.max,
-                                                  label: 'Add More Assets',
+                                                  label: context.translate(i18
+                                                      .overallAssetSummary
+                                                      .addMoreAssets),
                                                   prefixIcon: Icons.add_box,
                                                   onPressed: () {},
                                                   type: DigitButtonType.primary,
@@ -548,20 +619,26 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                           loading: () {
                                             return DigitCard(
                                               children: [
-                                                const Row(
+                                                Row(
                                                   mainAxisAlignment:
                                                       MainAxisAlignment
                                                           .spaceEvenly,
                                                   children: [
                                                     ElementAssetSummary(
                                                         count: 0,
-                                                        text: 'Batteries'),
+                                                        text: context.translate(
+                                                            i18.assetCount
+                                                                .batteries)),
                                                     ElementAssetSummary(
                                                         count: 0,
-                                                        text: 'Inverters'),
+                                                        text: context.translate(
+                                                            i18.assetCount
+                                                                .inverters)),
                                                     ElementAssetSummary(
                                                         count: 0,
-                                                        text: 'Panels'),
+                                                        text: context.translate(
+                                                            i18.assetCount
+                                                                .panels)),
                                                   ],
                                                 ),
                                                 const SizedBox(height: spacer6),
@@ -572,7 +649,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 DigitButton(
                                                   mainAxisSize:
                                                       MainAxisSize.max,
-                                                  label: 'Add More Assets',
+                                                  label: context.translate(i18
+                                                      .overallAssetSummary
+                                                      .addMoreAssets),
                                                   prefixIcon: Icons.add_box,
                                                   onPressed: () {},
                                                   type: DigitButtonType.primary,
@@ -586,7 +665,7 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               children: [
                                                 Center(
                                                   child: Text(
-                                                    'Error loading counts:\n$message',
+                                                    '${context.translate(i18.overallAssetSummary.errorLoadingCounts)}:\n$message',
                                                     style: textTheme.bodyL
                                                         .copyWith(
                                                             color: theme
@@ -600,7 +679,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 DigitButton(
                                                   mainAxisSize:
                                                       MainAxisSize.max,
-                                                  label: 'Retry',
+                                                  label: context
+                                                      .translate(i18.common.retry),
                                                   prefixIcon: Icons.refresh,
                                                   onPressed: () {
                                                     final selState = context
@@ -632,85 +712,140 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                           loaded: (int batteryCount,
                                               int inverterCount,
                                               int panelCount) {
+                                            final fromNewOrReport =
+                                                isNewReport || isInboxReport;
                                             return DigitCard(
                                               children: [
-                                                ElementAssetSummary(
+                                                DynamicElementAssetSummary(
+                                                  isInitial: fromNewOrReport,
+                                                  assetTypeCode: ASSET_TYPES
+                                                      .BATTERY.name
+                                                      .toLowerCase(),
                                                   count: batteryCount,
-                                                  text: 'Batteries',
+                                                  text: context.translate(
+                                                      i18.assetCount.batteries),
+                                                  onAddDetailPress: () {
+                                                    _handleAddDetailPress(
+                                                        ASSET_TYPES
+                                                            .BATTERY.name);
+                                                  },
                                                   onPress: () {
                                                     context
                                                         .read<AssetTypeBloc>()
-                                                        .add(
-                                                            const AssetTypeEvent
-                                                                .typeSelected(
-                                                                "BATTERY"));
+                                                        .add(AssetTypeEvent
+                                                            .typeSelected(
+                                                                ASSET_TYPES
+                                                                    .BATTERY
+                                                                    .name));
                                                     context.router.push(
                                                         const AssetSummaryRoute());
                                                   },
                                                 ),
-                                                ElementAssetSummary(
+                                                DynamicElementAssetSummary(
+                                                  isInitial: fromNewOrReport,
+                                                  assetTypeCode: ASSET_TYPES
+                                                      .INVERTER.name
+                                                      .toLowerCase(),
                                                   count: inverterCount,
-                                                  text: 'Inverters',
+                                                  text: context.translate(i18
+                                                      .assetCount.inverters),
+                                                  onAddDetailPress: () {
+                                                    _handleAddDetailPress(
+                                                        ASSET_TYPES
+                                                            .INVERTER.name);
+                                                  },
                                                   onPress: () {
                                                     context
                                                         .read<AssetTypeBloc>()
-                                                        .add(
-                                                            const AssetTypeEvent
-                                                                .typeSelected(
-                                                                "INVERTER"));
+                                                        .add(AssetTypeEvent
+                                                            .typeSelected(
+                                                                ASSET_TYPES
+                                                                    .INVERTER
+                                                                    .name));
                                                     context.router.push(
                                                         const AssetSummaryRoute());
                                                   },
                                                 ),
                                                 reportState.maybeWhen(
                                                   submitted: () =>
-                                                      ElementAssetSummary(
+                                                      DynamicElementAssetSummary(
+                                                    isInitial: fromNewOrReport,
+                                                    assetTypeCode: ASSET_TYPES
+                                                        .PANEL.name
+                                                        .toLowerCase(),
                                                     lastCard: true,
                                                     count: panelCount,
-                                                    text: 'Panels',
+                                                    text: context.translate(
+                                                        i18.assetCount.panels),
+                                                    onAddDetailPress: () {
+                                                      _handleAddDetailPress(
+                                                          ASSET_TYPES
+                                                              .PANEL.name);
+                                                    },
                                                     onPress: () {
                                                       context
                                                           .read<AssetTypeBloc>()
-                                                          .add(
-                                                              const AssetTypeEvent
-                                                                  .typeSelected(
-                                                                  "PANEL"));
+                                                          .add(AssetTypeEvent
+                                                              .typeSelected(
+                                                                  ASSET_TYPES
+                                                                      .PANEL
+                                                                      .name));
                                                       context.router.push(
                                                           const AssetSummaryRoute());
                                                     },
                                                   ),
                                                   orElse: () => Column(
                                                     children: [
-                                                      ElementAssetSummary(
+                                                      DynamicElementAssetSummary(
+                                                        assetTypeCode:
+                                                            ASSET_TYPES
+                                                                .PANEL.name
+                                                                .toLowerCase(),
+                                                        lastCard:
+                                                            fromNewOrReport,
+                                                        isInitial:
+                                                            fromNewOrReport,
                                                         count: panelCount,
-                                                        text: 'Panels',
+                                                        text: context.translate(
+                                                            i18.assetCount
+                                                                .panels),
+                                                        onAddDetailPress: () {
+                                                          _handleAddDetailPress(
+                                                              ASSET_TYPES
+                                                                  .PANEL.name);
+                                                        },
                                                         onPress: () {
                                                           context
                                                               .read<
                                                                   AssetTypeBloc>()
-                                                              .add(const AssetTypeEvent
+                                                              .add(AssetTypeEvent
                                                                   .typeSelected(
-                                                                  "PANEL"));
+                                                                      ASSET_TYPES
+                                                                          .PANEL
+                                                                          .name));
                                                           context.router.push(
                                                               const AssetSummaryRoute());
                                                         },
                                                       ),
-                                                      DigitButton(
-                                                        mainAxisSize:
-                                                            MainAxisSize.max,
-                                                        label:
-                                                            'Add More Assets',
-                                                        prefixIcon:
-                                                            Icons.add_box,
-                                                        onPressed: () {
-                                                          context.router.push(
-                                                              const SelectAssetTypeRoute());
-                                                        },
-                                                        type: DigitButtonType
-                                                            .primary,
-                                                        size: DigitButtonSize
-                                                            .medium,
-                                                      )
+                                                      if (!fromNewOrReport)
+                                                        DigitButton(
+                                                          mainAxisSize:
+                                                              MainAxisSize.max,
+                                                          label: context
+                                                              .translate(i18
+                                                                  .overallAssetSummary
+                                                                  .addMoreAssets),
+                                                          prefixIcon:
+                                                              Icons.add_box,
+                                                          onPressed: () {
+                                                            context.router.push(
+                                                                const SelectAssetTypeRoute());
+                                                          },
+                                                          type: DigitButtonType
+                                                              .primary,
+                                                          size: DigitButtonSize
+                                                              .medium,
+                                                        )
                                                     ],
                                                   ),
                                                 ),
@@ -795,7 +930,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                     ],
                                                     showPreview: true,
                                                     allowMultiples: true,
-                                                    label: 'Upload',
+                                                    label: context.translate(i18
+                                                        .overallAssetSummary
+                                                        .upload),
                                                     onFilesSelected: (files) {
                                                       if (files.isEmpty) {
                                                         return <PlatformFile,

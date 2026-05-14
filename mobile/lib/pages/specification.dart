@@ -119,7 +119,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                                 color: theme.colorTheme.primary.primary2),
                           ),
                           LabeledField(
-                            label: 'System',
+                            label: context.translate(i18.assetSummary.system),
                             labelStyle: textTheme.headingS
                                 .copyWith(color: theme.colorTheme.text.primary),
                             capitalizedFirstLetter: false,
@@ -136,7 +136,8 @@ class _SpecificationPageState extends State<SpecificationPage> {
                               Expanded(
                                 flex: 3,
                                 child: LabeledField(
-                                  label: 'Total Capacity',
+                                  label: context
+                                      .translate(i18.specification.totalCapacity),
                                   labelStyle: textTheme.headingS.copyWith(
                                       color: theme.colorTheme.text.primary),
                                   capitalizedFirstLetter: false,
@@ -153,7 +154,7 @@ class _SpecificationPageState extends State<SpecificationPage> {
                               Expanded(
                                 flex: 1,
                                 child: LabeledField(
-                                  label: 'Unit',
+                                  label: context.translate(i18.common.unit),
                                   labelStyle: textTheme.headingS.copyWith(
                                       color: theme.colorTheme.text.primary),
                                   capitalizedFirstLetter: false,

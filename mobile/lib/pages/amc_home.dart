@@ -9,6 +9,7 @@ import '../model/appconfig/mdmsRequest.dart';
 import '../repositories/app_init_repo.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
+import '../utils/i18_key_constants.dart' as i18;
 import '../utils/utils.dart';
 import '../widgets/header/back_navigation_help_header.dart';
 import '../widgets/home/home_item_card.dart';
@@ -65,9 +66,9 @@ class _AmcHomePageState extends State<AmcHomePage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Failed to load AMC form schema. Tap to retry.'),
+          content: Text(context.translate(i18.amcHome.formSchemaLoadFailed)),
           action: SnackBarAction(
-            label: 'Retry',
+            label: context.translate(i18.common.retry),
             onPressed: () {
               if (!mounted) return;
               _prefetchAmcSchemas();
@@ -90,16 +91,16 @@ class _AmcHomePageState extends State<AmcHomePage> {
       builder: (_) => PopScope(
         canPop: false,
         onPopInvoked: (didPop) {},
-        child: const Dialog(
-          insetPadding: EdgeInsets.all(24),
+        child: Dialog(
+          insetPadding: const EdgeInsets.all(24),
           child: Padding(
-            padding: EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(),
-                SizedBox(width: 16),
-                Flexible(child: Text('Loading app data…')),
+                const CircularProgressIndicator(),
+                const SizedBox(width: 16),
+                Flexible(child: Text(context.translate(i18.common.loadingAppData))),
               ],
             ),
           ),
@@ -122,12 +123,12 @@ class _AmcHomePageState extends State<AmcHomePage> {
     final List<Map<String, dynamic>> _homeItems = [
       {
         'icon': Icons.text_snippet_outlined,
-        'label': 'AMC Report',
+        'label': context.translate(i18.amcHome.amcReport),
         'onPressed': () => context.router.push(const AmcReportHomeRoute())
       },
       {
         'icon': Icons.autorenew,
-        'label': 'Data Sync',
+        'label': context.translate(i18.amcHome.dataSync),
         'onPressed': () => context.router.push(const AmcDraftRoute()),
       },
     ];

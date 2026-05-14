@@ -36,6 +36,14 @@ class RejectionBloc extends Bloc<RejectionEvent, RejectionState> {
     _SubmitRejection event,
     Emitter<RejectionState> emit,
   ) async {
+    add(RejectionEvent.watch(event.activityFacilityId));
+    if (!event.isRetry) {
+      await _progressRepo.clearOperationCheckpoints(
+        activityFacilityId: event.activityFacilityId,
+        operationType: OperationTypes.reject,
+      );
+    }
+
     final txMaps = event.transactions.map<Map<String, dynamic>>((t) {
       if (t is Map<String, dynamic>) return t;
       try {

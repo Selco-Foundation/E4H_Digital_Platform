@@ -16,6 +16,8 @@ import 'package:isar/isar.dart';
 import 'package:location/location.dart';
 
 import '../blocs/cache_amc_media_upload/cache_amc_media_upload.dart';
+import '../blocs/cache_installation_image/cache_installation_image.dart';
+import '../blocs/installation_images/installation_images.dart';
 import '../blocs/scheduled_visit/scheduled_visit.dart';
 import 'blocs/send_back/send_back.dart';
 import 'blocs/activity_facility/activity_facility.dart';
@@ -142,6 +144,10 @@ class _MainAppState extends State<MainApp> {
                 create: (context) => ScheduleVisitSubmitBloc(widget.isar)),
             BlocProvider(
                 create: (context) => CacheAmcMediaUploadBloc(widget.isar)),
+            BlocProvider(
+                create: (context) => CacheInstallationImageBloc(widget.isar)),
+            BlocProvider(
+                create: (context) => InstallationImagesBloc(widget.isar)),
             BlocProvider(create: (context) => AmcOtpBloc(widget.isar)),
           ],
           child: BlocBuilder<AppInitialization, InitState>(

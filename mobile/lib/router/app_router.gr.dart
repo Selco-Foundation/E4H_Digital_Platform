@@ -197,6 +197,16 @@ abstract class _$AppRouter extends RootStackRouter {
         child: const InboxPage(),
       );
     },
+    InstallationImagesRoute.name: (routeData) {
+      final args = routeData.argsAs<InstallationImagesRouteArgs>();
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: InstallationImagesPage(
+          key: args.key,
+          origin: args.origin,
+        ),
+      );
+    },
     InstallationReportRoute.name: (routeData) {
       return AutoRoutePage<dynamic>(
         routeData: routeData,
@@ -236,6 +246,12 @@ abstract class _$AppRouter extends RootStackRouter {
           path: args.path,
           key: args.key,
         ),
+      );
+    },
+    RoleSelectionRoute.name: (routeData) {
+      return AutoRoutePage<dynamic>(
+        routeData: routeData,
+        child: const RoleSelectionPage(),
       );
     },
     SelectAssetTypeRoute.name: (routeData) {
@@ -849,6 +865,45 @@ class InboxRoute extends PageRouteInfo<void> {
 }
 
 /// generated route for
+/// [InstallationImagesPage]
+class InstallationImagesRoute
+    extends PageRouteInfo<InstallationImagesRouteArgs> {
+  InstallationImagesRoute({
+    Key? key,
+    required FormOrigin origin,
+    List<PageRouteInfo>? children,
+  }) : super(
+          InstallationImagesRoute.name,
+          args: InstallationImagesRouteArgs(
+            key: key,
+            origin: origin,
+          ),
+          initialChildren: children,
+        );
+
+  static const String name = 'InstallationImagesRoute';
+
+  static const PageInfo<InstallationImagesRouteArgs> page =
+      PageInfo<InstallationImagesRouteArgs>(name);
+}
+
+class InstallationImagesRouteArgs {
+  const InstallationImagesRouteArgs({
+    this.key,
+    required this.origin,
+  });
+
+  final Key? key;
+
+  final FormOrigin origin;
+
+  @override
+  String toString() {
+    return 'InstallationImagesRouteArgs{key: $key, origin: $origin}';
+  }
+}
+
+/// generated route for
 /// [InstallationReportPage]
 class InstallationReportRoute extends PageRouteInfo<void> {
   const InstallationReportRoute({List<PageRouteInfo>? children})
@@ -966,6 +1021,20 @@ class PdfViewerRouteArgs {
   String toString() {
     return 'PdfViewerRouteArgs{path: $path, key: $key}';
   }
+}
+
+/// generated route for
+/// [RoleSelectionPage]
+class RoleSelectionRoute extends PageRouteInfo<void> {
+  const RoleSelectionRoute({List<PageRouteInfo>? children})
+      : super(
+          RoleSelectionRoute.name,
+          initialChildren: children,
+        );
+
+  static const String name = 'RoleSelectionRoute';
+
+  static const PageInfo<void> page = PageInfo<void>(name);
 }
 
 /// generated route for

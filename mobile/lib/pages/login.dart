@@ -11,6 +11,7 @@ import '../blocs/user_type/user_type.dart';
 import '../router/app_router.dart';
 import '../utils/extensions.dart';
 import '../utils/i18_key_constants.dart' as i18;
+import '../utils/role_login_resolver.dart';
 import '../utils/utils.dart';
 import '../widgets/navigation/navbar.dart';
 
@@ -108,7 +109,6 @@ class _LoginPageState extends State<LoginPage> {
                       listener: (context, state) {
                         state.whenOrNull(
                           error: (message) {
-                            print("message ${message}");
                             context.showSnackBar(SnackBar(
                               content: Text(context.translate(message)),
                               backgroundColor: const Light().alertError,
@@ -116,35 +116,39 @@ class _LoginPageState extends State<LoginPage> {
                           },
                           authenticated:
                               (accesstoken, refreshtoken, userRequest) {
-                            final hasSupervisorRole = userRequest?.roles.any(
-                                    (role) =>
-                                        role.code ==
-                                        'INSTALLATION_REPORT_PART_B_EDITOR') ??
-                                false;
-                            final hasAMCRole = userRequest?.roles.any(
-                                    (role) => role.code == 'AMC_FIELD_STAFF') ??
-                                false;
-                            if (hasAMCRole) {
-                              context
-                                  .read<UserTypeBloc>()
-                                  .add(UserTypeEvent.typeSelected(
-                                    USER_TYPES.AMC.name.toLowerCase(),
-                                  ));
+                            final resolution = RoleLoginResolver.resolveRoles(
+                              userRequest?.roles ?? const [],
+                            );
+
+                            if (resolution.requiresSelection) {
                               context.router.replace(
-                                  const AuthenticatedRouteWrapper(
-                                      children: const [AmcHomeRoute()]));
+                                const AuthenticatedRouteWrapper(
+                                  children: [RoleSelectionRoute()],
+                                ),
+                              );
                               return;
-                            } else if (hasSupervisorRole) {
-                              context.read<UserTypeBloc>().add(
-                                  UserTypeEvent.typeSelected(USER_TYPES
-                                      .SUPERVISOR.name
-                                      .toLowerCase()));
-                            } else {
-                              context.read<UserTypeBloc>().add(
-                                  const UserTypeEvent.typeSelected("user"));
                             }
-                            context.router
-                                .replace(const AuthenticatedRouteWrapper());
+
+                            final directUserType = resolution.directUserType ??
+                                USER_TYPES.FIELD_STAFF;
+                            context.read<UserTypeBloc>().add(
+                                  UserTypeEvent.typeSelected(
+                                    directUserType.name.toLowerCase(),
+                                  ),
+                                );
+
+                            if (directUserType == USER_TYPES.AMC) {
+                              context.router.replace(
+                                const AuthenticatedRouteWrapper(
+                                  children: [AmcHomeRoute()],
+                                ),
+                              );
+                              return;
+                            }
+
+                            context.router.replace(
+                              const AuthenticatedRouteWrapper(),
+                            );
                           },
                         );
                       },
@@ -152,7 +156,7 @@ class _LoginPageState extends State<LoginPage> {
                         return state.maybeWhen(
                           loading: () => DigitButton(
                             isDisabled: true,
-                            label: 'Loading...',
+                            label: context.translate(i18.common.loading),
                             type: DigitButtonType.primary,
                             onPressed: () {},
                             size: DigitButtonSize.large,

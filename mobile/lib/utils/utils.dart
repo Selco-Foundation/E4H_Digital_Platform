@@ -2,6 +2,7 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:digit_forms_engine/blocs/forms/forms.dart';
 import 'package:digit_forms_engine/models/property_schema/property_schema.dart'
     as DigitPropertySchema;
@@ -21,18 +22,28 @@ import 'package:uuid/uuid.dart';
 
 import '../blocs/app_init/app_init.dart';
 import '../blocs/auth/authbloc.dart';
+import '../blocs/cache_specification/cache_specification.dart';
 import '../blocs/scheduled_visit/scheduled_visit.dart';
+import '../blocs/specification/specification.dart';
 import '../data/app_shared_preferences.dart';
 import '../data/nosql/cache_completion_report.dart';
+import '../data/nosql/cache_specification.dart';
 import '../model/activity_facility_workflow/activity_facility_workflow.dart';
+import '../model/asset_type/asset_type.dart';
 import '../model/document/document.dart';
+import '../model/mdms/mdms.dart';
 import '../model/scheduled_visit/scheduled_visit.dart';
+import '../model/solution_design_type/solution_design_type.dart';
+import '../model/system/system.dart';
+import '../model/transaction/transaction.dart';
 import '../repositories/app_init_repo.dart';
 import '../repositories/asset_repo.dart';
 import '../repositories/dynamic_form_repo.dart';
 import '../router/app_router.dart';
 import '../widgets/summary/summary.dart';
 import 'app_logger.dart';
+import 'extensions.dart';
+import 'i18_key_constants.dart' as i18;
 
 getSelectedLanguage(Initialized state, int index) {
   if (AppSharedPreferences().getSelectedLocale == null) {
@@ -54,6 +65,95 @@ class IdGen {
   final Uuid uuid;
   const IdGen._internal() : uuid = const Uuid();
   String get identifier => uuid.v1();
+}
+
+Transaction? latestTransactionWithComments(ActivityFacilityWorkflow? workflow) {
+  final transactions = workflow?.transactions;
+  if (transactions == null || transactions.isEmpty) return null;
+
+  for (final transaction in transactions.reversed) {
+    final comments = transaction.comments;
+    if (comments != null && comments.isNotEmpty) return transaction;
+  }
+
+  return null;
+}
+
+void saveCacheSpecification(
+  BuildContext context, {
+  required String activityFacilityId,
+  required ActivityFacilityWorkflow? project,
+  required String selectedAssetType,
+}) {
+  final initState = context.read<AppInitialization>().state;
+
+  final systemList = initState.maybeWhen<List<Mdms<SystemData>>>(
+    initialized: (_, __, ___, system, ____, _____, ______, _______) => system,
+    orElse: () => [],
+  );
+  final mdmsAssetTypes = initState.maybeWhen<List<Mdms<AssetTypeData>>>(
+    initialized: (_, __, assetType, ____, _____, ______, _______, ________) =>
+        assetType,
+    orElse: () => [],
+  );
+  final solutionDesignList =
+      initState.maybeWhen<List<Mdms<SolutionDesignType>>>(
+    initialized: (_, __, ___, ____, _____, ______, solutionDesign, _______) =>
+        solutionDesign,
+    orElse: () => const [],
+  );
+
+  if (systemList.isEmpty || mdmsAssetTypes.isEmpty) return;
+
+  final selectedSolutionDesignCode = project
+      ?.activityFacility.facility?.facilityDetails?.solar_solution_design_type;
+
+  final matchedSystemCode = solutionDesignList
+      .map((m) => m.data)
+      .firstWhereOrNull((sd) => sd.code == selectedSolutionDesignCode)
+      ?.systemCode;
+
+  final systemCode =
+      matchedSystemCode ?? systemList.first.data.system.lastOrNull?.code;
+  if (systemCode == null) return;
+
+  final systemName = systemList.first.data.system
+      .firstWhereOrNull((sd) => sd.code == systemCode)
+      ?.name;
+  if (systemName == null) return;
+
+  final assetTypeModel = mdmsAssetTypes.first.data.assetType.firstWhereOrNull(
+    (t) => t.code.toLowerCase() == selectedAssetType.toLowerCase(),
+  );
+
+  final capField = assetTypeModel?.formFields.firstWhereOrNull(
+    (f) => f.key == 'total_capacity' && f.system == systemCode,
+  );
+  final uomField = assetTypeModel?.formFields.firstWhereOrNull(
+    (f) => f.key == 'total_capacity_uom' && f.system == systemCode,
+  );
+
+  final rawCapacity = capField?.options?.firstOrNull ?? '0';
+  final rawCapacityUom = uomField?.options?.firstOrNull ?? '';
+  final parsedCapacity = double.tryParse(rawCapacity) ?? 0.0;
+
+  final newSpec = CacheSpecification(
+    activityFacilityId: activityFacilityId,
+    assetType: selectedAssetType.toLowerCase(),
+    system: systemCode,
+    totalCapacity: parsedCapacity,
+    totalCapacityUnit: rawCapacityUom,
+  );
+
+  context
+      .read<CacheSpecificationBloc>()
+      .add(CacheSpecificationEvent.add(newSpec));
+
+  context.read<SpecificationBloc>().add(SpecificationEvent.save(
+        systemName: systemName,
+        totalCapacity: parsedCapacity,
+        totalCapacityUom: rawCapacityUom,
+      ));
 }
 
 Future<String> copyFileToLocalDir(File sourceFile) async {
@@ -239,6 +339,7 @@ enum FormOrigin { overallSummary, inboxSummary, submitForApproval, submitted }
 enum SYSTEM_TYPE { DC }
 
 const String DEFAULT_SORT_DIRECTION = "DESC";
+const int minFacilitySearchQueryLength = 3;
 
 bool isValidUuid(String value) {
   try {
@@ -798,9 +899,42 @@ bool isSessionExpiredMessage(String? message) {
   return msg.contains('session_expired');
 }
 
+String normalizeFriendlyNetworkErrorMessage(
+  String? message, {
+  String fallback = 'Failed.',
+}) {
+  if (isSessionExpiredMessage(message)) return 'SESSION_EXPIRED';
+
+  final cleaned =
+      (message ?? '').trim().replaceFirst(RegExp(r'^(Exception:\s*)+'), '');
+  if (cleaned.isEmpty) return fallback;
+
+  final lower = cleaned.toLowerCase();
+
+  if (lower.contains('no network connection')) {
+    return 'No network connection. Connect to Wi-Fi or mobile data and try again.';
+  }
+
+  if (lower.contains('no internet access')) {
+    return "You're offline. Please reconnect to the internet and try again.";
+  }
+
+  if (lower.contains('failed host lookup') ||
+      lower.contains('socketexception') ||
+      lower.contains('software caused connection abort') ||
+      lower.contains('connection error') ||
+      lower.contains('connection reset') ||
+      lower.contains('network is unreachable')) {
+    return 'We could not submit because the internet connection was interrupted. Please try again.';
+  }
+
+  return cleaned;
+}
+
 void handleSessionExpired(BuildContext context) {
   ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Token expired! Please login again.')),
+    SnackBar(
+        content: Text(context.translate(i18.common.tokenExpiredLoginAgain))),
   );
   context.read<AuthBloc>().add(const AuthEvent.logout());
   context.router.replace(const UnauthenticatedRouteWrapper());
@@ -816,10 +950,20 @@ class DioErrorParser {
       if (errors.isNotEmpty) {
         final firstErr = errors.first as Map<String, dynamic>;
         final msg = firstErr['message'] as String? ?? dioErr.message;
-        return Exception(msg);
+        return Exception(
+          normalizeFriendlyNetworkErrorMessage(
+            msg,
+            fallback: dioErr.message ?? 'Failed.',
+          ),
+        );
       }
     }
 
-    return Exception(dioErr.message);
+    return Exception(
+      normalizeFriendlyNetworkErrorMessage(
+        dioErr.message,
+        fallback: 'Failed.',
+      ),
+    );
   }
 }

@@ -26,11 +26,13 @@ import '../pages/home.dart';
 import '../pages/image_viewer.dart';
 import '../pages/inbox.dart';
 import '../pages/inbox_asset_summary.dart';
+import '../pages/installation_images.dart';
 import '../pages/installation_report_home.dart';
 import '../pages/login.dart';
 import '../pages/media_upload.dart';
 import '../pages/overall_asset_summary.dart';
 import '../pages/pdf_viewer.dart';
+import '../pages/role_selection.dart';
 import '../pages/select_asset_type.dart';
 import '../pages/select_health_facility.dart';
 import '../pages/setup_new_password.dart';
@@ -124,6 +126,10 @@ class AppRouter extends _$AppRouter {
           AutoRoute(
               page: AmcRejctionReasonsRoute.page,
               path: Routes.amcRejectionReasons),
+          AutoRoute(
+              page: InstallationImagesRoute.page,
+              path: Routes.installationCompletionImages),
+          AutoRoute(page: RoleSelectionRoute.page, path: Routes.roleSelection),
         ])
       ];
 }

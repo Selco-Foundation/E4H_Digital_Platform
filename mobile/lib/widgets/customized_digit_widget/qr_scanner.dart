@@ -6,7 +6,6 @@ import 'package:camera/camera.dart';
 import 'package:digit_scanner/blocs/scanner.dart';
 import 'package:digit_scanner/utils/extensions/extensions.dart';
 import 'package:digit_scanner/utils/i18_key_constants.dart' as i18;
-import 'package:digit_scanner/utils/scanner_utils.dart';
 import 'package:digit_scanner/widgets/localized.dart';
 import 'package:digit_scanner/widgets/vision_detector_views/detector_view.dart';
 import 'package:digit_ui_components/digit_components.dart';
@@ -24,6 +23,7 @@ import 'package:reactive_forms/reactive_forms.dart';
 
 import '../../utils/extensions.dart';
 import '../../utils/i18_key_constants.dart' as app_i18;
+import './scanner_utils.dart';
 
 @RoutePage()
 class DigitScannerPage extends LocalizedStatefulWidget {
@@ -146,6 +146,14 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
   bool get _isGS1 => _valBool('isGS1') ?? widget.isGS1code ?? false;
   int get _scanLimit => _valInt('scanLimit') ?? widget.quantity ?? 1;
   String? get _pattern => _valString('pattern') ?? widget.regex;
+  bool get _isSingleValue => widget.singleValue ?? true;
+
+  void _completeSelection(DigitScannerState state) {
+    final result = _isGS1
+        ? state.barCodes
+        : (state.qrCodes.isEmpty ? null : state.qrCodes.last);
+    Navigator.of(context).pop(result);
+  }
 
   @override
   void initState() {
@@ -275,9 +283,11 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
   }
 
   Future<void> _pickAndScanFromGallery() async {
-    if (_isPickingImage || _isBusy) return;
+    if (_isPickingImage) return;
 
     setState(() {
+      _canProcess = false;
+      _isBusy = false;
       _isPickingImage = true;
     });
 
@@ -307,35 +317,21 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
       final bloc = context.read<DigitScannerBloc>();
 
       if (_isGS1) {
-        try {
-          final data =
-              (barcodes.first.rawValue ?? barcodes.first.displayValue)?.trim();
-          if (data == null || data.isEmpty) {
-            Toast.showToast(
-              context,
-              type: ToastType.error,
-              message: _appLocalized(
-                app_i18.scanner.failedToReadPhoto,
-                'Failed to read photo',
-              ),
-            );
-            return;
-          }
+        final parser = GS1BarcodeParser.defaultParser();
+        final parsedBarcodes = <GS1Barcode>[];
 
-          final parsed = GS1BarcodeParser.defaultParser().parse(data);
-          bloc.add(
-            DigitScannerEvent.handleScanner(
-              barCode: [parsed],
-              qrCode: const [],
-              isGS1: _isGS1,
-              quantity: _scanLimit,
-              regex: _pattern,
-              messages: _messagesFromValidations(),
-            ),
-          );
-          Navigator.of(context).pop();
-          return;
-        } catch (_) {
+        for (final barcode in barcodes) {
+          final data = (barcode.rawValue ?? barcode.displayValue)?.trim();
+          if (data == null || data.isEmpty) continue;
+
+          try {
+            parsedBarcodes.add(parser.parse(data));
+          } catch (_) {
+            // Ignore unreadable detections and keep valid GS1 values from the same image.
+          }
+        }
+
+        if (parsedBarcodes.isEmpty) {
           Toast.showToast(
             context,
             type: ToastType.error,
@@ -346,18 +342,33 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
           );
           return;
         }
+
+        bloc.add(
+          DigitScannerEvent.handleScanner(
+            barCode: parsedBarcodes,
+            qrCode: const [],
+            isGS1: _isGS1,
+            quantity: _scanLimit,
+            regex: _pattern,
+            messages: _messagesFromValidations(),
+          ),
+        );
+        return;
       }
 
-      final code =
-          (barcodes.first.displayValue ?? barcodes.first.rawValue)?.trim() ??
-              '';
-      if (code.isEmpty) {
+      final codes = barcodes
+          .map((barcode) => (barcode.displayValue ?? barcode.rawValue)?.trim())
+          .whereType<String>()
+          .where((code) => code.isNotEmpty)
+          .toList(growable: false);
+
+      if (codes.isEmpty) {
         Toast.showToast(
           context,
           type: ToastType.error,
           message: _appLocalized(
-            app_i18.scanner.noCodeFoundInPhoto,
-            'No code found in photo',
+            app_i18.scanner.failedToReadPhoto,
+            'Failed to read photo',
           ),
         );
         return;
@@ -366,14 +377,13 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
       bloc.add(
         DigitScannerEvent.handleScanner(
           barCode: const [],
-          qrCode: [code],
+          qrCode: codes,
           isGS1: _isGS1,
           quantity: _scanLimit,
           regex: _pattern,
           messages: _messagesFromValidations(),
         ),
       );
-      Navigator.of(context).pop();
     } catch (_) {
       if (mounted) {
         Toast.showToast(
@@ -388,6 +398,8 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
     } finally {
       if (mounted) {
         setState(() {
+          _canProcess = true;
+          _isBusy = false;
           _isPickingImage = false;
         });
       }
@@ -484,8 +496,16 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
                             ),
                           );
 
-                          setState(() => manualCode = false);
-                          initializeCameras();
+                          DigitScannerUtils().buildDialog(
+                            context,
+                            localizations,
+                            _scanLimit,
+                            () {
+                              if (!mounted) return;
+                              setState(() => manualCode = false);
+                              initializeCameras();
+                            },
+                          );
                         },
                         type: DigitButtonType.primary,
                         size: DigitButtonSize.large,
@@ -644,8 +664,42 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
                             ),
                           );
 
-                          setState(() => manualCode = false);
-                          initializeCameras();
+                          if (_isSingleValue) {
+                            DigitScannerUtils().buildDialog(
+                              context,
+                              localizations,
+                              1,
+                              () {
+                                if (!mounted) return;
+                                setState(() => manualCode = false);
+                                initializeCameras();
+                              },
+                              () {
+                                if (!mounted) return;
+                                _completeSelection(
+                                  DigitScannerState(
+                                    qrCodes: [value],
+                                    isGS1: _isGS1,
+                                    quantity: _scanLimit,
+                                    regex: _pattern,
+                                    messages: _messagesFromValidations(),
+                                  ),
+                                );
+                              },
+                            );
+                            return;
+                          }
+
+                          DigitScannerUtils().buildDialog(
+                            context,
+                            localizations,
+                            _scanLimit,
+                            () {
+                              if (!mounted) return;
+                              setState(() => manualCode = false);
+                              initializeCameras();
+                            },
+                          );
                         },
                         type: DigitButtonType.primary,
                         size: DigitButtonSize.large,
@@ -820,7 +874,7 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
             ),
             if (widget.enableGalleryScan) const SizedBox(height: spacer4),
             if (widget.enableGalleryScan)
-              GestureDetector(
+              InkWell(
                 onTap: _pickAndScanFromGallery,
                 child: Text(
                   _appLocalized(
@@ -862,11 +916,12 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
                 onPressed: () async {
                   final scannedCount =
                       _isGS1 ? state.barCodes.length : state.qrCodes.length;
-                  if (scannedCount < _scanLimit) {
+                  final requiredCount = _isSingleValue ? 1 : _scanLimit;
+                  if (scannedCount < requiredCount) {
                     DigitScannerUtils().buildDialog(
                       context,
                       localizations,
-                      _scanLimit,
+                      requiredCount,
                     );
                     return;
                   }
@@ -882,7 +937,18 @@ class _CustomDigitScannerPageState extends LocalizedState<DigitScannerPage> {
                       messages: _messagesFromValidations(),
                     ),
                   );
-                  Navigator.of(context).pop();
+                  if (_isSingleValue) {
+                    DigitScannerUtils().buildDialog(
+                      context,
+                      localizations,
+                      requiredCount,
+                      null,
+                      () => _completeSelection(state),
+                    );
+                    return;
+                  }
+
+                  _completeSelection(state);
                 },
               ),
             ],
