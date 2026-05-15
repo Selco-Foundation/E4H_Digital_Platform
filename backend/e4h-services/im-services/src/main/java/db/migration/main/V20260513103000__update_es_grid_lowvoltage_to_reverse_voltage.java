@@ -127,16 +127,12 @@ public class V20260513103000__update_es_grid_lowvoltage_to_reverse_voltage exten
                 "if (ctx._source.Data == null) { ctx._source.Data = [:]; } "
                         + "if (ctx._source.Data.incident == null) { ctx._source.Data.incident = [:]; } "
                         + "ctx._source.Data.incident.incidentSubType = params.newSubType; "
-                        + "if (ctx._source.Data.incident.incidentSubType_localized != null) { "
-                        + "  ctx._source.Data.incident.incidentSubType_localized = params.newSubTypeLocalized; "
-                        + "} "
+                        + "ctx._source.Data.incident.incidentSubType_localized = params.newSubTypeLocalized; "
                         + "if (ctx._source.Data.incidentSubType != null) { "
                         + "  ctx._source.Data.incidentSubType = params.newSubType; "
                         + "} "
-                        + "if (ctx._source.Data.indexView != null "
-                        + "    && ctx._source.Data.indexView.incidentSubType_localized != null) { "
-                        + "  ctx._source.Data.indexView.incidentSubType_localized = params.newSubTypeLocalized; "
-                        + "}");
+                        + "if (ctx._source.Data.indexView == null) { ctx._source.Data.indexView = [:]; } "
+                        + "ctx._source.Data.indexView.incidentSubType_localized = params.newSubTypeLocalized;");
         ObjectNode params = objectMapper.createObjectNode();
         params.put("newSubType", "ReverseVoltage");
         params.put("newSubTypeLocalized", "Reverse Voltage");
@@ -159,16 +155,40 @@ public class V20260513103000__update_es_grid_lowvoltage_to_reverse_voltage exten
         typeBool.set("should", typeShould);
         typeBool.put("minimum_should_match", 1);
 
-        // incidentSubType = LowVoltage (keyword or raw field)
+        // Match rows still on LowVoltage OR already ReverseVoltage but localized label not updated yet
         ArrayNode subShould = objectMapper.createArrayNode();
-        ObjectNode subTermKw = objectMapper.createObjectNode();
-        subTermKw.set("Data.incident.incidentSubType.keyword",
+
+        ObjectNode subLowKw = objectMapper.createObjectNode();
+        subLowKw.set("Data.incident.incidentSubType.keyword",
                 objectMapper.createObjectNode().put("value", "LowVoltage"));
-        subShould.add(objectMapper.createObjectNode().set("term", subTermKw));
-        ObjectNode subTermRaw = objectMapper.createObjectNode();
-        subTermRaw.set("Data.incident.incidentSubType",
+        subShould.add(objectMapper.createObjectNode().set("term", subLowKw));
+        ObjectNode subLowRaw = objectMapper.createObjectNode();
+        subLowRaw.set("Data.incident.incidentSubType",
                 objectMapper.createObjectNode().put("value", "LowVoltage"));
-        subShould.add(objectMapper.createObjectNode().set("term", subTermRaw));
+        subShould.add(objectMapper.createObjectNode().set("term", subLowRaw));
+
+        ObjectNode locLowKw = objectMapper.createObjectNode();
+        locLowKw.set("Data.incident.incidentSubType_localized.keyword",
+                objectMapper.createObjectNode().put("value", "Low Voltage"));
+        subShould.add(objectMapper.createObjectNode().set("term", locLowKw));
+        ObjectNode locLowRaw = objectMapper.createObjectNode();
+        locLowRaw.set("Data.incident.incidentSubType_localized",
+                objectMapper.createObjectNode().put("value", "Low Voltage"));
+        subShould.add(objectMapper.createObjectNode().set("term", locLowRaw));
+
+        ObjectNode reverseWithOldLabel = objectMapper.createObjectNode();
+        ArrayNode reverseLabelMust = objectMapper.createArrayNode();
+        ObjectNode revSubKw = objectMapper.createObjectNode();
+        revSubKw.set("Data.incident.incidentSubType.keyword",
+                objectMapper.createObjectNode().put("value", "ReverseVoltage"));
+        reverseLabelMust.add(objectMapper.createObjectNode().set("term", revSubKw));
+        ObjectNode revLocKw = objectMapper.createObjectNode();
+        revLocKw.set("Data.incident.incidentSubType_localized.keyword",
+                objectMapper.createObjectNode().put("value", "Low Voltage"));
+        reverseLabelMust.add(objectMapper.createObjectNode().set("term", revLocKw));
+        reverseWithOldLabel.set("must", reverseLabelMust);
+        subShould.add(reverseWithOldLabel);
+
         ObjectNode subBool = objectMapper.createObjectNode();
         subBool.set("should", subShould);
         subBool.put("minimum_should_match", 1);
@@ -194,7 +214,7 @@ public class V20260513103000__update_es_grid_lowvoltage_to_reverse_voltage exten
         migrationLogger.flush();
 
         if (updated == 0 && total == 0) {
-            log.warn("Index {}: no documents matched (Grid|GRID)+LowVoltage. "
+            log.warn("Index {}: no documents matched (Grid|GRID) with LowVoltage or stale 'Low Voltage' label. "
                     + "Verify incidentType and incidentSubType field paths.", indexName);
         }
     }
