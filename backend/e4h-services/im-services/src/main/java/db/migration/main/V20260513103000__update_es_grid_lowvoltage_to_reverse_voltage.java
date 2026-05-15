@@ -176,7 +176,6 @@ public class V20260513103000__update_es_grid_lowvoltage_to_reverse_voltage exten
                 objectMapper.createObjectNode().put("value", "Low Voltage"));
         subShould.add(objectMapper.createObjectNode().set("term", locLowRaw));
 
-        ObjectNode reverseWithOldLabel = objectMapper.createObjectNode();
         ArrayNode reverseLabelMust = objectMapper.createArrayNode();
         ObjectNode revSubKw = objectMapper.createObjectNode();
         revSubKw.set("Data.incident.incidentSubType.keyword",
@@ -186,8 +185,9 @@ public class V20260513103000__update_es_grid_lowvoltage_to_reverse_voltage exten
         revLocKw.set("Data.incident.incidentSubType_localized.keyword",
                 objectMapper.createObjectNode().put("value", "Low Voltage"));
         reverseLabelMust.add(objectMapper.createObjectNode().set("term", revLocKw));
-        reverseWithOldLabel.set("must", reverseLabelMust);
-        subShould.add(reverseWithOldLabel);
+        ObjectNode reverseBool = objectMapper.createObjectNode();
+        reverseBool.set("must", reverseLabelMust);
+        subShould.add(objectMapper.createObjectNode().set("bool", reverseBool));
 
         ObjectNode subBool = objectMapper.createObjectNode();
         subBool.set("should", subShould);
