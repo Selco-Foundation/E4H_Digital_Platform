@@ -406,7 +406,7 @@ public class FacilityService {
     /**
      * Creates POC user as HRMS employee if not exists (checks by employee username / code in HRMS).
      * For {@code ANGANWADI} facilities, username is {@code facilityPocUsername} (HFR not required).
-     * Otherwise validates that HFR ID or NIN ID is present (one is always required), plus POC contact and POC name.
+     * Otherwise validates HFR ID (or NIN-backed flow), POC contact, and POC name before attempting creation.
      * Supports both direct fields (facilityPocName, facilityPocPhone, hfrId) and nested facilityDetails.
      *
      * @param facility The facility for which to create POC user
@@ -453,7 +453,7 @@ public class FacilityService {
                 : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
         boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
 
-        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR or NIN + contact + name)
+        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR + contact + name)
         if (isAnganwadi) {
             String pocUsername = facility.getFacilityPocUsername() == null
                     ? ""
@@ -469,20 +469,16 @@ public class FacilityService {
                         sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
                 return;
             }
-        } else {
-            String facilityIdentifier = resolveFacilityIdentifier(facility, facilityDetails);
-            if (facilityIdentifier == null || facilityIdentifier.isBlank()
-                    || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
-                    || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
-                log.warn("Cannot create POC user for facility {}: missing facility identifier (HFR or NIN ID), POC contact, or POC name. " +
-                        "HFR ID: {}, NIN ID: {}, POC Contact: {}, POC Name: {}",
-                        sanitizeForLog(facility.getFacilityId()),
-                        sanitizeForLog(facilityDetails.getHfrId()),
-                        sanitizeForLog(facilityDetails.getNinId()),
-                        sanitizeForLog(facilityDetails.getPocContact()),
-                        sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
-                return;
-            }
+        } else if (facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()
+                || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
+                || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
+            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name. " +
+                    "HFR ID: {}, POC Contact: {}, POC Name: {}",
+                    sanitizeForLog(facility.getFacilityId()),
+                    sanitizeForLog(facilityDetails.getHfrId()),
+                    sanitizeForLog(facilityDetails.getPocContact()),
+                    sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
+            return;
         }
 
         String username;
@@ -620,6 +616,11 @@ public class FacilityService {
         update.setAdditionalDetails(facility.getAdditionalDetails());
         update.setMappedVendorName(facility.getMappedVendorName());
         update.setMappedVendorUserName(facility.getMappedVendorUserName());
+
+        String effectiveCategory = firstNonBlank(update.getFacilityCategory(), existingFacility.getFacilityCategory());
+        String effectiveHfrId = firstNonBlank(update.getHfrId(), existingFacility.getHfrId());
+        String effectiveNinId = firstNonBlank(update.getNinId(), existingFacility.getNinId());
+        validateCategoryBasedIdentifiers(effectiveCategory, effectiveHfrId, effectiveNinId);
 
         String effectiveCategory = firstNonBlank(update.getFacilityCategory(), existingFacility.getFacilityCategory());
         String effectiveHfrId = firstNonBlank(update.getHfrId(), existingFacility.getHfrId());
