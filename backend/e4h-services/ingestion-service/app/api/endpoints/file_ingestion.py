@@ -13,13 +13,12 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 
 from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
 from app.utils.excel_utils import autofit_columns
-from app.utils.facility_validator import project_facility_validation, facility_validation
-from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
-from openpyxl import load_workbook
-from openpyxl.styles import Protection
-from openpyxl.utils.dataframe import dataframe_to_rows
-
-from app.utils.facility_validator import project_facility_validation
+from app.utils.facility_validator import (
+    project_facility_validation,
+    facility_validation,
+    collect_hfr_nin_errors_for_row,
+    collect_anganwadi_poc_username_errors_for_row,
+)
 from fastapi import APIRouter, File, Form, UploadFile, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import FileResponse
 import psycopg2
@@ -168,11 +167,15 @@ async def upload_vendors_excel_sheet(
                     if org_data and org_data.get("organisations"):
                         vendor_df.at[index, "status"] = "success"
                         vendor_df.at[index, "error"] = None
-                        vendor_df.at[index, "vendor_id"] = org_data["organisations"][0].get("id")
+                        vendor_id = org_data["organisations"][0].get("id")
+                        vendor_df.at[index, "vendor_id"] = vendor_id
+                        success_count += 1
+                        logger.debug(f"Vendor created successfully: {vendor.vendor_name}, id={vendor_id}")
                     else:
-                        logger.warning(f"Failed to create vendor: {vendor.vendor_name}")
+                        logger.warning(f"Failed to create vendor: {vendor.vendor_name} - no organization data returned")
                 except Exception as e:
-                    logger.error(f"Error creating vendor in org service: {e}")
+                    logger.error(f"Error creating vendor {vendor.vendor_name} in org service: {e}", exc_info=True)
+            logger.info(f"Vendor creation completed: {success_count}/{len(vendors)} successful")
 
         logger.info("Writing processed vendor data to Excel file")
         with pd.ExcelWriter(output_file_path, engine='openpyxl') as writer:
@@ -188,7 +191,7 @@ async def upload_vendors_excel_sheet(
         )
 
     except Exception as e:
-        logger.error(f"Error processing vendor data: {e}")
+        logger.error(f"Error processing vendor data: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to process vendor data: {str(e)}")
 
     finally:
@@ -209,7 +212,7 @@ async def upload_boundaries_excel_sheet(
     input_temp_file = None
     output_temp_file = None
     request_info = request_info_from_json(request_info)
-    #get_authorized_request_info(request_info)
+    logger.info(f"Processing boundary file: boundary_sheet={boundary_sheet_name}")
 
     try:
         logger.debug("Creating temporary files for boundary processing")
@@ -485,6 +488,7 @@ async def upload_facilities_excel_sheet(
             dst.write(src.read())
 
         df = pd.read_excel(facility_file_path, sheet_name=facility_sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
 
         if 'status' not in df.columns:
@@ -504,7 +508,19 @@ async def upload_facilities_excel_sheet(
         if facility_service_url and not df.empty:
             facility_client = FacilityServiceClient(facility_service_url)
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
+            hfr_nin_db_cache: Dict[str, bool] = {}
             for index, row in df[df['status'] != 'success'].iterrows():
+                hfr_nin_errs = collect_hfr_nin_errors_for_row(
+                    row, index, df, facility_client, hfr_nin_db_cache,
+                )
+                anganwadi_poc_errs = collect_anganwadi_poc_username_errors_for_row(
+                    row, index, df, facility_schema,
+                )
+                pre_errs = list(dict.fromkeys([*hfr_nin_errs, *anganwadi_poc_errs]))
+                if pre_errs:
+                    df.at[index, 'status'] = 'failed'
+                    df.at[index, 'error'] = '; '.join(pre_errs)
+                    continue
                 try:
                     facility_data_payload = create_facility_payload(request_info, row, are_facilities_onm_ready, facility_schema)
                     response = facility_client.create_facility(facility_data_payload)
@@ -1793,11 +1809,11 @@ async def flag_for_qc(
         if input_temp_file and os.path.exists(input_temp_file.name):
             pass
 
-@router.post('/incidents/update',
-             summary='Update incidents from Excel file',
-             response_description='Returns processing results with status for each incident')
-async def update_incidents_from_excel(
-        incidents_file: UploadFile = File(..., description="Excel file containing incidents to update"),
+@router.post('/incidents/dataUpdate',
+             summary='Update incidents data from Excel file',
+             response_description='Returns result status for each incident')
+async def update_incidents_data_from_excel(
+        incidents_file: UploadFile = File(..., description="Excel file containing incidents to update data"),
         incidents_sheet_name: str = Form(default="Incidents",
                                          description="Name of the sheet containing incident data"),
         request_info: str = Form(default="", description="Request info in JSON format")
@@ -1812,16 +1828,17 @@ async def update_incidents_from_excel(
         df = pd.read_excel(temp_file.name, sheet_name=incidents_sheet_name)
         df.columns = df.columns.str.strip()
 
-        for col in ['status', 'error', 'updated_status']:
+
+        for col in ['status', 'error']:
             if col not in df.columns:
                 df[col] = ''
 
         incident_client = IMServiceClient(im_services_url)
 
         for index, row in df.iterrows():
-            if pd.isna(row.get('Ticket No.')) or row.get('Current Status') != 'Pending For Assignment':
+            if pd.isna(row.get('Ticket No.')):
                 df.at[index, 'status'] = 'skipped'
-                df.at[index, 'error'] = 'Missing ticket_no/Incorrect current status'
+                df.at[index, 'error'] = 'Missing ticket_no'
                 continue
 
             if pd.isna(row.get('Tenant ID')):
@@ -1833,37 +1850,34 @@ async def update_incidents_from_excel(
 
             try:
                 search_response = incident_client.search_incident(
-                    incident_id=row['Ticket No.'],
-                    tenant_id=row['Tenant ID'],
+                    incident_id=row['Ticket No.'].strip(),
+                    tenant_id=row['Tenant ID'].strip(),
                     request_info=incident_request_info
                 )
 
-                try:
-                    dt = datetime.strptime(row.get("Filed Date"), "%b %d, %Y @ %H:%M:%S.%f")
-                except (ValueError, TypeError) as e:
+                incident_wrappers = search_response.get("IncidentWrappers", [])
+                if not incident_wrappers:
                     df.at[index, 'status'] = 'failed'
-                    df.at[index, 'error'] = f'Invalid date format: {e}'
+                    df.at[index, 'error'] = f"No incident found for Ticket No. {row['Ticket No.']} and Tenant ID {row['Tenant ID']}"
                     continue
 
                 update_data = {
-                    "new_status": "REJECTED",
-                    "action": "REJECT",
-                    "comments": "rejected due to duplication",
-                    "reject_reason": "Duplication",
-                    "filed_date" : dt.strftime("%d/%m/%Y")
+                    "systemFunctional": (
+                        {"yes": "FUNCTIONAL", "no": "NON_FUNCTIONAL"}.get(str(row.get("Is the solar system working?", "")).strip().lower(), "")
+                    )
                 }
 
                 update_payload = create_update_payload(search_response, update_data)
-                update_response = incident_client.update_incident(update_payload)
+                update_response = incident_client.update_incident_data(update_payload)
 
-                process_update_response(update_response, df, index, update_data)
+                process_update_incident_data_response(update_response, df, index)
 
             except Exception as e:
                 df.at[index, 'status'] = 'failed'
                 df.at[index, 'error'] = str(e)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_filename = f"incident_update_results_{timestamp}.xlsx"
+        output_filename = f"incident_data_update_results_{timestamp}.xlsx"
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as output_temp_file:
             df.to_excel(output_temp_file.name, sheet_name=incidents_sheet_name, index=False)
@@ -1882,7 +1896,7 @@ async def update_incidents_from_excel(
         if temp_file and os.path.exists(temp_file.name):
             os.unlink(temp_file.name)
 
-def process_update_response(response, df, idx, update_data):
+def process_update_incident_data_response(response, df, idx):
     try:
         if 'Errors' in response and response['Errors']:
             error_msg = response['Errors'][0].get('message', str(response['Errors'][0]))
@@ -1891,7 +1905,6 @@ def process_update_response(response, df, idx, update_data):
         else:
             df.at[idx, 'status'] = 'success'
             df.at[idx, 'error'] = ''
-            df.at[idx, 'updated_status'] = update_data.get('new_status', '')
     except Exception as e:
         df.at[idx, 'status'] = 'failed'
         df.at[idx, 'error'] = str(e)
@@ -1903,6 +1916,7 @@ def process_update_response(response, df, idx, update_data):
 async def validate_facilities_excel_sheet(
         background_tasks: BackgroundTasks,
         facility_file: UploadFile = File(..., description="Excel file containing facility data"),
+        project_id: str = Form(description="Project ID"),
         facility_sheet_name: str = Form(default="FacilityMapping",
                                         description="Name of the sheet containing facility data"),
         boundary_sheet_name: str = Form(default="BoundaryCodes",
@@ -1913,6 +1927,7 @@ async def validate_facilities_excel_sheet(
     request_info_obj = request_info_from_json(request_info)
     mdms_client = MDMSClient(mdms_url)
     facility_client = FacilityServiceClient(facility_service_url)
+    project_client = ProjectServiceClient(project_service_url)
 
     try:
         # Save uploaded Excel to a temp file
@@ -1927,12 +1942,39 @@ async def validate_facilities_excel_sheet(
 
         boundary_data_df = pd.read_excel(temp_input_file.name, sheet_name=boundary_sheet_name)
 
+        # ----------------- Validate Boundary Sheet Against Project ----------------- #
+        projects = project_client.search_project(request_info_obj, project_id)
+        if not projects or "Project" not in projects or len(projects["Project"]) == 0:
+            raise HTTPException(status_code=400, detail=f"No project found for id {project_id}")
+
+        project = projects["Project"][0]["project"]
+        geography = project.get("additionalDetails", {}).get("geographyDetails", {})
+
+        # Valid codes directly as a set (no loop needed)
+        valid_boundary_codes = {str(block["code"]).strip() for block in geography.get("blocks", []) if
+                                block.get("code")}
+
+        # Uploaded codes directly as a set
+        uploaded_codes = set(boundary_data_df["BoundaryCode"].dropna().astype(str).str.strip())
+
+        # Equality check
+        if uploaded_codes != valid_boundary_codes:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "BoundaryCode mismatch",
+                    "missing": list(valid_boundary_codes - uploaded_codes),
+                    "extra": list(uploaded_codes - valid_boundary_codes)
+                }
+            )
+
         # ----------------- Read Facility Sheet ----------------- #
         if facility_sheet_name not in wb.sheetnames:
             raise HTTPException(status_code=400, detail=f"Facility sheet '{facility_sheet_name}' not found")
 
         df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
+        df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
 
         # ----------------- Read Facility Column ----------------- #
         if 'Facility Id' not in df.columns:
@@ -2813,10 +2855,7 @@ async def validate_amc_configurations_excel_sheet(
 
 
 def get_vendor_id_for_amc_field_staff(user_info_data: List[dict]) -> str:
-    """
-    Returns vendorId (or vendor name fallback when vendorId is absent) for the vendor
-    that has at least one user with role AMC_FIELD_STAFF.
-    """
+    # Vendor id (or name fallback) for the vendor that has a user with role AMC_FIELD_STAFF.
     role_code = "AMC_FIELD_STAFF"
     candidates: Set[str] = set()
 
