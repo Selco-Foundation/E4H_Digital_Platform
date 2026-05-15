@@ -34,7 +34,8 @@ import java.util.Base64;
 
 /**
  * Aligns Elasticsearch / Kibana incident documents with the PostgreSQL rename of
- * GRID / LowVoltage → GRID / ReverseVoltage (see V20260507120000__rename_grid_low_to_reverse_voltage.sql).
+ * Grid|GRID / LowVoltage → ReverseVoltage (see V20260507120000__rename_grid_low_to_reverse_voltage.sql).
+ * Matches both {@code Grid} and {@code GRID} incident types in Elasticsearch.
  * <p>
  * Targets the same indices as other IM ticket ES migrations. Requires {@code EGOV_ES_HOST}
  * (and optional {@code EGOV_ES_USERNAME} / {@code EGOV_ES_PASSWORD}) at deploy time, consistent with
@@ -47,6 +48,9 @@ public class V20260513103000__update_es_grid_lowvoltage_to_reverse_voltage exten
             "computed-sla-im-services-write",
             "audit-computed-sla-im-services-write"
     };
+
+    /** Historical tickets use either casing for grid incident type. */
+    private static final String[] GRID_INCIDENT_TYPES = {"Grid", "GRID"};
 
     @Override
     public boolean canExecuteInTransaction() {
@@ -115,7 +119,7 @@ public class V20260513103000__update_es_grid_lowvoltage_to_reverse_voltage exten
                              String esPassword,
                              PrintWriter migrationLogger) throws Exception {
 
-        String updateByQueryUrl = esHost + "/" + indexName + "/_update_by_query?conflicts=proceed";
+        String updateByQueryUrl = esHost + "/" + indexName + "/_update_by_query?conflicts=proceed&refresh=true";
 
         ObjectNode updateRequest = objectMapper.createObjectNode();
         ObjectNode script = objectMapper.createObjectNode();
@@ -123,25 +127,55 @@ public class V20260513103000__update_es_grid_lowvoltage_to_reverse_voltage exten
                 "if (ctx._source.Data == null) { ctx._source.Data = [:]; } "
                         + "if (ctx._source.Data.incident == null) { ctx._source.Data.incident = [:]; } "
                         + "ctx._source.Data.incident.incidentSubType = params.newSubType; "
+                        + "if (ctx._source.Data.incident.incidentSubType_localized != null) { "
+                        + "  ctx._source.Data.incident.incidentSubType_localized = params.newSubTypeLocalized; "
+                        + "} "
                         + "if (ctx._source.Data.incidentSubType != null) { "
                         + "  ctx._source.Data.incidentSubType = params.newSubType; "
+                        + "} "
+                        + "if (ctx._source.Data.indexView != null "
+                        + "    && ctx._source.Data.indexView.incidentSubType_localized != null) { "
+                        + "  ctx._source.Data.indexView.incidentSubType_localized = params.newSubTypeLocalized; "
                         + "}");
         ObjectNode params = objectMapper.createObjectNode();
         params.put("newSubType", "ReverseVoltage");
+        params.put("newSubTypeLocalized", "Reverse Voltage");
         script.set("params", params);
         updateRequest.set("script", script);
 
-        ArrayNode mustArray = objectMapper.createArrayNode();
+        // incidentType = Grid OR GRID (keyword and raw field per casing)
+        ArrayNode typeShould = objectMapper.createArrayNode();
+        for (String gridType : GRID_INCIDENT_TYPES) {
+            ObjectNode typeTermKw = objectMapper.createObjectNode();
+            typeTermKw.set("Data.incident.incidentType.keyword",
+                    objectMapper.createObjectNode().put("value", gridType));
+            typeShould.add(objectMapper.createObjectNode().set("term", typeTermKw));
+            ObjectNode typeTermRaw = objectMapper.createObjectNode();
+            typeTermRaw.set("Data.incident.incidentType",
+                    objectMapper.createObjectNode().put("value", gridType));
+            typeShould.add(objectMapper.createObjectNode().set("term", typeTermRaw));
+        }
+        ObjectNode typeBool = objectMapper.createObjectNode();
+        typeBool.set("should", typeShould);
+        typeBool.put("minimum_should_match", 1);
 
-        ObjectNode termType = objectMapper.createObjectNode();
-        termType.set("Data.incident.incidentType.keyword",
-                objectMapper.createObjectNode().put("value", "GRID"));
-        mustArray.add(objectMapper.createObjectNode().set("term", termType));
-
-        ObjectNode termSub = objectMapper.createObjectNode();
-        termSub.set("Data.incident.incidentSubType.keyword",
+        // incidentSubType = LowVoltage (keyword or raw field)
+        ArrayNode subShould = objectMapper.createArrayNode();
+        ObjectNode subTermKw = objectMapper.createObjectNode();
+        subTermKw.set("Data.incident.incidentSubType.keyword",
                 objectMapper.createObjectNode().put("value", "LowVoltage"));
-        mustArray.add(objectMapper.createObjectNode().set("term", termSub));
+        subShould.add(objectMapper.createObjectNode().set("term", subTermKw));
+        ObjectNode subTermRaw = objectMapper.createObjectNode();
+        subTermRaw.set("Data.incident.incidentSubType",
+                objectMapper.createObjectNode().put("value", "LowVoltage"));
+        subShould.add(objectMapper.createObjectNode().set("term", subTermRaw));
+        ObjectNode subBool = objectMapper.createObjectNode();
+        subBool.set("should", subShould);
+        subBool.put("minimum_should_match", 1);
+
+        ArrayNode mustArray = objectMapper.createArrayNode();
+        mustArray.add(objectMapper.createObjectNode().set("bool", typeBool));
+        mustArray.add(objectMapper.createObjectNode().set("bool", subBool));
 
         ObjectNode bool = objectMapper.createObjectNode();
         bool.set("must", mustArray);
@@ -160,8 +194,8 @@ public class V20260513103000__update_es_grid_lowvoltage_to_reverse_voltage exten
         migrationLogger.flush();
 
         if (updated == 0 && total == 0) {
-            log.warn("Index {}: no documents matched GRID+LowVoltage (.keyword query). "
-                    + "If prod mapping differs, run a manual _update_by_query or adjust field paths.", indexName);
+            log.warn("Index {}: no documents matched (Grid|GRID)+LowVoltage. "
+                    + "Verify incidentType and incidentSubType field paths.", indexName);
         }
     }
 
