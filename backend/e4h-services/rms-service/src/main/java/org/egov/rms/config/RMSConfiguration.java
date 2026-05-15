@@ -54,17 +54,40 @@ public class RMSConfiguration {
     @Value("${rms.rule.solar.threshold.percent:10}")
     private Integer solarThresholdPercent;
 
+    /**
+     * When true, panel low-solar tickets require recent RMS activity (last sync within {@link #panelIdleMaxHours}).
+     * Idle centers (no sync for longer than that window) are excluded even if 7-day low solar data is present.
+     */
+    @Value("${rms.rule.panel.low.solar.activity.gating.enabled:true}")
+    private boolean panelLowSolarActivityGatingEnabled;
+
+    /** A center is treated as idle if last_sync_time is older than this many hours (default 72). */
+    @Value("${rms.rule.panel.idle.max.hours:72}")
+    private int panelIdleMaxHours;
+
     @Value("${rms.rule.inverter.no.signal.days:2}")
     private Integer inverterNoSignalDays;
 
     @Value("${rms.rule.inverter.high.voltage.threshold:250}")
     private Integer inverterHighVoltageThreshold;
 
-    @Value("${rms.rule.grid.voltage.low.threshold:200}")
-    private Integer gridVoltageLowThreshold;
+    /**
+     * Inclusive lower bound (volts) of the reverse voltage range.
+     * A grid voltage in [reverseMin, reverseMax] triggers a "Reverse Voltage" alert.
+     */
+    @Value("${rms.rule.grid.voltage.reverse.min.threshold:50}")
+    private Integer gridVoltageReverseMinThreshold;
+
+    /** Inclusive upper bound (volts) of the reverse voltage range. */
+    @Value("${rms.rule.grid.voltage.reverse.max.threshold:150}")
+    private Integer gridVoltageReverseMaxThreshold;
 
     @Value("${rms.rule.grid.voltage.high.threshold:250}")
     private Integer gridVoltageHighThreshold;
+
+    /** When false, grid high voltage (&gt; threshold) facilities do not produce alerts or tickets. Reverse voltage is unaffected by this flag. */
+    @Value("${rms.rule.grid.high.voltage.tickets.enabled:true}")
+    private boolean gridHighVoltageTicketsEnabled;
 
     // Deduplication Configuration
     @Value("${rms.deduplication.suppression.window.hours:24}")
