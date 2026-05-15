@@ -75,6 +75,7 @@ public class FacilityKibanaMapper {
                 .phcName(null)
                 .phcType(facility.getFacilityType())
                 .tenantId(facility.getTenantId())
+                .facilityCategory(facility.getFacilityCategory())
                 // Used downstream as the health facility display name (see im-services-analytics)
                 .tenantIdLocalized(resolveTenantIdLocalized(facility))
                 .code(resolveFacilityCodeForIndex(facility))
