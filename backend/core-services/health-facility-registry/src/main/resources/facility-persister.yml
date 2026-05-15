@@ -73,12 +73,13 @@ serviceMaps:
       queryMaps:
         - query: >
             UPDATE facility SET
-              facility_name = ?, facility_type = ?, facility_subtype = ?,
+              facility_name = ?, facility_category = ?, facility_type = ?, facility_subtype = ?,
               addressId = ?, facility_details = ?, additional_details = ?, is_onm_ready = ?
             WHERE id = ? AND tenant_id = ?;
           basePath: $.FacilityUpdate
           jsonMaps:
             - jsonPath: $.FacilityUpdate.facility_name
+            - jsonPath: $.FacilityUpdate.facility_category
             - jsonPath: $.FacilityUpdate.facility_type
             - jsonPath: $.FacilityUpdate.facility_subtype
             - jsonPath: $.FacilityUpdate.address.addressId

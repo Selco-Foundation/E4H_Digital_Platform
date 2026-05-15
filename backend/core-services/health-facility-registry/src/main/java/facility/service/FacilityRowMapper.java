@@ -39,6 +39,7 @@ public class FacilityRowMapper {
         facility.setFacilityOwnership(rs.getString("facility_ownership"));
         facility.setBoundaryCode(rs.getString("boundary_code"));
         facility.setFacilityPocName(rs.getString("facility_poc_name"));
+        facility.setFacilityPocUsername(rs.getString("facility_poc_username"));
         facility.setFacilityPocPhone(rs.getString("facility_poc_phone"));
         facility.setFacilityPocEmail(rs.getString("facility_poc_email"));
         facility.setHfrId(rs.getString("hfr_id"));

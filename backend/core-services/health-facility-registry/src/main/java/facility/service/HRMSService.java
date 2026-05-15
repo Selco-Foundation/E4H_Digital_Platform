@@ -10,13 +10,15 @@ import org.egov.common.contract.request.RequestInfo;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import java.util.*;
 import java.time.Instant;
+import java.util.*;
 
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class HRMSService {
+
+    private static final String CATEGORY_ANGANWADI = "ANGANWADI";
 
     private final ServiceRequestRepository serviceRequestRepository;
     private final Configuration configs;
@@ -133,21 +135,46 @@ public class HRMSService {
     public boolean createFacilityPOCEmployee(Facility facility, RequestInfo requestInfo) {
         log.trace("Entering createFacilityPOCEmployee method");
         HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
-        
-        if (facilityDetails == null || facilityDetails.getHfrId() == null || 
-            facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null || 
-            facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
-            log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name", 
-                    sanitizeForLog(facility.getFacilityId()));
-            return false;
+
+        String normalizedCategory = facility.getFacilityCategory() == null
+                ? ""
+                : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+
+        String employeeCode;
+        if (isAnganwadi) {
+            if (facilityDetails == null || facilityDetails.getPocContact() == null
+                    || facilityDetails.getPocContact().isBlank()
+                    || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
+                log.warn("Cannot create POC employee for ANGANWADI facility {}: missing POC contact or name",
+                        sanitizeForLog(facility.getFacilityId()));
+                return false;
+            }
+            String pocUsername = facility.getFacilityPocUsername();
+            if (pocUsername == null || pocUsername.isBlank()) {
+                log.warn("Cannot create POC employee for ANGANWADI facility {}: missing facility POC username",
+                        sanitizeForLog(facility.getFacilityId()));
+                return false;
+            }
+            employeeCode = pocUsername.trim();
+        } else {
+            if (facilityDetails == null || facilityDetails.getHfrId() == null
+                    || facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null
+                    || facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null
+                    || facilityDetails.getPocName().isBlank()) {
+                log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name",
+                        sanitizeForLog(facility.getFacilityId()));
+                return false;
+            }
+            employeeCode = facilityDetails.getHfrId().trim();
         }
 
-        log.info("Creating POC employee for facility {} with HFR ID {}", 
-                sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
+        log.info("Creating POC employee for facility {} with employee code {}",
+                sanitizeForLog(facility.getFacilityId()), sanitizeForLog(employeeCode));
         try {
             // Build employee object
             Map<String, Object> user = new HashMap<>();
-            user.put("userName", facilityDetails.getHfrId()); // Use HFR ID as username
+            user.put("userName", employeeCode);
             user.put("name", facilityDetails.getPocName());
             user.put("mobileNumber", facilityDetails.getPocContact());
             user.put("tenantId", facility.getTenantId());
@@ -178,7 +205,7 @@ public class HRMSService {
 
             // Build employee object
             Map<String, Object> employee = new HashMap<>();
-            employee.put("code", facilityDetails.getHfrId());
+            employee.put("code", employeeCode);
             employee.put("employeeStatus", "EMPLOYED");
             employee.put("employeeType", "PERMANENT");
             employee.put("dateOfAppointment", currentTimestamp);
@@ -236,8 +263,8 @@ public class HRMSService {
             );
 
             if (response != null) {
-                log.info("Successfully created POC employee for facility {} with HFR ID {}", 
-                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
+                log.info("Successfully created POC employee for facility {} with employee code {}",
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(employeeCode));
                 
                 // Update user password after successful creation
                 updateUserPassword(response, requestInfo);
