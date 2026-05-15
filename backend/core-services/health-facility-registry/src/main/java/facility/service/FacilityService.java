@@ -1124,7 +1124,20 @@ public class FacilityService {
     }
 
     public void updatedHRMSUser(FacilityUpdateRequest request, Facility existingFacilityDetails, Facility requestFacilityDetails){
-        String username = existingFacilityDetails.getHfrId() != null && !existingFacilityDetails.getHfrId().trim().isBlank() ? existingFacilityDetails.getHfrId(): existingFacilityDetails.getNinId();
+        String normalizedCategory = existingFacilityDetails.getFacilityCategory() == null
+                ? ""
+                : existingFacilityDetails.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+        String username;
+        if (isAnganwadi) {
+            username = existingFacilityDetails.getFacilityPocUsername() !=null && !existingFacilityDetails.getFacilityPocUsername().trim().isBlank() ?
+                    existingFacilityDetails.getFacilityPocUsername().trim() : "";
+        } else {
+            username = existingFacilityDetails.getHfrId() != null && !existingFacilityDetails.getHfrId().trim().isBlank()
+                    ? existingFacilityDetails.getHfrId().trim()
+                    : existingFacilityDetails.getNinId();
+        }
+
         if(username!=null && !username.isEmpty()){
             Employee employee = hrmsUtils.getUserByUsername(request, username);
             if (employee != null) {
