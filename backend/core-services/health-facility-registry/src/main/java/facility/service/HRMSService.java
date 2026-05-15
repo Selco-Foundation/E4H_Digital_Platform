@@ -158,15 +158,19 @@ public class HRMSService {
             }
             employeeCode = pocUsername.trim();
         } else {
-            if (facilityDetails == null || facilityDetails.getHfrId() == null
-                    || facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null
+            if (facilityDetails == null || facilityDetails.getPocContact() == null
                     || facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null
                     || facilityDetails.getPocName().isBlank()) {
-                log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name",
+                log.warn("Cannot create POC employee for facility {}: missing POC contact or name",
                         sanitizeForLog(facility.getFacilityId()));
                 return false;
             }
-            employeeCode = facilityDetails.getHfrId().trim();
+            employeeCode = resolveFacilityEmployeeCode(facility);
+            if (employeeCode == null || employeeCode.isBlank()) {
+                log.warn("Cannot create POC employee for facility {}: missing HFR or NIN ID",
+                        sanitizeForLog(facility.getFacilityId()));
+                return false;
+            }
         }
 
         log.info("Creating POC employee for facility {} with employee code {}",

@@ -400,7 +400,7 @@ public class FacilityService {
     /**
      * Creates POC user as HRMS employee if not exists (checks by employee username / code in HRMS).
      * For {@code ANGANWADI} facilities, username is {@code facilityPocUsername} (HFR not required).
-     * Otherwise validates HFR ID (or NIN-backed flow), POC contact, and POC name before attempting creation.
+     * Otherwise validates that HFR ID or NIN ID is present (one is always required), plus POC contact and POC name.
      * Supports both direct fields (facilityPocName, facilityPocPhone, hfrId) and nested facilityDetails.
      *
      * @param facility The facility for which to create POC user
@@ -447,7 +447,7 @@ public class FacilityService {
                 : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
         boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
 
-        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR + contact + name)
+        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR or NIN + contact + name)
         if (isAnganwadi) {
             String pocUsername = facility.getFacilityPocUsername() == null
                     ? ""
@@ -463,25 +463,27 @@ public class FacilityService {
                         sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
                 return;
             }
-        } else if (facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()
-                || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
-                || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
-            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name. " +
-                    "HFR ID: {}, POC Contact: {}, POC Name: {}",
-                    sanitizeForLog(facility.getFacilityId()),
-                    sanitizeForLog(facilityDetails.getHfrId()),
-                    sanitizeForLog(facilityDetails.getPocContact()),
-                    sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
-            return;
+        } else {
+            String facilityIdentifier = resolveFacilityIdentifier(facility, facilityDetails);
+            if (facilityIdentifier == null || facilityIdentifier.isBlank()
+                    || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
+                    || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
+                log.warn("Cannot create POC user for facility {}: missing facility identifier (HFR or NIN ID), POC contact, or POC name. " +
+                        "HFR ID: {}, NIN ID: {}, POC Contact: {}, POC Name: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(facilityDetails.getHfrId()),
+                        sanitizeForLog(facilityDetails.getNinId()),
+                        sanitizeForLog(facilityDetails.getPocContact()),
+                        sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
+                return;
+            }
         }
 
         String username;
         if (isAnganwadi) {
             username = facility.getFacilityPocUsername().trim();
         } else {
-            username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()
-                    ? facility.getHfrId().trim()
-                    : facility.getNinId();
+            username = resolveFacilityIdentifier(facility, facilityDetails);
         }
         // Check if employee already exists by mobile number
         boolean employeeExists = hrmsService.employeeExistsByUsername(
@@ -501,7 +503,7 @@ public class FacilityService {
             }
         } else {
             log.info("POC user with identifier {} already exists for facility {}, skipping creation",
-                    sanitizeForLog(facilityIdentifier), sanitizeForLog(facility.getFacilityId()));
+                    sanitizeForLog(username), sanitizeForLog(facility.getFacilityId()));
         }
     }
 
