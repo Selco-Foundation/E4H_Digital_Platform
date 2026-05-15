@@ -366,9 +366,9 @@ public class FacilityService {
     }
 
     /**
-     * Creates POC user as HRMS employee if not exists (checks by phone number uniqueness).
-     * Validates required fields (HFR ID, POC contact, POC name) before attempting creation.
-     * Supports both direct fields (facilityPocName, facilityPocPhone, hfrId) and nested facilityDetails.
+     * Creates POC user as HRMS employee if not exists (checks by facility identifier as username).
+     * Validates required fields (HFR ID or NIN ID, POC contact, POC name) before attempting creation.
+     * Supports both direct fields (facilityPocName, facilityPocPhone, hfrId, ninId) and nested facilityDetails.
      *
      * @param facility The facility for which to create POC user
      * @param requestInfo RequestInfo for API calls
@@ -388,6 +388,11 @@ public class FacilityService {
                 && facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()) {
             facilityDetails.setHfrId(facility.getHfrId().trim());
         }
+
+        if ((facilityDetails.getNinId() == null || facilityDetails.getNinId().isBlank())
+                && facility.getNinId() != null && !facility.getNinId().trim().isBlank()) {
+            facilityDetails.setNinId(facility.getNinId().trim());
+        }
         
         if ((facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()) 
                 && plainPocMobileNumber != null && !plainPocMobileNumber.trim().isBlank()) {
@@ -404,24 +409,25 @@ public class FacilityService {
             facilityDetails.setPocEmail(facility.getFacilityPocEmail().trim());
         }
 
-        // Validate required fields
-        if (facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank() ||
+        String facilityIdentifier = resolveFacilityIdentifier(facility, facilityDetails);
+
+        // Validate required fields — at least one of HFR ID or NIN ID must be present
+        if (facilityIdentifier == null || facilityIdentifier.isBlank() ||
             facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank() ||
             facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
-            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name. " +
-                    "HFR ID: {}, POC Contact: {}, POC Name: {}",
+            log.warn("Cannot create POC user for facility {}: missing HFR ID or NIN ID, POC contact, or POC name. " +
+                    "HFR ID: {}, NIN ID: {}, POC Contact: {}, POC Name: {}",
                     sanitizeForLog(facility.getFacilityId()),
                     sanitizeForLog(facilityDetails.getHfrId()),
+                    sanitizeForLog(facilityDetails.getNinId()),
                     sanitizeForLog(facilityDetails.getPocContact()),
                     sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
             return;
         }
 
-
-        String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId(): facility.getNinId();
-        // Check if employee already exists by mobile number
+        // Check if employee already exists by facility identifier (HFR ID or NIN ID)
         boolean employeeExists = hrmsService.employeeExistsByUsername(
-                username,
+                facilityIdentifier,
                 tenantId,
                 requestInfo
         );
@@ -430,15 +436,35 @@ public class FacilityService {
             // Create POC user as HRMS employee with COMPLAINANT and EMPLOYEE roles
             boolean created = hrmsService.createFacilityPOCEmployee(facility, requestInfo);
             if (created) {
-                log.info("Successfully created POC user for facility {} with HFR ID {}",
-                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
+                log.info("Successfully created POC user for facility {} with identifier {}",
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityIdentifier));
             } else {
                 log.warn("Failed to create POC user for facility {}", sanitizeForLog(facility.getFacilityId()));
             }
         } else {
-            log.info("POC user with mobile number {} already exists for facility {}, skipping creation",
-                    sanitizeForLog(facilityDetails.getPocContact()), sanitizeForLog(facility.getFacilityId()));
+            log.info("POC user with identifier {} already exists for facility {}, skipping creation",
+                    sanitizeForLog(facilityIdentifier), sanitizeForLog(facility.getFacilityId()));
         }
+    }
+
+    /**
+     * Resolves the facility identifier used as HRMS username/employee code.
+     * Prefers HFR ID over NIN ID; checks both top-level facility fields and nested facilityDetails.
+     */
+    private String resolveFacilityIdentifier(Facility facility, HealthFacilityDetails facilityDetails) {
+        if (facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()) {
+            return facility.getHfrId().trim();
+        }
+        if (facilityDetails != null && facilityDetails.getHfrId() != null && !facilityDetails.getHfrId().isBlank()) {
+            return facilityDetails.getHfrId().trim();
+        }
+        if (facility.getNinId() != null && !facility.getNinId().trim().isBlank()) {
+            return facility.getNinId().trim();
+        }
+        if (facilityDetails != null && facilityDetails.getNinId() != null && !facilityDetails.getNinId().isBlank()) {
+            return facilityDetails.getNinId().trim();
+        }
+        return null;
     }
 
     /**

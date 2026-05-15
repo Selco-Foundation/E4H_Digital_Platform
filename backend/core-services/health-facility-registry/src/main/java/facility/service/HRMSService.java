@@ -133,21 +133,23 @@ public class HRMSService {
     public boolean createFacilityPOCEmployee(Facility facility, RequestInfo requestInfo) {
         log.trace("Entering createFacilityPOCEmployee method");
         HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
-        
-        if (facilityDetails == null || facilityDetails.getHfrId() == null || 
-            facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null || 
-            facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
-            log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name", 
+
+        String facilityIdentifier = resolveFacilityEmployeeCode(facility);
+
+        if (facilityDetails == null || facilityIdentifier == null || facilityIdentifier.isBlank()
+                || facilityDetails.getPocContact() == null
+                || facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null) {
+            log.warn("Cannot create POC employee for facility {}: missing HFR ID or NIN ID, POC contact, or name",
                     sanitizeForLog(facility.getFacilityId()));
             return false;
         }
 
-        log.info("Creating POC employee for facility {} with HFR ID {}", 
-                sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
+        log.info("Creating POC employee for facility {} with identifier {}",
+                sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityIdentifier));
         try {
             // Build employee object
             Map<String, Object> user = new HashMap<>();
-            user.put("userName", facilityDetails.getHfrId()); // Use HFR ID as username
+            user.put("userName", facilityIdentifier);
             user.put("name", facilityDetails.getPocName());
             user.put("mobileNumber", facilityDetails.getPocContact());
             user.put("tenantId", facility.getTenantId());
@@ -178,7 +180,7 @@ public class HRMSService {
 
             // Build employee object
             Map<String, Object> employee = new HashMap<>();
-            employee.put("code", facilityDetails.getHfrId());
+            employee.put("code", facilityIdentifier);
             employee.put("employeeStatus", "EMPLOYED");
             employee.put("employeeType", "PERMANENT");
             employee.put("dateOfAppointment", currentTimestamp);
@@ -236,8 +238,8 @@ public class HRMSService {
             );
 
             if (response != null) {
-                log.info("Successfully created POC employee for facility {} with HFR ID {}", 
-                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityDetails.getHfrId()));
+                log.info("Successfully created POC employee for facility {} with identifier {}",
+                        sanitizeForLog(facility.getFacilityId()), sanitizeForLog(facilityIdentifier));
                 
                 // Update user password after successful creation
                 updateUserPassword(response, requestInfo);
@@ -318,6 +320,27 @@ public class HRMSService {
         } catch (Exception e) {
             log.error("Error updating user password: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Resolves the facility identifier used as HRMS username/employee code.
+     * Prefers HFR ID over NIN ID; checks both top-level facility fields and nested facilityDetails.
+     */
+    private String resolveFacilityEmployeeCode(Facility facility) {
+        HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
+        if (facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()) {
+            return facility.getHfrId().trim();
+        }
+        if (facilityDetails != null && facilityDetails.getHfrId() != null && !facilityDetails.getHfrId().isBlank()) {
+            return facilityDetails.getHfrId().trim();
+        }
+        if (facility.getNinId() != null && !facility.getNinId().trim().isBlank()) {
+            return facility.getNinId().trim();
+        }
+        if (facilityDetails != null && facilityDetails.getNinId() != null && !facilityDetails.getNinId().isBlank()) {
+            return facilityDetails.getNinId().trim();
+        }
+        return null;
     }
 
     /**
