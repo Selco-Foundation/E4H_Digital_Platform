@@ -219,9 +219,9 @@ public class FacilityKibanaMapper {
             }
         }
         else{
-            String hfr = facility.getHfrId();
-            if (hfr != null && !hfr.isBlank()) {
-                code = hfr;
+            String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId().trim() : facility.getNinId().trim();
+            if (username != null && !username.isBlank()) {
+                code = username;
             }
             else
                 code = facility.getBoundaryCode();
