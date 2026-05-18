@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { Fragment, useState } from "react";
 import { Switch, Route, useRouteMatch, useLocation } from "react-router-dom";
 import { ActionBar, Menu, SubmitBar, BreadCrumb } from "@selco/digit-ui-react-components";
 import { useTranslation } from "react-i18next";
@@ -15,9 +15,12 @@ const Complaint = () => {
   const [popup, setPopup] = useState(false);
   const match = useRouteMatch();
   const { t } = useTranslation();
+  const { roles } = Digit.UserService.getUser().info;
   console.log("matchurl", match.url)
   const match1=`/${window.contextPath}/employee/pgr`
   console.log("match1", match1)
+  const isCRMUser = roles?.some((role) => role.code === "COMPLAINT_ASSESSOR");
+
   const breadcrumConfig = {
     home: {
       content: t("CS_COMMON_HOME"),
@@ -91,8 +94,8 @@ const Complaint = () => {
         )}
         <Switch>
           <Route path={match.url + Employee.CreateComplaint} component={() => <CreateComplaint parentUrl={match.url} />} />
-          <Route path={match.url + Employee.PauseRMS} component={() => <PauseRMS parentUrl={match.url} />} />
-          <Route path={match.url + Employee.PausedRMSFacilities} component={() => <RMSPausedFacilities />} />
+          {isCRMUser && <Route path={match.url + Employee.PauseRMS} component={() => <PauseRMS parentUrl={match.url} />} />}
+          {isCRMUser && <Route path={match.url + Employee.PausedRMSFacilities} component={() => <RMSPausedFacilities />} />}
           <Route path={match.url + Employee.ComplaintFeedback + ":incidentId/:tenantId"} component={() => <ComplaintFeedback parentRoute={match.url} />} />
           <Route path={match.url + Employee.ComplaintDetails + ":incidentId/:tenantId"} component={() => <ComplaintDetails />} />
           <Route path={match.url + Employee.Inbox} component={Inbox} />
