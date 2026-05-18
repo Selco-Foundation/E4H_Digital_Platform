@@ -160,15 +160,19 @@ public class HRMSService {
             }
             employeeCode = pocUsername.trim();
         } else {
-            if (facilityDetails == null || facilityDetails.getHfrId() == null
-                    || facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null
+            if (facilityDetails == null || facilityDetails.getPocContact() == null
                     || facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null
                     || facilityDetails.getPocName().isBlank()) {
-                log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name",
+                log.warn("Cannot create POC employee for facility {}: missing POC contact or name",
                         sanitizeForLog(facility.getFacilityId()));
                 return false;
             }
-            employeeCode = facilityDetails.getHfrId().trim();
+            employeeCode = resolveFacilityEmployeeCode(facility);
+            if (employeeCode == null || employeeCode.isBlank()) {
+                log.warn("Cannot create POC employee for facility {}: missing HFR or NIN ID",
+                        sanitizeForLog(facility.getFacilityId()));
+                return false;
+            }
         }
 
         log.info("Creating POC employee for facility {} with employee code {}",
@@ -348,6 +352,27 @@ public class HRMSService {
         } catch (Exception e) {
             log.error("Error updating user password: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Resolves the facility identifier used as HRMS username/employee code.
+     * Prefers HFR ID over NIN ID; checks both top-level facility fields and nested facilityDetails.
+     */
+    private String resolveFacilityEmployeeCode(Facility facility) {
+        HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
+        if (facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()) {
+            return facility.getHfrId().trim();
+        }
+        if (facilityDetails != null && facilityDetails.getHfrId() != null && !facilityDetails.getHfrId().isBlank()) {
+            return facilityDetails.getHfrId().trim();
+        }
+        if (facility.getNinId() != null && !facility.getNinId().trim().isBlank()) {
+            return facility.getNinId().trim();
+        }
+        if (facilityDetails != null && facilityDetails.getNinId() != null && !facilityDetails.getNinId().isBlank()) {
+            return facilityDetails.getNinId().trim();
+        }
+        return null;
     }
 
     /**
