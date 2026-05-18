@@ -125,6 +125,10 @@ public class Incident   {
         private String facilityId = null;
 
         @SafeHtml
+        @JsonProperty("facilityCategory")
+        private String facilityCategory = null;
+
+        @SafeHtml
         @JsonProperty("boundaryCode")
         private String boundaryCode = null;
 
