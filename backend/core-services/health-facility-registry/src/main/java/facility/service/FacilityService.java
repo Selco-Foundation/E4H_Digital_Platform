@@ -458,16 +458,22 @@ public class FacilityService {
                         sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
                 return;
             }
-        } else if (facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()
-                || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
-                || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
-            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name. " +
-                    "HFR ID: {}, POC Contact: {}, POC Name: {}",
-                    sanitizeForLog(facility.getFacilityId()),
-                    sanitizeForLog(facilityDetails.getHfrId()),
-                    sanitizeForLog(facilityDetails.getPocContact()),
-                    sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
-            return;
+        } else {
+            String identifier = firstNonBlank(
+                    facility.getHfrId() != null ? facility.getHfrId().trim() : null,
+                    facility.getNinId() != null ? facility.getNinId().trim() : null
+            );
+            if (identifier == null || identifier.isBlank()
+                    || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
+                    || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
+                log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name. " +
+                                "HFR ID: {}, POC Contact: {}, POC Name: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(facilityDetails.getHfrId()),
+                        sanitizeForLog(facilityDetails.getPocContact()),
+                        sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
+                return;
+            }
         }
 
         String username;
