@@ -25,7 +25,7 @@ import static facility.config.ServiceConstants.SYSTEM_USER;
 @Slf4j
 public class FacilityService {
     private static final String CATEGORY_HEALTH = "HEALTH";
-    private static final String CATEGORY_ANGANWADI = "ANGANWADI";
+    public static final String CATEGORY_ANGANWADI = "ANGANWADI";
     /** When category is HEALTH, MDMS-style rule: at least one of HFR ID or NIN ID must be present. */
     private static final String ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH =
             "When Facility Category is HEALTH, at least one of HFR ID or NIN ID is required.";

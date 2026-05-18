@@ -22,6 +22,8 @@ import java.util.*;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
+import static facility.service.FacilityService.CATEGORY_ANGANWADI;
+
 /**
  * Mapper service to transform Facility objects to Kibana index format
  */
@@ -204,11 +206,27 @@ public class FacilityKibanaMapper {
     }
 
     private static String resolveFacilityCodeForIndex(Facility facility) {
-        String hfr = facility.getHfrId();
-        if (hfr != null && !hfr.isBlank()) {
-            return hfr;
+        String normalizedCategory = facility.getFacilityCategory() == null
+                ? ""
+                : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+
+        String code = "";
+        if (isAnganwadi) {
+            String username = facility.getFacilityPocUsername();
+            if (username != null && !username.isBlank()) {
+                code = username;
+            }
         }
-        return facility.getBoundaryCode();
+        else{
+            String hfr = facility.getHfrId();
+            if (hfr != null && !hfr.isBlank()) {
+                code = hfr;
+            }
+            else
+                code = facility.getBoundaryCode();
+        }
+        return code;
     }
 
     /**
