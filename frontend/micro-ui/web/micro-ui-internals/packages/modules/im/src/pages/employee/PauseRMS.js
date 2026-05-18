@@ -40,9 +40,10 @@ export const PauseRMS = ({ parentUrl }) => {
   const dispatch = useDispatch();
   const [savedReason, setSavedReason] = useState("");
   const [savedDuration, setSavedDuration] = useState("");
+  const [formData, setFormData] = useState({});
 
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
-  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+  const { data: boundaryData, isLoading: boundaryDataLoading } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
+  const { data: facilityData, isLoading: facilityDataLoading } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
 
   useEffect(() => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
@@ -194,7 +195,7 @@ export const PauseRMS = ({ parentUrl }) => {
   const history = useHistory();
 
   useEffect(() => {
-    if (healthcentre?.code && district?.code && block?.code && savedDuration) {
+    if (healthcentre?.code && district?.code && block?.code && savedDuration && savedReason) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
@@ -291,15 +292,23 @@ export const PauseRMS = ({ parentUrl }) => {
     await onSubmit({}, "RESUME");
   };
 
+  const handleFormValueChange = (data) => {
+    if (CommonUtils.isNotEqual(data, formData)) {
+      setFormData(data);
+    }
+  }
+
   const districtRef = useRef(null);
   const blockRef = useRef(null);
   const healthCareRef = useRef(null);
   const durationRef = useRef(null);
+  const reasonRef = useRef(null);
   const fieldsToValidate = [
     { field: district, ref: districtRef },
     { field: block, ref: blockRef },
     { field: healthcentre, ref: healthCareRef },
     { field: savedDuration, ref: durationRef },
+    { field: savedReason, ref: reasonRef },
   ];
 
   const handleButtonClick = () => {
@@ -404,12 +413,13 @@ export const PauseRMS = ({ parentUrl }) => {
         {
           label: t("RMS_PAUSE_REASON"),
           type: "custom",
-          isMandatory: false,
+          isMandatory: true,
           populators: (
             <TextInput
               type={"text"}
               className="field desktop-w-full"
               value={savedReason}
+              inputRef={reasonRef}
               onChange={(e) => setSavedReason(e.target.value)}
               validation={{
                 minLength: 0,
@@ -432,6 +442,8 @@ export const PauseRMS = ({ parentUrl }) => {
     }
   };
 
+  const showLoader = blockUI || (facilityId && (boundaryDataLoading || facilityDataLoading));
+
   return (
     <div className={"pause-rms-form-wrapper"}>
       <style>
@@ -443,7 +455,7 @@ export const PauseRMS = ({ parentUrl }) => {
           }
         `}
       </style>
-      {blockUI && (
+      {showLoader && (
         <div
           style={{
             display: "flex",
@@ -473,12 +485,13 @@ export const PauseRMS = ({ parentUrl }) => {
       <FormComposer
         heading={t("PAUSE_RMS")}
         config={config}
-        onSubmit={(data) => wrapperSubmit(data, "PAUSE")}
+        onSubmit={(data) => (isPausedFacility ? resumeFacility() : wrapperSubmit(data, "PAUSE"))}
         isDisabled={!canSubmit}
-        label={isPausedFacility ? t("CS_ACTION_MODIFY") : t("CS_ACTION_DISABLE")}
-        secondaryActionLabel={isPausedFacility ? t("CS_ACTION_ACTIVATE") : ""}
-        onSecondaryActionClick={isPausedFacility ? () => resumeFacility() : null}
+        label={isPausedFacility ? t("CS_ACTION_ACTIVATE") : t("CS_ACTION_DISABLE")}
+        secondaryActionLabel={isPausedFacility ? t("CS_ACTION_MODIFY") : ""}
+        onSecondaryActionClick={isPausedFacility ? () => wrapperSubmit(formData, "PAUSE") : null}
         actionBarClassName={"reverse-actionbar"}
+        onFormValueChange={handleFormValueChange}
       />
 
       {creationError && <Toast error={creationError} isDleteBtn={true} label={creationError} onClose={() => setCreationError(null)} />}
