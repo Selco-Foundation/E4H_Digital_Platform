@@ -476,6 +476,14 @@ public class FacilityService {
             address.setAddressId(existingFacility.getAddress().getAddressId());
         }
 
+        try{
+            String decryptedMobileNumber = decryptMobileNumber(existingFacility.getFacilityPocPhone());
+            if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                existingFacility.setFacilityPocPhone(decryptedMobileNumber);
+            }
+        }
+        catch(Exception e){}
+
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
         facility.setTenantId(update.getTenantId());
@@ -494,6 +502,7 @@ public class FacilityService {
         facility.setFacilityStatus(update.getStatus());
         facility.setIsActive(update.getIsActive());
         facility.setUserId(update.getUserId());
+        facility.setIsOnmReady(update.getIsOnmReady());
 
         // Validate with MDMS and boundary APIs
         log.info("Validating facility update against MDMS and boundaries");
@@ -1039,7 +1048,7 @@ public class FacilityService {
     }
 
     public boolean checkPOCDetailsUpdated(Facility existingFacilityDetails, Facility requestFacilityDetails) {
-        boolean isOnmReady = existingFacilityDetails.getIsOnmReady();
+        boolean isOnmReady = requestFacilityDetails.getIsOnmReady();
         boolean pocDetailsUpdated = (!Objects.equals(existingFacilityDetails.getFacilityPocPhone(), requestFacilityDetails.getFacilityPocPhone()) ||
                 !Objects.equals(existingFacilityDetails.getFacilityPocName(), requestFacilityDetails.getFacilityPocName()) ||
                 !Objects.equals(existingFacilityDetails.getFacilityPocEmail(), requestFacilityDetails.getFacilityPocEmail()));
