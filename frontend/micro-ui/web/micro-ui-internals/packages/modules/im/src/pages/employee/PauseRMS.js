@@ -218,8 +218,13 @@ export const PauseRMS = ({ parentUrl }) => {
             setIsPausedFacility(true);
             setSavedReason(data?.reason || "");
             setSavedDuration(data?.pausedUntil ? CommonUtils.formatUTCDate(data.pausedUntil * 1000) : "");
+          } else {
+            setIsPausedFacility(false);
+            setSavedReason("");
+            setSavedDuration("");
           }
         } catch (error) {
+          setIsPausedFacility(false);
           console.error("Error fetching facility status:", error);
         } finally {
           setBlockUI(false);
@@ -486,9 +491,10 @@ export const PauseRMS = ({ parentUrl }) => {
         heading={t("PAUSE_RMS")}
         config={config}
         onSubmit={(data) => (isPausedFacility ? resumeFacility() : wrapperSubmit(data, "PAUSE"))}
-        isDisabled={!canSubmit}
+        isDisabled={isPausedFacility ? false : !canSubmit}
         label={isPausedFacility ? t("CS_ACTION_ACTIVATE") : t("CS_ACTION_DISABLE")}
         secondaryActionLabel={isPausedFacility ? t("CS_ACTION_MODIFY") : ""}
+        isSecondaryActionDisabled={!canSubmit}
         onSecondaryActionClick={isPausedFacility ? () => wrapperSubmit(formData, "PAUSE") : null}
         actionBarClassName={"reverse-actionbar"}
         onFormValueChange={handleFormValueChange}

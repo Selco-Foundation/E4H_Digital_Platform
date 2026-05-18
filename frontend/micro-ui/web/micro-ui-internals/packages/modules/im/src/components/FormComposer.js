@@ -124,7 +124,7 @@ export const FormComposer = (props) => {
         <ActionBar className={props?.actionBarClassName}>
           <SubmitBar disabled={isDisabled} label={t(props.label)} submit="submit" />
           {props.secondaryActionLabel && (
-            <Button name="secondary-action" className="previous-button" variation="secondary" label={t(props?.secondaryActionLabel)} onButtonClick={props?.onSecondaryActionClick} />
+            <Button name="secondary-action" className="previous-button" variation="secondary" label={t(props?.secondaryActionLabel)} onButtonClick={props?.onSecondaryActionClick} isDisabled={props?.isSecondaryActionDisabled} />
           )}
         </ActionBar>
       </Card>
