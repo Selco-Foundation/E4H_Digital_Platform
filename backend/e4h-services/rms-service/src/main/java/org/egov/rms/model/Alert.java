@@ -69,7 +69,7 @@ public class Alert {
         DEEP_DISCHARGING,
         OVERCHARGING,
         // Grid
-        VOLTAGE_VARIATION_LOW,
+        VOLTAGE_VARIATION_REVERSE,
         VOLTAGE_VARIATION_HIGH
     }
 
