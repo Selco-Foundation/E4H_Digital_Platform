@@ -186,6 +186,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             populators: {
               name: "facilityPocName",
               error: t("CORE_COMMON_REQUIRED"),
+              validation: { pattern: { value: /^[^"$<>?\\~`!@#%^()+={}\[\]*,:;“”‘’]*$/, message: t("FACILITY_POC_NAME_VALIDATION_ERROR") } },
             },
           },
           ...(selectedFacilityCategory?.code && selectedFacilityCategory?.code !== "HEALTH" ? [
@@ -199,7 +200,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               populators: {
                 name: "facilityPocUsername",
                 error: t("CORE_COMMON_REQUIRED"),
-                validation: { pattern: { value: /^[^ "$<>?\\~`!@#%^()+={}\[\]*,:;“”‘’]*$/, message: t("FACILITY_POC_USERNAME_VALIDATION_ERROR") } },
+                validation: { pattern: { value: /^\S*$/, message: t("FACILITY_POC_USERNAME_VALIDATION_ERROR") } },
               },
             },
           ] : []),
@@ -236,6 +237,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               type: "text",
               populators: {
                 name: "hfrId",
+                validation: { pattern: { value: /^\S*$/, message: t("FACILITY_HFR_ID_VALIDATION_ERROR") } },
               },
             },
             {
@@ -247,6 +249,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               type: "text",
               populators: {
                 name: "ninId",
+                validation: { pattern: { value: /^\S*$/, message: t("FACILITY_NIN_ID_VALIDATION_ERROR") } },
               },
             },
           ] : []),
