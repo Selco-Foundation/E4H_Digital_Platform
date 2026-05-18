@@ -2,12 +2,11 @@
 """Ingest activity-facility asset submission data from the Excel template.
 
 The script mirrors the mobile background submission flow:
-1. validate local installation image counts from MDMS,
+1. validate local installation image folder codes from MDMS,
 2. upload local files from the folder convention,
-3. submit one merged BOM JSON per activity facility,
-4. generate the BOM PDF and attach it as INSTALLATION_REPORT_BOM,
-5. create or update assets,
-6. finalize the activity workflow with the default SUBMIT_REPORT_B action.
+3. create or update assets,
+4. attach optional facility-level BOM PDFs as INSTALLATION_REPORT_BOM,
+5. finalize the activity workflow with the default SUBMIT_REPORT_B action.
 """
 
 from __future__ import annotations
@@ -944,11 +943,23 @@ def facility_folder(files_root: Path, facility_id: str) -> Path:
     return files_root / facility_id.replace("/", "_")
 
 
+def facility_folder_name(facility_id: str) -> str:
+    return facility_id.replace("/", "_")
+
+
+def facility_bom_pdf(files_root: Path, facility_id: str) -> Path | None:
+    pdf_path = files_root / f"{facility_folder_name(facility_id)}.pdf"
+    if pdf_path.is_file():
+        return pdf_path
+    return None
+
+
 def sorted_files(paths: list[Path]) -> list[Path]:
-    return sorted(
-        [path for path in paths if path.is_file()],
-        key=lambda path: str(path).lower(),
-    )
+    files: dict[str, Path] = {}
+    for path in paths:
+        if path.is_file():
+            files.setdefault(str(path.resolve()).lower(), path)
+    return sorted(files.values(), key=lambda path: str(path).lower())
 
 
 def direct_child_files(directory: Path) -> list[Path]:
@@ -967,11 +978,14 @@ def direct_child_dirs(directory: Path) -> list[Path]:
 
 
 def discover_asset_files(files_root: Path, activity: ActivityFacility, row: dict[str, str]) -> list[Path]:
-    asset_type = required(row, "asset_type", "Assets").lower()
+    asset_type = required(row, "asset_type", "Assets").strip()
     serial_number = required(row, "serial_number", "Assets")
-    base = facility_folder(files_root, activity.facility_id) / "assets" / asset_type
-    paths = direct_child_files(base / serial_number)
-    paths.extend(sorted_files(list(base.glob(f"{serial_number}.*"))))
+    asset_type_folders = list(dict.fromkeys([asset_type, asset_type.lower(), asset_type.upper()]))
+    paths: list[Path] = []
+    for asset_type_folder in asset_type_folders:
+        base = facility_folder(files_root, activity.facility_id) / "assets" / asset_type_folder
+        paths.extend(direct_child_files(base / serial_number))
+        paths.extend(sorted_files(list(base.glob(f"{serial_number}.*"))))
     return sorted_files(paths)
 
 
@@ -986,7 +1000,7 @@ def discover_installation_image_files(
     return sorted_files(paths)
 
 
-def validate_installation_image_counts(
+def validate_installation_image_codes(
     files_root: Path,
     facility_id: str,
     mdms: InstallationImageMdms,
@@ -1003,39 +1017,7 @@ def validate_installation_image_counts(
             f"Invalid installation image code folders for {facility_id}: "
             + ", ".join(invalid)
         )
-
-    problems: list[str] = []
-    for code, requirement in sorted(
-        mdms.requirements.items(),
-        key=lambda item: int(item[0]) if item[0].isdigit() else item[0],
-    ):
-        if requirement.required_count <= 0:
-            continue
-        actual = len(direct_child_files(base / code))
-        if actual != requirement.required_count:
-            problems.append(f"{code}: expected {requirement.required_count}, found {actual}")
-
-    if problems:
-        raise IngestionError(
-            f"Installation image count mismatch for {facility_id}: "
-            + "; ".join(problems)
-        )
-
-    print(f"Installation image counts validated for {facility_id}")
-
-
-def upload_filestores(
-    client: ApiClient,
-    *,
-    filestore_id: str,
-    file_paths: list[Path],
-    context: str,
-) -> list[str]:
-    if filestore_id.strip():
-        return [filestore_id.strip()]
-    if not file_paths:
-        raise IngestionError(f"No local files found for {context}")
-    return [client.upload_file(str(path)) for path in file_paths]
+    print(f"Installation image code folders validated for {facility_id}")
 
 
 def error_code_from_response(response: Any) -> str:
@@ -1107,62 +1089,6 @@ def fetch_asset_by_serial(
     return parse_asset_search_response(response, serial)
 
 
-def submit_bom(
-    client: ApiClient,
-    activity: ActivityFacility,
-    bom_row: dict[str, str] | None,
-) -> tuple[dict[str, Any] | None, str]:
-    if not bom_row:
-        return None, ""
-
-    raw_json = required(bom_row, "bom_json", f"BOMValues:{activity.facility_id}")
-    try:
-        bom_data = json.loads(raw_json)
-    except json.JSONDecodeError as exc:
-        raise IngestionError(
-            f"Invalid bom_json for {activity.activity_facility_id}: {exc}"
-        ) from exc
-    if not isinstance(bom_data, dict):
-        raise IngestionError(f"bom_json must be a JSON object for {activity.activity_facility_id}")
-
-    bom_id = bom_row.get("bom_id", "").strip()
-    is_update = bool(bom_id)
-    bom_payload = {
-        "bom": [
-            {
-                **({"id": bom_id} if is_update else {}),
-                "tenantId": client.tenant_id,
-                "name": "BOM.SolarSystem",
-                "facilityId": activity.facility_id,
-                "activityFacilityId": activity.activity_facility_id,
-                "assignUser": activity.assign_user_uuid,
-                "data": bom_data,
-                "isActive": True,
-            }
-        ],
-        "isCascadingProjectDateUpdate": False,
-        "apiOperation": "UPDATE" if is_update else "CREATE",
-    }
-    client.post_json(
-        "activity/v1/bom/_update" if is_update else "activity/v1/bom/_create",
-        bom_payload,
-    )
-
-    pdf_payload = {"system": activity.system, "bom": bom_data}
-    response = client.post_json(
-        f"activity/v1/bom/_save_pdf?tenantId={parse.quote(client.tenant_id)}",
-        pdf_payload,
-    )
-    filestore_id = ""
-    if isinstance(response, dict):
-        filestore_id = str(response.get("filestoreId") or "")
-    if client.dry_run and not filestore_id:
-        filestore_id = f"DRY_BOM_PDF::{activity.activity_facility_id}"
-    if not filestore_id:
-        raise IngestionError(f"BOM PDF response missing filestoreId: {response}")
-    return bom_data, filestore_id
-
-
 def submit_asset(
     client: ApiClient,
     activity: ActivityFacility,
@@ -1173,12 +1099,10 @@ def submit_asset(
     asset_type = required(row, "asset_type", "Assets").lower()
     asset_id = ""
     serial_number = required(row, "serial_number", "Assets")
-    document_filestores = upload_filestores(
-        client,
-        filestore_id="",
-        file_paths=discover_asset_files(files_root, activity, row),
-        context=f"asset {activity.facility_id}/{asset_type}/{serial_number}",
-    )
+    document_filestores = [
+        client.upload_file(str(path))
+        for path in discover_asset_files(files_root, activity, row)
+    ]
 
     documents = []
     for index, document_filestore in enumerate(document_filestores, start=1):
@@ -1296,7 +1220,6 @@ def iso_utc(epoch_seconds: int) -> str:
 def collect_workflow_documents(
     client: ApiClient,
     activity: ActivityFacility,
-    bom_pdf_filestore_id: str,
     installation_image_mdms: InstallationImageMdms,
     files_root: Path,
 ) -> list[dict[str, Any]]:
@@ -1336,6 +1259,19 @@ def collect_workflow_documents(
             )
         )
 
+    bom_pdf = facility_bom_pdf(files_root, activity.facility_id)
+    if bom_pdf:
+        filestore_id = client.upload_file(str(bom_pdf))
+        documents.append(
+            workflow_document(
+                document_type="INSTALLATION_REPORT_BOM",
+                filestore_id=filestore_id,
+                uid=f"BOM-{activity.activity_facility_id}-{int(time.time() * 1000)}",
+                latitude=activity.latitude,
+                longitude=activity.longitude,
+            )
+        )
+
     for code in sorted(
         installation_image_mdms.requirements,
         key=lambda value: int(value) if value.isdigit() else value,
@@ -1354,17 +1290,6 @@ def collect_workflow_documents(
                     longitude=activity.longitude,
                 )
             )
-
-    if bom_pdf_filestore_id:
-        documents.append(
-            workflow_document(
-                document_type="INSTALLATION_REPORT_BOM",
-                filestore_id=bom_pdf_filestore_id,
-                uid=f"BOM-{activity.activity_facility_id}-{int(time.time() * 1000)}",
-                latitude=activity.latitude,
-                longitude=activity.longitude,
-            )
-        )
 
     return dedupe_documents(documents)
 
@@ -1433,25 +1358,18 @@ def ingest(
 ) -> None:
     activities = parse_activity_facilities(workbook.get("ActivityFacilities", []))
     validate_facility_ids("Assets", workbook.get("Assets", []))
-    validate_facility_ids("BOMValues", workbook.get("BOMValues", []))
 
     assets_by_facility = group_by(workbook.get("Assets", []), "facility_id")
-    bom_by_activity = {
-        row.get("facility_id", "").strip(): row
-        for row in workbook.get("BOMValues", [])
-        if row.get("facility_id", "").strip()
-    }
 
     for facility_id, activity_row in activities.items():
         print(f"\n=== Ingesting {facility_id} ===")
-        validate_installation_image_counts(files_root, facility_id, installation_image_mdms)
+        validate_installation_image_codes(files_root, facility_id, installation_image_mdms)
         activity = resolve_activity_facility(client, activity_row, assign_user_uuid)
         print(
             "Resolved "
             f"{facility_id} -> {activity.activity_facility_id} "
             f"({activity.solution_design_code} -> {activity.system})"
         )
-        _, bom_pdf = submit_bom(client, activity, bom_by_activity.get(facility_id))
         for asset in assets_by_facility.get(facility_id, []):
             asset_id = submit_asset(client, activity, asset, asset_type_mdms, files_root)
             if asset_id:
@@ -1459,7 +1377,6 @@ def ingest(
         documents = collect_workflow_documents(
             client,
             activity,
-            bom_pdf,
             installation_image_mdms,
             files_root,
         )
