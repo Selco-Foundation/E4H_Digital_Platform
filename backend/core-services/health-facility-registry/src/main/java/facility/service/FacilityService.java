@@ -25,7 +25,7 @@ import static facility.config.ServiceConstants.SYSTEM_USER;
 @Slf4j
 public class FacilityService {
     private static final String CATEGORY_HEALTH = "HEALTH";
-    private static final String CATEGORY_ANGANWADI = "ANGANWADI";
+    public static final String CATEGORY_ANGANWADI = "ANGANWADI";
     /** When category is HEALTH, MDMS-style rule: at least one of HFR ID or NIN ID must be present. */
     private static final String ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH =
             "When Facility Category is HEALTH, at least one of HFR ID or NIN ID is required.";
@@ -615,6 +615,7 @@ public class FacilityService {
                     .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
                     .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
                     .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
+                    .facilityCategory(existingFacility.getFacilityCategory())
                     .facilityOwnership(existingFacility.getFacilityOwnership())
                     .facilityRegion(existingFacility.getFacilityRegion())
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
@@ -668,6 +669,7 @@ public class FacilityService {
                     .facilityType(facility.getFacilityType() != null ? facility.getFacilityType() : existingFacility.getFacilityType())
                     .facilitySubtype(facility.getFacilitySubtype() != null ? facility.getFacilitySubtype() : existingFacility.getFacilitySubtype())
                     .facilityName(facility.getFacilityName() != null ? facility.getFacilityName() : existingFacility.getFacilityName())
+                    .facilityCategory(existingFacility.getFacilityCategory()) // Not in update request, use existing
                     .facilityOwnership(existingFacility.getFacilityOwnership()) // Not in update request, use existing
                     .facilityRegion(existingFacility.getFacilityRegion()) // Not in update request, use existing
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
