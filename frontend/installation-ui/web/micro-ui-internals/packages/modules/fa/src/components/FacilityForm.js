@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FormComposerV2, Loader, Toast } from "@egovernments/digit-ui-react-components";
 import useBoundary from "../hooks/useBoundary";
+import CommonUtils from "../utilities/CommonUtils";
 
 const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}, formToast, setFormToast }) => {
 
   const tenantId = Digit.ULBService.getCurrentTenantId();
   const [defaultValues, setDefaultValues] = useState({});
   const [mobileView, setMobileView] = useState(window.innerWidth <= 640);
+  const [selectedFacilityCategory, setSelectedFacilityCategory] = useState({});
 
   useEffect(() => {
     const handleResize = () => setMobileView(window.innerWidth <= 640);
@@ -35,6 +37,9 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
       {
         name: "FacilityType",
       },
+      {
+        name: "FacilityCategory",
+      },
     ],
     {
       select: (data) => data,
@@ -47,8 +52,13 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
     { code: "NO", name: t("TL_COMMON_NO") },
   ];
 
-  const solarSolutionDesignTypes = mdmsResponse?.facility?.SolarSolutionDesignType || [];
-  const facilityTypes = mdmsResponse?.facility?.FacilityType || [];
+  const sortMenu = (options, field = "name") => {
+    return options.sort((a, b) => a[field].localeCompare(b[field]));
+  }
+
+  const solarSolutionDesignTypes = sortMenu(mdmsResponse?.facility?.SolarSolutionDesignType || []);
+  const facilityTypes = sortMenu(mdmsResponse?.facility?.FacilityType || []);
+  const facilityCategories = sortMenu(mdmsResponse?.facility?.FacilityCategory || []);
 
   const isFormLoading = boundaryLoading || mdmsLoading;
 
@@ -126,6 +136,21 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
           },
           {
             inline: true,
+            label: "FACILITY_CATEGORY",
+            isMandatory: true,
+            disable: !!createdFacility?.id,
+            key: "facilityCategory",
+            type: "dropdown",
+            populators: {
+              name: "facilityCategory",
+              error: t("CORE_COMMON_REQUIRED"),
+              optionsKey: "name",
+              required: true,
+              options: facilityCategories,
+            },
+          },
+          {
+            inline: true,
             label: "FACILITY_TYPE",
             isMandatory: true,
             key: "facilityType",
@@ -135,7 +160,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               error: t("CORE_COMMON_REQUIRED"),
               optionsKey: "name",
               required: true,
-              options: facilityTypes,
+              options: facilityTypes.filter((facilityType) => facilityType.facilityCategory === selectedFacilityCategory?.code),
             },
           },
           {
@@ -161,8 +186,24 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             populators: {
               name: "facilityPocName",
               error: t("CORE_COMMON_REQUIRED"),
+              validation: { pattern: { value: /^[^"$<>?\\~`!@#%^()+={}\[\]*,:;“”‘’]*$/, message: t("FACILITY_POC_NAME_VALIDATION_ERROR") } },
             },
           },
+          ...(selectedFacilityCategory?.code && selectedFacilityCategory?.code !== "HEALTH" ? [
+            {
+              inline: true,
+              label: "FACILITY_POC_USERNAME",
+              isMandatory: true,
+              disable: !!createdFacility?.id,
+              key: "facilityPocUsername",
+              type: "text",
+              populators: {
+                name: "facilityPocUsername",
+                error: t("CORE_COMMON_REQUIRED"),
+                validation: { pattern: { value: /^\S*$/, message: t("FACILITY_POC_USERNAME_VALIDATION_ERROR") } },
+              },
+            },
+          ] : []),
           {
             inline: true,
             label: "FACILITY_POC_PHONE",
@@ -172,7 +213,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
             populators: {
               name: "facilityPocPhone",
               error: t("CORE_COMMON_REQUIRED"),
-              validation: { minlength: 10, maxlength: 10, pattern: { value: /^[0-9]\d{9}$/, message: "Enter a valid mobile number" } },
+              validation: { minlength: 10, maxlength: 10, pattern: { value: /^[0-9]\d{9}$/, message: t("FACILITY_POC_PHONE_VALIDATION_ERROR") } },
             },
           },
           {
@@ -186,28 +227,32 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
               error: t("CORE_COMMON_REQUIRED"),
             },
           },
-          {
-            inline: true,
-            label: "FACILITY_HFR_ID",
-            isMandatory: false,
-            disable: !!createdFacility?.id,
-            key: "hfrId",
-            type: "text",
-            populators: {
-              name: "hfrId",
+          ...(selectedFacilityCategory?.code && selectedFacilityCategory?.code === "HEALTH" ? [
+            {
+              inline: true,
+              label: "FACILITY_HFR_ID",
+              isMandatory: false,
+              disable: !!createdFacility?.id,
+              key: "hfrId",
+              type: "text",
+              populators: {
+                name: "hfrId",
+                validation: { pattern: { value: /^\S*$/, message: t("FACILITY_HFR_ID_VALIDATION_ERROR") } },
+              },
             },
-          },
-          {
-            inline: true,
-            label: "FACILITY_NIN_ID",
-            isMandatory: false,
-            disable: !!createdFacility?.id,
-            key: "ninId",
-            type: "text",
-            populators: {
-              name: "ninId",
+            {
+              inline: true,
+              label: "FACILITY_NIN_ID",
+              isMandatory: false,
+              disable: !!createdFacility?.id,
+              key: "ninId",
+              type: "text",
+              populators: {
+                name: "ninId",
+                validation: { pattern: { value: /^\S*$/, message: t("FACILITY_NIN_ID_VALIDATION_ERROR") } },
+              },
             },
-          },
+          ] : []),
           {
             inline: true,
             label: "FACILITY_IS_OPERATIONAL",
@@ -277,13 +322,13 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
         ],
       },
     ],
-    [t, mdmsResponse, createdFacility, boundaryData, solarSolutionDesignTypes, facilityTypes]
+    [t, mdmsResponse, createdFacility, boundaryData, selectedFacilityCategory]
   );
 
   const handleFormSubmit = (formData) => {
     const hasHfrId = formData?.hfrId && `${formData.hfrId}`.trim().length > 0;
     const hasNinId = formData?.ninId && `${formData.ninId}`.trim().length > 0;
-    if (hasHfrId || hasNinId) {
+    if (formData?.facilityCategory?.code !== "HEALTH" || hasHfrId || hasNinId) {
       onFormSubmit(formData);
     } else {
       setFormToast({
@@ -292,6 +337,18 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
       });
     }
   };
+
+  const handleFormChange = (_, formData) => {
+    if (CommonUtils.isNotEqual(formData?.facilityCategory, selectedFacilityCategory)) {
+      setSelectedFacilityCategory(formData?.facilityCategory);
+      if (formData?.facilityType?.facilityCategory !== formData?.facilityCategory?.code) {
+        setDefaultValues({
+          ...formData,
+          facilityType: undefined,
+        })
+      }
+    }
+  }
 
   if (isFormLoading) {
     return (
@@ -323,6 +380,7 @@ const FacilityForm = ({ t, createdFacility = {}, onFormSubmit, wrapperStyle = {}
         defaultValues={defaultValues}
         config={addFacilityFormConfig}
         onSubmit={handleFormSubmit}
+        onFormValueChange={handleFormChange}
         label={t("CORE_COMMON_SAVE")}
         heading={""}
         cardStyle={{ boxShadow: "none" }}

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import {
   BreakLine,
@@ -44,12 +44,17 @@ export const FormComposer = (props) => {
     };
   });
   console.log("isMobileView", isMobileView)
-  const { register, handleSubmit, errors } = useForm();
+  const { register, handleSubmit, errors, watch } = useForm();
+  const formData = watch();
   const { t } = useTranslation();
 
   function onSubmit(data) {
     props.onSubmit(data);
   }
+
+  useEffect(() => {
+    props.onFormValueChange && props.onFormValueChange(formData);
+  }, [formData]);
 
   const fieldSelector = (type, populators) => {
     switch (type) {
@@ -119,7 +124,7 @@ export const FormComposer = (props) => {
         <ActionBar className={props?.actionBarClassName}>
           <SubmitBar disabled={isDisabled} label={t(props.label)} submit="submit" />
           {props.secondaryActionLabel && (
-            <Button name="secondary-action" className="previous-button" variation="secondary" label={t(props?.secondaryActionLabel)} onButtonClick={props?.onSecondaryActionClick} />
+            <Button name="secondary-action" className="previous-button" variation="secondary" label={t(props?.secondaryActionLabel)} onButtonClick={props?.onSecondaryActionClick} isDisabled={props?.isSecondaryActionDisabled} />
           )}
         </ActionBar>
       </Card>
