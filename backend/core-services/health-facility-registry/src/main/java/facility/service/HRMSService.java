@@ -15,6 +15,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.time.Instant;
 import java.util.*;
 
+import static org.apache.commons.lang3.StringUtils.firstNonBlank;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
@@ -182,6 +184,7 @@ public class HRMSService {
             user.put("userName", employeeCode);
             user.put("name", facilityDetails.getPocName());
             user.put("mobileNumber", facilityDetails.getPocContact());
+            user.put("emailId", facility.getFacilityPocEmail());
             user.put("tenantId", facility.getTenantId());
             user.put("type", "EMPLOYEE");
             user.put("active", true);
