@@ -215,15 +215,15 @@ public class FacilityKibanaMapper {
         if (isAnganwadi) {
             String username = facility.getFacilityPocUsername();
             if (username != null && !username.isBlank()) {
-                code = username;
+                code = username.trim();
             }
             else
                 code = facility.getBoundaryCode();
         }
         else{
-            String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId().trim() : facility.getNinId().trim();
+            String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId().trim() : facility.getNinId();
             if (username != null && !username.isBlank()) {
-                code = username;
+                code = username.trim();
             }
             else
                 code = facility.getBoundaryCode();
