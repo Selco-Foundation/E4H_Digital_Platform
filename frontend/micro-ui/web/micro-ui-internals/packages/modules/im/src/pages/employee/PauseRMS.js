@@ -200,7 +200,7 @@ export const PauseRMS = ({ parentUrl }) => {
     } else {
       setSubmitValve(false);
     }
-  }, [healthcentre, district, block, savedDuration]);
+  }, [healthcentre, district, block, savedDuration, savedReason]);
 
   useEffect(() => {
     const checkFacilityStatus = async () => {
@@ -220,8 +220,6 @@ export const PauseRMS = ({ parentUrl }) => {
             setSavedDuration(data?.pausedUntil ? CommonUtils.formatUTCDate(data.pausedUntil * 1000) : "");
           } else {
             setIsPausedFacility(false);
-            setSavedReason("");
-            setSavedDuration("");
           }
         } catch (error) {
           setIsPausedFacility(false);
