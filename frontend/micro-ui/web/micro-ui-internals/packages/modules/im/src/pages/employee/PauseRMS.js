@@ -8,6 +8,7 @@ import {useDispatch} from "react-redux";
 import {populatePauseRMSResponse} from "../../redux/actions/complaint";
 import CommonUtils from "../../utilities/CommonUtils";
 import ConfirmationAlert from "../../components/ConfirmationAlert";
+import FormattedDateInput from "../../components/custom/FormattedDateInput";
 
 export const PauseRMS = ({ parentUrl }) => {
   const { t } = useTranslation();
@@ -313,7 +314,7 @@ export const PauseRMS = ({ parentUrl }) => {
 
   const handleFacilityModification = () => {
     setAlert({
-      message: `${t("RMS_FACILITY_MODIFICATION_ALERT_DESC")} ${CommonUtils.formatUTCDate((new Date(duration)).getTime(), "MM/DD/YYYY")}`,
+      message: `${t("RMS_FACILITY_MODIFICATION_ALERT_DESC")} ${CommonUtils.formatUTCDate((new Date(duration)).getTime(), "DD/MM/YYYY")}`,
       continueAction: async () => wrapperSubmit(formData, "PAUSE"),
     });
   }
@@ -420,19 +421,14 @@ export const PauseRMS = ({ parentUrl }) => {
           type: "custom",
           isMandatory: true,
           populators: (
-            <TextInput
+            <FormattedDateInput
               type={"date"}
-              className="field desktop-w-full"
+              className="field desktop-w-full employee-card-input"
               value={duration}
               inputRef={durationRef}
               onChange={(e) => setDuration(e.target.value)}
-              validation={{
-                minLength: 0,
-                maxLength: 256,
-              }}
               min={new Date().toISOString().split("T")[0]}
-              error={t("CS_LENGTH_EXCEED")}
-              required={true}
+              dateFormat={"dd/MM/yyyy"}
             />
           ),
         },
