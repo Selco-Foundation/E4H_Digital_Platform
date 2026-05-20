@@ -29,6 +29,8 @@ public class FacilityService {
     /** When category is HEALTH, MDMS-style rule: at least one of HFR ID or NIN ID must be present. */
     private static final String ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH =
             "When Facility Category is HEALTH, at least one of HFR ID or NIN ID is required.";
+    private static final String ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI =
+            "PoC Username is required when Facility Category is ANGANWADI.";
 
     private final FacilityRepository facilityRepository;
     private final JdbcTemplate jdbcTemplate;
@@ -198,6 +200,10 @@ public class FacilityService {
 
                 // Check uniqueness of facility name + boundaryCode
                 validateFacilityNameBoundaryCodeUnique(facility, tenantId);
+
+                validateFacilityPocUsernameUnique(
+                        facility.getFacilityCategory(), facility.getFacilityPocUsername(), tenantId, null
+                );
 
                 tenantFacilities.add(facility);
             }
@@ -372,6 +378,36 @@ public class FacilityService {
             }
         }
         log.trace("Exiting validateHfrOrNinUniqueness method");
+    }
+
+    /**
+     * Validates facility POC username: required for ANGANWADI, unique within tenant when provided.
+     * Throws CustomException if duplicate found.
+     */
+    private void validateFacilityPocUsernameUnique(
+            String facilityCategory, String facilityPocUsername, String tenantId, String excludeFacilityId
+    ) {
+        log.trace("Entering validateFacilityPocUsernameUnique method");
+        String normalizedCategory = facilityCategory == null ? "" : facilityCategory.trim().toUpperCase(Locale.ROOT);
+        if (CATEGORY_ANGANWADI.equals(normalizedCategory)
+                && (facilityPocUsername == null || facilityPocUsername.isBlank())) {
+            log.warn("Missing facility POC username for ANGANWADI facility in tenant {}", tenantId);
+            throw new IllegalArgumentException(ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI);
+        }
+        if (facilityPocUsername != null && !facilityPocUsername.isBlank()) {
+            String normalizedUsername = facilityPocUsername.trim();
+            log.debug("Checking uniqueness of facility POC username for tenant {}", tenantId);
+            boolean exists = facilityQueryDao.existsByFacilityPocUsername(
+                    tenantId, normalizedUsername, excludeFacilityId
+            );
+            if (exists) {
+                log.warn("Duplicate facility POC username found for tenant {}", tenantId);
+                throw new CustomException("FACILITY_DUPLICATE_POC_USERNAME",
+                        "A facility with the same POC username already exists in this tenant");
+            }
+            log.debug("Facility POC username is unique");
+        }
+        log.trace("Exiting validateFacilityPocUsernameUnique method");
     }
 
     private void validateCategoryBasedIdentifiers(String facilityCategory, String hfrId, String ninId) {
@@ -596,6 +632,10 @@ public class FacilityService {
         String effectiveHfrId = firstNonBlank(update.getHfrId(), existingFacility.getHfrId());
         String effectiveNinId = firstNonBlank(update.getNinId(), existingFacility.getNinId());
         validateCategoryBasedIdentifiers(effectiveCategory, effectiveHfrId, effectiveNinId);
+
+        validateFacilityPocUsernameUnique(
+                effectiveCategory, facility.getFacilityPocUsername(), update.getTenantId(), update.getFacilityId()
+        );
 
         // Validate with MDMS and boundary APIs
         log.info("Validating facility update against MDMS and boundaries");
