@@ -1025,6 +1025,53 @@ public class FacilityService {
         log.trace("Exiting sanitizeForLog method");
         return result;
     }
+    /**
+     * One-off migration: facilities with no usable HFR ({@code NULL} or blank after trim) but a non-empty
+     * {@code nin_id} get indexer {@code code} set to that NIN via the Kibana Kafka topic
+     * (see {@link FacilityKibanaMapper#toKibanaIndexPatchCodeFromNin}).
+     *
+     * @return short summary string for operators
+     */
+    public String syncKibanaFacilityCodeFromNinWhereHfrMissing() {
+        log.info("Starting Kibana code sync for facilities with hfr absent/blank and nin_id present");
+        String sql = "SELECT fac.*, "
+                + "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r "
+                + "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive "
+                + "FROM facility fac "
+                + "WHERE (fac.hfr_id IS NULL OR TRIM(fac.hfr_id) = '') "
+                + "AND fac.nin_id IS NOT NULL "
+                + "AND TRIM(fac.nin_id) <> ''";
+
+        RequestInfo migrationRequestInfo = new RequestInfo();
+        List<Facility> facilities = jdbcTemplate.query(sql, facilityRowMapper.rowMapper);
+        int pushed = 0;
+        int failed = 0;
+        for (Facility facility : facilities) {
+            try {
+                FacilityKibanaIndex patch = facilityKibanaMapper.toKibanaIndexPatchCodeFromNin(
+                        facility,
+                        migrationRequestInfo);
+                if (patch != null) {
+                    facilityRepository.pushToKibana(patch);
+                    pushed++;
+                    log.debug("Queued Kibana code patch for facilityId {}", sanitizeForLog(facility.getFacilityId()));
+                }
+            } catch (Exception e) {
+                failed++;
+                log.error("Failed Kibana code sync for facilityId {} tenantId {}: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(facility.getTenantId()),
+                        e.getMessage(),
+                        e);
+            }
+        }
+        String summary = String.format(
+                "Matched %d facilities (hfr null or blank, nin set); queued to indexer=%d; errors=%d",
+                facilities.size(), pushed, failed);
+        log.info("Completed Kibana code sync: {}", summary);
+        return summary;
+    }
+
     public void migrateFacilityData() {
         StringBuilder query = new StringBuilder(
                 "SELECT fac.*, " +

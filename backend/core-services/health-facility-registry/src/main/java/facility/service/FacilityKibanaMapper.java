@@ -195,6 +195,33 @@ public class FacilityKibanaMapper {
     }
 
     /**
+     * Sets indexer {@link FacilityKibanaIndex#getCode()} to the facility {@code nin_id} (trimmed).
+     * When an Elasticsearch document exists, only {@code code} and {@code lastModifiedTime} are changed.
+     * When no document exists, performs a full index mapping ({@link #toKibanaIndex(Facility, RequestInfo)})
+     * so ticket analytics pick up {@code nin_id} as facility code without HFR.
+     */
+    public FacilityKibanaIndex toKibanaIndexPatchCodeFromNin(Facility facility, RequestInfo requestInfo) {
+        if (facility == null || facility.getNinId() == null || facility.getNinId().trim().isEmpty()) {
+            log.warn("Skipping NIN→code Kibana patch: facility null or nin_id blank");
+            return null;
+        }
+        RequestInfo effectiveInfo = requestInfo != null ? requestInfo : new RequestInfo();
+        String ninCode = facility.getNinId().trim();
+
+        FacilityKibanaIndex existingDoc = fetchExistingKibanaIndex(facility.getFacilityId(), null);
+        if (existingDoc == null) {
+            log.info("No ES doc for facilityId={}; indexing from facility so code uses nin_id", facility.getFacilityId());
+            return toKibanaIndex(facility, effectiveInfo);
+        }
+
+        existingDoc.setCode(ninCode);
+        existingDoc.setLastModifiedTime(System.currentTimeMillis());
+        log.info("Patched Kibana code to nin_id for facilityId={} tenantId={}", facility.getFacilityId(),
+                facility.getTenantId());
+        return existingDoc;
+    }
+
+    /**
      * Prefer HFR / official facility code for the index {@code code} field; fall back to boundary code.
      */
     private static String resolveTenantIdLocalized(Facility facility) {
@@ -574,7 +601,7 @@ public class FacilityKibanaMapper {
 
     @SuppressWarnings("unchecked")
     private FacilityKibanaIndex fetchExistingKibanaIndex(String facilityId, String tenantId) {
-        if (facilityId == null || tenantId == null) {
+        if (facilityId == null) {
             log.info("Skipping Kibana lookup: facilityId or tenantId is null (facilityId={}, tenantId={})",
                     facilityId, tenantId);
             return null;
@@ -582,13 +609,22 @@ public class FacilityKibanaMapper {
 
         log.info("Fetching existing Kibana document for facilityId={} tenantId={}", facilityId, tenantId);
         try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+
+            mustClauses.add(
+                    Map.of("term", Map.of("Data.facilityId.keyword", facilityId))
+            );
+
+            if (tenantId != null) {
+                mustClauses.add(
+                        Map.of("term", Map.of("Data.tenantId.keyword", tenantId))
+                );
+            }
+
             Map<String, Object> searchQuery = Map.of(
                     "query", Map.of(
                             "bool", Map.of(
-                                    "must", List.of(
-                                            Map.of("term", Map.of("Data.facilityId.keyword", facilityId)),
-                                            Map.of("term", Map.of("Data.tenantId.keyword", tenantId))
-                                    )
+                                    "must", mustClauses
                             )
                     ),
                     "size", 1
