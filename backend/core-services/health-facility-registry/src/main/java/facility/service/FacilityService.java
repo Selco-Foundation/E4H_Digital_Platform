@@ -1026,30 +1026,47 @@ public class FacilityService {
         return result;
     }
     /**
-     * One-off migration: facilities with no usable HFR ({@code NULL} or blank after trim) but a non-empty
-     * {@code nin_id} get indexer {@code code} set to that NIN via the Kibana Kafka topic
-     * (see {@link FacilityKibanaMapper#toKibanaIndexPatchCodeFromNin}).
+     * One-off migration: when HFR is absent ({@code NULL} or blank), sets indexer {@code code} via Kafka:
+     * {@code nin_id} if present, otherwise {@code facility_poc_username} when both HFR and NIN are absent.
      *
      * @return short summary string for operators
      */
     public String syncKibanaFacilityCodeFromNinWhereHfrMissing() {
-        log.info("Starting Kibana code sync for facilities with hfr absent/blank and nin_id present");
+        log.info("Starting Kibana code sync for facilities without HFR (nin or poc_username fallback)");
         String sql = "SELECT fac.*, "
                 + "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r "
                 + "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive "
                 + "FROM facility fac "
                 + "WHERE (fac.hfr_id IS NULL OR TRIM(fac.hfr_id) = '') "
-                + "AND fac.nin_id IS NOT NULL "
-                + "AND TRIM(fac.nin_id) <> ''";
+                + "AND ("
+                + "  (fac.nin_id IS NOT NULL AND TRIM(fac.nin_id) <> '') "
+                + "  OR ("
+                + "    (fac.nin_id IS NULL OR TRIM(fac.nin_id) = '') "
+                + "    AND fac.facility_poc_username IS NOT NULL "
+                + "    AND TRIM(fac.facility_poc_username) <> ''"
+                + "  )"
+                + ")";
 
         RequestInfo migrationRequestInfo = new RequestInfo();
         List<Facility> facilities = jdbcTemplate.query(sql, facilityRowMapper.rowMapper);
         int pushed = 0;
         int failed = 0;
+        int fromNin = 0;
+        int fromPocUsername = 0;
         for (Facility facility : facilities) {
             try {
-                FacilityKibanaIndex patch = facilityKibanaMapper.toKibanaIndexPatchCodeFromNin(
+                String code = resolveIndexerCodeForHfrMissingMigration(facility);
+                if (code == null) {
+                    continue;
+                }
+                if (hasNonBlankTrimmed(facility.getNinId())) {
+                    fromNin++;
+                } else {
+                    fromPocUsername++;
+                }
+                FacilityKibanaIndex patch = facilityKibanaMapper.toKibanaIndexPatchCode(
                         facility,
+                        code,
                         migrationRequestInfo);
                 if (patch != null) {
                     facilityRepository.pushToKibana(patch);
@@ -1066,10 +1083,34 @@ public class FacilityService {
             }
         }
         String summary = String.format(
-                "Matched %d facilities (hfr null or blank, nin set); queued to indexer=%d; errors=%d",
-                facilities.size(), pushed, failed);
+                "Matched %d facilities (hfr absent; code from nin=%d, poc_username=%d); "
+                        + "queued to indexer=%d; errors=%d",
+                facilities.size(), fromNin, fromPocUsername, pushed, failed);
         log.info("Completed Kibana code sync: {}", summary);
         return summary;
+    }
+
+    /**
+     * When HFR is missing: prefer {@code nin_id}, else {@code facility_poc_username}.
+     */
+    private String resolveIndexerCodeForHfrMissingMigration(Facility facility) {
+        if (facility == null) {
+            return null;
+        }
+        if (hasNonBlankTrimmed(facility.getHfrId())) {
+            return null;
+        }
+        if (hasNonBlankTrimmed(facility.getNinId())) {
+            return facility.getNinId().trim();
+        }
+        if (hasNonBlankTrimmed(facility.getFacilityPocUsername())) {
+            return facility.getFacilityPocUsername().trim();
+        }
+        return null;
+    }
+
+    private static boolean hasNonBlankTrimmed(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     public void migrateFacilityData() {

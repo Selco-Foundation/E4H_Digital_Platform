@@ -195,29 +195,31 @@ public class FacilityKibanaMapper {
     }
 
     /**
-     * Sets indexer {@link FacilityKibanaIndex#getCode()} to the facility {@code nin_id} (trimmed).
+     * Sets indexer {@link FacilityKibanaIndex#getCode()} to {@code code} (trimmed, non-blank).
      * When an Elasticsearch document exists, only {@code code} and {@code lastModifiedTime} are changed.
-     * When no document exists, performs a full index mapping ({@link #toKibanaIndex(Facility, RequestInfo)})
-     * so ticket analytics pick up {@code nin_id} as facility code without HFR.
+     * When no document exists, performs a full index mapping ({@link #toKibanaIndex(Facility, RequestInfo)}).
      */
-    public FacilityKibanaIndex toKibanaIndexPatchCodeFromNin(Facility facility, RequestInfo requestInfo) {
-        if (facility == null || facility.getNinId() == null || facility.getNinId().trim().isEmpty()) {
-            log.warn("Skipping NIN→code Kibana patch: facility null or nin_id blank");
+    public FacilityKibanaIndex toKibanaIndexPatchCode(Facility facility, String code, RequestInfo requestInfo) {
+        if (facility == null || code == null || code.trim().isEmpty()) {
+            log.warn("Skipping Kibana code patch: facility null or code blank");
             return null;
         }
         RequestInfo effectiveInfo = requestInfo != null ? requestInfo : new RequestInfo();
-        String ninCode = facility.getNinId().trim();
+        String trimmedCode = code.trim();
 
         FacilityKibanaIndex existingDoc = fetchExistingKibanaIndex(facility.getFacilityId(), null);
         if (existingDoc == null) {
-            log.info("No ES doc for facilityId={}; indexing from facility so code uses nin_id", facility.getFacilityId());
-            return toKibanaIndex(facility, effectiveInfo);
+            log.info("No ES doc for facilityId={}; full index mapping with code={}", facility.getFacilityId(), trimmedCode);
+            FacilityKibanaIndex fullIndex = toKibanaIndex(facility, effectiveInfo);
+            if (fullIndex != null) {
+                fullIndex.setCode(trimmedCode);
+            }
+            return fullIndex;
         }
 
-        existingDoc.setCode(ninCode);
+        existingDoc.setCode(trimmedCode);
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
-        log.info("Patched Kibana code to nin_id for facilityId={} tenantId={}", facility.getFacilityId(),
-                facility.getTenantId());
+        log.info("Patched Kibana code for facilityId={} tenantId={}", facility.getFacilityId(), facility.getTenantId());
         return existingDoc;
     }
 

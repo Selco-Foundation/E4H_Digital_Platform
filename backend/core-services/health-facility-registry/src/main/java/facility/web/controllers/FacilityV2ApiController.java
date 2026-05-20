@@ -222,9 +222,8 @@ public class FacilityV2ApiController {
     }
 
     /**
-     * Operator script: for every facility where {@code hfr_id} is null or blank (after trim) and
-     * {@code nin_id} is non-empty, publishes an indexer payload that sets {@code code} to {@code nin_id}
-     * (existing ES doc patched, or full index).
+     * Operator script: when {@code hfr_id} is null or blank, sets indexer {@code code} to {@code nin_id} if present,
+     * otherwise to {@code facility_poc_username} when both HFR and NIN are absent (existing ES doc patched, or full index).
      */
     @GetMapping("/sync-kibana-code-from-nin")
     public ResponseEntity<String> syncKibanaCodeFromNinWhereHfrMissing() {
