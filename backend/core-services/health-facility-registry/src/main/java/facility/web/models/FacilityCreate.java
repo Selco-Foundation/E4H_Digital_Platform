@@ -45,6 +45,9 @@ public class FacilityCreate {
     @JsonProperty("facility_poc_email")
     private String facilityPocEmail = null;
 
+    @JsonProperty("facility_poc_username")
+    private String facilityPocUsername = null;
+
     @JsonProperty("hfr_id")
     private String hfrId = null;
 

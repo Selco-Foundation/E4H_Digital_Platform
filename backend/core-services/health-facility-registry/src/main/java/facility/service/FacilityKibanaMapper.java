@@ -22,6 +22,8 @@ import java.util.*;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
+import static facility.service.FacilityService.CATEGORY_ANGANWADI;
+
 /**
  * Mapper service to transform Facility objects to Kibana index format
  */
@@ -75,6 +77,7 @@ public class FacilityKibanaMapper {
                 .phcName(null)
                 .phcType(facility.getFacilityType())
                 .tenantId(facility.getTenantId())
+                .facilityCategory(facility.getFacilityCategory())
                 // Used downstream as the health facility display name (see im-services-analytics)
                 .tenantIdLocalized(resolveTenantIdLocalized(facility))
                 .code(resolveFacilityCodeForIndex(facility))
@@ -203,11 +206,29 @@ public class FacilityKibanaMapper {
     }
 
     private static String resolveFacilityCodeForIndex(Facility facility) {
-        String hfr = facility.getHfrId();
-        if (hfr != null && !hfr.isBlank()) {
-            return hfr;
+        String normalizedCategory = facility.getFacilityCategory() == null
+                ? ""
+                : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+
+        String code = "";
+        if (isAnganwadi) {
+            String username = facility.getFacilityPocUsername();
+            if (username != null && !username.isBlank()) {
+                code = username.trim();
+            }
+            else
+                code = facility.getBoundaryCode();
         }
-        return facility.getBoundaryCode();
+        else{
+            String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId().trim() : facility.getNinId();
+            if (username != null && !username.isBlank()) {
+                code = username.trim();
+            }
+            else
+                code = facility.getBoundaryCode();
+        }
+        return code;
     }
 
     /**

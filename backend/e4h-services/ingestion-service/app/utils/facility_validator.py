@@ -1,7 +1,80 @@
 import re
+from typing import Any, Callable, Dict, List, MutableMapping, Optional
 
 import pandas as pd
 from fastapi import HTTPException
+
+# Same wording everywhere: MDMS pre-validation, API import, and Excel client hints.
+ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH = (
+    "When Facility Category is HEALTH, at least one of HFR ID or NIN ID is required."
+)
+ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI = (
+    "PoC Username is required when Facility Category is ANGANWADI."
+)
+ERR_POC_USERNAME_COLUMN_MISSING_FOR_ANGANWADI = (
+    "PoC Username column is missing from the file; it is required for ANGANWADI facilities."
+)
+
+
+def normalize_facility_category_value(row: pd.Series) -> str:
+    """
+    Reads facility category from common template column names.
+    Returns upper-cased value or '' when unset (IDs stay optional).
+    """
+    candidates = (
+        "Category of Facility (Mandatory)",
+        "Facility Category (Mandatory)",
+    )
+    for key in candidates:
+        if key not in row.index:
+            continue
+        val = row.get(key, "")
+        if pd.isna(val):
+            continue
+        s = str(val).strip()
+        if s:
+            return s.upper()
+    return ""
+
+
+def is_health_facility_category(category: str) -> bool:
+    return category == "HEALTH"
+
+
+def is_anganwadi_facility_category(category: str) -> bool:
+    return category == "ANGANWADI"
+
+
+def resolve_spreadsheet_header_for_schema_code(
+    df: pd.DataFrame,
+    schema_column_list: List[Dict[str, Any]],
+    code: str,
+) -> Optional[str]:
+    """Map MDMS column `code` to the actual header string present in the dataframe."""
+    cols = df.columns
+    for col in schema_column_list:
+        if col.get("code") != code:
+            continue
+        hn = format_col_name(col)
+        if hn in cols:
+            return hn
+        base = (col.get("name") or "").strip()
+        if base in cols:
+            return base
+    return None
+
+
+def _is_legacy_mdms_hfr_nin_at_least_one_constraint(rc: Any) -> bool:
+    """
+    MDMS may define atLeastOneRequired on HFR ID + NIN ID for all rows.
+    We enforce the same rule only when category is HEALTH in validate_hfr_nin_for_row,
+    so skip this row constraint here to avoid duplicate errors.
+    """
+    ctype = getattr(rc, "type", None)
+    if ctype != "atLeastOneRequired":
+        return False
+    fields = getattr(rc, "fields", None) or []
+    return set(fields) == {"HFR ID", "NIN ID"}
 
 
 def project_facility_validation(
@@ -43,6 +116,7 @@ def project_facility_validation(
     validate_boundary_codes(new_rows, allowed_boundary_codes, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_unique_ids(df, schema, add_err)
     validate_row_constraints(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
+    validate_anganwadi_poc_username(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client)
 
     return errors
@@ -74,6 +148,7 @@ def facility_validation(
     validate_columns(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_unique_ids(df, schema, add_err)
     validate_row_constraints(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
+    validate_anganwadi_poc_username(new_rows, schema, lambda i, m: add_err(new_rows.loc[i, "index"], m))
     validate_hfr_nin(new_rows, lambda i, m: add_err(new_rows.loc[i, "index"], m), facility_client)
 
     return errors
@@ -140,9 +215,47 @@ def validate_columns(df, schema, add_err):
             # --- Dropdown check (MDMS values) ---
             mdms_values = col.get("mdms_values")
             if mdms_values:
-                allowed_values = [v.get("name") for v in mdms_values if v.get("name")]
+                effective_mdms = mdms_values
+                facility_cat_for_type = ""
+                if col.get("code") == "facility_type":
+                    facility_cat_for_type = normalize_facility_category_value(df.iloc[i])
+                    if facility_cat_for_type in ("HEALTH", "ANGANWADI"):
+                        effective_mdms = [
+                            v
+                            for v in mdms_values
+                            if str(v.get("facilityCategory") or "").strip().upper()
+                            == facility_cat_for_type
+                        ]
+                allowed_values = [v.get("name") for v in effective_mdms if v.get("name")]
                 if str_val not in allowed_values:
-                    add_err(i, f"Invalid value in column '{col_name}'")
+                    if col.get("code") == "facility_type" and facility_cat_for_type in (
+                        "HEALTH",
+                        "ANGANWADI",
+                    ):
+                        add_err(
+                            i,
+                            f"{col_name} must be a facility type for Facility Category "
+                            f"'{facility_cat_for_type}' (MDMS facilityCategory); "
+                            f"'{str_val}' is not valid for this category.",
+                        )
+                    else:
+                        add_err(i, f"Invalid value in column '{col_name}'")
+
+
+def validate_anganwadi_poc_username(df, schema, add_err):
+    """When facility category is ANGANWADI, PoC Username (MDMS code facility_poc_username) is mandatory."""
+    column_list = schema.get("column_list") or []
+    for idx, row in df.iterrows():
+        if not is_anganwadi_facility_category(normalize_facility_category_value(row)):
+            continue
+        header = resolve_spreadsheet_header_for_schema_code(df, column_list, "facility_poc_username")
+        if not header:
+            add_err(idx, ERR_POC_USERNAME_COLUMN_MISSING_FOR_ANGANWADI)
+            continue
+        val = row.get(header, "")
+        if pd.isna(val) or str(val).strip() == "":
+            add_err(idx, ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI)
+
 
 def validate_unique_ids(df, schema, add_err):
     unique_columns = [c for c in schema["column_list"] if c["type"] == "Unique_Id"]
@@ -186,7 +299,12 @@ def validate_row_constraints(df, schema, add_err):
 
     for idx, row in df.iterrows():
         for rc in row_constraints:
-            fields = [col_map.get(f, f) for f in rc.fields]
+            if _is_legacy_mdms_hfr_nin_at_least_one_constraint(rc):
+                continue
+            raw_fields = getattr(rc, "fields", None) or []
+            if not raw_fields:
+                continue
+            fields = [col_map.get(f, f) for f in raw_fields]
             values = []
             for f in fields:
                 val = row.get(f, "")
@@ -206,29 +324,90 @@ def validate_row_constraints(df, schema, add_err):
 
 
 def validate_hfr_nin(df, add_err, facility_client):
-    checked_in_db = {}
+    checked_in_db: Dict[str, bool] = {}
 
     for idx, row in df.iterrows():
-        hfr = row.get("HFR ID", "")
-        nin = row.get("NIN ID", "")
-
-        hfr = str(hfr).strip() if pd.notna(hfr) else ""
-        nin = str(nin).strip() if pd.notna(nin) else ""
-
-        # Skip if both are empty/NaN
-        if not hfr and not nin:
-            continue
-
-        # Pass only available IDs to DB check
-        check_db_duplicates(
-            cache=checked_in_db,
-            facility_client=facility_client,
-            add_err=add_err,
-            df=df,
+        validate_hfr_nin_for_row(
+            row=row,
             row_idx=idx,
-            hfr=hfr if hfr else None,
-            nin=nin if nin else None,
+            df=df,
+            add_err=add_err,
+            facility_client=facility_client,
+            checked_in_db=checked_in_db,
         )
+
+
+def validate_hfr_nin_for_row(
+    row: pd.Series,
+    row_idx: Any,
+    df: pd.DataFrame,
+    add_err: Callable[[Any, str], None],
+    facility_client: Any,
+    checked_in_db: MutableMapping[str, bool],
+) -> None:
+    """Category-aware HFR/NIN checks + duplicate lookup (shared by bulk validate and import)."""
+    hfr = row.get("HFR ID", "")
+    nin = row.get("NIN ID", "")
+
+    hfr = str(hfr).strip() if pd.notna(hfr) else ""
+    nin = str(nin).strip() if pd.notna(nin) else ""
+
+    category = normalize_facility_category_value(row)
+    if is_health_facility_category(category) and not hfr and not nin:
+        add_err(row_idx, ERR_HFR_OR_NIN_REQUIRED_WHEN_HEALTH)
+
+    if not hfr and not nin:
+        return
+
+    check_db_duplicates(
+        cache=checked_in_db,
+        facility_client=facility_client,
+        add_err=add_err,
+        df=df,
+        row_idx=row_idx,
+        hfr=hfr if hfr else None,
+        nin=nin if nin else None,
+    )
+
+
+def collect_hfr_nin_errors_for_row(
+    row: pd.Series,
+    row_idx: Any,
+    df: pd.DataFrame,
+    facility_client: Any,
+    checked_in_db: MutableMapping[str, bool],
+) -> List[str]:
+    out: List[str] = []
+
+    def add_err(_idx: Any, msg: str) -> None:
+        out.append(msg)
+
+    validate_hfr_nin_for_row(
+        row=row,
+        row_idx=row_idx,
+        df=df,
+        add_err=add_err,
+        facility_client=facility_client,
+        checked_in_db=checked_in_db,
+    )
+    return list(dict.fromkeys(out))
+
+
+def collect_anganwadi_poc_username_errors_for_row(
+    row: pd.Series,
+    _row_idx: Any,
+    df: pd.DataFrame,
+    facility_schema: List[Dict[str, Any]],
+) -> List[str]:
+    if not is_anganwadi_facility_category(normalize_facility_category_value(row)):
+        return []
+    header = resolve_spreadsheet_header_for_schema_code(df, facility_schema, "facility_poc_username")
+    if not header:
+        return [ERR_POC_USERNAME_COLUMN_MISSING_FOR_ANGANWADI]
+    val = row.get(header, "")
+    if pd.isna(val) or str(val).strip() == "":
+        return [ERR_POC_USERNAME_REQUIRED_WHEN_ANGANWADI]
+    return []
 
 
 def check_db_duplicates(cache, facility_client, add_err, df, row_idx, hfr=None, nin=None):
