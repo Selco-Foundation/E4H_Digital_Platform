@@ -165,9 +165,10 @@ public class BoundaryEntityValidator {
             log.debug("Checking duplicates for tenantId={}, codes count={}", tenantId, codes.size());
 
             // get the list of boundaries with the given tenantId and codes
-            List<Boundary> boundaryList = boundaryRepository.search( BoundarySearchCriteria.builder()
+            List<Boundary> boundaryList = boundaryRepository.search(BoundarySearchCriteria.builder()
                             .tenantId(tenantId)
                             .codes(new ArrayList<>(codes))
+                            .ignoreCase(true)
                             .limit(codes.size())
                             .build());
 
@@ -222,13 +223,14 @@ public class BoundaryEntityValidator {
         int requestSize = boundaryRequest.getBoundary() != null ? boundaryRequest.getBoundary().size() : 0;
         log.debug("Checking for duplicate boundaries in request, boundary count={}", requestSize);
 
-        Set<Boundary> boundarySet = new HashSet<>(boundaryRequest.getBoundary());
-
-        // check if the size of the set is not equal to the size of the list then there are duplicates
-        if (boundarySet.size() != boundaryRequest.getBoundary().size()) {
-            log.warn("Duplicate boundaries found in request, request size={}, unique size={}",
-                    boundaryRequest.getBoundary().size(), boundarySet.size());
-            throw new CustomException(ErrorCodes.DUPLICATE_BOUNDARY_CODE, ErrorCodes.DUPLICATE_BOUNDARY_MSG);
+        Set<String> tenantIdAndCodeKeys = new HashSet<>();
+        for (Boundary boundary : boundaryRequest.getBoundary()) {
+            String key = boundary.getTenantId() + "|" + boundary.getCode().toLowerCase(Locale.ROOT);
+            if (!tenantIdAndCodeKeys.add(key)) {
+                log.warn("Duplicate boundaries found in request (case-insensitive), tenantId={}, code={}",
+                        boundary.getTenantId(), boundary.getCode());
+                throw new CustomException(ErrorCodes.DUPLICATE_BOUNDARY_CODE, ErrorCodes.DUPLICATE_BOUNDARY_MSG);
+            }
         }
 
         log.debug("No duplicate boundaries found in request");
