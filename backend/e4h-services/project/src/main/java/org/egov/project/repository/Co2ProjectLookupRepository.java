@@ -10,6 +10,7 @@ import java.util.List;
 
 /**
  * LLD: single SQL join for projectId/projectName by facility IDs (no field-planner calls).
+ * One row per facility: prefer non-FieldPlan projects (projecttype FieldPlan is deprioritized).
  */
 @Repository
 @RequiredArgsConstructor
@@ -18,7 +19,8 @@ public class Co2ProjectLookupRepository {
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     private static final String SQL = """
-            SELECT pf.facilityid AS facility_id,
+            SELECT DISTINCT ON (pf.facilityid)
+                   pf.facilityid AS facility_id,
                    p.id AS project_id,
                    p.name AS project_name
             FROM project_facility pf
@@ -27,6 +29,12 @@ public class Co2ProjectLookupRepository {
               AND pf.facilityid IN (:facilityIds)
               AND (pf.isdeleted IS NULL OR pf.isdeleted = false)
               AND (p.isdeleted IS NULL OR p.isdeleted = false)
+            ORDER BY pf.facilityid,
+                     CASE
+                       WHEN LOWER(COALESCE(p.projecttype, '')) = 'fieldplan' THEN 2
+                       ELSE 1
+                     END,
+                     p.lastmodifiedtime DESC NULLS LAST
             """;
 
     public List<FacilityProjectMapping> fetchProjectsByFacilities(String tenantId, List<String> facilityIds) {
