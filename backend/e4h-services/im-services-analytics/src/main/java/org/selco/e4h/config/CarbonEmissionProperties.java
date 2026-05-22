@@ -55,4 +55,19 @@ public class CarbonEmissionProperties {
 
     @Value("${co2.lifecycle.years}")
     private int lifecycleYears;
+
+    @Value("${egov.localization.host}")
+    private String localizationHost;
+
+    @Value("${egov.localization.context.path}")
+    private String localizationContextPath;
+
+    @Value("${egov.localization.search.endpoint}")
+    private String localizationSearchEndpoint;
+
+    @Value("${co2.localization.boundary.module}")
+    private String localizationBoundaryModule;
+
+    @Value("${co2.localization.locale}")
+    private String localizationLocale;
 }

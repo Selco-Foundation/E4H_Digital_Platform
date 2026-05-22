@@ -38,6 +38,7 @@ public class CarbonEmissionBatchService {
     private final Co2IndexerRepository indexerRepository;
     private final CarbonEmissionProperties properties;
     private final RmsConsumptionClient rmsConsumptionClient;
+    private final Co2LocalizationClient co2LocalizationClient;
 
     public void process(CarbonEmissionKafkaMessage message, RequestInfo requestInfo) {
         String tenantId = message.getTenantId() != null ? message.getTenantId() : properties.getDefaultTenantId();
@@ -60,6 +61,7 @@ public class CarbonEmissionBatchService {
             List<String> batchIds = facilityIds.subList(i, Math.min(i + batchSize, facilityIds.size()));
             List<Co2FacilityContext> facilities = facilityRegistryClient.bulkSearchByFacilityIds(
                     requestInfo, tenantId, batchIds);
+            co2LocalizationClient.enrichBoundaryLocalizedNames(requestInfo, tenantId, facilities);
             Map<String, String> projectNames = projectCo2Client.fetchProjectNamesByFacility(
                     requestInfo, tenantId, batchIds);
 
@@ -141,9 +143,9 @@ public class CarbonEmissionBatchService {
                 .tenantId(f.getTenantId())
                 .facilityName(f.getFacilityName())
                 .facilityType(f.getFacilityType())
-                .state(f.getState())
-                .district(f.getDistrict())
-                .block(f.getBlock())
+                .state(f.getStateLocalized())
+                .district(f.getDistrictLocalized())
+                .block(f.getBlockLocalized())
                 .boundary(f.getBoundary())
                 .geoPoint(f.getGeoPoint())
                 .isLive(f.getIsLive())
