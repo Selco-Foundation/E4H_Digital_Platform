@@ -143,9 +143,9 @@ public class CarbonEmissionBatchService {
                 .tenantId(f.getTenantId())
                 .facilityName(f.getFacilityName())
                 .facilityType(f.getFacilityType())
-                .state(f.getStateLocalized())
-                .district(f.getDistrictLocalized())
-                .block(f.getBlockLocalized())
+                .state(localizedOrCode(f.getStateLocalized(), f.getState()))
+                .district(localizedOrCode(f.getDistrictLocalized(), f.getDistrict()))
+                .block(localizedOrCode(f.getBlockLocalized(), f.getBlock()))
                 .boundary(f.getBoundary())
                 .geoPoint(f.getGeoPoint())
                 .isLive(f.getIsLive())
@@ -160,5 +160,12 @@ public class CarbonEmissionBatchService {
                 .co2EmissionsAvoidedInTonnes(tonnes)
                 .projectedCo2EmissionsAvoidedInTonnes(tonnes)
                 .build();
+    }
+
+    private static String localizedOrCode(String localized, String code) {
+        if (localized != null && !localized.isBlank()) {
+            return localized;
+        }
+        return code;
     }
 }

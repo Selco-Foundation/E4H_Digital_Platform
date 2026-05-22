@@ -1,13 +1,13 @@
 package org.selco.e4h.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.egov.common.contract.request.RequestInfo;
 import org.selco.e4h.config.CarbonEmissionProperties;
 import org.selco.e4h.web.models.Co2Boundary;
 import org.selco.e4h.web.models.Co2FacilityContext;
-import org.selco.e4h.web.models.Co2LocalizationMessage;
-import org.selco.e4h.web.models.Co2LocalizationResponse;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -18,7 +18,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,7 +26,7 @@ import java.util.Set;
 
 /**
  * Resolves boundary display names via egov-localization ({@code rainmaker-in} module),
- * same pattern as im-services {@code LocalizationService#enrichLocalizedDistrictAndBlockNames}.
+ * same pattern as im-services / ingestion-service boundary localization.
  */
 @Slf4j
 @Component
@@ -37,6 +36,7 @@ public class Co2LocalizationClient {
     private static final int MAX_CODES_PER_REQUEST = 80;
 
     private final RestTemplate restTemplate;
+    private final ObjectMapper objectMapper;
     private final CarbonEmissionProperties properties;
 
     public void enrichBoundaryLocalizedNames(RequestInfo requestInfo,
@@ -47,11 +47,21 @@ public class Co2LocalizationClient {
         }
         Set<String> localizationCodes = collectBoundaryLocalizationCodes(facilities);
         if (localizationCodes.isEmpty()) {
+            log.warn("CO2 localization skipped — no boundary codes on {} facilities", facilities.size());
             return;
         }
         Map<String, String> labels = fetchLabels(requestInfo, tenantId, localizationCodes);
         for (Co2FacilityContext facility : facilities) {
             applyLabels(facility, labels);
+        }
+        long resolved = labels.size();
+        if (resolved == 0) {
+            log.warn("CO2 localization returned 0 messages tenantId={} module={} codesRequested={} — "
+                            + "check EGOV_LOCALIZATION_HOST and rainmaker-in Boundary_* entries",
+                    tenantId, properties.getLocalizationBoundaryModule(), localizationCodes.size());
+        } else {
+            log.info("CO2 localization resolved {}/{} boundary codes for tenantId={}",
+                    resolved, localizationCodes.size(), tenantId);
         }
     }
 
@@ -123,44 +133,64 @@ public class Co2LocalizationClient {
         return merged;
     }
 
+    /**
+     * Same contract as im-services / manual Postman: codes comma-separated in query string.
+     */
     private Map<String, String> fetchLabelsChunk(RequestInfo requestInfo,
                                                  String tenantId,
                                                  List<String> localizationCodes) {
-        String codesParam = String.join(",", localizationCodes);
         String url = UriComponentsBuilder
                 .fromHttpUrl(properties.getLocalizationHost() + properties.getLocalizationContextPath()
                         + properties.getLocalizationSearchEndpoint())
                 .queryParam("tenantId", tenantId)
                 .queryParam("module", properties.getLocalizationBoundaryModule())
                 .queryParam("locale", properties.getLocalizationLocale())
-                .queryParam("codes", codesParam)
+                .queryParam("codes", String.join(",", localizationCodes))
                 .build()
                 .toUriString();
 
+        Map<String, Object> body = new HashMap<>();
+        if (requestInfo != null) {
+            body.put("RequestInfo", requestInfo);
+        }
+
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Object> requestEntity = new HttpEntity<>(
-                Collections.singletonMap("RequestInfo", requestInfo), headers);
 
         try {
-            ResponseEntity<Co2LocalizationResponse> response = restTemplate.exchange(
-                    url, HttpMethod.POST, requestEntity, Co2LocalizationResponse.class);
-            Co2LocalizationResponse body = response.getBody();
-            if (body == null || body.getMessages() == null) {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url, HttpMethod.POST, new HttpEntity<>(body, headers), String.class);
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.warn("CO2 localization HTTP {} tenantId={}", response.getStatusCode(), tenantId);
                 return Map.of();
             }
-            Map<String, String> result = new HashMap<>();
-            for (Co2LocalizationMessage message : body.getMessages()) {
-                if (message.getCode() != null && message.getMessage() != null && !message.getMessage().isBlank()) {
-                    result.put(message.getCode(), message.getMessage());
-                }
-            }
-            return result;
+            return parseMessages(response.getBody());
         } catch (Exception e) {
-            log.warn("CO2 boundary localization failed tenantId={} codes={}: {}",
-                    tenantId, localizationCodes.size(), e.getMessage());
+            log.warn("CO2 boundary localization failed tenantId={} host={} codes={}: {}",
+                    tenantId, properties.getLocalizationHost(), localizationCodes.size(), e.getMessage());
             return Map.of();
         }
+    }
+
+    private Map<String, String> parseMessages(String responseBody) {
+        Map<String, String> result = new HashMap<>();
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            JsonNode messages = root.path("messages");
+            if (!messages.isArray()) {
+                return result;
+            }
+            for (JsonNode message : messages) {
+                String code = message.path("code").asText(null);
+                String text = message.path("message").asText(null);
+                if (code != null && !code.isBlank() && text != null && !text.isBlank()) {
+                    result.put(code, text);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse localization response: {}", e.getMessage());
+        }
+        return result;
     }
 
     private static String firstNonBlank(String primary, String fallback) {

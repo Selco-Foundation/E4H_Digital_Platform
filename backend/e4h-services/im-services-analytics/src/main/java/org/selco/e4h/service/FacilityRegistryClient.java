@@ -84,15 +84,20 @@ public class FacilityRegistryClient {
                         .build();
                 JsonNode boundary = f.path("boundary");
                 if (!boundary.isMissingNode()) {
-                    ctx.setState(text(boundary, "state"));
-                    ctx.setDistrict(text(boundary, "district"));
-                    ctx.setBlock(text(boundary, "block"));
+                    String state = text(boundary, "state");
+                    String district = text(boundary, "district");
+                    String block = text(boundary, "block");
+                    ctx.setState(state);
+                    ctx.setDistrict(district);
+                    ctx.setBlock(block);
+                    // Bulk search Boundary model exposes state/district/block as codes, not *Code fields.
                     ctx.setBoundary(Co2Boundary.builder()
-                            .countryCode(text(boundary, "countryCode", "country_code"))
-                            .stateCode(text(boundary, "stateCode", "state_code"))
-                            .districtCode(text(boundary, "districtCode", "district_code"))
-                            .blockCode(text(boundary, "blockCode", "block_code"))
-                            .facilityCode(text(boundary, "facilityCode", "facility_code", "code"))
+                            .countryCode(firstNonBlank(text(boundary, "countryCode", "country_code")))
+                            .stateCode(firstNonBlank(text(boundary, "stateCode", "state_code"), state))
+                            .districtCode(firstNonBlank(text(boundary, "districtCode", "district_code"), district))
+                            .blockCode(firstNonBlank(text(boundary, "blockCode", "block_code"), block))
+                            .facilityCode(firstNonBlank(
+                                    text(boundary, "facilityCode", "facility_code", "code")))
                             .build());
                 }
                 String boundaryCode = text(f, "boundaryCode", "boundary_code");
@@ -112,6 +117,15 @@ public class FacilityRegistryClient {
             log.error("Failed to parse facility bulk search response", e);
         }
         return result;
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String v : values) {
+            if (v != null && !v.isBlank()) {
+                return v;
+            }
+        }
+        return null;
     }
 
     private static String text(JsonNode node, String... fields) {
