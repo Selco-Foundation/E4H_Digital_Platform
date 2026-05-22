@@ -25,8 +25,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Resolves boundary display names via egov-localization ({@code rainmaker-in} module),
- * same pattern as im-services / ingestion-service boundary localization.
+ * Resolves boundary display names via egov-localization ({@code rainmaker-in} module).
  */
 @Slf4j
 @Component
@@ -47,21 +46,11 @@ public class Co2LocalizationClient {
         }
         Set<String> localizationCodes = collectBoundaryLocalizationCodes(facilities);
         if (localizationCodes.isEmpty()) {
-            log.warn("CO2 localization skipped — no boundary codes on {} facilities", facilities.size());
             return;
         }
         Map<String, String> labels = fetchLabels(requestInfo, tenantId, localizationCodes);
         for (Co2FacilityContext facility : facilities) {
             applyLabels(facility, labels);
-        }
-        long resolved = labels.size();
-        if (resolved == 0) {
-            log.warn("CO2 localization returned 0 messages tenantId={} module={} codesRequested={} — "
-                            + "check EGOV_LOCALIZATION_HOST and rainmaker-in Boundary_* entries",
-                    tenantId, properties.getLocalizationBoundaryModule(), localizationCodes.size());
-        } else {
-            log.info("CO2 localization resolved {}/{} boundary codes for tenantId={}",
-                    resolved, localizationCodes.size(), tenantId);
         }
     }
 
@@ -128,30 +117,39 @@ public class Co2LocalizationClient {
         List<String> codeList = new ArrayList<>(localizationCodes);
         for (int i = 0; i < codeList.size(); i += MAX_CODES_PER_REQUEST) {
             List<String> chunk = codeList.subList(i, Math.min(i + MAX_CODES_PER_REQUEST, codeList.size()));
-            merged.putAll(fetchLabelsChunk(requestInfo, tenantId, chunk));
+            Map<String, String> chunkResult = fetchLabelsChunk(requestInfo, tenantId, chunk, false);
+            if (chunkResult.isEmpty()) {
+                chunkResult = fetchLabelsChunk(requestInfo, tenantId, chunk, true);
+            }
+            merged.putAll(chunkResult);
         }
         return merged;
     }
 
     /**
-     * Same contract as im-services / manual Postman: codes comma-separated in query string.
+     * @param codesInQuery when true, codes go in query string (Postman style); otherwise in POST body
+     *                     (avoids ingress truncating long query strings in UAT).
      */
     private Map<String, String> fetchLabelsChunk(RequestInfo requestInfo,
                                                  String tenantId,
-                                                 List<String> localizationCodes) {
-        String url = UriComponentsBuilder
-                .fromHttpUrl(properties.getLocalizationHost() + properties.getLocalizationContextPath()
-                        + properties.getLocalizationSearchEndpoint())
+                                                 List<String> localizationCodes,
+                                                 boolean codesInQuery) {
+        UriComponentsBuilder urlBuilder = UriComponentsBuilder
+                .fromHttpUrl(buildSearchUrl())
                 .queryParam("tenantId", tenantId)
                 .queryParam("module", properties.getLocalizationBoundaryModule())
-                .queryParam("locale", properties.getLocalizationLocale())
-                .queryParam("codes", String.join(",", localizationCodes))
-                .build()
-                .toUriString();
+                .queryParam("locale", properties.getLocalizationLocale());
+        if (codesInQuery) {
+            urlBuilder.queryParam("codes", String.join(",", localizationCodes));
+        }
+        String url = urlBuilder.build().toUriString();
 
         Map<String, Object> body = new HashMap<>();
         if (requestInfo != null) {
             body.put("RequestInfo", requestInfo);
+        }
+        if (!codesInQuery) {
+            body.put("codes", localizationCodes);
         }
 
         HttpHeaders headers = new HttpHeaders();
@@ -161,15 +159,26 @@ public class Co2LocalizationClient {
             ResponseEntity<String> response = restTemplate.exchange(
                     url, HttpMethod.POST, new HttpEntity<>(body, headers), String.class);
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                log.warn("CO2 localization HTTP {} tenantId={}", response.getStatusCode(), tenantId);
                 return Map.of();
             }
             return parseMessages(response.getBody());
         } catch (Exception e) {
-            log.warn("CO2 boundary localization failed tenantId={} host={} codes={}: {}",
-                    tenantId, properties.getLocalizationHost(), localizationCodes.size(), e.getMessage());
+            log.debug("CO2 localization request failed tenantId={}: {}", tenantId, e.getMessage());
             return Map.of();
         }
+    }
+
+    /** Base URL only in EGOV_LOCALIZATION_HOST; path comes from properties. */
+    String buildSearchUrl() {
+        String host = properties.getLocalizationHost() == null
+                ? ""
+                : properties.getLocalizationHost().replaceAll("/+$", "");
+        String context = properties.getLocalizationContextPath();
+        String endpoint = properties.getLocalizationSearchEndpoint();
+        if (host.contains("/localization/messages")) {
+            return host + endpoint;
+        }
+        return host + context + endpoint;
     }
 
     private Map<String, String> parseMessages(String responseBody) {
@@ -188,7 +197,7 @@ public class Co2LocalizationClient {
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to parse localization response: {}", e.getMessage());
+            log.debug("Failed to parse localization response: {}", e.getMessage());
         }
         return result;
     }
