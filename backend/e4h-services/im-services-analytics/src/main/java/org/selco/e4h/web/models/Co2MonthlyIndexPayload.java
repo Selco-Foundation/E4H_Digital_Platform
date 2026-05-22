@@ -7,11 +7,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+
 /**
  * Kafka payload for {@code save-co2-monthly-*-facility-indexer} topics.
  * Aligned with deployed egov-indexer topics {@code save-co2-monthly-facility-indexer} /
  * {@code save-co2-monthly-projection-facility-indexer}: id = {@code $.uuid},
  * capacity field = {@code solarSystemCapacity}, geo = {@code geoPoint} → ES {@code geo-point}.
+ * {@code solarInstallationDate} / {@code rmsInstallationDate} are epoch millis (UTC start of day)
+ * for ES {@code long} mapping and egov-indexer {@code timeStampField: $.solarInstallationDate}.
  */
 @Data
 @Builder
@@ -41,8 +46,10 @@ public class Co2MonthlyIndexPayload {
     /** Indexer maps to ES {@code geo-point} via {@code $.geoPoint}. */
     private String geoPoint;
     private Boolean isLive;
-    private String solarInstallationDate;
-    private String rmsInstallationDate;
+    /** UTC start-of-day epoch millis; ES field type is {@code long}. */
+    private Long solarInstallationDate;
+    /** UTC start-of-day epoch millis; ES field type is {@code long}. */
+    private Long rmsInstallationDate;
     private Double solarSystemCapacity;
     private int month;
     private int year;
@@ -81,10 +88,17 @@ public class Co2MonthlyIndexPayload {
                 .tenantId(doc.getTenantId())
                 .geoPoint(doc.getGeoPoint())
                 .isLive(doc.getIsLive())
-                .solarInstallationDate(doc.getSolarInstallationDate())
-                .rmsInstallationDate(doc.getRmsInstallationDate())
+                .solarInstallationDate(isoDateToEpochMillis(doc.getSolarInstallationDate()))
+                .rmsInstallationDate(isoDateToEpochMillis(doc.getRmsInstallationDate()))
                 .solarSystemCapacity(doc.getSolarSystemCapacity())
                 .month(doc.getMonth())
                 .year(doc.getYear());
+    }
+
+    static Long isoDateToEpochMillis(String isoDate) {
+        if (isoDate == null || isoDate.isBlank()) {
+            return null;
+        }
+        return LocalDate.parse(isoDate).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
     }
 }
