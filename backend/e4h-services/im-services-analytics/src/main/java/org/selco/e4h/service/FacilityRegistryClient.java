@@ -39,7 +39,10 @@ public class FacilityRegistryClient {
         Map<String, Object> criteria = new HashMap<>();
         criteria.put("tenantIds", List.of(tenantId));
         criteria.put("facilityIds", facilityIds);
-        
+        criteria.put("limit", Math.max(facilityIds.size(), 50));
+        criteria.put("offset", 0);
+        criteria.put("sendNonPaginatedResponse", true);
+
         Map<String, Object> body = new HashMap<>();
         body.put("RequestInfo", requestInfo);
         body.put("Facility", criteria);
