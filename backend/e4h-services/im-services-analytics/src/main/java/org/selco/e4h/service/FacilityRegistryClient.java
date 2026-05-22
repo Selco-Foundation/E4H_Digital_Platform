@@ -45,7 +45,7 @@ public class FacilityRegistryClient {
 
         Map<String, Object> body = new HashMap<>();
         body.put("RequestInfo", requestInfo);
-        body.put("FacilityBulkSearchCriteria", criteria);
+        body.put("Facility", criteria);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
