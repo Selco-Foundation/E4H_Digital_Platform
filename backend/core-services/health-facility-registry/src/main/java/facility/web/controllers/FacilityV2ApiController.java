@@ -249,6 +249,17 @@ public class FacilityV2ApiController {
         return ResponseEntity.ok("Script done");
     }
 
+    /**
+     * Operator script: when {@code hfr_id} is null or blank, sets indexer {@code code} to {@code nin_id} if present,
+     * otherwise to {@code facility_poc_username} when both HFR and NIN are absent (existing ES doc patched, or full index).
+     */
+    @GetMapping("/sync-kibana-code-from-nin")
+    public ResponseEntity<String> syncKibanaCodeFromNinWhereHfrMissing() {
+        log.info("sync-kibana-code-from-nin endpoint invoked");
+        String summary = facilityService.syncKibanaFacilityCodeFromNinWhereHfrMissing();
+        return ResponseEntity.ok(summary);
+    }
+
 
 
 }
