@@ -249,6 +249,34 @@ public class FacilityV2ApiController {
         return ResponseEntity.ok("Script done");
     }
 
+    /**
+     * Operator script: when {@code hfr_id} is null or blank, sets indexer {@code code} to {@code nin_id} if present,
+     * otherwise to {@code facility_poc_username} when both HFR and NIN are absent (existing ES doc patched, or full index).
+     */
+    @GetMapping("/sync-kibana-code-from-nin")
+    public ResponseEntity<String> syncKibanaCodeFromNinWhereHfrMissing() {
+        log.info("sync-kibana-code-from-nin endpoint invoked");
+        String summary = facilityService.syncKibanaFacilityCodeFromNinWhereHfrMissing();
+        return ResponseEntity.ok(summary);
+    }
 
+    /**
+     * Operator backfill: creates missing boundary entity and Facility boundary-relationship for facilities
+     * whose {@code boundary_code} was persisted without a relationship (e.g. after varchar length errors).
+     * Requires {@code facility.boundary.backfill.enabled=true} and SYSTEM_USER role.
+     */
+    @PostMapping("/_backfill-boundary-relationships")
+    public ResponseEntity<FacilityBoundaryBackfillResponse> backfillFacilityBoundaryRelationships(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Backfill request (boundary tenantId=in for all facilities)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityBoundaryBackfillRequest request) {
+        log.info("Received facility boundary-relationship backfill request");
+        FacilityBoundaryBackfillResponse result = facilityService.backfillMissingFacilityBoundaryRelationships(request);
+        log.info("Boundary backfill finished: scanned={}, missing={}, created={}, failed={}",
+                result.getScanned(), result.getMissing(), result.getCreated(), result.getFailed());
+        return ResponseEntity.ok(result);
+    }
 
 }

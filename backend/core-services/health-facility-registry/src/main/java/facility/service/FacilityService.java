@@ -55,6 +55,8 @@ public class FacilityService {
     private static final String LOCALIZATION_LOCALE = "en_IN";
     // Existing boundary localization upsert uses tenantId="in" (see ingestion-service / im-service migrations)
     private static final String LOCALIZATION_TENANT_ID = "in";
+    /** Tenant used for boundary entity and boundary_relationship (all facilities). */
+    private static final String BOUNDARY_TENANT_ID = "in";
 
     public FacilityService(
             FacilityRepository facilityRepository,
@@ -1126,6 +1128,94 @@ public class FacilityService {
         log.trace("Exiting sanitizeForLog method");
         return result;
     }
+    /**
+     * One-off migration: when HFR is absent ({@code NULL} or blank), sets indexer {@code code} via Kafka:
+     * {@code nin_id} if present, otherwise {@code facility_poc_username} when both HFR and NIN are absent.
+     *
+     * @return short summary string for operators
+     */
+    public String syncKibanaFacilityCodeFromNinWhereHfrMissing() {
+        log.info("Starting Kibana code sync for facilities without HFR (nin or poc_username fallback)");
+        String sql = "SELECT fac.*, "
+                + "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r "
+                + "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive "
+                + "FROM facility fac "
+                + "WHERE (fac.hfr_id IS NULL OR TRIM(fac.hfr_id) = '') "
+                + "AND ("
+                + "  (fac.nin_id IS NOT NULL AND TRIM(fac.nin_id) <> '') "
+                + "  OR ("
+                + "    (fac.nin_id IS NULL OR TRIM(fac.nin_id) = '') "
+                + "    AND fac.facility_poc_username IS NOT NULL "
+                + "    AND TRIM(fac.facility_poc_username) <> ''"
+                + "  )"
+                + ")";
+
+        RequestInfo migrationRequestInfo = new RequestInfo();
+        List<Facility> facilities = jdbcTemplate.query(sql, facilityRowMapper.rowMapper);
+        int pushed = 0;
+        int failed = 0;
+        int fromNin = 0;
+        int fromPocUsername = 0;
+        for (Facility facility : facilities) {
+            try {
+                String code = resolveIndexerCodeForHfrMissingMigration(facility);
+                if (code == null) {
+                    continue;
+                }
+                if (hasNonBlankTrimmed(facility.getNinId())) {
+                    fromNin++;
+                } else {
+                    fromPocUsername++;
+                }
+                FacilityKibanaIndex patch = facilityKibanaMapper.toKibanaIndexPatchCode(
+                        facility,
+                        code,
+                        migrationRequestInfo);
+                if (patch != null) {
+                    facilityRepository.pushToKibana(patch);
+                    pushed++;
+                    log.debug("Queued Kibana code patch for facilityId {}", sanitizeForLog(facility.getFacilityId()));
+                }
+            } catch (Exception e) {
+                failed++;
+                log.error("Failed Kibana code sync for facilityId {} tenantId {}: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(facility.getTenantId()),
+                        e.getMessage(),
+                        e);
+            }
+        }
+        String summary = String.format(
+                "Matched %d facilities (hfr absent; code from nin=%d, poc_username=%d); "
+                        + "queued to indexer=%d; errors=%d",
+                facilities.size(), fromNin, fromPocUsername, pushed, failed);
+        log.info("Completed Kibana code sync: {}", summary);
+        return summary;
+    }
+
+    /**
+     * When HFR is missing: prefer {@code nin_id}, else {@code facility_poc_username}.
+     */
+    private String resolveIndexerCodeForHfrMissingMigration(Facility facility) {
+        if (facility == null) {
+            return null;
+        }
+        if (hasNonBlankTrimmed(facility.getHfrId())) {
+            return null;
+        }
+        if (hasNonBlankTrimmed(facility.getNinId())) {
+            return facility.getNinId().trim();
+        }
+        if (hasNonBlankTrimmed(facility.getFacilityPocUsername())) {
+            return facility.getFacilityPocUsername().trim();
+        }
+        return null;
+    }
+
+    private static boolean hasNonBlankTrimmed(String value) {
+        return value != null && !value.trim().isEmpty();
+    }
+
     public void migrateFacilityData() {
         StringBuilder query = new StringBuilder(
                 "SELECT fac.*, " +
@@ -1311,6 +1401,128 @@ public class FacilityService {
             return null;
         }
     }
+
+    /**
+     * Backfills missing boundary entities and SELCO Facility boundary-relationships for facilities that
+     * were persisted when relationship create failed (e.g. varchar length on code/parent).
+     */
+    public FacilityBoundaryBackfillResponse backfillMissingFacilityBoundaryRelationships(
+            FacilityBoundaryBackfillRequest request
+    ) {
+        if (!configs.isFacilityBoundaryBackfillEnabled()) {
+            throw new IllegalArgumentException(
+                    "Facility boundary backfill is disabled. Set facility.boundary.backfill.enabled=true to run."
+            );
+        }
+//        validateSystemUserAuthorization(request.getRequestInfo());
+
+        String hierarchyType = configs.getBoundaryHierarchyType();
+
+        List<FacilityBoundaryBackfillRow> rows = loadFacilitiesMissingBoundaryRelationship(hierarchyType);
+        log.info("Boundary backfill: boundaryTenantId={}, hierarchyType={}, scanned={}",
+                BOUNDARY_TENANT_ID, hierarchyType, rows.size());
+
+        FacilityBoundaryBackfillResponse response = FacilityBoundaryBackfillResponse.builder()
+                .scanned(rows.size())
+                .errors(new ArrayList<>())
+                .build();
+
+        if (rows.isEmpty()) {
+            return response;
+        }
+
+        List<FacilityBoundaryBackfillRow> validRows = new ArrayList<>();
+        for (FacilityBoundaryBackfillRow row : rows) {
+            String parent = deriveParentBlockBoundaryCode(row.boundaryCode(), row.facilityId());
+            if (parent == null || parent.isBlank()) {
+                response.setSkippedInvalid(response.getSkippedInvalid() + 1);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(row.facilityId())
+                        .tenantId(row.tenantId())
+                        .boundaryCode(row.boundaryCode())
+                        .message("boundary_code does not match expected pattern {blockCode}_" + row.facilityId())
+                        .build());
+                continue;
+            }
+            validRows.add(row);
+        }
+
+        List<FacilityBoundaryBackfillRow> toBackfill = new ArrayList<>(validRows);
+        response.setMissing(toBackfill.size());
+
+        for (FacilityBoundaryBackfillRow row : toBackfill) {
+            String parent = deriveParentBlockBoundaryCode(row.boundaryCode(), row.facilityId());
+            try {
+                ensureFacilityBoundaryExists(row.boundaryCode(), parent, BOUNDARY_TENANT_ID, request.getRequestInfo());
+                response.setCreated(response.getCreated() + 1);
+            } catch (Exception e) {
+                response.setFailed(response.getFailed() + 1);
+                String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                log.error("Boundary backfill failed for facility {}: {}", row.facilityId(), message, e);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(row.facilityId())
+                        .tenantId(row.tenantId())
+                        .boundaryCode(row.boundaryCode())
+                        .message(message)
+                        .build());
+            }
+        }
+
+        log.info("Boundary backfill complete: created={}, failed={}, skippedInvalid={}",
+                response.getCreated(), response.getFailed(), response.getSkippedInvalid());
+        return response;
+    }
+
+    /**
+     * Loads only facilities whose {@code boundary_code} has no matching row in {@code boundary_relationship}
+     * for the given hierarchy (typically SELCO). Requires facility and boundary-service tables in the same DB.
+     */
+    private List<FacilityBoundaryBackfillRow> loadFacilitiesMissingBoundaryRelationship(String hierarchyType) {
+        String sql =
+                "SELECT f.id, f.tenant_id, f.boundary_code FROM facility f " +
+                "WHERE f.boundary_code IS NOT NULL " +
+                "AND NOT EXISTS ( " +
+                "  SELECT 1 FROM boundary_relationship br " +
+                "  WHERE br.tenantid = ? " +
+                "    AND br.code = f.boundary_code " +
+                "    AND br.hierarchytype = ? " +
+                ") ORDER BY f.id DESC";
+        List<Object> params = List.of(BOUNDARY_TENANT_ID, hierarchyType);
+        return jdbcTemplate.query(
+                sql,
+                params.toArray(),
+                (rs, rowNum) -> new FacilityBoundaryBackfillRow(
+                        rs.getString("id"),
+                        rs.getString("tenant_id"),
+                        rs.getString("boundary_code")
+                )
+        );
+    }
+
+    private String deriveParentBlockBoundaryCode(String boundaryCode, String facilityId) {
+        if (boundaryCode == null || facilityId == null) {
+            return null;
+        }
+        String suffix = "_" + facilityId;
+        if (!boundaryCode.endsWith(suffix)) {
+            return null;
+        }
+        return boundaryCode.substring(0, boundaryCode.length() - suffix.length());
+    }
+
+    private void validateSystemUserAuthorization(RequestInfo requestInfo) {
+        var userInfo = requestInfo != null ? requestInfo.getUserInfo() : null;
+        if (userInfo == null || userInfo.getRoles() == null) {
+            throw new IllegalArgumentException("Only SYSTEM_USER role can run facility boundary backfill");
+        }
+        boolean isSystemUser = userInfo.getRoles().stream()
+                .anyMatch(role -> SYSTEM_USER.equalsIgnoreCase(role.getCode()));
+        if (!isSystemUser) {
+            throw new IllegalArgumentException("Only SYSTEM_USER role can run facility boundary backfill");
+        }
+    }
+
+    private record FacilityBoundaryBackfillRow(String facilityId, String tenantId, String boundaryCode) {}
 
     private void ensureFacilityBoundaryExists(String facilityBoundaryCode, String parentBlockBoundaryCode, String tenantId, RequestInfo requestInfo) {
         boolean boundaryExists = false;

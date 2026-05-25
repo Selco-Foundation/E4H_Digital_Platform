@@ -15,6 +15,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.time.Instant;
 import java.util.*;
 
+import static org.apache.commons.lang3.StringUtils.firstNonBlank;
+
 @Component
 @Slf4j
 @RequiredArgsConstructor
