@@ -8,6 +8,7 @@ import org.egov.rms.model.RMSFacilityData;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -21,46 +22,65 @@ public class RuleEngineService {
 
     /**
      * Applies panel-level anomaly rules
-     * Rule: Solar consumption < 10% of total for 7 consecutive days
-     * Note: API already filters for < 10%, so we just need to verify 7+ days of data
+     * Rule: Solar consumption &lt; threshold% for 7 consecutive days, and (when gating is enabled)
+     * the center must not be idle: {@code last_sync_time} within {@code rms.rule.panel.idle.max.hours}
+     * (default 72h). This avoids tickets for centers with stale telemetry while still requiring a 7-day
+     * low-solar pattern from the graph API.
      */
     public List<Alert> applyPanelRules(List<RMSFacilityData> facilities) {
         log.info("Applying panel-level anomaly rules to {} facilities", facilities.size());
         List<Alert> alerts = new ArrayList<>();
+        boolean activityGating = config.isPanelLowSolarActivityGatingEnabled();
+        int idleMaxHours = config.getPanelIdleMaxHours();
+        Instant idleCutoff = Instant.now().minus(idleMaxHours, ChronoUnit.HOURS);
 
         for (RMSFacilityData facility : facilities) {
             if (facility.getSolarPercent() == null || facility.getSolarPercent().isEmpty()) {
                 continue;
             }
 
-            // API already filters for < 10%, so we verify:
-            // 1. All days have solar consumption < threshold (double-check)
-            // 2. At least 7 days of data (indicating 7 consecutive days)
+            String facilityId = facility.getFacilityId() != null ? facility.getFacilityId() : facility.getCenterId();
+
+            // API already filters for < threshold%; we verify all days and 7+ days of data
             boolean allDaysBelowThreshold = facility.getSolarPercent().stream()
                     .allMatch(percent -> percent <= config.getSolarThresholdPercent());
 
             int daysCount = facility.getSolarPercent().size();
-            
-            if (allDaysBelowThreshold && daysCount >= 7) {
-                // Build detailed metadata with consumption data
-                String metadata = buildPanelMetadata(facility);
-                
-                Alert alert = Alert.builder()
-                        .id(UUID.randomUUID().toString())
-                        .facilityId(facility.getFacilityId() != null ? 
-                                facility.getFacilityId() : facility.getCenterId())
-                        .hfrId(facility.getHfrId())
-                        .alertType(Alert.AlertType.PANEL)
-                        .alertSubType(Alert.AlertSubType.LOW_GENERATION)
-                        .status(Alert.AlertStatus.ACTIVE)
-                        .detectedAt(Instant.now())
-                        .metadata(metadata)
-                        .build();
 
-                alerts.add(alert);
-                log.debug("Panel low generation alert created for facility: {} ({} days of low generation)", 
-                        facility.getFacilityId(), daysCount);
+            if (!allDaysBelowThreshold || daysCount < 7) {
+                continue;
             }
+
+            if (activityGating) {
+                Instant lastSync = facility.getLastSyncTime();
+                if (lastSync == null) {
+                    log.debug("Skipping panel low generation for facility {} — no lastSyncTime (cannot verify recent activity)",
+                            facilityId);
+                    continue;
+                }
+                if (lastSync.isBefore(idleCutoff)) {
+                    log.debug("Skipping panel low generation for facility {} — idle: lastSync {} is older than {}h",
+                            facilityId, lastSync, idleMaxHours);
+                    continue;
+                }
+            }
+
+            String metadata = buildPanelMetadata(facility);
+
+            Alert alert = Alert.builder()
+                    .id(UUID.randomUUID().toString())
+                    .facilityId(facilityId)
+                    .hfrId(facility.getHfrId())
+                    .alertType(Alert.AlertType.PANEL)
+                    .alertSubType(Alert.AlertSubType.LOW_GENERATION)
+                    .status(Alert.AlertStatus.ACTIVE)
+                    .detectedAt(Instant.now())
+                    .metadata(metadata)
+                    .build();
+
+            alerts.add(alert);
+            log.debug("Panel low generation alert created for facility: {} ({} days of low generation)", 
+                    facilityId, daysCount);
         }
 
         log.info("Generated {} panel-level alerts", alerts.size());
@@ -150,6 +170,18 @@ public class RuleEngineService {
                     metadata.append(facility.getGridConsumption().get(i));
                 }
                 metadata.append("]");
+            }
+
+            if (facility.getLastSyncTime() != null) {
+                metadata.append(",\"lastSyncTime\":\"").append(facility.getLastSyncTime().toString()).append("\"");
+            }
+            if (facility.getStatusOfDevice() != null && !facility.getStatusOfDevice().isEmpty()) {
+                String escapedStatus = facility.getStatusOfDevice().replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r")
+                        .replace("\t", "\\t");
+                metadata.append(",\"statusOfDevice\":\"").append(escapedStatus).append("\"");
             }
             
             metadata.append("}");
@@ -412,11 +444,18 @@ public class RuleEngineService {
 
     /**
      * Applies grid-level anomaly rules
-     * Rule: Grid voltage < 200V (Low) or > 250V (High)
-     * Note: API already filters by voltage thresholds, so facilities are already filtered
+     * Rule: Grid voltage in [reverseMin, reverseMax] (Reverse Voltage, default 50V-150V)
+     *       or &gt; high threshold (High Voltage)
+     * Note: API filters return candidate facilities; we still validate ranges here.
      */
     public List<Alert> applyGridRules(List<RMSFacilityData> facilities) {
         log.info("Applying grid-level anomaly rules to {} facilities", facilities.size());
+        boolean gridHighVoltageTicketsEnabled = config.isGridHighVoltageTicketsEnabled();
+        if (!gridHighVoltageTicketsEnabled) {
+            log.info("Grid high voltage ticket generation is disabled via rms.rule.grid.high.voltage.tickets.enabled");
+        }
+        double reverseMin = config.getGridVoltageReverseMinThreshold();
+        double reverseMax = config.getGridVoltageReverseMaxThreshold();
         List<Alert> alerts = new ArrayList<>();
 
         for (RMSFacilityData facility : facilities) {
@@ -429,26 +468,31 @@ public class RuleEngineService {
                 continue;
             }
             
-            // Check low voltage (minVoltage is set for low voltage facilities)
-            if (facility.getMinVoltage() != null) {
+            // Reverse voltage: grid voltage falls within [reverseMin, reverseMax] inclusive.
+            // minVoltage is populated by DataCollectorService for low/reverse-side candidates.
+            Double reverseVoltage = facility.getMinVoltage();
+            if (reverseVoltage != null && reverseVoltage >= reverseMin && reverseVoltage <= reverseMax) {
                 Alert alert = Alert.builder()
                         .id(UUID.randomUUID().toString())
                         .facilityId(facilityId)
                         .hfrId(facility.getHfrId())
                         .alertType(Alert.AlertType.GRID)
-                        .alertSubType(Alert.AlertSubType.VOLTAGE_VARIATION_LOW)
+                        .alertSubType(Alert.AlertSubType.VOLTAGE_VARIATION_REVERSE)
                         .status(Alert.AlertStatus.ACTIVE)
                         .detectedAt(Instant.now())
-                        .metadata(buildGridVoltageMetadata(facility, facilityName, facility.getMinVoltage(), true))
+                        .metadata(buildGridReverseVoltageMetadata(facility, facilityName, reverseVoltage))
                         .build();
 
                 alerts.add(alert);
-                log.debug("Grid low voltage alert created for facility: {} (voltage: {}V)", 
-                        facilityId, facility.getMinVoltage());
+                log.debug("Grid reverse voltage alert created for facility: {} (voltage: {}V, range: {}-{}V)",
+                        facilityId, reverseVoltage, reverseMin, reverseMax);
+            } else if (reverseVoltage != null) {
+                log.debug("Skipping facility {} - voltage {}V outside reverse voltage range [{}, {}]",
+                        facilityId, reverseVoltage, reverseMin, reverseMax);
             }
 
             // Check high voltage (maxVoltage is set for high voltage facilities)
-            if (facility.getMaxVoltage() != null) {
+            if (gridHighVoltageTicketsEnabled && facility.getMaxVoltage() != null) {
                 Alert alert = Alert.builder()
                         .id(UUID.randomUUID().toString())
                         .facilityId(facilityId)
@@ -471,28 +515,24 @@ public class RuleEngineService {
     }
 
     /**
-     * Builds detailed metadata for grid voltage alerts
+     * Builds detailed metadata for grid high voltage alerts
      */
     private String buildGridVoltageMetadata(RMSFacilityData facility, String facilityName, Double voltage, boolean isLow) {
         try {
-            String name = facilityName != null ? facilityName : 
-                    (facility.getFacilityName() != null ? facility.getFacilityName() : 
+            String name = facilityName != null ? facilityName :
+                    (facility.getFacilityName() != null ? facility.getFacilityName() :
                      (facility.getCenterName() != null ? facility.getCenterName() : ""));
-            
-            // Escape facility name for JSON
-            String escapedName = name.replace("\\", "\\\\")
-                    .replace("\"", "\\\"")
-                    .replace("\n", "\\n")
-                    .replace("\r", "\\r")
-                    .replace("\t", "\\t");
-            
+
+            String escapedName = escapeForJson(name);
+
             StringBuilder metadata = new StringBuilder();
             metadata.append("{\"facilityName\":\"").append(escapedName).append("\"");
             
             if (voltage != null) {
                 if (isLow) {
-                    metadata.append(",\"minVoltage\":").append(voltage);
-                    metadata.append(",\"threshold\":").append(config.getGridVoltageLowThreshold());
+                    metadata.append(",\"voltage\":").append(voltage);
+                    metadata.append(",\"reverseMinThreshold\":").append(config.getGridVoltageReverseMinThreshold());
+                    metadata.append(",\"reverseMaxThreshold\":").append(config.getGridVoltageReverseMaxThreshold());
                 } else {
                     metadata.append(",\"maxVoltage\":").append(voltage);
                     metadata.append(",\"threshold\":").append(config.getGridVoltageHighThreshold());
@@ -505,6 +545,43 @@ public class RuleEngineService {
             log.warn("Error building grid voltage metadata", e);
             return "{\"error\":\"Failed to build metadata\"}";
         }
+    }
+
+    /**
+     * Builds detailed metadata for grid reverse voltage alerts (voltage in [min, max]).
+     */
+    private String buildGridReverseVoltageMetadata(RMSFacilityData facility, String facilityName, Double voltage) {
+        try {
+            String name = facilityName != null ? facilityName :
+                    (facility.getFacilityName() != null ? facility.getFacilityName() :
+                     (facility.getCenterName() != null ? facility.getCenterName() : ""));
+
+            String escapedName = escapeForJson(name);
+
+            StringBuilder metadata = new StringBuilder();
+            metadata.append("{\"facilityName\":\"").append(escapedName).append("\"");
+            if (voltage != null) {
+                metadata.append(",\"voltage\":").append(voltage);
+            }
+            metadata.append(",\"reverseMinThreshold\":").append(config.getGridVoltageReverseMinThreshold());
+            metadata.append(",\"reverseMaxThreshold\":").append(config.getGridVoltageReverseMaxThreshold());
+            metadata.append("}");
+            return metadata.toString();
+        } catch (Exception e) {
+            log.warn("Error building grid reverse voltage metadata", e);
+            return "{\"error\":\"Failed to build metadata\"}";
+        }
+    }
+
+    private String escapeForJson(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 
     /**

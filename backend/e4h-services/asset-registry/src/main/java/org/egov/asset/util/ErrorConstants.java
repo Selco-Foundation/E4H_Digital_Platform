@@ -114,8 +114,8 @@ public class ErrorConstants {
     public static final String ASSET_BATTERY_TOTAL_CAPACITY_UOM_CODE = "ERR_BATTERY_TOTAL_CAPACITY_UOM";
     public static final String ASSET_BATTERY_TOTAL_CAPACITY_UOM_MSG = "Total Capacity UOM must be 'kWh'";
 
-    public static final String ASSET_BATTERY_TYPE_INVALID_CODE = "ERR_BATTERY_TYPE_INVALID";
-    public static final String ASSET_BATTERY_TYPE_INVALID_MSG = "Battery Type must be one of the valid types";
+    public static final String ASSET_BATTERY_TYPE_NULL_CODE = "ERR_BATTERY_TYPE_NULL";
+    public static final String ASSET_BATTERY_TYPE_NULL_MSG = "Battery Type cannot be null";
 
     public static final String ASSET_BATTERY_VOLTAGE_UNIT_CODE = "ERR_BATTERY_VOLTAGE_UNIT";
     public static final String ASSET_BATTERY_VOLTAGE_UNIT_MSG = "Voltage Unit must be 'Volts'";

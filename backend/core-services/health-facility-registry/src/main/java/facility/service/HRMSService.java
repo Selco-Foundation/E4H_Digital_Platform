@@ -2,10 +2,12 @@ package facility.service;
 
 import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
+import facility.util.MdmsUtil;
 import facility.web.models.Facility;
 import facility.web.models.HealthFacilityDetails;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.minidev.json.JSONArray;
 import org.egov.common.contract.request.RequestInfo;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -19,9 +21,12 @@ import java.util.*;
 public class HRMSService {
 
     private static final String CATEGORY_ANGANWADI = "ANGANWADI";
+    private static final String MDMS_COMMON_MASTERS_MODULE = "common-masters";
+    private static final String MDMS_DESIGNATION_MASTER = "Designation";
 
     private final ServiceRequestRepository serviceRequestRepository;
     private final Configuration configs;
+    private final MdmsUtil mdmsUtil;
 
     /**
      * Searches for an employee by mobile number (phone number) in HRMS.
@@ -158,15 +163,19 @@ public class HRMSService {
             }
             employeeCode = pocUsername.trim();
         } else {
-            if (facilityDetails == null || facilityDetails.getHfrId() == null
-                    || facilityDetails.getHfrId().isBlank() || facilityDetails.getPocContact() == null
+            if (facilityDetails == null || facilityDetails.getPocContact() == null
                     || facilityDetails.getPocContact().isBlank() || facilityDetails.getPocName() == null
                     || facilityDetails.getPocName().isBlank()) {
-                log.warn("Cannot create POC employee for facility {}: missing HFR ID, POC contact, or name",
+                log.warn("Cannot create POC employee for facility {}: missing POC contact or name",
                         sanitizeForLog(facility.getFacilityId()));
                 return false;
             }
-            employeeCode = facilityDetails.getHfrId().trim();
+            employeeCode = resolveFacilityEmployeeCode(facility);
+            if (employeeCode == null || employeeCode.isBlank()) {
+                log.warn("Cannot create POC employee for facility {}: missing HFR or NIN ID",
+                        sanitizeForLog(facility.getFacilityId()));
+                return false;
+            }
         }
 
         log.info("Creating POC employee for facility {} with employee code {}",
@@ -231,8 +240,16 @@ public class HRMSService {
             Map<String, Object> assignment = new HashMap<>();
             String designationCode = null;
             if (facilityDetails.getPocDesignation() != null && !facilityDetails.getPocDesignation().isBlank()) {
-                designationCode = facilityDetails.getPocDesignation();
-            } else if (configs.getHrmsDefaultDesignationCode() != null && !configs.getHrmsDefaultDesignationCode().isBlank()) {
+                designationCode = resolveDesignationCode(
+                        facilityDetails.getPocDesignation(), facility.getTenantId(), requestInfo);
+                if (designationCode == null) {
+                    log.warn("Could not resolve designation code for POC designation '{}' for facility {}, using default if configured",
+                            sanitizeForLog(facilityDetails.getPocDesignation()), sanitizeForLog(facility.getFacilityId()));
+                }
+            }
+            if (designationCode == null
+                    && configs.getHrmsDefaultDesignationCode() != null
+                    && !configs.getHrmsDefaultDesignationCode().isBlank()) {
                 designationCode = configs.getHrmsDefaultDesignationCode();
             }
             if (designationCode != null) {
@@ -345,6 +362,75 @@ public class HRMSService {
         } catch (Exception e) {
             log.error("Error updating user password: {}", e.getMessage(), e);
         }
+    }
+
+    /**
+     * Resolves HRMS designation code from a POC designation value by looking up
+     * {@code common-masters.Designation} in MDMS. Matches by designation name (e.g. "Medical officer")
+     * or returns the value as-is when it already matches a designation code.
+     */
+    private String resolveDesignationCode(String designationValue, String tenantId, RequestInfo requestInfo) {
+        if (designationValue == null || designationValue.isBlank()) {
+            return null;
+        }
+
+        String normalizedValue = designationValue.trim();
+        try {
+            Map<String, Map<String, JSONArray>> mdmsData = mdmsUtil.fetchMdmsData(
+                    requestInfo, tenantId, MDMS_COMMON_MASTERS_MODULE, List.of(MDMS_DESIGNATION_MASTER));
+
+            JSONArray designations = mdmsData
+                    .getOrDefault(MDMS_COMMON_MASTERS_MODULE, Map.of())
+                    .get(MDMS_DESIGNATION_MASTER);
+            if (designations == null || designations.isEmpty()) {
+                log.warn("No Designation records found in MDMS for tenant {}", tenantId);
+                return null;
+            }
+
+            for (Object obj : designations) {
+                if (!(obj instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> designation = (Map<String, Object>) obj;
+                Object codeObj = designation.get("code");
+                Object nameObj = designation.get("name");
+                if (codeObj != null && normalizedValue.equalsIgnoreCase(codeObj.toString().trim())) {
+                    return codeObj.toString().trim();
+                }
+                if (nameObj != null && normalizedValue.equalsIgnoreCase(nameObj.toString().trim())
+                        && codeObj != null && !codeObj.toString().isBlank()) {
+                    return codeObj.toString().trim();
+                }
+            }
+
+            log.warn("Designation '{}' not found in MDMS common-masters.Designation for tenant {}",
+                    sanitizeForLog(normalizedValue), tenantId);
+        } catch (Exception e) {
+            log.warn("Error resolving designation code for '{}' in tenant {}: {}",
+                    sanitizeForLog(normalizedValue), tenantId, e.getMessage(), e);
+        }
+        return null;
+    }
+
+    /**
+     * Resolves the facility identifier used as HRMS username/employee code.
+     * Prefers HFR ID over NIN ID; checks both top-level facility fields and nested facilityDetails.
+     */
+    private String resolveFacilityEmployeeCode(Facility facility) {
+        HealthFacilityDetails facilityDetails = facility.getFacilityDetails();
+        if (facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()) {
+            return facility.getHfrId().trim();
+        }
+        if (facilityDetails != null && facilityDetails.getHfrId() != null && !facilityDetails.getHfrId().isBlank()) {
+            return facilityDetails.getHfrId().trim();
+        }
+        if (facility.getNinId() != null && !facility.getNinId().trim().isBlank()) {
+            return facility.getNinId().trim();
+        }
+        if (facilityDetails != null && facilityDetails.getNinId() != null && !facilityDetails.getNinId().isBlank()) {
+            return facilityDetails.getNinId().trim();
+        }
+        return null;
     }
 
     /**
