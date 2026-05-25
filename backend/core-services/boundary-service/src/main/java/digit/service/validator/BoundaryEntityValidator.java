@@ -175,7 +175,7 @@ public class BoundaryEntityValidator {
             // check if the code already exists in db
             if (!CollectionUtils.isEmpty(boundaryList)) {
                 log.warn("Duplicate boundary found in database for tenantId={}, codes={}", tenantId, codes);
-                throw new CustomException(ErrorCodes.DUPLICATE_CODE_CODE , ErrorCodes.DUPLICATE_CODE_MSG + BoundaryConstants.OPENING_BRACKET + tenantId + "," + codes + BoundaryConstants.CLOSING_BRACKET);
+                throw new CustomException(ErrorCodes.DUPLICATE_CODE_CODE , ErrorCodes.DUPLICATE_CODE_MSG + codes + " already exist");
             }
         });
 
