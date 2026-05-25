@@ -22,6 +22,8 @@ import java.util.*;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
+import static facility.service.FacilityService.CATEGORY_ANGANWADI;
+
 /**
  * Mapper service to transform Facility objects to Kibana index format
  */
@@ -193,6 +195,35 @@ public class FacilityKibanaMapper {
     }
 
     /**
+     * Sets indexer {@link FacilityKibanaIndex#getCode()} to {@code code} (trimmed, non-blank).
+     * When an Elasticsearch document exists, only {@code code} and {@code lastModifiedTime} are changed.
+     * When no document exists, performs a full index mapping ({@link #toKibanaIndex(Facility, RequestInfo)}).
+     */
+    public FacilityKibanaIndex toKibanaIndexPatchCode(Facility facility, String code, RequestInfo requestInfo) {
+        if (facility == null || code == null || code.trim().isEmpty()) {
+            log.warn("Skipping Kibana code patch: facility null or code blank");
+            return null;
+        }
+        RequestInfo effectiveInfo = requestInfo != null ? requestInfo : new RequestInfo();
+        String trimmedCode = code.trim();
+
+        FacilityKibanaIndex existingDoc = fetchExistingKibanaIndex(facility.getFacilityId(), null);
+        if (existingDoc == null) {
+            log.info("No ES doc for facilityId={}; full index mapping with code={}", facility.getFacilityId(), trimmedCode);
+            FacilityKibanaIndex fullIndex = toKibanaIndex(facility, effectiveInfo);
+            if (fullIndex != null) {
+                fullIndex.setCode(trimmedCode);
+            }
+            return fullIndex;
+        }
+
+        existingDoc.setCode(trimmedCode);
+        existingDoc.setLastModifiedTime(System.currentTimeMillis());
+        log.info("Patched Kibana code for facilityId={} tenantId={}", facility.getFacilityId(), facility.getTenantId());
+        return existingDoc;
+    }
+
+    /**
      * Prefer HFR / official facility code for the index {@code code} field; fall back to boundary code.
      */
     private static String resolveTenantIdLocalized(Facility facility) {
@@ -204,11 +235,29 @@ public class FacilityKibanaMapper {
     }
 
     private static String resolveFacilityCodeForIndex(Facility facility) {
-        String hfr = facility.getHfrId();
-        if (hfr != null && !hfr.isBlank()) {
-            return hfr;
+        String normalizedCategory = facility.getFacilityCategory() == null
+                ? ""
+                : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+
+        String code = "";
+        if (isAnganwadi) {
+            String username = facility.getFacilityPocUsername();
+            if (username != null && !username.isBlank()) {
+                code = username.trim();
+            }
+            else
+                code = facility.getBoundaryCode();
         }
-        return facility.getBoundaryCode();
+        else{
+            String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId().trim() : facility.getNinId();
+            if (username != null && !username.isBlank()) {
+                code = username.trim();
+            }
+            else
+                code = facility.getBoundaryCode();
+        }
+        return code;
     }
 
     /**
@@ -554,7 +603,7 @@ public class FacilityKibanaMapper {
 
     @SuppressWarnings("unchecked")
     private FacilityKibanaIndex fetchExistingKibanaIndex(String facilityId, String tenantId) {
-        if (facilityId == null || tenantId == null) {
+        if (facilityId == null) {
             log.info("Skipping Kibana lookup: facilityId or tenantId is null (facilityId={}, tenantId={})",
                     facilityId, tenantId);
             return null;
@@ -562,13 +611,22 @@ public class FacilityKibanaMapper {
 
         log.info("Fetching existing Kibana document for facilityId={} tenantId={}", facilityId, tenantId);
         try {
+            List<Map<String, Object>> mustClauses = new ArrayList<>();
+
+            mustClauses.add(
+                    Map.of("term", Map.of("Data.facilityId.keyword", facilityId))
+            );
+
+            if (tenantId != null) {
+                mustClauses.add(
+                        Map.of("term", Map.of("Data.tenantId.keyword", tenantId))
+                );
+            }
+
             Map<String, Object> searchQuery = Map.of(
                     "query", Map.of(
                             "bool", Map.of(
-                                    "must", List.of(
-                                            Map.of("term", Map.of("Data.facilityId.keyword", facilityId)),
-                                            Map.of("term", Map.of("Data.tenantId.keyword", tenantId))
-                                    )
+                                    "must", mustClauses
                             )
                     ),
                     "size", 1

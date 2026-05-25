@@ -36,6 +36,7 @@
 
     .previous-button{
       width: 240px;
+      min-width: fit-content;
     }
   }
 }
@@ -45,6 +46,7 @@
     .previous-button{
       margin-left: 4rem;
       width: 240px;
+      min-width: fit-content;
     }
   }
 }
