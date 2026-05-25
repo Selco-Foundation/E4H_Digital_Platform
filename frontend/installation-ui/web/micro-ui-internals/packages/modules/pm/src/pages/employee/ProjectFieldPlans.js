@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useProject from "../../hooks/useProject";
 import InfoCard from "../../components/ProjectFieldPlans/InfoCard";
 import { Loader, Table } from "@egovernments/digit-ui-react-components";
@@ -136,6 +136,29 @@ const ProjectFieldPlans = () => {
         Header: () => GetHead(t("FIELD_PLAN_STATUS")),
         Cell: ({ row }) => GetCell(row.original["status"] ? t(`PM_FIELD_PLAN_STATUS_${row.original["status"].toUpperCase()}`) : ""),
       },
+      {
+        id: "actions",
+        Header: () => GetHead(t("CS_COMMON_ACTIONS")),
+        Cell: ({ row }) => (
+          row.original["id"] ? (
+            <button
+              type="button"
+              className={"jk-digit-secondary-btn"}
+              style={{
+                height: "32px",
+                padding: "0px 16px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "500",
+                fontFamily: "Roboto",
+              }}
+              onClick={() => handlePopulateBOMNavigation(row.original["id"])}
+            >
+              {t("PM_ACTION_POPULATE_BOM")}
+            </button>
+          ) : null
+        ),
+      },
     ],
     [t]
   );
@@ -160,6 +183,10 @@ const ProjectFieldPlans = () => {
   const handleAMCCreationNavigation = () => {
     history.push(`/${window.contextPath}/employee/pm/project/${projectId}/amc/create`);
   }
+
+  const handlePopulateBOMNavigation = (fieldPlanId) => {
+    history.push(`/${window.contextPath}/employee/pm/project/${projectId}/field-plan/${fieldPlanId}/populate-bom`);
+  };
 
   if (projectDataLoading) {
     return <Loader />

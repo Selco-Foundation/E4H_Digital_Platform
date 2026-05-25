@@ -10,6 +10,7 @@ import ProjectFieldPlans from "./ProjectFieldPlans";
 import ProjectTable from "./ProjectTable";
 import ProjectDetails from "./ProjectDetails";
 import CreateAMC from "./CreateAMC";
+import PopulateBOM from "./PopulateBOM";
 
 const PMApp = () => {
   const { t } = useTranslation();
@@ -51,6 +52,11 @@ const PMApp = () => {
     amcCreation: {
       content: t("PM_ACTION_SET_UP_AMC"),
       internalLink: match.url + `/project/${pmStore?.workingProject?.id}/amc/create`,
+      show: true,
+    },
+    populateBOM: {
+      content: t("PM_POPULATE_BOM_TITLE"),
+      internalLink: match.url + `/project/${pmStore?.workingProject?.id}/field-plan/${pmStore?.workingFieldPlan?.id}/populate-bom`,
       show: true,
     },
     response: {
@@ -108,6 +114,13 @@ const PMApp = () => {
             crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.amcCreation]}
           />
           <CreateAMC />
+        </Route>
+        <Route path={`${path}/project/:projectId/field-plan/:fieldPlanId/populate-bom`} exact={true}>
+          <BreadCrumb
+            spanStyle={{ color: "#0B0C0C" }}
+            crumbs={[breadCrumbsConfig.home, breadCrumbsConfig.projects, breadCrumbsConfig.projectFieldPlans, breadCrumbsConfig.populateBOM]}
+          />
+          <PopulateBOM />
         </Route>
         <Route path={`${path}/response`} exact={true}>
           <BreadCrumb
