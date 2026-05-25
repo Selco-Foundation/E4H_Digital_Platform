@@ -48,9 +48,15 @@ public class ProjectCo2Client {
                 for (JsonNode row : rows) {
                     String facilityId = row.path("facilityId").asText(null);
                     String projectName = row.path("projectName").asText(null);
-                    if (facilityId != null && projectName != null) {
-                        result.put(facilityId, projectName);
+                    if (facilityId == null || projectName == null) {
+                        continue;
                     }
+                    if (result.containsKey(facilityId)) {
+                        log.warn("Duplicate project mapping for facilityId={} — keeping first, ignoring projectName={}",
+                                facilityId, projectName);
+                        continue;
+                    }
+                    result.put(facilityId, projectName);
                 }
             }
         } catch (Exception e) {

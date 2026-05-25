@@ -37,6 +37,14 @@ public class Co2ReferenceBundle {
     return gridIntensityByFy.get(financialYear);
   }
 
+  /** PRD: state sunshine hours per day (key = boundary state code, e.g. {@code India_Assam}). */
+  public BigDecimal sunshineHoursForState(String state) {
+    if (sunshineByState == null || state == null) {
+      return null;
+    }
+    return sunshineByState.get(normalize(state));
+  }
+
   private static String normalize(String s) {
     return s == null ? "" : s.trim();
   }

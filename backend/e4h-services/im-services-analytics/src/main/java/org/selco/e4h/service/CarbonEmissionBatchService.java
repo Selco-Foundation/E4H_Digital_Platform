@@ -66,7 +66,8 @@ public class CarbonEmissionBatchService {
                     requestInfo, tenantId, batchIds);
 
             for (Co2FacilityContext facility : facilities) {
-                facility.setProjectName(projectNames.get(facility.getFacilityId()));
+                // Empty string when unmapped so indexer clears stale projectName on re-run (null is omitted from JSON).
+                facility.setProjectName(projectNames.getOrDefault(facility.getFacilityId(), ""));
                 processFacility(facility, current, references, List.of(facility));
             }
         }
@@ -130,7 +131,7 @@ public class CarbonEmissionBatchService {
             Double solarKwh = solarByMonth.get(key);
             if (solarKwh != null && solarKwh > 0) {
                 return calculator.calculateRmsActualMonthlyTonnes(
-                        solarKwh, ym.getMonthValue(), ym.getYear(), references);
+                        solarKwh, facility, ym.getMonthValue(), ym.getYear(), references);
             }
         }
         return calculator.calculateArchetypeMonthlyTonnes(

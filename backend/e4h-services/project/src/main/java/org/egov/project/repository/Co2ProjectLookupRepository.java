@@ -18,8 +18,12 @@ public class Co2ProjectLookupRepository {
 
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
+    /**
+     * One project per facility: latest non-deleted link (avoids arbitrary DISTINCT row / HashMap overwrite).
+     */
     private static final String SQL = """
-            SELECT DISTINCT pf.facilityid AS facility_id,
+            SELECT DISTINCT ON (pf.facilityid)
+                   pf.facilityid AS facility_id,
                    p.id AS project_id,
                    p.name AS project_name
             FROM project_facility pf
@@ -29,6 +33,7 @@ public class Co2ProjectLookupRepository {
               AND (pf.isdeleted IS NULL OR pf.isdeleted = false)
               AND (p.isdeleted IS NULL OR p.isdeleted = false)
               AND LOWER(COALESCE(p.projecttype, '')) NOT IN ('fieldplan', 'facility')
+            ORDER BY pf.facilityid, pf.lastmodifiedtime DESC NULLS LAST, pf.createdtime DESC NULLS LAST
             """;
 
     public List<FacilityProjectMapping> fetchProjectsByFacilities(String tenantId, List<String> facilityIds) {

@@ -41,6 +41,8 @@ public class Co2MonthlyIndexPayload {
     private String ninId;
     private String facilityType;
     private String facilityName;
+    /** Always indexed (empty when facility has no project) so re-run clears stale ES values. */
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     private String projectName;
     private String tenantId;
     /** Indexer maps to ES {@code geo-point} via {@code $.geoPoint}. */
@@ -84,7 +86,7 @@ public class Co2MonthlyIndexPayload {
                 .ninId(doc.getNinId())
                 .facilityType(doc.getFacilityType())
                 .facilityName(doc.getFacilityName())
-                .projectName(doc.getProjectName())
+                .projectName(doc.getProjectName() != null ? doc.getProjectName() : "")
                 .tenantId(doc.getTenantId())
                 .geoPoint(doc.getGeoPoint())
                 .isLive(doc.getIsLive())
