@@ -788,47 +788,108 @@ public class FacilityService {
             log.warn("Facility {} not found for tenant {}", blockUpdate.getFacilityId(), blockUpdate.getTenantId());
             return null;
         }
-        String oldFacilityBoundaryCode = existingFacility.getBoundaryCode();
 
-        // Validate that requested target block exists in boundary service.
         boundaryValidator.validateBoundaries(
                 Set.of(blockUpdate.getNewBlockBoundaryCode()),
                 blockUpdate.getTenantId(),
                 request.getRequestInfo()
         );
 
-        String updatedFacilityBoundaryCode = blockUpdate.getNewBlockBoundaryCode() + "_" + blockUpdate.getFacilityId();
+        Facility updated = applyFacilityBlockBoundaryChange(
+                existingFacility,
+                blockUpdate.getFacilityId(),
+                blockUpdate.getTenantId(),
+                blockUpdate.getNewBlockBoundaryCode(),
+                request.getRequestInfo()
+        );
+        log.trace("Exiting updateFacilityBlockBoundary method");
+        return updated;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Facility updateFacilityDistrictBoundary(FacilityDistrictUpdateRequest request) {
+        log.trace("Entering updateFacilityDistrictBoundary method");
+        FacilityDistrictUpdate districtUpdate = request.getFacilityDistrictUpdate();
+        if (districtUpdate == null) {
+            throw new IllegalArgumentException("FacilityDistrictUpdate payload is required");
+        }
+        if (districtUpdate.getFacilityId() == null || districtUpdate.getFacilityId().isBlank()
+                || districtUpdate.getTenantId() == null || districtUpdate.getTenantId().isBlank()
+                || districtUpdate.getNewDistrictBoundaryCode() == null || districtUpdate.getNewDistrictBoundaryCode().isBlank()
+                || districtUpdate.getNewBlockBoundaryCode() == null || districtUpdate.getNewBlockBoundaryCode().isBlank()) {
+            throw new IllegalArgumentException("facility_id, tenant_id, new_district_boundary_code and new_block_boundary_code must be provided");
+        }
+
+        String districtPrefix = districtUpdate.getNewDistrictBoundaryCode() + "_";
+        if (!districtUpdate.getNewBlockBoundaryCode().startsWith(districtPrefix)) {
+            throw new IllegalArgumentException(
+                    "new_block_boundary_code must belong to new_district_boundary_code (expected prefix: " + districtPrefix + ")"
+            );
+        }
+
+        validateFacilityEditAuthorization(request.getRequestInfo());
+
+        Facility existingFacility = getFacilityFromDb(districtUpdate.getFacilityId(), districtUpdate.getTenantId());
+        if (existingFacility == null) {
+            log.warn("Facility {} not found for tenant {}", districtUpdate.getFacilityId(), districtUpdate.getTenantId());
+            return null;
+        }
+
+        boundaryValidator.validateBoundaries(
+                Set.of(districtUpdate.getNewDistrictBoundaryCode(), districtUpdate.getNewBlockBoundaryCode()),
+                districtUpdate.getTenantId(),
+                request.getRequestInfo()
+        );
+
+        Facility updated = applyFacilityBlockBoundaryChange(
+                existingFacility,
+                districtUpdate.getFacilityId(),
+                districtUpdate.getTenantId(),
+                districtUpdate.getNewBlockBoundaryCode(),
+                request.getRequestInfo()
+        );
+        log.trace("Exiting updateFacilityDistrictBoundary method");
+        return updated;
+    }
+
+    private Facility applyFacilityBlockBoundaryChange(
+            Facility existingFacility,
+            String facilityId,
+            String tenantId,
+            String newBlockBoundaryCode,
+            RequestInfo requestInfo) {
+        String oldFacilityBoundaryCode = existingFacility.getBoundaryCode();
+        String updatedFacilityBoundaryCode = newBlockBoundaryCode + "_" + facilityId;
         if (updatedFacilityBoundaryCode.equals(existingFacility.getBoundaryCode())) {
-            log.info("No boundary update needed for facility {} (boundary code unchanged)", blockUpdate.getFacilityId());
+            log.info("No boundary update needed for facility {} (boundary code unchanged)", facilityId);
             return existingFacility;
         }
 
-        ensureFacilityBoundaryExists(updatedFacilityBoundaryCode, blockUpdate.getNewBlockBoundaryCode(), blockUpdate.getTenantId(), request.getRequestInfo());
+        ensureFacilityBoundaryExists(updatedFacilityBoundaryCode, newBlockBoundaryCode, tenantId, requestInfo);
 
         int updatedRows = jdbcTemplate.update(
                 "UPDATE facility SET boundary_code = ? WHERE id = ? AND tenant_id = ?",
                 updatedFacilityBoundaryCode,
-                blockUpdate.getFacilityId(),
-                blockUpdate.getTenantId()
+                facilityId,
+                tenantId
         );
-        log.info("{} Rows updated for facility {} and tenant {}", updatedRows, blockUpdate.getFacilityId(), blockUpdate.getTenantId());
+        log.info("{} Rows updated for facility {} and tenant {}", updatedRows, facilityId, tenantId);
         if (updatedRows == 0) {
-            log.warn("No rows updated for facility {} and tenant {}", blockUpdate.getFacilityId(), blockUpdate.getTenantId());
+            log.warn("No rows updated for facility {} and tenant {}", facilityId, tenantId);
             return null;
         }
 
         existingFacility.setBoundaryCode(updatedFacilityBoundaryCode);
-        upsertFacilityBoundaryLocalizations(List.of(existingFacility), request.getRequestInfo());
-        cleanupOldFacilityBoundaryIfUnused(oldFacilityBoundaryCode, blockUpdate.getTenantId(), request.getRequestInfo());
+        upsertFacilityBoundaryLocalizations(List.of(existingFacility), requestInfo);
+        cleanupOldFacilityBoundaryIfUnused(oldFacilityBoundaryCode, tenantId, requestInfo);
         syncImIncidentBoundaryCodesForFacility(
-                blockUpdate.getTenantId(),
-                blockUpdate.getFacilityId(),
+                tenantId,
+                facilityId,
                 updatedFacilityBoundaryCode,
-                blockUpdate.getNewBlockBoundaryCode(),
-                request.getRequestInfo()
+                newBlockBoundaryCode,
+                requestInfo
         );
-        log.info("Updated boundary code for facility {} to {}", blockUpdate.getFacilityId(), updatedFacilityBoundaryCode);
-        log.trace("Exiting updateFacilityBlockBoundary method");
+        log.info("Updated boundary code for facility {} to {}", facilityId, updatedFacilityBoundaryCode);
         return existingFacility;
     }
 
