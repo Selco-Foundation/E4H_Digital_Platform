@@ -118,6 +118,59 @@ public class FacilityV2ApiController {
         }
     }
 
+    @PostMapping("/update-block")
+    public ResponseEntity<Facility> updateFacilityBlock(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Updates the block boundary for an existing facility and regenerates facility boundary code",
+                    required = true
+            )
+            @Valid @RequestBody FacilityBlockUpdateRequest facilityBlockUpdateRequest) {
+        log.trace("Entering updateFacilityBlock endpoint");
+        String facilityId = facilityBlockUpdateRequest.getFacilityBlockUpdate() != null
+                ? facilityBlockUpdateRequest.getFacilityBlockUpdate().getFacilityId() : null;
+        String newBlockCode = facilityBlockUpdateRequest.getFacilityBlockUpdate() != null
+                ? facilityBlockUpdateRequest.getFacilityBlockUpdate().getNewBlockBoundaryCode() : null;
+        log.info("Received facility block update request for facilityId: {}, newBlockBoundaryCode: {}", facilityId, newBlockCode);
+
+        Facility updated = facilityService.updateFacilityBlockBoundary(facilityBlockUpdateRequest);
+        if (updated != null) {
+            log.info("Successfully updated facility block for facilityId: {}", facilityId);
+            log.trace("Exiting updateFacilityBlock endpoint");
+            return ResponseEntity.ok(updated);
+        } else {
+            log.warn("Facility not found for block update, facilityId: {}", facilityId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    @PostMapping("/update-district")
+    public ResponseEntity<Facility> updateFacilityDistrict(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Updates district and block for an existing facility (new block in target district is required) and regenerates facility boundary code",
+                    required = true
+            )
+            @Valid @RequestBody FacilityDistrictUpdateRequest facilityDistrictUpdateRequest) {
+        log.trace("Entering updateFacilityDistrict endpoint");
+        String facilityId = facilityDistrictUpdateRequest.getFacilityDistrictUpdate() != null
+                ? facilityDistrictUpdateRequest.getFacilityDistrictUpdate().getFacilityId() : null;
+        String newDistrictCode = facilityDistrictUpdateRequest.getFacilityDistrictUpdate() != null
+                ? facilityDistrictUpdateRequest.getFacilityDistrictUpdate().getNewDistrictBoundaryCode() : null;
+        String newBlockCode = facilityDistrictUpdateRequest.getFacilityDistrictUpdate() != null
+                ? facilityDistrictUpdateRequest.getFacilityDistrictUpdate().getNewBlockBoundaryCode() : null;
+        log.info("Received facility district update request for facilityId: {}, newDistrictBoundaryCode: {}, newBlockBoundaryCode: {}",
+                facilityId, newDistrictCode, newBlockCode);
+
+        Facility updated = facilityService.updateFacilityDistrictBoundary(facilityDistrictUpdateRequest);
+        if (updated != null) {
+            log.info("Successfully updated facility district for facilityId: {}", facilityId);
+            log.trace("Exiting updateFacilityDistrict endpoint");
+            return ResponseEntity.ok(updated);
+        } else {
+            log.warn("Facility not found for district update, facilityId: {}", facilityId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
 
     @RequestMapping(value = "/assessment/_update", method = RequestMethod.POST)
     public ResponseEntity<FacilityAssessment> updateHFAssessment(@Parameter(in = ParameterIn.DEFAULT, description = "Health facility assessment data updated", required = true, schema = @Schema()) @Valid @RequestBody FacilityAssessmentCreateRequest body) {
