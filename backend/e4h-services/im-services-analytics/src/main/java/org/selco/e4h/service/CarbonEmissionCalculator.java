@@ -46,7 +46,7 @@ public class CarbonEmissionCalculator {
         }
         int t0 = facility.getSolarInstallationDate().getYear();
         int t = year;
-        double growth = Math.pow(1.0 + properties.getGrowthRate(), t - t0);
+        double growth = Math.pow(1.0 + properties.getGrowthRate(), (double) (t - t0));
         double solarKwh = props.getAlpha().doubleValue()
                 * (props.getYearOneAnnualConsumptionKwh().doubleValue() / 12.0)
                 * growth;
