@@ -88,7 +88,8 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     tenant,
     stateArray?.[0]?.assigneeRoles?.length > 0 ? stateArray?.[0]?.assigneeRoles?.join(",") : "",
     complaintDetails,
-    complaintDetails?.incident?.boundaryCode
+    complaintDetails?.incident?.boundaryCode,
+    true
   );
   const employeeData = useEmployeeData
     ? useEmployeeData.map((departmentData) => {
