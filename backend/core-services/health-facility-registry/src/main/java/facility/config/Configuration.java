@@ -132,4 +132,13 @@ public class Configuration {
      */
     @Value("${egov.im.services.incident.boundary-by-facility.path:/im-services/v2/request/_update-boundary-by-facility}")
     private String imIncidentBoundaryByFacilityUpdatePath;
+
+    @Value("${egov.boundary.hierarchy.type:SELCO}")
+    private String boundaryHierarchyType;
+
+    /**
+     * Operator endpoint {@code POST /v2/facility/_backfill-boundary-relationships}. Disabled by default.
+     */
+    @Value("${facility.boundary.backfill.enabled:false}")
+    private boolean facilityBoundaryBackfillEnabled;
 }
