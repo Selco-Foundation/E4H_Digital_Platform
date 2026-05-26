@@ -49,6 +49,7 @@ public class FacilityService {
 
     private final HRMSUtils hrmsUtils;
     private final HRMSService hrmsService;
+    private final VendorOrganisationService vendorOrganisationService;
     private final RestTemplate restTemplate;
 
     private static final String LOCALIZATION_MODULE = "rainmaker-in";
@@ -74,6 +75,7 @@ public class FacilityService {
             FacilityRowMapperV2 facilityRowMapperV2,
             HRMSUtils hrmsUtils,
             HRMSService hrmsService,
+            VendorOrganisationService vendorOrganisationService,
             RestTemplate restTemplate) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
@@ -90,6 +92,7 @@ public class FacilityService {
         this.facilityRowMapperV2 = facilityRowMapperV2;
         this.hrmsUtils = hrmsUtils;
         this.hrmsService = hrmsService;
+        this.vendorOrganisationService = vendorOrganisationService;
         this.restTemplate = restTemplate;
     }
 
@@ -263,7 +266,13 @@ public class FacilityService {
                     FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
                     facilityRepository.pushToKibana(kibanaIndex);
                 }
-                
+
+                String vendorCode = extractVendorCode(facility);
+                if (vendorCode != null && !vendorCode.isBlank()) {
+                    vendorOrganisationService.assignFacilityJurisdictionToFirstOrgUser(
+                            vendorCode, facility, tenantId, request.getRequestInfo());
+                }
+
                 validatedFacilities.add(facility);
             }
         }
@@ -410,6 +419,14 @@ public class FacilityService {
             log.debug("Facility POC username is unique");
         }
         log.trace("Exiting validateFacilityPocUsernameUnique method");
+    }
+
+    private String extractVendorCode(Facility facility) {
+        if (facility.getFacilityDetails() == null) {
+            return null;
+        }
+        String vendorCode = facility.getFacilityDetails().getVendorCode();
+        return vendorCode != null ? vendorCode.trim() : null;
     }
 
     private void validateCategoryBasedIdentifiers(String facilityCategory, String hfrId, String ninId) {

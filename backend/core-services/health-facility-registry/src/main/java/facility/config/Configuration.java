@@ -141,4 +141,13 @@ public class Configuration {
      */
     @Value("${facility.boundary.backfill.enabled:false}")
     private boolean facilityBoundaryBackfillEnabled;
+
+    @Value("${egov.vendor.host:}")
+    private String vendorHost;
+
+    @Value("${egov.vendor.organisation.search.path:/vendor/organisation/v1/_search}")
+    private String vendorOrganisationSearchPath;
+
+    @Value("${egov.vendor.organisation.user.search.path:/vendor/organisation/v1/user/_search}")
+    private String vendorOrganisationUserSearchPath;
 }
