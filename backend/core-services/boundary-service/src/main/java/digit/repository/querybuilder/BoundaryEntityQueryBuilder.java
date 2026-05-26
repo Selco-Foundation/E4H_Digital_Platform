@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.ObjectUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class BoundaryEntityQueryBuilder {
@@ -51,8 +52,15 @@ public class BoundaryEntityQueryBuilder {
         }
         if (!Objects.isNull(boundarySearchCriteria.getCodes())) {
             QueryUtil.addClauseIfRequired(builder , preparedStmtList);
-            builder.append(" boundary.code IN ( ").append(QueryUtil.createQuery(boundarySearchCriteria.getCodes().size())).append(" )");
-            Set<String> codes = new HashSet<>(boundarySearchCriteria.getCodes());
+            boolean ignoreCase = Boolean.TRUE.equals(boundarySearchCriteria.getIgnoreCase());
+            if (ignoreCase) {
+                builder.append(" LOWER(boundary.code) IN ( ").append(QueryUtil.createQuery(boundarySearchCriteria.getCodes().size())).append(" )");
+            } else {
+                builder.append(" boundary.code IN ( ").append(QueryUtil.createQuery(boundarySearchCriteria.getCodes().size())).append(" )");
+            }
+            Set<String> codes = boundarySearchCriteria.getCodes().stream()
+                    .map(code -> ignoreCase ? code.toLowerCase(Locale.ROOT) : code)
+                    .collect(Collectors.toCollection(HashSet::new));
             QueryUtil.addToPreparedStatement(preparedStmtList , codes);
         }
         return builder.toString();
