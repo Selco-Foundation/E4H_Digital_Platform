@@ -58,7 +58,7 @@ public class FacilityUtil {
                 continue;
             }
             try {
-                Facility facility = searchFacilityByBoundaryCode(effectiveTenantId, boundaryCode);
+                Facility facility = searchFacilityByBoundaryCode(requestInfo, effectiveTenantId, boundaryCode);
                 if (facility == null) {
                     log.warn("No facility found for boundaryCode: {}", boundaryCode);
                     continue;
@@ -70,17 +70,23 @@ public class FacilityUtil {
         }
     }
 
-    public Facility searchFacilityByBoundaryCode(String tenantId, String boundaryCode) {
+    public Facility searchFacilityByBoundaryCode(RequestInfo requestInfo, String tenantId, String boundaryCode) {
+        if (StringUtils.isBlank(boundaryCode)) {
+            return null;
+        }
         String url = UriComponentsBuilder
                 .fromHttpUrl(configuration.getFacilityHost() + configuration.getFacilitySearchPath())
                 .queryParam("tenantId", tenantId)
-                .queryParam("boundaryCode", boundaryCode)
+                .queryParam("boundaryCode", boundaryCode.trim())
                 .queryParam("limit", 1)
                 .queryParam("offset", 0)
                 .toUriString();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        if (requestInfo != null && StringUtils.isNotBlank(requestInfo.getAuthToken())) {
+            headers.set("auth-token", requestInfo.getAuthToken());
+        }
         HttpEntity<Void> entity = new HttpEntity<>(headers);
 
         ResponseEntity<FacilitySearchResponse> response = restTemplate.exchange(

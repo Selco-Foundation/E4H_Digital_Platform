@@ -104,6 +104,9 @@ public class OrganisationUserServiceValidator {
     private void validateUserOrgCreation(OrgUserRequest request) {
         Map<String, String> errorMap = new HashMap<>();
         User orgUser = request.getUser();
+        List<Jurisdiction> facilitySyncJurisdictions = copyJurisdictions(orgUser != null ? orgUser.getJurisdictions() : null);
+        String facilitySyncVendorName = orgUser != null ? orgUser.getName() : null;
+        String facilitySyncVendorUserName = orgUser != null ? orgUser.getUserName() : null;
         if (orgUser == null) {
             log.error("User is mandatory in creation");
             throw new CustomException("Org User", "User is mandatory");
@@ -275,7 +278,7 @@ public class OrganisationUserServiceValidator {
             }
         }
 
-        syncMappedVendorToFacilities(request);
+        syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
@@ -328,6 +331,10 @@ public class OrganisationUserServiceValidator {
         Map<String, String> errorMap = new HashMap<>();
         List<Organisation> organisations = new ArrayList<>();
         User orgUser = request.getUser();
+        // Use jurisdictions from the UI request, not HRMS response (HRMS may omit or return stale list).
+        List<Jurisdiction> facilitySyncJurisdictions = copyJurisdictions(orgUser != null ? orgUser.getJurisdictions() : null);
+        String facilitySyncVendorName = orgUser != null ? orgUser.getName() : null;
+        String facilitySyncVendorUserName = orgUser != null ? orgUser.getUserName() : null;
         if (orgUser == null) {
             log.error("User is mandatory in update");
             throw new CustomException("Org User", "User is mandatory");
@@ -488,7 +495,7 @@ public class OrganisationUserServiceValidator {
             request.getUser().setJurisdictions(employee.getJurisdictions());
         }
 
-        syncMappedVendorToFacilities(request);
+        syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
 
         if (!errorMap.isEmpty()) {
             log.error("Validation failed with {} errors", errorMap.size());
@@ -497,23 +504,35 @@ public class OrganisationUserServiceValidator {
         log.debug("Organisation user request validation completed");
     }
 
-    private void syncMappedVendorToFacilities(OrgUserRequest request) {
-        User user = request.getUser();
-        if (user == null) {
-            return;
-        }
-        List<String> facilityBoundaryCodes = extractActiveFacilityBoundaryCodes(user.getJurisdictions());
+    private void syncMappedVendorToFacilities(OrgUserRequest request,
+                                              List<Jurisdiction> jurisdictions,
+                                              String vendorName,
+                                              String vendorUserName) {
+        List<String> facilityBoundaryCodes = extractActiveFacilityBoundaryCodes(jurisdictions);
         if (facilityBoundaryCodes.isEmpty()) {
+            log.debug("No facility jurisdictions in request; skipping mapped-vendor sync");
             return;
         }
-        String tenantId = StringUtils.isNotBlank(user.getTenantId()) ? user.getTenantId() : configuration.getGlobalTenantId();
+        String tenantId = configuration.getGlobalTenantId();
+        if (request.getUser() != null && StringUtils.isNotBlank(request.getUser().getTenantId())) {
+            tenantId = request.getUser().getTenantId();
+        }
+        log.info("Syncing mapped vendor name='{}' userName='{}' to {} facility boundaries",
+                vendorName, vendorUserName, facilityBoundaryCodes.size());
         facilityUtil.updateMappedVendorForFacilityBoundaries(
                 request.getRequestInfo(),
                 tenantId,
                 facilityBoundaryCodes,
-                user.getName(),
-                user.getUserName()
+                vendorName,
+                vendorUserName
         );
+    }
+
+    private List<Jurisdiction> copyJurisdictions(List<Jurisdiction> jurisdictions) {
+        if (jurisdictions == null || jurisdictions.isEmpty()) {
+            return List.of();
+        }
+        return new ArrayList<>(jurisdictions);
     }
 
     private List<String> extractActiveFacilityBoundaryCodes(List<Jurisdiction> jurisdictions) {
