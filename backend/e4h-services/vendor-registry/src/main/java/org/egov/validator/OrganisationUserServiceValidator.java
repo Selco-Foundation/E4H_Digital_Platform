@@ -11,6 +11,7 @@ import org.egov.config.Configuration;
 import org.egov.repository.OrganisationRepository;
 import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
+import org.egov.util.FacilityUtil;
 import org.egov.util.HRMSUtils;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
@@ -45,6 +46,8 @@ public class OrganisationUserServiceValidator {
 
     private final OrganisationUserRepository userRepository;
 
+    private final FacilityUtil facilityUtil;
+
     private final ObjectMapper mapper;
 
     private static final String MDMS_RES = "$.MdmsRes.";
@@ -59,7 +62,8 @@ public class OrganisationUserServiceValidator {
     private static final String DEFAULT_ROLE_TENANT = "in";
     @Autowired
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
-                                            OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil, OrganisationUserRepository userRepository, ObjectMapper mapper) {
+                                            OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil,
+                                            OrganisationUserRepository userRepository, FacilityUtil facilityUtil, ObjectMapper mapper) {
         this.mdmsUtil = mdmsUtil;
         this.configuration = configuration;
         this.organisationRepository = organisationRepository;
@@ -67,6 +71,7 @@ public class OrganisationUserServiceValidator {
         this.hrmsUtils = hrmsUtils;
         this.userUtil = userUtil;
         this.userRepository = userRepository;
+        this.facilityUtil = facilityUtil;
         this.mapper = mapper;
     }
 
@@ -269,6 +274,8 @@ public class OrganisationUserServiceValidator {
                 request.setUserId(employee.get(0).getUser().getUuid());
             }
         }
+
+        syncMappedVendorToFacilities(request);
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
@@ -481,11 +488,45 @@ public class OrganisationUserServiceValidator {
             request.getUser().setJurisdictions(employee.getJurisdictions());
         }
 
+        syncMappedVendorToFacilities(request);
+
         if (!errorMap.isEmpty()) {
             log.error("Validation failed with {} errors", errorMap.size());
             throw new CustomException(errorMap);
         }
         log.debug("Organisation user request validation completed");
+    }
+
+    private void syncMappedVendorToFacilities(OrgUserRequest request) {
+        User user = request.getUser();
+        if (user == null) {
+            return;
+        }
+        List<String> facilityBoundaryCodes = extractActiveFacilityBoundaryCodes(user.getJurisdictions());
+        if (facilityBoundaryCodes.isEmpty()) {
+            return;
+        }
+        String tenantId = StringUtils.isNotBlank(user.getTenantId()) ? user.getTenantId() : configuration.getGlobalTenantId();
+        facilityUtil.updateMappedVendorForFacilityBoundaries(
+                request.getRequestInfo(),
+                tenantId,
+                facilityBoundaryCodes,
+                user.getName(),
+                user.getUserName()
+        );
+    }
+
+    private List<String> extractActiveFacilityBoundaryCodes(List<Jurisdiction> jurisdictions) {
+        if (jurisdictions == null || jurisdictions.isEmpty()) {
+            return List.of();
+        }
+        return jurisdictions.stream()
+                .filter(j -> j != null && FacilityUtil.isFacilityBoundaryType(j.getBoundaryType()))
+                .filter(j -> j.getIsActive() == null || Boolean.TRUE.equals(j.getIsActive()))
+                .map(Jurisdiction::getBoundary)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     /* Validates search FieldPlan request body and parameters*/
