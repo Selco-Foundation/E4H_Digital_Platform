@@ -10,10 +10,7 @@ import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -110,6 +107,7 @@ public class HRMSUtils {
 
     public Jurisdiction buildFacilityJurisdiction(String boundaryCode, String tenantId) {
         return Jurisdiction.builder()
+                .id(UUID.randomUUID().toString())
                 .hierarchy("ADMIN")
                 .boundary(boundaryCode)
                 .boundaryType("Facility")
