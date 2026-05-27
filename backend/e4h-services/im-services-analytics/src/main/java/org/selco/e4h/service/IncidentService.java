@@ -238,59 +238,52 @@ public class IncidentService {
             String tenantIdLocalized = (String)data.get("tenantId_localized");
             List<Double> geoPoint = parseGeoPoint(data.get("geo-point"));
 
-                        IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
-                        incidentStatusAgregation.setBlock(block);
-                        incidentStatusAgregation.setCode(code);
-                        incidentStatusAgregation.setDistrict(district);
-                        incidentStatusAgregation.setLive(isLive);
-                        Boolean synced = (Boolean) data.get("synced");
-                        incidentStatusAgregation.setSynced(Boolean.TRUE.equals(synced));
-                        incidentStatusAgregation.setName(name);
-                        incidentStatusAgregation.setBoundary(boundary);
-                        incidentStatusAgregation.setPhcType(phcType);
-                        incidentStatusAgregation.setType(type);
-                        incidentStatusAgregation.setFacilityId((String) data.get("facilityId"));
-                        incidentStatusAgregation.setTenantId(tenantId);
-                        incidentStatusAgregation.setTenantIdLocalized(tenantIdLocalized);
-                        incidentStatusAgregation.setGeoPoint(geoPoint);
-                        incidentStatusAgregation.setState(state);
-                        incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
-                        incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
+            IncidentStatusAgregation incidentStatusAgregation = new IncidentStatusAgregation();
+            incidentStatusAgregation.setBlock(block);
+            incidentStatusAgregation.setCode(code);
+            incidentStatusAgregation.setDistrict(district);
+            incidentStatusAgregation.setLive(isLive);
+            Boolean synced = (Boolean) data.get("synced");
+            incidentStatusAgregation.setSynced(Boolean.TRUE.equals(synced));
+            incidentStatusAgregation.setName(name);
+            incidentStatusAgregation.setBoundary(boundary);
+            incidentStatusAgregation.setPhcType(phcType);
+            incidentStatusAgregation.setType(type);
+            incidentStatusAgregation.setFacilityId((String) data.get("facilityId"));
+            incidentStatusAgregation.setTenantId(tenantId);
+            incidentStatusAgregation.setTenantIdLocalized(tenantIdLocalized);
+            incidentStatusAgregation.setGeoPoint(geoPoint);
+            incidentStatusAgregation.setState(state);
+            incidentStatusAgregation.setMappedVendorName((String) data.get("mappedVendorName"));
+            incidentStatusAgregation.setMappedVendorUserName((String) data.get("mappedVendorUserName"));
 
-                        if(boundary ==null || boundary.getFacilityCode()==null || boundary.getFacilityCode().isEmpty()){
-                            continue;
-                        }
-                        String boundaryCode = boundary.getFacilityCode();
-                        List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(boundaryCode);
-                        List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
-                        if(statusAgregations !=null && !statusAgregations.isEmpty()){
-                            IncidentStatusAgregation incidentStatusAgregationDB = statusAgregations.get(0);
-                            incidentStatusAgregation.setTotalOccurences(incidentStatusAgregationDB.getTotalOccurences());
-                            incidentStatusAgregation.setTotalOpenOccurrences(incidentStatusAgregationDB.getTotalOpenOccurrences());
-                            incidentStatusAgregation.setTotalCloseOccurrences(incidentStatusAgregationDB.getTotalCloseOccurrences());
-
-                        }
-
-                        boolean hasNonFunctional = false;
-                        // true if at least one element is NON_FUNCTIONAL
-                        if (systemFunctional !=null){
-                            hasNonFunctional = systemFunctional.stream()
-                                    .anyMatch(item -> NON_FUNCTIONAL.equals(item.getSystemFunctional()));
-                        }
-                        incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
-                        incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
-
-                        log.debug("Prepared PHC aggregation for Kafka: code={}, totalOccurrences={}",
-                            incidentStatusAgregation.getCode(), incidentStatusAgregation.getTotalOccurences());
-                        log.info("Sending PHC aggregation to Kafka for code: {}", incidentStatusAgregation.getCode());
-                        producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
-                    }
-                }
+            if (boundary == null || boundary.getFacilityCode() == null || boundary.getFacilityCode().isEmpty()) {
+                return;
             }
-            log.info("PHC aggregation update script completed successfully");
-        }
-        catch (Exception e){
-            log.error("Error while processing PHC aggregation update script", e);
+            String boundaryCode = boundary.getFacilityCode();
+            List<IncidentStatusAgregation> statusAgregations = incidentRepository.getStatusIncidentsAgregation(boundaryCode);
+            List<IncidentStatusAgregation> systemFunctional = incidentRepository.getStatusSystemFunctional(boundaryCode);
+            if (statusAgregations != null && !statusAgregations.isEmpty()) {
+                IncidentStatusAgregation incidentStatusAgregationDB = statusAgregations.get(0);
+                incidentStatusAgregation.setTotalOccurences(incidentStatusAgregationDB.getTotalOccurences());
+                incidentStatusAgregation.setTotalOpenOccurrences(incidentStatusAgregationDB.getTotalOpenOccurrences());
+                incidentStatusAgregation.setTotalCloseOccurrences(incidentStatusAgregationDB.getTotalCloseOccurrences());
+            }
+
+            boolean hasNonFunctional = false;
+            if (systemFunctional != null) {
+                hasNonFunctional = systemFunctional.stream()
+                        .anyMatch(item -> NON_FUNCTIONAL.equals(item.getSystemFunctional()));
+            }
+            incidentStatusAgregation.setSystemFunctional(hasNonFunctional ? NON_FUNCTIONAL : FUNCTIONAL);
+            incidentStatusAgregation.setLastModifiedTime(System.currentTimeMillis());
+
+            log.debug("Prepared PHC aggregation for Kafka: code={}, totalOccurrences={}",
+                    incidentStatusAgregation.getCode(), incidentStatusAgregation.getTotalOccurences());
+            log.info("Sending PHC aggregation to Kafka for code: {}", incidentStatusAgregation.getCode());
+            producerService.sendIncident(config.getUpdateTopicIndexer(), incidentStatusAgregation);
+        } catch (Exception e) {
+            log.error("Error while processing PHC document for aggregation update", e);
         }
     }
 
