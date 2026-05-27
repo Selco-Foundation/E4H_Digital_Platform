@@ -34,5 +34,9 @@ public class FacilityBulkSearchCriteria {
     private Integer limit = 10;
     @Builder.Default
     private Integer offset = 0;
+    /** Optional: createdAt | updatedAt — used by CO2 batch job when set to createdAt with sortOrder asc */
+    private String sortBy;
+    /** asc | desc — default desc for updated_at in bulk search */
+    private String sortOrder;
     private Boolean isOnmReady;
 }

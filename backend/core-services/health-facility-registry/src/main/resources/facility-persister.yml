@@ -41,9 +41,10 @@ serviceMaps:
               id, tenant_id, facility_name, facility_type,
               facility_category, facility_subtype, facility_ownership,
               facility_region, addressId, facility_details,
-              wf_status, additional_details, is_active, boundary_code, is_onm_ready
+              wf_status, additional_details, is_active, boundary_code, is_onm_ready,
+              solar_installation_date, rms_installation_date, solar_system_capacity_kwp
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           basePath: $
           jsonMaps:
             - jsonPath: $.facility_id
@@ -65,6 +66,9 @@ serviceMaps:
             - jsonPath: $.isActive
             - jsonPath: $.boundaryCode
             - jsonPath: $.isOnmReady
+            - jsonPath: $.solar_installation_date
+            - jsonPath: $.rms_installation_date
+            - jsonPath: $.solar_system_capacity_kwp
 
     - version: 1.0
       description: Updates a single Facility object
@@ -74,7 +78,8 @@ serviceMaps:
         - query: >
             UPDATE facility SET
               facility_name = ?, facility_category = ?, facility_type = ?, facility_subtype = ?,
-              addressId = ?, facility_details = ?, additional_details = ?, is_onm_ready = ?
+              addressId = ?, facility_details = ?, additional_details = ?, is_onm_ready = ?,
+              solar_installation_date = ?, rms_installation_date = ?, solar_system_capacity_kwp = ?
             WHERE id = ? AND tenant_id = ?;
           basePath: $.FacilityUpdate
           jsonMaps:
@@ -90,6 +95,9 @@ serviceMaps:
               type: JSON
               dbType: JSONB
             - jsonPath: $.FacilityUpdate.isOnmReady
+            - jsonPath: $.FacilityUpdate.solar_installation_date
+            - jsonPath: $.FacilityUpdate.rms_installation_date
+            - jsonPath: $.FacilityUpdate.solar_system_capacity_kwp
             - jsonPath: $.FacilityUpdate.facilityId
             - jsonPath: $.FacilityUpdate.tenant_id
 
