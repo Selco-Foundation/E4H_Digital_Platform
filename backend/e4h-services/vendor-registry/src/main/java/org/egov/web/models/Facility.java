@@ -47,6 +47,33 @@ public class Facility {
     @JsonProperty("address")
     private Map<String, Object> address;
 
+    @JsonProperty("facility_details")
+    private Map<String, Object> facilityDetails;
+
+    @JsonProperty("facility_poc_name")
+    private String facilityPocName;
+
+    @JsonProperty("facility_poc_phone")
+    private String facilityPocPhone;
+
+    @JsonProperty("facility_poc_email")
+    private String facilityPocEmail;
+
+    @JsonProperty("facility_poc_username")
+    private String facilityPocUsername;
+
+    @JsonProperty("hfr_id")
+    private String hfrId;
+
+    @JsonProperty("nin_id")
+    private String ninId;
+
+    @JsonProperty("facility_status")
+    private String facilityStatus;
+
+    @JsonProperty("isActive")
+    private Boolean isActive;
+
     @JsonProperty("isOnmReady")
     private Boolean isOnmReady;
 }
