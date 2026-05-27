@@ -5,9 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import facility.repository.ServiceRequestRepository;
 import facility.web.models.BoundaryInfo;
 import facility.web.models.Facility;
+import facility.util.FacilityMappedVendorHelper;
 import facility.web.models.FacilityKibanaIndex;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -187,6 +189,14 @@ public class FacilityKibanaMapper {
             log.info("Updated Kibana field isLive={} for facilityId={}",
                     facility.getIsActive(), facility.getFacilityId());
         }
+        if (StringUtils.isNotBlank(facility.getMappedVendorName())) {
+            existingDoc.setMappedVendorName(facility.getMappedVendorName());
+            log.info("Updated Kibana field mappedVendorName for facilityId={}", facility.getFacilityId());
+        }
+        if (StringUtils.isNotBlank(facility.getMappedVendorUserName())) {
+            existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
+            log.info("Updated Kibana field mappedVendorUserName for facilityId={}", facility.getFacilityId());
+        }
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
         log.info("Completed Kibana index update mapping for facilityId={} tenantId={}",
                 facility.getFacilityId(), facility.getTenantId());
@@ -277,28 +287,37 @@ public class FacilityKibanaMapper {
 
     @SuppressWarnings("unchecked")
     private void applyMappedVendorFields(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+        FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+        String user = firstNonBlankString(facility.getMappedVendorUserName());
+        String name = firstNonBlankString(facility.getMappedVendorName());
         Map<String, Object> ad = facility.getAdditionalDetails();
-        if (ad == null || ad.isEmpty()) {
-            return;
-        }
-        String user = firstNonBlankString(
-                ad.get("mappedVendorUserName"),
-                ad.get("mapped_vendor_user_name"),
-                ad.get("mappedVendorUsername"));
-        String name = firstNonBlankString(
-                ad.get("mappedVendorName"),
-                ad.get("mapped_vendor_name"));
-        if (user == null || name == null) {
-            Object nested = ad.get("vendor");
-            if (nested instanceof Map) {
-                Map<String, Object> v = (Map<String, Object>) nested;
-                if (user == null) {
-                    user = firstNonBlankString(v.get("userName"), v.get("mappedVendorUserName"), v.get("username"));
-                }
-                if (name == null) {
-                    name = firstNonBlankString(v.get("name"), v.get("vendorName"));
+        if (ad != null && !ad.isEmpty()) {
+            if (user == null) {
+                user = firstNonBlankString(
+                        ad.get(FacilityMappedVendorHelper.MAPPED_VENDOR_USER_NAME_KEY),
+                        ad.get("mapped_vendor_user_name"),
+                        ad.get("mappedVendorUsername"));
+            }
+            if (name == null) {
+                name = firstNonBlankString(
+                        ad.get(FacilityMappedVendorHelper.MAPPED_VENDOR_NAME_KEY),
+                        ad.get("mapped_vendor_name"));
+            }
+            if (user == null || name == null) {
+                Object nested = ad.get("vendor");
+                if (nested instanceof Map) {
+                    Map<String, Object> v = (Map<String, Object>) nested;
+                    if (user == null) {
+                        user = firstNonBlankString(v.get("userName"), v.get("mappedVendorUserName"), v.get("username"));
+                    }
+                    if (name == null) {
+                        name = firstNonBlankString(v.get("name"), v.get("vendorName"));
+                    }
                 }
             }
+        }
+        if (user == null && name == null) {
+            return;
         }
         if (user != null) {
             builder.mappedVendorUserName(user);

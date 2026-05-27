@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 import org.egov.common.contract.models.AuditDetails;
 import org.springframework.validation.annotation.Validated;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 /**
@@ -57,6 +58,12 @@ public class Facility {
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails = null;
 
+    @JsonProperty("mappedVendorName")
+    private String mappedVendorName = null;
+
+    @JsonProperty("mappedVendorUserName")
+    private String mappedVendorUserName = null;
+
     @JsonProperty("isActive")
     private Boolean isActive = null;
 
@@ -99,4 +106,13 @@ public class Facility {
 
     @JsonProperty("auditDetails")
     private AuditDetails auditDetails = null;
+
+    @JsonProperty("solar_installation_date")
+    private LocalDate solarInstallationDate = null;
+
+    @JsonProperty("rms_installation_date")
+    private LocalDate rmsInstallationDate = null;
+
+    @JsonProperty("solar_system_capacity_kwp")
+    private Double solarSystemCapacityKwp = null;
 }
