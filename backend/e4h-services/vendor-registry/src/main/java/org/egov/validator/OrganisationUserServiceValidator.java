@@ -11,6 +11,7 @@ import org.egov.config.Configuration;
 import org.egov.repository.OrganisationRepository;
 import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
+import org.egov.util.FacilityUtil;
 import org.egov.util.HRMSUtils;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
@@ -45,6 +46,8 @@ public class OrganisationUserServiceValidator {
 
     private final OrganisationUserRepository userRepository;
 
+    private final FacilityUtil facilityUtil;
+
     private final ObjectMapper mapper;
 
     private static final String MDMS_RES = "$.MdmsRes.";
@@ -59,7 +62,8 @@ public class OrganisationUserServiceValidator {
     private static final String DEFAULT_ROLE_TENANT = "in";
     @Autowired
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
-                                            OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil, OrganisationUserRepository userRepository, ObjectMapper mapper) {
+                                            OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil,
+                                            OrganisationUserRepository userRepository, FacilityUtil facilityUtil, ObjectMapper mapper) {
         this.mdmsUtil = mdmsUtil;
         this.configuration = configuration;
         this.organisationRepository = organisationRepository;
@@ -67,6 +71,7 @@ public class OrganisationUserServiceValidator {
         this.hrmsUtils = hrmsUtils;
         this.userUtil = userUtil;
         this.userRepository = userRepository;
+        this.facilityUtil = facilityUtil;
         this.mapper = mapper;
     }
 
@@ -99,6 +104,9 @@ public class OrganisationUserServiceValidator {
     private void validateUserOrgCreation(OrgUserRequest request) {
         Map<String, String> errorMap = new HashMap<>();
         User orgUser = request.getUser();
+        List<Jurisdiction> facilitySyncJurisdictions = copyJurisdictions(orgUser != null ? orgUser.getJurisdictions() : null);
+        String facilitySyncVendorName = orgUser != null ? orgUser.getName() : null;
+        String facilitySyncVendorUserName = orgUser != null ? orgUser.getUserName() : null;
         if (orgUser == null) {
             log.error("User is mandatory in creation");
             throw new CustomException("Org User", "User is mandatory");
@@ -270,6 +278,8 @@ public class OrganisationUserServiceValidator {
             }
         }
 
+        syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
+
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
     }
@@ -321,6 +331,10 @@ public class OrganisationUserServiceValidator {
         Map<String, String> errorMap = new HashMap<>();
         List<Organisation> organisations = new ArrayList<>();
         User orgUser = request.getUser();
+        // Use jurisdictions from the UI request, not HRMS response (HRMS may omit or return stale list).
+        List<Jurisdiction> facilitySyncJurisdictions = copyJurisdictions(orgUser != null ? orgUser.getJurisdictions() : null);
+        String facilitySyncVendorName = orgUser != null ? orgUser.getName() : null;
+        String facilitySyncVendorUserName = orgUser != null ? orgUser.getUserName() : null;
         if (orgUser == null) {
             log.error("User is mandatory in update");
             throw new CustomException("Org User", "User is mandatory");
@@ -481,11 +495,57 @@ public class OrganisationUserServiceValidator {
             request.getUser().setJurisdictions(employee.getJurisdictions());
         }
 
+        syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
+
         if (!errorMap.isEmpty()) {
             log.error("Validation failed with {} errors", errorMap.size());
             throw new CustomException(errorMap);
         }
         log.debug("Organisation user request validation completed");
+    }
+
+    private void syncMappedVendorToFacilities(OrgUserRequest request,
+                                              List<Jurisdiction> jurisdictions,
+                                              String vendorName,
+                                              String vendorUserName) {
+        List<String> facilityBoundaryCodes = extractActiveFacilityBoundaryCodes(jurisdictions);
+        if (facilityBoundaryCodes.isEmpty()) {
+            log.debug("No facility jurisdictions in request; skipping mapped-vendor sync");
+            return;
+        }
+        String tenantId = configuration.getGlobalTenantId();
+        if (request.getUser() != null && StringUtils.isNotBlank(request.getUser().getTenantId())) {
+            tenantId = request.getUser().getTenantId();
+        }
+        log.info("Syncing mapped vendor name='{}' userName='{}' to {} facility boundaries",
+                vendorName, vendorUserName, facilityBoundaryCodes.size());
+        facilityUtil.updateMappedVendorForFacilityBoundaries(
+                request.getRequestInfo(),
+                tenantId,
+                facilityBoundaryCodes,
+                vendorName,
+                vendorUserName
+        );
+    }
+
+    private List<Jurisdiction> copyJurisdictions(List<Jurisdiction> jurisdictions) {
+        if (jurisdictions == null || jurisdictions.isEmpty()) {
+            return List.of();
+        }
+        return new ArrayList<>(jurisdictions);
+    }
+
+    private List<String> extractActiveFacilityBoundaryCodes(List<Jurisdiction> jurisdictions) {
+        if (jurisdictions == null || jurisdictions.isEmpty()) {
+            return List.of();
+        }
+        return jurisdictions.stream()
+                .filter(j -> j != null && FacilityUtil.isFacilityBoundaryType(j.getBoundaryType()))
+                .filter(j -> j.getIsActive() == null || Boolean.TRUE.equals(j.getIsActive()))
+                .map(Jurisdiction::getBoundary)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     /* Validates search FieldPlan request body and parameters*/
