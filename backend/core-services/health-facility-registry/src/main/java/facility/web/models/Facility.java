@@ -58,6 +58,12 @@ public class Facility {
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails = null;
 
+    @JsonProperty("mappedVendorName")
+    private String mappedVendorName = null;
+
+    @JsonProperty("mappedVendorUserName")
+    private String mappedVendorUserName = null;
+
     @JsonProperty("isActive")
     private Boolean isActive = null;
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import facility.util.FacilityMappedVendorHelper;
 import facility.web.models.Facility;
 import facility.web.models.FacilityAddress;
 import facility.web.models.HealthFacilityDetails;
@@ -99,6 +100,7 @@ public class FacilityRowMapperV2 implements ResultSetExtractor<List<Facility>> {
             throw new RuntimeException("Error parsing JSON fields in facility record", e);
         }
 
+        FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
         return facility;
     }
 

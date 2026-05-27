@@ -3,6 +3,7 @@ package facility.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import facility.util.FacilityMappedVendorHelper;
 import facility.web.models.Facility;
 import facility.web.models.FacilityAddress;
 import facility.web.models.HealthFacilityDetails;
@@ -81,6 +82,7 @@ public class FacilityRowMapper {
             throw new RuntimeException("Error parsing JSON fields in facility record", e);
         }
 
+        FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
         return facility;
     };
 

@@ -72,6 +72,12 @@ public class FacilityUpdateRequestFacilityUpdate {
     @JsonProperty("additionalDetails")
     private Map<String, Object> additionalDetails;
 
+    @JsonProperty("mappedVendorName")
+    private String mappedVendorName;
+
+    @JsonProperty("mappedVendorUserName")
+    private String mappedVendorUserName;
+
     @Schema(name = "boundaryCode", accessMode = Schema.AccessMode.READ_ONLY, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("boundaryCode")
     private String boundaryCode;
