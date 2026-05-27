@@ -160,6 +160,9 @@ public class FacilityService {
                         .additionalDetails(facilityCreate.getAdditionalDetails())
                         .isActive(true)
                         .isOnmReady(facilityCreate.getIsOnmReady())
+                        .solarInstallationDate(facilityCreate.getSolarInstallationDate())
+                        .rmsInstallationDate(facilityCreate.getRmsInstallationDate())
+                        .solarSystemCapacityKwp(facilityCreate.getSolarSystemCapacityKwp())
                         .build();
 
                 facility.setFacilityId(idgenUtil.getIdList(
@@ -632,6 +635,23 @@ public class FacilityService {
         facility.setIsActive(update.getIsActive());
         facility.setUserId(update.getUserId());
         facility.setIsOnmReady(update.getIsOnmReady());
+        facility.setSolarInstallationDate(
+                update.getSolarInstallationDate() != null ? update.getSolarInstallationDate() : existingFacility.getSolarInstallationDate());
+        facility.setRmsInstallationDate(
+                update.getRmsInstallationDate() != null ? update.getRmsInstallationDate() : existingFacility.getRmsInstallationDate());
+        facility.setSolarSystemCapacityKwp(
+                update.getSolarSystemCapacityKwp() != null ? update.getSolarSystemCapacityKwp() : existingFacility.getSolarSystemCapacityKwp());
+
+        // Preserve CO2 fields on partial update payloads sent to persister
+        if (update.getSolarInstallationDate() == null) {
+            update.setSolarInstallationDate(existingFacility.getSolarInstallationDate());
+        }
+        if (update.getRmsInstallationDate() == null) {
+            update.setRmsInstallationDate(existingFacility.getRmsInstallationDate());
+        }
+        if (update.getSolarSystemCapacityKwp() == null) {
+            update.setSolarSystemCapacityKwp(existingFacility.getSolarSystemCapacityKwp());
+        }
 
         FacilityMappedVendorHelper.mergeMappedVendorFromUpdate(facility, update, existingFacility);
         FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
@@ -1047,7 +1067,7 @@ public class FacilityService {
                         "FROM facility fac");
         query.append(" LEFT JOIN facility_address fa ON fac.addressid = fa.id ");
         query.append(result.getWhereClause());
-        query.append(" ORDER BY updated_at DESC NULLS LAST ");
+        query.append(buildBulkSearchOrderBy(criteria));
 
         List<Object> allParams = new ArrayList<>(result.getParams());
         if (!Boolean.TRUE.equals(request.getFacilityBulkSearchCriteria().getSendNonPaginatedResponse())) {
@@ -1687,6 +1707,13 @@ public class FacilityService {
         }
         String[] segments = newBlockBoundaryCode.split("_");
         return segments[segments.length - 1];
+    }
+
+    private String buildBulkSearchOrderBy(FacilityBulkSearchCriteria criteria) {
+        String sortBy = criteria.getSortBy() != null ? criteria.getSortBy().trim().toLowerCase() : "updated_at";
+        String column = "created_at".equals(sortBy) ? "fac.created_at" : "fac.updated_at";
+        boolean asc = "asc".equalsIgnoreCase(criteria.getSortOrder());
+        return " ORDER BY " + column + (asc ? " ASC " : " DESC ") + " NULLS LAST ";
     }
 
 }
