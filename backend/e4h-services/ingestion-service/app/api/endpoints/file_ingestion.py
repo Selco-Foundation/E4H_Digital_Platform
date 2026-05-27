@@ -243,11 +243,17 @@ async def upload_boundaries_excel_sheet(
         writer = ExcelDataWriter(output_file_path, output_sheet="Boundary Data")
         writer.write_data(boundary_df)
 
-        return FileResponse(
+        error_count = int(
+            boundary_df["status"].astype(str).str.strip().str.lower().eq("fail").sum()
+        )
+
+        response = FileResponse(
             path=output_file_path,
             filename=output_filename,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        response.headers["X-Error-Count"] = str(error_count)
+        return response
 
     except Exception as e:
         logger.error(f"Error processing boundary data: {e}")

@@ -36,4 +36,7 @@ public class BoundarySearchCriteria {
     @JsonProperty("boundaryType")
     private String boundaryType;
 
+    @JsonProperty("ignoreCase")
+    private Boolean ignoreCase;
+
 }
