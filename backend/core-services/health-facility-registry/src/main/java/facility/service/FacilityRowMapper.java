@@ -14,6 +14,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
+import java.sql.Date;
+import java.time.LocalDate;
 import java.util.Map;
 
 /**
@@ -55,6 +57,9 @@ public class FacilityRowMapper {
         facility.setFacilityRegion(rs.getString("facility_region"));
         facility.setIsOnmReady(rs.getBoolean("is_onm_ready"));
         facility.setRmsInactive(rs.getObject("rms_inactive") != null ? rs.getBoolean("rms_inactive") : null);
+        facility.setSolarInstallationDate(toLocalDate(rs.getDate("solar_installation_date")));
+        facility.setRmsInstallationDate(toLocalDate(rs.getDate("rms_installation_date")));
+        facility.setSolarSystemCapacityKwp(toDouble(rs.getObject("solar_system_capacity_kwp")));
 
         String addressId = rs.getString("addressid");
         log.debug("Mapping facility row {} with facilityId: {}", rowNum, facility.getFacilityId());
@@ -86,6 +91,20 @@ public class FacilityRowMapper {
         FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
         return facility;
     };
+
+    private static LocalDate toLocalDate(Date date) {
+        return date != null ? date.toLocalDate() : null;
+    }
+
+    private static Double toDouble(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return Double.valueOf(value.toString());
+    }
 
     private FacilityAddress fetchAddressById(String addressId) {
         log.trace("Entering fetchAddressById method for addressId: {}", addressId);

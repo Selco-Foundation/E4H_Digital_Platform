@@ -13,6 +13,7 @@ import lombok.Builder;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 /**
@@ -132,4 +133,13 @@ public class FacilityUpdateRequestFacilityUpdate {
 //    @Schema(name = "user_id", accessMode = Schema.AccessMode.READ_ONLY, requiredMode = Schema.RequiredMode.NOT_REQUIRED)
     @JsonProperty("user_id")
     private String userId;
+
+    @JsonProperty("solar_installation_date")
+    private LocalDate solarInstallationDate;
+
+    @JsonProperty("rms_installation_date")
+    private LocalDate rmsInstallationDate;
+
+    @JsonProperty("solar_system_capacity_kwp")
+    private Double solarSystemCapacityKwp;
 }
