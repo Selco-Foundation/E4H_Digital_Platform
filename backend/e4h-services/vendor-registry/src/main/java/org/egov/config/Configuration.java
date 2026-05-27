@@ -89,6 +89,15 @@ public class Configuration {
     @Value("${org.user.kafka.delete.topic}")
     private String deleteOrgUserTopic;
 
+    @Value("${egov.facility.host}")
+    private String facilityHost;
+
+    @Value("${egov.facility.search.path}")
+    private String facilitySearchPath;
+
+    @Value("${egov.facility.update.path}")
+    private String facilityUpdatePath;
+
     @Value("${egov.fieldplan.activity.host}")
     private String fieldPlanActivityServiceHost;
 

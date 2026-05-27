@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 
+import java.time.LocalDate;
 import java.util.Map;
 
 /**
@@ -87,4 +88,13 @@ public class FacilityCreate {
 
     @JsonProperty("user_id")
     private String userId = null;
+
+    @JsonProperty("solar_installation_date")
+    private LocalDate solarInstallationDate = null;
+
+    @JsonProperty("rms_installation_date")
+    private LocalDate rmsInstallationDate = null;
+
+    @JsonProperty("solar_system_capacity_kwp")
+    private Double solarSystemCapacityKwp = null;
 }

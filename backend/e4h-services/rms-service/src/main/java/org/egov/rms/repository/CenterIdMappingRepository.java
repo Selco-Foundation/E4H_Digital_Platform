@@ -65,6 +65,15 @@ public class CenterIdMappingRepository {
     /**
      * Finds HFR ID by Center ID
      */
+    public Optional<String> findCenterIdByHfrId(String hfrId) {
+        String sql = "SELECT center_id FROM center_id_to_hfr_id_mapping "
+                + "WHERE hfr_id = ? AND is_active = true LIMIT 1";
+        List<String> results = jdbcTemplate.query(sql,
+                (rs, rowNum) -> rs.getString("center_id"),
+                hfrId);
+        return results.isEmpty() ? Optional.empty() : Optional.ofNullable(results.get(0));
+    }
+
     public Optional<String> findHfrIdByCenterId(String centerId) {
         String sql = "SELECT hfr_id FROM center_id_to_hfr_id_mapping " +
                 "WHERE center_id = ? AND is_active = true";
