@@ -3,6 +3,8 @@ package org.egov.util;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
+import org.egov.common.contract.request.Role;
+import org.egov.common.contract.request.User;
 import org.egov.config.Configuration;
 import org.egov.repository.ServiceRequestRepository;
 import org.egov.web.models.Facility;
@@ -22,14 +24,29 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 @Slf4j
 public class FacilityUtil {
 
     private static final String FACILITY_BOUNDARY_TYPE = "Facility";
+    private static final String EMPLOYEE_ROLE_CODE = "EMPLOYEE";
+    private static final String SYSTEM_USER_ROLE_CODE = "SYSTEM_USER";
     private static final String MAPPED_VENDOR_NAME_KEY = "mappedVendorName";
     private static final String MAPPED_VENDOR_USER_NAME_KEY = "mappedVendorUserName";
+
+    // System RequestInfo for facility-service update (docs/cron/run_visit_scheduling.py)
+    private static final String INTERNAL_REQUEST_API_ID = "Rainmaker";
+    private static final String INTERNAL_REQUEST_AUTH_TOKEN = "cronjob-token";
+    private static final String INTERNAL_REQUEST_DID = "vendor-registry-facility-sync";
+    private static final String INTERNAL_REQUEST_KEY = "cronjob-key";
+    private static final String INTERNAL_SYSTEM_USER_UUID = "c8ed7e51-c0e5-4552-a420-76eeeee1e1dc";
+    private static final String INTERNAL_SYSTEM_USER_NAME = "CRONJOB_VISIT_SCHEDULING";
+    private static final String INTERNAL_SYSTEM_USER_DISPLAY_NAME = "Cron Job - Visit Scheduling";
+    private static final String INTERNAL_SYSTEM_USER_MOBILE = "0000000000";
+    private static final String INTERNAL_SYSTEM_USER_EMAIL = "cronjob@e4h.com";
+    private static final String INTERNAL_SYSTEM_USER_TYPE = "SYSTEM";
 
     private final RestTemplate restTemplate;
     private final Configuration configuration;
@@ -63,7 +80,7 @@ public class FacilityUtil {
                     log.warn("No facility found for boundaryCode: {}", boundaryCode);
                     continue;
                 }
-                updateFacilityMappedVendor(requestInfo, facility, vendorName, vendorUserName);
+                updateFacilityMappedVendor(facility, vendorName, vendorUserName);
             } catch (Exception e) {
                 log.error("Failed to sync mapped vendor for boundaryCode: {}", boundaryCode, e);
             }
@@ -103,11 +120,15 @@ public class FacilityUtil {
         return body.getFacilities().get(0);
     }
 
-    public void updateFacilityMappedVendor(RequestInfo requestInfo, Facility existingFacility,
-                                           String vendorName, String vendorUserName) {
+    public void updateFacilityMappedVendor(Facility existingFacility, String vendorName, String vendorUserName) {
         if (existingFacility == null || StringUtils.isBlank(existingFacility.getFacilityId())) {
             return;
         }
+
+        String facilityTenantId = StringUtils.isNotBlank(existingFacility.getTenantId())
+                ? existingFacility.getTenantId()
+                : configuration.getGlobalTenantId();
+        RequestInfo systemRequestInfo = buildFacilityServiceSystemRequestInfo(facilityTenantId);
 
         Map<String, Object> additionalDetails = new HashMap<>();
         if (existingFacility.getAdditionalDetails() != null) {
@@ -134,7 +155,7 @@ public class FacilityUtil {
                 .build();
 
         FacilityUpdateRequest updateRequest = FacilityUpdateRequest.builder()
-                .requestInfo(requestInfo)
+                .requestInfo(systemRequestInfo)
                 .facilityUpdate(payload)
                 .build();
 
@@ -146,5 +167,38 @@ public class FacilityUtil {
 
     public static boolean isFacilityBoundaryType(String boundaryType) {
         return FACILITY_BOUNDARY_TYPE.equalsIgnoreCase(StringUtils.trimToEmpty(boundaryType));
+    }
+
+    /**
+     * Builds a dedicated system RequestInfo for facility-service update calls.
+     * Pattern aligned with docs/cron/run_visit_scheduling.py (SYSTEM_USER + EMPLOYEE roles).
+     */
+    private RequestInfo buildFacilityServiceSystemRequestInfo(String tenantId) {
+        String effectiveTenantId = StringUtils.isNotBlank(tenantId) ? tenantId : configuration.getGlobalTenantId();
+        List<Role> roles = List.of(
+                Role.builder().name("Employee").code(EMPLOYEE_ROLE_CODE).tenantId(effectiveTenantId).build(),
+                Role.builder().name("System User").code(SYSTEM_USER_ROLE_CODE).tenantId(effectiveTenantId).build()
+        );
+        User systemUser = User.builder()
+                .uuid(INTERNAL_SYSTEM_USER_UUID)
+                .userName(INTERNAL_SYSTEM_USER_NAME)
+                .name(INTERNAL_SYSTEM_USER_DISPLAY_NAME)
+                .mobileNumber(INTERNAL_SYSTEM_USER_MOBILE)
+                .emailId(INTERNAL_SYSTEM_USER_EMAIL)
+                .type(INTERNAL_SYSTEM_USER_TYPE)
+                .roles(roles)
+                .tenantId(effectiveTenantId)
+                .build();
+        return RequestInfo.builder()
+                .apiId(INTERNAL_REQUEST_API_ID)
+                .ver("1.0")
+                .ts(System.currentTimeMillis())
+                .action("_update")
+                .did(INTERNAL_REQUEST_DID)
+                .key(INTERNAL_REQUEST_KEY)
+                .msgId(UUID.randomUUID().toString())
+                .authToken(INTERNAL_REQUEST_AUTH_TOKEN)
+                .userInfo(systemUser)
+                .build();
     }
 }
