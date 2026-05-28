@@ -11,12 +11,7 @@ import java.time.LocalDate;
 import java.time.ZoneOffset;
 
 /**
- * Kafka payload for {@code save-co2-monthly-*-facility-indexer} topics.
- * Aligned with deployed egov-indexer topics {@code save-co2-monthly-facility-indexer} /
- * {@code save-co2-monthly-projection-facility-indexer}: id = {@code $.uuid},
- * capacity field = {@code solarSystemCapacity}, geo = {@code geoPoint} → ES {@code geo-point}.
- * {@code solarInstallationDate} / {@code rmsInstallationDate} are epoch millis (UTC start of day)
- * for ES {@code long} mapping and egov-indexer {@code timeStampField: $.solarInstallationDate}.
+ * Kafka payload for CO2 monthly indexer topics.
  */
 @Data
 @Builder
@@ -25,10 +20,6 @@ import java.time.ZoneOffset;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class Co2MonthlyIndexPayload {
 
-    /**
-     * Elasticsearch document id for egov-indexer configs using {@code id: $.uuid}
-     * (composite: {@code tenantId_facilityId_year_month}).
-     */
     @JsonProperty("uuid")
     private String uuid;
 
@@ -41,20 +32,18 @@ public class Co2MonthlyIndexPayload {
     private String ninId;
     private String facilityType;
     private String facilityName;
-    /** Always indexed (empty when facility has no project) so re-run clears stale ES values. */
     @JsonInclude(JsonInclude.Include.ALWAYS)
     private String projectName;
     private String tenantId;
-    /** Indexer maps to ES {@code geo-point} via {@code $.geoPoint}. */
     private String geoPoint;
     private Boolean isLive;
-    /** UTC start-of-day epoch millis; ES field type is {@code long}. */
     private Long solarInstallationDate;
-    /** UTC start-of-day epoch millis; ES field type is {@code long}. */
     private Long rmsInstallationDate;
     private Double solarSystemCapacity;
     private int month;
     private int year;
+    private String financialYear;
+    private int financialMonth;
     private Double co2EmissionsAvoidedInTonnes;
     private Double projectedCo2EmissionsAvoidedInTonnes;
 
@@ -94,7 +83,9 @@ public class Co2MonthlyIndexPayload {
                 .rmsInstallationDate(isoDateToEpochMillis(doc.getRmsInstallationDate()))
                 .solarSystemCapacity(doc.getSolarSystemCapacity())
                 .month(doc.getMonth())
-                .year(doc.getYear());
+                .year(doc.getYear())
+                .financialYear(doc.getFinancialYear())
+                .financialMonth(doc.getFinancialMonth());
     }
 
     static Long isoDateToEpochMillis(String isoDate) {
