@@ -60,11 +60,11 @@ const FormattedDateInput = ({
       <span
         style={{
           fontSize: "16px",
-          fontWeight: "Roboto",
+          fontFamily: "Roboto",
           color: "#111"
         }}
       >
-        {value ? format(new Date(value), dateFormat) : ""}
+        {value && !isNaN(new Date(value).getTime()) ? format(new Date(value), dateFormat) : ""}
       </span>
       <DateRange fill={"#505A5F"} />
     </div>
