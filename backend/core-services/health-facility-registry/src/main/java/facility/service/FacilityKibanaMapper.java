@@ -379,10 +379,6 @@ public class FacilityKibanaMapper {
                 || searchEndpoint == null || searchEndpoint.isBlank()) {
             return null;
         }
-        host = host.replaceAll("/+$", "");
-        if (host.contains("/localization/messages")) {
-            return host + searchEndpoint;
-        }
         return host + contextPath + searchEndpoint;
     }
 
