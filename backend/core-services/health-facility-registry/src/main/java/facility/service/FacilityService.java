@@ -146,7 +146,7 @@ public class FacilityService {
                         .facilityCategory(facilityCreate.getFacilityCategory())
                         .facilityType(facilityCreate.getFacilityType())
                         .facilitySubtype(facilityCreate.getFacilitySubtype())
-                        .facilityName(facilityCreate.getFacilityName())
+                        .facilityName(facilityCreate.getFacilityName()!=null ? facilityCreate.getFacilityName().trim() : facilityCreate.getFacilityName())
                         .facilityOwnership(facilityCreate.getFacilityOwnership())
                         .facilityPocName(facilityCreate.getFacilityPocName())
                         .facilityPocEmail(facilityCreate.getFacilityPocEmail())
@@ -637,7 +637,7 @@ public class FacilityService {
         facility.setFacilityCategory(update.getFacilityCategory());
         facility.setFacilityType(update.getFacilityType());
         facility.setFacilitySubtype(update.getFacilitySubtype());
-        facility.setFacilityName(update.getFacilityName());
+        facility.setFacilityName(update.getFacilityName()!=null ? update.getFacilityName().trim() : update.getFacilityName());
         facility.setAddress(update.getAddress());
         facility.setAdditionalDetails(update.getAdditionalDetails());
         facility.setBoundaryCode(update.getBoundaryCode());
