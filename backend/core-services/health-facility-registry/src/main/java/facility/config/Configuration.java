@@ -121,6 +121,9 @@ public class Configuration {
     @Value("${egov.localization.upsert.path}")
     private String localizationUpsertPath;
 
+    @Value("${egov.localization.search.endpoint}")
+    private String localizationSearchEndpoint;
+
     /**
      * Base URL for im-services (e.g. {@code http://localhost:8880}). When blank, incident boundary sync after facility block update is skipped.
      */
