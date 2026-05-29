@@ -28,6 +28,8 @@ public class Co2MonthlyDocument {
     private Double solarSystemCapacity;
     private int month;
     private int year;
+    private String financialYear;
+    private int financialMonth;
     private double co2EmissionsAvoidedInTonnes;
     private double projectedCo2EmissionsAvoidedInTonnes;
     private boolean projection;

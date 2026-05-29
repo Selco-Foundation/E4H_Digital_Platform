@@ -24,6 +24,7 @@ public class Co2ReferenceClient {
             @SuppressWarnings("unchecked")
             Map<String, Object> body = restTemplate.getForObject(url, Map.class);
             if (body == null) {
+                log.warn("CO2 reference response was empty for tenantId={}", tenantId);
                 return Co2ReferenceBundle.builder().build();
             }
             return Co2ReferenceBundle.fromRmsResponse(body);

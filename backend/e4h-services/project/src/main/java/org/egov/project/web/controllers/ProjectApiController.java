@@ -603,9 +603,7 @@ public class ProjectApiController {
         }
     }
 
-    /**
-     * CO2 Dashboard: resolve projectId and projectName for facility IDs in one SQL query.
-     */
+    /** Returns project id and name for the given facility ids. */
     @PostMapping(value = "/v1/fetchProjectsByFacilities", produces = {"application/json"})
     public ResponseEntity<FetchProjectsByFacilitiesResponse> fetchProjectsByFacilities(
             @Valid @RequestBody FetchProjectsByFacilitiesRequest request) {

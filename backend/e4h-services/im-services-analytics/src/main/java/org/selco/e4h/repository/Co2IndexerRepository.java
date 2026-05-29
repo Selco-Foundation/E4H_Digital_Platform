@@ -10,10 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-/**
- * Publishes CO2 documents to egov-indexer Kafka topics.
- * Projection months are upserted by document id (tenantId_facilityId_year_month) — no separate delete topic.
- */
+/** Publishes CO2 monthly documents to Kafka topics. */
 @Slf4j
 @Repository
 @RequiredArgsConstructor
