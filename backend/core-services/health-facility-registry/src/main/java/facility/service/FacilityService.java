@@ -273,6 +273,7 @@ public class FacilityService {
                     facilityRepository.pushToKibana(kibanaIndex);
                 }
 
+                // Mapped the first vendor user with this new facility created
                 String vendorCode = extractVendorCode(facility);
                 if (vendorCode != null && !vendorCode.isBlank()) {
                     vendorOrganisationService.assignFacilityJurisdictionToFirstOrgUser(
