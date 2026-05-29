@@ -143,6 +143,34 @@ public class FacilityV2ApiController {
         }
     }
 
+    @PostMapping("/update-district")
+    public ResponseEntity<Facility> updateFacilityDistrict(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Updates district and block for an existing facility (new block in target district is required) and regenerates facility boundary code",
+                    required = true
+            )
+            @Valid @RequestBody FacilityDistrictUpdateRequest facilityDistrictUpdateRequest) {
+        log.trace("Entering updateFacilityDistrict endpoint");
+        String facilityId = facilityDistrictUpdateRequest.getFacilityDistrictUpdate() != null
+                ? facilityDistrictUpdateRequest.getFacilityDistrictUpdate().getFacilityId() : null;
+        String newDistrictCode = facilityDistrictUpdateRequest.getFacilityDistrictUpdate() != null
+                ? facilityDistrictUpdateRequest.getFacilityDistrictUpdate().getNewDistrictBoundaryCode() : null;
+        String newBlockCode = facilityDistrictUpdateRequest.getFacilityDistrictUpdate() != null
+                ? facilityDistrictUpdateRequest.getFacilityDistrictUpdate().getNewBlockBoundaryCode() : null;
+        log.info("Received facility district update request for facilityId: {}, newDistrictBoundaryCode: {}, newBlockBoundaryCode: {}",
+                facilityId, newDistrictCode, newBlockCode);
+
+        Facility updated = facilityService.updateFacilityDistrictBoundary(facilityDistrictUpdateRequest);
+        if (updated != null) {
+            log.info("Successfully updated facility district for facilityId: {}", facilityId);
+            log.trace("Exiting updateFacilityDistrict endpoint");
+            return ResponseEntity.ok(updated);
+        } else {
+            log.warn("Facility not found for district update, facilityId: {}", facilityId);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
 
     @RequestMapping(value = "/assessment/_update", method = RequestMethod.POST)
     public ResponseEntity<FacilityAssessment> updateHFAssessment(@Parameter(in = ParameterIn.DEFAULT, description = "Health facility assessment data updated", required = true, schema = @Schema()) @Valid @RequestBody FacilityAssessmentCreateRequest body) {
@@ -221,6 +249,34 @@ public class FacilityV2ApiController {
         return ResponseEntity.ok("Script done");
     }
 
+    /**
+     * Operator script: when {@code hfr_id} is null or blank, sets indexer {@code code} to {@code nin_id} if present,
+     * otherwise to {@code facility_poc_username} when both HFR and NIN are absent (existing ES doc patched, or full index).
+     */
+    @GetMapping("/sync-kibana-code-from-nin")
+    public ResponseEntity<String> syncKibanaCodeFromNinWhereHfrMissing() {
+        log.info("sync-kibana-code-from-nin endpoint invoked");
+        String summary = facilityService.syncKibanaFacilityCodeFromNinWhereHfrMissing();
+        return ResponseEntity.ok(summary);
+    }
 
+    /**
+     * Operator backfill: creates missing boundary entity and Facility boundary-relationship for facilities
+     * whose {@code boundary_code} was persisted without a relationship (e.g. after varchar length errors).
+     * Requires {@code facility.boundary.backfill.enabled=true} and SYSTEM_USER role.
+     */
+    @PostMapping("/_backfill-boundary-relationships")
+    public ResponseEntity<FacilityBoundaryBackfillResponse> backfillFacilityBoundaryRelationships(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Backfill request (boundary tenantId=in for all facilities)",
+                    required = true
+            )
+            @Valid @RequestBody FacilityBoundaryBackfillRequest request) {
+        log.info("Received facility boundary-relationship backfill request");
+        FacilityBoundaryBackfillResponse result = facilityService.backfillMissingFacilityBoundaryRelationships(request);
+        log.info("Boundary backfill finished: scanned={}, missing={}, created={}, failed={}",
+                result.getScanned(), result.getMissing(), result.getCreated(), result.getFailed());
+        return ResponseEntity.ok(result);
+    }
 
 }

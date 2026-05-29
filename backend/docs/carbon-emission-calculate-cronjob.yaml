@@ -1,0 +1,39 @@
+# K8s CronJob: monthly CO2 emissions calculation (LLD #2423)
+# Pattern aligned with RMS cron jobs (HTTP trigger to service in cluster).
+#
+# Schedule: 5th of each month at 02:30 IST — adjust after Elmeasure monthly data refresh time.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: carbon-emission-calculate-cron
+  labels:
+    app: im-services-analytics
+    job-type: carbon-emission-calculate
+spec:
+  schedule: "30 2 5 * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: carbon-emission-runner
+              image: curlimages/curl:8.5.0
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  TENANT="${TENANT_ID:-in}"
+                  URL="${ANALYTICS_BASE_URL:-http://im-services-analytics.core-dev:8080/im-services-analytics/v1/carbon/trigger}"
+                  echo "Triggering CO2 calculation for tenant=${TENANT}"
+                  curl -sf -X POST "${URL}?tenantId=${TENANT}"
+                  echo "Done."
+              env:
+                - name: TENANT_ID
+                  value: "in"
+                - name: ANALYTICS_BASE_URL
+                  value: "http://im-services-analytics.core-dev:8080/im-services-analytics/v1/carbon/trigger"
+          restartPolicy: OnFailure

@@ -77,4 +77,38 @@ public class FacilityQueryDao {
 
         return Boolean.TRUE.equals(exists);
     }
+
+    /**
+     * Checks whether a facility with the given POC username exists in a tenant.
+     * Optionally excludes a facility by id (for update flows).
+     *
+     * @param tenantId            Tenant ID to scope the query
+     * @param facilityPocUsername POC username to match
+     * @param excludeFacilityId   Facility id to exclude from the check, or null for create
+     * @return true if another facility with the same POC username exists
+     */
+    public boolean existsByFacilityPocUsername(String tenantId, String facilityPocUsername, String excludeFacilityId) {
+        StringBuilder sql = new StringBuilder("""
+        SELECT EXISTS (
+            SELECT 1 FROM facility
+            WHERE tenant_id = ? AND facility_poc_username = ?
+        """);
+        List<Object> params = new ArrayList<>();
+        params.add(tenantId);
+        params.add(facilityPocUsername);
+
+        if (excludeFacilityId != null && !excludeFacilityId.isBlank()) {
+            sql.append(" AND id <> ?");
+            params.add(excludeFacilityId);
+        }
+        sql.append(")");
+
+        Boolean exists = jdbcTemplate.queryForObject(
+                sql.toString(),
+                params.toArray(),
+                Boolean.class
+        );
+
+        return Boolean.TRUE.equals(exists);
+    }
 }
