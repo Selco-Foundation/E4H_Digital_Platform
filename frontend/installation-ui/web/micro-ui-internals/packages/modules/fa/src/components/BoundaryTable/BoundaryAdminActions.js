@@ -161,7 +161,7 @@ const BoundaryAdminActions = ({ t }) => {
           code: computed.state,
           boundaryType: "State",
           parent: computed.country,
-          ignoreIfExists: true,
+          ignoreIfExists: false,
         });
       }
 
@@ -171,7 +171,7 @@ const BoundaryAdminActions = ({ t }) => {
           code: computed.district,
           boundaryType: "District",
           parent: computed.state,
-          ignoreIfExists: true,
+          ignoreIfExists: false,
         });
       }
 

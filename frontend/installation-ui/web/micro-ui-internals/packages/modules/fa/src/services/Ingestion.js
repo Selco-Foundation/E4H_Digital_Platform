@@ -202,6 +202,14 @@ export const IngestionService = {
 
     const fileObj = new File([blob], finalName, { type: contentType });
 
+    const errorCount = parseInt(res.headers["x-error-count"] || "0", 10);
+    if (errorCount) {
+      return {
+        errorCode: "INVALID_DATA",
+        file: { name: finalName, data: fileObj },
+        errorCount: errorCount,
+      };
+    }
     return {
       file: { name: finalName, data: fileObj },
     };
