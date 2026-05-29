@@ -1654,12 +1654,10 @@ Future<void> _performSubmissionForActivityFacility({
           .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
       await InstallationImagesRepository(isar).deleteAllCachedImages(
         activityFacilityId: activityFacilityId,
-        userType: userType,
       );
       await workflowRepo.deleteWorkflowMediaDocs(
         isar: isar,
         activityFacilityId: activityFacilityId,
-        userType: userType,
       );
       await _saveCheckpoint(
         isar: isar,
@@ -1796,12 +1794,10 @@ Future<void> _performRejectionForActivityFacility({
           .deleteAllBomDocs(isar: isar, activityFacilityId: activityFacilityId);
       await InstallationImagesRepository(isar).deleteAllCachedImages(
         activityFacilityId: activityFacilityId,
-        userType: userType,
       );
       await ActivityFacilityWorkflowRepository().deleteWorkflowMediaDocs(
         isar: isar,
         activityFacilityId: activityFacilityId,
-        userType: userType,
       );
       await _saveCheckpoint(
         isar: isar,

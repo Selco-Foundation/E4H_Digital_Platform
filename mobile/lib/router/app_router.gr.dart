@@ -204,6 +204,7 @@ abstract class _$AppRouter extends RootStackRouter {
         child: InstallationImagesPage(
           key: args.key,
           origin: args.origin,
+          activityFacilityId: args.activityFacilityId,
         ),
       );
     },
@@ -871,12 +872,14 @@ class InstallationImagesRoute
   InstallationImagesRoute({
     Key? key,
     required FormOrigin origin,
+    required String activityFacilityId,
     List<PageRouteInfo>? children,
   }) : super(
           InstallationImagesRoute.name,
           args: InstallationImagesRouteArgs(
             key: key,
             origin: origin,
+            activityFacilityId: activityFacilityId,
           ),
           initialChildren: children,
         );
@@ -891,15 +894,18 @@ class InstallationImagesRouteArgs {
   const InstallationImagesRouteArgs({
     this.key,
     required this.origin,
+    required this.activityFacilityId,
   });
 
   final Key? key;
 
   final FormOrigin origin;
 
+  final String activityFacilityId;
+
   @override
   String toString() {
-    return 'InstallationImagesRouteArgs{key: $key, origin: $origin}';
+    return 'InstallationImagesRouteArgs{key: $key, origin: $origin, activityFacilityId: $activityFacilityId}';
   }
 }
 

@@ -29,7 +29,6 @@ class CacheInstallationImageBloc
     try {
       final entries = await _repository.getCachedImages(
         activityFacilityId: event.activityFacilityId,
-        userType: event.userType,
       );
 
       if (entries.isEmpty) {
@@ -50,7 +49,6 @@ class CacheInstallationImageBloc
     try {
       await _repository.deleteAllCachedImages(
         activityFacilityId: event.activityFacilityId,
-        userType: event.userType,
       );
 
       for (final entry in event.selectedImages.entries) {

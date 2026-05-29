@@ -276,7 +276,6 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
         InstallationImagesRepository(context.read<CacheAssetBloc>().isar);
     return repo.hasCachedImages(
       activityFacilityId: activityFacilityId,
-      userType: userType,
     );
   }
 
@@ -290,7 +289,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
         type: PopUpType.alert,
         onCrossTap: () => Navigator.of(ctx).pop(),
         onOutsideTap: () => Navigator.of(ctx).pop(),
-        title: context.translate(i18.submitForApproval.requiredInstallationImages),
+        title:
+            context.translate(i18.submitForApproval.requiredInstallationImages),
         actionAlignment: MainAxisAlignment.center,
         actions: const [],
         additionalWidgets: [
@@ -422,8 +422,7 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                               _selectedRejectionReasons.length !=
                                   _rejectionReasons.length);
 
-                      final isDisabled = notAllRejectionsChecked ||
-                          submitting;
+                      final isDisabled = notAllRejectionsChecked || submitting;
 
                       return FooterButton(
                           showSuffixIcon: false,
@@ -517,8 +516,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                       DigitCard(
                         children: [
                           Text(
-                            context.translate(i18
-                                .submitForApproval.installationCompletionReport),
+                            context.translate(i18.submitForApproval
+                                .installationCompletionReport),
                             style: textTheme.headingM.copyWith(
                                 color: theme.colorTheme.primary.primary2),
                           ),
@@ -622,8 +621,8 @@ class _SubmitForApprovalPageState extends State<SubmitForApprovalPage> {
                           SizedBox(width: context.width),
                           if (_rejectionReasons.isEmpty)
                             Text(
-                              context.translate(
-                                  i18.submitForApproval.noRejectionReasonsFound),
+                              context.translate(i18
+                                  .submitForApproval.noRejectionReasonsFound),
                               style: textTheme.bodyS,
                             )
                           else

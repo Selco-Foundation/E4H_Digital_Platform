@@ -194,7 +194,10 @@ class _BomButtonsSectionState extends State<BomButtonsSection>
           DigitButton(
             label: "Installation Images",
             onPressed: () => context.router.push(
-              InstallationImagesRoute(origin: widget.origin),
+              InstallationImagesRoute(
+                origin: widget.origin,
+                activityFacilityId: widget.projectId,
+              ),
             ),
             capitalizeLetters: false,
             mainAxisSize: MainAxisSize.max,

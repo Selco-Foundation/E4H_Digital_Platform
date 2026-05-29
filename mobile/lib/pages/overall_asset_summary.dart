@@ -241,7 +241,6 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
         InstallationImagesRepository(context.read<CacheAssetBloc>().isar);
     return repo.hasCachedImages(
       activityFacilityId: _currentProjectId!,
-      userType: userType,
     );
   }
 
@@ -590,8 +589,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                               children: [
                                                 ElementAssetSummary(
                                                     count: 0,
-                                                    text: context.translate(
-                                                        i18.assetCount.batteries)),
+                                                    text: context.translate(i18
+                                                        .assetCount.batteries)),
                                                 ElementAssetSummary(
                                                   count: 0,
                                                   text: context.translate(
@@ -679,8 +678,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                 DigitButton(
                                                   mainAxisSize:
                                                       MainAxisSize.max,
-                                                  label: context
-                                                      .translate(i18.common.retry),
+                                                  label: context.translate(
+                                                      i18.common.retry),
                                                   prefixIcon: Icons.refresh,
                                                   onPressed: () {
                                                     final selState = context
@@ -747,8 +746,8 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                       .INVERTER.name
                                                       .toLowerCase(),
                                                   count: inverterCount,
-                                                  text: context.translate(i18
-                                                      .assetCount.inverters),
+                                                  text: context.translate(
+                                                      i18.assetCount.inverters),
                                                   onAddDetailPress: () {
                                                     _handleAddDetailPress(
                                                         ASSET_TYPES
@@ -831,10 +830,9 @@ class _OverallAssetSummaryPageState extends State<OverallAssetSummaryPage> {
                                                         DigitButton(
                                                           mainAxisSize:
                                                               MainAxisSize.max,
-                                                          label: context
-                                                              .translate(i18
-                                                                  .overallAssetSummary
-                                                                  .addMoreAssets),
+                                                          label: context.translate(i18
+                                                              .overallAssetSummary
+                                                              .addMoreAssets),
                                                           prefixIcon:
                                                               Icons.add_box,
                                                           onPressed: () {

@@ -347,8 +347,6 @@ class AssetRepository {
         final oldInstallationImages = await isar.cacheInstallationImages
             .where()
             .activityFacilityIdEqualTo(activityFacilityId)
-            .filter()
-            .userTypeEqualTo(userType)
             .findAll();
         for (var document in oldInstallationImages) {
           await isar.cacheInstallationImages.delete(document.id);

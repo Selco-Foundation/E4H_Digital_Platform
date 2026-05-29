@@ -82,23 +82,18 @@ class InstallationImagesRepository {
 
   Future<List<CacheInstallationImage>> getCachedImages({
     required String activityFacilityId,
-    required String userType,
   }) {
     return _isar.cacheInstallationImages
         .where()
         .activityFacilityIdEqualTo(activityFacilityId)
-        .filter()
-        .userTypeEqualTo(userType)
         .findAll();
   }
 
   Future<bool> hasCachedImages({
     required String activityFacilityId,
-    required String userType,
   }) async {
     final entries = await getCachedImages(
       activityFacilityId: activityFacilityId,
-      userType: userType,
     );
 
     return entries.isNotEmpty;
@@ -106,14 +101,11 @@ class InstallationImagesRepository {
 
   Future<void> deleteAllCachedImages({
     required String activityFacilityId,
-    required String userType,
   }) async {
     await _isar.writeTxn(() async {
       final entries = await _isar.cacheInstallationImages
           .where()
           .activityFacilityIdEqualTo(activityFacilityId)
-          .filter()
-          .userTypeEqualTo(userType)
           .findAll();
 
       for (final entry in entries) {

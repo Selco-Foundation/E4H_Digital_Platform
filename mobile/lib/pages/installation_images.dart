@@ -11,7 +11,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../blocs/activity_facility/activity_facility.dart';
 import '../blocs/cache_installation_image/cache_installation_image.dart';
 import '../blocs/installation_images/installation_images.dart';
-import '../blocs/selected_activity_facility/selected_activity_facility.dart';
 import '../blocs/user_type/user_type.dart';
 import '../data/nosql/cache_installation_image.dart';
 import '../model/installation_images/installation_images.dart';
@@ -28,9 +27,11 @@ class InstallationImagesPage extends StatefulWidget {
   const InstallationImagesPage({
     super.key,
     required this.origin,
+    required this.activityFacilityId,
   });
 
   final FormOrigin origin;
+  final String activityFacilityId;
 
   @override
   State<InstallationImagesPage> createState() => _InstallationImagesPageState();
@@ -39,7 +40,7 @@ class InstallationImagesPage extends StatefulWidget {
 class _InstallationImagesPageState extends State<InstallationImagesPage> {
   final Map<String, List<File>> _selectedImagesByRequirement = {};
   final Map<String, String> _sectionMessages = {};
-  String? _currentActivityFacilityId;
+  late final String _currentActivityFacilityId;
   String? _userType;
   double? _latitude;
   double? _longitude;
@@ -71,11 +72,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           orElse: () => USER_TYPES.FIELD_STAFF.name,
         );
 
-    context.read<SelectedActivityFacilityBloc>().state.whenOrNull(
-      selected: (proj) {
-        _currentActivityFacilityId = proj.activityFacility.id;
-      },
-    );
+    _currentActivityFacilityId = widget.activityFacilityId;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -114,10 +111,10 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   }
 
   void _loadCachedImages() {
-    if (_currentActivityFacilityId == null || _userType == null) return;
+    if (_userType == null) return;
     context.read<CacheInstallationImageBloc>().add(
           CacheInstallationImageEvent.get(
-            _currentActivityFacilityId!,
+            _currentActivityFacilityId,
             _userType!,
           ),
         );
@@ -269,14 +266,13 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   }
 
   Future<void> _submitSelections() async {
-    if (_currentActivityFacilityId == null || _userType == null) return;
+    if (_userType == null) return;
     final ok = await _ensureLocationLoaded();
     if (!mounted) return;
     if (!ok) {
       context.showSnackBar(
         SnackBar(
-            content:
-                Text(context.translate(i18.common.couldNotFetchLocation))),
+            content: Text(context.translate(i18.common.couldNotFetchLocation))),
       );
       return;
     }
@@ -287,7 +283,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
 
     context.read<CacheInstallationImageBloc>().add(
           CacheInstallationImageEvent.saveAll(
-            activityFacilityId: _currentActivityFacilityId!,
+            activityFacilityId: _currentActivityFacilityId,
             userType: _userType!,
             selectedImages: Map<String, List<File>>.from(
               _selectedImagesByRequirement.map(
@@ -303,7 +299,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
   bool _isSubmitDisabled(List<InstallationImageItem> requirements) {
     if (_isViewOnly) return false;
     if (_isSaving) return true;
-    if (_currentActivityFacilityId == null || _userType == null) return true;
+    if (_userType == null) return true;
     if (requirements.isEmpty) return true;
     return _hasAnyInvalidRequirement(requirements);
   }
@@ -358,8 +354,7 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           return DigitCard(
             children: [
               Text(
-                context
-                    .translate(i18.installationImages.noConfigurationFound),
+                context.translate(i18.installationImages.noConfigurationFound),
                 style: textTheme.bodyL.copyWith(
                   color: theme.colorTheme.alert.error,
                 ),
@@ -434,10 +429,10 @@ class _InstallationImagesPageState extends State<InstallationImagesPage> {
           loaded: (entries) => _populateFromCache(entries),
           saved: () async {
             if (!mounted) return;
-            if (_currentActivityFacilityId != null && _userType != null) {
+            if (_userType != null) {
               final isar = context.read<ActivityFacilityBloc>().isar;
               await PrefilledActivityFacilityRepository(isar).addOrTouch(
-                activityFacilityId: _currentActivityFacilityId!,
+                activityFacilityId: _currentActivityFacilityId,
                 userType: _userType!,
               );
             }
