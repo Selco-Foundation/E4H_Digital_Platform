@@ -18,7 +18,7 @@ public class GridIntensityFactor {
     private BigDecimal gridIntensityFactor;
     private BigDecimal projectedGridIntensityFactor;
 
-    /** LLD: use published factor, else projected. */
+    /** Returns published factor when available, otherwise projected factor. */
     public BigDecimal resolveFactor() {
         if (gridIntensityFactor != null) {
             return gridIntensityFactor;

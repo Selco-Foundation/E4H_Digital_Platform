@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class ArchetypeProperties {
     private String archetype;
-    /** Year-one total facility energy consumption (kWh/year) from archetype model — PRD CY1. */
+    /** Year-one total facility energy consumption in kWh/year. */
     private BigDecimal yearOneAnnualConsumptionKwh;
     private BigDecimal alpha;
 }
