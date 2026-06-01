@@ -319,6 +319,7 @@ public class FacilityKibanaMapper {
                 .queryParam("tenantId", LOCALIZATION_TENANT_ID)
                 .queryParam("module", LOCALIZATION_MODULE)
                 .queryParam("locale", LOCALIZATION_LOCALE)
+                .queryParam("codes", String.join(",", localizationCodes))
                 .build()
                 .toUriString();
 
@@ -326,14 +327,13 @@ public class FacilityKibanaMapper {
         if (requestInfo != null) {
             body.put("RequestInfo", requestInfo);
         }
-        body.put("codes", localizationCodes);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         try {
             ResponseEntity<String> response = restTemplate.exchange(
-                    url, HttpMethod.POST, new HttpEntity<>(body, headers), String.class);
+                    url, HttpMethod.POST, new HttpEntity<>(body.isEmpty() ? null : body, headers), String.class);
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 log.warn("Localization search returned no labels for codes={}", localizationCodes);
                 return Map.of();
