@@ -54,8 +54,10 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.contract.response.ResponseInfo;
 import org.egov.common.utils.MultiStateInstanceUtil;
 import org.egov.hrms.config.PropertiesManager;
+import org.egov.hrms.model.Assignment;
 import org.egov.hrms.model.AuditDetails;
 import org.egov.hrms.model.Employee;
+import org.egov.hrms.model.Jurisdiction;
 import org.egov.hrms.model.enums.UserType;
 import org.egov.hrms.producer.HRMSProducer;
 import org.egov.hrms.repository.EmployeeRepository;
@@ -446,10 +448,11 @@ public class EmployeeService {
 				jurisdiction.setId(UUID.randomUUID().toString());
 				jurisdiction.setAuditDetails(auditDetails);
 			}else{
-				if(!existingEmpData.getJurisdictions().stream()
-						.filter(jurisdictionData ->jurisdictionData.getId().equals(jurisdiction.getId() ))
-						.findFirst().orElse(null)
-						.equals(jurisdiction)){
+				Jurisdiction existingJurisdiction = existingEmpData.getJurisdictions().stream()
+						.filter(jurisdictionData -> jurisdictionData.getId().equals(jurisdiction.getId()))
+						.findFirst().orElse(null);
+				if (existingJurisdiction != null && !existingJurisdiction.equals(jurisdiction)
+						&& jurisdiction.getAuditDetails() != null) {
 					jurisdiction.getAuditDetails().setLastModifiedBy(requestInfo.getUserInfo().getUserName());
 					jurisdiction.getAuditDetails().setLastModifiedDate(new Date().getTime());
 				}
@@ -460,10 +463,11 @@ public class EmployeeService {
 				assignment.setId(UUID.randomUUID().toString());
 				assignment.setAuditDetails(auditDetails);
 			}else {
-				if(!existingEmpData.getAssignments().stream()
+				Assignment existingAssignment = existingEmpData.getAssignments().stream()
 						.filter(assignmentData -> assignmentData.getId().equals(assignment.getId()))
-						.findFirst().orElse(null)
-						.equals(assignment)){
+						.findFirst().orElse(null);
+				if (existingAssignment != null && !existingAssignment.equals(assignment)
+						&& assignment.getAuditDetails() != null) {
 					assignment.getAuditDetails().setLastModifiedBy(requestInfo.getUserInfo().getUserName());
 					assignment.getAuditDetails().setLastModifiedDate(new Date().getTime());
 				}
