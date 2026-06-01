@@ -236,6 +236,11 @@ public class OrganisationUserServiceValidator {
                         existingEmployee.getUser().setActive(orgUser.getActive());
                     }
 
+                    existingEmployee.getUser().setActive(true);
+                    existingEmployee.setIsActive(true);
+                    existingEmployee.setEmployeeStatus("ACTIVE");
+                    existingEmployee.setReActivateEmployee(true);
+
                     // Do not modify HRMS assignments when re-linking/updating an existing user for this org.
                     existingEmployee.setJurisdictions(
                             mergeJurisdictionsForRecreateUser(
