@@ -444,6 +444,7 @@ public class OrganisationUserServiceValidator {
 
             if (changes.isNameChanged()) {
                 employee.getUser().setName(orgUser.getName());
+                facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
             }
 
             if (changes.isEmailChanged()) {
@@ -503,7 +504,7 @@ public class OrganisationUserServiceValidator {
             request.getUser().setJurisdictions(employee.getJurisdictions());
         }
 
-        facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
+//        facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
 
         if (!errorMap.isEmpty()) {
             log.error("Validation failed with {} errors", errorMap.size());
