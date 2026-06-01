@@ -33,6 +33,7 @@ from app.processor.factory.vendor_data_processor_factory import VendorDataProces
 from app.schemas.request_info import RequestInfo
 from app.producer.producer import Producer
 from app.utils.convertor import request_info_from_json, create_vendor_request, create_facility_payload, \
+    resolve_mapped_vendor_for_facility_row, \
     get_project_creation_payload, check_role_mismatch_for_user_type, get_user_creation_payload_staff, \
     get_user_creation_payload_supervisors, \
     get_staff_creation_payload, create_project_payload, get_installation_spoc_creation_payload, \
@@ -514,6 +515,8 @@ async def upload_facilities_excel_sheet(
         if facility_service_url and not df.empty:
             facility_client = FacilityServiceClient(facility_service_url)
             facility_schema = mdms_client.get_column_definitions_with_metadata(request_info,'data-ingestion.FacilityIngestionSchema')
+            org_client = OrganizationServiceClient(org_service_url) if org_service_url else None
+            vendor_mapping_cache: Dict[str, Dict[str, Optional[str]]] = {}
             hfr_nin_db_cache: Dict[str, bool] = {}
             for index, row in df[df['status'] != 'success'].iterrows():
                 hfr_nin_errs = collect_hfr_nin_errors_for_row(
@@ -528,7 +531,21 @@ async def upload_facilities_excel_sheet(
                     df.at[index, 'error'] = '; '.join(pre_errs)
                     continue
                 try:
-                    facility_data_payload = create_facility_payload(request_info, row, are_facilities_onm_ready, facility_schema)
+                    vendor_mapping = resolve_mapped_vendor_for_facility_row(
+                        org_client,
+                        request_info,
+                        row,
+                        FACILITY_VENDOR_CODE_COLUMN,
+                        vendor_mapping_cache,
+                    )
+                    facility_data_payload = create_facility_payload(
+                        request_info,
+                        row,
+                        are_facilities_onm_ready,
+                        facility_schema,
+                        mapped_vendor_name=vendor_mapping.get("mappedVendorName"),
+                        mapped_vendor_user_name=vendor_mapping.get("mappedVendorUserName"),
+                    )
                     response = facility_client.create_facility(facility_data_payload)
                     if response.status_code in (200, 201):
                         df.at[index, 'status'] = 'success'
