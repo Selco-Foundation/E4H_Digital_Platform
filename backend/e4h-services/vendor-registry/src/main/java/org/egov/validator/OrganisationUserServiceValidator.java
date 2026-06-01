@@ -440,6 +440,7 @@ public class OrganisationUserServiceValidator {
                     throw new CustomException("Organization", "This user with this username already exist: "+orgUser.getUserName());
                 }
                 employee.getUser().setUserName(orgUser.getUserName());
+                facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
             }
 
             if (changes.isNameChanged()) {
