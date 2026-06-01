@@ -18,12 +18,15 @@ import org.egov.util.OrganisationUtil;
 import org.egov.util.UserUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 import static org.egov.util.OrganisationConstant.MASTER_ORG_ROLES;
@@ -49,7 +52,6 @@ public class OrganisationUserServiceValidator {
     private final FacilityUtil facilityUtil;
 
     private final ObjectMapper mapper;
-
     private static final String MDMS_RES = "$.MdmsRes.";
     private static final String NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     private static final String VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO = "Valid From in search parameters should be less than Valid To";
@@ -73,6 +75,7 @@ public class OrganisationUserServiceValidator {
         this.userRepository = userRepository;
         this.facilityUtil = facilityUtil;
         this.mapper = mapper;
+
     }
 
     public void validateCreateOrgUserRequest(OrgUserRequest request) {
@@ -283,7 +286,7 @@ public class OrganisationUserServiceValidator {
             }
         }
 
-        syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
+        facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
@@ -500,7 +503,7 @@ public class OrganisationUserServiceValidator {
             request.getUser().setJurisdictions(employee.getJurisdictions());
         }
 
-        syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
+        facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
 
         if (!errorMap.isEmpty()) {
             log.error("Validation failed with {} errors", errorMap.size());
@@ -509,48 +512,11 @@ public class OrganisationUserServiceValidator {
         log.debug("Organisation user request validation completed");
     }
 
-    private void syncMappedVendorToFacilities(OrgUserRequest request,
-                                              List<Jurisdiction> jurisdictions,
-                                              String vendorName,
-                                              String vendorUserName) {
-        List<String> facilityBoundaryCodes = extractActiveFacilityBoundaryCodes(jurisdictions);
-        if (facilityBoundaryCodes.isEmpty()) {
-            log.debug("No facility jurisdictions in request; skipping mapped-vendor sync");
-            return;
-        }
-        String tenantId = configuration.getGlobalTenantId();
-        if (request.getUser() != null && StringUtils.isNotBlank(request.getUser().getTenantId())) {
-            tenantId = request.getUser().getTenantId();
-        }
-        log.info("Syncing mapped vendor name='{}' userName='{}' to {} facility boundaries",
-                vendorName, vendorUserName, facilityBoundaryCodes.size());
-        facilityUtil.updateMappedVendorForFacilityBoundaries(
-                request.getRequestInfo(),
-                tenantId,
-                facilityBoundaryCodes,
-                vendorName,
-                vendorUserName
-        );
-    }
-
     private List<Jurisdiction> copyJurisdictions(List<Jurisdiction> jurisdictions) {
         if (jurisdictions == null || jurisdictions.isEmpty()) {
             return List.of();
         }
         return new ArrayList<>(jurisdictions);
-    }
-
-    private List<String> extractActiveFacilityBoundaryCodes(List<Jurisdiction> jurisdictions) {
-        if (jurisdictions == null || jurisdictions.isEmpty()) {
-            return List.of();
-        }
-        return jurisdictions.stream()
-                .filter(j -> j != null && FacilityUtil.isFacilityBoundaryType(j.getBoundaryType()))
-                .filter(j -> j.getIsActive() == null || Boolean.TRUE.equals(j.getIsActive()))
-                .map(Jurisdiction::getBoundary)
-                .filter(StringUtils::isNotBlank)
-                .distinct()
-                .collect(Collectors.toList());
     }
 
     /* Validates search FieldPlan request body and parameters*/
