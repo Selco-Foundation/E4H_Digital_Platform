@@ -214,13 +214,10 @@ public class ScheduledVisitService {
         }
 
         String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId() : facility.getNinId();
-        if (username == null || username.trim().isEmpty()) {
-            log.error("RESEND_OTP failed: no hfrId/ninId for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
-            throw new CustomException("GENERATE_TOKEN", "HFR ID or NIN ID is missing in facility details for facilityId: " + existingVisit.getFacilityId());
-        }
-        log.info("Resolved HRMS username for resend OTP visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
+        log.info("Resolved HRMS lookup for resend OTP visitId={} facilityId={} using username={} boundaryCode={}",
+                existingVisit.getId(), existingVisit.getFacilityId(), username, facility.getBoundaryCode());
 
-        Employee employee = getUserByUsername(request, username);
+        Employee employee = getUserByUsername(request, username, facility.getBoundaryCode());
         if (employee != null && employee.getUser() != null && employee.getUser().getMobileNumber() != null && !employee.getUser().getMobileNumber().isEmpty()) {
             OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
             if (otpResponse != null && otpResponse.getOtp() != null) {
@@ -267,13 +264,10 @@ public class ScheduledVisitService {
             }
 
             String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId(): facility.getNinId();
-            if (username == null || username.trim().isEmpty()) {
-                log.error("SUBMIT_VISIT_REPORT failed: no hfrId/ninId for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
-                throw new CustomException("UPDATE_WORKFLOW", "HFR ID or NIN ID is missing in facility details for facilityId: " + existingVisit.getFacilityId());
-            }
-            log.info("Resolved HRMS username for visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
+            log.info("Resolved HRMS lookup for visitId={} facilityId={} using username={} boundaryCode={}",
+                    existingVisit.getId(), existingVisit.getFacilityId(), username, facility.getBoundaryCode());
 
-            Employee employee = getUserByUsername(request, username);
+            Employee employee = getUserByUsername(request, username, facility.getBoundaryCode());
             if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
                 OtpResponse otpResponse = createOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId());
                 if (otpResponse !=null && otpResponse.getOtp()!=null){
@@ -321,13 +315,10 @@ public class ScheduledVisitService {
                 }
 
                 String username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank() ? facility.getHfrId(): facility.getNinId();
-                if (username == null || username.trim().isEmpty()) {
-                    log.error("SUBMIT_OTP failed: no hfrId/ninId for facilityId={} visitId={}", existingVisit.getFacilityId(), existingVisit.getId());
-                    throw new CustomException("UPDATE_WORKFLOW", "HFR ID or NIN ID is missing in facility details for facilityId: " + existingVisit.getFacilityId());
-                }
-                log.info("Resolved HRMS username for OTP validation visitId={} facilityId={}", existingVisit.getId(), existingVisit.getFacilityId());
+                log.info("Resolved HRMS lookup for OTP validation visitId={} facilityId={} using username={} boundaryCode={}",
+                        existingVisit.getId(), existingVisit.getFacilityId(), username, facility.getBoundaryCode());
 
-                Employee employee = getUserByUsername(request, username);
+                Employee employee = getUserByUsername(request, username, facility.getBoundaryCode());
                 if (employee !=null && employee.getUser() !=null && employee.getUser().getMobileNumber()!=null && !employee.getUser().getMobileNumber().isEmpty()){
                     OtpResponse otpResponse = validateOTP(employee.getUser().getMobileNumber(), existingVisit.getTenantId(), request.getVisitReport().getOtpReference());
                     if (otpResponse !=null && otpResponse.getOtp()!=null){
@@ -817,18 +808,27 @@ public class ScheduledVisitService {
         return employeeResponse.getEmployees().get(0);
     }
 
-    public Employee getUserByUsername(Object request, String username) {
-//        String encodedUsername = URLEncoder.encode(username, StandardCharsets.UTF_8);
-        String url = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl() + "?tenantId=in&codes=" + username;
-        log.debug("Calling HRMS employee search by username");
+    public Employee getUserByUsername(Object request, String username, String boundaryCode) {
+        String baseUrl = amcServiceConfiguration.getHrmsHost() + amcServiceConfiguration.getHrmsSearchUrl();
+        String url;
+        if (username != null && !username.trim().isEmpty()) {
+            url = baseUrl + "?tenantId=in&codes=" + username;
+            log.debug("Calling HRMS employee search by username");
+        } else if (boundaryCode != null && !boundaryCode.trim().isEmpty()) {
+            url = baseUrl + "?tenantId=in&boundaryCodes=" + boundaryCode + "&searchOnlyInBoundary=true";
+            log.debug("Calling HRMS employee search by boundaryCode");
+        } else {
+            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee search requires either username or boundaryCode");
+        }
         Object response = requestRepository.fetchResult(new StringBuilder(url), request);
 
         EmployeeResponse employeeResponse = mapper.convertValue(response, EmployeeResponse.class);
         if (employeeResponse == null || employeeResponse.getEmployees() == null || employeeResponse.getEmployees().isEmpty()) {
-            log.warn("No HRMS employee found for username={}", username);
-            throw new CustomException("EMPLOYEE_NOT_FOUND", "Employee not found with username: " + username);
+            log.warn("No HRMS employee found for username={} boundaryCode={}", username, boundaryCode);
+            throw new CustomException("EMPLOYEE_NOT_FOUND",
+                    "Employee not found with username: " + username + " or boundaryCode: " + boundaryCode);
         }
-        log.debug("HRMS employee found for username={}", username);
+        log.debug("HRMS employee found for username={} boundaryCode={}", username, boundaryCode);
         return employeeResponse.getEmployees().get(0);
     }
 
