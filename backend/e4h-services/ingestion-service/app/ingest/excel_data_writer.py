@@ -1,6 +1,7 @@
 import pandas as pd
 
 from app.ingest.service.data_writer import DataWriter
+from app.utils.excel_utils import prepare_dataframe_for_excel_export
 
 
 class ExcelDataWriter(DataWriter):
@@ -25,8 +26,9 @@ class ExcelDataWriter(DataWriter):
             book.save(self.file_path)
 
             # Now write the results to the output sheet
+            export_data = prepare_dataframe_for_excel_export(data)
             with pd.ExcelWriter(self.file_path, engine='openpyxl', mode='a') as writer:
-                data.to_excel(writer, sheet_name=self.output_sheet, index=False)
+                export_data.to_excel(writer, sheet_name=self.output_sheet, index=False)
 
             # Reload and remove TempSheet if it exists
             book = load_workbook(self.file_path)
