@@ -44,7 +44,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
-import org.egov.common.contract.models.AuditDetails;
 import org.hibernate.validator.constraints.NotEmpty;
 import org.springframework.validation.annotation.Validated;
 import java.util.ArrayList;
