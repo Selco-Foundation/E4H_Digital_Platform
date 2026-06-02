@@ -1,4 +1,4 @@
-from typing import Dict, List, Union, Any, Optional
+from typing import Dict, List, Union, Any, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -17,24 +17,62 @@ from app.core.logging import AppLogger
 
 logger = AppLogger().get_logger()
 
+FACILITY_IDENTIFIER_COLUMNS: Tuple[str, ...] = ("HFR ID", "NIN ID", "PoC Username")
 
-def convert_float64_columns_to_int64(df: pd.DataFrame) -> pd.DataFrame:
+
+def _cast_whole_float_column_to_int(df: pd.DataFrame, col: str) -> None:
+    series = df[col]
+    non_null = series.dropna()
+    if non_null.empty:
+        return
+    if not np.all(np.equal(np.mod(non_null.to_numpy(), 1), 0)):
+        return
+    if series.isna().any():
+        df[col] = series.astype("Int64")
+    else:
+        df[col] = series.astype("int64")
+
+
+def _normalize_forced_integer_column(df: pd.DataFrame, col: str) -> None:
+    """Normalize a column so numeric values are stored as integers without decimals."""
+    original = df[col]
+    numeric = pd.to_numeric(original, errors="coerce")
+    original_as_str = original.astype(str).str.strip()
+    non_empty_mask = original.notna() & original_as_str.ne("")
+
+    if non_empty_mask.any() and numeric[non_empty_mask].notna().all():
+        df[col] = np.trunc(numeric).astype("Int64")
+        return
+
+    numeric_like_mask = numeric.notna()
+    if numeric_like_mask.any():
+        df.loc[numeric_like_mask, col] = np.trunc(numeric[numeric_like_mask]).astype("int64")
+
+
+def normalize_excel_integer_columns(
+    df: pd.DataFrame,
+    *,
+    force_columns: Optional[Tuple[str, ...]] = None,
+    convert_all_whole_float64: bool = True,
+) -> pd.DataFrame:
     """
-    Convert float64 columns whose non-null values are whole numbers to int64.
-    Excel often loads integer columns as float64 when empty cells are present.
-    Columns that keep fractional values are left unchanged.
+    Normalize Excel-loaded numeric columns to integers without decimals.
+
+    - convert_all_whole_float64: convert any float64 column whose non-null values are whole numbers.
+    - force_columns: always normalize these columns (e.g. HFR ID, NIN ID, PoC Username), including
+      object-typed cells that look numeric.
     """
-    for col in df.select_dtypes(include=["float64"]).columns:
-        series = df[col]
-        non_null = series.dropna()
-        if non_null.empty:
-            continue
-        if not np.all(np.equal(np.mod(non_null.to_numpy(), 1), 0)):
-            continue
-        if series.isna().any():
-            df[col] = series.astype("Int64")
-        else:
-            df[col] = series.astype("int64")
+    forced = set(force_columns or ())
+
+    if convert_all_whole_float64:
+        for col in df.select_dtypes(include=["float64"]).columns:
+            if col not in forced:
+                _cast_whole_float_column_to_int(df, col)
+
+    for col in force_columns or ():
+        if col in df.columns:
+            _normalize_forced_integer_column(df, col)
+
     return df
 
 

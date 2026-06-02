@@ -12,7 +12,11 @@ from openpyxl.styles import Protection, Font, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
-from app.utils.excel_utils import autofit_columns, convert_float64_columns_to_int64
+from app.utils.excel_utils import (
+    FACILITY_IDENTIFIER_COLUMNS,
+    autofit_columns,
+    normalize_excel_integer_columns,
+)
 from app.utils.facility_validator import (
     project_facility_validation,
     facility_validation,
@@ -306,7 +310,7 @@ async def validate_facilities_excel_sheet(
         df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
-        df = convert_float64_columns_to_int64(df)
+        df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
         # ----------------- Read Facility Column ----------------- #
         if 'Facility Id' not in df.columns:
@@ -498,7 +502,7 @@ async def upload_facilities_excel_sheet(
         df = pd.read_excel(facility_file_path, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
-        df = convert_float64_columns_to_int64(df)
+        df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
         if 'status' not in df.columns:
             df['status'] = ''
