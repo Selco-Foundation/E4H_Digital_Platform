@@ -1,5 +1,6 @@
 from typing import Dict, List, Union, Any, Optional
 
+import numpy as np
 import pandas as pd
 
 from app.utils.facility_validator import (
@@ -15,6 +16,27 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from app.core.logging import AppLogger
 
 logger = AppLogger().get_logger()
+
+
+def convert_float64_columns_to_int64(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert float64 columns whose non-null values are whole numbers to int64.
+    Excel often loads integer columns as float64 when empty cells are present.
+    Columns that keep fractional values are left unchanged.
+    """
+    for col in df.select_dtypes(include=["float64"]).columns:
+        series = df[col]
+        non_null = series.dropna()
+        if non_null.empty:
+            continue
+        if not np.all(np.equal(np.mod(non_null.to_numpy(), 1), 0)):
+            continue
+        if series.isna().any():
+            df[col] = series.astype("Int64")
+        else:
+            df[col] = series.astype("int64")
+    return df
+
 
 """
     Add dropdowns to Excel using hidden sheets for maximum compatibility.
