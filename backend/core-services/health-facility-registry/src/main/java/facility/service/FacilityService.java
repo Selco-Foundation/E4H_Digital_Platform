@@ -117,6 +117,19 @@ public class FacilityService {
         List<FacilityCreate> facilities = request.getFacilities();
         log.info("Processing facility create request for {} facilities", facilities.size());
 
+        // Normalize facility names (trim + collapse multiple spaces) before any validation
+        if (facilities != null) {
+            for (FacilityCreate fc : facilities) {
+                if (fc != null && fc.getFacilityName() != null) {
+                    fc.setFacilityName(
+                            fc.getFacilityName()
+                                    .trim()
+                                    .replaceAll("\\s+", " ")
+                    );
+                }
+            }
+        }
+
         // Group facility create requests by tenant ID for batch validation and processing
         Map<String, List<FacilityCreate>> facilitiesByTenant = facilities.stream()
                 .collect(Collectors.groupingBy(FacilityCreate::getTenantId));
@@ -146,7 +159,7 @@ public class FacilityService {
                         .facilityCategory(facilityCreate.getFacilityCategory())
                         .facilityType(facilityCreate.getFacilityType())
                         .facilitySubtype(facilityCreate.getFacilitySubtype())
-                        .facilityName(facilityCreate.getFacilityName()!=null ? facilityCreate.getFacilityName().trim() : facilityCreate.getFacilityName())
+                        .facilityName(facilityCreate.getFacilityName())
                         .facilityOwnership(facilityCreate.getFacilityOwnership())
                         .facilityPocName(facilityCreate.getFacilityPocName())
                         .facilityPocEmail(facilityCreate.getFacilityPocEmail())
@@ -632,13 +645,22 @@ public class FacilityService {
         }
         catch(Exception e){}
 
+        // Normalize facility name (trim + collapse multiple spaces) before mapping
+        if (update.getFacilityName() != null) {
+            update.setFacilityName(
+                    update.getFacilityName()
+                            .trim()
+                            .replaceAll("\\s+", " ")
+            );
+        }
+
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
         facility.setTenantId(update.getTenantId());
         facility.setFacilityCategory(update.getFacilityCategory());
         facility.setFacilityType(update.getFacilityType());
         facility.setFacilitySubtype(update.getFacilitySubtype());
-        facility.setFacilityName(update.getFacilityName()!=null ? update.getFacilityName().trim() : update.getFacilityName());
+        facility.setFacilityName(update.getFacilityName());
         facility.setAddress(update.getAddress());
         facility.setAdditionalDetails(update.getAdditionalDetails());
         facility.setBoundaryCode(update.getBoundaryCode());
