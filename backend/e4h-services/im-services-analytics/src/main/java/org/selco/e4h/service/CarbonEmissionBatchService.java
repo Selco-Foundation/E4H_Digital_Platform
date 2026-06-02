@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * LLD emission calculation orchestration: MDMS → facilities → projects → calculate → Kafka indexer topics.
+ * Orchestrates CO2 batch processing and indexing.
  */
 @Slf4j
 @Service
@@ -66,7 +66,7 @@ public class CarbonEmissionBatchService {
                     requestInfo, tenantId, batchIds);
 
             for (Co2FacilityContext facility : facilities) {
-                // Empty string when unmapped so indexer clears stale projectName on re-run (null is omitted from JSON).
+                // Use empty project name when unmapped so old indexed values are replaced on re-run.
                 facility.setProjectName(projectNames.getOrDefault(facility.getFacilityId(), ""));
                 processFacility(facility, current, references, List.of(facility));
             }
@@ -115,7 +115,7 @@ public class CarbonEmissionBatchService {
             }
         }
 
-        // Upsert projections (month > batch period) via save-co2-monthly-projection-facility-indexer; same _id replaces prior doc
+        // Publish future months; existing docs with the same id are replaced.
         indexerRepository.publishProjections(projections);
     }
 
@@ -158,9 +158,23 @@ public class CarbonEmissionBatchService {
                 .solarSystemCapacity(f.getSolarSystemCapacity())
                 .month(month)
                 .year(year)
+                .financialYear(financialYearFor(month, year))
+                .financialMonth(financialMonthFor(month))
                 .co2EmissionsAvoidedInTonnes(tonnes)
                 .projectedCo2EmissionsAvoidedInTonnes(tonnes)
                 .build();
+    }
+
+    private static String financialYearFor(int month, int year) {
+        if (month >= 4) {
+            return year + "-" + String.format("%02d", (year + 1) % 100);
+        }
+        return (year - 1) + "-" + String.format("%02d", year % 100);
+    }
+
+    /** Financial month index for FY view: Apr=1 ... Mar=12. */
+    private static int financialMonthFor(int month) {
+        return month >= 4 ? month - 3 : month + 9;
     }
 
     private static String localizedOrCode(String localized, String code) {

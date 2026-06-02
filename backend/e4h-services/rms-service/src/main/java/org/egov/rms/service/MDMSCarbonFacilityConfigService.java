@@ -20,9 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Reads MDMS master for facilities marked for CO2 emissions avoided visibility (LLD #2419).
- */
+/** Reads facility ids enabled for CO2 processing from MDMS. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
