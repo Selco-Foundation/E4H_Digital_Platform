@@ -12,7 +12,12 @@ from openpyxl.styles import Protection, Font, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 from app.utils.amc_scheduler_service_client import AMCSchedulerServiceClient
-from app.utils.excel_utils import autofit_columns
+from app.utils.excel_utils import (
+    FACILITY_IDENTIFIER_COLUMNS,
+    autofit_columns,
+    normalize_excel_integer_columns,
+    prepare_dataframe_for_excel_export,
+)
 from app.utils.facility_validator import (
     project_facility_validation,
     facility_validation,
@@ -306,6 +311,7 @@ async def validate_facilities_excel_sheet(
         df = pd.read_excel(temp_input_file.name, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+        df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
         # ----------------- Read Facility Column ----------------- #
         if 'Facility Id' not in df.columns:
@@ -429,7 +435,8 @@ async def validate_facilities_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -497,6 +504,7 @@ async def upload_facilities_excel_sheet(
         df = pd.read_excel(facility_file_path, sheet_name=facility_sheet_name)
         df.columns = [str(c).strip() for c in df.columns]
         df = df.loc[:, ~df.columns.str.startswith('Unnamed')]
+        df = normalize_excel_integer_columns(df, force_columns=FACILITY_IDENTIFIER_COLUMNS)
 
         if 'status' not in df.columns:
             df['status'] = ''
@@ -2051,7 +2059,8 @@ async def validate_facilities_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2179,7 +2188,8 @@ async def validate_facilities_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2456,7 +2466,8 @@ async def create_facilities_and_update_project(
             ws.delete_rows(2, ws.max_row - 1)
 
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2700,7 +2711,8 @@ async def create_fielplan_facilities(
             ws.delete_rows(2, ws.max_row - 1)
 
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 ws.cell(row=r_idx, column=c_idx, value=value)
 
@@ -2832,7 +2844,8 @@ async def validate_amc_configurations_excel_sheet(
 
         grey_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
         # Write data rows back (without header row)
-        for r_idx, row in enumerate(dataframe_to_rows(df, index=False, header=False), start=2):
+        export_df = prepare_dataframe_for_excel_export(df)
+        for r_idx, row in enumerate(dataframe_to_rows(export_df, index=False, header=False), start=2):
             for c_idx, value in enumerate(row, start=1):
                 cell = ws.cell(row=r_idx, column=c_idx, value=value)
 
