@@ -52,7 +52,13 @@ const OrganizationUserAdminActions = ({ t, organizationId, organizationType, org
           jurisdiction: jurisdictions
         }
       }
-      await VendorService.createOrganizationUser(organizationUser)
+      await VendorService.createOrganizationUser(organizationUser);
+
+      const delayForUserUpdateInSeconds = Math.min((jurisdictions.length / 100) + 1, 5);
+      await new Promise((resolve) =>
+        setTimeout(resolve, delayForUserUpdateInSeconds * 1000)
+      );
+
       await queryClient.invalidateQueries(["ORGANISATION_USER"]);
 
       setBlockUI(false);
