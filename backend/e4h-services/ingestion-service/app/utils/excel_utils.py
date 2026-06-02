@@ -76,6 +76,31 @@ def normalize_excel_integer_columns(
     return df
 
 
+def to_excel_cell_value(value: Any) -> Any:
+    """Convert pandas/numpy scalars to values openpyxl can write (pd.NA -> None)."""
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    if isinstance(value, np.generic):
+        if isinstance(value, np.floating):
+            if np.isnan(value):
+                return None
+            if float(value).is_integer():
+                return int(value)
+            return float(value)
+        return value.item()
+    return value
+
+
+def prepare_dataframe_for_excel_export(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy safe for openpyxl / dataframe_to_rows (no pd.NA)."""
+    return df.apply(lambda col: col.map(to_excel_cell_value))
+
+
 """
     Add dropdowns to Excel using hidden sheets for maximum compatibility.
 
