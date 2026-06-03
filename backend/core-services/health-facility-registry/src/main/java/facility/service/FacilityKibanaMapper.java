@@ -2,17 +2,22 @@ package facility.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import facility.config.Configuration;
 import facility.repository.ServiceRequestRepository;
 import facility.web.models.BoundaryInfo;
 import facility.web.models.Facility;
+import facility.util.FacilityMappedVendorHelper;
 import facility.web.models.FacilityKibanaIndex;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -35,6 +40,12 @@ public class FacilityKibanaMapper {
     private final ServiceRequestRepository serviceRequestRepository;
     private final RestTemplate restTemplate;
     private final ObjectMapper mapper;
+    private final Configuration configs;
+
+    private static final String LOCALIZATION_MODULE = "rainmaker-in";
+    private static final String LOCALIZATION_LOCALE = "en_IN";
+    /** Boundary localizations are stored at national tenant (see ingestion-service / FacilityService). */
+    private static final String LOCALIZATION_TENANT_ID = "in";
 
     @Value("${egov.boundary.host}")
     private String boundaryHost;
@@ -122,10 +133,11 @@ public class FacilityKibanaMapper {
             districtCode = boundaryCodes.getDistrictCode();
             stateCode = boundaryCodes.getStateCode();
             countryCode = boundaryCodes.getCountryCode();
-            // Top-level state/district/block are human-readable labels (not full hierarchy codes)
-            builder.block(boundaryHierarchyCodeToDisplayLabel(blockCode))
-                   .district(boundaryHierarchyCodeToDisplayLabel(districtCode))
-                   .state(boundaryHierarchyCodeToDisplayLabel(stateCode));
+            // Top-level state/district/block are human-readable labels from localization (spaces preserved)
+            Map<String, String> boundaryLabels = fetchBoundaryDisplayLabels(requestInfo, stateCode, districtCode, blockCode);
+            builder.block(resolveBoundaryDisplayLabel(blockCode, boundaryLabels))
+                   .district(resolveBoundaryDisplayLabel(districtCode, boundaryLabels))
+                   .state(resolveBoundaryDisplayLabel(stateCode, boundaryLabels));
         }
         
         // Build boundary info from fetched hierarchy (use extracted values)
@@ -186,6 +198,14 @@ public class FacilityKibanaMapper {
             existingDoc.setIsLive(facility.getIsActive());
             log.info("Updated Kibana field isLive={} for facilityId={}",
                     facility.getIsActive(), facility.getFacilityId());
+        }
+        if (StringUtils.isNotBlank(facility.getMappedVendorName())) {
+            existingDoc.setMappedVendorName(facility.getMappedVendorName());
+            log.info("Updated Kibana field mappedVendorName for facilityId={}", facility.getFacilityId());
+        }
+        if (StringUtils.isNotBlank(facility.getMappedVendorUserName())) {
+            existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
+            log.info("Updated Kibana field mappedVendorUserName for facilityId={}", facility.getFacilityId());
         }
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
         log.info("Completed Kibana index update mapping for facilityId={} tenantId={}",
@@ -261,8 +281,125 @@ public class FacilityKibanaMapper {
     }
 
     /**
-     * The boundary relationship API returns hierarchical codes (e.g. {@code India_Nagaland_Zunheboto}).
-     * Indexed documents expect the display fragment (e.g. Nagaland, Zunheboto) like legacy rows.
+     * Resolves a human-readable boundary label via egov-localization ({@code Boundary_{code}}).
+     * Falls back to the last hierarchy segment when localization is missing or unavailable.
+     */
+    private String resolveBoundaryDisplayLabel(String boundaryCode, Map<String, String> labels) {
+        if (boundaryCode == null || boundaryCode.isBlank()) {
+            return null;
+        }
+        String localizationCode = toLocalizationCode(boundaryCode);
+        if (labels != null) {
+            String localized = labels.get(localizationCode);
+            if (localized != null && !localized.isBlank()) {
+                return localized;
+            }
+        }
+        return boundaryHierarchyCodeToDisplayLabel(boundaryCode);
+    }
+
+    private Map<String, String> fetchBoundaryDisplayLabels(RequestInfo requestInfo, String... boundaryCodes) {
+        List<String> localizationCodes = new ArrayList<>();
+        for (String code : boundaryCodes) {
+            if (code != null && !code.isBlank()) {
+                localizationCodes.add(toLocalizationCode(code));
+            }
+        }
+        if (localizationCodes.isEmpty()) {
+            return Map.of();
+        }
+
+        String searchUrl = buildLocalizationSearchUrl();
+        if (searchUrl == null || searchUrl.isBlank()) {
+            log.warn("Localization search URL not configured; using code fragment fallback for boundaries");
+            return Map.of();
+        }
+
+        String url = UriComponentsBuilder.fromHttpUrl(searchUrl)
+                .queryParam("tenantId", LOCALIZATION_TENANT_ID)
+                .queryParam("module", LOCALIZATION_MODULE)
+                .queryParam("locale", LOCALIZATION_LOCALE)
+                .queryParam("codes", String.join(",", localizationCodes))
+                .build()
+                .toUriString();
+
+        Map<String, Object> body = new HashMap<>();
+        if (requestInfo != null) {
+            body.put("RequestInfo", requestInfo);
+        }
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    url, HttpMethod.POST, new HttpEntity<>(body.isEmpty() ? null : body, headers), String.class);
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.warn("Localization search returned no labels for codes={}", localizationCodes);
+                return Map.of();
+            }
+            return parseLocalizationMessages(response.getBody());
+        } catch (Exception e) {
+            log.warn("Localization search failed for boundary codes {}: {}", localizationCodes, e.getMessage());
+            return Map.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, String> parseLocalizationMessages(String responseBody) {
+        Map<String, String> result = new HashMap<>();
+        try {
+            Map<String, Object> root = mapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {});
+            Object messagesObj = root.get("messages");
+            if (!(messagesObj instanceof List)) {
+                return result;
+            }
+            for (Object messageObj : (List<?>) messagesObj) {
+                if (!(messageObj instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> message = (Map<String, Object>) messageObj;
+                String code = (String) message.get("code");
+                String text = (String) message.get("message");
+                if (code != null && !code.isBlank() && text != null && !text.isBlank()) {
+                    result.put(code, text);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse localization response: {}", e.getMessage());
+        }
+        return result;
+    }
+
+    private String buildLocalizationSearchUrl() {
+        String host = configs.getLocalizationHost();
+        String contextPath = configs.getLocalizationContextPath();
+        String searchEndpoint = configs.getLocalizationSearchEndpoint();
+        if (host == null || host.isBlank() || contextPath == null || contextPath.isBlank()
+                || searchEndpoint == null || searchEndpoint.isBlank()) {
+            return null;
+        }
+        return host + contextPath + searchEndpoint;
+    }
+
+    private static String toLocalizationCode(String boundaryCode) {
+        if (boundaryCode.startsWith("Boundary_")) {
+            return boundaryCode;
+        }
+        return "Boundary_" + boundaryCode;
+    }
+
+    /**
+     * Fallback when localization is unavailable: last segment of private static String boundaryHierarchyCodeToDisplayLabel(String boundaryCode) {
+     if (boundaryCode == null || boundaryCode.isBlank()) {
+     return null;
+     }
+     int i = boundaryCode.lastIndexOf('_');
+     if (i < 0) {
+     return boundaryCode;
+     }
+     return boundaryCode.substring(i + 1);
+     }the hierarchy code (spaces not restored).
      */
     private static String boundaryHierarchyCodeToDisplayLabel(String boundaryCode) {
         if (boundaryCode == null || boundaryCode.isBlank()) {
@@ -277,28 +414,37 @@ public class FacilityKibanaMapper {
 
     @SuppressWarnings("unchecked")
     private void applyMappedVendorFields(Facility facility, FacilityKibanaIndex.FacilityKibanaIndexBuilder builder) {
+        FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+        String user = firstNonBlankString(facility.getMappedVendorUserName());
+        String name = firstNonBlankString(facility.getMappedVendorName());
         Map<String, Object> ad = facility.getAdditionalDetails();
-        if (ad == null || ad.isEmpty()) {
-            return;
-        }
-        String user = firstNonBlankString(
-                ad.get("mappedVendorUserName"),
-                ad.get("mapped_vendor_user_name"),
-                ad.get("mappedVendorUsername"));
-        String name = firstNonBlankString(
-                ad.get("mappedVendorName"),
-                ad.get("mapped_vendor_name"));
-        if (user == null || name == null) {
-            Object nested = ad.get("vendor");
-            if (nested instanceof Map) {
-                Map<String, Object> v = (Map<String, Object>) nested;
-                if (user == null) {
-                    user = firstNonBlankString(v.get("userName"), v.get("mappedVendorUserName"), v.get("username"));
-                }
-                if (name == null) {
-                    name = firstNonBlankString(v.get("name"), v.get("vendorName"));
+        if (ad != null && !ad.isEmpty()) {
+            if (user == null) {
+                user = firstNonBlankString(
+                        ad.get(FacilityMappedVendorHelper.MAPPED_VENDOR_USER_NAME_KEY),
+                        ad.get("mapped_vendor_user_name"),
+                        ad.get("mappedVendorUsername"));
+            }
+            if (name == null) {
+                name = firstNonBlankString(
+                        ad.get(FacilityMappedVendorHelper.MAPPED_VENDOR_NAME_KEY),
+                        ad.get("mapped_vendor_name"));
+            }
+            if (user == null || name == null) {
+                Object nested = ad.get("vendor");
+                if (nested instanceof Map) {
+                    Map<String, Object> v = (Map<String, Object>) nested;
+                    if (user == null) {
+                        user = firstNonBlankString(v.get("userName"), v.get("mappedVendorUserName"), v.get("username"));
+                    }
+                    if (name == null) {
+                        name = firstNonBlankString(v.get("name"), v.get("vendorName"));
+                    }
                 }
             }
+        }
+        if (user == null && name == null) {
+            return;
         }
         if (user != null) {
             builder.mappedVendorUserName(user);

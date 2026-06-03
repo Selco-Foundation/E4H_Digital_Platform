@@ -31,6 +31,12 @@ public class RMSConfiguration {
     @Value("${rms.api.center.mappings.endpoint}")
     private String centerMappingsEndpoint;
 
+    @Value("${rms.api.dashboard.data.endpoint}")
+    private String dashboardDataEndpoint;
+
+    @Value("${rms.api.dashboard.table.data.endpoint}")
+    private String dashboardTableDataEndpoint;
+
     @Value("${rms.api.timeout:30000}")
     private Integer rmsApiTimeout;
 

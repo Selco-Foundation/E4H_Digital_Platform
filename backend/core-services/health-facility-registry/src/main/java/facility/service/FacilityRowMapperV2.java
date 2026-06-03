@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import facility.util.FacilityMappedVendorHelper;
 import facility.web.models.Facility;
 import facility.web.models.FacilityAddress;
 import facility.web.models.HealthFacilityDetails;
@@ -17,8 +18,10 @@ import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.stereotype.Repository;
 
 import java.io.IOException;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -76,6 +79,9 @@ public class FacilityRowMapperV2 implements ResultSetExtractor<List<Facility>> {
         facility.setFacilityRegion(rs.getString("facility_region"));
         facility.setIsOnmReady(rs.getBoolean("is_onm_ready"));
         facility.setRmsInactive(rs.getObject("rms_inactive") != null ? rs.getBoolean("rms_inactive") : null);
+        facility.setSolarInstallationDate(toLocalDate(rs.getDate("solar_installation_date")));
+        facility.setRmsInstallationDate(toLocalDate(rs.getDate("rms_installation_date")));
+        facility.setSolarSystemCapacityKwp(toDouble(rs.getObject("solar_system_capacity_kwp")));
 
         try {
             String detailsJson = rs.getString("facility_details");
@@ -94,7 +100,22 @@ public class FacilityRowMapperV2 implements ResultSetExtractor<List<Facility>> {
             throw new RuntimeException("Error parsing JSON fields in facility record", e);
         }
 
+        FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
         return facility;
+    }
+
+    private static LocalDate toLocalDate(Date date) {
+        return date != null ? date.toLocalDate() : null;
+    }
+
+    private static Double toDouble(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        }
+        return Double.valueOf(value.toString());
     }
 
     private FacilityAddress getAddress(ResultSet rs) throws SQLException {

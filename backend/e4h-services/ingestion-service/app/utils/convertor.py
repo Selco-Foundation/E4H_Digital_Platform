@@ -507,7 +507,14 @@ def safe_get(row, key, default=None):
     return default if pd.isna(val) else val
 
 
-def create_facility_payload(request_info: RequestInfo, row: Series, are_facilities_onm_ready:bool, facility_schema: List[Dict[str, Any]]):
+def create_facility_payload(
+        request_info: RequestInfo,
+        row: Series,
+        are_facilities_onm_ready: bool,
+        facility_schema: List[Dict[str, Any]],
+        mapped_vendor_name: Optional[str] = None,
+        mapped_vendor_user_name: Optional[str] = None,
+):
     facility_type_name = safe_get(row, 'Type of HC (Mandatory)')
     facility_type_code = get_mdms_code_by_name(facility_schema, 'Type of HC', facility_type_name)
 
@@ -556,10 +563,41 @@ def create_facility_payload(request_info: RequestInfo, row: Series, are_faciliti
     if poc_username_hdr:
         facility_record['facility_poc_username'] = safe_get(row, poc_username_hdr)
 
+    if mapped_vendor_name or mapped_vendor_user_name:
+        additional_details: Dict[str, Any] = {}
+        if mapped_vendor_name:
+            facility_record['mappedVendorName'] = mapped_vendor_name
+            additional_details['mappedVendorName'] = mapped_vendor_name
+        if mapped_vendor_user_name:
+            facility_record['mappedVendorUserName'] = mapped_vendor_user_name
+            additional_details['mappedVendorUserName'] = mapped_vendor_user_name
+        facility_record['additionalDetails'] = additional_details
+
     return {
         'RequestInfo': request_info.model_dump(by_alias=True, exclude_none=True),
         'facilities': [facility_record]
     }
+
+
+def resolve_mapped_vendor_for_facility_row(
+        org_client,
+        request_info: RequestInfo,
+        row: Series,
+        vendor_code_column: str,
+        cache: Optional[Dict[str, Dict[str, Optional[str]]]] = None,
+) -> Dict[str, Optional[str]]:
+    """Resolve mapped vendor fields for a facility row, with optional per-vendor-code cache."""
+    empty = {"mappedVendorName": None, "mappedVendorUserName": None}
+    if org_client is None:
+        return empty
+    vendor_code = org_client.normalize_facility_vendor_code(row.get(vendor_code_column))
+    if not vendor_code:
+        return empty
+    if cache is not None:
+        if vendor_code not in cache:
+            cache[vendor_code] = org_client.resolve_mapped_vendor_fields(vendor_code, request_info)
+        return cache[vendor_code]
+    return org_client.resolve_mapped_vendor_fields(vendor_code, request_info)
 
 def convert_response_to_facility(response: Dict[str, Any], role_type: str):
     return {
