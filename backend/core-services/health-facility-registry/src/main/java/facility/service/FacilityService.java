@@ -49,6 +49,7 @@ public class FacilityService {
 
     private final HRMSUtils hrmsUtils;
     private final HRMSService hrmsService;
+    private final VendorOrganisationService vendorOrganisationService;
     private final RestTemplate restTemplate;
 
     private static final String LOCALIZATION_MODULE = "rainmaker-in";
@@ -74,6 +75,7 @@ public class FacilityService {
             FacilityRowMapperV2 facilityRowMapperV2,
             HRMSUtils hrmsUtils,
             HRMSService hrmsService,
+            VendorOrganisationService vendorOrganisationService,
             RestTemplate restTemplate) {
         this.facilityRepository = facilityRepository;
         this.jdbcTemplate = jdbcTemplate;
@@ -90,6 +92,7 @@ public class FacilityService {
         this.facilityRowMapperV2 = facilityRowMapperV2;
         this.hrmsUtils = hrmsUtils;
         this.hrmsService = hrmsService;
+        this.vendorOrganisationService = vendorOrganisationService;
         this.restTemplate = restTemplate;
     }
 
@@ -113,6 +116,19 @@ public class FacilityService {
         log.trace("Entering createFacility method");
         List<FacilityCreate> facilities = request.getFacilities();
         log.info("Processing facility create request for {} facilities", facilities.size());
+
+        // Normalize facility names (trim + collapse multiple spaces) before any validation
+        if (facilities != null) {
+            for (FacilityCreate fc : facilities) {
+                if (fc != null && fc.getFacilityName() != null) {
+                    fc.setFacilityName(
+                            fc.getFacilityName()
+                                    .trim()
+                                    .replaceAll("\\s+", " ")
+                    );
+                }
+            }
+        }
 
         // Group facility create requests by tenant ID for batch validation and processing
         Map<String, List<FacilityCreate>> facilitiesByTenant = facilities.stream()
@@ -143,7 +159,7 @@ public class FacilityService {
                         .facilityCategory(facilityCreate.getFacilityCategory())
                         .facilityType(facilityCreate.getFacilityType())
                         .facilitySubtype(facilityCreate.getFacilitySubtype())
-                        .facilityName(facilityCreate.getFacilityName())
+                        .facilityName(facilityCreate.getFacilityName()!=null ? facilityCreate.getFacilityName().trim() : facilityCreate.getFacilityName())
                         .facilityOwnership(facilityCreate.getFacilityOwnership())
                         .facilityPocName(facilityCreate.getFacilityPocName())
                         .facilityPocEmail(facilityCreate.getFacilityPocEmail())
@@ -160,6 +176,9 @@ public class FacilityService {
                         .additionalDetails(facilityCreate.getAdditionalDetails())
                         .isActive(true)
                         .isOnmReady(facilityCreate.getIsOnmReady())
+                        .solarInstallationDate(facilityCreate.getSolarInstallationDate())
+                        .rmsInstallationDate(facilityCreate.getRmsInstallationDate())
+                        .solarSystemCapacityKwp(facilityCreate.getSolarSystemCapacityKwp())
                         .build();
 
                 facility.setFacilityId(idgenUtil.getIdList(
@@ -253,6 +272,9 @@ public class FacilityService {
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
                 
+                FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+                FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
+
                 // If facility is ONM ready, create POC user and push to Kibana for indexing
                 if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
                     log.info("Facility {} is ONM ready, creating POC user and pushing to Kibana", facility.getFacilityId());
@@ -263,7 +285,14 @@ public class FacilityService {
                     FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
                     facilityRepository.pushToKibana(kibanaIndex);
                 }
-                
+
+                // Mapped the first vendor user with this new facility created
+                String vendorCode = extractVendorCode(facility);
+                if (vendorCode != null && !vendorCode.isBlank()) {
+                    vendorOrganisationService.assignFacilityJurisdictionToFirstOrgUser(
+                            vendorCode, facility, tenantId, request.getRequestInfo());
+                }
+
                 validatedFacilities.add(facility);
             }
         }
@@ -410,6 +439,14 @@ public class FacilityService {
             log.debug("Facility POC username is unique");
         }
         log.trace("Exiting validateFacilityPocUsernameUnique method");
+    }
+
+    private String extractVendorCode(Facility facility) {
+        if (facility.getFacilityDetails() == null) {
+            return null;
+        }
+        String vendorCode = facility.getFacilityDetails().getVendorCode();
+        return vendorCode != null ? vendorCode.trim() : null;
     }
 
     private void validateCategoryBasedIdentifiers(String facilityCategory, String hfrId, String ninId) {
@@ -608,13 +645,22 @@ public class FacilityService {
         }
         catch(Exception e){}
 
+        // Normalize facility name (trim + collapse multiple spaces) before mapping
+        if (update.getFacilityName() != null) {
+            update.setFacilityName(
+                    update.getFacilityName()
+                            .trim()
+                            .replaceAll("\\s+", " ")
+            );
+        }
+
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
         facility.setTenantId(update.getTenantId());
         facility.setFacilityCategory(update.getFacilityCategory());
         facility.setFacilityType(update.getFacilityType());
         facility.setFacilitySubtype(update.getFacilitySubtype());
-        facility.setFacilityName(update.getFacilityName());
+        facility.setFacilityName(update.getFacilityName()!=null ? update.getFacilityName().trim() : update.getFacilityName());
         facility.setAddress(update.getAddress());
         facility.setAdditionalDetails(update.getAdditionalDetails());
         facility.setBoundaryCode(update.getBoundaryCode());
@@ -629,6 +675,29 @@ public class FacilityService {
         facility.setIsActive(update.getIsActive());
         facility.setUserId(update.getUserId());
         facility.setIsOnmReady(update.getIsOnmReady());
+        facility.setSolarInstallationDate(
+                update.getSolarInstallationDate() != null ? update.getSolarInstallationDate() : existingFacility.getSolarInstallationDate());
+        facility.setRmsInstallationDate(
+                update.getRmsInstallationDate() != null ? update.getRmsInstallationDate() : existingFacility.getRmsInstallationDate());
+        facility.setSolarSystemCapacityKwp(
+                update.getSolarSystemCapacityKwp() != null ? update.getSolarSystemCapacityKwp() : existingFacility.getSolarSystemCapacityKwp());
+
+        // Preserve CO2 fields on partial update payloads sent to persister
+        if (update.getSolarInstallationDate() == null) {
+            update.setSolarInstallationDate(existingFacility.getSolarInstallationDate());
+        }
+        if (update.getRmsInstallationDate() == null) {
+            update.setRmsInstallationDate(existingFacility.getRmsInstallationDate());
+        }
+        if (update.getSolarSystemCapacityKwp() == null) {
+            update.setSolarSystemCapacityKwp(existingFacility.getSolarSystemCapacityKwp());
+        }
+
+        FacilityMappedVendorHelper.mergeMappedVendorFromUpdate(facility, update, existingFacility);
+        FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
+        update.setAdditionalDetails(facility.getAdditionalDetails());
+        update.setMappedVendorName(facility.getMappedVendorName());
+        update.setMappedVendorUserName(facility.getMappedVendorUserName());
 
         String effectiveCategory = firstNonBlank(update.getFacilityCategory(), existingFacility.getFacilityCategory());
         String effectiveHfrId = firstNonBlank(update.getHfrId(), existingFacility.getHfrId());
@@ -672,7 +741,7 @@ public class FacilityService {
 
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
-        
+        boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendor(facility);
         // If user sent isOnmReady = true, handle POC user creation and Kibana push
         if (Boolean.TRUE.equals(update.getIsOnmReady())) {
             log.info("Facility {} is marked as ONM ready, processing POC user and Kibana push", update.getFacilityId());
@@ -744,6 +813,8 @@ public class FacilityService {
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
                     .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
+                    .mappedVendorName(facility.getMappedVendorName() != null ? facility.getMappedVendorName() : existingFacility.getMappedVendorName())
+                    .mappedVendorUserName(facility.getMappedVendorUserName() != null ? facility.getMappedVendorUserName() : existingFacility.getMappedVendorUserName())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
                     .isOnmReady(true) // Set from update request
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
@@ -761,6 +832,24 @@ public class FacilityService {
                     facilityForKibanaUpdate, request.getRequestInfo());
             facilityRepository.pushToKibana(kibanaIndex);
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
+        } else if (mappedVendorUpdated) {
+            Facility facilityForKibanaUpdate = Facility.builder()
+                    .facilityId(facility.getFacilityId())
+                    .tenantId(facility.getTenantId())
+                    .facilityName(firstNonBlank(facility.getFacilityName(), existingFacility.getFacilityName()))
+                    .facilityType(firstNonBlank(facility.getFacilityType(), existingFacility.getFacilityType()))
+                    .facilityCategory(firstNonBlank(facility.getFacilityCategory(), existingFacility.getFacilityCategory()))
+                    .mappedVendorName(facility.getMappedVendorName())
+                    .mappedVendorUserName(facility.getMappedVendorUserName())
+                    .additionalDetails(facility.getAdditionalDetails())
+                    .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())
+                    .build();
+            FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
+                    facilityForKibanaUpdate, request.getRequestInfo());
+            if (kibanaIndex != null) {
+                facilityRepository.pushToKibana(kibanaIndex);
+                log.info("Facility {} mapped-vendor fields pushed to Kibana", sanitizeForLog(update.getFacilityId()));
+            }
         }
         
         log.info("Successfully updated facility {}", update.getFacilityId());
@@ -1018,7 +1107,7 @@ public class FacilityService {
                         "FROM facility fac");
         query.append(" LEFT JOIN facility_address fa ON fac.addressid = fa.id ");
         query.append(result.getWhereClause());
-        query.append(" ORDER BY updated_at DESC NULLS LAST ");
+        query.append(buildBulkSearchOrderBy(criteria));
 
         List<Object> allParams = new ArrayList<>(result.getParams());
         if (!Boolean.TRUE.equals(request.getFacilityBulkSearchCriteria().getSendNonPaginatedResponse())) {
@@ -1658,6 +1747,13 @@ public class FacilityService {
         }
         String[] segments = newBlockBoundaryCode.split("_");
         return segments[segments.length - 1];
+    }
+
+    private String buildBulkSearchOrderBy(FacilityBulkSearchCriteria criteria) {
+        String sortBy = criteria.getSortBy() != null ? criteria.getSortBy().trim().toLowerCase() : "updated_at";
+        String column = "created_at".equals(sortBy) ? "fac.created_at" : "fac.updated_at";
+        boolean asc = "asc".equalsIgnoreCase(criteria.getSortOrder());
+        return " ORDER BY " + column + (asc ? " ASC " : " DESC ") + " NULLS LAST ";
     }
 
 }

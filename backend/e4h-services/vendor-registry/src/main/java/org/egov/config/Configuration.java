@@ -1,5 +1,6 @@
 package org.egov.config;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.*;
 import org.egov.tracer.config.TracerConfiguration;
@@ -33,6 +34,7 @@ public class Configuration {
     @Bean
     @Autowired
     public MappingJackson2HttpMessageConverter jacksonConverter(ObjectMapper objectMapper) {
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
         converter.setObjectMapper(objectMapper);
         return converter;
@@ -88,6 +90,15 @@ public class Configuration {
 
     @Value("${org.user.kafka.delete.topic}")
     private String deleteOrgUserTopic;
+
+    @Value("${egov.facility.host}")
+    private String facilityHost;
+
+    @Value("${egov.facility.search.path}")
+    private String facilitySearchPath;
+
+    @Value("${egov.facility.update.path}")
+    private String facilityUpdatePath;
 
     @Value("${egov.fieldplan.activity.host}")
     private String fieldPlanActivityServiceHost;

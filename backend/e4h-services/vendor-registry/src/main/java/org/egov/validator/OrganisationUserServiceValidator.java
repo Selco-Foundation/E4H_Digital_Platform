@@ -11,18 +11,22 @@ import org.egov.config.Configuration;
 import org.egov.repository.OrganisationRepository;
 import org.egov.repository.OrganisationUserRepository;
 import org.egov.tracer.model.CustomException;
+import org.egov.util.FacilityUtil;
 import org.egov.util.HRMSUtils;
 import org.egov.util.MDMSUtil;
 import org.egov.util.OrganisationUtil;
 import org.egov.util.UserUtil;
 import org.egov.web.models.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
+import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 
 import static org.egov.util.OrganisationConstant.MASTER_ORG_ROLES;
@@ -45,8 +49,9 @@ public class OrganisationUserServiceValidator {
 
     private final OrganisationUserRepository userRepository;
 
-    private final ObjectMapper mapper;
+    private final FacilityUtil facilityUtil;
 
+    private final ObjectMapper mapper;
     private static final String MDMS_RES = "$.MdmsRes.";
     private static final String NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     private static final String VALID_FROM_PARAMETER_SHOULD_BE_LESS_THAN_VALID_TO = "Valid From in search parameters should be less than Valid To";
@@ -59,7 +64,8 @@ public class OrganisationUserServiceValidator {
     private static final String DEFAULT_ROLE_TENANT = "in";
     @Autowired
     public OrganisationUserServiceValidator(MDMSUtil mdmsUtil, Configuration configuration, OrganisationRepository organisationRepository,
-                                            OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil, OrganisationUserRepository userRepository, ObjectMapper mapper) {
+                                            OrganisationUtil organisationUtil, HRMSUtils hrmsUtils, UserUtil userUtil,
+                                            OrganisationUserRepository userRepository, FacilityUtil facilityUtil, ObjectMapper mapper) {
         this.mdmsUtil = mdmsUtil;
         this.configuration = configuration;
         this.organisationRepository = organisationRepository;
@@ -67,7 +73,9 @@ public class OrganisationUserServiceValidator {
         this.hrmsUtils = hrmsUtils;
         this.userUtil = userUtil;
         this.userRepository = userRepository;
+        this.facilityUtil = facilityUtil;
         this.mapper = mapper;
+
     }
 
     public void validateCreateOrgUserRequest(OrgUserRequest request) {
@@ -99,6 +107,9 @@ public class OrganisationUserServiceValidator {
     private void validateUserOrgCreation(OrgUserRequest request) {
         Map<String, String> errorMap = new HashMap<>();
         User orgUser = request.getUser();
+        List<Jurisdiction> facilitySyncJurisdictions = copyJurisdictions(orgUser != null ? orgUser.getJurisdictions() : null);
+        String facilitySyncVendorName = orgUser != null ? orgUser.getName() : null;
+        String facilitySyncVendorUserName = orgUser != null ? orgUser.getUserName() : null;
         if (orgUser == null) {
             log.error("User is mandatory in creation");
             throw new CustomException("Org User", "User is mandatory");
@@ -228,6 +239,11 @@ public class OrganisationUserServiceValidator {
                         existingEmployee.getUser().setActive(orgUser.getActive());
                     }
 
+                    existingEmployee.getUser().setActive(true);
+                    existingEmployee.setIsActive(true);
+                    existingEmployee.setEmployeeStatus("ACTIVE");
+                    existingEmployee.setReActivateEmployee(true);
+
                     // Do not modify HRMS assignments when re-linking/updating an existing user for this org.
                     existingEmployee.setJurisdictions(
                             mergeJurisdictionsForRecreateUser(
@@ -269,6 +285,8 @@ public class OrganisationUserServiceValidator {
                 request.setUserId(employee.get(0).getUser().getUuid());
             }
         }
+
+        facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
@@ -321,6 +339,10 @@ public class OrganisationUserServiceValidator {
         Map<String, String> errorMap = new HashMap<>();
         List<Organisation> organisations = new ArrayList<>();
         User orgUser = request.getUser();
+        // Use jurisdictions from the UI request, not HRMS response (HRMS may omit or return stale list).
+        List<Jurisdiction> facilitySyncJurisdictions = copyJurisdictions(orgUser != null ? orgUser.getJurisdictions() : null);
+        String facilitySyncVendorName = orgUser != null ? orgUser.getName() : null;
+        String facilitySyncVendorUserName = orgUser != null ? orgUser.getUserName() : null;
         if (orgUser == null) {
             log.error("User is mandatory in update");
             throw new CustomException("Org User", "User is mandatory");
@@ -418,10 +440,12 @@ public class OrganisationUserServiceValidator {
                     throw new CustomException("Organization", "This user with this username already exist: "+orgUser.getUserName());
                 }
                 employee.getUser().setUserName(orgUser.getUserName());
+                facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
             }
 
             if (changes.isNameChanged()) {
                 employee.getUser().setName(orgUser.getName());
+                facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
             }
 
             if (changes.isEmailChanged()) {
@@ -481,11 +505,20 @@ public class OrganisationUserServiceValidator {
             request.getUser().setJurisdictions(employee.getJurisdictions());
         }
 
+//        facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
+
         if (!errorMap.isEmpty()) {
             log.error("Validation failed with {} errors", errorMap.size());
             throw new CustomException(errorMap);
         }
         log.debug("Organisation user request validation completed");
+    }
+
+    private List<Jurisdiction> copyJurisdictions(List<Jurisdiction> jurisdictions) {
+        if (jurisdictions == null || jurisdictions.isEmpty()) {
+            return List.of();
+        }
+        return new ArrayList<>(jurisdictions);
     }
 
     /* Validates search FieldPlan request body and parameters*/
