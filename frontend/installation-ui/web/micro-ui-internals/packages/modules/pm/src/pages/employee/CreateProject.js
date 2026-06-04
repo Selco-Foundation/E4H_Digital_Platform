@@ -563,11 +563,12 @@ const CreateProject = () => {
         response = await ProjectService.updateProjectWorkflow(createdProject.id, "SCHEDULED", "Schedule Project");
       }
 
-      await invalidateProjectData();
+      const upsertedProjectData = await invalidateProjectData();
+      const upsertedProject =  upsertedProjectData?.projects?.[0] || {};
       dispatch(populateResponsePage({
         response: response,
         message: !!createdProject?.status ? t("PM_COMMON_PROJECT_UPDATED") : t("PM_COMMON_PROJECT_CREATED"),
-        createdId: createdProject.name,
+        createdId: upsertedProject.name,
         info: t("PM_COMMON_PROJECT_NAME"),
         secondaryRedirectionLabel: t("PM_LABEL_CREATE_FIELD_PLAN"),
         onSecondaryRedirection: () => history.push(`/${window?.contextPath}/employee/pm/project/${createdProject.id}/field-plans`),
