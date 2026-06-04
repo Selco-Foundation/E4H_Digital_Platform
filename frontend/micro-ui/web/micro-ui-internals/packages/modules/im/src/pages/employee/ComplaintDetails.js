@@ -89,6 +89,7 @@ const ComplaintDetailsModal = ({ workflowDetails, complaintDetails, close, popup
     stateArray?.[0]?.assigneeRoles?.length > 0 ? stateArray?.[0]?.assigneeRoles?.join(",") : "",
     complaintDetails,
     complaintDetails?.incident?.boundaryCode,
+    true,
     true
   );
   const employeeData = useEmployeeData
