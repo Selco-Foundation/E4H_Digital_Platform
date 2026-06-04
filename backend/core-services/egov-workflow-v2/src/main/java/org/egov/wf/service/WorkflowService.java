@@ -440,45 +440,24 @@ public class WorkflowService {
 
         log.info("Starting updateBusinessServiceV2");
 
-        /* 1) Récupération des process instances THEFT */
-        log.debug("Fetching process instances for THEFT flow");
-        List<ProcessInstance> processInstancesTheft = proceedUpdateProcessInstanceTheft(requestInfo);
-        log.info("THEFT process instances fetched: {}", processInstancesTheft != null ? processInstancesTheft.size() : 0);
+        /* 1) Récupération des process instances RMS */
+        log.debug("Fetching process instances for RMS flow");
+        List<ProcessInstance> processInstancesRMS = proceedUpdateProcessInstanceRMS(requestInfo);
+        log.info("RMS process instances fetched: {}", processInstancesRMS != null ? processInstancesRMS.size() : 0);
 
-        /* 2) Récupération des process instances SPARE_PART_NEEDED */
-        log.info("Fetching process instances for SPARE_PART_NEEDED flow");
-        List<ProcessInstance> processInstancesSparePart = proceedUpdateProcessInstanceSparePartNeed(requestInfo);
-        log.info("SPARE_PART_NEEDED process instances fetched: {}",
-                processInstancesSparePart != null ? processInstancesSparePart.size() : 0);
+//        /* 2) Récupération des process instances SPARE_PART_NEEDED */
+//        log.info("Fetching process instances for SPARE_PART_NEEDED flow");
+//        List<ProcessInstance> processInstancesSparePart = proceedUpdateProcessInstanceSparePartNeed(requestInfo);
+//        log.info("SPARE_PART_NEEDED process instances fetched: {}",
+//                processInstancesSparePart != null ? processInstancesSparePart.size() : 0);
 
         /* 3) Fusion des deux listes en évitant les doublons */
         Set<ProcessInstance> set = new LinkedHashSet<>();
-        set.addAll(processInstancesTheft);
-        set.addAll(processInstancesSparePart);
+        set.addAll(processInstancesRMS);
+//        set.addAll(processInstancesSparePart);
 
         List<ProcessInstance> mergedList = new ArrayList<>(set);
         log.info("Merged process instances count (after deduplication): {}", mergedList.size());
-
-        /* Split into batches to avoid Kafka message size limits */
-//        int batchSize = config.getProcessInstanceUpdateBatchSize();
-//        int totalBatches = (mergedList.size() + batchSize - 1) / batchSize;
-//        log.info("Pushing {} process instances to workflow update topic in {} batch(es) of size {}",
-//                mergedList.size(), totalBatches, batchSize);
-//
-//        for (int i = 0; i < mergedList.size(); i += batchSize) {
-//            int end = Math.min(i + batchSize, mergedList.size());
-//            List<ProcessInstance> batch = mergedList.subList(i, end);
-//
-//            ProcessInstanceRequest processInstanceRequest =
-//                    new ProcessInstanceRequest(requestInfo, batch);
-//            producer.push(config.getUpdateProcessInstanceTopic(), processInstanceRequest);
-//
-//            log.debug("Pushed batch {}/{} containing {} process instance(s)",
-//                    (i / batchSize) + 1, totalBatches, batch.size());
-//        }
-
-//        log.info("Successfully pushed all {} process instances to topic: {}",
-//                mergedList.size(), config.getUpdateProcessInstanceTopic());
 
         // Update Kibana index (im-services) with only Data.currentProcessInstance for each migrated process instance
         log.info("Starting Kibana index update for migrated process instances");
@@ -506,26 +485,14 @@ public class WorkflowService {
         log.info("Completed updateBusinessServiceV2");
     }
 
-    // Used to update process instance v3 for this ticket number #1979 PENDINGFORASSIGNMENT and Issue Type == THEFT -> PENDINGFORASSIGNMENT_THEFT
-    public List<ProcessInstance> proceedUpdateProcessInstanceTheft(RequestInfo requestInfo) {
+    // Used to update process instance v3 for this ticket number #1979 PENDINGFORASSIGNMENT and Issue Type == RMS Device -> PENDINGFORASSIGNMENT_RMS_DEVICE
+    public List<ProcessInstance> proceedUpdateProcessInstanceRMS(RequestInfo requestInfo) {
         return updateProcessInstances(
                 requestInfo,
                 "PENDINGFORASSIGNMENT",
-                "PENDINGFORASSIGNMENT_THEFT",
+                "PENDINGFORASSIGNMENT_RMS_DEVICE",
                 true,
                 false
-        );
-    }
-
-    // Used to update process instance v3 for this ticket number #1979 PENDING_ASSIGNMENT_SPARE_PART_NEEDED -> PENDING_RESOLUTION_SPARE_PART_NEEDED and assign owner to the
-    // previously selected vendor for that ticket. ( i.e. bypass the re-assignment of ticket )
-    public List<ProcessInstance> proceedUpdateProcessInstanceSparePartNeed(RequestInfo requestInfo) {
-        return updateProcessInstances(
-                requestInfo,
-                "PENDING_ASSIGNMENT_SPARE_PART_NEEDED",
-                "PENDING_RESOLUTION_SPARE_PART_NEEDED",
-                false,
-                true
         );
     }
 
@@ -533,12 +500,12 @@ public class WorkflowService {
             RequestInfo requestInfo,
             String sourceState,
             String targetState,
-            boolean filterByTheftSubtype,
+            boolean filterByRMSSubtype,
             boolean copyAssignesFromPendingResolution
     ) {
 
-        log.info("Starting updateProcessInstances | sourceState={}, targetState={}, filterByTheftSubtype={}, copyAssignesFromPendingResolution={}",
-                sourceState, targetState, filterByTheftSubtype, copyAssignesFromPendingResolution);
+        log.info("Starting updateProcessInstances | sourceState={}, targetState={}, filterByRMSSubtype={}, copyAssignesFromPendingResolution={}",
+                sourceState, targetState, filterByRMSSubtype, copyAssignesFromPendingResolution);
 
         ObjectMapper mapper = new ObjectMapper();
 
@@ -555,92 +522,96 @@ public class WorkflowService {
                         ));
 
         /* 1) récupérer les stateUuid source */
+
+        // Permet de stocker les ticket de RMS mais dont on doit update le status de PENDINGFORASSIGNMENT a PENDINGFORASSIGNMENT_RMS_DEVICE et le currentprocessInstance dans ES
+        Set<String> RMSIncidentAssignmentKibanaSet = new HashSet<>();
+
+        /* 3) filtrage RMS si demandé */
+//        if (filterByRMSSubtype && !processInstances.isEmpty()) {
+        Set<String> RMSIncidentIdSet = new HashSet<>();
+        log.info("Applying RMS subtype filter");
+
+        Map<String, Object> imCriteria = new HashMap<>();
+        imCriteria.put("applicationStatus", sourceState);
+        imCriteria.put("incidentType", "RMS Device");
+        imCriteria.put("tenantId", "in");
+
+        Object response = searchImServiceTicket(imCriteria, requestInfo);
+
+        if (response == null) {
+//            log.debug("No IM response for businessId={}", businessId);
+        }
+
+        IncidentResponse incidentResponse =
+                mapper.convertValue(response, IncidentResponse.class);
+
+        if (incidentResponse.getIncidentWrappers() == null) {
+//            log.debug("No incident wrappers for businessId={}", businessId);
+        }
+
+        incidentResponse.getIncidentWrappers().forEach(wrapper -> {
+            if (wrapper.getIncident() != null &&
+                    wrapper.getIncident().getIncidentId() != null) {
+                RMSIncidentIdSet.add(wrapper.getIncident().getIncidentId());
+            }
+            if (wrapper.getIncident() != null && wrapper.getIncident().getIncidentId() != null
+                    && wrapper.getIncident().getApplicationStatus()!=null && wrapper.getIncident().getApplicationStatus().equals("PENDINGFORASSIGNMENT")) {
+                RMSIncidentAssignmentKibanaSet.add(wrapper.getIncident().getIncidentId());
+            }
+        });
+
+        Set<String> incidentIds =
+                incidentResponse.getIncidentWrappers().stream()
+                        .map(IncidentWrapper::getIncident)
+                        .filter(Objects::nonNull)
+                        .map(Incident::getIncidentId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet());
+
         Set<String> sourceStateUuids =
                 businessServicesAndStates.stream()
                         .filter(bs -> sourceState.equalsIgnoreCase(bs.getState()))
                         .map(BusinessServiceStateMigration::getStateUuid)
                         .collect(Collectors.toSet());
 
-        log.info("Source state '{}' resolved to {} UUID(s)", sourceState, sourceStateUuids.size());
+        log.info("Source state '{}' resolved to {} Busines(s)", sourceState, incidentIds.size());
 
         /* 2) chercher les process instances source */
         ProcessInstanceSearchCriteria criteria = new ProcessInstanceSearchCriteria();
         criteria.setTenantId("in");
         criteria.setHistory(true);
+        criteria.setBusinessIds(new ArrayList<>(incidentIds));
         criteria.setStatus(new ArrayList<>(sourceStateUuids));
 
         List<ProcessInstance> processInstances =
                 searchProcessInstanceMigration(requestInfo, criteria);
         List<ProcessInstance> processInstancesKibana = new ArrayList<>();
 
-        // Permet de stocker les ticket de theft mais dont on doit update le status de PENDINGFORASSIGNMENT a PENDINGFORASSIGNMENT_THEFT et le currentprocessInstance dans ES
-        Set<String> theftIncidentAssignmentKibanaSet = new HashSet<>();
-        Set<String> theftIncidentSParePartKibanaSet = new HashSet<>();
-
         log.info("IM request search returned {} process instances", processInstances.size());
 
-        /* 3) filtrage THEFT si demandé */
-        if (filterByTheftSubtype && !processInstances.isEmpty()) {
-
-            log.info("Applying THEFT subtype filter");
-
-            Set<String> theftIncidentIdSet = new HashSet<>();
-
-            for (ProcessInstance instance : processInstances) {
-                String businessId = instance.getBusinessId();
-                if (businessId == null) {
-                    log.debug("Skipping PI with null businessId | piId={}", instance.getId());
-                    continue;
-                }
-
-                Map<String, Object> imCriteria = new HashMap<>();
-                imCriteria.put("incidentId", businessId);
-                imCriteria.put("incidentSubType", "Theft");
-                imCriteria.put("tenantId", "in");
-
-                Object response = searchImServiceTicket(imCriteria, requestInfo);
-
-                if (response == null) {
-                    log.debug("No IM response for businessId={}", businessId);
-                    continue;
-                }
-
-                IncidentResponse incidentResponse =
-                        mapper.convertValue(response, IncidentResponse.class);
-
-                if (incidentResponse.getIncidentWrappers() == null) {
-                    log.debug("No incident wrappers for businessId={}", businessId);
-                    continue;
-                }
-
-                incidentResponse.getIncidentWrappers().forEach(wrapper -> {
-                    if (wrapper.getIncident() != null &&
-                            wrapper.getIncident().getIncidentId() != null) {
-                        theftIncidentIdSet.add(wrapper.getIncident().getIncidentId());
-                    }
-                    if (wrapper.getIncident() != null && wrapper.getIncident().getIncidentId() != null
-                            && wrapper.getIncident().getApplicationStatus()!=null && wrapper.getIncident().getApplicationStatus().equals("PENDINGFORASSIGNMENT")) {
-                        theftIncidentAssignmentKibanaSet.add(wrapper.getIncident().getIncidentId());
-                    }
-                });
+        for (ProcessInstance instance : processInstances) {
+            String businessId = instance.getBusinessId();
+            if (businessId == null) {
+                log.debug("Skipping PI with null businessId | piId={}", instance.getId());
+                continue;
             }
-
-            int beforeFilter = processInstances.size();
-
-            // Filtrer que les process instances dont leur business service subtype est THEFT
-            processInstances =
-                    processInstances.stream()
-                            .filter(pi -> theftIncidentIdSet.contains(pi.getBusinessId()))
-                            .collect(Collectors.toList());
-
-            // Filtrer que les process instances dont leur recent status est PENDINGFORASSIGNMENT, donc mettre a jour ES avec PENDINGFORASSIGNMENT_THEFT
-            processInstancesKibana =
-                    processInstances.stream()
-                            .filter(pi -> theftIncidentAssignmentKibanaSet.contains(pi.getBusinessId()))
-                            .collect(Collectors.toList());
-
-            log.info("THEFT filter applied | before={}, after={}", beforeFilter, processInstances.size());
         }
+
+        int beforeFilter = processInstances.size();
+
+        // Filtrer que les process instances dont leur business service subtype est RMS
+        processInstances =
+                processInstances.stream()
+                        .filter(pi -> RMSIncidentIdSet.contains(pi.getBusinessId()))
+                        .collect(Collectors.toList());
+
+        // Filtrer que les process instances dont leur recent status est PENDINGFORASSIGNMENT, donc mettre a jour ES avec PENDINGFORASSIGNMENT_RMS_DEVICE
+        processInstancesKibana =
+                processInstances.stream()
+                        .filter(pi -> RMSIncidentAssignmentKibanaSet.contains(pi.getBusinessId()))
+                        .collect(Collectors.toList());
+
+        log.info("RMS filter applied | before={}, after={}", beforeFilter, processInstances.size());
 
         /* 4) mise à jour du state + récupération des assignes si nécessaire */
         for (ProcessInstance pi : processInstances) {
@@ -656,89 +627,6 @@ public class WorkflowService {
                 continue;
             }
 
-            /* Cas SPARE_PART_NEEDED : récupérer les assignes depuis PENDING_RESOLUTION */
-            if (copyAssignesFromPendingResolution && pi.getBusinessId() != null) {
-                // Trouver le assign owner pour le ticket. Pour ca trouver la liste des process instance pour le businessId, ensuite recuperer le process instance qui est a PENDINGRESOLUTION, ensuite recuperer
-                // le uuid du assignee dans la table eg_wf_assignee_v2
-                BusinessServiceStateMigration pendingResolutionMigration =
-                        stateMap.get(pi.getBusinessService() + "_PENDINGRESOLUTION");
-
-                // Rechercher le process instance PENDINGRESOLUTION qui correspond au businessId pour pouvoir recuperer le assignee et le mettre dans PENDING_RESOLUTION_SPARE_PART_NEEDED
-                if (pendingResolutionMigration != null) {
-
-                    log.debug("Searching PENDINGRESOLUTION PI for businessId={}", pi.getBusinessId());
-
-                    // Rechercher le process instance ayant comme statusid PENDINGRESOLUTION
-                    ProcessInstanceSearchCriteria searchByBusinessId = new ProcessInstanceSearchCriteria();
-                    searchByBusinessId.setTenantId("in");
-                    searchByBusinessId.setHistory(true);
-                    searchByBusinessId.setBusinessIds(Collections.singletonList(pi.getBusinessId()));
-                    searchByBusinessId.setStatus(
-                            Collections.singletonList(pendingResolutionMigration.getStateUuid())
-                    );
-
-                    List<ProcessInstance> existingInstances =
-                            searchProcessInstanceMigration(requestInfo, searchByBusinessId);
-
-                    if (existingInstances != null && !existingInstances.isEmpty()) {
-
-                        // Recuperer le assignee dans le pi trouve
-                        Optional<ProcessInstance> mostRecent =
-                                existingInstances.stream()
-                                        .filter(process -> process.getAuditDetails() != null)
-                                        .max(Comparator.comparingLong(
-                                                process -> process.getAuditDetails().getLastModifiedTime()
-                                        ));
-
-                        if (mostRecent.isPresent()) {
-                            ProcessInstance latest = mostRecent.get();
-
-                            pi.setAssignes(latest.getAssignes());
-
-                            log.info("Copied {} assignees from PI {} to PI {}",
-                                    latest.getAssignes() != null ? latest.getAssignes().size() : 0,
-                                    latest.getId(), pi.getId());
-
-                            // Ajouter le processInstanceId de l'ancien SPARE_PART_NEEDED a eg_wf_assignee table. Comme ca apres Mise a jour status vers PENDING_RESOLUTION_SPARE_PART_NEEDED, celui ci aura un assignee
-                            ProcessInstanceRequest processInstanceRequest =
-                                    new ProcessInstanceRequest(requestInfo, Collections.singletonList(pi));
-
-                            producer.push(config.getAddWfAssigneeTopic(), processInstanceRequest);
-                        }
-                    } else {
-                        log.debug("No PENDINGRESOLUTION PI found for businessId={}", pi.getBusinessId());
-                    }
-
-                    // Pour les tickets PENDING_ASSIGNMENT_SPARE_PART_NEEDED, voir si PENDING_ASSIGNMENT_SPARE_PART_NEEDED est le current status pour le ticket. Si oui alors update ES avec PENDING_RESOLUTION_SPARE_PART_NEEDED status
-                    Map<String, Object> imCriteria = new HashMap<>();
-                    imCriteria.put("incidentId", pi.getBusinessId());
-                    imCriteria.put("tenantId", "in");
-
-                    Object response = searchImServiceTicket(imCriteria, requestInfo);
-
-                    if (response == null) {
-                        log.debug("No IM response for businessId={}", pi.getBusinessId());
-                        continue;
-                    }
-
-                    IncidentResponse incidentResponse =
-                            mapper.convertValue(response, IncidentResponse.class);
-
-                    if (incidentResponse.getIncidentWrappers() == null) {
-                        log.debug("No incident wrappers for businessId={}", pi.getBusinessId());
-                        continue;
-                    }
-
-                    // Filtrer que les process instances dont leur recent status est PENDING_ASSIGNMENT_SPARE_PART_NEEDED, donc mettre a jour ES avec PENDING_RESOLUTION_SPARE_PART_NEEDED et currentprocessInstance
-                    incidentResponse.getIncidentWrappers().forEach(wrapper -> {
-                        if (wrapper.getIncident() != null && wrapper.getIncident().getIncidentId() != null
-                                && wrapper.getIncident().getApplicationStatus()!=null && wrapper.getIncident().getApplicationStatus().equals("PENDING_ASSIGNMENT_SPARE_PART_NEEDED")) {
-                            theftIncidentSParePartKibanaSet.add(wrapper.getIncident().getIncidentId());
-                        }
-                    });
-                }
-            }
-
             // Mis a jour avec le state target
             pi.setState(migration.getStateObject());
             pi.setStateSla(migration.getStateSla());
@@ -747,13 +635,6 @@ public class WorkflowService {
             producer.push(config.getUpdateProcessInstanceTopic(), processInstanceRequest);
 
             log.info("PI updated | id={}, newState={}", pi.getId(), migration.getStateObject().getState());
-        }
-
-        if (copyAssignesFromPendingResolution ) {
-            processInstancesKibana =
-                    processInstances.stream()
-                            .filter(pi -> theftIncidentSParePartKibanaSet.contains(pi.getBusinessId()))
-                            .collect(Collectors.toList());
         }
 
         log.info("updateProcessInstances completed | totalUpdated={}", processInstances.size());
