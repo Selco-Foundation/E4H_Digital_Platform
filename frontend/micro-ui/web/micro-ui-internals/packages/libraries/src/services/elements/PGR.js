@@ -41,10 +41,10 @@ export const PGRService = {
       params: { tenantId, ...params },
     }),
 
-  employeeSearch: (tenantId, roles, boundaryCodes, isActive) => {
+  employeeSearch: (tenantId, roles, boundaryCodes, isActive, searchOnlyInBoundary) => {
     return Request({
       url: Urls.EmployeeSearch,
-      params: { tenantId, roles, boundaryCodes, isActive },
+      params: { tenantId, roles, boundaryCodes, isActive, searchOnlyInBoundary },
       auth: true,
     });
   },

@@ -271,6 +271,7 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
       jurisdictions.forEach(jurisdiction => jurisdiction.id && modifiedJurisdictionsMap.set(jurisdiction.id, jurisdiction));
       const modifiedJurisdictions = createdUser.jurisdiction.map((jurisdiction) => ({...jurisdiction, ...(modifiedJurisdictionsMap.get(jurisdiction.id) || {})}))
       const newJurisdictions = jurisdictions.filter((jurisdiction) => !jurisdiction.id);
+      const formattedJurisdictions = [...modifiedJurisdictions, ...newJurisdictions];
       const organizationUser = {
         organizationId: organizationId,
         id: createdUser.orgUserId,
@@ -281,10 +282,16 @@ const OrganizationUserTable = ({ t, organizationId, organizationType, organizati
           emailId: userFormData.email,
           tenantId: Digit.ULBService.getCurrentTenantId(),
           roles: userFormData.roles.map(role => ({...role, tenantId: Digit.ULBService.getCurrentTenantId()})),
-          jurisdiction: [...modifiedJurisdictions, ...newJurisdictions]
+          jurisdiction: formattedJurisdictions
         }
       }
       await VendorService.editOrganizationUser(organizationUser)
+
+      const delayForUserUpdateInSeconds = Math.min((formattedJurisdictions.length / 100) + 1, 5);
+      await new Promise((resolve) =>
+        setTimeout(resolve, delayForUserUpdateInSeconds * 1000)
+      );
+
       await queryClient.invalidateQueries(["ORGANISATION_USER"]);
 
       setBlockUI(false);
