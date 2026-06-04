@@ -297,6 +297,7 @@ class AmcOtp {
   String get amcOtpReceiverInstruction1 => "AMC_OTP_RECEIVER_INSTRUCTION_1";
   String get amcOtpReceiverInstruction2 => "AMC_OTP_RECEIVER_INSTRUCTION_2";
   String get amcOtpMaskedPhone => "AMC_OTP_MASKED_PHONE";
+  String get amcOtpNetworkWarning => "AMC_OTP_NETWORK_WARNING";
 }
 
 class AmcDraft {

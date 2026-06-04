@@ -1,5 +1,7 @@
+import 'package:digit_ui_components/enum/app_enums.dart';
 import 'package:digit_ui_components/theme/digit_extended_theme.dart';
 import 'package:digit_ui_components/theme/spacers.dart';
+import 'package:digit_ui_components/widgets/atoms/digit_info_card.dart';
 import 'package:digit_ui_components/widgets/atoms/digit_otp.dart';
 import 'package:digit_ui_components/widgets/atoms/reactive_fields.dart';
 import 'package:digit_ui_components/widgets/molecules/digit_card.dart';
@@ -202,6 +204,15 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                         ],
                       ),
                     ],
+                  ),
+                  Padding(
+                    padding: EdgeInsets.all(spacer2),
+                    child: InfoCard(
+                      title: "",
+                      type: InfoType.warning,
+                      description:
+                          context.translate(i18.amcOtp.amcOtpNetworkWarning),
+                    ),
                   )
                 ],
               ),
