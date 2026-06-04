@@ -222,6 +222,24 @@ public class ProjectRepository extends GenericRepository<Project> {
     }
 
     /**
+     * Counts active project-facility links for a project (used for HF segment in project name).
+     */
+    public int countProjectFacilitiesByProjectId(String projectId, String tenantId) {
+        log.trace("Entering countProjectFacilitiesByProjectId for projectId: {}", projectId);
+        try {
+            String sql = "SELECT COUNT(*) FROM project_facility WHERE projectid = ? AND tenantid = ? "
+                    + "AND (isdeleted IS NULL OR isdeleted = false)";
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, projectId, tenantId);
+            int result = count != null ? count : 0;
+            log.debug("Project facility count for project {}: {}", projectId, result);
+            return result;
+        } catch (Exception e) {
+            log.error("Error counting project facilities for project: {}", projectId, e);
+            return 0;
+        }
+    }
+
+    /**
      * Checks if a project name already exists in the database for a given tenant
      * @param projectName The project name to check
      * @param tenantId The tenant ID

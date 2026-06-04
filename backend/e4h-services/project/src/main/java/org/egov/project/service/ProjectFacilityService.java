@@ -144,6 +144,12 @@ public class ProjectFacilityService {
                 log.debug("Pushing project update to Kafka");
                 producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
                 producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
+                validEntities.stream()
+                        .map(ProjectFacility::getProjectId)
+                        .filter(org.apache.commons.lang3.StringUtils::isNotBlank)
+                        .distinct()
+                        .forEach(projectId -> projectService.refreshProjectNameAfterFacilityChange(
+                                projectId, request.getProjectFacilities().get(0).getTenantId(), request.getRequestInfo()));
                 log.info("Successfully created {} project facilities", validEntities.size());
             } else {
                 log.warn("No valid facilities to create after validation");

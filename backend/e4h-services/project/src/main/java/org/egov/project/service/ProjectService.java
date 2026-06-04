@@ -112,94 +112,6 @@ public class ProjectService {
         log.info("Starting project creation for {} projects", projectRequest.getProjects() != null ? projectRequest.getProjects().size() : 0);
         projectValidator.validateCreateProjectRequest(projectRequest);
         RequestInfo requestInfo = projectRequest.getRequestInfo();
-        // Check for empty names and generate names with duplicate check
-        // Use a Set to track generated names within this batch to prevent collisions
-        Set<String> generatedNamesInBatch = new HashSet<>();
-
-        for (Project project : projectRequest.getProjects()) {
-            if (project.getName() == null || project.getName().trim().isEmpty()) {
-                try {
-                    ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, requestInfo);
-
-                    // Null-safety check
-                    if (nameResult == null) {
-                        log.error("ProjectNameResult is null for project: {}", project.getId());
-                        throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name for project: " + project.getId());
-                    }
-
-                    String generatedName = nameResult.getName();
-                    if (generatedName != null && !generatedName.trim().isEmpty()) {
-                        // Check for batch-level duplicates (same name generated within this request)
-                        boolean hasBatchDuplicateName = false;
-                        if (generatedNamesInBatch.contains(generatedName)) {
-                            log.warn("Duplicate name generated within batch for project: {}. Generated name: {}",
-                                    project.getId(), generatedName);
-                            // Generate a unique name by appending a batch suffix
-                            generatedName = generateUniqueBatchName(generatedName, project.getTenantId(), generatedNamesInBatch);
-                            hasBatchDuplicateName = true; // Mark that this project had a batch-level collision
-                        }
-
-                        project.setName(generatedName);
-                        generatedNamesInBatch.add(generatedName);
-
-                        // Add individual isDuplicate flag to project's additionalDetails
-                        // isDuplicate = true if either database duplicate OR batch-level duplicate
-                        boolean isDuplicateName = Boolean.TRUE.equals(nameResult.getIsDuplicateName()) || hasBatchDuplicateName;
-                        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                            project.getAdditionalDetails(),
-                            "isDuplicateName",
-                            isDuplicateName
-                        );
-                        project.setAdditionalDetails(enrichedAdditionalDetails);
-
-                        if (isDuplicateName) {
-                            log.info("Project {} has duplicate name", project.getId());
-                        } else {
-                            log.info("Project {} has unique name", project.getId());
-                        }
-                    } else if (generatedName == null && project.getProjectType() != null &&
-                               (PROJECT_TYPE_FIELDPLAN.equals(project.getProjectType()) || PROJECT_TYPE_FACILITY.equals(project.getProjectType()))) {
-                        // This is expected for FieldPlan and Facility project types - skip name generation
-                        log.info("Skipping name generation for project type: {} for project: {}",
-                                project.getProjectType(), project.getId());
-                        // Mark as not duplicate since no name generation was needed
-                        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                            project.getAdditionalDetails(),
-                            "isDuplicateName",
-                            false
-                        );
-                        project.setAdditionalDetails(enrichedAdditionalDetails);
-                        // Don't add to batch tracking since no name was generated
-                    } else {
-                        log.warn("Generated name is null or empty for project: {} with project type: {}",
-                                project.getId(), project.getProjectType());
-                        // For non-skipped project types, this indicates an error
-                        throw new CustomException("PROJECT_NAME_NULL_OR_EMPTY", "Generated project name is null or empty for project: " + project.getId());
-                    }
-                } catch (Exception e) {
-                    log.error("Error generating name for project: {}", project.getId(), e);
-                    throw new CustomException("PROJECT_NAME_GENERATION_FAILED", "Failed to generate project name for project: " + project.getId());
-                }
-            } else {
-                // If name is already set, add it to the batch tracking to prevent conflicts
-                String existingName = project.getName().trim();
-                if (generatedNamesInBatch.contains(existingName)) {
-                    log.warn("Duplicate name found within batch for project: {}. Name: {}",
-                            project.getId(), existingName);
-                    throw new CustomException("PROJECT_NAME_DUPLICATE_IN_BATCH", "Duplicate project name found within batch: " + existingName);
-                }
-                generatedNamesInBatch.add(existingName);
-
-                // For projects with pre-existing names, mark as not duplicate
-                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                    project.getAdditionalDetails(),
-                    "isDuplicateName",
-                    false
-                );
-                project.setAdditionalDetails(enrichedAdditionalDetails);
-                log.info("Project {} has pre-existing name, marked isDuplicate=false", project.getId());
-            }
-        }
 
         //Get parent projects if "parent" is present (For enrichment of projectHierarchy)
         log.debug("Fetching parent projects for enrichment");
@@ -213,6 +125,12 @@ public class ProjectService {
         log.info("Enriching projects with project number, IDs and audit details");
         projectEnrichment.enrichProjectOnCreate(projectRequest, parentProjects);
         log.info("Enriched with Project Number, Ids and AuditDetails");
+
+        for (Project project : projectRequest.getProjects()) {
+            if (project.getName() == null || project.getName().trim().isEmpty()) {
+                applyGeneratedProjectName(project, requestInfo, true);
+            }
+        }
         log.debug("Pushing project request to Kafka topics");
         producer.push(projectConfiguration.getSaveProjectTopic(), projectRequest);
         producer.push(projectConfiguration.getSaveProjectTopicIndexer(), projectRequest);
@@ -223,57 +141,73 @@ public class ProjectService {
     }
 
     /**
-     * Generates a unique name within the current batch by appending a numeric suffix
-     * Derives the base root, looks up the highest suffix in DB, then chooses the next unused number
-     * considering both database and batch names for consistency with global scheme
-     * @param baseName The base name to make unique
-     * @param tenantId The tenant ID for database lookup
-     * @param existingNamesInBatch Set of names already used in this batch
-     * @return A unique name that doesn't conflict with existing names in the batch or database
+     * Regenerates project name when facilities change on a scheduled (non-draft) project.
      */
-    private String generateUniqueBatchName(String baseName, String tenantId, Set<String> existingNamesInBatch) {
-        log.trace("Entering generateUniqueBatchName with baseName: {}, tenantId: {}", baseName, tenantId);
-        // Normalize to root: strip a trailing -digits if present
-        String baseRoot = baseName.replaceFirst("-\\d+$", "");
-        log.debug("Normalized base root: {}", baseRoot);
-        int next = 0;
-
+    public void refreshProjectNameAfterFacilityChange(String projectId, String tenantId, RequestInfo requestInfo) {
+        log.trace("Entering refreshProjectNameAfterFacilityChange for project: {}", projectId);
         try {
-            String highestExisting = projectRepository.findHighestExistingProjectName(baseRoot, tenantId);
-            if (highestExisting != null) {
-                if (highestExisting.equals(baseRoot)) {
-                    next = 1;
-                } else if (highestExisting.startsWith(baseRoot + "-")) {
-                    String suffix = highestExisting.substring((baseRoot + "-").length());
-                    try {
-                        next = Integer.parseInt(suffix) + 1;
-                    } catch (NumberFormatException ignored) {
-                        next = 1;
-                    }
-                }
-            } else {
-                next = 1;
+            List<Project> projects = findByIds(List.of(projectId));
+            if (projects == null || projects.isEmpty()) {
+                log.warn("Project not found for name refresh: {}", projectId);
+                return;
             }
+            Project projectFromDB = projects.get(0);
+            if (isDraftProject(getProjectStatus(projectFromDB))) {
+                log.debug("Skipping name refresh for draft project: {}", projectId);
+                return;
+            }
+            Project projectForName = Project.builder()
+                    .id(projectFromDB.getId())
+                    .tenantId(projectFromDB.getTenantId())
+                    .projectNumber(projectFromDB.getProjectNumber())
+                    .startDate(projectFromDB.getStartDate())
+                    .endDate(projectFromDB.getEndDate())
+                    .additionalDetails(projectFromDB.getAdditionalDetails())
+                    .build();
+            ProjectNameResult nameResult = projectNameGenerationService.generateProjectName(projectForName, requestInfo, false);
+            if (nameResult.getName() == null || nameResult.getName().equals(projectFromDB.getName())) {
+                return;
+            }
+            Project updatePayload = Project.builder()
+                    .id(projectFromDB.getId())
+                    .tenantId(projectFromDB.getTenantId())
+                    .projectNumber(projectFromDB.getProjectNumber())
+                    .startDate(projectFromDB.getStartDate())
+                    .endDate(projectFromDB.getEndDate())
+                    .projectType(projectFromDB.getProjectType())
+                    .projectSubType(projectFromDB.getProjectSubType())
+                    .address(projectFromDB.getAddress())
+                    .additionalDetails(projectFromDB.getAdditionalDetails())
+                    .name(nameResult.getName())
+                    .rowVersion(projectFromDB.getRowVersion())
+                    .build();
+            ProjectRequest updateRequest = ProjectRequest.builder()
+                    .requestInfo(requestInfo)
+                    .projects(List.of(updatePayload))
+                    .build();
+            projectEnrichment.enrichProjectRequestOnUpdate(updatePayload, projectFromDB, requestInfo);
+            producer.push(projectConfiguration.getUpdateProjectTopic(), updateRequest);
+            producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), updateRequest);
+            log.info("Refreshed project name to {} after facility change for project: {}", nameResult.getName(), projectId);
         } catch (Exception e) {
-            log.warn("Falling back to batch-only uniquing for base '{}': {}", baseRoot, e.getMessage());
-            next = 1;
+            log.error("Failed to refresh project name after facility change for project: {}", projectId, e);
         }
+    }
 
-        String candidate = (next <= 0) ? baseRoot + "-1" : baseRoot + "-" + next;
-        int guard = 0;
-
-        while (existingNamesInBatch.contains(candidate)) {
-            next++;
-            candidate = baseRoot + "-" + next;
-            if (++guard > 1000) {
-                throw new CustomException("PROJECT_NAME_GENERATION_FAILED",
-                        "Unable to generate unique batch name after 1000 attempts for: " + baseRoot);
-            }
+    private void applyGeneratedProjectName(Project project, RequestInfo requestInfo, boolean draft) {
+        ProjectNameResult nameResult = projectNameGenerationService.generateProjectName(project, requestInfo, draft);
+        if (nameResult == null || StringUtils.isBlank(nameResult.getName())) {
+            throw new CustomException("PROJECT_NAME_NULL_OR_EMPTY",
+                    "Generated project name is null or empty for project: " + project.getId());
         }
-
-        log.info("Generated unique batch name: {} from base: {}", candidate, baseRoot);
-        log.trace("Exiting generateUniqueBatchName");
-        return candidate;
+        project.setName(nameResult.getName());
+        Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
+                project.getAdditionalDetails(),
+                "isDuplicateName",
+                false
+        );
+        project.setAdditionalDetails(enrichedAdditionalDetails);
+        log.info("Set project name to {} for project: {} (draft={})", nameResult.getName(), project.getId(), draft);
     }
 
     /**
@@ -708,98 +642,115 @@ public class ProjectService {
 
 
     /**
-     * Handles project name regeneration during updates
-     * Only regenerates name if the underlying data that affects the name has changed
+     * Handles Option 4 project name regeneration during updates.
      */
     private void handleProjectNameUpdate(ProjectRequest request, Project project, Project projectFromDB) {
         try {
-            // Skip name generation for FieldPlan and Facility project types
-            String projectType = project.getProjectType();
-            if (PROJECT_TYPE_FIELDPLAN.equals(projectType) || PROJECT_TYPE_FACILITY.equals(projectType)) {
-                log.info("Skipping name regeneration for project type: {} during update", projectType);
+            if (StringUtils.isBlank(project.getProjectNumber())) {
+                project.setProjectNumber(projectFromDB.getProjectNumber());
+            }
+            if (project.getStartDate() == null) {
+                project.setStartDate(projectFromDB.getStartDate());
+            }
+            if (project.getEndDate() == null) {
+                project.setEndDate(projectFromDB.getEndDate());
+            }
+            if (extractJustificationCode(project.getAdditionalDetails()) == null
+                    && extractJustificationCode(projectFromDB.getAdditionalDetails()) != null) {
+                Object enriched = mergeIntoAdditionalDetails(
+                        project.getAdditionalDetails(),
+                        "justificationCode",
+                        extractJustificationCode(projectFromDB.getAdditionalDetails()));
+                project.setAdditionalDetails(enriched);
+            }
+
+            String statusFromDb = getProjectStatus(projectFromDB);
+            String statusInRequest = getProjectStatus(project);
+            boolean wasDraft = isDraftProject(statusFromDb);
+
+            if (wasDraft && ProjectNameGenerationService.getScheduledStatus().equals(statusInRequest)) {
+                applyGeneratedProjectName(project, request.getRequestInfo(), false);
                 return;
             }
 
-            // Check if name-affecting data has changed
-            if (!hasNameAffectingDataChanged(project, projectFromDB)) {
-                log.info("No name-affecting data changed for project: {}, keeping existing name: {}", 
-                        project.getId(), projectFromDB.getName());
+            boolean draft = isDraftProject(statusFromDb) && !ProjectNameGenerationService.getScheduledStatus().equals(statusInRequest);
+            if (!draft && !hasNameAffectingDataChanged(project, projectFromDB, false)) {
+                log.info("No name-affecting data changed for scheduled project: {}", project.getId());
+                return;
+            }
+            if (draft && !hasNameAffectingDataChanged(project, projectFromDB, true)) {
+                log.info("No name-affecting data changed for draft project: {}", project.getId());
                 return;
             }
 
-            // Generate new base name based on current project data (exclude current project from duplicate check)
-            ProjectNameResult nameResult = projectNameGenerationService.generateNameAndCheckDuplicate(project, request.getRequestInfo(), project.getId());
-            
-            if (nameResult == null || nameResult.getName() == null) {
-                log.warn("Could not generate new name for project: {} during update", project.getId());
-                return;
-            }
+            applyGeneratedProjectName(project, request.getRequestInfo(), draft);
 
-            String newBaseName = nameResult.getName();
-            String existingName = projectFromDB.getName();
-
-            // Extract base name from existing name (remove any suffix like -1, -2, etc.)
-            String existingBaseName = extractBaseNameFromExistingName(existingName);
-
-            // Compare base names (ignore suffixes)
-            if (!newBaseName.equals(existingBaseName)) {
-                log.info("Project name needs update. Existing: {}, New: {}", existingName, newBaseName);
-                
-                // Use the generated name (already checked for duplicates with exclusion)
-                project.setName(nameResult.getName());
-                log.info("Updated project name to: {}", nameResult.getName());
-                
-                // Update isDuplicateName flag in additionalDetails
-                Object enrichedAdditionalDetails = mergeIntoAdditionalDetails(
-                    project.getAdditionalDetails(),
-                    "isDuplicateName",
-                    nameResult.getIsDuplicateName()
-                );
-                project.setAdditionalDetails(enrichedAdditionalDetails);
-                
-            } else {
-                log.info("Project name unchanged. Existing: {}, New base: {}", existingName, newBaseName);
-            }
-            
         } catch (Exception e) {
             log.error("Error handling project name update for project: {}", project.getId(), e);
-            // Don't throw exception - continue with update even if name generation fails
         }
     }
 
     /**
-     * Checks if any data that affects project name generation has changed
-     * Name is affected by: startDate, endDate, projectType, address.boundary (state)
+     * Checks if data affecting Option 4 project name has changed.
      */
-    private boolean hasNameAffectingDataChanged(Project project, Project projectFromDB) {
-        // Check if start date changed
-        if (!Objects.equals(project.getStartDate(), projectFromDB.getStartDate())) {
-            log.info("Start date changed for project: {} - name regeneration needed", project.getId());
-            return true;
+    private boolean hasNameAffectingDataChanged(Project project, Project projectFromDB, boolean draft) {
+        if (draft) {
+            if (!Objects.equals(project.getStartDate(), projectFromDB.getStartDate())) {
+                return true;
+            }
+            if (!Objects.equals(project.getEndDate(), projectFromDB.getEndDate())) {
+                return true;
+            }
+            if (!Objects.equals(extractJustificationCode(project.getAdditionalDetails()),
+                    extractJustificationCode(projectFromDB.getAdditionalDetails()))) {
+                return true;
+            }
+            return !Objects.equals(
+                    stringifyGeographyDetails(project.getAdditionalDetails()),
+                    stringifyGeographyDetails(projectFromDB.getAdditionalDetails()));
         }
-        
-        // Check if end date changed
+
         if (!Objects.equals(project.getEndDate(), projectFromDB.getEndDate())) {
-            log.info("End date changed for project: {} - name regeneration needed", project.getId());
             return true;
         }
-        
-        // Check if project type changed
-        if (!Objects.equals(project.getProjectType(), projectFromDB.getProjectType())) {
-            log.info("Project type changed for project: {} - name regeneration needed", project.getId());
+        if (!Objects.equals(
+                stringifyGeographyDetails(project.getAdditionalDetails()),
+                stringifyGeographyDetails(projectFromDB.getAdditionalDetails()))) {
             return true;
         }
-        
-        // Check if address boundary (state) changed
-        String currentBoundary = project.getAddress() != null ? project.getAddress().getBoundary() : null;
-        String existingBoundary = projectFromDB.getAddress() != null ? projectFromDB.getAddress().getBoundary() : null;
-        if (!Objects.equals(currentBoundary, existingBoundary)) {
-            log.info("Address boundary changed for project: {} - name regeneration needed", project.getId());
-            return true;
+        int existingHf = projectNameGenerationService.parseHealthFacilityCountFromName(projectFromDB.getName());
+        int currentHf = projectRepository.countProjectFacilitiesByProjectId(project.getId(), project.getTenantId());
+        return existingHf != currentHf;
+    }
+
+    private String extractJustificationCode(Object additionalDetails) {
+        if (additionalDetails == null) {
+            return null;
         }
-        
-        log.info("No name-affecting data changed for project: {}", project.getId());
-        return false;
+        try {
+            JsonNode node = mapper.valueToTree(additionalDetails);
+            if (node != null && node.has("justificationCode") && !node.get("justificationCode").isNull()) {
+                return node.get("justificationCode").asText();
+            }
+        } catch (Exception e) {
+            log.error("Error reading justificationCode", e);
+        }
+        return null;
+    }
+
+    private String stringifyGeographyDetails(Object additionalDetails) {
+        if (additionalDetails == null) {
+            return null;
+        }
+        try {
+            JsonNode node = mapper.valueToTree(additionalDetails);
+            if (node != null && node.has("geographyDetails")) {
+                return node.get("geographyDetails").toString();
+            }
+        } catch (Exception e) {
+            log.error("Error reading geographyDetails", e);
+        }
+        return null;
     }
 
     /**
@@ -866,19 +817,6 @@ public class ProjectService {
             log.error("Error validating additionalDetails update", e);
             return false;
         }
-    }
-
-    /**
-     * Extracts base name from existing name by removing numeric suffixes
-     * Example: "E4H-TS-2023-25-5" -> "E4H-TS-2023-25"
-     */
-    private String extractBaseNameFromExistingName(String existingName) {
-        if (existingName == null || existingName.trim().isEmpty()) {
-            return existingName;
-        }
-        
-        // Remove trailing numeric suffix pattern: -digits
-        return existingName.replaceFirst("-\\d+$", "");
     }
 
     /**
