@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:reactive_forms/reactive_forms.dart';
+import 'package:selco/utils/utils.dart';
 
 import '../blocs/amc_otp/amc_otp.dart';
 import '../blocs/selected_scheduled_visit/selected_scheduled_visit.dart';
@@ -136,10 +137,22 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                       const SizedBox(height: spacer6),
                       Center(
                         child: Text(
+                          textAlign: TextAlign.center,
                           context.translate(i18.amcOtp.instruction),
                           style: textTheme.headingM.copyWith(
                               color: theme.colorTheme.primary.primary2),
                         ),
+                      ),
+                      Text(
+                        "${context.translate(i18.amcOtp.amcOtpReceiverInstruction1)} "
+                        "${scheduledVisit?.facility?.facility_poc_name ?? '___'} "
+                        "${context.translate(i18.amcOtp.amcOtpReceiverInstruction2)} "
+                        "${context.translate(i18.amcOtp.amcOtpMaskedPhone)}"
+                        "${truncateTextFromStart(scheduledVisit?.facility?.facility_poc_phone ?? '****', maxLength: 4)}",
+                        style: textTheme.bodyL.copyWith(
+                          color: theme.colorTheme.text.primary,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
                       SizedBox(
                         width: context.width,
@@ -153,7 +166,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                             },
                           },
                           builder: (field) => DigitOTPInput(
-                            label: context.translate(i18.amcOtp.enterCode),
+                            // label: context.translate(i18.amcOtp.enterCode),
                             inputFormatter: [
                               FilteringTextInputFormatter.digitsOnly
                             ],

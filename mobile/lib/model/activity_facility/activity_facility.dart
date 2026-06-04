@@ -271,6 +271,10 @@ class Facility with FacilityMappable {
   String? facility_category;
   @MappableField(key: 'facility_ownership')
   String? facility_ownership;
+  @MappableField(key: 'facility_poc_name')
+  String? facility_poc_name;
+  @MappableField(key: 'facility_poc_phone')
+  String? facility_poc_phone;  
 
   Facility();
 
@@ -294,6 +298,8 @@ class Facility with FacilityMappable {
     f.facility_subtype = m['facility_subtype']?.toString();
     f.facility_category = m['facility_category']?.toString();
     f.facility_ownership = m['facility_ownership']?.toString();
+    f.facility_poc_name = m['facility_poc_name']?.toString();
+    f.facility_poc_phone = m['facility_poc_phone']?.toString();        
     return f;
   }
 
@@ -311,6 +317,8 @@ class Facility with FacilityMappable {
         'facility_subtype': facility_subtype,
         'facility_category': facility_category,
         'facility_ownership': facility_ownership,
+        'facility_poc_name': facility_poc_name,
+        'facility_poc_phone': facility_poc_phone,                
       };
 }
 

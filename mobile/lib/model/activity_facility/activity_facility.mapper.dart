@@ -841,6 +841,12 @@ class FacilityMapper extends ClassMapperBase<Facility> {
   static String? _$facility_ownership(Facility v) => v.facility_ownership;
   static const Field<Facility, String> _f$facility_ownership =
       Field('facility_ownership', _$facility_ownership);
+  static String? _$facility_poc_name(Facility v) => v.facility_poc_name;
+  static const Field<Facility, String> _f$facility_poc_name =
+      Field('facility_poc_name', _$facility_poc_name);
+  static String? _$facility_poc_phone(Facility v) => v.facility_poc_phone;
+  static const Field<Facility, String> _f$facility_poc_phone =
+      Field('facility_poc_phone', _$facility_poc_phone);
 
   @override
   final MappableFields<Facility> fields = const {
@@ -857,6 +863,8 @@ class FacilityMapper extends ClassMapperBase<Facility> {
     #facility_subtype: _f$facility_subtype,
     #facility_category: _f$facility_category,
     #facility_ownership: _f$facility_ownership,
+    #facility_poc_name: _f$facility_poc_name,
+    #facility_poc_phone: _f$facility_poc_phone,
   };
   @override
   final bool ignoreNull = true;

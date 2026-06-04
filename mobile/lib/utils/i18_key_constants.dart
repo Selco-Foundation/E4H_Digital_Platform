@@ -221,8 +221,7 @@ class SelectHealthFacility {
       'SELECT_HEALTH_FACILITY_RESUME_INSTALLATION_REPORT';
   String get startInstallationReport =>
       'SELECT_HEALTH_FACILITY_START_INSTALLATION_REPORT';
-  String get submitForApproval =>
-      'SELECT_HEALTH_FACILITY_SUBMIT_FOR_APPROVAL';
+  String get submitForApproval => 'SELECT_HEALTH_FACILITY_SUBMIT_FOR_APPROVAL';
 }
 
 class AssetCount {
@@ -266,8 +265,7 @@ class AssetSummary {
       'ASSET_SUMMARY_DETAILS_FOR_SELECTED_REASON';
   String get addReason => 'ASSET_SUMMARY_ADD_REASON';
   String get back => 'ASSET_SUMMARY_BACK';
-  String get healthFacilityDetails =>
-      'ASSET_SUMMARY_HEALTH_FACILITY_DETAILS';
+  String get healthFacilityDetails => 'ASSET_SUMMARY_HEALTH_FACILITY_DETAILS';
   String get name => 'ASSET_SUMMARY_NAME';
   String get count => 'ASSET_SUMMARY_COUNT';
   String get specifications => 'ASSET_SUMMARY_SPECIFICATIONS';
@@ -296,6 +294,9 @@ class AmcOtp {
   String get instruction => 'AMC_OTP_INSTRUCTION';
   String get enterCode => 'AMC_OTP_ENTER_CODE';
   String get resendCode => 'AMC_OTP_RESEND_CODE';
+  String get amcOtpReceiverInstruction1 => "AMC_OTP_RECEIVER_INSTRUCTION_1";
+  String get amcOtpReceiverInstruction2 => "AMC_OTP_RECEIVER_INSTRUCTION_2";
+  String get amcOtpMaskedPhone => "AMC_OTP_MASKED_PHONE";
 }
 
 class AmcDraft {
@@ -343,8 +344,7 @@ class AmcSelectFacility {
   String get failedToLoadVisits => 'AMC_SELECT_FACILITY_FAILED_TO_LOAD_VISITS';
   String get amcDate => 'AMC_SELECT_FACILITY_AMC_DATE';
   String get report => 'AMC_SELECT_FACILITY_REPORT';
-  String get submitForApproval =>
-      'AMC_SELECT_FACILITY_SUBMIT_FOR_APPROVAL';
+  String get submitForApproval => 'AMC_SELECT_FACILITY_SUBMIT_FOR_APPROVAL';
 }
 
 class Home {
@@ -376,8 +376,7 @@ class OverallAssetSummary {
   String get allAssetsSubmittedSuccessfully =>
       'OVERALL_ASSET_SUMMARY_ALL_ASSETS_SUBMITTED_SUCCESSFULLY';
   String get addMoreAssets => 'OVERALL_ASSET_SUMMARY_ADD_MORE_ASSETS';
-  String get errorLoadingCounts =>
-      'OVERALL_ASSET_SUMMARY_ERROR_LOADING_COUNTS';
+  String get errorLoadingCounts => 'OVERALL_ASSET_SUMMARY_ERROR_LOADING_COUNTS';
   String get upload => 'OVERALL_ASSET_SUMMARY_UPLOAD';
 }
 

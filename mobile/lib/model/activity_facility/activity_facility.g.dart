@@ -6459,23 +6459,33 @@ const FacilitySchema = Schema(
       name: r'facility_ownership',
       type: IsarType.string,
     ),
-    r'facility_subtype': PropertySchema(
+    r'facility_poc_name': PropertySchema(
       id: 9,
+      name: r'facility_poc_name',
+      type: IsarType.string,
+    ),
+    r'facility_poc_phone': PropertySchema(
+      id: 10,
+      name: r'facility_poc_phone',
+      type: IsarType.string,
+    ),
+    r'facility_subtype': PropertySchema(
+      id: 11,
       name: r'facility_subtype',
       type: IsarType.string,
     ),
     r'isActive': PropertySchema(
-      id: 10,
+      id: 12,
       name: r'isActive',
       type: IsarType.bool,
     ),
     r'tenantId': PropertySchema(
-      id: 11,
+      id: 13,
       name: r'tenantId',
       type: IsarType.string,
     ),
     r'wfStatus': PropertySchema(
-      id: 12,
+      id: 14,
       name: r'wfStatus',
       type: IsarType.string,
     )
@@ -6551,6 +6561,18 @@ int _facilityEstimateSize(
     }
   }
   {
+    final value = object.facility_poc_name;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
+    final value = object.facility_poc_phone;
+    if (value != null) {
+      bytesCount += 3 + value.length * 3;
+    }
+  }
+  {
     final value = object.facility_subtype;
     if (value != null) {
       bytesCount += 3 + value.length * 3;
@@ -6596,10 +6618,12 @@ void _facilitySerialize(
   writer.writeString(offsets[6], object.facilityType);
   writer.writeString(offsets[7], object.facility_category);
   writer.writeString(offsets[8], object.facility_ownership);
-  writer.writeString(offsets[9], object.facility_subtype);
-  writer.writeBool(offsets[10], object.isActive);
-  writer.writeString(offsets[11], object.tenantId);
-  writer.writeString(offsets[12], object.wfStatus);
+  writer.writeString(offsets[9], object.facility_poc_name);
+  writer.writeString(offsets[10], object.facility_poc_phone);
+  writer.writeString(offsets[11], object.facility_subtype);
+  writer.writeBool(offsets[12], object.isActive);
+  writer.writeString(offsets[13], object.tenantId);
+  writer.writeString(offsets[14], object.wfStatus);
 }
 
 Facility _facilityDeserialize(
@@ -6626,10 +6650,12 @@ Facility _facilityDeserialize(
   object.facilityType = reader.readStringOrNull(offsets[6]);
   object.facility_category = reader.readStringOrNull(offsets[7]);
   object.facility_ownership = reader.readStringOrNull(offsets[8]);
-  object.facility_subtype = reader.readStringOrNull(offsets[9]);
-  object.isActive = reader.readBoolOrNull(offsets[10]);
-  object.tenantId = reader.readStringOrNull(offsets[11]);
-  object.wfStatus = reader.readStringOrNull(offsets[12]);
+  object.facility_poc_name = reader.readStringOrNull(offsets[9]);
+  object.facility_poc_phone = reader.readStringOrNull(offsets[10]);
+  object.facility_subtype = reader.readStringOrNull(offsets[11]);
+  object.isActive = reader.readBoolOrNull(offsets[12]);
+  object.tenantId = reader.readStringOrNull(offsets[13]);
+  object.wfStatus = reader.readStringOrNull(offsets[14]);
   return object;
 }
 
@@ -6669,10 +6695,14 @@ P _facilityDeserializeProp<P>(
     case 9:
       return (reader.readStringOrNull(offset)) as P;
     case 10:
-      return (reader.readBoolOrNull(offset)) as P;
+      return (reader.readStringOrNull(offset)) as P;
     case 11:
       return (reader.readStringOrNull(offset)) as P;
     case 12:
+      return (reader.readBoolOrNull(offset)) as P;
+    case 13:
+      return (reader.readStringOrNull(offset)) as P;
+    case 14:
       return (reader.readStringOrNull(offset)) as P;
     default:
       throw IsarError('Unknown property with id $propertyId');
@@ -7772,6 +7802,314 @@ extension FacilityQueryFilter
     return QueryBuilder.apply(this, (query) {
       return query.addFilterCondition(FilterCondition.greaterThan(
         property: r'facility_ownership',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'facility_poc_name',
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'facility_poc_name',
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'facility_poc_name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'facility_poc_name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'facility_poc_name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'facility_poc_name',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'facility_poc_name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'facility_poc_name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'facility_poc_name',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'facility_poc_name',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'facility_poc_name',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_nameIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'facility_poc_name',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneIsNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNull(
+        property: r'facility_poc_phone',
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneIsNotNull() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(const FilterCondition.isNotNull(
+        property: r'facility_poc_phone',
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneEqualTo(
+    String? value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'facility_poc_phone',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneGreaterThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        include: include,
+        property: r'facility_poc_phone',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneLessThan(
+    String? value, {
+    bool include = false,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.lessThan(
+        include: include,
+        property: r'facility_poc_phone',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneBetween(
+    String? lower,
+    String? upper, {
+    bool includeLower = true,
+    bool includeUpper = true,
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.between(
+        property: r'facility_poc_phone',
+        lower: lower,
+        includeLower: includeLower,
+        upper: upper,
+        includeUpper: includeUpper,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneStartsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.startsWith(
+        property: r'facility_poc_phone',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneEndsWith(
+    String value, {
+    bool caseSensitive = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.endsWith(
+        property: r'facility_poc_phone',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneContains(String value, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.contains(
+        property: r'facility_poc_phone',
+        value: value,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneMatches(String pattern, {bool caseSensitive = true}) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.matches(
+        property: r'facility_poc_phone',
+        wildcard: pattern,
+        caseSensitive: caseSensitive,
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.equalTo(
+        property: r'facility_poc_phone',
+        value: '',
+      ));
+    });
+  }
+
+  QueryBuilder<Facility, Facility, QAfterFilterCondition>
+      facility_poc_phoneIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addFilterCondition(FilterCondition.greaterThan(
+        property: r'facility_poc_phone',
         value: '',
       ));
     });
