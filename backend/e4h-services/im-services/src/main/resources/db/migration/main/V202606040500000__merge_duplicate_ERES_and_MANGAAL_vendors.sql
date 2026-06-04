@@ -1,5 +1,3 @@
-BEGIN;
-
 UPDATE public.eg_org
 SET is_active = false
 WHERE code IN ('IN-0029','IN-0037');
@@ -71,6 +69,4 @@ WHERE assignee = 'b4375516-dea3-4201-b6e8-603f12971196';
 UPDATE eg_hrms_jurisdiction
 SET employeeid = 'f85df0e9-bbd9-4cc4-b11c-4917fbdb3319'
 WHERE employeeid = 'b4375516-dea3-4201-b6e8-603f12971196';
-
-COMMIT;
 
