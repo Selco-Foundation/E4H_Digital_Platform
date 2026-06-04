@@ -207,9 +207,9 @@ public class AssetValidator {
                     ErrorConstants.ASSET_BATTERY_TOTAL_CAPACITY_UOM_MSG);
         }
 
-        if (batteryDetails.getBatteryType() == null || !VALID_BATTERY_TYPES.contains(batteryDetails.getBatteryType())) {
-            errorMap.put(ErrorConstants.ASSET_BATTERY_TYPE_INVALID_CODE,
-                    ErrorConstants.ASSET_BATTERY_TYPE_INVALID_MSG);
+        if (batteryDetails.getBatteryType() == null) {
+            errorMap.put(ErrorConstants.ASSET_BATTERY_TYPE_NULL_CODE,
+                    ErrorConstants.ASSET_BATTERY_TYPE_NULL_MSG);
         }
 
         if (!"Volts".equals(batteryDetails.getVoltageUnit())) {

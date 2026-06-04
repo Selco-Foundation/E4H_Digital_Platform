@@ -7,6 +7,8 @@ import {useQueryClient} from "react-query";
 import {useDispatch} from "react-redux";
 import {populatePauseRMSResponse} from "../../redux/actions/complaint";
 import CommonUtils from "../../utilities/CommonUtils";
+import ConfirmationAlert from "../../components/ConfirmationAlert";
+import FormattedDateInput from "../../components/custom/FormattedDateInput";
 
 export const PauseRMS = ({ parentUrl }) => {
   const { t } = useTranslation();
@@ -38,11 +40,15 @@ export const PauseRMS = ({ parentUrl }) => {
   const { facilityId } = Digit.Hooks.useQueryParams();
   const client = useQueryClient();
   const dispatch = useDispatch();
-  const [savedReason, setSavedReason] = useState("");
+  const [reason, setReason] = useState("");
+  const [duration, setDuration] = useState("");
   const [savedDuration, setSavedDuration] = useState("");
+  const [canModify, setCanModify] = useState(false);
+  const [formData, setFormData] = useState({});
+  const [alert, setAlert] = useState(null);
 
-  const { data: boundaryData } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
-  const { data: facilityData } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
+  const { data: boundaryData, isLoading: boundaryDataLoading } = Digit.Hooks.im.useBoundary(jurisdictionCurrentBoundaryCodes);
+  const { data: facilityData, isLoading: facilityDataLoading } = Digit.Hooks.im.useFacility(facilityBoundaryCodes);
 
   useEffect(() => {
     setSelectBoundaryCode(jurisdictionCurrentBoundaryCodes?.join(","));
@@ -194,12 +200,12 @@ export const PauseRMS = ({ parentUrl }) => {
   const history = useHistory();
 
   useEffect(() => {
-    if (healthcentre?.code && district?.code && block?.code && savedDuration) {
+    if (healthcentre?.code && district?.code && block?.code && duration && reason) {
       setSubmitValve(true);
     } else {
       setSubmitValve(false);
     }
-  }, [healthcentre, district, block, savedDuration]);
+  }, [healthcentre, district, block, duration, reason]);
 
   useEffect(() => {
     const checkFacilityStatus = async () => {
@@ -215,10 +221,14 @@ export const PauseRMS = ({ parentUrl }) => {
 
           if (data?.isPaused) {
             setIsPausedFacility(true);
-            setSavedReason(data?.reason || "");
+            setReason(data?.reason || "");
+            setDuration(data?.pausedUntil ? CommonUtils.formatUTCDate(data.pausedUntil * 1000) : "");
             setSavedDuration(data?.pausedUntil ? CommonUtils.formatUTCDate(data.pausedUntil * 1000) : "");
+          } else {
+            setIsPausedFacility(false);
           }
         } catch (error) {
+          setIsPausedFacility(false);
           console.error("Error fetching facility status:", error);
         } finally {
           setBlockUI(false);
@@ -228,6 +238,10 @@ export const PauseRMS = ({ parentUrl }) => {
 
     checkFacilityStatus();
   }, [healthcentre]);
+
+  useEffect(() => {
+    setCanModify(savedDuration !== duration);
+  }, [savedDuration, duration]);
 
   const handleDistrictChange = async (selectedDistrict) => {
     setDistrict(selectedDistrict);
@@ -256,8 +270,8 @@ export const PauseRMS = ({ parentUrl }) => {
     const formData = {
       ...data,
       tenantId,
-      reason: savedReason,
-      pausedUntil: `${savedDuration}T23:59:59Z`,
+      reason: reason,
+      pausedUntil: `${duration}T23:59:59Z`,
       action,
       facilityId: healthcentre?.id,
       facilityName: healthcentre?.facilityName,
@@ -291,15 +305,37 @@ export const PauseRMS = ({ parentUrl }) => {
     await onSubmit({}, "RESUME");
   };
 
+  const handleFacilityActivation = () => {
+    setAlert({
+      message: t("RMS_FACILITY_ACTIVATION_ALERT_DESC"),
+      continueAction: async () => await resumeFacility(),
+    });
+  }
+
+  const handleFacilityModification = () => {
+    setAlert({
+      message: `${t("RMS_FACILITY_MODIFICATION_ALERT_DESC")} ${CommonUtils.formatUTCDate((new Date(duration)).getTime(), "DD/MM/YYYY")}`,
+      continueAction: async () => wrapperSubmit(formData, "PAUSE"),
+    });
+  }
+
+  const handleFormValueChange = (data) => {
+    if (CommonUtils.isNotEqual(data, formData)) {
+      setFormData(data);
+    }
+  }
+
   const districtRef = useRef(null);
   const blockRef = useRef(null);
   const healthCareRef = useRef(null);
   const durationRef = useRef(null);
+  const reasonRef = useRef(null);
   const fieldsToValidate = [
     { field: district, ref: districtRef },
     { field: block, ref: blockRef },
     { field: healthcentre, ref: healthCareRef },
-    { field: savedDuration, ref: durationRef },
+    { field: duration, ref: durationRef },
+    { field: reason, ref: reasonRef },
   ];
 
   const handleButtonClick = () => {
@@ -385,32 +421,28 @@ export const PauseRMS = ({ parentUrl }) => {
           type: "custom",
           isMandatory: true,
           populators: (
-            <TextInput
+            <FormattedDateInput
               type={"date"}
-              className="field desktop-w-full"
-              value={savedDuration}
+              className="field desktop-w-full employee-card-input"
+              value={duration}
               inputRef={durationRef}
-              onChange={(e) => setSavedDuration(e.target.value)}
-              validation={{
-                minLength: 0,
-                maxLength: 256,
-              }}
+              onChange={(e) => setDuration(e.target.value)}
               min={new Date().toISOString().split("T")[0]}
-              error={t("CS_LENGTH_EXCEED")}
-              required={true}
+              dateFormat={"dd/MM/yyyy"}
             />
           ),
         },
         {
           label: t("RMS_PAUSE_REASON"),
           type: "custom",
-          isMandatory: false,
+          isMandatory: true,
           populators: (
             <TextInput
               type={"text"}
               className="field desktop-w-full"
-              value={savedReason}
-              onChange={(e) => setSavedReason(e.target.value)}
+              value={reason}
+              inputRef={reasonRef}
+              onChange={(e) => setReason(e.target.value)}
               validation={{
                 minLength: 0,
                 maxLength: 256,
@@ -432,6 +464,8 @@ export const PauseRMS = ({ parentUrl }) => {
     }
   };
 
+  const showLoader = blockUI || (facilityId && (boundaryDataLoading || facilityDataLoading));
+
   return (
     <div className={"pause-rms-form-wrapper"}>
       <style>
@@ -443,7 +477,7 @@ export const PauseRMS = ({ parentUrl }) => {
           }
         `}
       </style>
-      {blockUI && (
+      {showLoader && (
         <div
           style={{
             display: "flex",
@@ -473,13 +507,17 @@ export const PauseRMS = ({ parentUrl }) => {
       <FormComposer
         heading={t("PAUSE_RMS")}
         config={config}
-        onSubmit={(data) => wrapperSubmit(data, "PAUSE")}
-        isDisabled={!canSubmit}
-        label={isPausedFacility ? t("CS_ACTION_MODIFY") : t("CS_ACTION_DISABLE")}
-        secondaryActionLabel={isPausedFacility ? t("CS_ACTION_ACTIVATE") : ""}
-        onSecondaryActionClick={isPausedFacility ? () => resumeFacility() : null}
+        onSubmit={(data) => (isPausedFacility ? handleFacilityActivation() : wrapperSubmit(data, "PAUSE"))}
+        isDisabled={isPausedFacility ? false : !canSubmit}
+        label={isPausedFacility ? t("CS_ACTION_ACTIVATE") : t("CS_ACTION_DISABLE")}
+        secondaryActionLabel={isPausedFacility ? t("CS_ACTION_MODIFY") : ""}
+        isSecondaryActionDisabled={!(canSubmit && canModify)}
+        onSecondaryActionClick={isPausedFacility ? handleFacilityModification : null}
         actionBarClassName={"reverse-actionbar"}
+        onFormValueChange={handleFormValueChange}
       />
+
+      {alert && <ConfirmationAlert t={t} alert={alert} setAlert={setAlert} />}
 
       {creationError && <Toast error={creationError} isDleteBtn={true} label={creationError} onClose={() => setCreationError(null)} />}
     </div>

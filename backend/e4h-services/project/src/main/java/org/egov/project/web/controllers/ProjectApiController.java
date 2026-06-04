@@ -58,6 +58,8 @@ public class ProjectApiController {
 
     private final ProjectWorkflowService projectWorkflowService;
 
+    private final Co2ProjectLookupService co2ProjectLookupService;
+
     @Autowired
     public ProjectApiController(ObjectMapper objectMapper, HttpServletRequest httpServletRequest,
                                 ProjectStaffService projectStaffService,
@@ -65,7 +67,8 @@ public class ProjectApiController {
                                 ProjectBeneficiaryService projectBeneficiaryService,
                                 ProjectFacilityService projectFacilityService, Producer producer,
                                 ProjectConfiguration projectConfiguration,
-                                ProjectService projectService, ProjectWorkflowService projectWorkflowService) {
+                                ProjectService projectService, ProjectWorkflowService projectWorkflowService,
+                                Co2ProjectLookupService co2ProjectLookupService) {
         this.objectMapper = objectMapper;
         this.httpServletRequest = httpServletRequest;
         this.projectStaffService = projectStaffService;
@@ -76,6 +79,7 @@ public class ProjectApiController {
         this.projectConfiguration = projectConfiguration;
         this.projectService = projectService;
         this.projectWorkflowService = projectWorkflowService;
+        this.co2ProjectLookupService = co2ProjectLookupService;
     }
 
     @RequestMapping(value = "/beneficiary/v1/bulk/_create", method = RequestMethod.POST)
@@ -770,5 +774,18 @@ public class ProjectApiController {
             log.trace("Exiting updateBulkProjectWorkflow");
             return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(response);
         }
+    }
+
+    /** Returns project id and name for the given facility ids. */
+    @PostMapping(value = "/v1/fetchProjectsByFacilities", produces = {"application/json"})
+    public ResponseEntity<FetchProjectsByFacilitiesResponse> fetchProjectsByFacilities(
+            @Valid @RequestBody FetchProjectsByFacilitiesRequest request) {
+        List<FacilityProjectMapping> mappings = co2ProjectLookupService.fetchProjectsByFacilities(
+                request.getTenantId(), request.getFacilityIds());
+        FetchProjectsByFacilitiesResponse response = FetchProjectsByFacilitiesResponse.builder()
+                .responseInfo(ResponseInfoFactory.createResponseInfo(request.getRequestInfo(), true))
+                .projectsByFacility(mappings)
+                .build();
+        return ResponseEntity.ok(response);
     }
 }

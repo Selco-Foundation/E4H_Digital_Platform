@@ -354,8 +354,8 @@ public class AlertRepository {
                 return "DeepDischarge";
             case OVERCHARGING:
                 return "Overcharge";
-            case VOLTAGE_VARIATION_LOW:
-                return "LowVoltage";
+            case VOLTAGE_VARIATION_REVERSE:
+                return "ReverseVoltage";
             case VOLTAGE_VARIATION_HIGH:
                 return "HighVoltage";
             default:

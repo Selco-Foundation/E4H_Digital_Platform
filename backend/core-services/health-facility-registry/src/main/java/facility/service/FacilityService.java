@@ -156,6 +156,9 @@ public class FacilityService {
                         .additionalDetails(facilityCreate.getAdditionalDetails())
                         .isActive(true)
                         .isOnmReady(facilityCreate.getIsOnmReady())
+                        .solarInstallationDate(facilityCreate.getSolarInstallationDate())
+                        .rmsInstallationDate(facilityCreate.getRmsInstallationDate())
+                        .solarSystemCapacityKwp(facilityCreate.getSolarSystemCapacityKwp())
                         .build();
 
                 facility.setFacilityId(idgenUtil.getIdList(
@@ -245,6 +248,9 @@ public class FacilityService {
                 // Push to Kafka topic for persistence
                 facilityRepository.pushCreateFacility(facility);
                 
+                FacilityMappedVendorHelper.hydrateFromAdditionalDetails(facility);
+                FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
+
                 // If facility is ONM ready, create POC user and push to Kibana for indexing
                 if (Boolean.TRUE.equals(facility.getIsOnmReady())) {
                     log.info("Facility {} is ONM ready, creating POC user and pushing to Kibana", facility.getFacilityId());
@@ -400,7 +406,7 @@ public class FacilityService {
     /**
      * Creates POC user as HRMS employee if not exists (checks by employee username / code in HRMS).
      * For {@code ANGANWADI} facilities, username is {@code facilityPocUsername} (HFR not required).
-     * Otherwise validates HFR ID (or NIN-backed flow), POC contact, and POC name before attempting creation.
+     * Otherwise validates that HFR ID or NIN ID is present (one is always required), plus POC contact and POC name.
      * Supports both direct fields (facilityPocName, facilityPocPhone, hfrId) and nested facilityDetails.
      *
      * @param facility The facility for which to create POC user
@@ -422,17 +428,22 @@ public class FacilityService {
             facilityDetails.setHfrId(facility.getHfrId().trim());
         }
 
-        if ((facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank())
+        if ((facilityDetails.getNinId() == null || facilityDetails.getNinId().isBlank())
+                && facility.getNinId() != null && !facility.getNinId().trim().isBlank()) {
+            facilityDetails.setNinId(facility.getNinId().trim());
+        }
+
+        if ((facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()) 
                 && plainPocMobileNumber != null && !plainPocMobileNumber.trim().isBlank()) {
             facilityDetails.setPocContact(plainPocMobileNumber.trim());
         }
-
-        if (facilityDetails.getPocName() == null
+        
+        if (facilityDetails.getPocName() == null 
                 && facility.getFacilityPocName() != null && !facility.getFacilityPocName().trim().isBlank()) {
             facilityDetails.setPocName(facility.getFacilityPocName().trim());
         }
-
-        if (facilityDetails.getPocEmail() == null
+        
+        if (facilityDetails.getPocEmail() == null 
                 && facility.getFacilityPocEmail() != null && !facility.getFacilityPocEmail().trim().isBlank()) {
             facilityDetails.setPocEmail(facility.getFacilityPocEmail().trim());
         }
@@ -442,7 +453,7 @@ public class FacilityService {
                 : facility.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
         boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
 
-        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR + contact + name)
+        // Validate required fields (ANGANWADI: POC username + contact + name; HEALTH/other: HFR or NIN + contact + name)
         if (isAnganwadi) {
             String pocUsername = facility.getFacilityPocUsername() == null
                     ? ""
@@ -458,25 +469,27 @@ public class FacilityService {
                         sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
                 return;
             }
-        } else if (facilityDetails.getHfrId() == null || facilityDetails.getHfrId().isBlank()
-                || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
-                || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
-            log.warn("Cannot create POC user for facility {}: missing HFR ID, POC contact, or POC name. " +
-                    "HFR ID: {}, POC Contact: {}, POC Name: {}",
-                    sanitizeForLog(facility.getFacilityId()),
-                    sanitizeForLog(facilityDetails.getHfrId()),
-                    sanitizeForLog(facilityDetails.getPocContact()),
-                    sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
-            return;
+        } else {
+            String facilityIdentifier = resolveFacilityIdentifier(facility, facilityDetails);
+            if (facilityIdentifier == null || facilityIdentifier.isBlank()
+                    || facilityDetails.getPocContact() == null || facilityDetails.getPocContact().isBlank()
+                    || facilityDetails.getPocName() == null || facilityDetails.getPocName().isBlank()) {
+                log.warn("Cannot create POC user for facility {}: missing facility identifier (HFR or NIN ID), POC contact, or POC name. " +
+                        "HFR ID: {}, NIN ID: {}, POC Contact: {}, POC Name: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(facilityDetails.getHfrId()),
+                        sanitizeForLog(facilityDetails.getNinId()),
+                        sanitizeForLog(facilityDetails.getPocContact()),
+                        sanitizeForLog(facilityDetails.getPocName() != null ? facilityDetails.getPocName() : "null"));
+                return;
+            }
         }
 
         String username;
         if (isAnganwadi) {
             username = facility.getFacilityPocUsername().trim();
         } else {
-            username = facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()
-                    ? facility.getHfrId().trim()
-                    : facility.getNinId();
+            username = resolveFacilityIdentifier(facility, facilityDetails);
         }
         // Check if employee already exists by mobile number
         boolean employeeExists = hrmsService.employeeExistsByUsername(
@@ -495,9 +508,29 @@ public class FacilityService {
                 log.warn("Failed to create POC user for facility {}", sanitizeForLog(facility.getFacilityId()));
             }
         } else {
-            log.info("POC user with mobile number {} already exists for facility {}, skipping creation",
-                    sanitizeForLog(facilityDetails.getPocContact()), sanitizeForLog(facility.getFacilityId()));
+            log.info("POC user with identifier {} already exists for facility {}, skipping creation",
+                    sanitizeForLog(username), sanitizeForLog(facility.getFacilityId()));
         }
+    }
+
+    /**
+     * Resolves the facility identifier used as HRMS username/employee code.
+     * Prefers HFR ID over NIN ID; checks both top-level facility fields and nested facilityDetails.
+     */
+    private String resolveFacilityIdentifier(Facility facility, HealthFacilityDetails facilityDetails) {
+        if (facility.getHfrId() != null && !facility.getHfrId().trim().isBlank()) {
+            return facility.getHfrId().trim();
+        }
+        if (facilityDetails != null && facilityDetails.getHfrId() != null && !facilityDetails.getHfrId().isBlank()) {
+            return facilityDetails.getHfrId().trim();
+        }
+        if (facility.getNinId() != null && !facility.getNinId().trim().isBlank()) {
+            return facility.getNinId().trim();
+        }
+        if (facilityDetails != null && facilityDetails.getNinId() != null && !facilityDetails.getNinId().isBlank()) {
+            return facilityDetails.getNinId().trim();
+        }
+        return null;
     }
 
     /**
@@ -535,6 +568,14 @@ public class FacilityService {
             address.setAddressId(existingFacility.getAddress().getAddressId());
         }
 
+        try{
+            String decryptedMobileNumber = decryptMobileNumber(existingFacility.getFacilityPocPhone());
+            if(decryptedMobileNumber!=null && !decryptedMobileNumber.isBlank()){
+                existingFacility.setFacilityPocPhone(decryptedMobileNumber);
+            }
+        }
+        catch(Exception e){}
+
         Facility facility = new Facility();
         facility.setFacilityId(update.getFacilityId());
         facility.setTenantId(update.getTenantId());
@@ -555,6 +596,30 @@ public class FacilityService {
         facility.setFacilityStatus(update.getStatus());
         facility.setIsActive(update.getIsActive());
         facility.setUserId(update.getUserId());
+        facility.setIsOnmReady(update.getIsOnmReady());
+        facility.setSolarInstallationDate(
+                update.getSolarInstallationDate() != null ? update.getSolarInstallationDate() : existingFacility.getSolarInstallationDate());
+        facility.setRmsInstallationDate(
+                update.getRmsInstallationDate() != null ? update.getRmsInstallationDate() : existingFacility.getRmsInstallationDate());
+        facility.setSolarSystemCapacityKwp(
+                update.getSolarSystemCapacityKwp() != null ? update.getSolarSystemCapacityKwp() : existingFacility.getSolarSystemCapacityKwp());
+
+        // Preserve CO2 fields on partial update payloads sent to persister
+        if (update.getSolarInstallationDate() == null) {
+            update.setSolarInstallationDate(existingFacility.getSolarInstallationDate());
+        }
+        if (update.getRmsInstallationDate() == null) {
+            update.setRmsInstallationDate(existingFacility.getRmsInstallationDate());
+        }
+        if (update.getSolarSystemCapacityKwp() == null) {
+            update.setSolarSystemCapacityKwp(existingFacility.getSolarSystemCapacityKwp());
+        }
+
+        FacilityMappedVendorHelper.mergeMappedVendorFromUpdate(facility, update, existingFacility);
+        FacilityMappedVendorHelper.syncToAdditionalDetails(facility);
+        update.setAdditionalDetails(facility.getAdditionalDetails());
+        update.setMappedVendorName(facility.getMappedVendorName());
+        update.setMappedVendorUserName(facility.getMappedVendorUserName());
 
         String effectiveCategory = firstNonBlank(update.getFacilityCategory(), existingFacility.getFacilityCategory());
         String effectiveHfrId = firstNonBlank(update.getHfrId(), existingFacility.getHfrId());
@@ -594,7 +659,7 @@ public class FacilityService {
 
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
-        
+        boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendor(facility);
         // If user sent isOnmReady = true, handle POC user creation and Kibana push
         if (Boolean.TRUE.equals(update.getIsOnmReady())) {
             log.info("Facility {} is marked as ONM ready, processing POC user and Kibana push", update.getFacilityId());
@@ -664,6 +729,8 @@ public class FacilityService {
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
                     .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
+                    .mappedVendorName(facility.getMappedVendorName() != null ? facility.getMappedVendorName() : existingFacility.getMappedVendorName())
+                    .mappedVendorUserName(facility.getMappedVendorUserName() != null ? facility.getMappedVendorUserName() : existingFacility.getMappedVendorUserName())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
                     .isOnmReady(true) // Set from update request
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
@@ -681,6 +748,24 @@ public class FacilityService {
                     facilityForKibanaUpdate, request.getRequestInfo());
             facilityRepository.pushToKibana(kibanaIndex);
             log.info("Facility {} pushed to Kibana successfully", sanitizeForLog(update.getFacilityId()));
+        } else if (mappedVendorUpdated) {
+            Facility facilityForKibanaUpdate = Facility.builder()
+                    .facilityId(facility.getFacilityId())
+                    .tenantId(facility.getTenantId())
+                    .facilityName(firstNonBlank(facility.getFacilityName(), existingFacility.getFacilityName()))
+                    .facilityType(firstNonBlank(facility.getFacilityType(), existingFacility.getFacilityType()))
+                    .facilityCategory(firstNonBlank(facility.getFacilityCategory(), existingFacility.getFacilityCategory()))
+                    .mappedVendorName(facility.getMappedVendorName())
+                    .mappedVendorUserName(facility.getMappedVendorUserName())
+                    .additionalDetails(facility.getAdditionalDetails())
+                    .isActive(facility.getIsActive() != null ? facility.getIsActive() : existingFacility.getIsActive())
+                    .build();
+            FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndexForFacilityUpdate(
+                    facilityForKibanaUpdate, request.getRequestInfo());
+            if (kibanaIndex != null) {
+                facilityRepository.pushToKibana(kibanaIndex);
+                log.info("Facility {} mapped-vendor fields pushed to Kibana", sanitizeForLog(update.getFacilityId()));
+            }
         }
         
         log.info("Successfully updated facility {}", update.getFacilityId());
@@ -877,7 +962,7 @@ public class FacilityService {
                         "FROM facility fac");
         query.append(" LEFT JOIN facility_address fa ON fac.addressid = fa.id ");
         query.append(result.getWhereClause());
-        query.append(" ORDER BY updated_at DESC NULLS LAST ");
+        query.append(buildBulkSearchOrderBy(criteria));
 
         List<Object> allParams = new ArrayList<>(result.getParams());
         if (!Boolean.TRUE.equals(request.getFacilityBulkSearchCriteria().getSendNonPaginatedResponse())) {
@@ -1107,7 +1192,7 @@ public class FacilityService {
     }
 
     public boolean checkPOCDetailsUpdated(Facility existingFacilityDetails, Facility requestFacilityDetails) {
-        boolean isOnmReady = existingFacilityDetails.getIsOnmReady();
+        boolean isOnmReady = requestFacilityDetails.getIsOnmReady();
         boolean pocDetailsUpdated = (!Objects.equals(existingFacilityDetails.getFacilityPocPhone(), requestFacilityDetails.getFacilityPocPhone()) ||
                 !Objects.equals(existingFacilityDetails.getFacilityPocName(), requestFacilityDetails.getFacilityPocName()) ||
                 !Objects.equals(existingFacilityDetails.getFacilityPocEmail(), requestFacilityDetails.getFacilityPocEmail()));
@@ -1115,7 +1200,20 @@ public class FacilityService {
     }
 
     public void updatedHRMSUser(FacilityUpdateRequest request, Facility existingFacilityDetails, Facility requestFacilityDetails){
-        String username = existingFacilityDetails.getHfrId() != null && !existingFacilityDetails.getHfrId().trim().isBlank() ? existingFacilityDetails.getHfrId(): existingFacilityDetails.getNinId();
+        String normalizedCategory = existingFacilityDetails.getFacilityCategory() == null
+                ? ""
+                : existingFacilityDetails.getFacilityCategory().trim().toUpperCase(Locale.ROOT);
+        boolean isAnganwadi = CATEGORY_ANGANWADI.equals(normalizedCategory);
+        String username;
+        if (isAnganwadi) {
+            username = existingFacilityDetails.getFacilityPocUsername() !=null && !existingFacilityDetails.getFacilityPocUsername().trim().isBlank() ?
+                    existingFacilityDetails.getFacilityPocUsername().trim() : "";
+        } else {
+            username = existingFacilityDetails.getHfrId() != null && !existingFacilityDetails.getHfrId().trim().isBlank()
+                    ? existingFacilityDetails.getHfrId().trim()
+                    : existingFacilityDetails.getNinId();
+        }
+
         if(username!=null && !username.isEmpty()){
             Employee employee = hrmsUtils.getUserByUsername(request, username);
             if (employee != null) {
@@ -1294,6 +1392,13 @@ public class FacilityService {
         }
         String[] segments = newBlockBoundaryCode.split("_");
         return segments[segments.length - 1];
+    }
+
+    private String buildBulkSearchOrderBy(FacilityBulkSearchCriteria criteria) {
+        String sortBy = criteria.getSortBy() != null ? criteria.getSortBy().trim().toLowerCase() : "updated_at";
+        String column = "created_at".equals(sortBy) ? "fac.created_at" : "fac.updated_at";
+        boolean asc = "asc".equalsIgnoreCase(criteria.getSortOrder());
+        return " ORDER BY " + column + (asc ? " ASC " : " DESC ") + " NULLS LAST ";
     }
 
 }
