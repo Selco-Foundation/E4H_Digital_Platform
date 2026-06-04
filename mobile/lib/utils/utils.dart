@@ -235,6 +235,11 @@ String truncateTextFromStart(String text, {int maxLength = 16}) {
   return '...${text.substring(text.length - keep)}';
 }
 
+String lastPhoneDigits(String phone, {int count = 4}) {
+  if (phone.length <= count) return phone;
+  return phone.substring(phone.length - count);
+}
+
 String removeFlutterKeywordAndtruncateTextFromStart(String text,
     {int maxLength = 16}) {
   final cleaned = text

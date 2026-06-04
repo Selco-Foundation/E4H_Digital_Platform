@@ -150,7 +150,7 @@ class _AmcOtpPageState extends State<AmcOtpPage> {
                         "${scheduledVisit?.facility?.facility_poc_name ?? '___'} "
                         "${context.translate(i18.amcOtp.amcOtpReceiverInstruction2)} "
                         "${context.translate(i18.amcOtp.amcOtpMaskedPhone)}"
-                        "${truncateTextFromStart(scheduledVisit?.facility?.facility_poc_phone ?? '****', maxLength: 4)}",
+                        "${lastPhoneDigits(scheduledVisit?.facility?.facility_poc_phone ?? '****', count: 4)}",
                         style: textTheme.bodyL.copyWith(
                           color: theme.colorTheme.text.primary,
                         ),
