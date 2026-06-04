@@ -28,6 +28,7 @@ class AmcDraftPage extends StatefulWidget {
 
 class _AmcDraftPageState extends State<AmcDraftPage> {
   int _selectedTabIndex = 0;
+  String otpText = "otp";
 
   List<String> _statusesForTab(int tabIndex) {
     if (tabIndex == 0) {
@@ -204,7 +205,12 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                       },
                       title: visit.facility?.facilityName ?? '',
                       dateAssigned: visit.scheduledDate ?? DateTime.now(),
-                      status: visit.status ?? '---',
+                      status: visit.status!.isNotEmpty
+                          ? (visit.status!.toLowerCase().contains(otpText)
+                              ? context.translate(i18
+                                  .amcDraft.amcDraftPendingCompletionApproval)
+                              : visit.status)
+                          : '---',
                       state: locality.state,
                       district: locality.district,
                       block: locality.block,
@@ -223,7 +229,8 @@ class _AmcDraftPageState extends State<AmcDraftPage> {
                     context.router.push(
                       AmcDynamicFormRoute(
                           pageName: "AMC_Report",
-                          uniqueIdentifier: "AssetForm.AMC_SCHEDULED_MAINTENANCE",
+                          uniqueIdentifier:
+                              "AssetForm.AMC_SCHEDULED_MAINTENANCE",
                           schemaName: "AssetForm.AMC_SCHEDULED_MAINTENANCE",
                           scheduledVisit: visit,
                           origin: FormOrigin.submitted),

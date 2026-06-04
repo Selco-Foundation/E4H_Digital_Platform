@@ -305,6 +305,8 @@ class AmcDraft {
   String get pendingOtpApproval => 'AMC_DRAFT_PENDING_OTP_APPROVAL';
   String get pendingApproval => 'AMC_DRAFT_PENDING_APPROVAL';
   String get noDraftsToDisplay => 'AMC_DRAFT_NO_DRAFTS_TO_DISPLAY';
+  String get amcDraftPendingCompletionApproval =>
+      'AMC_DRAFT_PENDING_COMPLETION_CODE_APPROVAL';
 }
 
 class AmcInbox {
