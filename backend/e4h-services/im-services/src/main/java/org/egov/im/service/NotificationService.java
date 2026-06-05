@@ -49,6 +49,8 @@ public class NotificationService {
     private ObjectMapper mapper;
     private MultiStateInstanceUtil centralInstanceUtil;
 
+    private WorkflowSmsNotificationService workflowSmsNotificationService;
+
     @Autowired
     public NotificationService(IMConfiguration config,
                                NotificationUtil notificationUtil,
@@ -57,7 +59,8 @@ public class NotificationService {
                                HRMSUtil hrmsUtils,
                                ObjectMapper mapper,
                                MultiStateInstanceUtil centralInstanceUtil,
-                               @Lazy WorkflowService workflowService) {
+                               @Lazy WorkflowService workflowService,
+                               @Lazy WorkflowSmsNotificationService workflowSmsNotificationService) {
         this.config = config;
         this.notificationUtil = notificationUtil;
         this.serviceRequestRepository = serviceRequestRepository;
@@ -66,11 +69,13 @@ public class NotificationService {
         this.mapper = mapper;
         this.centralInstanceUtil = centralInstanceUtil;
         this.workflowService = workflowService;
+        this.workflowSmsNotificationService = workflowSmsNotificationService;
     }
 
     public void process(IncidentRequest request, String topic) {
         try {
             log.info("request for notification :" + request);
+            workflowSmsNotificationService.process(request);
             String tenantId = request.getIncident().getTenantId();
             IncidentWrapper incidentWrapper = IncidentWrapper.builder().incident(request.getIncident()).workflow(request.getWorkflow()).build();
             String applicationStatus = request.getIncident().getApplicationStatus();

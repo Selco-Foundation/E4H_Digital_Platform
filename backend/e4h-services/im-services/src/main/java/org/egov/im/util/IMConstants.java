@@ -206,6 +206,16 @@ public class IMConstants {
     public static final String ROLE_COMPLAINANT = "COMPLAINANT";
     public static final String ROLE_COMPLAINT_ASSESSOR = "COMPLAINT_ASSESSOR";
     public static final String ROLE_COMPLAINT_RESOLVER = "COMPLAINT_RESOLVER";
+    public static final String ROLE_COMPLAINT_FACILITATOR_1 = "COMPLAINT_FACILITATOR_1";
+    public static final String ROLE_COMPLAINT_FACILITATOR_2 = "COMPLAINT_FACILITATOR_2";
+
+    public static final String PENDING_RESOLUTION_OUT_OF_WARRANTY = "PENDING_RESOLUTION_OUT_OF_WARRANTY";
+
+    public static final String OUT_OF_WARRANTY_ACTION = "OUT_OF_WARRANTY";
+    public static final String MARK_OUT_OF_SCOPE_ACTION = "MARK_OUT_OF_SCOPE";
+    public static final String REVISE_ACTION = "REVISE";
+    public static final String SUBMIT_ACTION = "SUBMIT";
+    public static final String APPROVE_ACTION = "APPROVE";
 
     public static final String ASIA_KOLKATA = "Asia/Kolkata";
 
