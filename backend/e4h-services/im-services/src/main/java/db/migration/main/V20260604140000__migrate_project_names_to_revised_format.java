@@ -331,9 +331,9 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
     }
 
     private void initializeEnv() {
-        projectHost = trimTrailingSlash(getEnvOrDefault("EGOV_PROJECT_HOST", "http://localhost:8080/project"));
-        projectSearchEndpoint = getEnvOrDefault("EGOV_PROJECT_SEARCH_ENDPOINT", "/v2/_search");
-        projectUpdateEndpoint = getEnvOrDefault("EGOV_PROJECT_UPDATE_ENDPOINT", "/v1/_update");
+        projectHost = trimTrailingSlash(getEnvOrDefault("EGOV_PROJECT_HOST", "http://localhost:8080"));
+        projectSearchEndpoint = getEnvOrDefault("EGOV_PROJECT_SEARCH_ENDPOINT", "/project/v2/_search");
+        projectUpdateEndpoint = getEnvOrDefault("EGOV_PROJECT_UPDATE_ENDPOINT", "/project/v1/_update");
         mdmsHost = trimTrailingSlash(getEnvOrDefault("EGOV_MDMS_HOST", "http://localhost:8094"));
         mdmsSearchEndpoint = getEnvOrDefault("EGOV_MDMS_SEARCH_ENDPOINT", "/egov-mdms-service/v1/_search");
         authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
