@@ -27,6 +27,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -41,6 +42,10 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
     private static final String MIGRATION_USER_UUID = "2be2bec7-908d-4984-8368-cecda98fb961";
     private static final String CHILD_PROJECT_TYPE_FIELD_PLAN = "FieldPlan";
     private static final String CHILD_PROJECT_TYPE_FACILITY = "Facility";
+    private static final String DEFAULT_PROJECT_SUB_TYPE = "PROJECT";
+    private static final Set<String> UPDATE_PAYLOAD_EXCLUDED_FIELDS = Set.of(
+            "auditDetails", "documents", "targets", "status", "transactions", "processInstances"
+    );
     private static final int SEARCH_LIMIT = 100;
     private static final long DELAY_BETWEEN_UPDATES_MS = 50L;
 
@@ -286,39 +291,37 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         return postForJson(url, request);
     }
 
+    /**
+     * Forwards the project from v2 search to v1 update, minus read-only / child-collection fields.
+     * The update API regenerates name; persister needs the full project row fields from search.
+     */
     private ObjectNode buildUpdatePayload(JsonNode project) {
-        ObjectNode updateProject = objectMapper.createObjectNode();
-        copyTextField(project, updateProject, "id");
-        copyTextField(project, updateProject, "tenantId");
-        copyLongField(project, updateProject, "startDate");
-        copyLongField(project, updateProject, "endDate");
+        if (project == null || !project.isObject()) {
+            throw new IllegalStateException("Invalid project node in search response");
+        }
 
-        if (!updateProject.has("startDate") || !updateProject.has("endDate")) {
+        ObjectNode updateProject = project.deepCopy();
+        UPDATE_PAYLOAD_EXCLUDED_FIELDS.forEach(updateProject::remove);
+
+        if (!updateProject.has("startDate") || updateProject.get("startDate").isNull()
+                || !updateProject.has("endDate") || updateProject.get("endDate").isNull()) {
             throw new IllegalStateException("Project missing startDate/endDate in search response — update API will reject");
         }
 
-        if (project.has("address") && project.get("address").isObject() && !project.get("address").isNull()) {
-            updateProject.set("address", buildAddressPayload(project.get("address")));
-        }
+        String subType = textOrNull(updateProject, "projectSubType");
+        updateProject.put("projectSubType",
+                subType == null || subType.isBlank() ? DEFAULT_PROJECT_SUB_TYPE : subType);
 
-        ObjectNode additionalDetails = extractAdditionalDetailsObject(project);
-        if (additionalDetails != null) {
-            additionalDetails.remove("legacyProject");
-            updateProject.set("additionalDetails", additionalDetails);
+        if (updateProject.has("additionalDetails") && !updateProject.get("additionalDetails").isNull()) {
+            JsonNode additionalDetails = updateProject.get("additionalDetails");
+            if (additionalDetails.isObject()) {
+                ((ObjectNode) additionalDetails).remove("legacyProject");
+            } else {
+                updateProject.remove("additionalDetails");
+            }
         }
 
         return updateProject;
-    }
-
-    private ObjectNode extractAdditionalDetailsObject(JsonNode project) {
-        if (!project.has("additionalDetails") || project.get("additionalDetails").isNull()) {
-            return null;
-        }
-        JsonNode additionalDetails = project.get("additionalDetails");
-        if (additionalDetails.isObject()) {
-            return additionalDetails.deepCopy();
-        }
-        return null;
     }
 
     private String extractJustificationCode(JsonNode project) {
@@ -348,15 +351,6 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         }
         String value = additionalDetails.get("justificationCode").asText();
         return value == null || value.isBlank() ? null : value.trim();
-    }
-
-    private ObjectNode buildAddressPayload(JsonNode address) {
-        ObjectNode addressPayload = objectMapper.createObjectNode();
-        copyTextField(address, addressPayload, "id");
-        copyTextField(address, addressPayload, "tenantId");
-        copyTextField(address, addressPayload, "boundary");
-        copyTextField(address, addressPayload, "boundaryType");
-        return addressPayload;
     }
 
     private String extractNameFromUpdateResponse(JsonNode response, String projectId) {
