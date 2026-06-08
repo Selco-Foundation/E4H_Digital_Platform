@@ -35,7 +35,6 @@ public class ProjectNameGenerationService {
             Pattern.compile("^([A-Z]{2})-(\\d{4})-(\\d+)-([0-9]+(-[0-9]+)*)$");
     private static final String JUS_PREFIX = "JUS-";
     private static final String SCHEDULED_STATUS = "SCHEDULED";
-    private static final String LEGACY_PROJECT_FLAG = "legacyProject";
 
     private final ProjectRepository projectRepository;
     private final ProjectConfiguration projectConfiguration;
@@ -150,32 +149,6 @@ public class ProjectNameGenerationService {
 
     public boolean isRevisedProjectIdFormat(String name) {
         return StringUtils.isNotBlank(name) && REVISED_PROJECT_ID_PATTERN.matcher(name.trim().toUpperCase()).matches();
-    }
-
-    /**
-     * Legacy projects keep their existing ID; HF is not auto-recalculated on update.
-     */
-    public boolean isLegacyProject(Project project) {
-        if (project == null) {
-            return false;
-        }
-        if (isLegacyFlagSet(project.getAdditionalDetails())) {
-            return true;
-        }
-        String name = project.getName();
-        return StringUtils.isNotBlank(name) && !isRevisedProjectIdFormat(name);
-    }
-
-    private boolean isLegacyFlagSet(Object additionalDetails) {
-        if (additionalDetails == null) {
-            return false;
-        }
-        try {
-            JsonNode node = objectMapper.valueToTree(additionalDetails);
-            return node != null && node.has(LEGACY_PROJECT_FLAG) && node.get(LEGACY_PROJECT_FLAG).asBoolean(false);
-        } catch (Exception e) {
-            return false;
-        }
     }
 
     private String getJustificationNumeric(Project project) {

@@ -152,10 +152,6 @@ public class ProjectService {
                 return;
             }
             Project projectFromDB = projects.get(0);
-            if (projectNameGenerationService.isLegacyProject(projectFromDB)) {
-                log.info("Skipping project ID refresh for legacy project: {}", projectId);
-                return;
-            }
             if (isDraftProject(getProjectStatus(projectFromDB))) {
                 log.debug("Skipping name refresh for draft project: {}", projectId);
                 return;
@@ -650,11 +646,6 @@ public class ProjectService {
      */
     private void handleProjectNameUpdate(ProjectRequest request, Project project, Project projectFromDB) {
         try {
-            if (projectNameGenerationService.isLegacyProject(projectFromDB)) {
-                log.info("Skipping project ID regeneration for legacy project: {}", project.getId());
-                return;
-            }
-
             if (project.getStartDate() == null) {
                 project.setStartDate(projectFromDB.getStartDate());
             }
@@ -671,6 +662,13 @@ public class ProjectService {
                         "justificationCode",
                         projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails()));
                 project.setAdditionalDetails(enriched);
+            }
+
+            if (!projectNameGenerationService.isRevisedProjectIdFormat(projectFromDB.getName())) {
+                String statusFromDb = getProjectStatus(projectFromDB);
+                boolean draft = isDraftProject(statusFromDb);
+                applyGeneratedProjectName(project, request.getRequestInfo(), draft);
+                return;
             }
 
             String statusFromDb = getProjectStatus(projectFromDB);
@@ -703,9 +701,6 @@ public class ProjectService {
      * Checks if data affecting revised project ID has changed.
      */
     private boolean hasNameAffectingDataChanged(Project project, Project projectFromDB, boolean draft) {
-        if (projectNameGenerationService.isLegacyProject(projectFromDB)) {
-            return false;
-        }
         if (draft) {
             if (!Objects.equals(project.getStartDate(), projectFromDB.getStartDate())) {
                 return true;
