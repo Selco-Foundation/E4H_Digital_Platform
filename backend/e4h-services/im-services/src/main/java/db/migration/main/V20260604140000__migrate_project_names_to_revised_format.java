@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.logging.log4j.util.Strings;
 import org.flywaydb.core.api.migration.BaseJavaMigration;
 import org.flywaydb.core.api.migration.Context;
 import org.springframework.http.HttpEntity;
@@ -38,10 +37,9 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
 
     private static final Pattern REVISED_PROJECT_ID_PATTERN =
             Pattern.compile("^([A-Z]{2})-(\\d{4})-(\\d+)-([0-9]+(-[0-9]+)*)$");
-    private static final String ROOT_TENANT = "in";
+    private static final String TENANT_ID = "in";
     private static final String DEFAULT_SUB_PROJECT_TYPE_ID = "PROJECT";
     private static final int SEARCH_LIMIT = 100;
-    private static final int MDMS_LIMIT = 300;
     private static final long DELAY_BETWEEN_UPDATES_MS = 50L;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -50,8 +48,6 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
     private String projectHost;
     private String projectSearchEndpoint;
     private String projectUpdateEndpoint;
-    private String mdmsHost;
-    private String mdmsSearchEndpoint;
     private String authToken;
     private String subProjectTypeId;
     private ObjectNode requestInfo;
@@ -74,6 +70,8 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
 
         int migrated = 0;
         int skipped = 0;
+        int scanned = 0;
+        int alreadyRevised = 0;
         List<String> failures = new ArrayList<>();
 
         try (PrintWriter migrationLogger = new PrintWriter(Files.newBufferedWriter(
@@ -86,21 +84,20 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
             migrationLogger.println("----------------------------------------");
             migrationLogger.flush();
 
-            List<String> tenantIds = fetchTenantIds(ROOT_TENANT);
-            if (tenantIds.isEmpty()) {
-                tenantIds = List.of(ROOT_TENANT);
-            }
-            log.info("Migrating project names for {} tenants", tenantIds.size());
-            migrationLogger.println("Tenants to process: " + tenantIds);
+            log.info("Migrating project names for tenant {}", TENANT_ID);
+            migrationLogger.println("Tenant: " + TENANT_ID);
+            migrationLogger.println("Search filter: subProjectTypeId=" + subProjectTypeId);
             migrationLogger.flush();
 
-            for (String tenantId : tenantIds) {
-                int[] counts = processTenant(tenantId, migrationLogger, failures);
-                migrated += counts[0];
-                skipped += counts[1];
-            }
+            int[] counts = processTenant(TENANT_ID, migrationLogger, failures);
+            migrated = counts[0];
+            skipped = counts[1];
+            scanned = counts[2];
+            alreadyRevised = counts[3];
 
             migrationLogger.println("----------------------------------------");
+            migrationLogger.printf("Scanned: %d%n", scanned);
+            migrationLogger.printf("Already revised format: %d%n", alreadyRevised);
             migrationLogger.printf("Migrated: %d%n", migrated);
             migrationLogger.printf("Skipped: %d%n", skipped);
             migrationLogger.println("Completed at: " + LocalDateTime.now());
@@ -111,12 +108,15 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
             migrationLogger.flush();
         }
 
-        log.info("Project name migration completed. Migrated={}, skipped={}, log={}", migrated, skipped, logFilePath);
+        log.info("Project name migration completed. scanned={}, alreadyRevised={}, migrated={}, skipped={}, log={}",
+                scanned, alreadyRevised, migrated, skipped, logFilePath);
     }
 
     private int[] processTenant(String tenantId, PrintWriter migrationLogger, List<String> failures) {
         int migrated = 0;
         int skipped = 0;
+        int scanned = 0;
+        int alreadyRevised = 0;
         int offset = 0;
         Integer totalCount = null;
 
@@ -143,10 +143,12 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
                 if (project == null) {
                     continue;
                 }
+                scanned++;
                 String projectId = textOrNull(project, "id");
                 String currentName = textOrNull(project, "name");
 
                 if (isAlreadyRevisedFormat(currentName)) {
+                    alreadyRevised++;
                     continue;
                 }
 
@@ -178,7 +180,10 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
                 break;
             }
         }
-        return new int[] {migrated, skipped};
+        migrationLogger.printf("Tenant %s summary: scanned=%d, alreadyRevised=%d, migrated=%d, skipped=%d%n",
+                tenantId, scanned, alreadyRevised, migrated, skipped);
+        migrationLogger.flush();
+        return new int[] {migrated, skipped, scanned, alreadyRevised};
     }
 
     private JsonNode searchProjects(String tenantId, int offset) {
@@ -269,45 +274,6 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         return null;
     }
 
-    private List<String> fetchTenantIds(String tenantId) {
-        List<String> tenantIds = new ArrayList<>();
-        try {
-            ObjectNode request = objectMapper.createObjectNode();
-            request.set("RequestInfo", requestInfo.deepCopy());
-
-            ObjectNode criteria = objectMapper.createObjectNode();
-            criteria.put("tenantId", tenantId);
-            criteria.put("limit", MDMS_LIMIT);
-
-            ArrayNode moduleDetails = objectMapper.createArrayNode();
-            ObjectNode moduleDetail = objectMapper.createObjectNode();
-            moduleDetail.put("moduleName", "tenant");
-            ArrayNode masterDetails = objectMapper.createArrayNode();
-            ObjectNode masterDetail = objectMapper.createObjectNode();
-            masterDetail.put("name", "tenants");
-            masterDetails.add(masterDetail);
-            moduleDetail.set("masterDetails", masterDetails);
-            moduleDetails.add(moduleDetail);
-            criteria.set("moduleDetails", moduleDetails);
-            request.set("MdmsCriteria", criteria);
-
-            JsonNode response = postForJson(mdmsHost + mdmsSearchEndpoint, request);
-            JsonNode tenantsNode = response != null ? response.at("/MdmsRes/tenant/tenants") : null;
-            if (tenantsNode != null && tenantsNode.isArray()) {
-                for (JsonNode tenantNode : tenantsNode) {
-                    String code = textOrNull(tenantNode, "code");
-                    if (Strings.isNotBlank(code) && !ROOT_TENANT.equalsIgnoreCase(code)) {
-                        tenantIds.add(code);
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Failed to fetch tenants from MDMS, defaulting to {}: {}", ROOT_TENANT, e.getMessage());
-        }
-        tenantIds.add(0, ROOT_TENANT);
-        return tenantIds;
-    }
-
     private JsonNode postForJson(String url, JsonNode body) {
         try {
             HttpHeaders headers = new HttpHeaders();
@@ -334,10 +300,15 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         projectHost = trimTrailingSlash(getEnvOrDefault("EGOV_PROJECT_HOST", "http://localhost:8080"));
         projectSearchEndpoint = getEnvOrDefault("EGOV_PROJECT_SEARCH_ENDPOINT", "/project/v2/_search");
         projectUpdateEndpoint = getEnvOrDefault("EGOV_PROJECT_UPDATE_ENDPOINT", "/project/v1/_update");
-        mdmsHost = trimTrailingSlash(getEnvOrDefault("EGOV_MDMS_HOST", "http://localhost:8094"));
-        mdmsSearchEndpoint = getEnvOrDefault("EGOV_MDMS_SEARCH_ENDPOINT", "/egov-mdms-service/v1/_search");
         authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
         subProjectTypeId = getEnvOrDefault("EGOV_PROJECT_SEARCH_SUB_PROJECT_TYPE_ID", DEFAULT_SUB_PROJECT_TYPE_ID);
+    }
+
+    private void addRole(ArrayNode roles, String code) {
+        ObjectNode role = objectMapper.createObjectNode();
+        role.put("code", code);
+        role.put("tenantId", TENANT_ID);
+        roles.add(role);
     }
 
     private ObjectNode buildRequestInfoBody() {
@@ -346,12 +317,10 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         userInfo.put("userName", "SYSTEMUSER");
         userInfo.put("name", "System User");
         userInfo.put("type", "EMPLOYEE");
-        userInfo.put("tenantId", ROOT_TENANT);
+        userInfo.put("tenantId", TENANT_ID);
         ArrayNode roles = objectMapper.createArrayNode();
-        ObjectNode role = objectMapper.createObjectNode();
-        role.put("code", "SYSTEM");
-        role.put("tenantId", ROOT_TENANT);
-        roles.add(role);
+        addRole(roles, "EMPLOYEE");
+        addRole(roles, "SYSTEM");
         userInfo.set("roles", roles);
 
         ObjectNode requestInfoNode = objectMapper.createObjectNode();
