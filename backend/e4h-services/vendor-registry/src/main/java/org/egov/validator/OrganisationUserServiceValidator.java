@@ -481,6 +481,7 @@ public class OrganisationUserServiceValidator {
                 employee.setJurisdictions(
                         hrmsUtils.buildJurisdictions(orgUser.getJurisdictions())
                 );
+                facilityUtil.syncMappedVendorToFacilities(request, facilitySyncJurisdictions, facilitySyncVendorName, facilitySyncVendorUserName);
             }
 
             EmployeeRequest employeeRequest = EmployeeRequest.builder()
