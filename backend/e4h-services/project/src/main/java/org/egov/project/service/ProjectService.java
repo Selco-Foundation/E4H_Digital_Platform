@@ -144,6 +144,15 @@ public class ProjectService {
      * Regenerates project name when facilities change on a scheduled (non-draft) project.
      */
     public void refreshProjectNameAfterFacilityChange(String projectId, String tenantId, RequestInfo requestInfo) {
+        refreshProjectNameAfterFacilityChange(projectId, tenantId, requestInfo, 0);
+    }
+
+    /**
+     * @param pendingFacilityDelta facilities added (+) or removed (-) in the current request
+     *                             but not yet reflected in DB (persister is async via Kafka)
+     */
+    public void refreshProjectNameAfterFacilityChange(String projectId, String tenantId, RequestInfo requestInfo,
+                                                      int pendingFacilityDelta) {
         log.trace("Entering refreshProjectNameAfterFacilityChange for project: {}", projectId);
         try {
             List<Project> projects = findByIds(List.of(projectId));
@@ -164,7 +173,12 @@ public class ProjectService {
                     .address(projectFromDB.getAddress())
                     .additionalDetails(projectFromDB.getAdditionalDetails())
                     .build();
-            ProjectNameResult nameResult = projectNameGenerationService.generateProjectName(projectForName, requestInfo, false);
+            int dbFacilityCount = projectRepository.countProjectFacilitiesByProjectId(projectId, tenantId);
+            int effectiveFacilityCount = Math.max(0, dbFacilityCount + pendingFacilityDelta);
+            log.debug("Refreshing project name for {} with facility count db={} delta={} effective={}",
+                    projectId, dbFacilityCount, pendingFacilityDelta, effectiveFacilityCount);
+            ProjectNameResult nameResult = projectNameGenerationService.generateProjectName(
+                    projectForName, requestInfo, false, effectiveFacilityCount);
             if (nameResult.getName() == null || nameResult.getName().equals(projectFromDB.getName())) {
                 return;
             }

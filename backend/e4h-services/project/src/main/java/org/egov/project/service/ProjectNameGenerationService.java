@@ -7,7 +7,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.models.project.Project;
 import org.egov.common.models.project.ProjectRequest;
-import org.egov.project.config.ProjectConfiguration;
 import org.egov.project.repository.ProjectRepository;
 import org.egov.project.util.MDMSUtils;
 import org.egov.project.web.models.ProjectNameResult;
@@ -37,17 +36,14 @@ public class ProjectNameGenerationService {
     private static final String SCHEDULED_STATUS = "SCHEDULED";
 
     private final ProjectRepository projectRepository;
-    private final ProjectConfiguration projectConfiguration;
     private final MDMSUtils mdmsUtils;
     private final ObjectMapper objectMapper;
 
     public ProjectNameGenerationService(
             ProjectRepository projectRepository,
-            ProjectConfiguration projectConfiguration,
             MDMSUtils mdmsUtils,
             @Qualifier("objectMapper") ObjectMapper objectMapper) {
         this.projectRepository = projectRepository;
-        this.projectConfiguration = projectConfiguration;
         this.mdmsUtils = mdmsUtils;
         this.objectMapper = objectMapper;
     }
@@ -95,26 +91,23 @@ public class ProjectNameGenerationService {
     }
 
     /**
-     * IdGen format for state-scoped project numbers (internal projectNumber field).
-     */
-    public String getProjectNumberIdFormat(String stateCode) {
-        return stateCode + "[SEQ_NUMBER]";
-    }
-
-    /**
-     * IdGen id name for state-scoped sequences.
-     */
-    public String getProjectNumberIdName(String stateCode) {
-        return projectConfiguration.getIdgenProjectNumberName() + "." + stateCode;
-    }
-
-    /**
      * Builds revised project ID. Draft uses HF=0; scheduled uses live facility count.
      */
     public ProjectNameResult generateProjectName(Project project, RequestInfo requestInfo, boolean draft) {
+        return generateProjectName(project, requestInfo, draft, null);
+    }
+
+    /**
+     * @param facilityCountOverride when non-null, used instead of DB count (e.g. before persister flush)
+     */
+    public ProjectNameResult generateProjectName(Project project, RequestInfo requestInfo, boolean draft,
+                                               Integer facilityCountOverride) {
         log.info("Generating project ID for project: {}, draft: {}", project.getId(), draft);
         try {
-            int healthFacilityCount = draft ? 0 : countLinkedHealthFacilities(project.getId(), project.getTenantId());
+            int healthFacilityCount = draft ? 0
+                    : (facilityCountOverride != null
+                    ? facilityCountOverride
+                    : countLinkedHealthFacilities(project.getId(), project.getTenantId()));
             String name = buildProjectName(project, requestInfo, healthFacilityCount);
             log.info("Generated project ID: {}", name);
             return ProjectNameResult.builder()

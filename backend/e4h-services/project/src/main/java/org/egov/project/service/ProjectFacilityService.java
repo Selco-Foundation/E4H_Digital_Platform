@@ -144,12 +144,7 @@ public class ProjectFacilityService {
                 log.debug("Pushing project update to Kafka");
                 producer.push(projectConfiguration.getUpdateProjectTopic(), projectRequest);
                 producer.push(projectConfiguration.getUpdateProjectTopicIndexer(), projectRequest);
-                validEntities.stream()
-                        .map(ProjectFacility::getProjectId)
-                        .filter(org.apache.commons.lang3.StringUtils::isNotBlank)
-                        .distinct()
-                        .forEach(projectId -> projectService.refreshProjectNameAfterFacilityChange(
-                                projectId, request.getProjectFacilities().get(0).getTenantId(), request.getRequestInfo()));
+                refreshProjectNamesAfterFacilityCreate(validEntities, request.getRequestInfo());
                 log.info("Successfully created {} project facilities", validEntities.size());
             } else {
                 log.warn("No valid facilities to create after validation");
@@ -235,6 +230,7 @@ public class ProjectFacilityService {
                 enrichmentService.delete(validEntities, request);
                 log.debug("Saving deleted facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getDeleteProjectFacilityTopic());
+                refreshProjectNamesAfterFacilityDelete(validEntities, request.getRequestInfo());
                 log.info("Successfully deleted {} project facilities", validEntities.size());
             } else {
                 log.warn("No valid facilities to delete after validation");
@@ -337,6 +333,28 @@ public class ProjectFacilityService {
             return facilityList.getFacilities().get(0);
         }
         return null;
+    }
+
+    private void refreshProjectNamesAfterFacilityCreate(List<ProjectFacility> facilities, RequestInfo requestInfo) {
+        facilities.stream()
+                .filter(pf -> org.apache.commons.lang3.StringUtils.isNotBlank(pf.getProjectId()))
+                .collect(Collectors.groupingBy(ProjectFacility::getProjectId))
+                .forEach((projectId, projectFacilities) -> projectService.refreshProjectNameAfterFacilityChange(
+                        projectId,
+                        projectFacilities.get(0).getTenantId(),
+                        requestInfo,
+                        projectFacilities.size()));
+    }
+
+    private void refreshProjectNamesAfterFacilityDelete(List<ProjectFacility> facilities, RequestInfo requestInfo) {
+        facilities.stream()
+                .filter(pf -> org.apache.commons.lang3.StringUtils.isNotBlank(pf.getProjectId()))
+                .collect(Collectors.groupingBy(ProjectFacility::getProjectId))
+                .forEach((projectId, projectFacilities) -> projectService.refreshProjectNameAfterFacilityChange(
+                        projectId,
+                        projectFacilities.get(0).getTenantId(),
+                        requestInfo,
+                        -projectFacilities.size()));
     }
 
     private Object mergeListIntoAdditionalDetails(Object additionalDetails, String key, Object value) {

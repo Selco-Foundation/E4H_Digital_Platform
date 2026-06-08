@@ -17,7 +17,6 @@ import org.egov.common.models.project.Target;
 import org.egov.common.producer.Producer;
 import org.egov.common.service.IdGenService;
 import org.egov.project.config.ProjectConfiguration;
-import org.egov.project.service.ProjectNameGenerationService;
 import org.egov.project.util.ProjectServiceUtil;
 import org.egov.tracer.model.CustomException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,8 +45,6 @@ public class ProjectEnrichment {
 
     private final ProjectConfiguration config;
 
-    private final ProjectNameGenerationService projectNameGenerationService;
-
     /* Enrich Project on Create Request */
     public void enrichProjectOnCreate(ProjectRequest request, List<Project> parentProjects) {
         log.trace("Entering enrichProjectOnCreate");
@@ -59,14 +56,20 @@ public class ProjectEnrichment {
         String rootTenantId = projects.get(0).getTenantId().split("\\.")[0];
         log.debug("Root tenant ID: {}", rootTenantId);
 
+        log.debug("Generating project numbers from IdGen service");
+        List<String> projectNumbers = getIdList(requestInfo, rootTenantId,
+                config.getIdgenProjectNumberName(), "", projects.size());
+        log.debug("Generated {} project numbers", projectNumbers != null ? projectNumbers.size() : 0);
+
         for (int i = 0; i < projects.size(); i++) {
-            Project project = projects.get(i);
-            String stateCode = projectNameGenerationService.resolveStateCode(project, requestInfo);
-            String idName = projectNameGenerationService.getProjectNumberIdName(stateCode);
-            log.debug("Generating project number from IdGen for state {} using idName: {}", stateCode, idName);
-            List<String> projectNumbers = getIdList(requestInfo, rootTenantId, idName, "", 1);
-            project.setProjectNumber(projectNumbers.get(0));
-            log.debug("Set project number: {} for project index: {}", projectNumbers.get(0), i);
+            if (projectNumbers != null && !projectNumbers.isEmpty()) {
+                projects.get(i).setProjectNumber(projectNumbers.get(i));
+                log.debug("Set project number: {} for project index: {}", projectNumbers.get(i), i);
+            } else {
+                log.error("Error occurred while generating project numbers from IdGen service");
+                throw new CustomException("PROJECT_NUMBER_NOT_GENERATED",
+                        "Error occurred while generating project numbers from IdGen service");
+            }
 
             //Enrich Project id and audit details
             log.debug("Enriching project ID and audit details for project index: {}", i);
@@ -488,8 +491,7 @@ public class ProjectEnrichment {
         } catch (Exception exception) {
             log.error("error while calling id gen service", ExceptionUtils.getStackTrace(exception));
             throw new CustomException("IDGEN_ERROR",
-                    String.format("error while calling id gen service for %s. Ensure MDMS IdFormat has idname=%s",
-                            idKey, idKey));
+                    String.format("error while calling id gen service for %s", idKey));
         }
     }
 }
