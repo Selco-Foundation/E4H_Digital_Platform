@@ -145,6 +145,12 @@ public class Configuration {
     @Value("${facility.boundary.backfill.enabled:false}")
     private boolean facilityBoundaryBackfillEnabled;
 
+    /**
+     * Operator endpoint {@code POST /v2/facility/_reindex-kibana}. Disabled by default.
+     */
+    @Value("${facility.kibana.reindex.enabled:false}")
+    private boolean facilityKibanaReindexEnabled;
+
     @Value("${egov.vendor.host:}")
     private String vendorHost;
 
