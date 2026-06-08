@@ -38,7 +38,8 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
     private static final Pattern REVISED_PROJECT_ID_PATTERN =
             Pattern.compile("^([A-Z]{2})-(\\d{4})-(\\d+)-([0-9]+(-[0-9]+)*)$");
     private static final String TENANT_ID = "in";
-    private static final String DEFAULT_PROJECT_SUB_TYPE = "PROJECT";
+    private static final String MIGRATION_USER_UUID = "2be2bec7-908d-4984-8368-cecda98fb961";
+    private static final String DEFAULT_SUB_PROJECT_TYPE_ID = "PROJECT";
     private static final int SEARCH_LIMIT = 100;
     private static final long DELAY_BETWEEN_UPDATES_MS = 50L;
 
@@ -49,7 +50,7 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
     private String projectSearchEndpoint;
     private String projectUpdateEndpoint;
     private String authToken;
-    private String projectSubType;
+    private String subProjectTypeId;
     private ObjectNode requestInfo;
 
     @Override
@@ -86,7 +87,7 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
 
             log.info("Migrating project names for tenant {}", TENANT_ID);
             migrationLogger.println("Tenant: " + TENANT_ID);
-            migrationLogger.println("Search filter: projectSubType=" + projectSubType);
+            migrationLogger.println("Search filter: subProjectTypeId=" + subProjectTypeId);
             migrationLogger.flush();
 
             int[] counts = processTenant(TENANT_ID, migrationLogger, failures);
@@ -198,11 +199,8 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         ObjectNode request = objectMapper.createObjectNode();
         request.set("RequestInfo", requestInfo.deepCopy());
         ObjectNode projectCriteria = objectMapper.createObjectNode();
-        projectCriteria.put("tenantId", tenantId);
-        projectCriteria.put("projectSubType", projectSubType);
-        ArrayNode projects = objectMapper.createArrayNode();
-        projects.add(projectCriteria);
-        request.set("Projects", projects);
+        projectCriteria.put("subProjectTypeId", subProjectTypeId);
+        request.set("Project", projectCriteria);
 
         return postForJson(url, request);
     }
@@ -307,14 +305,15 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
 
     private void initializeEnv() {
         projectHost = trimTrailingSlash(getEnvOrDefault("EGOV_PROJECT_HOST", "http://localhost:8080"));
-        projectSearchEndpoint = getEnvOrDefault("EGOV_PROJECT_SEARCH_ENDPOINT", "/project/v1/_search");
+        projectSearchEndpoint = getEnvOrDefault("EGOV_PROJECT_SEARCH_ENDPOINT", "/project/v2/_search");
         projectUpdateEndpoint = getEnvOrDefault("EGOV_PROJECT_UPDATE_ENDPOINT", "/project/v1/_update");
         authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
-        projectSubType = getEnvOrDefault("EGOV_PROJECT_SEARCH_PROJECT_SUB_TYPE", DEFAULT_PROJECT_SUB_TYPE);
+        subProjectTypeId = getEnvOrDefault("EGOV_PROJECT_SEARCH_SUB_PROJECT_TYPE_ID", DEFAULT_SUB_PROJECT_TYPE_ID);
     }
 
-    private void addRole(ArrayNode roles, String code) {
+    private void addRole(ArrayNode roles, String name, String code) {
         ObjectNode role = objectMapper.createObjectNode();
+        role.put("name", name);
         role.put("code", code);
         role.put("tenantId", TENANT_ID);
         roles.add(role);
@@ -322,21 +321,16 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
 
     private ObjectNode buildRequestInfoBody() {
         ObjectNode userInfo = objectMapper.createObjectNode();
-        userInfo.put("uuid", "14d6dbdf-e4d2-45c3-9717-c82ba17a9f19");
-        userInfo.put("userName", "SYSTEMUSER");
-        userInfo.put("name", "System User");
-        userInfo.put("type", "EMPLOYEE");
+        userInfo.put("uuid", MIGRATION_USER_UUID);
         userInfo.put("tenantId", TENANT_ID);
+        userInfo.put("active", true);
         ArrayNode roles = objectMapper.createArrayNode();
-        addRole(roles, "EMPLOYEE");
-        addRole(roles, "SYSTEM");
+        addRole(roles, "Employee", "EMPLOYEE");
+        addRole(roles, "Project manager", "PROJECT_MANAGER");
         userInfo.set("roles", roles);
 
         ObjectNode requestInfoNode = objectMapper.createObjectNode();
         requestInfoNode.put("apiId", "Rainmaker");
-        requestInfoNode.put("ver", "1.0");
-        requestInfoNode.put("ts", System.currentTimeMillis());
-        requestInfoNode.put("action", "_update");
         requestInfoNode.put("authToken", authToken);
         requestInfoNode.set("userInfo", userInfo);
         return requestInfoNode;
