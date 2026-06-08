@@ -20,8 +20,10 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -83,6 +85,28 @@ public class FacilityUtil {
         );
     }
 
+    @Async("mappedVendorExecutor")
+    public void clearMappedVendorForRemovedFacilityJurisdictions(OrgUserRequest request,
+                                                                 List<Jurisdiction> previousJurisdictions,
+                                                                 List<Jurisdiction> currentJurisdictions) {
+        List<String> removedFacilityBoundaryCodes =
+                extractRemovedActiveFacilityBoundaryCodes(previousJurisdictions, currentJurisdictions);
+        if (removedFacilityBoundaryCodes.isEmpty()) {
+            log.debug("No removed facility jurisdictions; skipping mapped-vendor clear");
+            return;
+        }
+        String tenantId = configuration.getGlobalTenantId();
+        if (request.getUser() != null && StringUtils.isNotBlank(request.getUser().getTenantId())) {
+            tenantId = request.getUser().getTenantId();
+        }
+        log.info("Clearing mapped vendor on {} removed facility boundaries", removedFacilityBoundaryCodes.size());
+        clearMappedVendorForFacilityBoundaries(
+                request.getRequestInfo(),
+                tenantId,
+                removedFacilityBoundaryCodes
+        );
+    }
+
     private List<String> extractActiveFacilityBoundaryCodes(List<Jurisdiction> jurisdictions) {
         if (jurisdictions == null || jurisdictions.isEmpty()) {
             return List.of();
@@ -94,6 +118,40 @@ public class FacilityUtil {
                 .filter(StringUtils::isNotBlank)
                 .distinct()
                 .collect(Collectors.toList());
+    }
+
+    private List<String> extractRemovedActiveFacilityBoundaryCodes(List<Jurisdiction> previousJurisdictions,
+                                                                   List<Jurisdiction> currentJurisdictions) {
+        Set<String> currentActiveBoundaries = extractActiveFacilityBoundaryCodes(currentJurisdictions).stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toCollection(HashSet::new));
+        return extractActiveFacilityBoundaryCodes(previousJurisdictions).stream()
+                .filter(boundary -> !currentActiveBoundaries.contains(boundary.toLowerCase()))
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    public void clearMappedVendorForFacilityBoundaries(RequestInfo requestInfo, String tenantId,
+                                                       List<String> boundaryCodes) {
+        if (boundaryCodes == null || boundaryCodes.isEmpty()) {
+            return;
+        }
+        String effectiveTenantId = StringUtils.isNotBlank(tenantId) ? tenantId : configuration.getGlobalTenantId();
+        for (String boundaryCode : boundaryCodes) {
+            if (StringUtils.isBlank(boundaryCode)) {
+                continue;
+            }
+            try {
+                Facility facility = searchFacilityByBoundaryCode(requestInfo, effectiveTenantId, boundaryCode);
+                if (facility == null) {
+                    log.warn("No facility found for removed boundaryCode: {}", boundaryCode);
+                    continue;
+                }
+                updateFacilityMappedVendor(facility, null, null);
+            } catch (Exception e) {
+                log.error("Failed to clear mapped vendor for boundaryCode: {}", boundaryCode, e);
+            }
+        }
     }
 
     public void updateMappedVendorForFacilityBoundaries(RequestInfo requestInfo, String tenantId,
@@ -172,9 +230,7 @@ public class FacilityUtil {
             additionalDetails.putAll(existingFacility.getAdditionalDetails());
         }
         additionalDetails.put(MAPPED_VENDOR_NAME_KEY, vendorName);
-        if (StringUtils.isNotBlank(vendorUserName)) {
-            additionalDetails.put(MAPPED_VENDOR_USER_NAME_KEY, vendorUserName);
-        }
+        additionalDetails.put(MAPPED_VENDOR_USER_NAME_KEY, vendorUserName);
 
         FacilityUpdatePayload payload = FacilityUpdatePayload.builder()
                 .tenantId(existingFacility.getTenantId())
