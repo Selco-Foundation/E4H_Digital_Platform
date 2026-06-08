@@ -741,7 +741,7 @@ public class FacilityService {
 
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
-        boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendor(facility);
+        boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendorUpdateInPayload(update);
         // If user sent isOnmReady = true, handle POC user creation and Kibana push
         if (Boolean.TRUE.equals(update.getIsOnmReady())) {
             log.info("Facility {} is marked as ONM ready, processing POC user and Kibana push", update.getFacilityId());
@@ -813,8 +813,8 @@ public class FacilityService {
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
                     .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
-                    .mappedVendorName(facility.getMappedVendorName() != null ? facility.getMappedVendorName() : existingFacility.getMappedVendorName())
-                    .mappedVendorUserName(facility.getMappedVendorUserName() != null ? facility.getMappedVendorUserName() : existingFacility.getMappedVendorUserName())
+                    .mappedVendorName(facility.getMappedVendorName())
+                    .mappedVendorUserName(facility.getMappedVendorUserName())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
                     .isOnmReady(true) // Set from update request
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())

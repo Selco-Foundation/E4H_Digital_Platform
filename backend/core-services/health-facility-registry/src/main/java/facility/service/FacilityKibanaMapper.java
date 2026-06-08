@@ -199,14 +199,10 @@ public class FacilityKibanaMapper {
             log.info("Updated Kibana field isLive={} for facilityId={}",
                     facility.getIsActive(), facility.getFacilityId());
         }
-        if (StringUtils.isNotBlank(facility.getMappedVendorName())) {
-            existingDoc.setMappedVendorName(facility.getMappedVendorName());
-            log.info("Updated Kibana field mappedVendorName for facilityId={}", facility.getFacilityId());
-        }
-        if (StringUtils.isNotBlank(facility.getMappedVendorUserName())) {
-            existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
-            log.info("Updated Kibana field mappedVendorUserName for facilityId={}", facility.getFacilityId());
-        }
+        existingDoc.setMappedVendorName(facility.getMappedVendorName());
+        existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
+        log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
+                facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
         log.info("Completed Kibana index update mapping for facilityId={} tenantId={}",
                 facility.getFacilityId(), facility.getTenantId());
