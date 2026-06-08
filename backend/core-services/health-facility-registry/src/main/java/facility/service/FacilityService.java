@@ -737,7 +737,7 @@ public class FacilityService {
 
         log.info("Pushing facility update to Kafka");
         facilityRepository.pushUpdateFacility(request);
-        boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendor(facility);
+        boolean mappedVendorUpdated = FacilityMappedVendorHelper.hasMappedVendorUpdateInPayload(update);
         // If user sent isOnmReady = true, handle POC user creation and Kibana push
         if (Boolean.TRUE.equals(update.getIsOnmReady())) {
             log.info("Facility {} is marked as ONM ready, processing POC user and Kibana push", update.getFacilityId());
@@ -809,8 +809,8 @@ public class FacilityService {
                     .address(facility.getAddress() != null ? facility.getAddress() : existingFacility.getAddress())
                     .facilityDetails(facility.getFacilityDetails() != null ? facility.getFacilityDetails() : existingFacility.getFacilityDetails())
                     .additionalDetails(facility.getAdditionalDetails() != null ? facility.getAdditionalDetails() : existingFacility.getAdditionalDetails())
-                    .mappedVendorName(facility.getMappedVendorName() != null ? facility.getMappedVendorName() : existingFacility.getMappedVendorName())
-                    .mappedVendorUserName(facility.getMappedVendorUserName() != null ? facility.getMappedVendorUserName() : existingFacility.getMappedVendorUserName())
+                    .mappedVendorName(facility.getMappedVendorName())
+                    .mappedVendorUserName(facility.getMappedVendorUserName())
                     .boundaryCode(facility.getBoundaryCode() != null ? facility.getBoundaryCode() : existingFacility.getBoundaryCode())
                     .isOnmReady(true) // Set from update request
                     .facilityPocName(facility.getFacilityPocName()!=null && !facility.getFacilityPocName().isBlank() ? facility.getFacilityPocName(): existingFacility.getFacilityPocEmail())
@@ -1276,6 +1276,113 @@ public class FacilityService {
                 facilities.size(), fromNin, fromPocUsername, pushed, failed);
         log.info("Completed Kibana code sync: {}", summary);
         return summary;
+    }
+
+    /**
+     * Operator reindex: rebuilds full Kibana/Elasticsearch payloads (including boundary hierarchy)
+     * for existing facilities and pushes them to the indexer topic.
+     */
+    public FacilityKibanaReindexResponse reindexFacilitiesInKibana(FacilityKibanaReindexRequest request) {
+        if (!configs.isFacilityKibanaReindexEnabled()) {
+            throw new IllegalArgumentException(
+                    "Facility Kibana reindex is disabled. Set facility.kibana.reindex.enabled=true to run."
+            );
+        }
+        if (request == null || request.getRequestInfo() == null) {
+            throw new IllegalArgumentException("RequestInfo is required");
+        }
+
+        boolean onmReadyOnly = request.getOnmReadyOnly() == null || Boolean.TRUE.equals(request.getOnmReadyOnly());
+        List<Facility> facilities = loadFacilitiesForKibanaReindex(
+                request.getTenantId(),
+                request.getFacilityIds(),
+                onmReadyOnly
+        );
+
+        log.info("Kibana reindex: tenantId={}, facilityIds={}, onmReadyOnly={}, scanned={}",
+                request.getTenantId(),
+                request.getFacilityIds() != null ? request.getFacilityIds().size() : 0,
+                onmReadyOnly,
+                facilities.size());
+
+        FacilityKibanaReindexResponse response = FacilityKibanaReindexResponse.builder()
+                .scanned(facilities.size())
+                .errors(new ArrayList<>())
+                .build();
+
+        for (Facility facility : facilities) {
+            if (facility.getBoundaryCode() == null || facility.getBoundaryCode().isBlank()) {
+                response.setSkipped(response.getSkipped() + 1);
+                log.warn("Skipping Kibana reindex for facility {}: boundary_code is blank", facility.getFacilityId());
+                continue;
+            }
+            try {
+                FacilityKibanaIndex kibanaIndex = facilityKibanaMapper.toKibanaIndex(facility, request.getRequestInfo());
+                if (kibanaIndex == null) {
+                    response.setSkipped(response.getSkipped() + 1);
+                    continue;
+                }
+                facilityRepository.pushToKibana(kibanaIndex);
+                response.setReindexed(response.getReindexed() + 1);
+                log.debug("Queued Kibana reindex for facilityId {}", sanitizeForLog(facility.getFacilityId()));
+            } catch (Exception e) {
+                response.setFailed(response.getFailed() + 1);
+                String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+                log.error("Kibana reindex failed for facilityId {} tenantId {}: {}",
+                        sanitizeForLog(facility.getFacilityId()),
+                        sanitizeForLog(facility.getTenantId()),
+                        message,
+                        e);
+                response.getErrors().add(FacilityBoundaryBackfillErrorItem.builder()
+                        .facilityId(facility.getFacilityId())
+                        .tenantId(facility.getTenantId())
+                        .boundaryCode(facility.getBoundaryCode())
+                        .message(message)
+                        .build());
+            }
+        }
+
+        log.info("Kibana reindex complete: scanned={}, reindexed={}, skipped={}, failed={}",
+                response.getScanned(), response.getReindexed(), response.getSkipped(), response.getFailed());
+        return response;
+    }
+
+    private List<Facility> loadFacilitiesForKibanaReindex(
+            String tenantId,
+            List<String> facilityIds,
+            boolean onmReadyOnly
+    ) {
+        StringBuilder query = new StringBuilder(
+                "SELECT fac.*, "
+                        + "(SELECT EXISTS(SELECT 1 FROM facility_rms_inactive_incident r "
+                        + "WHERE r.facilityid = fac.id AND r.tenantid = fac.tenant_id)) AS rms_inactive "
+                        + "FROM facility fac WHERE 1=1"
+        );
+        List<Object> params = new ArrayList<>();
+
+        if (onmReadyOnly) {
+            query.append(" AND fac.is_onm_ready = true");
+        }
+        if (tenantId != null && !tenantId.isBlank()) {
+            query.append(" AND fac.tenant_id = ?");
+            params.add(tenantId.trim());
+        }
+        if (facilityIds != null && !facilityIds.isEmpty()) {
+            List<String> distinctIds = facilityIds.stream()
+                    .filter(Objects::nonNull)
+                    .map(String::trim)
+                    .filter(id -> !id.isEmpty())
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (!distinctIds.isEmpty()) {
+                query.append(" AND fac.id IN (")
+                        .append(distinctIds.stream().map(id -> "?").collect(Collectors.joining(", ")))
+                        .append(")");
+                params.addAll(distinctIds);
+            }
+        }
+
+        return jdbcTemplate.query(query.toString(), params.toArray(), facilityRowMapper.rowMapper);
     }
 
     /**

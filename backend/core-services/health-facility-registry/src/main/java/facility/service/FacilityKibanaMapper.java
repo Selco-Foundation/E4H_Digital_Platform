@@ -206,14 +206,10 @@ public class FacilityKibanaMapper {
             log.info("Updated Kibana field isLive={} for facilityId={}",
                     facility.getIsActive(), facility.getFacilityId());
         }
-        if (StringUtils.isNotBlank(facility.getMappedVendorName())) {
-            existingDoc.setMappedVendorName(facility.getMappedVendorName());
-            log.info("Updated Kibana field mappedVendorName for facilityId={}", facility.getFacilityId());
-        }
-        if (StringUtils.isNotBlank(facility.getMappedVendorUserName())) {
-            existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
-            log.info("Updated Kibana field mappedVendorUserName for facilityId={}", facility.getFacilityId());
-        }
+        existingDoc.setMappedVendorName(facility.getMappedVendorName());
+        existingDoc.setMappedVendorUserName(facility.getMappedVendorUserName());
+        log.info("Updated Kibana mapped vendor fields for facilityId={} (name={}, userName={})",
+                facility.getFacilityId(), facility.getMappedVendorName(), facility.getMappedVendorUserName());
         existingDoc.setLastModifiedTime(System.currentTimeMillis());
         log.info("Completed Kibana index update mapping for facilityId={} tenantId={}",
                 facility.getFacilityId(), facility.getTenantId());
@@ -478,45 +474,111 @@ public class FacilityKibanaMapper {
     }
 
     /**
-     * Fetches boundary hierarchy from boundary service and extracts codes by boundary type
+     * Fetches boundary hierarchy from boundary service and extracts codes by boundary type.
+     * When the Facility relationship is not yet persisted (async Kafka create), falls back to the
+     * parent block code which is already present in boundary_relationship.
      */
     private BoundaryCodes fetchBoundaryHierarchy(Facility facility, RequestInfo requestInfo) {
         log.trace("Entering fetchBoundaryHierarchy method");
         if (facility.getBoundaryCode() == null || facility.getTenantId() == null) {
-            log.warn("Cannot fetch boundary hierarchy: boundaryCode or tenantId is null for facility {}", facility.getFacilityId());
+            log.warn("Cannot fetch boundary hierarchy: boundaryCode or tenantId is null");
             return null;
         }
         log.debug("Fetching boundary hierarchy for facility {} with boundaryCode: {}", facility.getFacilityId(), facility.getBoundaryCode());
 
         try {
-            // Boundary service expects a standard RequestInfo wrapper as body
-            Map<String, Object> requestBody =
-                    requestInfo != null ? Map.of("RequestInfo", requestInfo) : Map.of();
+            BoundaryCodes codes = fetchBoundaryHierarchyForCode(
+                    facility.getTenantId(),
+                    facility.getBoundaryCode(),
+                    "Facility",
+                    requestInfo
+            );
 
-            // Build URI with query parameters
-            String uri = UriComponentsBuilder.fromUriString(boundaryHost)
-                    .path(boundaryRelationshipSearchPath)
-                    .queryParam("tenantId", facility.getTenantId())
-                    .queryParam("includeParents", true)
-                    .queryParam("includeChildren", false)
-                    .queryParam("codes", facility.getBoundaryCode())
-                    .toUriString();
+            if (!hasParentHierarchy(codes)) {
+                String blockBoundaryCode = deriveBlockBoundaryCode(
+                        facility.getBoundaryCode(), facility.getFacilityId());
+                if (blockBoundaryCode != null) {
+                    log.info(
+                            "Parent hierarchy missing for facility {}; resolving via block boundary {}",
+                            facility.getFacilityId(), blockBoundaryCode
+                    );
+                    BoundaryCodes blockHierarchy = fetchBoundaryHierarchyForCode(
+                            facility.getTenantId(),
+                            blockBoundaryCode,
+                            "Block",
+                            requestInfo
+                    );
+                    codes = mergeBoundaryCodes(blockHierarchy, codes, facility);
+                }
+            } else if (codes.getFacilityCode() == null) {
+                codes.setFacilityCode(facility.getBoundaryCode());
+            }
 
-            // Call boundary service
-            Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
-            Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
-
-            // Parse response and extract codes
-            BoundaryCodes codes = parseBoundaryHierarchy(response);
-            log.debug("Successfully fetched boundary hierarchy for facility {}", facility.getFacilityId());
-            log.trace("Exiting fetchBoundaryHierarchy method");
             return codes;
-
         } catch (Exception e) {
-            log.error("Error fetching boundary hierarchy for facility {}: {}", 
-                     sanitizeForLog(facility.getFacilityId()), e.getMessage(), e);
+            log.error("Error fetching boundary hierarchy for facility {}: {}",
+                    facility.getFacilityId(), e.getMessage(), e);
             return null;
         }
+    }
+
+    private BoundaryCodes fetchBoundaryHierarchyForCode(
+            String tenantId,
+            String boundaryCode,
+            String boundaryType,
+            RequestInfo requestInfo
+    ) {
+        Map<String, Object> requestBody =
+                requestInfo != null ? Map.of("RequestInfo", requestInfo) : Map.of();
+
+        String uri = UriComponentsBuilder.fromUriString(boundaryHost)
+                .path(boundaryRelationshipSearchPath)
+                .queryParam("tenantId", tenantId)
+                .queryParam("hierarchyType", configs.getBoundaryHierarchyType())
+                .queryParam("boundaryType", boundaryType)
+                .queryParam("includeParents", true)
+                .queryParam("includeChildren", false)
+                .queryParam("codes", boundaryCode)
+                .toUriString();
+
+        Object rawResponse = serviceRequestRepository.fetchResult(new StringBuilder(uri), requestBody);
+        Map<String, Object> response = mapper.convertValue(rawResponse, new TypeReference<Map<String, Object>>() {});
+        return parseBoundaryHierarchy(response);
+    }
+
+    private static boolean hasParentHierarchy(BoundaryCodes codes) {
+        return codes != null && codes.getBlockCode() != null && !codes.getBlockCode().isBlank();
+    }
+
+    private static String deriveBlockBoundaryCode(String facilityBoundaryCode, String facilityId) {
+        if (facilityBoundaryCode == null || facilityId == null) {
+            return null;
+        }
+        String suffix = "_" + facilityId;
+        if (!facilityBoundaryCode.endsWith(suffix)) {
+            return null;
+        }
+        return facilityBoundaryCode.substring(0, facilityBoundaryCode.length() - suffix.length());
+    }
+
+    private static BoundaryCodes mergeBoundaryCodes(
+            BoundaryCodes fromBlock,
+            BoundaryCodes fromFacility,
+            Facility facility
+    ) {
+        BoundaryCodes merged = new BoundaryCodes();
+        if (fromBlock != null) {
+            merged.setCountryCode(fromBlock.getCountryCode());
+            merged.setStateCode(fromBlock.getStateCode());
+            merged.setDistrictCode(fromBlock.getDistrictCode());
+            merged.setBlockCode(fromBlock.getBlockCode());
+        }
+        if (fromFacility != null && fromFacility.getFacilityCode() != null) {
+            merged.setFacilityCode(fromFacility.getFacilityCode());
+        } else if (facility.getBoundaryCode() != null) {
+            merged.setFacilityCode(facility.getBoundaryCode());
+        }
+        return merged;
     }
 
     /**
@@ -695,10 +757,7 @@ public class FacilityKibanaMapper {
             // Build headers with authentication
             HttpEntity<Object> entity = new HttpEntity<>(searchQuery, buildHeaders());
 
-            log.debug("Executing Elasticsearch query to check facility existence for facility: {}", facilityId);
-            if (log.isTraceEnabled()) {
-                log.trace("Elasticsearch query: {}", searchQuery);
-            }
+            log.info("Executing Elasticsearch query to check facility existence: {}", searchQuery);
             @SuppressWarnings("unchecked")
             Map<String, Object> response = restTemplate.postForObject(uri, entity, Map.class);
 
