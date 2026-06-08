@@ -152,6 +152,10 @@ public class ProjectService {
                 return;
             }
             Project projectFromDB = projects.get(0);
+            if (projectNameGenerationService.isLegacyProject(projectFromDB)) {
+                log.info("Skipping project ID refresh for legacy project: {}", projectId);
+                return;
+            }
             if (isDraftProject(getProjectStatus(projectFromDB))) {
                 log.debug("Skipping name refresh for draft project: {}", projectId);
                 return;
@@ -159,9 +163,9 @@ public class ProjectService {
             Project projectForName = Project.builder()
                     .id(projectFromDB.getId())
                     .tenantId(projectFromDB.getTenantId())
-                    .projectNumber(projectFromDB.getProjectNumber())
                     .startDate(projectFromDB.getStartDate())
                     .endDate(projectFromDB.getEndDate())
+                    .address(projectFromDB.getAddress())
                     .additionalDetails(projectFromDB.getAdditionalDetails())
                     .build();
             ProjectNameResult nameResult = projectNameGenerationService.generateProjectName(projectForName, requestInfo, false);
@@ -642,25 +646,30 @@ public class ProjectService {
 
 
     /**
-     * Handles Option 4 project name regeneration during updates.
+     * Handles revised project ID regeneration during updates.
      */
     private void handleProjectNameUpdate(ProjectRequest request, Project project, Project projectFromDB) {
         try {
-            if (StringUtils.isBlank(project.getProjectNumber())) {
-                project.setProjectNumber(projectFromDB.getProjectNumber());
+            if (projectNameGenerationService.isLegacyProject(projectFromDB)) {
+                log.info("Skipping project ID regeneration for legacy project: {}", project.getId());
+                return;
             }
+
             if (project.getStartDate() == null) {
                 project.setStartDate(projectFromDB.getStartDate());
             }
             if (project.getEndDate() == null) {
                 project.setEndDate(projectFromDB.getEndDate());
             }
-            if (extractJustificationCode(project.getAdditionalDetails()) == null
-                    && extractJustificationCode(projectFromDB.getAdditionalDetails()) != null) {
+            if (project.getAddress() == null) {
+                project.setAddress(projectFromDB.getAddress());
+            }
+            if (projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails()) == null
+                    && projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails()) != null) {
                 Object enriched = mergeIntoAdditionalDetails(
                         project.getAdditionalDetails(),
                         "justificationCode",
-                        extractJustificationCode(projectFromDB.getAdditionalDetails()));
+                        projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails()));
                 project.setAdditionalDetails(enriched);
             }
 
@@ -691,9 +700,12 @@ public class ProjectService {
     }
 
     /**
-     * Checks if data affecting Option 4 project name has changed.
+     * Checks if data affecting revised project ID has changed.
      */
     private boolean hasNameAffectingDataChanged(Project project, Project projectFromDB, boolean draft) {
+        if (projectNameGenerationService.isLegacyProject(projectFromDB)) {
+            return false;
+        }
         if (draft) {
             if (!Objects.equals(project.getStartDate(), projectFromDB.getStartDate())) {
                 return true;
@@ -701,8 +713,13 @@ public class ProjectService {
             if (!Objects.equals(project.getEndDate(), projectFromDB.getEndDate())) {
                 return true;
             }
-            if (!Objects.equals(extractJustificationCode(project.getAdditionalDetails()),
-                    extractJustificationCode(projectFromDB.getAdditionalDetails()))) {
+            if (!Objects.equals(projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails()),
+                    projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails()))) {
+                return true;
+            }
+            String currentState = project.getAddress() != null ? project.getAddress().getBoundary() : null;
+            String existingState = projectFromDB.getAddress() != null ? projectFromDB.getAddress().getBoundary() : null;
+            if (!Objects.equals(currentState, existingState)) {
                 return true;
             }
             return !Objects.equals(
@@ -718,24 +735,12 @@ public class ProjectService {
                 stringifyGeographyDetails(projectFromDB.getAdditionalDetails()))) {
             return true;
         }
+        if (!projectNameGenerationService.isRevisedProjectIdFormat(projectFromDB.getName())) {
+            return false;
+        }
         int existingHf = projectNameGenerationService.parseHealthFacilityCountFromName(projectFromDB.getName());
         int currentHf = projectRepository.countProjectFacilitiesByProjectId(project.getId(), project.getTenantId());
         return existingHf != currentHf;
-    }
-
-    private String extractJustificationCode(Object additionalDetails) {
-        if (additionalDetails == null) {
-            return null;
-        }
-        try {
-            JsonNode node = mapper.valueToTree(additionalDetails);
-            if (node != null && node.has("justificationCode") && !node.get("justificationCode").isNull()) {
-                return node.get("justificationCode").asText();
-            }
-        } catch (Exception e) {
-            log.error("Error reading justificationCode", e);
-        }
-        return null;
     }
 
     private String stringifyGeographyDetails(Object additionalDetails) {

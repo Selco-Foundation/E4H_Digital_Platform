@@ -63,23 +63,9 @@ public class ProjectEnrichment {
             Project project = projects.get(i);
             String stateCode = projectNameGenerationService.resolveStateCode(project, requestInfo);
             String idName = projectNameGenerationService.getProjectNumberIdName(stateCode);
-            String idFormat = projectNameGenerationService.getProjectNumberIdFormat(stateCode);
-            log.debug("Generating state-scoped project number for state {} using idName: {}", stateCode, idName);
-            List<String> projectNumbers = getIdList(requestInfo, rootTenantId, idName, idFormat, 1);
-            if (projectNumbers == null || projectNumbers.isEmpty() || StringUtils.isBlank(projectNumbers.get(0))) {
-                log.warn("State-specific IdGen failed for {}, falling back to default idName with state format", stateCode);
-                projectNumbers = getIdList(requestInfo, rootTenantId, config.getIdgenProjectNumberName(), idFormat, 1);
-            }
-            if (projectNumbers == null || projectNumbers.isEmpty() || StringUtils.isBlank(projectNumbers.get(0))) {
-                log.error("Error occurred while generating project number from IdGen for state: {}", stateCode);
-                throw new CustomException("PROJECT_NUMBER_NOT_GENERATED",
-                        "Error occurred while generating project number for state: " + stateCode);
-            }
-            String projectNumber = projectNumbers.get(0);
-            if (!projectNumber.toUpperCase().startsWith(stateCode.toUpperCase())) {
-                projectNumber = stateCode + projectNumber.replaceAll("^[^0-9]*", "");
-            }
-            project.setProjectNumber(projectNumber);
+            log.debug("Generating project number from IdGen for state {} using idName: {}", stateCode, idName);
+            List<String> projectNumbers = getIdList(requestInfo, rootTenantId, idName, "", 1);
+            project.setProjectNumber(projectNumbers.get(0));
             log.debug("Set project number: {} for project index: {}", projectNumbers.get(0), i);
 
             //Enrich Project id and audit details
@@ -502,7 +488,8 @@ public class ProjectEnrichment {
         } catch (Exception exception) {
             log.error("error while calling id gen service", ExceptionUtils.getStackTrace(exception));
             throw new CustomException("IDGEN_ERROR",
-                    String.format("error while calling id gen service for %s", idformat));
+                    String.format("error while calling id gen service for %s. Ensure MDMS IdFormat has idname=%s",
+                            idKey, idKey));
         }
     }
 }
