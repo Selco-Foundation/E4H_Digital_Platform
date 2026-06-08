@@ -39,6 +39,7 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
     private static final Pattern REVISED_PROJECT_ID_PATTERN =
             Pattern.compile("^([A-Z]{2})-(\\d{4})-(\\d+)-([0-9]+(-[0-9]+)*)$");
     private static final String ROOT_TENANT = "in";
+    private static final String DEFAULT_SUB_PROJECT_TYPE_ID = "PROJECT";
     private static final int SEARCH_LIMIT = 100;
     private static final int MDMS_LIMIT = 300;
     private static final long DELAY_BETWEEN_UPDATES_MS = 50L;
@@ -52,6 +53,7 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
     private String mdmsHost;
     private String mdmsSearchEndpoint;
     private String authToken;
+    private String subProjectTypeId;
     private ObjectNode requestInfo;
 
     @Override
@@ -136,7 +138,11 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
                 break;
             }
 
-            for (JsonNode project : projects) {
+            for (JsonNode wrapper : projects) {
+                JsonNode project = extractProjectNode(wrapper);
+                if (project == null) {
+                    continue;
+                }
                 String projectId = textOrNull(project, "id");
                 String currentName = textOrNull(project, "name");
 
@@ -180,19 +186,30 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
                 .queryParam("tenantId", tenantId)
                 .queryParam("limit", SEARCH_LIMIT)
                 .queryParam("offset", offset)
-                .queryParam("includeDeleted", false)
+                .queryParam("includeAncestors", false)
+                .queryParam("includeDescendants", false)
                 .toUriString();
 
         ObjectNode request = objectMapper.createObjectNode();
         request.set("RequestInfo", requestInfo.deepCopy());
-        ArrayNode projects = objectMapper.createArrayNode();
-        ObjectNode criteria = objectMapper.createObjectNode();
-        criteria.put("tenantId", tenantId);
-        criteria.put("startDate", 1);
-        projects.add(criteria);
-        request.set("Projects", projects);
+        ObjectNode projectCriteria = objectMapper.createObjectNode();
+        projectCriteria.put("subProjectTypeId", subProjectTypeId);
+        request.set("Project", projectCriteria);
 
         return postForJson(url, request);
+    }
+
+    /**
+     * v2 search returns {@code Project} as a list of wrappers: {@code { "project": { ... } }}.
+     */
+    private JsonNode extractProjectNode(JsonNode wrapper) {
+        if (wrapper == null || wrapper.isNull()) {
+            return null;
+        }
+        if (wrapper.has("project") && !wrapper.get("project").isNull()) {
+            return wrapper.get("project");
+        }
+        return wrapper.has("id") ? wrapper : null;
     }
 
     private JsonNode updateProject(ObjectNode updatePayload) {
@@ -315,11 +332,12 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
 
     private void initializeEnv() {
         projectHost = trimTrailingSlash(getEnvOrDefault("EGOV_PROJECT_HOST", "http://localhost:8080/project"));
-        projectSearchEndpoint = getEnvOrDefault("EGOV_PROJECT_SEARCH_ENDPOINT", "/v1/_search");
+        projectSearchEndpoint = getEnvOrDefault("EGOV_PROJECT_SEARCH_ENDPOINT", "/v2/_search");
         projectUpdateEndpoint = getEnvOrDefault("EGOV_PROJECT_UPDATE_ENDPOINT", "/v1/_update");
         mdmsHost = trimTrailingSlash(getEnvOrDefault("EGOV_MDMS_HOST", "http://localhost:8094"));
         mdmsSearchEndpoint = getEnvOrDefault("EGOV_MDMS_SEARCH_ENDPOINT", "/egov-mdms-service/v1/_search");
         authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
+        subProjectTypeId = getEnvOrDefault("EGOV_PROJECT_SEARCH_SUB_PROJECT_TYPE_ID", DEFAULT_SUB_PROJECT_TYPE_ID);
     }
 
     private ObjectNode buildRequestInfoBody() {
