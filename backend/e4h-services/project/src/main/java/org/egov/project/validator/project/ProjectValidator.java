@@ -10,6 +10,7 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.project.*;
 import org.egov.project.config.ProjectConfiguration;
+import org.egov.project.service.ProjectNameGenerationService;
 import org.egov.project.util.BoundaryV2Util;
 import org.egov.project.util.MDMSUtils;
 import org.egov.project.web.models.ProjectSortCriteria;
@@ -35,8 +36,13 @@ public class ProjectValidator {
     public static final String IS_NOT_PRESENT_IN_MDMS = " is not present in MDMS";
     public static final String TENANT_ID_IS_MANDATORY_IN_PROJECT_REQUEST_BODY = "Tenant ID is mandatory in Project request body";
     public static final String DOES_NOT_EXISTS_FOR_THE_PROJECT = " that you are trying to update does not exists for the project ";
+    public static final String INVALID_JUSTIFICATION_CODE_MESSAGE =
+            "Justification code must be in JUS-<numeric> format (e.g. JUS-0350)";
     @Autowired
     MDMSUtils mdmsUtils;
+
+    @Autowired
+    ProjectNameGenerationService projectNameGenerationService;
 
     @Autowired
     BoundaryV2Util boundaryV2Util;
@@ -281,10 +287,22 @@ public class ProjectValidator {
                 log.error("Boundary Type is mandatory if boundary is present  in Project request body");
                 errorMap.put("BOUNDARY", "Boundary Type is mandatory if boundary is present in Project request body");
             }
+            validateJustificationCodeIfPresent(project, errorMap);
         }
 
         if (!errorMap.isEmpty())
             throw new CustomException(errorMap);
+    }
+
+    private void validateJustificationCodeIfPresent(Project project, Map<String, String> errorMap) {
+        String justificationCode = projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails());
+        if (justificationCode == null) {
+            return;
+        }
+        if (!projectNameGenerationService.isValidJustificationCodeFormat(justificationCode)) {
+            log.error("Invalid justification code for project: {}", justificationCode);
+            errorMap.put("INVALID_JUSTIFICATION_CODE", INVALID_JUSTIFICATION_CODE_MESSAGE);
+        }
     }
 
     private static void checkProjectIfEmpty(List<Project> projects) {

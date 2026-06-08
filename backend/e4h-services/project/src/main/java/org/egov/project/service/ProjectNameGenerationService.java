@@ -32,6 +32,8 @@ public class ProjectNameGenerationService {
 
     private static final Pattern REVISED_PROJECT_ID_PATTERN =
             Pattern.compile("^([A-Z]{2})-(\\d{4})-(\\d+)-([0-9]+(-[0-9]+)*)$");
+    private static final Pattern JUSTIFICATION_CODE_PATTERN =
+            Pattern.compile("^JUS-[0-9]+(-[0-9]+)*$", Pattern.CASE_INSENSITIVE);
     private static final String JUS_PREFIX = "JUS-";
     private static final String SCHEDULED_STATUS = "SCHEDULED";
 
@@ -144,21 +146,27 @@ public class ProjectNameGenerationService {
         return StringUtils.isNotBlank(name) && REVISED_PROJECT_ID_PATTERN.matcher(name.trim().toUpperCase()).matches();
     }
 
+    public boolean isValidJustificationCodeFormat(String justificationCode) {
+        return StringUtils.isNotBlank(justificationCode)
+                && JUSTIFICATION_CODE_PATTERN.matcher(justificationCode.trim()).matches();
+    }
+
+    public void validateJustificationCodeFormat(String justificationCode) {
+        if (!isValidJustificationCodeFormat(justificationCode)) {
+            throw new CustomException("INVALID_JUSTIFICATION_CODE",
+                    "Justification code must be in JUS-<numeric> format (e.g. JUS-0350): " + justificationCode);
+        }
+    }
+
     private String getJustificationNumeric(Project project) {
         String justificationCode = extractJustificationCode(project.getAdditionalDetails());
         if (StringUtils.isBlank(justificationCode)) {
             throw new CustomException("JUSTIFICATION_CODE_REQUIRED", "Justification code is required for project ID generation");
         }
-        String trimmed = justificationCode.trim().toUpperCase();
-        if (trimmed.startsWith(JUS_PREFIX)) {
-            trimmed = trimmed.substring(JUS_PREFIX.length());
-        }
+        validateJustificationCodeFormat(justificationCode);
+        String trimmed = justificationCode.trim().toUpperCase().substring(JUS_PREFIX.length());
         if (trimmed.startsWith("-")) {
             trimmed = trimmed.substring(1);
-        }
-        if (!trimmed.matches("[0-9]+(-[0-9]+)*")) {
-            throw new CustomException("INVALID_JUSTIFICATION_CODE",
-                    "Justification code must contain numeric values only after JUS- prefix: " + justificationCode);
         }
         return trimmed;
     }
