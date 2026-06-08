@@ -38,7 +38,7 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
     private static final Pattern REVISED_PROJECT_ID_PATTERN =
             Pattern.compile("^([A-Z]{2})-(\\d{4})-(\\d+)-([0-9]+(-[0-9]+)*)$");
     private static final String TENANT_ID = "in";
-    private static final String DEFAULT_SUB_PROJECT_TYPE_ID = "PROJECT";
+    private static final String DEFAULT_PROJECT_SUB_TYPE = "PROJECT";
     private static final int SEARCH_LIMIT = 100;
     private static final long DELAY_BETWEEN_UPDATES_MS = 50L;
 
@@ -49,7 +49,7 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
     private String projectSearchEndpoint;
     private String projectUpdateEndpoint;
     private String authToken;
-    private String subProjectTypeId;
+    private String projectSubType;
     private ObjectNode requestInfo;
 
     @Override
@@ -86,7 +86,7 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
 
             log.info("Migrating project names for tenant {}", TENANT_ID);
             migrationLogger.println("Tenant: " + TENANT_ID);
-            migrationLogger.println("Search filter: subProjectTypeId=" + subProjectTypeId);
+            migrationLogger.println("Search filter: projectSubType=" + projectSubType);
             migrationLogger.flush();
 
             int[] counts = processTenant(TENANT_ID, migrationLogger, failures);
@@ -133,8 +133,8 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
                 migrationLogger.flush();
             }
 
-            JsonNode projects = searchResponse.path("Project");
-            if (!projects.isArray() || projects.isEmpty()) {
+            JsonNode projects = extractProjectsArray(searchResponse);
+            if (projects.isEmpty()) {
                 break;
             }
 
@@ -198,15 +198,24 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         ObjectNode request = objectMapper.createObjectNode();
         request.set("RequestInfo", requestInfo.deepCopy());
         ObjectNode projectCriteria = objectMapper.createObjectNode();
-        projectCriteria.put("subProjectTypeId", subProjectTypeId);
-        request.set("Project", projectCriteria);
+        projectCriteria.put("tenantId", tenantId);
+        projectCriteria.put("projectSubType", projectSubType);
+        ArrayNode projects = objectMapper.createArrayNode();
+        projects.add(projectCriteria);
+        request.set("Projects", projects);
 
         return postForJson(url, request);
     }
 
-    /**
-     * v2 search returns {@code Project} as a list of wrappers: {@code { "project": { ... } }}.
-     */
+    private JsonNode extractProjectsArray(JsonNode searchResponse) {
+        JsonNode projects = searchResponse.path("Project");
+        if (projects.isArray()) {
+            return projects;
+        }
+        projects = searchResponse.path("project");
+        return projects.isArray() ? projects : objectMapper.createArrayNode();
+    }
+
     private JsonNode extractProjectNode(JsonNode wrapper) {
         if (wrapper == null || wrapper.isNull()) {
             return null;
@@ -298,10 +307,10 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
 
     private void initializeEnv() {
         projectHost = trimTrailingSlash(getEnvOrDefault("EGOV_PROJECT_HOST", "http://localhost:8080"));
-        projectSearchEndpoint = getEnvOrDefault("EGOV_PROJECT_SEARCH_ENDPOINT", "/project/v2/_search");
+        projectSearchEndpoint = getEnvOrDefault("EGOV_PROJECT_SEARCH_ENDPOINT", "/project/v1/_search");
         projectUpdateEndpoint = getEnvOrDefault("EGOV_PROJECT_UPDATE_ENDPOINT", "/project/v1/_update");
         authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
-        subProjectTypeId = getEnvOrDefault("EGOV_PROJECT_SEARCH_SUB_PROJECT_TYPE_ID", DEFAULT_SUB_PROJECT_TYPE_ID);
+        projectSubType = getEnvOrDefault("EGOV_PROJECT_SEARCH_PROJECT_SUB_TYPE", DEFAULT_PROJECT_SUB_TYPE);
     }
 
     private void addRole(ArrayNode roles, String code) {
