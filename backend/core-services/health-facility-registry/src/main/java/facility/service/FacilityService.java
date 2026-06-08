@@ -700,11 +700,6 @@ public class FacilityService {
         String effectiveNinId = firstNonBlank(update.getNinId(), existingFacility.getNinId());
         validateCategoryBasedIdentifiers(effectiveCategory, effectiveHfrId, effectiveNinId);
 
-        String effectiveCategory = firstNonBlank(update.getFacilityCategory(), existingFacility.getFacilityCategory());
-        String effectiveHfrId = firstNonBlank(update.getHfrId(), existingFacility.getHfrId());
-        String effectiveNinId = firstNonBlank(update.getNinId(), existingFacility.getNinId());
-        validateCategoryBasedIdentifiers(effectiveCategory, effectiveHfrId, effectiveNinId);
-
         validateFacilityPocUsernameUnique(
                 effectiveCategory, facility.getFacilityPocUsername(), update.getTenantId(), update.getFacilityId()
         );
