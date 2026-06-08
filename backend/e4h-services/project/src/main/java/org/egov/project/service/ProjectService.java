@@ -679,6 +679,7 @@ public class ProjectService {
             }
 
             if (!projectNameGenerationService.isRevisedProjectIdFormat(projectFromDB.getName())) {
+                ensureJustificationCodeForNameGeneration(project, projectFromDB);
                 String statusFromDb = getProjectStatus(projectFromDB);
                 boolean draft = isDraftProject(statusFromDb);
                 applyGeneratedProjectName(project, request.getRequestInfo(), draft);
@@ -706,9 +707,27 @@ public class ProjectService {
 
             applyGeneratedProjectName(project, request.getRequestInfo(), draft);
 
+        } catch (CustomException e) {
+            log.error("Project name update failed for project {}: {}", project.getId(), e.getMessage());
+            throw e;
         } catch (Exception e) {
             log.error("Error handling project name update for project: {}", project.getId(), e);
+            throw new CustomException("PROJECT_NAME_UPDATE_FAILED",
+                    "Failed to update project name for project " + project.getId() + ": " + e.getMessage());
         }
+    }
+
+    private void ensureJustificationCodeForNameGeneration(Project project, Project projectFromDB) {
+        if (projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails()) != null) {
+            return;
+        }
+        String justificationFromDb = projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails());
+        if (justificationFromDb == null) {
+            throw new CustomException("JUSTIFICATION_CODE_REQUIRED",
+                    "Justification code is required for project ID generation: " + project.getId());
+        }
+        project.setAdditionalDetails(mergeIntoAdditionalDetails(
+                project.getAdditionalDetails(), "justificationCode", justificationFromDb));
     }
 
     /**

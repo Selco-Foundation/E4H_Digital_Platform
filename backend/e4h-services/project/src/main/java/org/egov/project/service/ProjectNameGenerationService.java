@@ -168,14 +168,39 @@ public class ProjectNameGenerationService {
             return null;
         }
         try {
-            JsonNode node = objectMapper.valueToTree(additionalDetails);
-            if (node != null && node.has("justificationCode") && !node.get("justificationCode").isNull()) {
-                return node.get("justificationCode").asText();
+            JsonNode node = additionalDetails instanceof JsonNode
+                    ? (JsonNode) additionalDetails
+                    : objectMapper.valueToTree(additionalDetails);
+            node = normalizeAdditionalDetailsNode(node);
+            if (node != null && node.isObject()
+                    && node.has("justificationCode") && !node.get("justificationCode").isNull()) {
+                String value = node.get("justificationCode").asText();
+                return value == null || value.isBlank() ? null : value.trim();
             }
         } catch (Exception e) {
             log.error("Error reading justificationCode from additionalDetails", e);
         }
         return null;
+    }
+
+    private JsonNode normalizeAdditionalDetailsNode(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
+        }
+        if (node.isTextual()) {
+            String text = node.asText();
+            if (StringUtils.isBlank(text)) {
+                return null;
+            }
+            try {
+                JsonNode parsed = objectMapper.readTree(text);
+                return parsed.isObject() ? parsed : null;
+            } catch (Exception e) {
+                log.debug("additionalDetails is a scalar string, not JSON object: {}", text);
+                return null;
+            }
+        }
+        return node;
     }
 
     /**

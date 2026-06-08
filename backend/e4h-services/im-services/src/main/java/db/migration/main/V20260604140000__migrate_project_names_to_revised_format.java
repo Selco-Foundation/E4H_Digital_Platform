@@ -39,7 +39,8 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
             Pattern.compile("^([A-Z]{2})-(\\d{4})-(\\d+)-([0-9]+(-[0-9]+)*)$");
     private static final String TENANT_ID = "in";
     private static final String MIGRATION_USER_UUID = "2be2bec7-908d-4984-8368-cecda98fb961";
-    private static final String DEFAULT_SUB_PROJECT_TYPE_ID = "PROJECT";
+    private static final String CHILD_PROJECT_TYPE_FIELD_PLAN = "FieldPlan";
+    private static final String CHILD_PROJECT_TYPE_FACILITY = "Facility";
     private static final int SEARCH_LIMIT = 100;
     private static final long DELAY_BETWEEN_UPDATES_MS = 50L;
 
@@ -73,6 +74,7 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         int skipped = 0;
         int scanned = 0;
         int alreadyRevised = 0;
+        int notEligible = 0;
         List<String> failures = new ArrayList<>();
 
         try (PrintWriter migrationLogger = new PrintWriter(Files.newBufferedWriter(
@@ -87,7 +89,8 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
 
             log.info("Migrating project names for tenant {}", TENANT_ID);
             migrationLogger.println("Tenant: " + TENANT_ID);
-            migrationLogger.println("Search filter: subProjectTypeId=" + subProjectTypeId);
+            migrationLogger.println("Search filter: subProjectTypeId="
+                    + (subProjectTypeId == null || subProjectTypeId.isBlank() ? "(none — all top-level projects)" : subProjectTypeId));
             migrationLogger.flush();
 
             int[] counts = processTenant(TENANT_ID, migrationLogger, failures);
@@ -95,10 +98,12 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
             skipped = counts[1];
             scanned = counts[2];
             alreadyRevised = counts[3];
+            notEligible = counts[4];
 
             migrationLogger.println("----------------------------------------");
             migrationLogger.printf("Scanned: %d%n", scanned);
             migrationLogger.printf("Already revised format: %d%n", alreadyRevised);
+            migrationLogger.printf("Not eligible (child/sub-type): %d%n", notEligible);
             migrationLogger.printf("Migrated: %d%n", migrated);
             migrationLogger.printf("Skipped: %d%n", skipped);
             migrationLogger.println("Completed at: " + LocalDateTime.now());
@@ -109,8 +114,8 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
             migrationLogger.flush();
         }
 
-        log.info("Project name migration completed. scanned={}, alreadyRevised={}, migrated={}, skipped={}, log={}",
-                scanned, alreadyRevised, migrated, skipped, logFilePath);
+        log.info("Project name migration completed. scanned={}, alreadyRevised={}, notEligible={}, migrated={}, skipped={}, log={}",
+                scanned, alreadyRevised, notEligible, migrated, skipped, logFilePath);
     }
 
     private int[] processTenant(String tenantId, PrintWriter migrationLogger, List<String> failures) {
@@ -118,6 +123,7 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         int skipped = 0;
         int scanned = 0;
         int alreadyRevised = 0;
+        int notEligible = 0;
         int offset = 0;
         Integer totalCount = null;
 
@@ -148,6 +154,14 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
                 String projectId = textOrNull(project, "id");
                 String currentName = textOrNull(project, "name");
 
+                if (!shouldMigrateProject(project)) {
+                    notEligible++;
+                    migrationLogger.printf("SKIP_NOT_ELIGIBLE projectId=%s parent=%s projectType=%s projectSubType=%s%n",
+                            projectId, textOrNull(project, "parent"),
+                            textOrNull(project, "projectType"), textOrNull(project, "projectSubType"));
+                    continue;
+                }
+
                 if (isAlreadyRevisedFormat(currentName)) {
                     alreadyRevised++;
                     continue;
@@ -155,8 +169,23 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
 
                 try {
                     ObjectNode updatePayload = buildUpdatePayload(project);
+                    migrationLogger.printf("UPDATE projectId=%s justificationCode=%s startDate=%s endDate=%s%n",
+                            projectId, extractJustificationCode(project),
+                            updatePayload.has("startDate") ? updatePayload.get("startDate") : "missing",
+                            updatePayload.has("endDate") ? updatePayload.get("endDate") : "missing");
+                    migrationLogger.flush();
                     JsonNode updateResponse = updateProject(updatePayload);
                     String newName = extractNameFromUpdateResponse(updateResponse, projectId);
+                    if (newName == null || newName.isBlank()) {
+                        throw new IllegalStateException("Update API returned no project name in response");
+                    }
+                    if (newName.equals(currentName)) {
+                        throw new IllegalStateException(
+                                "Update API succeeded but name unchanged (check justificationCode, dates, address, project-service logs)");
+                    }
+                    if (!isAlreadyRevisedFormat(newName)) {
+                        throw new IllegalStateException("Generated name is not in revised format: " + newName);
+                    }
                     migrated++;
                     log.info("Migrated project {} (tenant {}) name: {} -> {}", projectId, tenantId, currentName, newName);
                     migrationLogger.printf("MIGRATED projectId=%s tenantId=%s oldName=%s newName=%s%n",
@@ -181,10 +210,31 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
                 break;
             }
         }
-        migrationLogger.printf("Tenant %s summary: scanned=%d, alreadyRevised=%d, migrated=%d, skipped=%d%n",
-                tenantId, scanned, alreadyRevised, migrated, skipped);
+        migrationLogger.printf("Tenant %s summary: scanned=%d, notEligible=%d, alreadyRevised=%d, migrated=%d, skipped=%d%n",
+                tenantId, scanned, notEligible, alreadyRevised, migrated, skipped);
         migrationLogger.flush();
-        return new int[] {migrated, skipped, scanned, alreadyRevised};
+        return new int[] {migrated, skipped, scanned, alreadyRevised, notEligible};
+    }
+
+    private boolean shouldMigrateProject(JsonNode project) {
+        if (textOrNull(project, "parent") != null) {
+            return false;
+        }
+        String projectType = textOrNull(project, "projectType");
+        String projectTypeId = textOrNull(project, "projectTypeId");
+        if (CHILD_PROJECT_TYPE_FIELD_PLAN.equalsIgnoreCase(projectType)
+                || CHILD_PROJECT_TYPE_FIELD_PLAN.equalsIgnoreCase(projectTypeId)) {
+            return false;
+        }
+        if (CHILD_PROJECT_TYPE_FACILITY.equalsIgnoreCase(projectType)
+                || CHILD_PROJECT_TYPE_FACILITY.equalsIgnoreCase(projectTypeId)) {
+            return false;
+        }
+        if (subProjectTypeId != null && !subProjectTypeId.isBlank()) {
+            String subType = textOrNull(project, "projectSubType");
+            return subType == null || subType.isBlank() || subProjectTypeId.equalsIgnoreCase(subType);
+        }
+        return true;
     }
 
     private JsonNode searchProjects(String tenantId, int offset) {
@@ -199,7 +249,9 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         ObjectNode request = objectMapper.createObjectNode();
         request.set("RequestInfo", requestInfo.deepCopy());
         ObjectNode projectCriteria = objectMapper.createObjectNode();
-        projectCriteria.put("subProjectTypeId", subProjectTypeId);
+        if (subProjectTypeId != null && !subProjectTypeId.isBlank()) {
+            projectCriteria.put("subProjectTypeId", subProjectTypeId);
+        }
         request.set("Project", projectCriteria);
 
         return postForJson(url, request);
@@ -241,17 +293,61 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         copyLongField(project, updateProject, "startDate");
         copyLongField(project, updateProject, "endDate");
 
-        if (project.has("address") && !project.get("address").isNull()) {
+        if (!updateProject.has("startDate") || !updateProject.has("endDate")) {
+            throw new IllegalStateException("Project missing startDate/endDate in search response — update API will reject");
+        }
+
+        if (project.has("address") && project.get("address").isObject() && !project.get("address").isNull()) {
             updateProject.set("address", buildAddressPayload(project.get("address")));
         }
 
-        if (project.has("additionalDetails") && !project.get("additionalDetails").isNull()) {
-            ObjectNode additionalDetails = project.get("additionalDetails").deepCopy();
+        ObjectNode additionalDetails = extractAdditionalDetailsObject(project);
+        if (additionalDetails != null) {
             additionalDetails.remove("legacyProject");
             updateProject.set("additionalDetails", additionalDetails);
         }
 
         return updateProject;
+    }
+
+    private ObjectNode extractAdditionalDetailsObject(JsonNode project) {
+        if (!project.has("additionalDetails") || project.get("additionalDetails").isNull()) {
+            return null;
+        }
+        JsonNode additionalDetails = project.get("additionalDetails");
+        if (additionalDetails.isObject()) {
+            return additionalDetails.deepCopy();
+        }
+        return null;
+    }
+
+    private String extractJustificationCode(JsonNode project) {
+        if (!project.has("additionalDetails") || project.get("additionalDetails").isNull()) {
+            return null;
+        }
+        JsonNode additionalDetails = project.get("additionalDetails");
+        if (additionalDetails.isObject()) {
+            return readJustificationCode(additionalDetails);
+        }
+        if (additionalDetails.isTextual()) {
+            try {
+                JsonNode parsed = objectMapper.readTree(additionalDetails.asText());
+                if (parsed.isObject()) {
+                    return readJustificationCode(parsed);
+                }
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private String readJustificationCode(JsonNode additionalDetails) {
+        if (!additionalDetails.has("justificationCode") || additionalDetails.get("justificationCode").isNull()) {
+            return null;
+        }
+        String value = additionalDetails.get("justificationCode").asText();
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private ObjectNode buildAddressPayload(JsonNode address) {
@@ -267,18 +363,23 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         if (response == null) {
             return null;
         }
-        JsonNode projects = response.path("Project");
-        if (projects.isArray()) {
-            for (JsonNode project : projects) {
-                if (projectId.equals(textOrNull(project, "id"))) {
-                    return textOrNull(project, "name");
-                }
-            }
-            if (!projects.isEmpty()) {
-                return textOrNull(projects.get(0), "name");
+        String name = extractNameFromProjectsArray(response.path("Project"), projectId);
+        if (name != null) {
+            return name;
+        }
+        return extractNameFromProjectsArray(response.path("project"), projectId);
+    }
+
+    private String extractNameFromProjectsArray(JsonNode projects, String projectId) {
+        if (!projects.isArray()) {
+            return null;
+        }
+        for (JsonNode project : projects) {
+            if (projectId.equals(textOrNull(project, "id"))) {
+                return textOrNull(project, "name");
             }
         }
-        return null;
+        return projects.isEmpty() ? null : textOrNull(projects.get(0), "name");
     }
 
     private JsonNode postForJson(String url, JsonNode body) {
@@ -308,7 +409,7 @@ public class V20260604140000__migrate_project_names_to_revised_format extends Ba
         projectSearchEndpoint = getEnvOrDefault("EGOV_PROJECT_SEARCH_ENDPOINT", "/project/v2/_search");
         projectUpdateEndpoint = getEnvOrDefault("EGOV_PROJECT_UPDATE_ENDPOINT", "/project/v1/_update");
         authToken = getEnvOrDefault("EGOV_AUTH_TOKEN", "");
-        subProjectTypeId = getEnvOrDefault("EGOV_PROJECT_SEARCH_SUB_PROJECT_TYPE_ID", DEFAULT_SUB_PROJECT_TYPE_ID);
+        subProjectTypeId = getEnvOrDefault("EGOV_PROJECT_SEARCH_SUB_PROJECT_TYPE_ID", "");
     }
 
     private void addRole(ArrayNode roles, String name, String code) {
