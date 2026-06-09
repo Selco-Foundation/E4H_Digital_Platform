@@ -764,7 +764,7 @@ public class ProjectService {
         String justificationFromDb = projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails());
         if (justificationFromDb == null) {
             throw new CustomException("JUSTIFICATION_CODE_REQUIRED",
-                    "Justification code is required for project ID generation: " + project.getId());
+                    ProjectNameGenerationService.JUSTIFICATION_CODE_MESSAGE);
         }
         project.setAdditionalDetails(mergeIntoAdditionalDetails(
                 project.getAdditionalDetails(), "justificationCode", justificationFromDb));

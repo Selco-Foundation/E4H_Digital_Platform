@@ -37,7 +37,7 @@ public class ProjectValidator {
     public static final String TENANT_ID_IS_MANDATORY_IN_PROJECT_REQUEST_BODY = "Tenant ID is mandatory in Project request body";
     public static final String DOES_NOT_EXISTS_FOR_THE_PROJECT = " that you are trying to update does not exists for the project ";
     public static final String INVALID_JUSTIFICATION_CODE_MESSAGE =
-            "Justification code must be in JUS-<numeric> format (e.g. JUS-0350)";
+            ProjectNameGenerationService.JUSTIFICATION_CODE_MESSAGE;
     @Autowired
     MDMSUtils mdmsUtils;
 

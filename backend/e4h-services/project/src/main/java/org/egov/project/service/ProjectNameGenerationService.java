@@ -36,6 +36,8 @@ public class ProjectNameGenerationService {
             Pattern.compile("^JUS-[0-9]+(-[0-9]+)*$", Pattern.CASE_INSENSITIVE);
     private static final String JUS_PREFIX = "JUS-";
     private static final String SCHEDULED_STATUS = "SCHEDULED";
+    public static final String JUSTIFICATION_CODE_MESSAGE =
+            "Justification code is required and must follow the format JUS-{numbers} (e.g., JUS-393, JUS-8080-89).";
 
     private final ProjectRepository projectRepository;
     private final MDMSUtils mdmsUtils;
@@ -153,15 +155,14 @@ public class ProjectNameGenerationService {
 
     public void validateJustificationCodeFormat(String justificationCode) {
         if (!isValidJustificationCodeFormat(justificationCode)) {
-            throw new CustomException("INVALID_JUSTIFICATION_CODE",
-                    "Justification code must be in JUS-<numeric> format (e.g. JUS-0350): " + justificationCode);
+            throw new CustomException("INVALID_JUSTIFICATION_CODE", JUSTIFICATION_CODE_MESSAGE);
         }
     }
 
     private String getJustificationNumeric(Project project) {
         String justificationCode = extractJustificationCode(project.getAdditionalDetails());
         if (StringUtils.isBlank(justificationCode)) {
-            throw new CustomException("JUSTIFICATION_CODE_REQUIRED", "Justification code is required for project ID generation");
+            throw new CustomException("JUSTIFICATION_CODE_REQUIRED", JUSTIFICATION_CODE_MESSAGE);
         }
         validateJustificationCodeFormat(justificationCode);
         String trimmed = justificationCode.trim().toUpperCase().substring(JUS_PREFIX.length());
