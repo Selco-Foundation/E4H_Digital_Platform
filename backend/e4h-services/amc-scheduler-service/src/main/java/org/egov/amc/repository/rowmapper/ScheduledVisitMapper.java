@@ -93,6 +93,12 @@ public class ScheduledVisitMapper implements RowMapper<ScheduledVisit> {
         facility.setFacilityRegion(rs.getString("facility_region"));
         facility.setBoundaryCode(rs.getString("boundary_code"));
         facility.setIsActive(rs.getBoolean("facility_is_active"));
+        facility.setFacilityPocName(rs.getString("facility_poc_name"));
+        facility.setFacilityPocPhone(rs.getString("facility_poc_phone"));
+        facility.setFacilityPocEmail(rs.getString("facility_poc_email"));
+        facility.setFacilityStatus(rs.getString("facility_status"));
+        facility.setHfrId(rs.getString("hfr_id"));
+        facility.setNinId(rs.getString("nin_id"));
 
         String facilityDetailsJson = rs.getString("facility_details");
         if (facilityDetailsJson != null) {

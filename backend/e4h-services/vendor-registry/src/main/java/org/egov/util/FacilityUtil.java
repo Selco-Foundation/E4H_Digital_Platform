@@ -7,16 +7,14 @@ import org.egov.common.contract.request.Role;
 import org.egov.common.contract.request.User;
 import org.egov.config.Configuration;
 import org.egov.repository.ServiceRequestRepository;
-import org.egov.web.models.Facility;
-import org.egov.web.models.FacilitySearchResponse;
-import org.egov.web.models.FacilityUpdatePayload;
-import org.egov.web.models.FacilityUpdateRequest;
+import org.egov.web.models.*;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -25,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 @Slf4j
@@ -57,6 +56,44 @@ public class FacilityUtil {
         this.restTemplate = restTemplate;
         this.configuration = configuration;
         this.serviceRequestRepository = serviceRequestRepository;
+    }
+
+    @Async("mappedVendorExecutor")
+    public void syncMappedVendorToFacilities(OrgUserRequest request,
+                                             List<Jurisdiction> jurisdictions,
+                                             String vendorName,
+                                             String vendorUserName) {
+        List<String> facilityBoundaryCodes = extractActiveFacilityBoundaryCodes(jurisdictions);
+        if (facilityBoundaryCodes.isEmpty()) {
+            log.debug("No facility jurisdictions in request; skipping mapped-vendor sync");
+            return;
+        }
+        String tenantId = configuration.getGlobalTenantId();
+        if (request.getUser() != null && StringUtils.isNotBlank(request.getUser().getTenantId())) {
+            tenantId = request.getUser().getTenantId();
+        }
+        log.info("Syncing mapped vendor name='{}' userName='{}' to {} facility boundaries",
+                vendorName, vendorUserName, facilityBoundaryCodes.size());
+        updateMappedVendorForFacilityBoundaries(
+                request.getRequestInfo(),
+                tenantId,
+                facilityBoundaryCodes,
+                vendorName,
+                vendorUserName
+        );
+    }
+
+    private List<String> extractActiveFacilityBoundaryCodes(List<Jurisdiction> jurisdictions) {
+        if (jurisdictions == null || jurisdictions.isEmpty()) {
+            return List.of();
+        }
+        return jurisdictions.stream()
+                .filter(j -> j != null && FacilityUtil.isFacilityBoundaryType(j.getBoundaryType()))
+                .filter(j -> j.getIsActive() == null || Boolean.TRUE.equals(j.getIsActive()))
+                .map(Jurisdiction::getBoundary)
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     public void updateMappedVendorForFacilityBoundaries(RequestInfo requestInfo, String tenantId,
