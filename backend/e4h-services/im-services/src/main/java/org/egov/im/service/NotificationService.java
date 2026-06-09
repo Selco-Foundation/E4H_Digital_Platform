@@ -81,6 +81,12 @@ public class NotificationService {
             String applicationStatus = request.getIncident().getApplicationStatus();
             String action = request.getWorkflow().getAction();
 
+            if (WorkflowSmsNotificationService.isRmsIncident(request)
+                    && isRmsWorkflowOnlyTransition(action, applicationStatus)) {
+                log.info("Skipping legacy notification for RMS transition {}_{}", action, applicationStatus);
+                return;
+            }
+
             if (!(NOTIFICATION_ENABLE_FOR_STATUS.contains(action + "_" + applicationStatus))) {
                 log.info("Notification Disabled For State :" + applicationStatus);
                 return;
@@ -964,6 +970,19 @@ public class NotificationService {
                 && APPLY_RMS_DEVICE.equalsIgnoreCase(action))
                 || (PENDINGFORASSIGNMENT_THEFT.equalsIgnoreCase(applicationStatus)
                 && APPLY_THEFT.equalsIgnoreCase(action));
+    }
+
+    private boolean isRmsWorkflowOnlyTransition(String action, String applicationStatus) {
+        if (action == null || applicationStatus == null) {
+            return false;
+        }
+        String transition = action.toUpperCase() + "_" + applicationStatus.toUpperCase();
+        return ("REJECT_" + REJECTED).equals(transition)
+                || ("RESOLVE_" + RESOLVED).equals(transition)
+                || ("SENDBACK_" + PENDINGFORASSIGNMENT).equals(transition)
+                || ("ASSIGN_" + RMS_DEVICE_PENDING_TECH_POC).equals(transition)
+                || ("ASSIGN_" + RMS_DEVICE_PENDINGRESOLUTION).equals(transition)
+                || ("SPARE_PART_NEEDED_" + PENDING_RESOLUTION_PREFIX + "SPARE_PART_NEEDED").equals(transition);
     }
 
 }
