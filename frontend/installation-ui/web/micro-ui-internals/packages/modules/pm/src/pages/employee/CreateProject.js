@@ -221,7 +221,10 @@ const CreateProject = () => {
             nextRoute: "project-duration",
             populators: {
               name: "justificationCode",
-              error: t("CORE_COMMON_REQUIRED"),
+              error: t("JUSTIFICATION_CODE_VALIDATION_ERROR"),
+              validation: {
+                pattern: /^JUS-\d+(?:-\d+)*$/,
+              },
             },
           },
           {
