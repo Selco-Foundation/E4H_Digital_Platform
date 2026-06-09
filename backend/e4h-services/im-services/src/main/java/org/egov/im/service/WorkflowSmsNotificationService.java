@@ -189,14 +189,17 @@ public class WorkflowSmsNotificationService {
     }
 
     private String resolveOutOfScopeReason(IncidentRequest request) {
-        if (request.getWorkflow().getSendBackReason() != null
-                && StringUtils.hasText(request.getWorkflow().getSendBackReason().getReason())) {
-            return request.getWorkflow().getSendBackReason().getReason();
+        if (request.getWorkflow() == null) {
+            return "Not specified";
+        }
+        if (request.getWorkflow().getOutOfScopeReason() != null
+                && StringUtils.hasText(request.getWorkflow().getOutOfScopeReason())) {
+            return request.getWorkflow().getOutOfScopeReason();
         }
         if (StringUtils.hasText(request.getWorkflow().getComments())) {
             return request.getWorkflow().getComments();
         }
-        if (StringUtils.hasText(request.getIncident().getComments())) {
+        if (request.getIncident() != null && StringUtils.hasText(request.getIncident().getComments())) {
             return request.getIncident().getComments();
         }
         return "Not specified";

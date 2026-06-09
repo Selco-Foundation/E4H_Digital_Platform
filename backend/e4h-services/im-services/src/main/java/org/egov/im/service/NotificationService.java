@@ -93,7 +93,7 @@ public class NotificationService {
             String crmMobileNumber = null;
             Boolean crmUser = false;
 
-            if (applicationStatus.equalsIgnoreCase(PENDINGFORASSIGNMENT) && action.equalsIgnoreCase(APPLY)) {
+            if (isTicketCreationNotification(applicationStatus, action)) {
                 Map<String, String> reassigneeDetails = getHRMSEmployee(request, "COMPLAINANT");
                 employeeMobileNumber = reassigneeDetails.get("employeeMobile");
             } else if (applicationStatus.equalsIgnoreCase(PENDINGATVENDOR) && action.equalsIgnoreCase(ASSIGN)) {
@@ -212,9 +212,9 @@ public class NotificationService {
 
         String localisedStatus = notificationUtil.getCustomizedMsgForPlaceholder(localizationMessage, "CS_COMMON_" + incidentWrapper.getIncident().getApplicationStatus());
         /**
-         * Confirmation SMS to citizens, when they will raise any complaint
+         * Confirmation SMS when a complaint is raised (standard, RMS, or theft).
          */
-        if (incidentWrapper.getIncident().getApplicationStatus().equalsIgnoreCase(PENDINGFORASSIGNMENT) && incidentWrapper.getWorkflow().getAction().equalsIgnoreCase(APPLY)) {
+        if (isTicketCreationNotification(applicationStatus, incidentWrapper.getWorkflow().getAction())) {
             List<Role> roles = request.getRequestInfo().getUserInfo().getRoles();
             for (Role role : roles) {
                 if (role.getTenantId().equalsIgnoreCase("pg")) {
@@ -953,6 +953,17 @@ public class NotificationService {
     public String getUiAppHost(String tenantId) {
         String stateLevelTenantId = centralInstanceUtil.getStateLevelTenant(tenantId);
         return config.getUiAppHostMap().get(stateLevelTenantId);
+    }
+
+    private boolean isTicketCreationNotification(String applicationStatus, String action) {
+        if (action == null || applicationStatus == null) {
+            return false;
+        }
+        return (PENDINGFORASSIGNMENT.equalsIgnoreCase(applicationStatus) && APPLY.equalsIgnoreCase(action))
+                || (PENDINGFORASSIGNMENT_RMS_DEVICE.equalsIgnoreCase(applicationStatus)
+                && APPLY_RMS_DEVICE.equalsIgnoreCase(action))
+                || (PENDINGFORASSIGNMENT_THEFT.equalsIgnoreCase(applicationStatus)
+                && APPLY_THEFT.equalsIgnoreCase(action));
     }
 
 }
