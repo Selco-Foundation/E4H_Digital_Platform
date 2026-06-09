@@ -28,7 +28,7 @@ public class RmsConsumptionClient {
     private final ObjectMapper objectMapper;
 
     /**
-     * Key: facilityId|year|month → solar kWh from Elmeasure (rms-service → POST /selco/dashboard/table_data).
+     * Key: facilityId|year|month → solar kWh from Elmeasure (rms-service → POST /selco/center_details/graph).
      */
     public Map<String, Double> fetchSolarKwhByFacilityMonth(List<Co2FacilityContext> facilities,
                                                             List<YearMonth> months) {
