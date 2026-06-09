@@ -144,15 +144,18 @@ public class ProjectService {
      * Regenerates project name when facilities change on a scheduled (non-draft) project.
      */
     public void refreshProjectNameAfterFacilityChange(String projectId, String tenantId, RequestInfo requestInfo) {
-        refreshProjectNameAfterFacilityChange(projectId, tenantId, requestInfo, 0);
+        refreshProjectNameAfterFacilityChange(projectId, tenantId, requestInfo, null);
+    }
+
+    public int countLinkedFacilities(String projectId, String tenantId) {
+        return projectRepository.countProjectFacilitiesByProjectId(projectId, tenantId);
     }
 
     /**
-     * @param pendingFacilityDelta facilities added (+) or removed (-) in the current request
-     *                             but not yet reflected in DB (persister is async via Kafka)
+     * @param facilityCountOverride when non-null, used as the exact HF count (computed before persister flush)
      */
     public void refreshProjectNameAfterFacilityChange(String projectId, String tenantId, RequestInfo requestInfo,
-                                                      int pendingFacilityDelta) {
+                                                      Integer facilityCountOverride) {
         log.trace("Entering refreshProjectNameAfterFacilityChange for project: {}", projectId);
         try {
             Project projectFromDB = fetchProjectWithDetails(projectId, tenantId, requestInfo);
@@ -166,9 +169,11 @@ public class ProjectService {
                 return;
             }
             int dbFacilityCount = projectRepository.countProjectFacilitiesByProjectId(projectId, tenantId);
-            int effectiveFacilityCount = Math.max(0, dbFacilityCount + pendingFacilityDelta);
-            log.info("Refreshing project name for {} status={} facilityCount db={} delta={} effective={}",
-                    projectId, projectStatus, dbFacilityCount, pendingFacilityDelta, effectiveFacilityCount);
+            int effectiveFacilityCount = facilityCountOverride != null
+                    ? Math.max(0, facilityCountOverride)
+                    : dbFacilityCount;
+            log.info("Refreshing project name for {} status={} facilityCount db={} override={} effective={}",
+                    projectId, projectStatus, dbFacilityCount, facilityCountOverride, effectiveFacilityCount);
             ProjectNameResult nameResult = projectNameGenerationService.generateProjectName(
                     projectFromDB, requestInfo, false, effectiveFacilityCount);
             if (nameResult.getName() == null || nameResult.getName().equals(projectFromDB.getName())) {
