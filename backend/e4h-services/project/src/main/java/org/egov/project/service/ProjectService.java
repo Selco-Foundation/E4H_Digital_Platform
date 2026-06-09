@@ -155,46 +155,27 @@ public class ProjectService {
                                                       int pendingFacilityDelta) {
         log.trace("Entering refreshProjectNameAfterFacilityChange for project: {}", projectId);
         try {
-            List<Project> projects = findByIds(List.of(projectId));
-            if (projects == null || projects.isEmpty()) {
+            Project projectFromDB = fetchProjectWithDetails(projectId, tenantId, requestInfo);
+            if (projectFromDB == null) {
                 log.warn("Project not found for name refresh: {}", projectId);
                 return;
             }
-            Project projectFromDB = projects.get(0);
-            if (isDraftProject(getProjectStatus(projectFromDB))) {
-                log.debug("Skipping name refresh for draft project: {}", projectId);
+            String projectStatus = getProjectStatus(projectFromDB);
+            if (isDraftProject(projectStatus)) {
+                log.info("Skipping name refresh for draft project {} (status={})", projectId, projectStatus);
                 return;
             }
-            Project projectForName = Project.builder()
-                    .id(projectFromDB.getId())
-                    .tenantId(projectFromDB.getTenantId())
-                    .startDate(projectFromDB.getStartDate())
-                    .endDate(projectFromDB.getEndDate())
-                    .address(projectFromDB.getAddress())
-                    .additionalDetails(projectFromDB.getAdditionalDetails())
-                    .build();
             int dbFacilityCount = projectRepository.countProjectFacilitiesByProjectId(projectId, tenantId);
             int effectiveFacilityCount = Math.max(0, dbFacilityCount + pendingFacilityDelta);
-            log.debug("Refreshing project name for {} with facility count db={} delta={} effective={}",
-                    projectId, dbFacilityCount, pendingFacilityDelta, effectiveFacilityCount);
+            log.info("Refreshing project name for {} status={} facilityCount db={} delta={} effective={}",
+                    projectId, projectStatus, dbFacilityCount, pendingFacilityDelta, effectiveFacilityCount);
             ProjectNameResult nameResult = projectNameGenerationService.generateProjectName(
-                    projectForName, requestInfo, false, effectiveFacilityCount);
+                    projectFromDB, requestInfo, false, effectiveFacilityCount);
             if (nameResult.getName() == null || nameResult.getName().equals(projectFromDB.getName())) {
+                log.debug("Project name unchanged after facility refresh for {}: {}", projectId, projectFromDB.getName());
                 return;
             }
-            Project updatePayload = Project.builder()
-                    .id(projectFromDB.getId())
-                    .tenantId(projectFromDB.getTenantId())
-                    .projectNumber(projectFromDB.getProjectNumber())
-                    .startDate(projectFromDB.getStartDate())
-                    .endDate(projectFromDB.getEndDate())
-                    .projectType(projectFromDB.getProjectType())
-                    .projectSubType(projectFromDB.getProjectSubType())
-                    .address(projectFromDB.getAddress())
-                    .additionalDetails(projectFromDB.getAdditionalDetails())
-                    .name(nameResult.getName())
-                    .rowVersion(projectFromDB.getRowVersion())
-                    .build();
+            Project updatePayload = buildProjectNameUpdatePayload(projectFromDB, nameResult.getName());
             ProjectRequest updateRequest = ProjectRequest.builder()
                     .requestInfo(requestInfo)
                     .projects(List.of(updatePayload))
@@ -206,6 +187,55 @@ public class ProjectService {
         } catch (Exception e) {
             log.error("Failed to refresh project name after facility change for project: {}", projectId, e);
         }
+    }
+
+    private Project fetchProjectWithDetails(String projectId, String tenantId, RequestInfo requestInfo) throws Exception {
+        ProjectSearch searchCriteria = ProjectSearch.builder().id(List.of(projectId)).build();
+        ProjectSearchRequest searchRequest = ProjectSearchRequest.builder()
+                .project(searchCriteria)
+                .requestInfo(requestInfo)
+                .build();
+        ProjectSearchURLParams urlParams = ProjectSearchURLParams.builder()
+                .limit(1)
+                .offset(0)
+                .tenantId(tenantId)
+                .includeAncestors(false)
+                .includeDescendants(false)
+                .build();
+        List<Project> projects = searchProject(searchRequest, urlParams, null, null);
+        if (projects == null || projects.isEmpty()) {
+            return null;
+        }
+        return projects.get(0);
+    }
+
+    private Project buildProjectNameUpdatePayload(Project projectFromDB, String newName) {
+        String projectSubType = StringUtils.isNotBlank(projectFromDB.getProjectSubType())
+                ? projectFromDB.getProjectSubType() : PROJECT_SUB_TYPE;
+        Object additionalDetails = mergeIntoAdditionalDetails(
+                projectFromDB.getAdditionalDetails(), "isDuplicateName", false);
+        return Project.builder()
+                .id(projectFromDB.getId())
+                .tenantId(projectFromDB.getTenantId())
+                .projectNumber(projectFromDB.getProjectNumber())
+                .name(newName)
+                .projectType(projectFromDB.getProjectType())
+                .projectTypeId(projectFromDB.getProjectTypeId())
+                .projectSubType(projectSubType)
+                .department(projectFromDB.getDepartment())
+                .description(projectFromDB.getDescription())
+                .referenceID(projectFromDB.getReferenceID())
+                .startDate(projectFromDB.getStartDate())
+                .endDate(projectFromDB.getEndDate())
+                .isTaskEnabled(projectFromDB.getIsTaskEnabled())
+                .natureOfWork(projectFromDB.getNatureOfWork())
+                .parent(projectFromDB.getParent())
+                .projectHierarchy(projectFromDB.getProjectHierarchy())
+                .address(projectFromDB.getAddress())
+                .additionalDetails(additionalDetails)
+                .isDeleted(projectFromDB.getIsDeleted())
+                .rowVersion(projectFromDB.getRowVersion())
+                .build();
     }
 
     private void applyGeneratedProjectName(Project project, RequestInfo requestInfo, boolean draft) {
@@ -921,21 +951,25 @@ public class ProjectService {
         try {
             Object additionalDetails = project.getAdditionalDetails();
             if (additionalDetails == null) {
-                return null; // No additionalDetails = Draft status
+                return null;
             }
-            
             JsonNode additionalDetailsNode = mapper.valueToTree(additionalDetails);
-            
-            // If additionalDetails is empty or doesn't have status field, it's Draft
-            if (additionalDetailsNode == null || additionalDetailsNode.isNull() || !additionalDetailsNode.has("status")) {
-                return null; // No status field = Draft status
+            if (additionalDetailsNode != null && additionalDetailsNode.isTextual()) {
+                additionalDetailsNode = mapper.readTree(additionalDetailsNode.asText());
             }
-            
+            if (additionalDetailsNode == null || additionalDetailsNode.isNull() || !additionalDetailsNode.isObject()
+                    || !additionalDetailsNode.has("status")) {
+                return null;
+            }
             JsonNode statusNode = additionalDetailsNode.get("status");
-            return (statusNode != null && !statusNode.isNull()) ? statusNode.asText() : null;
+            if (statusNode == null || statusNode.isNull()) {
+                return null;
+            }
+            String status = statusNode.asText();
+            return StringUtils.isBlank(status) ? null : status.trim();
         } catch (Exception e) {
             log.error("Error getting project status for project: {}", project.getId(), e);
-            return null; // Default to Draft on error
+            return null;
         }
     }
 
