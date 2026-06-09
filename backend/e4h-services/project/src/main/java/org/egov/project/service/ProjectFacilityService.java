@@ -187,10 +187,20 @@ public class ProjectFacilityService {
         try {
             if (!validEntities.isEmpty()) {
                 log.info("Processing {} valid entities", validEntities.size());
+                List<ProjectFacility> deactivatedFacilities = validEntities.stream()
+                        .filter(pf -> Boolean.TRUE.equals(pf.getIsDeleted()))
+                        .collect(Collectors.toList());
+                Map<String, Integer> facilityCountBeforeSave = captureFacilityCountBaselines(
+                        deactivatedFacilities.isEmpty() ? validEntities : deactivatedFacilities);
                 log.debug("Enriching facilities before update");
                 enrichmentService.update(validEntities, request);
                 log.debug("Saving updated facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getUpdateProjectFacilityTopic());
+                if (!deactivatedFacilities.isEmpty()) {
+                    log.info("Refreshing project name after soft-deleting {} facilities", deactivatedFacilities.size());
+                    refreshProjectNamesAfterFacilityDelete(deactivatedFacilities, request.getRequestInfo(),
+                            facilityCountBeforeSave);
+                }
                 log.info("Successfully updated {} project facilities", validEntities.size());
             } else {
                 log.warn("No valid facilities to update after validation");
@@ -229,9 +239,9 @@ public class ProjectFacilityService {
         try {
             if (!validEntities.isEmpty()) {
                 log.info("Processing {} valid entities", validEntities.size());
+                Map<String, Integer> facilityCountBeforeSave = captureFacilityCountBaselines(validEntities);
                 log.debug("Enriching facilities before delete");
                 enrichmentService.delete(validEntities, request);
-                Map<String, Integer> facilityCountBeforeSave = captureFacilityCountBaselines(validEntities);
                 log.debug("Saving deleted facilities to repository");
                 projectFacilityRepository.save(validEntities, projectConfiguration.getDeleteProjectFacilityTopic());
                 refreshProjectNamesAfterFacilityDelete(validEntities, request.getRequestInfo(), facilityCountBeforeSave);

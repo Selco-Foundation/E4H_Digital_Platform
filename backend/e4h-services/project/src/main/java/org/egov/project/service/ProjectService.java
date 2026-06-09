@@ -176,7 +176,12 @@ public class ProjectService {
                     projectId, projectStatus, dbFacilityCount, facilityCountOverride, effectiveFacilityCount);
             ProjectNameResult nameResult = projectNameGenerationService.generateProjectName(
                     projectFromDB, requestInfo, false, effectiveFacilityCount);
-            if (nameResult.getName() == null || nameResult.getName().equals(projectFromDB.getName())) {
+            int hfInCurrentName = projectNameGenerationService.parseHealthFacilityCountFromName(projectFromDB.getName());
+            if (nameResult.getName() == null) {
+                log.warn("Project name generation returned null for project {} after facility change", projectId);
+                return;
+            }
+            if (nameResult.getName().equals(projectFromDB.getName()) && hfInCurrentName == effectiveFacilityCount) {
                 log.debug("Project name unchanged after facility refresh for {}: {}", projectId, projectFromDB.getName());
                 return;
             }
