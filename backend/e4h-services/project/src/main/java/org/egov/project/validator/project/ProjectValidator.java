@@ -10,6 +10,7 @@ import org.egov.common.contract.request.RequestInfo;
 import org.egov.common.models.core.ProjectSearchURLParams;
 import org.egov.common.models.project.*;
 import org.egov.project.config.ProjectConfiguration;
+import org.egov.project.repository.ProjectRepository;
 import org.egov.project.service.ProjectNameGenerationService;
 import org.egov.project.util.BoundaryV2Util;
 import org.egov.project.util.MDMSUtils;
@@ -40,6 +41,9 @@ public class ProjectValidator {
             ProjectNameGenerationService.JUSTIFICATION_CODE_MESSAGE;
     @Autowired
     MDMSUtils mdmsUtils;
+
+    @Autowired
+    ProjectRepository projectRepository;
 
     @Autowired
     ProjectNameGenerationService projectNameGenerationService;
@@ -92,6 +96,8 @@ public class ProjectValidator {
         // Verify provided documentIds are valid.
         log.debug("Validating document IDs");
         validateDocumentIds(request);
+
+        validateJustificationCodeUniquenessOnCreate(request.getProjects(), errorMap);
 
         if (!errorMap.isEmpty()) {
             log.error("Validation failed with {} errors", errorMap.size());
@@ -302,6 +308,48 @@ public class ProjectValidator {
         if (!projectNameGenerationService.isValidJustificationCodeFormat(justificationCode)) {
             log.error("Invalid justification code for project: {}", justificationCode);
             errorMap.put("INVALID_JUSTIFICATION_CODE", INVALID_JUSTIFICATION_CODE_MESSAGE);
+        }
+    }
+
+    private void validateJustificationCodeUniquenessOnCreate(List<Project> projects, Map<String, String> errorMap) {
+        Set<String> seenInRequest = new HashSet<>();
+        for (Project project : projects) {
+            String justificationCode = projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails());
+            if (justificationCode == null
+                    || !projectNameGenerationService.isValidJustificationCodeFormat(justificationCode)) {
+                continue;
+            }
+            String normalizedCode = projectNameGenerationService.normalizeJustificationCode(justificationCode);
+            if (!seenInRequest.add(normalizedCode)) {
+                log.error("Duplicate justification code in create request: {}", normalizedCode);
+                errorMap.put("DUPLICATE_JUSTIFICATION_CODE",
+                        ProjectNameGenerationService.duplicateJustificationCodeInRequestMessage(normalizedCode));
+                continue;
+            }
+            if (projectRepository.isJustificationCodeUsed(normalizedCode, project.getTenantId())) {
+                log.error("Justification code already used in tenant {}: {}", project.getTenantId(), normalizedCode);
+                errorMap.put("DUPLICATE_JUSTIFICATION_CODE",
+                        ProjectNameGenerationService.duplicateJustificationCodeMessage(normalizedCode));
+            }
+        }
+    }
+
+    private void validateJustificationCodeUniquenessOnUpdate(Project project, Project projectFromDB) {
+        String justificationCode = projectNameGenerationService.extractJustificationCode(project.getAdditionalDetails());
+        if (justificationCode == null
+                || !projectNameGenerationService.isValidJustificationCodeFormat(justificationCode)) {
+            return;
+        }
+        String normalizedCode = projectNameGenerationService.normalizeJustificationCode(justificationCode);
+        String existingCode = projectNameGenerationService.normalizeJustificationCode(
+                projectNameGenerationService.extractJustificationCode(projectFromDB.getAdditionalDetails()));
+        if (normalizedCode.equals(existingCode)) {
+            return;
+        }
+        if (projectRepository.isJustificationCodeUsed(normalizedCode, project.getTenantId(), project.getId())) {
+            log.error("Justification code already used in tenant {} on update: {}", project.getTenantId(), normalizedCode);
+            throw new CustomException("DUPLICATE_JUSTIFICATION_CODE",
+                    ProjectNameGenerationService.duplicateJustificationCodeMessage(normalizedCode));
         }
     }
 
@@ -543,6 +591,8 @@ public class ProjectValidator {
             validateUpdateDocumentAgainstDB(project, projectFromDB);
 
             validateUpdateAddressAgainstDB(project, projectFromDB);
+
+            validateJustificationCodeUniquenessOnUpdate(project, projectFromDB);
         }
     }
 

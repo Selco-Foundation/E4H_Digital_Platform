@@ -272,6 +272,31 @@ public class ProjectRepository extends GenericRepository<Project> {
      * @param excludeProjectId The project ID to exclude from the check
      * @return true if the project name exists (excluding the specified project), false otherwise
      */
+    public boolean isJustificationCodeUsed(String justificationCode, String tenantId) {
+        return isJustificationCodeUsed(justificationCode, tenantId, null);
+    }
+
+    public boolean isJustificationCodeUsed(String justificationCode, String tenantId, String excludeProjectId) {
+        log.trace("Entering isJustificationCodeUsed for tenantId: {}, excludeProjectId: {}", tenantId, excludeProjectId);
+        if (StringUtils.isBlank(justificationCode) || StringUtils.isBlank(tenantId)) {
+            return false;
+        }
+        try {
+            String sql = StringUtils.isBlank(excludeProjectId)
+                    ? queryBuilder.getCheckJustificationCodeExistsQuery()
+                    : queryBuilder.getCheckJustificationCodeExistsExcludingProjectQuery();
+            Integer count = StringUtils.isBlank(excludeProjectId)
+                    ? jdbcTemplate.queryForObject(sql, Integer.class, tenantId, justificationCode)
+                    : jdbcTemplate.queryForObject(sql, Integer.class, tenantId, justificationCode, excludeProjectId);
+            boolean exists = count != null && count > 0;
+            log.debug("Justification code exists check result: {} (count: {})", exists, count);
+            return exists;
+        } catch (Exception e) {
+            log.error("Error checking justification code usage for tenantId: {}", tenantId, e);
+            return true;
+        }
+    }
+
     public boolean isProjectNameExistsExcludingProject(String projectName, String tenantId, String excludeProjectId) {
         log.trace("Entering isProjectNameExistsExcludingProject for projectName: {}, tenantId: {}, excludeProjectId: {}", projectName, tenantId, excludeProjectId);
         log.debug("Checking if project name exists excluding project: {}", excludeProjectId);

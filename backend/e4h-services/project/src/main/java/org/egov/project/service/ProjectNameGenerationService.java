@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,6 +39,17 @@ public class ProjectNameGenerationService {
     private static final String SCHEDULED_STATUS = "SCHEDULED";
     public static final String JUSTIFICATION_CODE_MESSAGE =
             "Justification code is required and must follow the format JUS-{numbers} (e.g., JUS-393, JUS-8080-89).";
+    public static String duplicateJustificationCodeMessage(String justificationCode) {
+        return String.format(
+                "Justification code %s is already assigned to another project. Please use a different justification code.",
+                justificationCode);
+    }
+
+    public static String duplicateJustificationCodeInRequestMessage(String justificationCode) {
+        return String.format(
+                "Justification code %s appears more than once in this request. Each project must have a unique justification code.",
+                justificationCode);
+    }
 
     private final ProjectRepository projectRepository;
     private final MDMSUtils mdmsUtils;
@@ -151,6 +163,13 @@ public class ProjectNameGenerationService {
     public boolean isValidJustificationCodeFormat(String justificationCode) {
         return StringUtils.isNotBlank(justificationCode)
                 && JUSTIFICATION_CODE_PATTERN.matcher(justificationCode.trim()).matches();
+    }
+
+    public String normalizeJustificationCode(String justificationCode) {
+        if (StringUtils.isBlank(justificationCode)) {
+            return null;
+        }
+        return justificationCode.trim().toUpperCase(Locale.ROOT);
     }
 
     public void validateJustificationCodeFormat(String justificationCode) {
