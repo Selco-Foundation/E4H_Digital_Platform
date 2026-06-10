@@ -37,7 +37,10 @@ const useFieldPlan = (queryFilter = {}, limit = 10, offset = 0, sortBy = null, s
 
   return {
     isLoading, isError, error, data,
-    revalidate: () => queryClient.invalidateQueries(["FIELD_PLAN"])
+    revalidate: async () => {
+      await queryClient.invalidateQueries(["FIELD_PLAN"]);
+      return queryClient.getQueryData(["FIELD_PLAN", filter, limit, offset]);
+    }
   }
 
 }
